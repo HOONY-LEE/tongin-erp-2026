@@ -182,8 +182,9 @@
   - 신규 마스터 모델로 매핑
   - 고객 **중복 제거(dedup)** 및 데이터 품질 정리
   - 레거시 데이터 품질 이슈 점검
-- [ ] 이관 대상 데이터 범위·기간 확정 필요
-- [ ] 레거시 DB 스키마 확보 필요
+- [x] 레거시 DB 스키마 확보 완료 → **부록 G** (SQL Server 2016, 361테이블, FK 0개, 매핑 검증됨)
+- [ ] 이관 대상 데이터 범위·기간 확정 (실사용 테이블 화이트리스트 — 인벤토리 CSV 기반)
+- [ ] 🚨 카드정보 평문(ContractMst) 처리 — 이관 제외 + 레거시 마스킹 요청 (부록 G-2)
 
 ---
 
@@ -488,6 +489,41 @@
 - 재료비 품목(포장용박스·에어캡·포장테이프·보양자재) = **맨 처음 언급된 가맹점 발주 품목**(박스·포장지).
 - 흐름: `견적(재료비 산정) → 자재 소요량 → 자재·재고(MM) 차감 → 원가 반영 → 마진(부록 D-3)`.
 - 흩어진 모듈(견적·MM·정산)이 여기서 한 흐름으로 통합.
+
+---
+
+## 부록 G. 레거시 DB 실측 (TigerSys 접속, 2026-06-22)
+
+레거시: **SQL Server 2016**, DB `TigerSys`, host 121.125.64.48. 사용자 테이블 **361개**. FK **0개**(관계 전부 암묵적). 덤프 산출물: `legacy-schema.sql`(구조만), `legacy-inventory.csv`(행수).
+
+### G-1. 핵심 테이블 → 우리 모델 매핑 (검증됨, 거의 1:1)
+| 레거시 | 키 컬럼 | 우리 모델 |
+|---|---|---|
+| `ReceiptMst` | recNum·recDat·memID·**beCd(지점)**·empCod·Stat·**recPath(접수경로)**·lat/long·expTossAmt·branchContNo | 접수/리드 |
+| `ReceiptDet`/`ReciptType01` | 접수 라인·타입별 | 접수 상세 |
+| `ContractMst` | contNo·**contAmt(계약금)**·balance·totAmt·payDiv·**memo/reqDesc/careDesc/contDesc** | 계약(E-2) |
+| `ContractDet` | contNo+seq·recNum·**itemCd**·recType·unit·price·qty·amt | 견적/계약 라인(E) |
+| `Item` | itemCd·cateCd·unit·price·**calDiv(산정구분)**·**recType(서비스라인)**·branchYN | 상품(D — 4개 섞임 확인) |
+| `Member` | memID | 고객 마스터 |
+| `OrderMst/Det` | | 작업 오더 |
+| `Cal*`(CalBalance/Toss/Work/Type…) | | 정산 |
+| `ASInfoMst/Det`,`HappyCall*` | | AS·CS |
+| `agencyCoin`,`AgencyCoinGroup`,`BranchAppraisal` | | 가맹점 코인·지점평가 |
+| `GA_ESTIMATE_SUM`,`GA_GOODS` | | (추정) 기업이전 견적 |
+| `LivingWorker` | | 리빙 작업자 |
+- 레거시도 **Mst/Det(헤더+라인)** 패턴 + recType/calDiv/beCd/recPath 축 일치 → 부록 B~F 설계 검증됨.
+
+### G-2. 🚨 보안 문제 (즉시 조치 권고)
+`ContractMst`에 **카드정보 평문 저장**: `cardNo varchar(40)`, `valiDt`, `cvcCod`.
+→ 여전법·PCI-DSS·개인정보보호법 위반. **마이그레이션 시 카드 컬럼 제외 + 레거시 측 마스킹/삭제 요청.** 신규는 카드 미저장(토스페이먼츠 위임).
+
+### G-3. 마이그레이션 기술 메모
+- 날짜 `char(8)`(YYYYMMDD) → `date/timestamp` 변환.
+- 금액 `float` → `decimal`(부동소수 오류 방지).
+- 코드 char 기반(beCd/empCod/itemCd/cateCd/recPath/Stat…) → 공통코드/마스터 매핑.
+- FK 0개 → 관계를 이름 규칙(recNum/contNo/memID/itemCd)으로 명시 복원.
+- **테이블 오염 심각**: `*_YYYYMMDD`, `ContractMst_CT...`(건별 백업), `member_<사람이름>`, `emp2/3/6`, `*_upload`, `Del_*`, `*_back`. → **실사용 화이트리스트** 필요(인벤토리 CSV 행수로 판별).
+- 대용량 참조: 주소/지번/RoadNameAddress(수백만행) = 한국 주소DB → 신규는 외부 주소API로 대체 가능.
 
 ---
 
