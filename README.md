@@ -46,6 +46,38 @@ packages/shared  공유 타입/상수 (@tongin/shared)
 ```
 실행: `pnpm install` → `pnpm --filter @tongin/api exec prisma generate` → `pnpm dev` (turbo). 빌드: `pnpm build`.
 
+### 다른 컴퓨터에서 시작하기 (집/회사 동기화)
+
+사전 준비: **Node 20+**, **pnpm 10**(`corepack enable`), **Docker Desktop**, **git**.
+
+```bash
+# 1. 클론
+git clone https://github.com/HOONY-LEE/tongin-erp-2026.git
+cd tongin-erp-2026
+
+# 2. 의존성 설치
+corepack enable
+pnpm install
+
+# 3. 환경변수 (apps/api/.env 는 git에 없음 → 예시에서 복사)
+cp apps/api/.env.example apps/api/.env
+
+# 4. 로컬 DB 기동 (PostgreSQL, 호스트 5433)
+docker compose up -d
+
+# 5. DB 스키마 적용 + Prisma 클라이언트 생성
+pnpm --filter @tongin/api exec prisma migrate deploy
+pnpm --filter @tongin/api exec prisma generate
+
+# 6. 개발 서버 (API 3001 + 웹 3000)
+pnpm dev
+```
+
+확인: 웹 http://localhost:3000 · API http://localhost:3001/api/health/db
+
+> 작업 흐름: 시작 전 `git pull` → 기능 브랜치 → PR → 머지(GitHub Flow). 상세는 개발원칙 문서.
+> ⚠️ DB 데이터는 각 컴퓨터의 로컬 docker라 공유되지 않음(스키마만 마이그레이션으로 동일). 운영 공용 DB는 추후 클라우드(FND-02 클라우드 파트).
+
 ---
 
 ## ⚠️ 멀티 세션 충돌 방지 규칙 (요약)
