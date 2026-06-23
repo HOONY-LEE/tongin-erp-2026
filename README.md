@@ -35,7 +35,16 @@
 - **단계: 설계 (구현 미착수 — 아직 코드 없음)**
 - **설계 완료**: 도메인 모델, 핵심 프로세스(접수→완료 상태머신), 서비스 카탈로그(3축/4엔티티), 견적·계약·문서 모델(가정 CBM / 기업 원가적상식), 결제 자동화·OCR 방침, 전체 아키텍처, 권한 모델
 - **기술 스택 확정**: NestJS(TS) / PostgreSQL / React+AntD(반응형 웹 우선→네이티브 RN) / AWS 서울 / 모노레포 / GitHub Flow
-- **다음 액션**: ① `git init` + 첫 커밋 → ② Phase 0(저장소/인프라/인증/마스터) → ③ Phase 1(MVP: 가정이사 端到端 + 결제 자동화)
+- **구현 시작**: Phase 0 진행 중 — **FND-01(모노레포 뼈대) 완료** (build/lint/typecheck/format 통과)
+- **다음 액션**: FND-02(인프라·DB)·FND-03(인증·RBAC)·FND-04~09(마스터) → Phase 1(MVP)
+
+### 모노레포 구조
+```
+apps/api      NestJS + Prisma (백엔드, API-first)
+apps/web      React + Vite + Ant Design (반응형 웹)
+packages/shared  공유 타입/상수 (@tongin/shared)
+```
+실행: `pnpm install` → `pnpm --filter @tongin/api exec prisma generate` → `pnpm dev` (turbo). 빌드: `pnpm build`.
 
 ---
 

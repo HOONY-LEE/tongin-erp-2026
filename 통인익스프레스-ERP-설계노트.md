@@ -13,19 +13,30 @@
 
 ---
 
-## 1. SAP 철학에서 가져올 4가지 핵심 원칙
+## 1. SAP 핵심 개념 6가지 (전부 신규 설계에 적용)
+
+> "SAP 6개 개념"이 공식 단일 표준은 아니나, 통상 핵심 철학을 아래 6으로 정리. 각 항목이 신규 스키마(DB스키마-설계.md)에 어떻게 구현됐는지 함께 기재.
 
 1. **조직구조 모델링 (Enterprise Structure)**
-   - `법인(본사)` → `직영점 / 가맹점` → `창고 / 현장 / 차량`
-   - 모든 거래에 "어느 조직 단위에서 발생했는가"가 항상 따라붙는다 → 정산·권한·리포팅의 기준.
-2. **마스터 데이터 / 트랜잭션 데이터 분리**
-   - 마스터: 고객, 거래처(제휴사), 직원, 품목(포장지/박스/유니폼/CBM 품목), 서비스상품
-   - 트랜잭션(전표): 리드, 견적, 서비스오더, 발주, 입출고, 정산
+   - `그룹사 → 법인/브랜드 → 지점(직영/가맹) → 전속업체` / 모든 거래에 조직 귀속 → 정산·권한·리포팅 기준.
+   - 구현: `org_unit`(self-ref), 모든 트랜잭션 `org_unit_id`.
+2. **마스터 데이터 / 트랜잭션 분리**
+   - 마스터: 고객·거래처·직원·품목·서비스상품 (한번 정의·재사용) / 트랜잭션: 리드·견적·오더·발주·정산.
+   - 구현: customer, product/cbm_item/addon/price_condition, employee, partner, common_code.
 3. **전표 원칙 (Document Principle)**
-   - 모든 비즈니스 행위 = 변경불가 문서 + 라인아이템 + 변경이력(audit trail)
-   - "누가 언제 무엇을 바꿨는가"가 시스템의 본질.
-4. **모듈 분리 + 데이터 통합**
-   - 모듈은 나뉘지만 DB는 하나. `이사 완료 → 매출 → 자재 차감 → 가맹점 정산`이 한 흐름으로 자동 연결.
+   - 모든 행위 = 불변 문서 + 라인아이템 + 변경이력.
+   - 구현: lead/estimate/contract/work_order(헤더+라인), `audit_log`, 서명계약 동결(E-0).
+4. **통합 (Integration)**
+   - 모듈은 나뉘되 DB는 하나, 실시간 연결: 견적→계약→작업→정산→재고.
+   - 구현: 단일 PostgreSQL, `domain_event`(이벤트 기반).
+5. **설정 기반 (Configuration over Coding / Customizing)**
+   - 동작을 코드가 아닌 "설정=데이터"로 변경 (SAP의 IMG 사상).
+   - 구현: `common_code`, `menu`(메뉴=데이터), `role/permission`(권한=데이터), `custom_object`(무DDL 기능추가), pricing_method/`price_condition`. → "스키마 변경 없이 메뉴/기능 추가"의 근거.
+6. **권한 (Authorization)**
+   - Authorization Object = 역할 × 활동(기능) × 데이터범위 × 조직.
+   - 구현: `role/permission/role_permission/user_role`(org_scope + data_scope).
+
+> 참고 — SAP 고전 6대 모듈 대비 우리 범위: SD(영업)=CRM·견적·오더 ✅ / MM(자재)=자재·재고 ✅ / FI·CO(회계)=정산·매출 + 외부 회계SW 연동(자체 FI 미구현) / HR=가벼운 HR+외부 급여 / PP(생산)=해당 없음(작업·스케줄링이 유사).
 
 ---
 
