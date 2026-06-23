@@ -34,3 +34,49 @@ export interface HealthResponse {
   service: string;
   timestamp: string;
 }
+
+// ── FND-03: 인증 + RBAC ──
+
+// 주체 유형 (설계노트 1-B: 에이전트/워크플로우도 1급 주체)
+export const PRINCIPAL_TYPES = ['HUMAN', 'AGENT', 'WORKFLOW'] as const;
+export type PrincipalType = (typeof PRINCIPAL_TYPES)[number];
+
+// 데이터 범위 (역할 부여 시 조직 스코프와 함께)
+export const DATA_SCOPES = ['OWN', 'ORG', 'ALL'] as const;
+export type DataScope = (typeof DATA_SCOPES)[number];
+
+// 권한 = 데이터(코드 하드코딩 금지, 개발원칙 §5). 기능 단위 코드: <도메인>.<액션>.
+// '*' = 전체 권한(슈퍼관리자). 새 기능 추가 시 여기 + 시드에 등록.
+export const PERMISSIONS = [
+  'ORG_UNIT.READ',
+  'ORG_UNIT.WRITE',
+  'USER.READ',
+  'USER.WRITE',
+  'ROLE.READ',
+  'ROLE.WRITE',
+] as const;
+export type Permission = (typeof PERMISSIONS)[number];
+export const PERMISSION_WILDCARD = '*';
+
+// 기본 역할 코드 (시드)
+export const ROLE_SUPER_ADMIN = 'SUPER_ADMIN';
+
+export interface LoginRequest {
+  loginId: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresIn: number; // 초
+}
+
+// 현재 주체(사람/에이전트 공용) — /auth/me 응답 & request.user
+export interface AuthPrincipal {
+  userId: string;
+  loginId: string;
+  principalType: PrincipalType;
+  permissions: string[]; // 평탄화된 permission code (또는 '*')
+  scopes: { roleCode: string; dataScope: DataScope; orgScopeId: string | null }[];
+}
