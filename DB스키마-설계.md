@@ -16,6 +16,10 @@
 - **공통 컬럼**: `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at`, `created_by uuid`, `updated_by uuid`. 필요 시 소프트삭제 `deleted_at`.
 - **멀티테넌시**: 모든 트랜잭션 테이블에 `org_unit_id`(조직 귀속) — 권한·정산·통계 기준.
 - **코드값**: 업무 확장형은 `common_code` 참조(역할=데이터 원칙). 고정 기술값만 enum/check.
+- **상태(status)**: 각 엔티티 `status`는 `common_code`(그룹별: LEAD_STATUS 등) 값 사용 + **상태전이는 도메인 계층에서 검증**(아무 값이나 못 들어가게).
+- **인덱싱**: 모든 FK 컬럼 + 업무번호(`*_no`) + `org_unit_id` + 자주 조회되는 `status`에 인덱스 필수.
+- **낙관적 락**: 동시수정 충돌 방지용 `updated_at` 기반(또는 `version int`) 체크.
+- **소프트삭제 정책**: 마스터(customer/product 등)는 `deleted_at` 소프트삭제, 트랜잭션(계약/오더)은 삭제 대신 `status=CANCELED`.
 - **유연 속성**: 가변 항목은 `attributes jsonb`.
 - **전표 불변**: 확정 거래는 수정 대신 이력(`*_history`)·이벤트. 서명 계약은 동결(E-0).
 - **마이그레이션 식별자**: 이관 대상 테이블엔 `legacy_id text`(옛 PK 보존, 인덱스) 추가. 문서번호 있는 건 `*_no` 컬럼이 그 역할. 레거시 char ID는 PK로 쓰지 않고 uuid 새로 생성 + 변환표(crosswalk)로 관계 복원. (상세: 레거시-구조분석.md §4-1)
@@ -62,7 +66,8 @@ CREATE TABLE employee (
 
 CREATE TABLE app_user (                 -- 로그인 계정 (직원/외부인 공용)
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id uuid REFERENCES employee(id),   -- 외부인은 NULL 가능
+  employee_id uuid REFERENCES employee(id),   -- 직원 계정(외부인은 NULL)
+  partner_id  uuid REFERENCES partner(id),    -- 외부 전속/제휴 사용자의 소속(데이터범위 스코프)
   login_id    text UNIQUE NOT NULL,
   password_hash text NOT NULL,
   is_external boolean NOT NULL DEFAULT false,
@@ -98,6 +103,21 @@ CREATE TABLE partner (                  -- 거래처/제휴사/전속업체 (B2B
   code text UNIQUE NOT NULL, name text NOT NULL,
   attributes jsonb,
   is_active boolean NOT NULL DEFAULT true
+);
+
+-- 메뉴/화면 레지스트리 (메뉴 추가=행 추가, 코드배포·스키마변경 불필요 — 레거시 메뉴정보등록 대체)
+CREATE TABLE menu (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_id   uuid REFERENCES menu(id),
+  code        text UNIQUE NOT NULL,
+  name        text NOT NULL,
+  type        text NOT NULL,            -- GROUP | PAGE | ACTION
+  route       text,                     -- 프론트 경로/컴포넌트 키 (커스텀오브젝트면 object code)
+  permission_code text REFERENCES permission(code),  -- 이 메뉴 접근 권한
+  icon        text,
+  sort_order  int DEFAULT 0,
+  is_active   boolean NOT NULL DEFAULT true,
+  attributes  jsonb
 );
 ```
 
@@ -181,6 +201,7 @@ CREATE TABLE lead (
   customer_id   uuid REFERENCES customer(id),
   org_unit_id   uuid NOT NULL REFERENCES org_unit(id),  -- 담당 지점
   owner_emp_id  uuid REFERENCES employee(id),
+  partner_id    uuid REFERENCES partner(id),    -- 제휴/전속 출처 귀속(정산·통계)
   source        text,                          -- common_code: RECEIPT_PATH (recPath)
   service_line  text,                          -- 이사/리빙/케어
   status        text NOT NULL,                 -- 상태머신(부록 D-4): RECEIVED→CONSULT_TOSS→…
@@ -376,3 +397,58 @@ customer ─ lead ─ estimate ─ contract ─ payment
                     └─ estimate_cost_line ─(material)→ product
 product / cbm_item / addon_service / price_condition  = 카탈로그 4엔티티
 ```
+
+---
+
+## 12. 확장성: 스키마 변경 없이 기능/메뉴 추가
+
+### 12-1. 메뉴는 데이터 (§2 `menu`)
+새 메뉴 추가·이동·숨김 = `menu` 행 추가/수정. **코드배포·스키마변경 불필요.** `permission_code`로 노출 권한 제어.
+
+### 12-2. 커스텀 오브젝트 (세일즈포스식) — 명함관리 같은 신규 기능을 DDL 없이
+```sql
+CREATE TABLE custom_object (            -- 새 "개체" 정의 (예: 명함, 비품대여)
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text UNIQUE NOT NULL,            -- business_card
+  name text NOT NULL,                   -- 명함관리
+  org_scoped boolean NOT NULL DEFAULT true,
+  is_active boolean NOT NULL DEFAULT true
+);
+CREATE TABLE custom_field (             -- 개체의 필드 정의
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  object_id uuid NOT NULL REFERENCES custom_object(id) ON DELETE CASCADE,
+  code text NOT NULL, name text NOT NULL,
+  data_type text NOT NULL,             -- TEXT|NUMBER|DATE|BOOL|SELECT|FILE|REF
+  required boolean DEFAULT false, sort_order int DEFAULT 0,
+  options jsonb,                       -- SELECT 보기 / REF 대상 등
+  UNIQUE (object_id, code)
+);
+CREATE TABLE custom_record (           -- 실제 데이터 (jsonb)
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  object_id uuid NOT NULL REFERENCES custom_object(id),
+  org_unit_id uuid REFERENCES org_unit(id),
+  data jsonb NOT NULL,                 -- {"이름":..,"회사":..,"직책":..,"전화":..}
+  created_at timestamptz NOT NULL DEFAULT now(), created_by uuid, updated_at timestamptz
+);
+CREATE INDEX ix_custom_record_obj ON custom_record(object_id);
+CREATE INDEX ix_custom_record_data ON custom_record USING gin (data);
+```
+- **흐름(예: 명함관리)**: 관리자가 `custom_object('business_card','명함관리')` 생성 → `custom_field`로 이름·회사·직책·전화·이미지 추가 → 공용 화면이 자동 렌더 → `menu` 행 추가로 노출. **스키마 변경 0, 배포 0.**
+- **적합**: 명함·비품대여·간단 대장류 등 가벼운 부가 기능.
+- **부적합(=정규 테이블로)**: 핵심 트랜잭션, 복잡 관계, 대용량/고성능, 정산 연동 → 정식 마이그레이션(스키마 추가). ← 이게 건강한 방식. 모든 걸 jsonb로 욱여넣는 EAV 안티패턴은 지양.
+
+## 13. 구조 검토 결과 & 안정성
+
+**판정: ERP 코어로 구조적으로 안정적** — 정규화, FK 무결성 강제, 전표/감사, 이벤트, 멀티테넌시 모두 충족.
+
+**검토 중 반영한 개선:**
+- 메뉴 레지스트리(`menu`), 커스텀 오브젝트(`custom_*`) — 무스키마 확장.
+- `app_user.partner_id`(외부 사용자 소속), `lead.partner_id`(제휴 귀속).
+- status→common_code + 도메인 상태전이 검증, 인덱싱/낙관적락/소프트삭제 정책(§1).
+
+**구현 단계에서 점검할 항목:**
+- [ ] 모든 FK 컬럼 인덱스 일괄 생성
+- [ ] 채번 서비스(lead_no/contract_no 생성, 레거시 충돌 방지)
+- [ ] customer 조직범위 정책 확정(전사 공유 마스터 + 담당조직은 lead/contract에 귀속)
+- [ ] estimate→contract 확정 후 estimate 잠금(불변)
+- [ ] estimate_line 라인별 단가/금액 필요 상품군(옵션) 검토
