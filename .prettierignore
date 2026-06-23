@@ -1,0 +1,8 @@
+dist
+node_modules
+.turbo
+.claude
+pnpm-lock.yaml
+legacy-schema.sql
+legacy-inventory.csv
+*.md

@@ -1,0 +1,68 @@
+// 통인 ERP — Prisma 스키마 (초기 핵심 마스터 4종)
+// 전체 설계는 루트 DB스키마-설계.md 참조. 여기는 FND-01 스켈레톤용 시드 모델.
+// 명명: 모델은 PascalCase, 실제 테이블/컬럼은 snake_case(@@map/@map).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model OrgUnit {
+  id        String     @id @default(uuid()) @db.Uuid
+  parentId  String?    @map("parent_id") @db.Uuid
+  parent    OrgUnit?   @relation("OrgUnitParent", fields: [parentId], references: [id])
+  children  OrgUnit[]  @relation("OrgUnitParent")
+  type      String // GROUP | COMPANY | BRANCH | PARTNER
+  code      String     @unique
+  name      String
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  employees Employee[]
+  customers Customer[]
+
+  @@map("org_unit")
+}
+
+model CommonCode {
+  id        String  @id @default(uuid()) @db.Uuid
+  codeGroup String  @map("code_group")
+  code      String
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  @@unique([codeGroup, code])
+  @@map("common_code")
+}
+
+model Employee {
+  id        String   @id @default(uuid()) @db.Uuid
+  orgUnitId String   @map("org_unit_id") @db.Uuid
+  orgUnit   OrgUnit  @relation(fields: [orgUnitId], references: [id])
+  empNo     String?  @unique @map("emp_no")
+  name      String
+  phone     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("employee")
+}
+
+model Customer {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  phonePrimary String?  @map("phone_primary")
+  legacyId     String?  @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
+  grade        String?
+  status       String?
+  ownerOrgId   String?  @map("owner_org_id") @db.Uuid
+  ownerOrg     OrgUnit? @relation(fields: [ownerOrgId], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([phonePrimary])
+  @@map("customer")
+}
