@@ -1,6 +1,10 @@
 // 통인 ERP 공유 타입/상수 — 프론트(web)와 백엔드(api)가 함께 사용.
 // 설계노트의 도메인 개념과 1:1 (서비스라인·산정방식·상태·처리구분).
 
+// 조직 유형 (그룹사 > 법인/브랜드 > 지점 > 외부 전속업체)
+export const ORG_UNIT_TYPES = ['GROUP', 'COMPANY', 'BRANCH', 'PARTNER'] as const;
+export type OrgUnitType = (typeof ORG_UNIT_TYPES)[number];
+
 export const SERVICE_LINES = ['MOVING', 'LIVING', 'CARE', 'B2B_MOVING', 'GENERAL'] as const;
 export type ServiceLine = (typeof SERVICE_LINES)[number];
 
