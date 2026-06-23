@@ -1,0 +1,12 @@
+# 모든 텍스트 파일은 LF로 통일 (저장소 표준 = LF, Prettier endOfLine 기본값과 일치).
+# Windows에서 core.autocrlf 설정과 무관하게 작업트리도 LF 유지 → pnpm format:check 일관 통과.
+* text=auto eol=lf
+
+# 바이너리/락파일 등은 변환 금지
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+pnpm-lock.yaml -text

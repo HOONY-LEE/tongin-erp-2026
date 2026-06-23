@@ -64,15 +64,29 @@ CREATE TABLE employee (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE app_user (                 -- 로그인 계정 (직원/외부인 공용)
+CREATE TABLE app_user (                 -- 로그인 계정/주체 (직원/외부인/에이전트 공용)
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id uuid REFERENCES employee(id),   -- 직원 계정(외부인은 NULL)
+  employee_id uuid REFERENCES employee(id),   -- 직원 계정(외부인·에이전트는 NULL)
   partner_id  uuid REFERENCES partner(id),    -- 외부 전속/제휴 사용자의 소속(데이터범위 스코프)
   login_id    text UNIQUE NOT NULL,
-  password_hash text NOT NULL,
+  password_hash text,                          -- 에이전트/워크플로우는 NULL(토큰 인증)
+  principal_type text NOT NULL DEFAULT 'HUMAN',-- HUMAN | AGENT | WORKFLOW (설계노트 1-B)
   is_external boolean NOT NULL DEFAULT false,
   is_active   boolean NOT NULL DEFAULT true,
   created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- 에이전트/워크플로우(및 PAT) 스코프 토큰 — 사람과 동일 RBAC + 권한 부분집합·만료·폐기 (설계노트 1-B)
+CREATE TABLE api_token (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  principal_id uuid NOT NULL REFERENCES app_user(id),
+  name         text NOT NULL,
+  token_hash   text UNIQUE NOT NULL,           -- 평문 토큰은 발급 시 1회만 노출
+  scopes       text[] NOT NULL DEFAULT '{}',   -- 허용 permission code 부분집합('*'=주체 권한 전체)
+  expires_at   timestamptz,
+  revoked_at   timestamptz,
+  last_used_at timestamptz,
+  created_at   timestamptz NOT NULL DEFAULT now()
 );
 
 -- RBAC: 역할 × 기능 × 데이터범위 × 조직 (설계노트 5장)
@@ -361,7 +375,7 @@ CREATE TABLE audit_log (                        -- 전표 원칙(변경이력)
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   entity_type text NOT NULL, entity_id uuid NOT NULL,
   action text NOT NULL, before jsonb, after jsonb,
-  actor_user_id uuid REFERENCES app_user(id),
+  actor_user_id uuid REFERENCES app_user(id),  -- 주체(사람/에이전트 공용) — 주체·기능 단위 질의 가능(1-B)
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE document (                         -- 동결 문서(서명계약 등). 일반문서는 동적생성·무저장
