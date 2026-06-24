@@ -54,6 +54,12 @@ export const PERMISSIONS = [
   'USER.WRITE',
   'ROLE.READ',
   'ROLE.WRITE',
+  'COMMON_CODE.READ',
+  'COMMON_CODE.WRITE',
+  'EMPLOYEE.READ',
+  'EMPLOYEE.WRITE',
+  'CUSTOMER.READ',
+  'CUSTOMER.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
