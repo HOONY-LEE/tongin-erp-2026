@@ -6,6 +6,8 @@ import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
+import Estimates from './pages/Estimates';
+import EstimateDetail from './pages/EstimateDetail';
 import Customers from './pages/Customers';
 import Products from './pages/Products';
 import CbmItems from './pages/CbmItems';
@@ -26,6 +28,8 @@ function Shell() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
+        <Route path="/estimates" element={<Estimates />} />
+        <Route path="/estimates/:id" element={<EstimateDetail />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/products" element={<Products />} />
         <Route path="/cbm-items" element={<CbmItems />} />

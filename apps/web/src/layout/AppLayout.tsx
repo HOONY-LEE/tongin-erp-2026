@@ -10,6 +10,7 @@ function Sidebar() {
   const items = [
     { to: '/', label: t('nav.dashboard') },
     { to: '/leads', label: t('nav.leads') },
+    { to: '/estimates', label: t('nav.estimates') },
     { to: '/customers', label: t('nav.customers') },
     { to: '/products', label: t('nav.products') },
     { to: '/cbm-items', label: t('nav.cbmItems') },
