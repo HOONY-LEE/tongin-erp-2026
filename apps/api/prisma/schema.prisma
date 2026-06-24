@@ -459,3 +459,34 @@ model Notification {
   @@index([eventType])
   @@map("notification")
 }
+
+// ── MM-01: 자재·재고 (자재마스터 + 입출고 수불 → 현재고는 수불 합산) ──
+model Material {
+  id          String          @id @default(uuid()) @db.Uuid
+  code        String          @unique
+  name        String
+  category    String? // common_code: MATERIAL_CATEGORY (박스/포장지/유니폼…)
+  unit        String          @default("EA") // EA | SET | ROLL | BOX
+  safetyStock Int             @default(0) @map("safety_stock") // 안전재고(미만 시 경고)
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  movements   StockMovement[]
+
+  @@map("material")
+}
+
+model StockMovement {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @map("material_id") @db.Uuid
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  orgUnitId  String?  @map("org_unit_id") @db.Uuid // 창고/지점(선택)
+  type       String // IN(입고) | OUT(출고) | ADJUST(조정)
+  qtyDelta   Int      @map("qty_delta") // 부호 포함: IN +, OUT -, ADJUST ±
+  reason     String?
+  refType    String?  @map("ref_type") // 연계 출처(발주/작업 등)
+  refId      String?  @map("ref_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([materialId])
+  @@map("stock_movement")
+}

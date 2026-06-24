@@ -53,6 +53,10 @@ export function canTransition(from: LeadStatus, to: LeadStatus): boolean {
 export const HANDLING = ['CARRY', 'LEAVE', 'DISPOSE'] as const;
 export type Handling = (typeof HANDLING)[number];
 
+// MM-01: 재고 수불 유형 (입고/출고/조정)
+export const STOCK_MOVEMENT_TYPES = ['IN', 'OUT', 'ADJUST'] as const;
+export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
+
 export interface HealthResponse {
   status: 'ok';
   service: string;
@@ -106,6 +110,8 @@ export const PERMISSIONS = [
   'WORK_ORDER.READ',
   'WORK_ORDER.WRITE',
   'NOTIFICATION.READ',
+  'MATERIAL.READ',
+  'MATERIAL.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
