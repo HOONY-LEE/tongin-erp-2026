@@ -32,12 +32,12 @@
 
 ## 현재 상태 스냅샷 (2026-06-24)
 
-- **단계: Phase 0 구현 진행 중** (설계는 사실상 완료)
-- **설계 완료**: 도메인 모델, 핵심 프로세스(접수→완료 상태머신), 서비스 카탈로그(3축/4엔티티), 견적·계약·문서 모델(가정 CBM / 기업 원가적상식), 결제 자동화·OCR 방침, 전체 아키텍처, 권한 모델
+- **단계: ✅ Phase 0 완료 → Phase 1(MVP) 착수 예정**
 - **기술 스택 확정**: NestJS(TS) / PostgreSQL / React+AntD(반응형 웹 우선→네이티브 RN) / AWS 서울 / 모노레포 / GitHub Flow
-- **구현 완료(Phase 0)**: FND-01(모노레포)·02(DB)·03(인증·RBAC·에이전트주체)·04(조직)·05(공통코드)·06(직원)·08(고객) — 전부 인증 포함 end-to-end 검증
-- **AI 개방 계층(AX) 설계**: 에이전트=RBAC 1급 주체 + 이벤트 디스패치 + 선언적 워크플로우 ([설계노트 1-B](통인익스프레스-ERP-설계노트.md)). 구현은 P2~3(AIX/AUTO).
-- **다음 액션**: FND-09(상품 4엔티티 — 마이그레이션 필요)·FND-07(이벤트/감사) → Phase 1(MVP: 리드→견적→계약→작업)
+- **Phase 0 완료(FND-01~09)**: 모노레포 · DB/Prisma · 인증(JWT)+RBAC(에이전트 1급 주체) · 마스터(조직·공통코드·직원·고객·거래처·상품4엔티티) · 이벤트 outbox + 감사로그 — **전부 인증 포함 end-to-end 검증**
+- **동작 엔드포인트**: `/api/auth/*`, `/api/{org-units,common-codes,employees,customers,partners,products,cbm-items,addon-services,price-conditions}`, `/api/{audit-logs,domain-events}`
+- **AI 개방 계층(AX) 설계**: 에이전트=RBAC 1급 주체 + 이벤트 디스패치 + 선언적 워크플로우 ([설계노트 1-B](통인익스프레스-ERP-설계노트.md)). 구현은 P2~3.
+- **다음 액션 (Phase 1)**: 리드(접수) → 견적(CBM·구역·라인) → 계약(전자서명·결제) → 작업(배차) — 실제 이사 프로세스
 - **로그인(개발)**: `admin` / `admin1234` (⚠️ `ADMIN_PASSWORD` env로 변경)
 
 ### 모노레포 구조
