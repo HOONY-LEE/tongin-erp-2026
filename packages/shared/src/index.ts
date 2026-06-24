@@ -97,6 +97,8 @@ export const PERMISSIONS = [
   'AUDIT.READ',
   'LEAD.READ',
   'LEAD.WRITE',
+  'ESTIMATE.READ',
+  'ESTIMATE.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
