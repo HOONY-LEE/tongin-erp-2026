@@ -105,6 +105,7 @@ export const PERMISSIONS = [
   'PAYMENT.WRITE',
   'WORK_ORDER.READ',
   'WORK_ORDER.WRITE',
+  'NOTIFICATION.READ',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

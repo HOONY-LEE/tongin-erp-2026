@@ -444,3 +444,18 @@ model WorkAssignment {
 
   @@map("work_assignment")
 }
+
+// ── INT-01: 알림톡/SMS 발송 기록 (이벤트 구독 발송, 스텁) ──
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  channel   String    @default("ALIMTALK") // ALIMTALK | SMS
+  eventType String    @map("event_type")
+  recipient String? // 수신자(고객 연락처 등)
+  message   String
+  status    String    @default("SENT") // SENT | FAILED (스텁은 SENT)
+  payload   Json?
+  sentAt    DateTime  @default(now()) @map("sent_at") @db.Timestamptz(6)
+
+  @@index([eventType])
+  @@map("notification")
+}
