@@ -27,6 +27,7 @@ export default {
   estimate: {
     detail: '상세',
     document: '견적서',
+    toContract: '계약 만들기',
     create: '견적 생성',
     addZone: '구역 추가',
     addLine: '품목 추가',
@@ -47,6 +48,7 @@ export default {
     requestDeposit: '계약금 결제요청',
     requestBalance: '잔금 결제요청',
     confirm: '입금확인',
+    toWorkOrder: '작업 만들기',
     back: '목록',
   },
   work: {
@@ -68,5 +70,5 @@ export default {
     contracts: '계약',
     workOrders: '작업오더',
   },
-  lead: { register: '접수 등록', changeStatus: '상태변경' },
+  lead: { register: '접수 등록', changeStatus: '상태변경', toEstimate: '견적 만들기' },
 } as const;

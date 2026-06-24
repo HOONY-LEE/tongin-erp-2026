@@ -27,6 +27,7 @@ export default {
   estimate: {
     detail: '详情',
     document: '报价单',
+    toContract: '创建合同',
     create: '新建报价',
     addZone: '添加区域',
     addLine: '添加物品',
@@ -47,6 +48,7 @@ export default {
     requestDeposit: '请求定金付款',
     requestBalance: '请求尾款付款',
     confirm: '确认到账',
+    toWorkOrder: '创建作业单',
     back: '列表',
   },
   work: {
@@ -68,5 +70,5 @@ export default {
     contracts: '合同',
     workOrders: '作业单',
   },
-  lead: { register: '新建受理', changeStatus: '更改状态' },
+  lead: { register: '新建受理', changeStatus: '更改状态', toEstimate: '创建报价' },
 } as const;

@@ -27,6 +27,7 @@ export default {
   estimate: {
     detail: 'Detail',
     document: 'Estimate sheet',
+    toContract: 'Create contract',
     create: 'New estimate',
     addZone: 'Add zone',
     addLine: 'Add item',
@@ -47,6 +48,7 @@ export default {
     requestDeposit: 'Request deposit',
     requestBalance: 'Request balance',
     confirm: 'Confirm payment',
+    toWorkOrder: 'Create work order',
     back: 'List',
   },
   work: {
@@ -68,5 +70,5 @@ export default {
     contracts: 'Contracts',
     workOrders: 'Work Orders',
   },
-  lead: { register: 'New lead', changeStatus: 'Change status' },
+  lead: { register: 'New lead', changeStatus: 'Change status', toEstimate: 'Create estimate' },
 } as const;
