@@ -32,6 +32,23 @@ export const LEAD_STATUS = [
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUS)[number];
 
+// 리드 상태머신: 허용 전이만 가능 (부록 D-4). CANCELED는 종료 전 어디서든 가능.
+export const LEAD_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
+  RECEIVED: ['CONSULT_ASSIGNED', 'CANCELED'],
+  CONSULT_ASSIGNED: ['CONSULT_TOSS', 'CANCELED'],
+  CONSULT_TOSS: ['QUOTED', 'CANCELED'],
+  QUOTED: ['CONTRACTED', 'CANCELED'],
+  CONTRACTED: ['WORK_TOSS', 'CANCELED'],
+  WORK_TOSS: ['IN_PROGRESS', 'CANCELED'],
+  IN_PROGRESS: ['DONE', 'CANCELED'],
+  DONE: [],
+  CANCELED: [],
+};
+
+export function canTransition(from: LeadStatus, to: LeadStatus): boolean {
+  return LEAD_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
 // 품목 처리구분 (운반/방치/폐기)
 export const HANDLING = ['CARRY', 'LEAVE', 'DISPOSE'] as const;
 export type Handling = (typeof HANDLING)[number];
@@ -78,6 +95,8 @@ export const PERMISSIONS = [
   'PRICE_CONDITION.READ',
   'PRICE_CONDITION.WRITE',
   'AUDIT.READ',
+  'LEAD.READ',
+  'LEAD.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

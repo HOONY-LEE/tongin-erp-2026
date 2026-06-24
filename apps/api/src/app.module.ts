@@ -14,6 +14,7 @@ import { ProductModule } from './modules/product/product.module';
 import { CbmItemModule } from './modules/cbm-item/cbm-item.module';
 import { AddonServiceModule } from './modules/addon-service/addon-service.module';
 import { PriceConditionModule } from './modules/price-condition/price-condition.module';
+import { LeadModule } from './modules/lead/lead.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PriceConditionModule } from './modules/price-condition/price-condition.
     CbmItemModule,
     AddonServiceModule,
     PriceConditionModule,
+    LeadModule,
   ],
   controllers: [AppController],
 })

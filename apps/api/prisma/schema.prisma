@@ -25,6 +25,7 @@ model OrgUnit {
   customers Customer[]
   userRoleScopes UserRole[] @relation("UserRoleOrgScope")
   brandedProducts Product[] @relation("ProductBrand")
+  leads          Lead[]
 
   @@map("org_unit")
 }
@@ -51,6 +52,7 @@ model Employee {
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   appUsers  AppUser[]
+  ownedLeads Lead[]
 
   @@map("employee")
 }
@@ -65,6 +67,7 @@ model Customer {
   ownerOrgId   String?  @map("owner_org_id") @db.Uuid
   ownerOrg     OrgUnit? @relation(fields: [ownerOrgId], references: [id])
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  leads        Lead[]
 
   @@index([phonePrimary])
   @@map("customer")
@@ -160,6 +163,7 @@ model Partner {
   isActive        Boolean          @default(true) @map("is_active")
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   priceConditions PriceCondition[]
+  leads           Lead[]
 
   @@map("partner")
 }
@@ -253,4 +257,35 @@ model PriceCondition {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("price_condition")
+}
+
+// ── Phase 1: 리드(접수) — 이사 프로세스의 출발점 (DB스키마 §5) ──
+model Lead {
+  id             String    @id @default(uuid()) @db.Uuid
+  leadNo         String    @unique @map("lead_no") // 접수번호 R...
+  customerId     String?   @map("customer_id") @db.Uuid
+  customer       Customer? @relation(fields: [customerId], references: [id])
+  orgUnitId      String    @map("org_unit_id") @db.Uuid // 담당 지점
+  orgUnit        OrgUnit   @relation(fields: [orgUnitId], references: [id])
+  ownerEmpId     String?   @map("owner_emp_id") @db.Uuid
+  ownerEmp       Employee? @relation(fields: [ownerEmpId], references: [id])
+  partnerId      String?   @map("partner_id") @db.Uuid // 제휴/전속 출처
+  partner        Partner?  @relation(fields: [partnerId], references: [id])
+  source         String? // common_code: RECEIPT_PATH
+  serviceLine    String?   @map("service_line")
+  status         String    @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
+  fromZipcode    String?   @map("from_zipcode")
+  fromAddr       String?   @map("from_addr")
+  toZipcode      String?   @map("to_zipcode")
+  toAddr         String?   @map("to_addr")
+  moveDate       DateTime? @map("move_date") @db.Date
+  visitDate      DateTime? @map("visit_date") @db.Date
+  expectedAmount Decimal?  @map("expected_amount") @db.Decimal(14, 2)
+  attributes     Json?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([orgUnitId])
+  @@map("lead")
 }
