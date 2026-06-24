@@ -27,6 +27,7 @@ model OrgUnit {
   brandedProducts Product[] @relation("ProductBrand")
   leads          Lead[]
 
+  estimates       Estimate[]
   @@map("org_unit")
 }
 
@@ -54,6 +55,7 @@ model Employee {
   appUsers  AppUser[]
   ownedLeads Lead[]
 
+  estimatorEstimates Estimate[]
   @@map("employee")
 }
 
@@ -70,6 +72,7 @@ model Customer {
   leads        Lead[]
 
   @@index([phonePrimary])
+  estimates    Estimate[]
   @@map("customer")
 }
 
@@ -180,6 +183,7 @@ model Product {
   isActive      Boolean  @default(true) @map("is_active")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  estimates Estimate[]
   @@map("product")
 }
 
@@ -193,6 +197,7 @@ model CbmItem {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([category, name])
+  estimateLines EstimateLine[]
   @@map("cbm_item")
 }
 
@@ -287,5 +292,67 @@ model Lead {
 
   @@index([status])
   @@index([orgUnitId])
+  estimates Estimate[]
   @@map("lead")
+}
+
+// ── Phase 1: 견적 (부록 E·F) — 헤더 + 구역 + 품목라인 ──
+model Estimate {
+  id              String         @id @default(uuid()) @db.Uuid
+  estimateNo      String         @unique @map("estimate_no")
+  leadId          String         @map("lead_id") @db.Uuid
+  lead            Lead           @relation(fields: [leadId], references: [id])
+  customerId      String         @map("customer_id") @db.Uuid
+  customer        Customer       @relation(fields: [customerId], references: [id])
+  orgUnitId       String         @map("org_unit_id") @db.Uuid
+  orgUnit         OrgUnit        @relation(fields: [orgUnitId], references: [id])
+  productId       String         @map("product_id") @db.Uuid
+  product         Product        @relation(fields: [productId], references: [id])
+  estimatorEmpId  String?        @map("estimator_emp_id") @db.Uuid
+  estimator       Employee?      @relation(fields: [estimatorEmpId], references: [id])
+  fromAddr        String?        @map("from_addr")
+  fromPyeong      Int?           @map("from_pyeong")
+  fromElevator    Boolean?       @map("from_elevator")
+  toAddr          String?        @map("to_addr")
+  toPyeong        Int?           @map("to_pyeong")
+  toElevator      Boolean?       @map("to_elevator")
+  totalCbm        Decimal        @default(0) @map("total_cbm") @db.Decimal(10, 2)
+  baseAmount      Decimal?       @map("base_amount") @db.Decimal(14, 2)
+  totalAmount     Decimal?       @map("total_amount") @db.Decimal(14, 2)
+  workInstructions String?       @map("work_instructions")
+  status          String         @default("DRAFT") // DRAFT | QUOTED
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  zones           EstimateZone[]
+  lines           EstimateLine[]
+
+  @@index([leadId])
+  @@map("estimate")
+}
+
+model EstimateZone {
+  id         String         @id @default(uuid()) @db.Uuid
+  estimateId String         @map("estimate_id") @db.Uuid
+  estimate   Estimate       @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  name       String // 안방/거실/사무실 등 (유연)
+  sortOrder  Int            @default(0) @map("sort_order")
+  lines      EstimateLine[]
+
+  @@map("estimate_zone")
+}
+
+model EstimateLine {
+  id         String        @id @default(uuid()) @db.Uuid
+  estimateId String        @map("estimate_id") @db.Uuid
+  estimate   Estimate      @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  zoneId     String?       @map("zone_id") @db.Uuid
+  zone       EstimateZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  cbmItemId  String?       @map("cbm_item_id") @db.Uuid
+  cbmItem    CbmItem?      @relation(fields: [cbmItemId], references: [id])
+  itemName   String        @map("item_name") // 스냅샷(품목명)
+  qty        Decimal       @default(1) @db.Decimal(8, 2)
+  cbm        Decimal       @default(0) @db.Decimal(8, 2) // 라인 합계 CBM (단위CBM×수량)
+  handling   String        @default("CARRY") // common_code: HANDLING (운반/방치/폐기)
+  memo       String?
+
+  @@map("estimate_line")
 }
