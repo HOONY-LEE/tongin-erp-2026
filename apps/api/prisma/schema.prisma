@@ -205,6 +205,40 @@ model AddonService {
   @@map("addon_service")
 }
 
+// ── FND-07: 이벤트(outbox) + 감사로그 ──
+// 전표 원칙(모든 변경 불변기록) + AI 개방(이벤트 디스패치) 토대. 설계노트 1-A/1-B, DB스키마 §9.
+
+model DomainEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  aggregateType String    @map("aggregate_type") // 예: org_unit
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") // 예: org_unit.created
+  payload       Json
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+
+  @@index([aggregateType, aggregateId])
+  @@index([publishedAt])
+  @@map("domain_event")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  entityType  String   @map("entity_type") // 라우트 리소스(예: org-units)
+  entityId    String?  @map("entity_id")
+  action      String // CREATE | UPDATE | DELETE
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  method      String
+  path        String
+  statusCode  Int      @map("status_code")
+  after       Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@map("audit_log")
+}
+
 // D. 가격조건(제휴/프로모션): 상품 아님 → 거래처 + 조건 오버레이
 model PriceCondition {
   id            String    @id @default(uuid()) @db.Uuid
