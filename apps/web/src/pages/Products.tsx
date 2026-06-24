@@ -1,4 +1,4 @@
-import { Badge } from '@sunghoon_lee/akron-ui';
+import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 

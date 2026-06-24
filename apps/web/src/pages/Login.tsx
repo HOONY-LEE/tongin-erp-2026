@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Button, Card, Input, useToast } from '@sunghoon_lee/akron-ui';
+import { Button, Card, Input, useToast } from '../components/ui';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../lib/api';

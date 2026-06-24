@@ -24,3 +24,8 @@ a {
 [data-theme='dark'] {
   color-scheme: dark;
 }
+
+/* Radix 팝퍼(Select/Popover/Tooltip)를 모달 위로 — akron z-dropdown(100) < z-modal(400) 스태킹 해결 */
+[data-radix-popper-content-wrapper] {
+  z-index: 1000 !important;
+}

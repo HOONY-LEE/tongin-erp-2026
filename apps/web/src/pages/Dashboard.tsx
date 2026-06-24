@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card } from '@sunghoon_lee/akron-ui';
+import { Card } from '../components/ui';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 
