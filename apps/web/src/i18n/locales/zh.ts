@@ -26,6 +26,7 @@ export default {
   },
   estimate: {
     detail: '详情',
+    document: '报价单',
     create: '新建报价',
     addZone: '添加区域',
     addLine: '添加物品',

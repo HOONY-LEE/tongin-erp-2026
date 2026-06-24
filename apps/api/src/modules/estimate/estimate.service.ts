@@ -148,6 +148,63 @@ export class EstimateService {
     });
   }
 
+  /** 견적서 문서를 데이터에서 즉석 HTML로 생성(무저장, 설계노트 E-0). 브라우저에서 인쇄→PDF. */
+  async document(id: string): Promise<string> {
+    const e = await this.prisma.estimate.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        product: true,
+        zones: { orderBy: { sortOrder: 'asc' } },
+        lines: true,
+      },
+    });
+    if (!e) throw new NotFoundException(`견적을 찾을 수 없습니다: ${id}`);
+
+    const esc = (s: unknown) =>
+      String(s ?? '').replace(/[&<>"]/g, (c) =>
+        c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;',
+      );
+    const handling: Record<string, string> = { CARRY: '운반', LEAVE: '방치', DISPOSE: '폐기' };
+    const zoneName = (zid: string | null) => e.zones.find((z) => z.id === zid)?.name ?? '-';
+    const rows = e.lines
+      .map(
+        (l) =>
+          `<tr><td>${esc(zoneName(l.zoneId))}</td><td>${esc(l.itemName)}</td><td class="r">${esc(
+            l.qty,
+          )}</td><td class="r">${esc(l.cbm)}</td><td>${esc(handling[l.handling] ?? l.handling)}</td></tr>`,
+      )
+      .join('');
+
+    return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>견적서 ${esc(
+      e.estimateNo,
+    )}</title><style>
+body{font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#111827;max-width:800px;margin:24px auto;padding:0 24px}
+h1{font-size:24px;border-bottom:2px solid #111827;padding-bottom:8px}
+.meta{display:flex;justify-content:space-between;color:#4b5563;font-size:14px;margin:12px 0 20px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{border:1px solid #e5e7eb;padding:8px 10px;text-align:left}
+th{background:#f9fafb}
+td.r,th.r{text-align:right}
+.sum{margin-top:16px;text-align:right;font-size:16px;font-weight:700}
+.info{font-size:14px;margin-bottom:6px}
+@media print{body{margin:0}}
+</style></head><body>
+<h1>견 적 서</h1>
+<div class="meta"><div><b>통인익스프레스</b></div><div>견적번호: ${esc(e.estimateNo)} · 작성일: ${new Date()
+      .toISOString()
+      .slice(0, 10)}</div></div>
+<div class="info">고객: ${esc(e.customer?.name)}</div>
+<div class="info">이사종류(상품): ${esc(e.product?.name)}</div>
+<div class="info">작업조건: 출발 ${esc(e.fromPyeong ?? '-')}평${e.fromElevator ? '(엘리베이터)' : ''} → 도착 ${esc(
+      e.toPyeong ?? '-',
+    )}평${e.toElevator ? '(엘리베이터)' : ''}</div>
+<table><thead><tr><th>구역</th><th>품목</th><th class="r">수량</th><th class="r">CBM</th><th>처리</th></tr></thead>
+<tbody>${rows || '<tr><td colspan="5">품목 없음</td></tr>'}</tbody></table>
+<div class="sum">총 물량(CBM): ${esc(e.totalCbm)}</div>
+</body></html>`;
+  }
+
   private genNo(): string {
     const d = new Date();
     const p = (n: number) => String(n).padStart(2, '0');

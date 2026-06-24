@@ -26,6 +26,7 @@ export default {
   },
   estimate: {
     detail: 'Detail',
+    document: 'Estimate sheet',
     create: 'New estimate',
     addZone: 'Add zone',
     addLine: 'Add item',
