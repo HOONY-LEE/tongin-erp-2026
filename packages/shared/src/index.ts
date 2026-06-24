@@ -77,6 +77,7 @@ export const PERMISSIONS = [
   'ADDON.WRITE',
   'PRICE_CONDITION.READ',
   'PRICE_CONDITION.WRITE',
+  'AUDIT.READ',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

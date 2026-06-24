@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { EventsModule } from './events/events.module';
+import { AuditModule } from './audit/audit.module';
 import { OrgUnitModule } from './modules/org-unit/org-unit.module';
 import { CommonCodeModule } from './modules/common-code/common-code.module';
 import { EmployeeModule } from './modules/employee/employee.module';
@@ -17,6 +19,8 @@ import { PriceConditionModule } from './modules/price-condition/price-condition.
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    EventsModule,
+    AuditModule,
     AuthModule,
     OrgUnitModule,
     CommonCodeModule,
