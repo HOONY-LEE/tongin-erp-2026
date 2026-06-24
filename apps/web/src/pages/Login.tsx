@@ -1,20 +1,25 @@
-import { useState } from 'react';
-import { Alert, Button, Card, Form, Input, Typography } from 'antd';
+import { useState, type FormEvent } from 'react';
+import { Button, Card, Input, useToast } from '@sunghoon_lee/akron-ui';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../lib/api';
+import { LangSwitch, ThemeSwitch } from '../components/Switchers';
 
 export default function Login() {
   const { login } = useAuth();
-  const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
+  const toast = useToast();
+  const [loginId, setLoginId] = useState('admin');
+  const [password, setPassword] = useState('admin1234');
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (v: { loginId: string; password: string }) => {
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
     setLoading(true);
-    setError(null);
     try {
-      await login(v.loginId, v.password);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : '로그인 실패');
+      await login(loginId, password);
+    } catch (err) {
+      toast({ type: 'error', title: err instanceof ApiError ? err.message : t('login.failed') });
     } finally {
       setLoading(false);
     }
@@ -24,33 +29,37 @@ export default function Login() {
     <div
       style={{
         minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#001529',
+        display: 'grid',
+        placeItems: 'center',
+        background: 'var(--ark-color-bg-subtle)',
       }}
     >
-      <Card style={{ width: 360 }}>
-        <Typography.Title level={3} style={{ textAlign: 'center', marginBottom: 24 }}>
-          통인익스프레스 ERP
-        </Typography.Title>
-        {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} showIcon />}
-        <Form
-          layout="vertical"
-          initialValues={{ loginId: 'admin', password: 'admin1234' }}
-          onFinish={onFinish}
-        >
-          <Form.Item name="loginId" label="아이디" rules={[{ required: true }]}>
-            <Input autoFocus />
-          </Form.Item>
-          <Form.Item name="password" label="비밀번호" rules={[{ required: true }]}>
-            <Input.Password onPressEnter={() => undefined} />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={loading}>
-            로그인
-          </Button>
-        </Form>
-      </Card>
+      <div style={{ width: 360 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+          <LangSwitch />
+          <ThemeSwitch />
+        </div>
+        <Card style={{ padding: 28 }}>
+          <h2 style={{ textAlign: 'center', marginTop: 0, marginBottom: 24 }}>{t('app.title')}</h2>
+          <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Input
+              label={t('login.id')}
+              value={loginId}
+              onChange={(e) => setLoginId(e.target.value)}
+              autoFocus
+            />
+            <Input
+              label={t('login.password')}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Button type="submit" variant="primary" size="md" disabled={loading}>
+              {t('common.login')}
+            </Button>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

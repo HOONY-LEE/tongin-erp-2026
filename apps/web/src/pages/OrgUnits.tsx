@@ -1,14 +1,11 @@
-import { Tag } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import CrudTable, { type FormField } from '../components/CrudTable';
+import { Badge } from '@sunghoon_lee/akron-ui';
+import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 
-type Row = Record<string, unknown>;
-
-const columns: ColumnsType<Row> = [
+const columns: Column[] = [
   { title: '코드', dataIndex: 'code' },
   { title: '이름', dataIndex: 'name' },
-  { title: '유형', dataIndex: 'type', render: (v: string) => <Tag>{v}</Tag> },
+  { title: '유형', render: (r: Row) => <Badge variant="subtle">{String(r.type)}</Badge> },
 ];
 
 export default function OrgUnits() {

@@ -1,6 +1,6 @@
-import { ConfigProvider, Spin } from 'antd';
-import koKR from 'antd/locale/ko_KR';
+import { Spinner, ToastProvider } from '@sunghoon_lee/akron-ui';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ThemeProvider } from './theme/ThemeProvider';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
@@ -13,16 +13,14 @@ import OrgUnits from './pages/OrgUnits';
 
 function Shell() {
   const { user, loading } = useAuth();
-
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-        <Spin size="large" />
+        <Spinner size="lg" />
       </div>
     );
   }
   if (!user) return <Login />;
-
   return (
     <Routes>
       <Route element={<AppLayout />}>
@@ -40,12 +38,14 @@ function Shell() {
 
 export default function App() {
   return (
-    <ConfigProvider locale={koKR}>
-      <BrowserRouter>
-        <AuthProvider>
-          <Shell />
-        </AuthProvider>
-      </BrowserRouter>
-    </ConfigProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Shell />
+          </AuthProvider>
+        </BrowserRouter>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

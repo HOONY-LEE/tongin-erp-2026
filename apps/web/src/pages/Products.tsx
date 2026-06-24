@@ -1,19 +1,22 @@
-import { Tag } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import CrudTable, { type FormField } from '../components/CrudTable';
+import { Badge } from '@sunghoon_lee/akron-ui';
+import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 
-type Row = Record<string, unknown>;
-
-const columns: ColumnsType<Row> = [
+const columns: Column[] = [
   { title: '코드', dataIndex: 'code' },
   { title: '상품명', dataIndex: 'name' },
   {
     title: '서비스라인',
-    dataIndex: 'serviceLine',
-    render: (v: string) => <Tag color="blue">{v}</Tag>,
+    render: (r: Row) => (
+      <Badge variant="subtle" color="primary">
+        {String(r.serviceLine)}
+      </Badge>
+    ),
   },
-  { title: '산정방식', dataIndex: 'pricingMethod', render: (v: string) => <Tag>{v}</Tag> },
+  {
+    title: '산정방식',
+    render: (r: Row) => <Badge variant="subtle">{String(r.pricingMethod)}</Badge>,
+  },
 ];
 
 export default function Products() {
