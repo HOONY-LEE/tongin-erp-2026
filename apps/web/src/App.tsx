@@ -1,33 +1,51 @@
-import { useEffect, useState } from 'react';
-import { ConfigProvider, Layout, Card, Tag, Typography } from 'antd';
+import { ConfigProvider, Spin } from 'antd';
 import koKR from 'antd/locale/ko_KR';
-import type { HealthResponse } from '@tongin/shared';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import AppLayout from './layout/AppLayout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Leads from './pages/Leads';
+import Customers from './pages/Customers';
+import Products from './pages/Products';
+import CbmItems from './pages/CbmItems';
+import OrgUnits from './pages/OrgUnits';
 
-const { Header, Content } = Layout;
+function Shell() {
+  const { user, loading } = useAuth();
 
-export default function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch(() => setHealth(null));
-  }, []);
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+  if (!user) return <Login />;
 
   return (
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/leads" element={<Leads />} />
+        <Route path="/customers" element={<Customers />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/cbm-items" element={<CbmItems />} />
+        <Route path="/org-units" element={<OrgUnits />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
     <ConfigProvider locale={koKR}>
-      <Layout style={{ minHeight: '100vh' }}>
-        <Header style={{ color: '#fff', fontSize: 18, fontWeight: 600 }}>통인익스프레스 ERP</Header>
-        <Content style={{ padding: 24 }}>
-          <Card title="시스템 상태" style={{ maxWidth: 480 }}>
-            API: {health ? <Tag color="green">{health.status}</Tag> : <Tag color="red">미연결</Tag>}
-            <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-              Phase 0 — 모노레포 스켈레톤 (FND-01)
-            </Typography.Paragraph>
-          </Card>
-        </Content>
-      </Layout>
+      <BrowserRouter>
+        <AuthProvider>
+          <Shell />
+        </AuthProvider>
+      </BrowserRouter>
     </ConfigProvider>
   );
 }
