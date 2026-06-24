@@ -8,6 +8,10 @@ import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Estimates from './pages/Estimates';
 import EstimateDetail from './pages/EstimateDetail';
+import Contracts from './pages/Contracts';
+import ContractDetail from './pages/ContractDetail';
+import WorkOrders from './pages/WorkOrders';
+import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
 import Products from './pages/Products';
 import CbmItems from './pages/CbmItems';
@@ -30,6 +34,10 @@ function Shell() {
         <Route path="/leads" element={<Leads />} />
         <Route path="/estimates" element={<Estimates />} />
         <Route path="/estimates/:id" element={<EstimateDetail />} />
+        <Route path="/contracts" element={<Contracts />} />
+        <Route path="/contracts/:id" element={<ContractDetail />} />
+        <Route path="/work-orders" element={<WorkOrders />} />
+        <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/products" element={<Products />} />
         <Route path="/cbm-items" element={<CbmItems />} />

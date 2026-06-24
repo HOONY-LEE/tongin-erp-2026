@@ -11,6 +11,8 @@ function Sidebar() {
     { to: '/', label: t('nav.dashboard') },
     { to: '/leads', label: t('nav.leads') },
     { to: '/estimates', label: t('nav.estimates') },
+    { to: '/contracts', label: t('nav.contracts') },
+    { to: '/work-orders', label: t('nav.workOrders') },
     { to: '/customers', label: t('nav.customers') },
     { to: '/products', label: t('nav.products') },
     { to: '/cbm-items', label: t('nav.cbmItems') },
