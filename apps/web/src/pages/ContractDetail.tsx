@@ -6,11 +6,13 @@ import {
   Badge,
   Button,
   DataTable,
+  FormModal,
   PageCard,
   Spinner,
   StatusBadge,
   useToast,
   type Column,
+  type FormField,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -48,6 +50,7 @@ export default function ContractDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
+  const [woOpen, setWoOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,6 +86,20 @@ export default function ContractDetail() {
     );
   const confirmPay = (pid: string) =>
     act(() => api(`/payments/${pid}/confirm`, { method: 'POST' }), t('contract.confirm'));
+
+  const createWorkOrder = async (values: Record<string, unknown>) => {
+    try {
+      const created = await api<{ id: string }>('/work-orders', {
+        method: 'POST',
+        body: JSON.stringify({ contractId: id, ...values }),
+      });
+      toast({ type: 'success', title: t('common.created') });
+      navigate(`/work-orders/${created.id}`);
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
+      throw e;
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -125,10 +142,15 @@ export default function ContractDetail() {
         <Badge variant="subtle" color="neutral">
           {t('contract.balance')} {won(data.balanceAmount)}
         </Badge>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <Button variant="primary" size="sm" disabled={data.status !== 'DRAFT'} onClick={sign}>
             {t('contract.sign')}
           </Button>
+          {data.status === 'SIGNED' && (
+            <Button variant="primary" size="sm" onClick={() => setWoOpen(true)}>
+              {t('contract.toWorkOrder')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -148,6 +170,18 @@ export default function ContractDetail() {
       >
         <DataTable columns={payColumns} rows={data.payments as unknown as Row[]} />
       </PageCard>
+
+      <FormModal
+        open={woOpen}
+        onOpenChange={setWoOpen}
+        title={t('contract.toWorkOrder')}
+        fields={
+          [
+            { name: 'scheduledDate', label: t('work.scheduled'), placeholder: 'YYYY-MM-DD' },
+          ] as FormField[]
+        }
+        onSubmit={createWorkOrder}
+      />
     </div>
   );
 }

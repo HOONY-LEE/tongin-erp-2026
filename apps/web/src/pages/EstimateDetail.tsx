@@ -13,7 +13,6 @@ import {
   StatusBadge,
   useToast,
   type Column,
-  type FormField,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -55,6 +54,7 @@ export default function EstimateDetail() {
   const [loading, setLoading] = useState(true);
   const [zoneOpen, setZoneOpen] = useState(false);
   const [lineOpen, setLineOpen] = useState(false);
+  const [contractOpen, setContractOpen] = useState(false);
   const cbmItems = useOptions('/cbm-items', 'name');
 
   const load = useCallback(async () => {
@@ -104,6 +104,20 @@ export default function EstimateDetail() {
     }
   };
 
+  const createContract = async (values: Record<string, unknown>) => {
+    try {
+      const created = await api<{ id: string }>('/contracts', {
+        method: 'POST',
+        body: JSON.stringify({ estimateId: id, ...values }),
+      });
+      toast({ type: 'success', title: t('common.created') });
+      navigate(`/contracts/${created.id}`);
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
+      throw e;
+    }
+  };
+
   if (loading || !data) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
@@ -149,6 +163,11 @@ export default function EstimateDetail() {
           <Button variant="primary" size="sm" disabled={data.status === 'QUOTED'} onClick={quote}>
             {t('estimate.quote')}
           </Button>
+          {data.status === 'QUOTED' && (
+            <Button variant="primary" size="sm" onClick={() => setContractOpen(true)}>
+              {t('estimate.toContract')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -216,6 +235,28 @@ export default function EstimateDetail() {
           },
         ]}
         onSubmit={addLine}
+      />
+
+      <FormModal
+        open={contractOpen}
+        onOpenChange={setContractOpen}
+        title={t('estimate.toContract')}
+        fields={[
+          {
+            name: 'totalAmount',
+            label: t('contract.total'),
+            required: true,
+            type: 'number',
+            placeholder: '예: 1800000',
+          },
+          {
+            name: 'depositRatio',
+            label: '계약금 비율(0~1)',
+            type: 'number',
+            placeholder: '기본 0.1',
+          },
+        ]}
+        onSubmit={createContract}
       />
     </div>
   );

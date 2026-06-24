@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
@@ -37,12 +38,15 @@ const SERVICE_LINES = [
 export default function Leads() {
   const { t } = useTranslation();
   const toast = useToast();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [transRow, setTransRow] = useState<Row | null>(null);
+  const [estRow, setEstRow] = useState<Row | null>(null);
   const orgs = useOptions('/org-units', 'name');
   const customers = useOptions('/customers', 'name');
+  const products = useOptions('/products', 'name');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,6 +99,28 @@ export default function Leads() {
     }
   };
 
+  const onCreateEstimate = async (values: Record<string, unknown>) => {
+    if (!estRow) return;
+    try {
+      const created = await api<{ id: string }>('/estimates', {
+        method: 'POST',
+        body: JSON.stringify({
+          leadId: estRow.id,
+          orgUnitId: estRow.orgUnitId,
+          fromAddr: estRow.fromAddr ?? undefined,
+          toAddr: estRow.toAddr ?? undefined,
+          ...values,
+        }),
+      });
+      toast({ type: 'success', title: t('common.created') });
+      setEstRow(null);
+      navigate(`/estimates/${created.id}`);
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
+      throw e;
+    }
+  };
+
   const columns: Column[] = [
     { title: '접수번호', dataIndex: 'leadNo' },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
@@ -107,9 +133,14 @@ export default function Leads() {
     {
       title: '작업',
       render: (r) => (
-        <Button variant="outline" size="sm" onClick={() => setTransRow(r)}>
-          {t('lead.changeStatus')}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="primary" size="sm" onClick={() => setEstRow(r)}>
+            {t('lead.toEstimate')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setTransRow(r)}>
+            {t('lead.changeStatus')}
+          </Button>
+        </div>
       ),
     },
   ];
@@ -149,6 +180,27 @@ export default function Leads() {
           },
         ]}
         onSubmit={onTransition}
+      />
+
+      <FormModal
+        open={!!estRow}
+        onOpenChange={(o) => !o && setEstRow(null)}
+        title={`${t('lead.toEstimate')} — ${(estRow?.leadNo as string) ?? ''}`}
+        size="md"
+        initialValues={estRow?.customerId ? { customerId: String(estRow.customerId) } : undefined}
+        fields={[
+          { name: 'customerId', label: '고객', required: true, type: 'select', options: customers },
+          {
+            name: 'productId',
+            label: '이사상품',
+            required: true,
+            type: 'select',
+            options: products,
+          },
+          { name: 'fromPyeong', label: '출발지 평수', type: 'number' },
+          { name: 'toPyeong', label: '도착지 평수', type: 'number' },
+        ]}
+        onSubmit={onCreateEstimate}
       />
     </PageCard>
   );

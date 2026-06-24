@@ -10,18 +10,30 @@ interface Props {
   fields: FormField[];
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
   size?: 'sm' | 'md' | 'lg';
+  /** 열릴 때 채워둘 초기값(예: 리드에서 고객 prefill). */
+  initialValues?: Record<string, string>;
 }
 
 /** 필드 정의로 입력 폼을 렌더하는 공통 모달 (값 관리·필수검증·저장 라이프사이클 내장). */
-export function FormModal({ open, onOpenChange, title, fields, onSubmit, size = 'sm' }: Props) {
+export function FormModal({
+  open,
+  onOpenChange,
+  title,
+  fields,
+  onSubmit,
+  size = 'sm',
+  initialValues,
+}: Props) {
   const { t } = useTranslation();
   const toast = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  // initialValues는 초기값 prefill용 — 직렬화 키로 변화 추적
+  const initKey = JSON.stringify(initialValues ?? {});
   useEffect(() => {
-    if (open) setValues({});
-  }, [open]);
+    if (open) setValues(initKey === '{}' ? {} : (JSON.parse(initKey) as Record<string, string>));
+  }, [open, initKey]);
 
   const setField = (n: string, v: string) => setValues((s) => ({ ...s, [n]: v }));
 
