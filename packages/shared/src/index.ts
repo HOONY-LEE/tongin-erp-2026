@@ -11,6 +11,13 @@ export type ServiceLine = (typeof SERVICE_LINES)[number];
 export const PRICING_METHODS = ['CBM', 'COST_PLUS', 'FLAT', 'PYEONG'] as const;
 export type PricingMethod = (typeof PRICING_METHODS)[number];
 
+// 거래처 유형 / 가격조건 할인 유형 (FND-09 카탈로그)
+export const PARTNER_TYPES = ['AFFILIATE', 'OUTSOURCE', 'B2B_CLIENT'] as const;
+export type PartnerType = (typeof PARTNER_TYPES)[number];
+
+export const DISCOUNT_TYPES = ['RATE', 'AMOUNT', 'FIXED_PRICE'] as const;
+export type DiscountType = (typeof DISCOUNT_TYPES)[number];
+
 // 접수→완료 상태머신 (설계노트 부록 D-4)
 export const LEAD_STATUS = [
   'RECEIVED', // 접수완료
@@ -60,6 +67,16 @@ export const PERMISSIONS = [
   'EMPLOYEE.WRITE',
   'CUSTOMER.READ',
   'CUSTOMER.WRITE',
+  'PARTNER.READ',
+  'PARTNER.WRITE',
+  'PRODUCT.READ',
+  'PRODUCT.WRITE',
+  'CBM_ITEM.READ',
+  'CBM_ITEM.WRITE',
+  'ADDON.READ',
+  'ADDON.WRITE',
+  'PRICE_CONDITION.READ',
+  'PRICE_CONDITION.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

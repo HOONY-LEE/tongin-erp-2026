@@ -7,6 +7,11 @@ import { OrgUnitModule } from './modules/org-unit/org-unit.module';
 import { CommonCodeModule } from './modules/common-code/common-code.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { CustomerModule } from './modules/customer/customer.module';
+import { PartnerModule } from './modules/partner/partner.module';
+import { ProductModule } from './modules/product/product.module';
+import { CbmItemModule } from './modules/cbm-item/cbm-item.module';
+import { AddonServiceModule } from './modules/addon-service/addon-service.module';
+import { PriceConditionModule } from './modules/price-condition/price-condition.module';
 
 @Module({
   imports: [
@@ -17,6 +22,11 @@ import { CustomerModule } from './modules/customer/customer.module';
     CommonCodeModule,
     EmployeeModule,
     CustomerModule,
+    PartnerModule,
+    ProductModule,
+    CbmItemModule,
+    AddonServiceModule,
+    PriceConditionModule,
   ],
   controllers: [AppController],
 })

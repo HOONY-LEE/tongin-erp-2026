@@ -24,6 +24,7 @@ model OrgUnit {
   employees Employee[]
   customers Customer[]
   userRoleScopes UserRole[] @relation("UserRoleOrgScope")
+  brandedProducts Product[] @relation("ProductBrand")
 
   @@map("org_unit")
 }
@@ -146,4 +147,76 @@ model ApiToken {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("api_token")
+}
+
+// ── FND-09: 서비스 카탈로그 4엔티티 (부록 D-2) + 거래처(Partner) ──
+// 레거시 Item 1테이블에 섞여있던 4개념을 분리: 판매상품/품목사전/옵션/가격조건.
+
+model Partner {
+  id              String           @id @default(uuid()) @db.Uuid
+  type            String // AFFILIATE(제휴) | OUTSOURCE(전속) | B2B_CLIENT
+  code            String           @unique
+  name            String
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  priceConditions PriceCondition[]
+
+  @@map("partner")
+}
+
+// A. 판매상품(SKU): 고객이 사는 것, 견적/계약 라인에 오름
+model Product {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique
+  name          String
+  serviceLine   String   @map("service_line") // common_code: SERVICE_LINE
+  pricingMethod String   @map("pricing_method") // CBM | COST_PLUS | FLAT | PYEONG
+  brandOrgId    String?  @map("brand_org_id") @db.Uuid
+  brandOrg      OrgUnit? @relation("ProductBrand", fields: [brandOrgId], references: [id])
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("product")
+}
+
+// B. CBM 품목사전: 짐량 측정용 표준 사전 (단일 표준·중복방지)
+model CbmItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  category  String // common_code: ITEM_CATEGORY
+  name      String
+  cbm       Decimal  @db.Decimal(8, 2)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([category, name])
+  @@map("cbm_item")
+}
+
+// C. 옵션/부가서비스: 애드온 (분해설치·사다리차·보관…)
+model AddonService {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  unit      String // EA | FLAT
+  price     Decimal? @db.Decimal(14, 2)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("addon_service")
+}
+
+// D. 가격조건(제휴/프로모션): 상품 아님 → 거래처 + 조건 오버레이
+model PriceCondition {
+  id            String    @id @default(uuid()) @db.Uuid
+  partnerId     String?   @map("partner_id") @db.Uuid
+  partner       Partner?  @relation(fields: [partnerId], references: [id])
+  name          String
+  discountType  String    @map("discount_type") // RATE | AMOUNT | FIXED_PRICE
+  discountValue Decimal   @map("discount_value") @db.Decimal(14, 2)
+  validFrom     DateTime? @map("valid_from") @db.Date
+  validTo       DateTime? @map("valid_to") @db.Date
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("price_condition")
 }
