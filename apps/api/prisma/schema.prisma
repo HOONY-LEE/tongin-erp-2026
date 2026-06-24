@@ -28,6 +28,7 @@ model OrgUnit {
   leads          Lead[]
 
   estimates       Estimate[]
+  contracts       Contract[]
   @@map("org_unit")
 }
 
@@ -73,6 +74,7 @@ model Customer {
 
   @@index([phonePrimary])
   estimates    Estimate[]
+  contracts    Contract[]
   @@map("customer")
 }
 
@@ -293,6 +295,7 @@ model Lead {
   @@index([status])
   @@index([orgUnitId])
   estimates Estimate[]
+  contracts Contract[]
   @@map("lead")
 }
 
@@ -326,6 +329,7 @@ model Estimate {
   lines           EstimateLine[]
 
   @@index([leadId])
+  contract Contract?
   @@map("estimate")
 }
 
@@ -355,4 +359,49 @@ model EstimateLine {
   memo       String?
 
   @@map("estimate_line")
+}
+
+// ── Phase 1: 계약 + 결제 (부록 E·11장) ──
+model Contract {
+  id            String    @id @default(uuid()) @db.Uuid
+  contractNo    String    @unique @map("contract_no")
+  estimateId    String    @unique @map("estimate_id") @db.Uuid
+  estimate      Estimate  @relation(fields: [estimateId], references: [id])
+  leadId        String    @map("lead_id") @db.Uuid
+  lead          Lead      @relation(fields: [leadId], references: [id])
+  customerId    String    @map("customer_id") @db.Uuid
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  orgUnitId     String    @map("org_unit_id") @db.Uuid
+  orgUnit       OrgUnit   @relation(fields: [orgUnitId], references: [id])
+  contractDate  DateTime? @map("contract_date") @db.Date
+  totalAmount   Decimal   @map("total_amount") @db.Decimal(14, 2)
+  depositRatio  Decimal   @default(0.1) @map("deposit_ratio") @db.Decimal(5, 2)
+  depositAmount Decimal   @map("deposit_amount") @db.Decimal(14, 2)
+  balanceAmount Decimal   @map("balance_amount") @db.Decimal(14, 2)
+  status        String    @default("DRAFT") // DRAFT | SIGNED | CANCELED
+  snapshot      Json? // 서명 시점 동결 데이터(E-0)
+  signedAt      DateTime? @map("signed_at") @db.Timestamptz(6)
+  esignRef      String?   @map("esign_ref") // 전자계약 업체 참조(스텁)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  payments      Payment[]
+
+  @@map("contract")
+}
+
+model Payment {
+  id             String    @id @default(uuid()) @db.Uuid
+  contractId     String    @map("contract_id") @db.Uuid
+  contract       Contract  @relation(fields: [contractId], references: [id])
+  kind           String // DEPOSIT(계약금) | BALANCE(잔금)
+  method         String    @default("VIRTUAL_ACCOUNT") // VIRTUAL_ACCOUNT | CARD | TRANSFER | CASH
+  amount         Decimal   @db.Decimal(14, 2)
+  status         String    @default("PENDING") // PENDING | PAID | CANCELED
+  pgProvider     String    @default("TOSS") @map("pg_provider")
+  pgRef          String?   @map("pg_ref")
+  virtualAccount String?   @map("virtual_account")
+  paidAt         DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([contractId])
+  @@map("payment")
 }

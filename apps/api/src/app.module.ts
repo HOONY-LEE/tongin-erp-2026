@@ -16,6 +16,7 @@ import { AddonServiceModule } from './modules/addon-service/addon-service.module
 import { PriceConditionModule } from './modules/price-condition/price-condition.module';
 import { LeadModule } from './modules/lead/lead.module';
 import { EstimateModule } from './modules/estimate/estimate.module';
+import { ContractModule } from './modules/contract/contract.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { EstimateModule } from './modules/estimate/estimate.module';
     PriceConditionModule,
     LeadModule,
     EstimateModule,
+    ContractModule,
   ],
   controllers: [AppController],
 })
