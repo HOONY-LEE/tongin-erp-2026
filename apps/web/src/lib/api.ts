@@ -42,3 +42,16 @@ export async function api<T = unknown>(path: string, opts: RequestInit = {}): Pr
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
+
+/** 인증 fetch로 HTML 문서를 받아 새 탭으로 연다(견적서 등 동적 문서 → 브라우저 인쇄로 PDF). */
+export async function openDocument(path: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new ApiError(res.status, '문서 생성에 실패했습니다');
+  const html = await res.text();
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

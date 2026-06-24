@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, openDocument } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import {
   Badge,
@@ -134,7 +134,18 @@ export default function EstimateDetail() {
         <Badge variant="subtle" color="info">
           {t('estimate.totalCbm')} {String(data.totalCbm)}
         </Badge>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              openDocument(`/estimates/${id}/document`).catch((e) =>
+                toast({ type: 'error', title: e instanceof ApiError ? e.message : '문서 오류' }),
+              )
+            }
+          >
+            {t('estimate.document')}
+          </Button>
           <Button variant="primary" size="sm" disabled={data.status === 'QUOTED'} onClick={quote}>
             {t('estimate.quote')}
           </Button>

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -62,5 +63,12 @@ export class EstimateController {
   @RequirePermissions('ESTIMATE.WRITE')
   quote(@Param('id', ParseUUIDPipe) id: string) {
     return this.estimateService.quote(id);
+  }
+
+  @Get(':id/document')
+  @RequirePermissions('ESTIMATE.READ')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  document(@Param('id', ParseUUIDPipe) id: string) {
+    return this.estimateService.document(id);
   }
 }

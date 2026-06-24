@@ -26,6 +26,7 @@ export default {
   },
   estimate: {
     detail: '상세',
+    document: '견적서',
     create: '견적 생성',
     addZone: '구역 추가',
     addLine: '품목 추가',
