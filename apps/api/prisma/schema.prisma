@@ -29,6 +29,7 @@ model OrgUnit {
 
   estimates       Estimate[]
   contracts       Contract[]
+  workOrders      WorkOrder[]
   @@map("org_unit")
 }
 
@@ -57,6 +58,7 @@ model Employee {
   ownedLeads Lead[]
 
   estimatorEstimates Estimate[]
+  assignments WorkAssignment[]
   @@map("employee")
 }
 
@@ -170,6 +172,7 @@ model Partner {
   priceConditions PriceCondition[]
   leads           Lead[]
 
+  workOrders WorkOrder[]
   @@map("partner")
 }
 
@@ -296,6 +299,7 @@ model Lead {
   @@index([orgUnitId])
   estimates Estimate[]
   contracts Contract[]
+  workOrders WorkOrder[]
   @@map("lead")
 }
 
@@ -385,6 +389,7 @@ model Contract {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   payments      Payment[]
 
+  workOrder WorkOrder?
   @@map("contract")
 }
 
@@ -404,4 +409,38 @@ model Payment {
 
   @@index([contractId])
   @@map("payment")
+}
+
+// ── Phase 1: 작업오더(서비스오더) + 배정 — 작업토스 이후 (부록 D-3) ──
+model WorkOrder {
+  id            String           @id @default(uuid()) @db.Uuid
+  workNo        String           @unique @map("work_no")
+  contractId    String           @unique @map("contract_id") @db.Uuid
+  contract      Contract         @relation(fields: [contractId], references: [id])
+  leadId        String           @map("lead_id") @db.Uuid
+  lead          Lead             @relation(fields: [leadId], references: [id])
+  orgUnitId     String           @map("org_unit_id") @db.Uuid // 작업 수행 지점
+  orgUnit       OrgUnit          @relation(fields: [orgUnitId], references: [id])
+  partnerId     String?          @map("partner_id") @db.Uuid // 전속 외주 시
+  partner       Partner?         @relation(fields: [partnerId], references: [id])
+  scheduledDate DateTime?        @map("scheduled_date") @db.Date
+  status        String           @default("ASSIGNED") // ASSIGNED | IN_PROGRESS | DONE | CANCELED
+  billedCost    Decimal?         @map("billed_cost") @db.Decimal(14, 2) // 전속 청구비용(원가)=마진 추적
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  assignments   WorkAssignment[]
+
+  @@map("work_order")
+}
+
+model WorkAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  workOrderId  String    @map("work_order_id") @db.Uuid
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  employeeId   String?   @map("employee_id") @db.Uuid
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  resourceType String    @map("resource_type") // CREW | VEHICLE
+  resourceRef  String?   @map("resource_ref") // 차량번호/외부인력명 등
+  scheduledAt  DateTime? @map("scheduled_at") @db.Timestamptz(6)
+
+  @@map("work_assignment")
 }

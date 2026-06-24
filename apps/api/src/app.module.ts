@@ -17,6 +17,7 @@ import { PriceConditionModule } from './modules/price-condition/price-condition.
 import { LeadModule } from './modules/lead/lead.module';
 import { EstimateModule } from './modules/estimate/estimate.module';
 import { ContractModule } from './modules/contract/contract.module';
+import { WorkOrderModule } from './modules/work-order/work-order.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ContractModule } from './modules/contract/contract.module';
     LeadModule,
     EstimateModule,
     ContractModule,
+    WorkOrderModule,
   ],
   controllers: [AppController],
 })
