@@ -1,4 +1,4 @@
-import { AppShell, Button } from '@sunghoon_lee/akron-ui';
+import { AppShell, Button } from '../components/ui';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';

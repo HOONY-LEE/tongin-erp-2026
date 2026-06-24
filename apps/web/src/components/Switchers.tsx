@@ -1,4 +1,4 @@
-import { Select } from '@sunghoon_lee/akron-ui';
+import { Select } from './ui';
 import { useTranslation } from 'react-i18next';
 import { useTheme, type ThemeMode } from '../theme/ThemeProvider';
 import { SUPPORTED_LANGS, setLang } from '../i18n';
