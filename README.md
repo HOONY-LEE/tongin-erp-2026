@@ -32,12 +32,12 @@
 
 ## 현재 상태 스냅샷 (2026-06-24)
 
-- **단계: ✅ Phase 0 완료 → Phase 1(MVP) 착수 예정**
+- **단계: ✅ Phase 0 완료 · ✅ Phase 1 핵심 도메인 스파인 완료** (외부연동·문서생성·프론트 일부 잔여)
 - **기술 스택 확정**: NestJS(TS) / PostgreSQL / React+AntD(반응형 웹 우선→네이티브 RN) / AWS 서울 / 모노레포 / GitHub Flow
-- **Phase 0 완료(FND-01~09)**: 모노레포 · DB/Prisma · 인증(JWT)+RBAC(에이전트 1급 주체) · 마스터(조직·공통코드·직원·고객·거래처·상품4엔티티) · 이벤트 outbox + 감사로그 — **전부 인증 포함 end-to-end 검증**
-- **동작 엔드포인트**: `/api/auth/*`, `/api/{org-units,common-codes,employees,customers,partners,products,cbm-items,addon-services,price-conditions}`, `/api/{audit-logs,domain-events}`
-- **AI 개방 계층(AX) 설계**: 에이전트=RBAC 1급 주체 + 이벤트 디스패치 + 선언적 워크플로우 ([설계노트 1-B](통인익스프레스-ERP-설계노트.md)). 구현은 P2~3.
-- **다음 액션 (Phase 1)**: 리드(접수) → 견적(CBM·구역·라인) → 계약(전자서명·결제) → 작업(배차) — 실제 이사 프로세스
+- **Phase 0(FND-01~09)**: 모노레포·DB/Prisma·인증(JWT)+RBAC(에이전트1급주체)·마스터9종·이벤트 outbox+감사로그
+- **Phase 1 스파인(LEAD/EST/CON/OPS)**: **리드→견적(CBM합산)→계약(서명동결)→결제(가상계좌)→작업토스→배정→완료** 상태머신·이벤트로 end-to-end 동작 (리드 RECEIVED→…→DONE 검증)
+- **Phase 1 잔여**: EST-02(견적 PDF 동적생성) · INT-01(알림톡, 이벤트 구독 발송) · 실외부연동(토스/전자계약/알림톡 — 현재 추상화 스텁) · APP-01/02(프론트 화면)
+- **AI 개방 계층(AX)**: 에이전트=RBAC 1급주체 + 이벤트 디스패치 + 선언적 워크플로우 ([설계노트 1-B](통인익스프레스-ERP-설계노트.md)). 구현 P2~3.
 - **로그인(개발)**: `admin` / `admin1234` (⚠️ `ADMIN_PASSWORD` env로 변경)
 
 ### 모노레포 구조
