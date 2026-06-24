@@ -15,6 +15,7 @@ import WorkOrderDetail from './pages/WorkOrderDetail';
 import Customers from './pages/Customers';
 import Products from './pages/Products';
 import CbmItems from './pages/CbmItems';
+import Materials from './pages/Materials';
 import OrgUnits from './pages/OrgUnits';
 
 function Shell() {
@@ -41,6 +42,7 @@ function Shell() {
         <Route path="/customers" element={<Customers />} />
         <Route path="/products" element={<Products />} />
         <Route path="/cbm-items" element={<CbmItems />} />
+        <Route path="/materials" element={<Materials />} />
         <Route path="/org-units" element={<OrgUnits />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

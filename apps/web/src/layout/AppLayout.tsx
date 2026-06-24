@@ -16,6 +16,7 @@ function Sidebar() {
     { to: '/customers', label: t('nav.customers') },
     { to: '/products', label: t('nav.products') },
     { to: '/cbm-items', label: t('nav.cbmItems') },
+    { to: '/materials', label: t('nav.materials') },
     { to: '/org-units', label: t('nav.orgUnits') },
   ];
   const active = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
