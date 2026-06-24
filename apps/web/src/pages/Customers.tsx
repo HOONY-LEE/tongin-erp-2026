@@ -1,10 +1,7 @@
-import type { ColumnsType } from 'antd/es/table';
-import CrudTable, { type FormField } from '../components/CrudTable';
+import CrudTable, { type Column, type FormField } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 
-type Row = Record<string, unknown>;
-
-const columns: ColumnsType<Row> = [
+const columns: Column[] = [
   { title: '고객명', dataIndex: 'name' },
   { title: '연락처', dataIndex: 'phonePrimary' },
   { title: '등급', dataIndex: 'grade' },
