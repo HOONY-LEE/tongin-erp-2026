@@ -13,6 +13,7 @@ import {
 import { EstimateService } from './estimate.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
 import { CreateLineDto, CreateZoneDto } from './dto/estimate-child.dto';
+import { CreateCostLineDto } from './dto/cost-line.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 
 @Controller('estimates')
@@ -63,6 +64,31 @@ export class EstimateController {
   @RequirePermissions('ESTIMATE.WRITE')
   quote(@Param('id', ParseUUIDPipe) id: string) {
     return this.estimateService.quote(id);
+  }
+
+  // ── EST-03: 재료비 라인 ↔ 자재·재고 ──
+
+  @Post(':id/cost-lines')
+  @RequirePermissions('ESTIMATE.WRITE')
+  addCostLine(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateCostLineDto) {
+    return this.estimateService.addCostLine(id, dto);
+  }
+
+  @Delete(':id/cost-lines/:costLineId')
+  @RequirePermissions('ESTIMATE.WRITE')
+  @HttpCode(200)
+  removeCostLine(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('costLineId', ParseUUIDPipe) costLineId: string,
+  ) {
+    return this.estimateService.removeCostLine(id, costLineId);
+  }
+
+  /** 재료비 라인의 자재를 재고에서 일괄 차감(전표 OUT). */
+  @Post(':id/deduct-materials')
+  @RequirePermissions('ESTIMATE.WRITE')
+  deductMaterials(@Param('id', ParseUUIDPipe) id: string) {
+    return this.estimateService.deductMaterials(id);
   }
 
   @Get(':id/document')

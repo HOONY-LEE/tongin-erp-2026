@@ -57,6 +57,10 @@ export type Handling = (typeof HANDLING)[number];
 export const STOCK_MOVEMENT_TYPES = ['IN', 'OUT', 'ADJUST'] as const;
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
 
+// EST-03: 견적 재료비 라인 상태 (DRAFT→재고 차감→DEDUCTED)
+export const ESTIMATE_COST_LINE_STATUS = ['DRAFT', 'DEDUCTED', 'CANCELED'] as const;
+export type EstimateCostLineStatus = (typeof ESTIMATE_COST_LINE_STATUS)[number];
+
 export interface HealthResponse {
   status: 'ok';
   service: string;
