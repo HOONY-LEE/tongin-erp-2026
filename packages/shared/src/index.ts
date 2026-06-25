@@ -61,6 +61,27 @@ export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
 export const ESTIMATE_COST_LINE_STATUS = ['DRAFT', 'DEDUCTED', 'CANCELED'] as const;
 export type EstimateCostLineStatus = (typeof ESTIMATE_COST_LINE_STATUS)[number];
 
+// EST-04: 기업이전(B2B) 원가 적상식 문서 3종 (설계노트 F-2)
+export const B2B_DOCUMENT_KINDS = ['quote', 'items', 'cost'] as const;
+export type B2bDocumentKind = (typeof B2B_DOCUMENT_KINDS)[number]; // 견적서/물품내역서/산출내역서
+
+// EST-04: 원가 적상식 산출 결과 (F-3)
+export interface B2bCostBreakdown {
+  materialCost: number; // 1.재료비(costLines 합)
+  vehicleCost: number; // 2.차량비
+  laborCost: number; // 3.노무비
+  etcCost: number; // 4.기타
+  subtotal: number; // 5.합계(1+2+3+4)
+  overheadRate: number;
+  overhead: number; // 6.공과잡비
+  adminRate: number;
+  admin: number; // 7.일반관리비
+  profitRate: number;
+  profit: number; // 8.이윤
+  totalServiceCost: number; // 9.총 용역원가
+  quotedAmount: number; // 10.견적가
+}
+
 export interface HealthResponse {
   status: 'ok';
   service: string;
