@@ -153,6 +153,8 @@ export const PERMISSION_WILDCARD = '*';
 
 // 기본 역할 코드 (시드)
 export const ROLE_SUPER_ADMIN = 'SUPER_ADMIN';
+// 외부 전속업체 제한 역할 (OPS-04): 본인 소속 partner의 작업오더만 조회
+export const ROLE_OUTSOURCE = 'OUTSOURCE';
 
 export interface LoginRequest {
   loginId: string;
@@ -170,6 +172,7 @@ export interface AuthPrincipal {
   userId: string;
   loginId: string;
   principalType: PrincipalType;
+  partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
   scopes: { roleCode: string; dataScope: DataScope; orgScopeId: string | null }[];
 }
