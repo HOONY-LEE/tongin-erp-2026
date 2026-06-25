@@ -21,6 +21,7 @@ import { EstimateModule } from './modules/estimate/estimate.module';
 import { ContractModule } from './modules/contract/contract.module';
 import { WorkOrderModule } from './modules/work-order/work-order.module';
 import { MaterialModule } from './modules/material/material.module';
+import { SettlementModule } from './modules/settlement/settlement.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { MaterialModule } from './modules/material/material.module';
     ContractModule,
     WorkOrderModule,
     MaterialModule,
+    SettlementModule,
   ],
   controllers: [AppController],
 })

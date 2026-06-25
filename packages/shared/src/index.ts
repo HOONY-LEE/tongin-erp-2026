@@ -137,6 +137,7 @@ export const PERMISSIONS = [
   'NOTIFICATION.READ',
   'MATERIAL.READ',
   'MATERIAL.WRITE',
+  'SETTLEMENT.READ',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
@@ -162,4 +163,23 @@ export interface AuthPrincipal {
   principalType: PrincipalType;
   permissions: string[]; // 평탄화된 permission code (또는 '*')
   scopes: { roleCode: string; dataScope: DataScope; orgScopeId: string | null }[];
+}
+
+// ── SET-01: 입금/미수금 관리 (레거시 입금-고객입금관리/고객별미수금/월별금액 대체) ──
+
+// 고객별 미수금: 청구(SIGNED 계약 총액) − 입금(PAID) = 미수금
+export interface CustomerReceivable {
+  customerId: string;
+  customerName: string;
+  contractCount: number;
+  billed: number; // 청구액(SIGNED 계약 totalAmount 합)
+  paid: number; // 입금액(PAID payment 합)
+  outstanding: number; // 미수금 = billed − paid
+}
+
+// 월별 입금액 (PAID payment의 paidAt 기준)
+export interface MonthlyInflow {
+  month: string; // YYYY-MM
+  count: number;
+  total: number;
 }
