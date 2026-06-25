@@ -1,6 +1,6 @@
 import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PERMISSIONS, PERMISSION_WILDCARD, ROLE_SUPER_ADMIN } from '@tongin/shared';
+import { PERMISSIONS, PERMISSION_WILDCARD, ROLE_OUTSOURCE, ROLE_SUPER_ADMIN } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -17,6 +17,28 @@ export class AuthSeederService implements OnModuleInit {
     await this.seedPermissions();
     const role = await this.seedSuperAdminRole();
     await this.seedAdminUser(role.id);
+    await this.seedOutsourceRole();
+  }
+
+  /** OPS-04: 외부 전속업체 제한 역할 — 작업오더 조회만(데이터범위는 app_user.partnerId로 제한). */
+  private async seedOutsourceRole(): Promise<void> {
+    const role = await this.prisma.role.upsert({
+      where: { code: ROLE_OUTSOURCE },
+      update: {},
+      create: {
+        code: ROLE_OUTSOURCE,
+        name: '전속업체',
+        description: '본인 소속 작업오더 조회(원가 마스킹)',
+      },
+    });
+    const perm = await this.prisma.permission.findUnique({ where: { code: 'WORK_ORDER.READ' } });
+    if (perm) {
+      await this.prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: role.id, permissionId: perm.id } },
+        update: {},
+        create: { roleId: role.id, permissionId: perm.id },
+      });
+    }
   }
 
   private async seedPermissions(): Promise<void> {

@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { LeadService } from '../lead/lead.service';
@@ -12,21 +18,36 @@ export class WorkOrderService {
     private readonly leadService: LeadService,
   ) {}
 
-  findAll(status?: string) {
-    return this.prisma.workOrder.findMany({
-      where: status ? { status } : undefined,
+  /** 전속업체 사용자(principal.partnerId)는 본인 소속 작업오더만 + 원가(billedCost) 마스킹 (OPS-04). */
+  async findAll(status?: string, principal?: AuthPrincipal) {
+    const rows = await this.prisma.workOrder.findMany({
+      where: {
+        ...(status ? { status } : {}),
+        ...(principal?.partnerId ? { partnerId: principal.partnerId } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
+    if (principal?.partnerId) rows.forEach((r) => this.maskCost(r));
+    return rows;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, principal?: AuthPrincipal) {
     const wo = await this.prisma.workOrder.findUnique({
       where: { id },
       include: { assignments: true },
     });
     if (!wo) throw new NotFoundException(`작업오더를 찾을 수 없습니다: ${id}`);
+    if (principal?.partnerId && wo.partnerId !== principal.partnerId) {
+      throw new ForbiddenException('해당 작업오더에 접근 권한이 없습니다.');
+    }
+    if (principal?.partnerId) this.maskCost(wo);
     return wo;
+  }
+
+  /** 외부 전속업체엔 원가/정산금액(billedCost) 노출 금지 (설계노트: 단가·정산금액 마스킹). */
+  private maskCost(wo: { billedCost: unknown }) {
+    wo.billedCost = null;
   }
 
   /** 작업토스: 계약(SIGNED)→작업오더 전환 + 리드 CONTRACTED→WORK_TOSS */

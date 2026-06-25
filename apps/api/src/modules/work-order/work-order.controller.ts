@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { WorkOrderService } from './work-order.service';
 import { CreateAssignmentDto, CreateWorkOrderDto } from './dto/work-order.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 @Controller('work-orders')
 export class WorkOrderController {
@@ -9,14 +11,14 @@ export class WorkOrderController {
 
   @Get()
   @RequirePermissions('WORK_ORDER.READ')
-  findAll(@Query('status') status?: string) {
-    return this.workOrderService.findAll(status);
+  findAll(@CurrentUser() user: AuthPrincipal, @Query('status') status?: string) {
+    return this.workOrderService.findAll(status, user);
   }
 
   @Get(':id')
   @RequirePermissions('WORK_ORDER.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.workOrderService.findOne(id);
+  findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.workOrderService.findOne(id, user);
   }
 
   @Post()
