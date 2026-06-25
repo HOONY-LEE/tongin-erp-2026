@@ -138,6 +138,7 @@ export const PERMISSIONS = [
   'MATERIAL.READ',
   'MATERIAL.WRITE',
   'SETTLEMENT.READ',
+  'SETTLEMENT.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
@@ -182,4 +183,35 @@ export interface MonthlyInflow {
   month: string; // YYYY-MM
   count: number;
   total: number;
+}
+
+// ── SET-02: 지점 정산/수수료 ──
+
+// 수수료 산정 방식: 정률(기준액×rate) | 정액(건당 고정)
+export const COMMISSION_CALC_TYPES = ['RATE', 'FIXED'] as const;
+export type CommissionCalcType = (typeof COMMISSION_CALC_TYPES)[number];
+
+// 지점 정산 결과(특정 지점·연월): 계약별 수수료 + 합계
+export interface BranchSettlementLine {
+  contractId: string;
+  contractNo: string;
+  customerName: string;
+  serviceLine: string | null;
+  source: string | null;
+  base: number; // 정산 기준액(SIGNED 계약 총액)
+  ruleId: string | null; // 적용 규칙(없으면 0원)
+  ruleName: string | null;
+  calcType: CommissionCalcType | null;
+  commission: number;
+}
+
+export interface BranchSettlement {
+  orgUnitId: string;
+  orgUnitName: string;
+  year: number;
+  month: number;
+  contractCount: number;
+  baseTotal: number;
+  commissionTotal: number;
+  lines: BranchSettlementLine[];
 }

@@ -30,6 +30,7 @@ model OrgUnit {
   estimates       Estimate[]
   contracts       Contract[]
   workOrders      WorkOrder[]
+  commissionRules CommissionRule[] @relation("CommissionRuleOrg")
   @@map("org_unit")
 }
 
@@ -449,6 +450,24 @@ model Payment {
 
   @@index([contractId])
   @@map("payment")
+}
+
+// SET-02: 지점 정산 수수료 규칙 (권한=데이터). 지점×서비스라인×출처 → 정률/정액, 우선순위 매칭.
+model CommissionRule {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  orgUnitId   String?  @map("org_unit_id") @db.Uuid // 특정 지점(null=전체)
+  orgUnit     OrgUnit? @relation("CommissionRuleOrg", fields: [orgUnitId], references: [id])
+  serviceLine String?  @map("service_line") // 특정 서비스라인(null=전체)
+  source      String? // 특정 출처(접수경로, null=전체)
+  calcType    String   @map("calc_type") // RATE | FIXED
+  rate        Decimal? @db.Decimal(6, 4) // RATE: 0~1
+  fixedAmount Decimal? @map("fixed_amount") @db.Decimal(14, 2) // FIXED: 건당 정액
+  priority    Int      @default(0) // 높을수록 우선
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("commission_rule")
 }
 
 // ── Phase 1: 작업오더(서비스오더) + 배정 — 작업토스 이후 (부록 D-3) ──
