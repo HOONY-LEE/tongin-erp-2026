@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,17 +9,24 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
+import { B2B_DOCUMENT_KINDS, type B2bDocumentKind } from '@tongin/shared';
 import { EstimateService } from './estimate.service';
+import { EstimateB2bService } from './estimate-b2b.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
 import { CreateLineDto, CreateZoneDto } from './dto/estimate-child.dto';
 import { CreateCostLineDto } from './dto/cost-line.dto';
+import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 
 @Controller('estimates')
 export class EstimateController {
-  constructor(private readonly estimateService: EstimateService) {}
+  constructor(
+    private readonly estimateService: EstimateService,
+    private readonly b2bService: EstimateB2bService,
+  ) {}
 
   @Get()
   @RequirePermissions('ESTIMATE.READ')
@@ -96,5 +104,32 @@ export class EstimateController {
   @Header('Content-Type', 'text/html; charset=utf-8')
   document(@Param('id', ParseUUIDPipe) id: string) {
     return this.estimateService.document(id);
+  }
+
+  // ── EST-04: 기업이전(B2B) 원가 적상식 + 3종 문서 ──
+
+  @Get(':id/cost-buildup')
+  @RequirePermissions('ESTIMATE.READ')
+  getBuildup(@Param('id', ParseUUIDPipe) id: string) {
+    return this.b2bService.getBreakdown(id);
+  }
+
+  @Put(':id/cost-buildup')
+  @RequirePermissions('ESTIMATE.WRITE')
+  setBuildup(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpsertCostBuildupDto) {
+    return this.b2bService.upsertBuildup(id, dto);
+  }
+
+  /** 기업이전 3종 문서: kind = quote(견적서) | items(물품내역서) | cost(산출내역서). */
+  @Get(':id/documents/:kind')
+  @RequirePermissions('ESTIMATE.READ')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  b2bDocument(@Param('id', ParseUUIDPipe) id: string, @Param('kind') kind: string) {
+    if (!(B2B_DOCUMENT_KINDS as readonly string[]).includes(kind)) {
+      throw new BadRequestException(
+        `문서종류는 ${B2B_DOCUMENT_KINDS.join(' | ')} 중 하나여야 합니다.`,
+      );
+    }
+    return this.b2bService.document(id, kind as B2bDocumentKind);
   }
 }

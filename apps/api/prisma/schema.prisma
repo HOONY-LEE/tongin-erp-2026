@@ -332,10 +332,28 @@ model Estimate {
   zones           EstimateZone[]
   lines           EstimateLine[]
   costLines       EstimateCostLine[]
+  costBuildup     EstimateCostBuildup?
 
   @@index([leadId])
   contract Contract?
   @@map("estimate")
+}
+
+// EST-04: 기업이전(B2B) 원가 적상식 (설계노트 F-3). 견적당 1개(1:1).
+// 합계 = 재료비(costLines) + 차량비 + 노무비 + 기타
+// 총용역원가 = 합계 + 공과잡비 + 일반관리비 + 이윤 (각 비율은 합계 기준) → 견적가
+model EstimateCostBuildup {
+  estimateId   String   @id @map("estimate_id") @db.Uuid
+  estimate     Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  vehicleCost  Decimal  @default(0) @map("vehicle_cost") @db.Decimal(14, 2) // 차량비
+  laborCost    Decimal  @default(0) @map("labor_cost") @db.Decimal(14, 2) // 노무비
+  etcCost      Decimal  @default(0) @map("etc_cost") @db.Decimal(14, 2) // 기타
+  overheadRate Decimal  @default(0) @map("overhead_rate") @db.Decimal(6, 4) // 공과잡비율(0~1)
+  adminRate    Decimal  @default(0) @map("admin_rate") @db.Decimal(6, 4) // 일반관리비율
+  profitRate   Decimal  @default(0) @map("profit_rate") @db.Decimal(6, 4) // 이윤율
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("estimate_cost_buildup")
 }
 
 model EstimateZone {
