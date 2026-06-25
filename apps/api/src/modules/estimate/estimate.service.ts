@@ -10,6 +10,7 @@ import { EventBusService } from '../../events/event-bus.service';
 import { LeadService } from '../lead/lead.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
 import { CreateLineDto, CreateZoneDto } from './dto/estimate-child.dto';
+import { CreateCostLineDto } from './dto/cost-line.dto';
 
 @Injectable()
 export class EstimateService {
@@ -33,6 +34,7 @@ export class EstimateService {
       include: {
         zones: { orderBy: { sortOrder: 'asc' } },
         lines: true,
+        costLines: { include: { material: true }, orderBy: { createdAt: 'asc' } },
       },
     });
     if (!estimate) throw new NotFoundException(`견적을 찾을 수 없습니다: ${id}`);
@@ -135,6 +137,114 @@ export class EstimateService {
       payload: { estimateNo: estimate.estimateNo, totalCbm: Number(estimate.totalCbm) },
     });
     return updated;
+  }
+
+  // ── EST-03: 재료비 라인 ↔ 자재·재고 연동 (설계노트 F-4) ──
+
+  /** 재료비 라인 추가 (DRAFT). 자재 마스터 참조 + 단가 → 합계 자동계산. */
+  async addCostLine(estimateId: string, dto: CreateCostLineDto) {
+    await this.findOne(estimateId);
+    const material = await this.prisma.material.findUnique({ where: { id: dto.materialId } });
+    if (!material) throw new BadRequestException('존재하지 않는 자재(materialId)입니다.');
+
+    const unitPrice = dto.unitPrice ?? 0;
+    const totalPrice = Math.round(unitPrice * dto.qty * 100) / 100;
+    return this.prisma.estimateCostLine.create({
+      data: {
+        estimateId,
+        materialId: dto.materialId,
+        qty: dto.qty,
+        unitPrice,
+        totalPrice,
+        memo: dto.memo,
+      },
+    });
+  }
+
+  /** 재료비 라인 삭제 (이미 차감된 라인은 전표 무결성 위해 불가). */
+  async removeCostLine(estimateId: string, costLineId: string) {
+    await this.findOne(estimateId);
+    const line = await this.prisma.estimateCostLine.findUnique({ where: { id: costLineId } });
+    if (!line || line.estimateId !== estimateId) {
+      throw new NotFoundException(`재료비 라인을 찾을 수 없습니다: ${costLineId}`);
+    }
+    if (line.status === 'DEDUCTED') {
+      throw new BadRequestException('이미 재고 차감된 라인은 삭제할 수 없습니다.');
+    }
+    await this.prisma.estimateCostLine.delete({ where: { id: costLineId } });
+    return { deleted: true };
+  }
+
+  /**
+   * 재료비 라인의 자재를 재고에서 일괄 차감(전표 OUT). 트랜잭션: 전부 성공 또는 전부 롤백.
+   * 재고 부족 시 차감 없이 실패(전표 무결성). 차감된 라인은 DEDUCTED.
+   */
+  async deductMaterials(estimateId: string) {
+    const estimate = await this.findOne(estimateId);
+    const draftLines = await this.prisma.estimateCostLine.findMany({
+      where: { estimateId, status: 'DRAFT' },
+      include: { material: true },
+    });
+    if (draftLines.length === 0) {
+      throw new BadRequestException('차감할 DRAFT 재료비 라인이 없습니다.');
+    }
+
+    // 자재별 소요량 합산 → 재고 충분한지 사전 검증(부분 차감 방지)
+    const required = new Map<string, number>();
+    for (const l of draftLines)
+      required.set(l.materialId, (required.get(l.materialId) ?? 0) + l.qty);
+    for (const [materialId, need] of required) {
+      const agg = await this.prisma.stockMovement.aggregate({
+        where: { materialId },
+        _sum: { qtyDelta: true },
+      });
+      const stock = agg._sum.qtyDelta ?? 0;
+      if (stock < need) {
+        const name =
+          draftLines.find((l) => l.materialId === materialId)?.material.name ?? materialId;
+        throw new BadRequestException(`재고 부족: ${name} — 현재고 ${stock}, 필요 ${need}`);
+      }
+    }
+
+    const deductedAt = new Date();
+    const movementsForEvent = await this.prisma.$transaction(async (tx) => {
+      const result: { materialId: string; qtyDelta: number }[] = [];
+      for (const l of draftLines) {
+        const movement = await tx.stockMovement.create({
+          data: {
+            materialId: l.materialId,
+            type: 'OUT',
+            qtyDelta: -l.qty,
+            reason: `견적 ${estimate.estimateNo} 재료 차감`,
+            refType: 'ESTIMATE',
+            refId: estimateId,
+          },
+        });
+        await tx.estimateCostLine.update({
+          where: { id: l.id },
+          data: { status: 'DEDUCTED', deductedAt, stockMovementId: movement.id },
+        });
+        result.push({ materialId: l.materialId, qtyDelta: -l.qty });
+      }
+      return result;
+    });
+
+    // 전표 커밋 후 이벤트 발행(요약 + 자재별 stock.moved)
+    await this.eventBus.record({
+      aggregateType: 'estimate',
+      aggregateId: estimateId,
+      eventType: 'estimate.materials_deducted',
+      payload: { estimateNo: estimate.estimateNo, lineCount: draftLines.length },
+    });
+    for (const m of movementsForEvent) {
+      await this.eventBus.record({
+        aggregateType: 'material',
+        aggregateId: m.materialId,
+        eventType: 'stock.moved',
+        payload: { type: 'OUT', qtyDelta: m.qtyDelta, refType: 'ESTIMATE', refId: estimateId },
+      });
+    }
+    return { deducted: movementsForEvent.length };
   }
 
   private async recomputeTotalCbm(estimateId: string) {
