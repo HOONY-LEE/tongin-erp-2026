@@ -31,6 +31,7 @@ model OrgUnit {
   contracts       Contract[]
   workOrders      WorkOrder[]
   commissionRules CommissionRule[] @relation("CommissionRuleOrg")
+  materialOrders  MaterialOrder[]
   @@map("org_unit")
 }
 
@@ -565,8 +566,38 @@ model Material {
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   movements   StockMovement[]
   estimateCostLines EstimateCostLine[]
+  orderLines  MaterialOrderLine[]
 
   @@map("material")
+}
+
+// MM-02: 가맹점 발주 (지점이 본사에 박스·포장지·유니폼 발주 → 출고 시 본사 재고 OUT)
+model MaterialOrder {
+  id        String              @id @default(uuid()) @db.Uuid
+  orderNo   String              @unique @map("order_no")
+  orgUnitId String              @map("org_unit_id") @db.Uuid // 발주 지점
+  orgUnit   OrgUnit             @relation(fields: [orgUnitId], references: [id])
+  status    String              @default("REQUESTED") // REQUESTED | APPROVED | SHIPPED | CANCELED
+  note      String?
+  shippedAt DateTime?           @map("shipped_at") @db.Timestamptz(6)
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  lines     MaterialOrderLine[]
+
+  @@index([orgUnitId])
+  @@map("material_order")
+}
+
+model MaterialOrderLine {
+  id              String        @id @default(uuid()) @db.Uuid
+  orderId         String        @map("order_id") @db.Uuid
+  order           MaterialOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  materialId      String        @map("material_id") @db.Uuid
+  material        Material      @relation(fields: [materialId], references: [id])
+  qty             Int
+  stockMovementId String?       @map("stock_movement_id") @db.Uuid // 출고 전표 추적
+
+  @@index([orderId])
+  @@map("material_order_line")
 }
 
 model StockMovement {
