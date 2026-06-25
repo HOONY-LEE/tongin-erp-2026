@@ -22,6 +22,7 @@ import { ContractModule } from './modules/contract/contract.module';
 import { WorkOrderModule } from './modules/work-order/work-order.module';
 import { MaterialModule } from './modules/material/material.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { SettlementModule } from './modules/settlement/settlement.module';
     WorkOrderModule,
     MaterialModule,
     SettlementModule,
+    BillingModule,
   ],
   controllers: [AppController],
 })

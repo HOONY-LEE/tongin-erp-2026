@@ -139,6 +139,8 @@ export const PERMISSIONS = [
   'MATERIAL.WRITE',
   'SETTLEMENT.READ',
   'SETTLEMENT.WRITE',
+  'BILLING.READ',
+  'BILLING.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
@@ -214,4 +216,29 @@ export interface BranchSettlement {
   baseTotal: number;
   commissionTotal: number;
   lines: BranchSettlementLine[];
+}
+
+// ── SET-03: 전속/B2B 청구·수금 + 마진 (설계노트 D-3) ──
+
+export const INVOICE_STATUS = ['DRAFT', 'ISSUED', 'COLLECTED', 'CANCELED'] as const;
+export type InvoiceStatus = (typeof INVOICE_STATUS)[number];
+
+// 계약별 마진: 매출(계약 총액) − 전속원가(작업오더 billedCost)
+export interface ContractMargin {
+  contractId: string;
+  contractNo: string;
+  customerName: string;
+  revenue: number; // 매출
+  outsourceCost: number; // 전속원가(billedCost)
+  margin: number; // 매출 − 전속원가
+}
+
+// 거래처별 미수금: 청구(ISSUED+COLLECTED) − 수금
+export interface PartnerReceivable {
+  partnerId: string;
+  partnerName: string;
+  invoiceCount: number;
+  billed: number;
+  collected: number;
+  outstanding: number;
 }
