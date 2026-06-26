@@ -30,6 +30,7 @@ export default {
     serviceOrders: '生活·护理',
     support: '客服·售后',
     campaigns: '营销',
+    hr: '人事·绩效',
     orgUnits: '组织',
   },
   navGroup: {

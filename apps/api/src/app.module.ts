@@ -27,6 +27,7 @@ import { MaterialOrderModule } from './modules/material-order/material-order.mod
 import { GeoModule } from './modules/geo/geo.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { CampaignModule } from './modules/campaign/campaign.module';
+import { HrModule } from './modules/hr/hr.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { SupportModule } from './modules/support/support.module';
@@ -65,6 +66,7 @@ import { ScopeModule } from './scope/scope.module';
     GeoModule,
     CalendarModule,
     CampaignModule,
+    HrModule,
   ],
   controllers: [AppController],
 })

@@ -703,3 +703,20 @@ model Campaign {
 
   @@map("campaign")
 }
+
+// ── HR-01: 인센티브/패널티 정책 (설정 기반 룰 — 화면에서 등록, 실적으로 자동계산) ──
+model HrPolicy {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  kind       String   @default("INCENTIVE") // INCENTIVE(수당) | PENALTY(패널티)
+  targetType String   @map("target_type") // EMPLOYEE | BRANCH
+  metric     String // CONTRACT_REVENUE | CONTRACT_COUNT | PAID_REVENUE | DONE_COUNT | AS_COUNT
+  calcType   String   @map("calc_type") // RATE | FIXED_PER_UNIT
+  value      Decimal  @db.Decimal(14, 4) // rate(0.0150) 또는 단위당 정액(30000)
+  orgScopeId String?  @map("org_scope_id") @db.Uuid // 특정 지점에만 적용(선택)
+  isActive   Boolean  @default(true) @map("is_active")
+  priority   Int      @default(100)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("hr_policy")
+}
