@@ -61,6 +61,18 @@ export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
 export const SERVICE_ORDER_STATUS = ['REQUESTED', 'SCHEDULED', 'DONE', 'CANCELED'] as const;
 export type ServiceOrderStatus = (typeof SERVICE_ORDER_STATUS)[number];
 
+// AS-01: CS·AS 접수 유형/상태 (상담·불만=CS, 하자보수=AS)
+export const SUPPORT_KINDS = ['CS', 'AS'] as const;
+export type SupportKind = (typeof SUPPORT_KINDS)[number];
+export const SUPPORT_TICKET_STATUS = [
+  'RECEIVED',
+  'IN_PROGRESS',
+  'RESOLVED',
+  'CLOSED',
+  'CANCELED',
+] as const;
+export type SupportTicketStatus = (typeof SUPPORT_TICKET_STATUS)[number];
+
 // MM-02: 가맹점 발주 상태 (요청→승인→출고; 출고 전 취소 가능)
 export const MATERIAL_ORDER_STATUS = ['REQUESTED', 'APPROVED', 'SHIPPED', 'CANCELED'] as const;
 export type MaterialOrderStatus = (typeof MATERIAL_ORDER_STATUS)[number];
@@ -169,6 +181,8 @@ export const PERMISSIONS = [
   'STATS.READ',
   'SERVICE_ORDER.READ',
   'SERVICE_ORDER.WRITE',
+  'SUPPORT.READ',
+  'SUPPORT.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

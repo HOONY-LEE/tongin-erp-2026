@@ -638,3 +638,24 @@ model ServiceOrder {
   @@index([orgUnitId])
   @@map("service_order")
 }
+
+// ── AS-01: CS·AS 접수/처리 (상담·불만=CS, 하자보수=AS) ──
+model SupportTicket {
+  id            String   @id @default(uuid()) @db.Uuid
+  ticketNo      String   @unique @map("ticket_no")
+  kind          String // CS | AS
+  customerId    String?  @map("customer_id") @db.Uuid
+  contractId    String?  @map("contract_id") @db.Uuid // AS는 원계약 연결
+  orgUnitId     String   @map("org_unit_id") @db.Uuid // 담당 지점(데이터범위 스코프)
+  channel       String? // PHONE | EMAIL | KAKAO | VISIT
+  subject       String
+  content       String?
+  priority      String   @default("NORMAL") // LOW | NORMAL | HIGH
+  status        String   @default("RECEIVED") // RECEIVED→IN_PROGRESS→RESOLVED→CLOSED / CANCELED
+  assigneeEmpId String?  @map("assignee_emp_id") @db.Uuid
+  resolution    String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([orgUnitId])
+  @@map("support_ticket")
+}
