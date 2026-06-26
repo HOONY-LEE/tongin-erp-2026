@@ -29,6 +29,7 @@ export default {
     materialOrders: '가맹점 발주',
     serviceOrders: '리빙·케어',
     support: 'CS·AS',
+    campaigns: '마케팅',
     orgUnits: '조직',
   },
   navGroup: {
@@ -148,6 +149,17 @@ export default {
     qty: '수량',
     reason: '사유',
     lowStockWarn: '안전재고 미만 자재가 있습니다',
+  },
+  campaign: {
+    register: '캠페인 등록',
+    name: '캠페인명',
+    channel: '채널',
+    targetGrade: '대상 등급',
+    message: '메시지',
+    status: '상태',
+    recipients: '발송수',
+    send: '발송',
+    sentMsg: '발송되었습니다',
   },
   address: {
     zipcode: '우편번호',

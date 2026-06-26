@@ -77,6 +77,12 @@ export type SupportTicketStatus = (typeof SUPPORT_TICKET_STATUS)[number];
 export const MATERIAL_ORDER_STATUS = ['REQUESTED', 'APPROVED', 'SHIPPED', 'CANCELED'] as const;
 export type MaterialOrderStatus = (typeof MATERIAL_ORDER_STATUS)[number];
 
+// MKT-01: 마케팅 캠페인 채널/상태
+export const CAMPAIGN_CHANNELS = ['SMS', 'ALIMTALK'] as const;
+export type CampaignChannel = (typeof CAMPAIGN_CHANNELS)[number];
+export const CAMPAIGN_STATUS = ['DRAFT', 'SENT'] as const;
+export type CampaignStatus = (typeof CAMPAIGN_STATUS)[number];
+
 // EST-03: 견적 재료비 라인 상태 (DRAFT→재고 차감→DEDUCTED)
 export const ESTIMATE_COST_LINE_STATUS = ['DRAFT', 'DEDUCTED', 'CANCELED'] as const;
 export type EstimateCostLineStatus = (typeof ESTIMATE_COST_LINE_STATUS)[number];
@@ -183,6 +189,8 @@ export const PERMISSIONS = [
   'SERVICE_ORDER.WRITE',
   'SUPPORT.READ',
   'SUPPORT.WRITE',
+  'MARKETING.READ',
+  'MARKETING.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

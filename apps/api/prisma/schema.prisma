@@ -688,3 +688,18 @@ model SupportTicket {
   @@index([orgUnitId])
   @@map("support_ticket")
 }
+
+// ── MKT-01: 마케팅 캠페인 (문자/알림톡 대량발송 — 세그먼트 타겟) ──
+model Campaign {
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
+  channel        String    @default("SMS") // SMS | ALIMTALK
+  message        String
+  targetGrade    String?   @map("target_grade") // null=전체 고객(전화 보유)
+  status         String    @default("DRAFT") // DRAFT | SENT
+  recipientCount Int       @default(0) @map("recipient_count")
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("campaign")
+}

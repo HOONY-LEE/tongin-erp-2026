@@ -29,6 +29,7 @@ export default {
     materialOrders: '加盟店订货',
     serviceOrders: '生活·护理',
     support: '客服·售后',
+    campaigns: '营销',
     orgUnits: '组织',
   },
   navGroup: {
@@ -148,6 +149,17 @@ export default {
     qty: '数量',
     reason: '事由',
     lowStockWarn: '存在低于安全库存的物料',
+  },
+  campaign: {
+    register: '新建营销',
+    name: '名称',
+    channel: '渠道',
+    targetGrade: '目标等级',
+    message: '内容',
+    status: '状态',
+    recipients: '发送数',
+    send: '发送',
+    sentMsg: '已发送',
   },
   address: {
     zipcode: '邮编',

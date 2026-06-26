@@ -35,6 +35,7 @@ function Sidebar() {
       items: [
         { to: '/service-orders', label: t('nav.serviceOrders'), perm: 'SERVICE_ORDER.READ' },
         { to: '/support', label: t('nav.support'), perm: 'SUPPORT.READ' },
+        { to: '/campaigns', label: t('nav.campaigns'), perm: 'MARKETING.READ' },
       ],
     },
     {
