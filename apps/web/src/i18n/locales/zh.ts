@@ -31,6 +31,13 @@ export default {
     support: '客服·售后',
     orgUnits: '组织',
   },
+  navGroup: {
+    sales: '营业',
+    service: '服务',
+    finance: '结算',
+    materials: '物料',
+    master: '基础数据',
+  },
   support: {
     register: '新建工单',
     ticketNo: '工单号',

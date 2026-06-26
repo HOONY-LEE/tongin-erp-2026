@@ -31,6 +31,13 @@ export default {
     support: 'CS·AS',
     orgUnits: 'Organizations',
   },
+  navGroup: {
+    sales: 'Sales',
+    service: 'Service',
+    finance: 'Finance',
+    materials: 'Materials',
+    master: 'Master data',
+  },
   support: {
     register: 'New ticket',
     ticketNo: 'Ticket No.',

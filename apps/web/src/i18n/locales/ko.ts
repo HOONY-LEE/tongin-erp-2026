@@ -31,6 +31,13 @@ export default {
     support: 'CS·AS',
     orgUnits: '조직',
   },
+  navGroup: {
+    sales: '영업',
+    service: '서비스',
+    finance: '정산',
+    materials: '자재',
+    master: '기준정보',
+  },
   support: {
     register: '접수 등록',
     ticketNo: '접수번호',
