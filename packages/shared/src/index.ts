@@ -92,6 +92,21 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+// ── CRM-01: 대시보드 통계 (전환율 퍼널 + KPI + 가맹점별 매출) ──
+export interface StatsOverview {
+  funnel: { status: LeadStatus; count: number }[]; // 접수→완료 단계별 리드 수
+  kpi: {
+    leadTotal: number;
+    contractCount: number; // SIGNED 계약 수
+    doneCount: number; // 완료 작업 수
+    revenue: number; // SIGNED 계약 총액
+    collected: number; // PAID 입금액
+    outstanding: number; // 미수금(revenue − collected)
+    conversionRate: number; // 계약수 / 리드수 (0~1)
+  };
+  byBranch: { orgUnitName: string; contractCount: number; revenue: number }[];
+}
+
 // ── FND-03: 인증 + RBAC ──
 
 // 주체 유형 (설계노트 1-B: 에이전트/워크플로우도 1급 주체)
@@ -147,6 +162,7 @@ export const PERMISSIONS = [
   'BILLING.WRITE',
   'MATERIAL_ORDER.READ',
   'MATERIAL_ORDER.WRITE',
+  'STATS.READ',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
