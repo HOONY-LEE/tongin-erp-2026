@@ -20,14 +20,11 @@ function Sidebar() {
   const { can } = useAuth();
 
   const groups: NavGroup[] = [
-    { items: [{ to: '/', label: t('nav.dashboard'), perm: 'STATS.READ' }] },
     {
-      label: t('navGroup.sales'),
+      // 영업은 단계 탭(접수/견적/계약/작업)으로 파이프라인에 통합 — 케이스 뷰로 드릴다운
       items: [
+        { to: '/', label: t('nav.dashboard'), perm: 'STATS.READ' },
         { to: '/leads', label: t('nav.leads'), perm: 'LEAD.READ' },
-        { to: '/estimates', label: t('nav.estimates'), perm: 'ESTIMATE.READ' },
-        { to: '/contracts', label: t('nav.contracts'), perm: 'CONTRACT.READ' },
-        { to: '/work-orders', label: t('nav.workOrders'), perm: 'WORK_ORDER.READ' },
       ],
     },
     {
