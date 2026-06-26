@@ -25,6 +25,7 @@ import { SettlementModule } from './modules/settlement/settlement.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { MaterialOrderModule } from './modules/material-order/material-order.module';
 import { StatsModule } from './modules/stats/stats.module';
+import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { ScopeModule } from './scope/scope.module';
 
 @Module({
@@ -55,6 +56,7 @@ import { ScopeModule } from './scope/scope.module';
     BillingModule,
     MaterialOrderModule,
     StatsModule,
+    ServiceOrderModule,
   ],
   controllers: [AppController],
 })

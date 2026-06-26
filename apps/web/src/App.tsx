@@ -19,6 +19,7 @@ import Materials from './pages/Materials';
 import Settlement from './pages/Settlement';
 import Billing from './pages/Billing';
 import MaterialOrders from './pages/MaterialOrders';
+import ServiceOrders from './pages/ServiceOrders';
 import OrgUnits from './pages/OrgUnits';
 
 function Shell() {
@@ -49,6 +50,7 @@ function Shell() {
         <Route path="/settlements" element={<Settlement />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/material-orders" element={<MaterialOrders />} />
+        <Route path="/service-orders" element={<ServiceOrders />} />
         <Route path="/org-units" element={<OrgUnits />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
