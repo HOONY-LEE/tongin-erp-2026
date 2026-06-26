@@ -226,6 +226,8 @@ export default {
     assign: 'Add assignment',
     assignments: 'Assignments',
     scheduled: 'Scheduled date',
+    exportIcs: 'Export calendar',
+    exportDone: 'Calendar file downloaded',
     back: 'List',
   },
   theme: { label: 'Theme', system: 'System', light: 'Light', dark: 'Dark' },

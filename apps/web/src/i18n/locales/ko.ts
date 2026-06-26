@@ -226,6 +226,8 @@ export default {
     assign: '배정 추가',
     assignments: '배정',
     scheduled: '작업예정일',
+    exportIcs: '캘린더 내보내기',
+    exportDone: '캘린더 파일을 내려받았습니다',
     back: '목록',
   },
   theme: { label: '테마', system: '시스템', light: '라이트', dark: '다크' },

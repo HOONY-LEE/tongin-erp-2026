@@ -226,6 +226,8 @@ export default {
     assign: '添加分配',
     assignments: '分配',
     scheduled: '作业日期',
+    exportIcs: '导出日历',
+    exportDone: '日历文件已下载',
     back: '列表',
   },
   theme: { label: '主题', system: '系统', light: '浅色', dark: '深色' },

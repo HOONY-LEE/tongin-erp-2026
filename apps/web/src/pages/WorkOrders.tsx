@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { api, ApiError } from '../lib/api';
+import { api, ApiError, downloadFile } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import {
   Button,
@@ -58,6 +58,15 @@ export default function WorkOrders() {
     { name: 'scheduledDate', label: t('work.scheduled'), placeholder: 'YYYY-MM-DD' },
   ];
 
+  const exportIcs = async () => {
+    try {
+      await downloadFile('/calendar/work-orders.ics', 'tongin-schedule.ics');
+      toast({ type: 'success', title: t('work.exportDone') });
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+    }
+  };
+
   const onCreate = async (values: Record<string, unknown>) => {
     try {
       const created = await api<{ id: string }>('/work-orders', {
@@ -95,9 +104,14 @@ export default function WorkOrders() {
       title={t('nav.workOrders')}
       count={rows.length}
       actions={
-        <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-          + {t('work.create')}
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="outline" size="sm" onClick={exportIcs}>
+            📅 {t('work.exportIcs')}
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+            + {t('work.create')}
+          </Button>
+        </div>
       }
     >
       <DataTable columns={columns} rows={rows} loading={loading} />
