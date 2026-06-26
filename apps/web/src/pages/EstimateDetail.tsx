@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError, openDocument } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import {
+  AddressView,
   Badge,
   Button,
   DataTable,
@@ -35,6 +36,16 @@ interface Estimate {
   status: string;
   totalCbm: string | number;
   totalAmount: string | number | null;
+  fromZipcode?: string | null;
+  fromAddr?: string | null;
+  fromAddrDetail?: string | null;
+  fromLat?: number | null;
+  fromLng?: number | null;
+  toZipcode?: string | null;
+  toAddr?: string | null;
+  toAddrDetail?: string | null;
+  toLat?: number | null;
+  toLng?: number | null;
   zones: Zone[];
   lines: Line[];
 }
@@ -170,6 +181,29 @@ export default function EstimateDetail() {
           )}
         </div>
       </div>
+
+      {(data.fromAddr || data.toAddr) && (
+        <PageCard title={t('estimate.moveAddress')}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <AddressView
+              label={t('estimate.from')}
+              zipcode={data.fromZipcode}
+              addr={data.fromAddr}
+              addrDetail={data.fromAddrDetail}
+              lat={data.fromLat}
+              lng={data.fromLng}
+            />
+            <AddressView
+              label={t('estimate.to')}
+              zipcode={data.toZipcode}
+              addr={data.toAddr}
+              addrDetail={data.toAddrDetail}
+              lat={data.toLat}
+              lng={data.toLng}
+            />
+          </div>
+        </PageCard>
+      )}
 
       <PageCard
         title={t('estimate.zones')}

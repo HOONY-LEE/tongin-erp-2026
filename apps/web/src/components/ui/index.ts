@@ -4,6 +4,7 @@ export { PageCard } from './PageCard';
 export { DataTable } from './DataTable';
 export { FormModal } from './FormModal';
 export { StatusBadge, type StatusMap } from './StatusBadge';
+export { AddressView } from './AddressView';
 
 // 자주 쓰는 akron 프리미티브 재노출
 export {
