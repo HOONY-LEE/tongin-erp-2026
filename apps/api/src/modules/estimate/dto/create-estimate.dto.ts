@@ -1,6 +1,7 @@
 import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { MoveAddressDto } from '../../../common/dto/address-fields.dto';
 
-export class CreateEstimateDto {
+export class CreateEstimateDto extends MoveAddressDto {
   @IsUUID()
   leadId!: string;
 
@@ -17,10 +18,7 @@ export class CreateEstimateDto {
   @IsUUID()
   estimatorEmpId?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  fromAddr?: string;
+  // 출발/도착 주소(우편번호·도로명·상세·시도/시군구·좌표)는 MoveAddressDto에서 상속
 
   @IsOptional()
   @IsInt()
@@ -30,11 +28,6 @@ export class CreateEstimateDto {
   @IsOptional()
   @IsBoolean()
   fromElevator?: boolean;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  toAddr?: string;
 
   @IsOptional()
   @IsInt()

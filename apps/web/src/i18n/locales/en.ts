@@ -149,6 +149,13 @@ export default {
     reason: 'Reason',
     lowStockWarn: 'Some materials are below safety stock',
   },
+  address: {
+    zipcode: 'Zip',
+    search: 'Find address',
+    road: 'Road address',
+    detail: 'Detail address',
+    geocoded: 'Geocoded',
+  },
   settlement: {
     receivables: 'Receivables by customer',
     customer: 'Customer',

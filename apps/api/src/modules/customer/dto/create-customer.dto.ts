@@ -1,6 +1,7 @@
 import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { SingleAddressDto } from '../../../common/dto/address-fields.dto';
 
-export class CreateCustomerDto {
+export class CreateCustomerDto extends SingleAddressDto {
   @IsString()
   @MaxLength(100)
   name!: string;

@@ -71,6 +71,13 @@ model Customer {
   legacyId     String?  @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
   grade        String?
   status       String?
+  zipcode      String?  // 카카오/다음 우편번호
+  addr         String?  // 도로명주소
+  addrDetail   String?  @map("addr_detail")
+  sido         String?
+  sigungu      String?
+  lat          Float?
+  lng          Float?
   ownerOrgId   String?  @map("owner_org_id") @db.Uuid
   ownerOrg     OrgUnit? @relation(fields: [ownerOrgId], references: [id])
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -291,9 +298,19 @@ model Lead {
   serviceLine    String?   @map("service_line")
   status         String    @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
   fromZipcode    String?   @map("from_zipcode")
-  fromAddr       String?   @map("from_addr")
+  fromAddr       String?   @map("from_addr") // 도로명주소(카카오/다음 우편번호)
+  fromAddrDetail String?   @map("from_addr_detail") // 상세주소
+  fromSido       String?   @map("from_sido")
+  fromSigungu    String?   @map("from_sigungu")
+  fromLat        Float?    @map("from_lat") // 위도(카카오 Local geocode)
+  fromLng        Float?    @map("from_lng") // 경도
   toZipcode      String?   @map("to_zipcode")
   toAddr         String?   @map("to_addr")
+  toAddrDetail   String?   @map("to_addr_detail")
+  toSido         String?   @map("to_sido")
+  toSigungu      String?   @map("to_sigungu")
+  toLat          Float?    @map("to_lat")
+  toLng          Float?    @map("to_lng")
   moveDate       DateTime? @map("move_date") @db.Date
   visitDate      DateTime? @map("visit_date") @db.Date
   expectedAmount Decimal?  @map("expected_amount") @db.Decimal(14, 2)
@@ -323,10 +340,22 @@ model Estimate {
   product         Product        @relation(fields: [productId], references: [id])
   estimatorEmpId  String?        @map("estimator_emp_id") @db.Uuid
   estimator       Employee?      @relation(fields: [estimatorEmpId], references: [id])
-  fromAddr        String?        @map("from_addr")
+  fromZipcode     String?        @map("from_zipcode")
+  fromAddr        String?        @map("from_addr") // 도로명주소
+  fromAddrDetail  String?        @map("from_addr_detail")
+  fromSido        String?        @map("from_sido")
+  fromSigungu     String?        @map("from_sigungu")
+  fromLat         Float?         @map("from_lat")
+  fromLng         Float?         @map("from_lng")
   fromPyeong      Int?           @map("from_pyeong")
   fromElevator    Boolean?       @map("from_elevator")
+  toZipcode       String?        @map("to_zipcode")
   toAddr          String?        @map("to_addr")
+  toAddrDetail    String?        @map("to_addr_detail")
+  toSido          String?        @map("to_sido")
+  toSigungu       String?        @map("to_sigungu")
+  toLat           Float?         @map("to_lat")
+  toLng           Float?         @map("to_lng")
   toPyeong        Int?           @map("to_pyeong")
   toElevator      Boolean?       @map("to_elevator")
   totalCbm        Decimal        @default(0) @map("total_cbm") @db.Decimal(10, 2)

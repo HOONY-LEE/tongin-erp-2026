@@ -149,6 +149,13 @@ export default {
     reason: '사유',
     lowStockWarn: '안전재고 미만 자재가 있습니다',
   },
+  address: {
+    zipcode: '우편번호',
+    search: '우편번호 찾기',
+    road: '도로명주소',
+    detail: '상세주소 입력',
+    geocoded: '좌표 확인됨',
+  },
   settlement: {
     receivables: '고객별 미수금',
     customer: '고객',

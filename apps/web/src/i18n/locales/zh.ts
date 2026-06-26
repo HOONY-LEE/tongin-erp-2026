@@ -149,6 +149,13 @@ export default {
     reason: '事由',
     lowStockWarn: '存在低于安全库存的物料',
   },
+  address: {
+    zipcode: '邮编',
+    search: '查找地址',
+    road: '道路名地址',
+    detail: '详细地址',
+    geocoded: '已定位',
+  },
   settlement: {
     receivables: '客户应收',
     customer: '客户',
