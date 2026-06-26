@@ -24,6 +24,7 @@ import { MaterialModule } from './modules/material/material.module';
 import { SettlementModule } from './modules/settlement/settlement.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { MaterialOrderModule } from './modules/material-order/material-order.module';
+import { GeoModule } from './modules/geo/geo.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { SupportModule } from './modules/support/support.module';
@@ -59,6 +60,7 @@ import { ScopeModule } from './scope/scope.module';
     StatsModule,
     ServiceOrderModule,
     SupportModule,
+    GeoModule,
   ],
   controllers: [AppController],
 })

@@ -68,9 +68,27 @@ export default function Leads() {
     { name: 'customerId', label: '고객', type: 'select', options: customers },
     { name: 'source', label: '접수경로', placeholder: 'HOMEPAGE / AIBOT ...' },
     { name: 'serviceLine', label: '서비스라인', type: 'select', options: SERVICE_LINES },
-    { name: 'fromAddr', label: '출발지' },
-    { name: 'toAddr', label: '도착지' },
+    { name: 'fromAddress', label: '출발지', type: 'address', addrPrefix: 'from' },
+    { name: 'toAddress', label: '도착지', type: 'address', addrPrefix: 'to' },
   ];
+
+  // 견적 생성 시 리드의 구조적 주소(우편번호·도로명·상세·시도/시군구·좌표)를 승계
+  const ADDR_KEYS = [
+    'fromZipcode',
+    'fromAddr',
+    'fromAddrDetail',
+    'fromSido',
+    'fromSigungu',
+    'fromLat',
+    'fromLng',
+    'toZipcode',
+    'toAddr',
+    'toAddrDetail',
+    'toSido',
+    'toSigungu',
+    'toLat',
+    'toLng',
+  ] as const;
 
   const onCreate = async (values: Record<string, unknown>) => {
     try {
@@ -102,13 +120,15 @@ export default function Leads() {
   const onCreateEstimate = async (values: Record<string, unknown>) => {
     if (!estRow) return;
     try {
+      const inheritedAddr = Object.fromEntries(
+        ADDR_KEYS.filter((kk) => estRow[kk] != null).map((kk) => [kk, estRow[kk]]),
+      );
       const created = await api<{ id: string }>('/estimates', {
         method: 'POST',
         body: JSON.stringify({
           leadId: estRow.id,
           orgUnitId: estRow.orgUnitId,
-          fromAddr: estRow.fromAddr ?? undefined,
-          toAddr: estRow.toAddr ?? undefined,
+          ...inheritedAddr,
           ...values,
         }),
       });

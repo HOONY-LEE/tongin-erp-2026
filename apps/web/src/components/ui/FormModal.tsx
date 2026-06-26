@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Button, Input, Modal, Select, useToast } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
 import type { FormField } from './types';
+import { AddressField } from './AddressField';
+import { ADDRESS_PARTS, addrKey } from './address';
 
 interface Props {
   open: boolean;
@@ -39,13 +41,27 @@ export function FormModal({
 
   const submit = async () => {
     for (const f of fields) {
-      if (f.required && !values[f.name]) {
+      const missing =
+        f.type === 'address'
+          ? !values[addrKey(f.addrPrefix ?? '', 'zipcode')] ||
+            !values[addrKey(f.addrPrefix ?? '', 'addr')]
+          : !values[f.name];
+      if (f.required && missing) {
         toast({ type: 'warning', title: `${f.label} — ${t('common.required')}` });
         return;
       }
     }
     const payload: Record<string, unknown> = {};
     for (const f of fields) {
+      if (f.type === 'address') {
+        for (const part of ADDRESS_PARTS) {
+          const key = addrKey(f.addrPrefix ?? '', part);
+          const v = values[key];
+          if (v === undefined || v === '') continue;
+          payload[key] = part === 'lat' || part === 'lng' ? Number(v) : v;
+        }
+        continue;
+      }
       const v = values[f.name];
       if (v === undefined || v === '') continue;
       payload[f.name] = f.type === 'number' ? Number(v) : v;
@@ -80,7 +96,16 @@ export function FormModal({
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {fields.map((f) =>
-          f.type === 'select' ? (
+          f.type === 'address' ? (
+            <AddressField
+              key={f.name}
+              addrPrefix={f.addrPrefix ?? ''}
+              label={f.label}
+              required={f.required}
+              values={values}
+              setField={setField}
+            />
+          ) : f.type === 'select' ? (
             <Select
               key={f.name}
               label={f.label}
