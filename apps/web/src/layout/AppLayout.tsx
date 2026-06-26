@@ -18,6 +18,7 @@ function Sidebar() {
     { to: '/cbm-items', label: t('nav.cbmItems') },
     { to: '/materials', label: t('nav.materials') },
     { to: '/settlements', label: t('nav.settlement') },
+    { to: '/billing', label: t('nav.billing') },
     { to: '/org-units', label: t('nav.orgUnits') },
   ];
   const active = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));

@@ -17,6 +17,7 @@ import Products from './pages/Products';
 import CbmItems from './pages/CbmItems';
 import Materials from './pages/Materials';
 import Settlement from './pages/Settlement';
+import Billing from './pages/Billing';
 import OrgUnits from './pages/OrgUnits';
 
 function Shell() {
@@ -45,6 +46,7 @@ function Shell() {
         <Route path="/cbm-items" element={<CbmItems />} />
         <Route path="/materials" element={<Materials />} />
         <Route path="/settlements" element={<Settlement />} />
+        <Route path="/billing" element={<Billing />} />
         <Route path="/org-units" element={<OrgUnits />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
