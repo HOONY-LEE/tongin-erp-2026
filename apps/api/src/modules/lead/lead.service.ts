@@ -50,6 +50,43 @@ export class LeadService {
     return lead;
   }
 
+  /** 케이스 뷰: 한 접수의 전체 여정(고객 + 견적·계약·작업 문서흐름)을 한 번에. */
+  async caseView(id: string, principal?: AuthPrincipal) {
+    await this.findOne(id, principal); // 존재 + 조직 스코프 검증
+    return this.prisma.lead.findUnique({
+      where: { id },
+      include: {
+        customer: { select: { id: true, name: true, phonePrimary: true } },
+        estimates: {
+          select: {
+            id: true,
+            estimateNo: true,
+            status: true,
+            totalCbm: true,
+            totalAmount: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+        contracts: {
+          select: {
+            id: true,
+            contractNo: true,
+            status: true,
+            totalAmount: true,
+            signedAt: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+        workOrders: {
+          select: { id: true, workNo: true, status: true, scheduledDate: true, createdAt: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+  }
+
   async create(dto: CreateLeadDto) {
     const data = {
       leadNo: this.genLeadNo(),
