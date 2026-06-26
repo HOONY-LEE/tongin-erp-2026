@@ -1,7 +1,9 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { ContractService } from './contract.service';
 import { CreateContractDto, CreatePaymentDto } from './dto/contract.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 @Controller('contracts')
 export class ContractController {
@@ -9,14 +11,14 @@ export class ContractController {
 
   @Get()
   @RequirePermissions('CONTRACT.READ')
-  findAll() {
-    return this.contractService.findAll();
+  findAll(@CurrentUser() user: AuthPrincipal) {
+    return this.contractService.findAll(user);
   }
 
   @Get(':id')
   @RequirePermissions('CONTRACT.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.contractService.findOne(id);
+  findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.contractService.findOne(id, user);
   }
 
   @Post()

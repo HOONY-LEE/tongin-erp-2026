@@ -12,7 +12,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { B2B_DOCUMENT_KINDS, type B2bDocumentKind } from '@tongin/shared';
+import { B2B_DOCUMENT_KINDS, type AuthPrincipal, type B2bDocumentKind } from '@tongin/shared';
 import { EstimateService } from './estimate.service';
 import { EstimateB2bService } from './estimate-b2b.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
@@ -20,6 +20,7 @@ import { CreateLineDto, CreateZoneDto } from './dto/estimate-child.dto';
 import { CreateCostLineDto } from './dto/cost-line.dto';
 import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 @Controller('estimates')
 export class EstimateController {
@@ -30,14 +31,14 @@ export class EstimateController {
 
   @Get()
   @RequirePermissions('ESTIMATE.READ')
-  findAll(@Query('leadId') leadId?: string) {
-    return this.estimateService.findAll(leadId);
+  findAll(@CurrentUser() user: AuthPrincipal, @Query('leadId') leadId?: string) {
+    return this.estimateService.findAll(leadId, user);
   }
 
   @Get(':id')
   @RequirePermissions('ESTIMATE.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.estimateService.findOne(id);
+  findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.estimateService.findOne(id, user);
   }
 
   @Post()

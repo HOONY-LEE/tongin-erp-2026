@@ -15,6 +15,8 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { TransitionLeadDto } from './dto/transition-lead.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthPrincipal } from '@tongin/shared';
 
 @Controller('leads')
 export class LeadController {
@@ -23,17 +25,18 @@ export class LeadController {
   @Get()
   @RequirePermissions('LEAD.READ')
   findAll(
+    @CurrentUser() user: AuthPrincipal,
     @Query('status') status?: string,
     @Query('source') source?: string,
     @Query('orgUnitId') orgUnitId?: string,
   ) {
-    return this.leadService.findAll({ status, source, orgUnitId });
+    return this.leadService.findAll({ status, source, orgUnitId }, user);
   }
 
   @Get(':id')
   @RequirePermissions('LEAD.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.leadService.findOne(id);
+  findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.leadService.findOne(id, user);
   }
 
   @Post()

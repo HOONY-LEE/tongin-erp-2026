@@ -1,6 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { CreateMaterialOrderDto } from './dto/create-material-order.dto';
 
 /**
@@ -12,27 +19,40 @@ export class MaterialOrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
   ) {}
 
-  findAll(orgUnitId?: string, status?: string) {
+  async findAll(orgUnitId?: string, status?: string, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
     return this.prisma.materialOrder.findMany({
-      where: { ...(orgUnitId ? { orgUnitId } : {}), ...(status ? { status } : {}) },
+      where: {
+        ...(ids === null ? (orgUnitId ? { orgUnitId } : {}) : { orgUnitId: { in: ids } }),
+        ...(status ? { status } : {}),
+      },
       include: { orgUnit: true, lines: { include: { material: true } } },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, principal?: AuthPrincipal) {
     const order = await this.prisma.materialOrder.findUnique({
       where: { id },
       include: { orgUnit: true, lines: { include: { material: true } } },
     });
     if (!order) throw new NotFoundException(`발주를 찾을 수 없습니다: ${id}`);
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(order.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 발주만 조회할 수 있습니다.');
+    }
     return order;
   }
 
-  async create(dto: CreateMaterialOrderDto) {
+  async create(dto: CreateMaterialOrderDto, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(dto.orgUnitId)) {
+      throw new ForbiddenException('소속 조직으로만 발주할 수 있습니다.');
+    }
     const org = await this.prisma.orgUnit.findUnique({ where: { id: dto.orgUnitId } });
     if (!org) throw new BadRequestException('존재하지 않는 발주 지점(orgUnitId)입니다.');
     const materialIds = [...new Set(dto.lines.map((l) => l.materialId))];
