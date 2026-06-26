@@ -618,3 +618,23 @@ model StockMovement {
   @@index([materialId])
   @@map("stock_movement")
 }
+
+// ── CAT-01: 리빙·케어 서비스 주문 (이사 CBM 견적과 별개의 경량 서비스 주문) ──
+model ServiceOrder {
+  id            String    @id @default(uuid()) @db.Uuid
+  orderNo       String    @unique @map("order_no")
+  serviceLine   String    @map("service_line") // LIVING | CARE (홈케어/새집증후군/청소/엔딩케어)
+  productId     String?   @map("product_id") @db.Uuid // 서비스 상품(scalar; 이름은 마스터에서 조회)
+  customerId    String?   @map("customer_id") @db.Uuid
+  orgUnitId     String    @map("org_unit_id") @db.Uuid // 담당 지점(데이터범위 스코프)
+  scheduledDate DateTime? @map("scheduled_date") @db.Date
+  address       String?
+  amount        Decimal?  @db.Decimal(14, 2)
+  note          String?
+  status        String    @default("REQUESTED") // REQUESTED→SCHEDULED→DONE / CANCELED
+  assignedEmpId String?   @map("assigned_emp_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([orgUnitId])
+  @@map("service_order")
+}

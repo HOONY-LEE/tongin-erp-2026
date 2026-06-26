@@ -57,6 +57,10 @@ export type Handling = (typeof HANDLING)[number];
 export const STOCK_MOVEMENT_TYPES = ['IN', 'OUT', 'ADJUST'] as const;
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
 
+// CAT-01: 리빙·케어 서비스 주문 상태 (요청→일정확정→완료 / 취소)
+export const SERVICE_ORDER_STATUS = ['REQUESTED', 'SCHEDULED', 'DONE', 'CANCELED'] as const;
+export type ServiceOrderStatus = (typeof SERVICE_ORDER_STATUS)[number];
+
 // MM-02: 가맹점 발주 상태 (요청→승인→출고; 출고 전 취소 가능)
 export const MATERIAL_ORDER_STATUS = ['REQUESTED', 'APPROVED', 'SHIPPED', 'CANCELED'] as const;
 export type MaterialOrderStatus = (typeof MATERIAL_ORDER_STATUS)[number];
@@ -163,6 +167,8 @@ export const PERMISSIONS = [
   'MATERIAL_ORDER.READ',
   'MATERIAL_ORDER.WRITE',
   'STATS.READ',
+  'SERVICE_ORDER.READ',
+  'SERVICE_ORDER.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

@@ -21,6 +21,7 @@ function Sidebar() {
     { to: '/settlements', label: t('nav.settlement'), perm: 'SETTLEMENT.READ' },
     { to: '/billing', label: t('nav.billing'), perm: 'BILLING.READ' },
     { to: '/material-orders', label: t('nav.materialOrders'), perm: 'MATERIAL_ORDER.READ' },
+    { to: '/service-orders', label: t('nav.serviceOrders'), perm: 'SERVICE_ORDER.READ' },
     { to: '/org-units', label: t('nav.orgUnits'), perm: 'ORG_UNIT.READ' },
   ];
   const items = allItems.filter((it) => !it.perm || can(it.perm));
