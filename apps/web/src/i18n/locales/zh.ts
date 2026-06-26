@@ -16,7 +16,7 @@ export default {
   },
   nav: {
     dashboard: '仪表盘',
-    leads: '受理',
+    leads: '营业',
     estimates: '报价',
     contracts: '合同',
     workOrders: '作业',

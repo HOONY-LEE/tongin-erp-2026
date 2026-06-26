@@ -36,6 +36,18 @@ const SERVICE_LINES = [
   { value: 'GENERAL', label: '일반' },
 ];
 
+// 단계 탭 = lead.status 그룹 (한 케이스가 상태로 전 단계를 관통)
+const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
+  { key: 'ALL', label: '전체', statuses: null },
+  { key: 'INTAKE', label: '접수', statuses: ['RECEIVED', 'CONSULT_ASSIGNED', 'CONSULT_TOSS'] },
+  { key: 'QUOTE', label: '견적', statuses: ['QUOTED'] },
+  { key: 'CONTRACT', label: '계약', statuses: ['CONTRACTED'] },
+  { key: 'WORK', label: '작업', statuses: ['WORK_TOSS', 'IN_PROGRESS', 'DONE'] },
+];
+const inStage = (status: string, statuses: string[] | null) =>
+  statuses === null ? true : statuses.includes(status);
+const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '0');
+
 export default function Leads() {
   const { t } = useTranslation();
   const toast = useToast();
@@ -45,6 +57,7 @@ export default function Leads() {
   const [createOpen, setCreateOpen] = useState(false);
   const [transRow, setTransRow] = useState<Row | null>(null);
   const [estRow, setEstRow] = useState<Row | null>(null);
+  const [stage, setStage] = useState('ALL');
   const orgs = useOptions('/org-units', 'name');
   const customers = useOptions('/customers', 'name');
   const products = useOptions('/products', 'name');
@@ -195,17 +208,62 @@ export default function Leads() {
     },
   ];
 
+  const current = STAGES.find((s) => s.key === stage) ?? STAGES[0];
+  const filtered = rows.filter((r) => inStage(String(r.status), current.statuses));
+  const countFor = (statuses: string[] | null) =>
+    rows.filter((r) => inStage(String(r.status), statuses)).length;
+  const expectedSum = filtered.reduce((acc, r) => acc + Number(r.expectedAmount ?? 0), 0);
+  const doneCount = rows.filter((r) => r.status === 'DONE').length;
+  const doneRate = rows.length ? Math.round((doneCount / rows.length) * 100) : 0;
+
+  const kpis = [
+    { label: `케이스 수 (${current.label})`, value: String(filtered.length) },
+    { label: '예상가치', value: `₩${won(expectedSum)}` },
+    { label: '완료율 (전체)', value: `${doneRate}%` },
+  ];
+
   return (
-    <PageCard
-      title={t('nav.leads')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-          + {t('lead.register')}
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        {kpis.map((k) => (
+          <div
+            key={k.label}
+            style={{
+              border: '1px solid var(--ark-color-gray-200)',
+              borderRadius: 12,
+              padding: '16px 20px',
+              background: 'var(--ark-color-bg)',
+            }}
+          >
+            <div style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>{k.label}</div>
+            <div style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>{k.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <PageCard
+        title="영업 파이프라인"
+        count={filtered.length}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+            + {t('lead.register')}
+          </Button>
+        }
+      >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {STAGES.map((s) => (
+            <Button
+              key={s.key}
+              variant={stage === s.key ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => setStage(s.key)}
+            >
+              {s.label} ({countFor(s.statuses)})
+            </Button>
+          ))}
+        </div>
+        <DataTable columns={columns} rows={filtered} loading={loading} />
+      </PageCard>
 
       <FormModal
         open={createOpen}
@@ -252,6 +310,6 @@ export default function Leads() {
         ]}
         onSubmit={onCreateEstimate}
       />
-    </PageCard>
+    </div>
   );
 }
