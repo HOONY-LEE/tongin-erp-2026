@@ -29,6 +29,7 @@ export default {
     materialOrders: 'Material Orders',
     serviceOrders: 'Living·Care',
     support: 'CS·AS',
+    campaigns: 'Marketing',
     orgUnits: 'Organizations',
   },
   navGroup: {
@@ -148,6 +149,17 @@ export default {
     qty: 'Qty',
     reason: 'Reason',
     lowStockWarn: 'Some materials are below safety stock',
+  },
+  campaign: {
+    register: 'New campaign',
+    name: 'Name',
+    channel: 'Channel',
+    targetGrade: 'Target grade',
+    message: 'Message',
+    status: 'Status',
+    recipients: 'Sent',
+    send: 'Send',
+    sentMsg: 'Sent',
   },
   address: {
     zipcode: 'Zip',
