@@ -1,13 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { canTransition, type LeadStatus } from '@tongin/shared';
+import { canTransition, type AuthPrincipal, type LeadStatus } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 
@@ -22,23 +24,29 @@ export class LeadService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
   ) {}
 
-  findAll(filter: LeadFilter) {
+  async findAll(filter: LeadFilter, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
     return this.prisma.lead.findMany({
       where: {
         status: filter.status,
         source: filter.source,
-        orgUnitId: filter.orgUnitId,
+        orgUnitId: ids === null ? filter.orgUnitId : { in: ids },
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, principal?: AuthPrincipal) {
     const lead = await this.prisma.lead.findUnique({ where: { id } });
     if (!lead) throw new NotFoundException(`리드를 찾을 수 없습니다: ${id}`);
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(lead.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 리드만 조회할 수 있습니다.');
+    }
     return lead;
   }
 

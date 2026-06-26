@@ -1,6 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
 import { StubPaymentProvider } from './payment-provider';
 import { CreateContractDto, CreatePaymentDto } from './dto/contract.dto';
@@ -12,20 +19,30 @@ export class ContractService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
     private readonly leadService: LeadService,
     private readonly payments: StubPaymentProvider,
   ) {}
 
-  findAll() {
-    return this.prisma.contract.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
+  async findAll(principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    return this.prisma.contract.findMany({
+      where: ids === null ? {} : { orgUnitId: { in: ids } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, principal?: AuthPrincipal) {
     const contract = await this.prisma.contract.findUnique({
       where: { id },
       include: { payments: true },
     });
     if (!contract) throw new NotFoundException(`계약을 찾을 수 없습니다: ${id}`);
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && contract.orgUnitId && !ids.includes(contract.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 계약만 조회할 수 있습니다.');
+    }
     return contract;
   }
 

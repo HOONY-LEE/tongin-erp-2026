@@ -1,7 +1,9 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { MaterialOrderService } from './material-order.service';
 import { CreateMaterialOrderDto } from './dto/create-material-order.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 @Controller('material-orders')
 export class MaterialOrderController {
@@ -9,20 +11,24 @@ export class MaterialOrderController {
 
   @Get()
   @RequirePermissions('MATERIAL_ORDER.READ')
-  findAll(@Query('orgUnitId') orgUnitId?: string, @Query('status') status?: string) {
-    return this.service.findAll(orgUnitId, status);
+  findAll(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('orgUnitId') orgUnitId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.service.findAll(orgUnitId, status, user);
   }
 
   @Get(':id')
   @RequirePermissions('MATERIAL_ORDER.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.findOne(id);
+  findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findOne(id, user);
   }
 
   @Post()
   @RequirePermissions('MATERIAL_ORDER.WRITE')
-  create(@Body() dto: CreateMaterialOrderDto) {
-    return this.service.create(dto);
+  create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateMaterialOrderDto) {
+    return this.service.create(dto, user);
   }
 
   @Post(':id/approve')

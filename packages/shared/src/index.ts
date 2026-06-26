@@ -171,6 +171,8 @@ export const PERMISSION_WILDCARD = '*';
 export const ROLE_SUPER_ADMIN = 'SUPER_ADMIN';
 // 외부 전속업체 제한 역할 (OPS-04): 본인 소속 partner의 작업오더만 조회
 export const ROLE_OUTSOURCE = 'OUTSOURCE';
+// 가맹점 역할 (APP-02): 본인 소속 조직(+하위)의 리드·견적·계약·작업·발주만 조회/발주
+export const ROLE_FRANCHISE = 'FRANCHISE';
 
 export interface LoginRequest {
   loginId: string;

@@ -1,12 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
 import { CreateLineDto, CreateZoneDto } from './dto/estimate-child.dto';
@@ -17,18 +20,23 @@ export class EstimateService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
     private readonly leadService: LeadService,
   ) {}
 
-  findAll(leadId?: string) {
+  async findAll(leadId?: string, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
     return this.prisma.estimate.findMany({
-      where: leadId ? { leadId } : undefined,
+      where: {
+        ...(leadId ? { leadId } : {}),
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, principal?: AuthPrincipal) {
     const estimate = await this.prisma.estimate.findUnique({
       where: { id },
       include: {
@@ -38,6 +46,10 @@ export class EstimateService {
       },
     });
     if (!estimate) throw new NotFoundException(`견적을 찾을 수 없습니다: ${id}`);
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(estimate.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 견적만 조회할 수 있습니다.');
+    }
     return estimate;
   }
 

@@ -1,6 +1,12 @@
 import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { PERMISSIONS, PERMISSION_WILDCARD, ROLE_OUTSOURCE, ROLE_SUPER_ADMIN } from '@tongin/shared';
+import {
+  PERMISSIONS,
+  PERMISSION_WILDCARD,
+  ROLE_FRANCHISE,
+  ROLE_OUTSOURCE,
+  ROLE_SUPER_ADMIN,
+} from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -18,6 +24,64 @@ export class AuthSeederService implements OnModuleInit {
     const role = await this.seedSuperAdminRole();
     await this.seedAdminUser(role.id);
     await this.seedOutsourceRole();
+    await this.seedFranchiseRoleAndUser();
+  }
+
+  /** APP-02: 가맹점 역할 + 데모 가맹점 사용자(첫 BRANCH 조직 스코프). 멱등. */
+  private async seedFranchiseRoleAndUser(): Promise<void> {
+    const role = await this.prisma.role.upsert({
+      where: { code: ROLE_FRANCHISE },
+      update: {},
+      create: {
+        code: ROLE_FRANCHISE,
+        name: '가맹점',
+        description: '본인 소속 조직(+하위)의 리드·견적·계약·작업·발주 조회/발주',
+      },
+    });
+    const grant = [
+      'ORG_UNIT.READ',
+      'CUSTOMER.READ',
+      'PRODUCT.READ',
+      'CBM_ITEM.READ',
+      'MATERIAL.READ',
+      'LEAD.READ',
+      'ESTIMATE.READ',
+      'CONTRACT.READ',
+      'PAYMENT.READ',
+      'WORK_ORDER.READ',
+      'MATERIAL_ORDER.READ',
+      'MATERIAL_ORDER.WRITE',
+    ];
+    for (const code of grant) {
+      const perm = await this.prisma.permission.findUnique({ where: { code } });
+      if (!perm) continue;
+      await this.prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: role.id, permissionId: perm.id } },
+        update: {},
+        create: { roleId: role.id, permissionId: perm.id },
+      });
+    }
+
+    const existing = await this.prisma.appUser.findUnique({ where: { loginId: 'franchise' } });
+    if (existing) return;
+    const branch = await this.prisma.orgUnit.findFirst({
+      where: { type: 'BRANCH' },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!branch) {
+      this.logger.log('가맹점 데모 사용자 생략: BRANCH 조직이 아직 없습니다.');
+      return;
+    }
+    const passwordHash = await bcrypt.hash('franchise1234', 10);
+    const user = await this.prisma.appUser.create({
+      data: { loginId: 'franchise', passwordHash, principalType: 'HUMAN' },
+    });
+    await this.prisma.userRole.create({
+      data: { userId: user.id, roleId: role.id, orgScopeId: branch.id, dataScope: 'ORG' },
+    });
+    this.logger.warn(
+      `가맹점 데모 사용자 생성: loginId=franchise / password=franchise1234 (조직 스코프: ${branch.name})`,
+    );
   }
 
   /** OPS-04: 외부 전속업체 제한 역할 — 작업오더 조회만(데이터범위는 app_user.partnerId로 제한). */

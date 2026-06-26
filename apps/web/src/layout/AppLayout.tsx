@@ -7,21 +7,23 @@ import { LangSwitch, ThemeSwitch } from '../components/Switchers';
 function Sidebar() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const items = [
-    { to: '/', label: t('nav.dashboard') },
-    { to: '/leads', label: t('nav.leads') },
-    { to: '/estimates', label: t('nav.estimates') },
-    { to: '/contracts', label: t('nav.contracts') },
-    { to: '/work-orders', label: t('nav.workOrders') },
-    { to: '/customers', label: t('nav.customers') },
-    { to: '/products', label: t('nav.products') },
-    { to: '/cbm-items', label: t('nav.cbmItems') },
-    { to: '/materials', label: t('nav.materials') },
-    { to: '/settlements', label: t('nav.settlement') },
-    { to: '/billing', label: t('nav.billing') },
-    { to: '/material-orders', label: t('nav.materialOrders') },
-    { to: '/org-units', label: t('nav.orgUnits') },
+  const { can } = useAuth();
+  const allItems: { to: string; label: string; perm?: string }[] = [
+    { to: '/', label: t('nav.dashboard'), perm: 'STATS.READ' },
+    { to: '/leads', label: t('nav.leads'), perm: 'LEAD.READ' },
+    { to: '/estimates', label: t('nav.estimates'), perm: 'ESTIMATE.READ' },
+    { to: '/contracts', label: t('nav.contracts'), perm: 'CONTRACT.READ' },
+    { to: '/work-orders', label: t('nav.workOrders'), perm: 'WORK_ORDER.READ' },
+    { to: '/customers', label: t('nav.customers'), perm: 'CUSTOMER.READ' },
+    { to: '/products', label: t('nav.products'), perm: 'PRODUCT.READ' },
+    { to: '/cbm-items', label: t('nav.cbmItems'), perm: 'CBM_ITEM.READ' },
+    { to: '/materials', label: t('nav.materials'), perm: 'MATERIAL.READ' },
+    { to: '/settlements', label: t('nav.settlement'), perm: 'SETTLEMENT.READ' },
+    { to: '/billing', label: t('nav.billing'), perm: 'BILLING.READ' },
+    { to: '/material-orders', label: t('nav.materialOrders'), perm: 'MATERIAL_ORDER.READ' },
+    { to: '/org-units', label: t('nav.orgUnits'), perm: 'ORG_UNIT.READ' },
   ];
+  const items = allItems.filter((it) => !it.perm || can(it.perm));
   const active = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
 
   return (
