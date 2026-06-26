@@ -30,6 +30,7 @@ export default {
     serviceOrders: '리빙·케어',
     support: 'CS·AS',
     campaigns: '마케팅',
+    hr: '인사·성과',
     orgUnits: '조직',
   },
   navGroup: {

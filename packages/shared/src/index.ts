@@ -83,6 +83,54 @@ export type CampaignChannel = (typeof CAMPAIGN_CHANNELS)[number];
 export const CAMPAIGN_STATUS = ['DRAFT', 'SENT'] as const;
 export type CampaignStatus = (typeof CAMPAIGN_STATUS)[number];
 
+// ── HR-01: 인센티브/패널티 정책 엔진 (설정 기반 — 규칙=데이터) ──
+export const HR_POLICY_KINDS = ['INCENTIVE', 'PENALTY'] as const; // 수당(+) / 패널티(−)
+export type HrPolicyKind = (typeof HR_POLICY_KINDS)[number];
+
+export const HR_TARGET_TYPES = ['EMPLOYEE', 'BRANCH'] as const; // 견적사원 / 지점
+export type HrTargetType = (typeof HR_TARGET_TYPES)[number];
+
+// 실적 지표. 금액형(매출)·건수형으로 나뉨. *_BRANCH_ONLY 는 지점 귀속만 가능.
+export const HR_METRICS = [
+  'CONTRACT_REVENUE', // 계약(서명) 매출
+  'CONTRACT_COUNT', // 계약 건수
+  'PAID_REVENUE', // 입금완료 매출
+  'DONE_COUNT', // 완료 작업 수 (지점만)
+  'AS_COUNT', // AS/하자 접수 수 (지점만)
+] as const;
+export type HrMetric = (typeof HR_METRICS)[number];
+export const HR_METRICS_BRANCH_ONLY: HrMetric[] = ['DONE_COUNT', 'AS_COUNT'];
+export const HR_METRICS_AMOUNT: HrMetric[] = ['CONTRACT_REVENUE', 'PAID_REVENUE'];
+
+// 계산 방식: 정률(기준액×rate) | 단위당 정액(건수×amount)
+export const HR_CALC_TYPES = ['RATE', 'FIXED_PER_UNIT'] as const;
+export type HrCalcType = (typeof HR_CALC_TYPES)[number];
+
+// 정산 결과(연월×대상유형): 대상별 라인 + 수당/패널티/순지급
+export interface HrPayoutLine {
+  policyId: string;
+  policyName: string;
+  kind: HrPolicyKind;
+  metric: HrMetric;
+  base: number; // 지표 실적값(매출 또는 건수)
+  value: number; // 규칙 값(rate 또는 단위당 정액)
+  amount: number; // 산출액(패널티는 음수)
+}
+export interface HrPayoutTarget {
+  targetId: string;
+  targetName: string;
+  lines: HrPayoutLine[];
+  incentive: number;
+  penalty: number;
+  net: number; // 수당 − 패널티
+}
+export interface HrPayoutResult {
+  year: number;
+  month: number;
+  targetType: HrTargetType;
+  targets: HrPayoutTarget[];
+}
+
 // EST-03: 견적 재료비 라인 상태 (DRAFT→재고 차감→DEDUCTED)
 export const ESTIMATE_COST_LINE_STATUS = ['DRAFT', 'DEDUCTED', 'CANCELED'] as const;
 export type EstimateCostLineStatus = (typeof ESTIMATE_COST_LINE_STATUS)[number];
@@ -191,6 +239,8 @@ export const PERMISSIONS = [
   'SUPPORT.WRITE',
   'MARKETING.READ',
   'MARKETING.WRITE',
+  'HR.READ',
+  'HR.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

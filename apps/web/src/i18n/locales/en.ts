@@ -30,6 +30,7 @@ export default {
     serviceOrders: 'Living·Care',
     support: 'CS·AS',
     campaigns: 'Marketing',
+    hr: 'HR·Incentive',
     orgUnits: 'Organizations',
   },
   navGroup: {

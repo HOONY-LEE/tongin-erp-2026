@@ -16,6 +16,7 @@ import Customers from './pages/Customers';
 import Products from './pages/Products';
 import CbmItems from './pages/CbmItems';
 import Campaigns from './pages/Campaigns';
+import HrPolicies from './pages/HrPolicies';
 import Materials from './pages/Materials';
 import Settlement from './pages/Settlement';
 import Billing from './pages/Billing';
@@ -55,6 +56,7 @@ function Shell() {
         <Route path="/service-orders" element={<ServiceOrders />} />
         <Route path="/support" element={<Support />} />
         <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/hr" element={<HrPolicies />} />
         <Route path="/org-units" element={<OrgUnits />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

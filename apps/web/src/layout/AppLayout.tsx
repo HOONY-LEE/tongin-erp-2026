@@ -43,6 +43,7 @@ function Sidebar() {
       items: [
         { to: '/settlements', label: t('nav.settlement'), perm: 'SETTLEMENT.READ' },
         { to: '/billing', label: t('nav.billing'), perm: 'BILLING.READ' },
+        { to: '/hr', label: t('nav.hr'), perm: 'HR.READ' },
       ],
     },
     {
