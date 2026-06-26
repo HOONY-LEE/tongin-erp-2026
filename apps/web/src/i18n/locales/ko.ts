@@ -16,7 +16,7 @@ export default {
   },
   nav: {
     dashboard: '대시보드',
-    leads: '접수',
+    leads: '영업',
     estimates: '견적',
     contracts: '계약',
     workOrders: '작업',
