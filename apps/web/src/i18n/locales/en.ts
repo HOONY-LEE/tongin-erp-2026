@@ -16,7 +16,7 @@ export default {
   },
   nav: {
     dashboard: 'Dashboard',
-    leads: 'Leads',
+    leads: 'Intake',
     estimates: 'Estimates',
     contracts: 'Contracts',
     workOrders: 'Work Orders',

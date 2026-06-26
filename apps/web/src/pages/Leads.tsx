@@ -143,7 +143,14 @@ export default function Leads() {
   };
 
   const columns: Column[] = [
-    { title: '접수번호', dataIndex: 'leadNo' },
+    {
+      title: '접수번호',
+      render: (r) => (
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/leads/${r.id as string}`)}>
+          {String(r.leadNo)}
+        </Button>
+      ),
+    },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
     { title: '출처', render: (r) => String(r.source ?? '-') },
     { title: '서비스', render: (r) => String(r.serviceLine ?? '-') },

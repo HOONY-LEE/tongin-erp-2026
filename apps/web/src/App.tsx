@@ -6,6 +6,7 @@ import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
+import LeadDetail from './pages/LeadDetail';
 import Estimates from './pages/Estimates';
 import EstimateDetail from './pages/EstimateDetail';
 import Contracts from './pages/Contracts';
@@ -40,6 +41,7 @@ function Shell() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
+        <Route path="/leads/:id" element={<LeadDetail />} />
         <Route path="/estimates" element={<Estimates />} />
         <Route path="/estimates/:id" element={<EstimateDetail />} />
         <Route path="/contracts" element={<Contracts />} />

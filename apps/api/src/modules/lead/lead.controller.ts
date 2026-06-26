@@ -39,6 +39,12 @@ export class LeadController {
     return this.leadService.findOne(id, user);
   }
 
+  @Get(':id/case')
+  @RequirePermissions('LEAD.READ')
+  caseView(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.leadService.caseView(id, user);
+  }
+
   @Post()
   @RequirePermissions('LEAD.WRITE')
   create(@Body() dto: CreateLeadDto) {
