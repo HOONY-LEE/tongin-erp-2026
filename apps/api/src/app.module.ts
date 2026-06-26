@@ -26,6 +26,7 @@ import { BillingModule } from './modules/billing/billing.module';
 import { MaterialOrderModule } from './modules/material-order/material-order.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
+import { SupportModule } from './modules/support/support.module';
 import { ScopeModule } from './scope/scope.module';
 
 @Module({
@@ -57,6 +58,7 @@ import { ScopeModule } from './scope/scope.module';
     MaterialOrderModule,
     StatsModule,
     ServiceOrderModule,
+    SupportModule,
   ],
   controllers: [AppController],
 })
