@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import {
+  AddressView,
   Button,
   DataTable,
   FormModal,
@@ -148,7 +149,29 @@ export default function Leads() {
     { title: '서비스', render: (r) => String(r.serviceLine ?? '-') },
     {
       title: '이사 경로',
-      render: (r) => (r.fromAddr || r.toAddr ? `${r.fromAddr ?? '-'} → ${r.toAddr ?? '-'}` : '-'),
+      render: (r) =>
+        r.fromAddr || r.toAddr ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <AddressView
+              label="출발"
+              zipcode={r.fromZipcode as string}
+              addr={r.fromAddr as string}
+              addrDetail={r.fromAddrDetail as string}
+              lat={r.fromLat as number}
+              lng={r.fromLng as number}
+            />
+            <AddressView
+              label="도착"
+              zipcode={r.toZipcode as string}
+              addr={r.toAddr as string}
+              addrDetail={r.toAddrDetail as string}
+              lat={r.toLat as number}
+              lng={r.toLng as number}
+            />
+          </div>
+        ) : (
+          '-'
+        ),
     },
     {
       title: '작업',
