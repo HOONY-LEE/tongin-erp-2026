@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/ui';
 import OrgUnits from './OrgUnits';
-import Placeholder from './Placeholder';
+import Employees from './Employees';
 
 /** 조직관리 — 조직 / 직원 탭 (직원 화면은 순차 구현). */
 export default function OrgMgmt() {
@@ -26,7 +26,7 @@ export default function OrgMgmt() {
           {t('nav.employees')}
         </Button>
       </div>
-      {tab === 'org' ? <OrgUnits /> : <Placeholder titleKey="nav.employees" />}
+      {tab === 'org' ? <OrgUnits /> : <Employees />}
     </div>
   );
 }
