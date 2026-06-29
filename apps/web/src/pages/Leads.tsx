@@ -79,7 +79,8 @@ export default function Leads() {
 
   const createFields: FormField[] = [
     { name: 'orgUnitId', label: '담당 지점', required: true, type: 'select', options: orgs },
-    { name: 'customerId', label: '고객', type: 'select', options: customers },
+    { name: 'customerName', label: '고객명', required: true, placeholder: '홍길동' },
+    { name: 'customerPhone', label: '연락처', placeholder: '010-0000-0000' },
     { name: 'source', label: '접수경로', placeholder: 'HOMEPAGE / AIBOT ...' },
     { name: 'serviceLine', label: '서비스라인', type: 'select', options: SERVICE_LINES },
     { name: 'fromAddress', label: '출발지', type: 'address', addrPrefix: 'from' },
@@ -163,6 +164,22 @@ export default function Leads() {
           {String(r.leadNo)}
         </Button>
       ),
+    },
+    {
+      title: '고객',
+      render: (r) => {
+        const c = r.customer as { name?: string; phonePrimary?: string } | null;
+        return c?.name ? (
+          <span>
+            <b>{c.name}</b>
+            {c.phonePrimary ? (
+              <span style={{ color: 'var(--ark-color-text-tertiary)' }}> · {c.phonePrimary}</span>
+            ) : null}
+          </span>
+        ) : (
+          '-'
+        );
+      },
     },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
     { title: '출처', render: (r) => String(r.source ?? '-') },
