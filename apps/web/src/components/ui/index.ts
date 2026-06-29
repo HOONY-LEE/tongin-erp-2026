@@ -13,6 +13,8 @@ export {
   SidebarGroup,
   SidebarItem,
   Header,
+  EditorTabs,
+  type EditorTab,
   Button,
   Card,
   Badge,

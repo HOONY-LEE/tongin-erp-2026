@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
@@ -19,7 +19,14 @@ import {
   Building2,
   LogOut,
 } from 'lucide-react';
-import { LayoutSidebar, SidebarGroup, SidebarItem, Button } from '../components/ui';
+import {
+  LayoutSidebar,
+  SidebarGroup,
+  SidebarItem,
+  EditorTabs,
+  Button,
+  type EditorTab,
+} from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { LangSwitch, ThemeSwitch } from '../components/Switchers';
 
@@ -104,12 +111,51 @@ export default function AppLayout() {
     .filter((g) => g.items.length > 0);
   const isActive = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
 
+  // ── 헤더 멀티탭 (workone EditorTabs) — 방문한 메뉴를 탭으로 누적 ──
+  const allItems = visibleGroups.flatMap((g) => g.items);
+  const matched = allItems
+    .filter((i) => (i.to === '/' ? pathname === '/' : pathname.startsWith(i.to)))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  const activeHref = matched?.to ?? '/';
+
+  const [openTabs, setOpenTabs] = useState<string[]>([activeHref]);
+  useEffect(() => {
+    setOpenTabs((prev) => (prev.includes(activeHref) ? prev : [...prev, activeHref]));
+  }, [activeHref]);
+
+  const editorTabs: EditorTab[] = openTabs
+    .map((href) => {
+      const it = allItems.find((i) => i.to === href);
+      return it
+        ? { id: href, label: it.label, icon: <it.icon size={14} />, closable: openTabs.length > 1 }
+        : null;
+    })
+    .filter(Boolean) as EditorTab[];
+
+  const closeTab = (id: string) => {
+    const next = openTabs.filter((t) => t !== id);
+    if (next.length === 0) return;
+    setOpenTabs(next);
+    if (activeHref === id) navigate(next[next.length - 1]);
+  };
+  const addTab = () => {
+    const closed = allItems.filter((i) => !openTabs.includes(i.to));
+    if (closed.length === 0) return;
+    setOpenTabs((prev) => [...prev, closed[0].to]);
+    navigate(closed[0].to);
+  };
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <LayoutSidebar
         collapsed={collapsed}
         onCollapse={() => setCol(true)}
         onExpand={() => setCol(false)}
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          boxShadow: '4px 0 24px rgba(15, 23, 42, 0.06), 1px 0 0 rgba(15, 23, 42, 0.04)',
+        }}
         header={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
@@ -186,17 +232,29 @@ export default function AppLayout() {
             height: 56,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
             gap: 10,
-            padding: '0 20px',
+            padding: '0 16px',
             borderBottom: '1px solid var(--ark-color-gray-200)',
             background: 'var(--ark-color-bg)',
             flexShrink: 0,
           }}
         >
-          <LangSwitch />
-          <ThemeSwitch />
-          <span style={{ color: 'var(--ark-color-text-secondary)' }}>{user?.loginId}</span>
+          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+            <EditorTabs
+              tabs={editorTabs}
+              activeId={activeHref}
+              onTabChange={(id) => navigate(id)}
+              onTabClose={closeTab}
+              onTabAdd={addTab}
+              size="sm"
+            />
+          </div>
+          <div style={{ flexShrink: 0, width: 140 }}>
+            <LangSwitch />
+          </div>
+          <div style={{ flexShrink: 0, width: 120 }}>
+            <ThemeSwitch />
+          </div>
           <Button variant="outline" size="sm" onClick={logout}>
             {t('common.logout')}
           </Button>
