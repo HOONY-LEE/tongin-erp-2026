@@ -4,19 +4,17 @@ import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
-  TrendingUp,
-  Sparkles,
+  Inbox,
+  Banknote,
   LifeBuoy,
   Megaphone,
-  Wallet,
-  Receipt,
-  Users,
   Package,
   ShoppingCart,
   UserRound,
   Tag,
-  BookOpen,
   Building2,
+  Store,
+  ShieldCheck,
   LogOut,
 } from 'lucide-react';
 import {
@@ -61,31 +59,18 @@ export default function AppLayout() {
 
   const groups: NavGroup[] = [
     {
-      label: t('navGroup.work'),
+      label: t('navGroup.ops'),
       items: [
         { to: '/', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
-        { to: '/leads', label: t('nav.leads'), icon: TrendingUp, perm: 'LEAD.READ' },
-      ],
-    },
-    {
-      label: t('navGroup.service'),
-      items: [
+        { to: '/leads', label: t('nav.leads'), icon: Inbox, perm: 'LEAD.READ' },
         {
-          to: '/service-orders',
-          label: t('nav.serviceOrders'),
-          icon: Sparkles,
-          perm: 'SERVICE_ORDER.READ',
+          to: '/payments-confirm',
+          label: t('nav.paymentsConfirm'),
+          icon: Banknote,
+          perm: 'PAYMENT.READ',
         },
         { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
         { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
-      ],
-    },
-    {
-      label: t('navGroup.finance'),
-      items: [
-        { to: '/settlements', label: t('nav.settlement'), icon: Wallet, perm: 'SETTLEMENT.READ' },
-        { to: '/billing', label: t('nav.billing'), icon: Receipt, perm: 'BILLING.READ' },
-        { to: '/hr', label: t('nav.hr'), icon: Users, perm: 'HR.READ' },
       ],
     },
     {
@@ -101,12 +86,13 @@ export default function AppLayout() {
       ],
     },
     {
-      label: t('navGroup.master'),
+      label: t('navGroup.admin'),
       items: [
         { to: '/customers', label: t('nav.customers'), icon: UserRound, perm: 'CUSTOMER.READ' },
-        { to: '/products', label: t('nav.products'), icon: Tag, perm: 'PRODUCT.READ' },
-        { to: '/cbm-items', label: t('nav.cbmItems'), icon: BookOpen, perm: 'CBM_ITEM.READ' },
-        { to: '/org-units', label: t('nav.orgUnits'), icon: Building2, perm: 'ORG_UNIT.READ' },
+        { to: '/product-mgmt', label: t('nav.productMgmt'), icon: Tag, perm: 'PRODUCT.READ' },
+        { to: '/org-mgmt', label: t('nav.orgMgmt'), icon: Building2, perm: 'ORG_UNIT.READ' },
+        { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
+        { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
       ],
     },
   ];

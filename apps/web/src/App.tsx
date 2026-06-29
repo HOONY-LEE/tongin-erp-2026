@@ -25,6 +25,9 @@ import MaterialOrders from './pages/MaterialOrders';
 import ServiceOrders from './pages/ServiceOrders';
 import Support from './pages/Support';
 import OrgUnits from './pages/OrgUnits';
+import ProductMgmt from './pages/ProductMgmt';
+import OrgMgmt from './pages/OrgMgmt';
+import Placeholder from './pages/Placeholder';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -60,6 +63,12 @@ function Shell() {
         <Route path="/campaigns" element={<Campaigns />} />
         <Route path="/hr" element={<HrPolicies />} />
         <Route path="/org-units" element={<OrgUnits />} />
+        {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}
+        <Route path="/product-mgmt" element={<ProductMgmt />} />
+        <Route path="/org-mgmt" element={<OrgMgmt />} />
+        <Route path="/payments-confirm" element={<Placeholder titleKey="nav.paymentsConfirm" />} />
+        <Route path="/branches" element={<Placeholder titleKey="nav.branches" />} />
+        <Route path="/accounts" element={<Placeholder titleKey="nav.accounts" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
