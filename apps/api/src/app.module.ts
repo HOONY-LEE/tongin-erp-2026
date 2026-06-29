@@ -30,6 +30,7 @@ import { CampaignModule } from './modules/campaign/campaign.module';
 import { HrModule } from './modules/hr/hr.module';
 import { PaymentConfirmationModule } from './modules/payment-confirmation/payment-confirmation.module';
 import { BranchModule } from './modules/branch/branch.module';
+import { AccountModule } from './modules/account/account.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { SupportModule } from './modules/support/support.module';
@@ -71,6 +72,7 @@ import { ScopeModule } from './scope/scope.module';
     HrModule,
     PaymentConfirmationModule,
     BranchModule,
+    AccountModule,
   ],
   controllers: [AppController],
 })
