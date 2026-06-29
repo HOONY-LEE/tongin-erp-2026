@@ -2,9 +2,12 @@ import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 
+const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
+
 const columns: Column[] = [
   { title: '코드', dataIndex: 'code' },
   { title: '상품명', dataIndex: 'name' },
+  { title: '카테고리', render: (r: Row) => String(r.category ?? '-') },
   {
     title: '서비스라인',
     render: (r: Row) => (
@@ -17,6 +20,7 @@ const columns: Column[] = [
     title: '산정방식',
     render: (r: Row) => <Badge variant="subtle">{String(r.pricingMethod)}</Badge>,
   },
+  { title: '기본가격', numeric: true, render: (r: Row) => won(r.basePrice) },
 ];
 
 export default function Products() {
@@ -24,6 +28,7 @@ export default function Products() {
   const fields: FormField[] = [
     { name: 'code', label: '코드', required: true },
     { name: 'name', label: '상품명', required: true },
+    { name: 'category', label: '카테고리', placeholder: '가정이사 / 사무실이사 / 보관 …' },
     {
       name: 'serviceLine',
       label: '서비스라인',
@@ -49,6 +54,7 @@ export default function Products() {
         { value: 'PYEONG', label: '평수' },
       ],
     },
+    { name: 'basePrice', label: '기본가격', type: 'number', placeholder: '예: 500000' },
     { name: 'brandOrgId', label: '브랜드(조직)', type: 'select', options: orgs },
   ];
   return <CrudTable title="상품" path="/products" columns={columns} fields={fields} />;

@@ -194,8 +194,10 @@ model Product {
   id            String   @id @default(uuid()) @db.Uuid
   code          String   @unique
   name          String
+  category      String? // common_code: PRODUCT_CATEGORY (가정이사/사무실이사/보관…)
   serviceLine   String   @map("service_line") // common_code: SERVICE_LINE
   pricingMethod String   @map("pricing_method") // CBM | COST_PLUS | FLAT | PYEONG
+  basePrice     Decimal? @map("base_price") @db.Decimal(14, 2) // 기본(디폴트) 가격
   brandOrgId    String?  @map("brand_org_id") @db.Uuid
   brandOrg      OrgUnit? @relation("ProductBrand", fields: [brandOrgId], references: [id])
   isActive      Boolean  @default(true) @map("is_active")
