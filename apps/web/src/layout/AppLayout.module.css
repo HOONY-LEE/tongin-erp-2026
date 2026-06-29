@@ -1,0 +1,125 @@
+/* ── Desktop Layout: 풀폭 상단 헤더 + 하단 사이드바/콘텐츠 (workone 구조) ── */
+.desktopLayout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--ark-color-bg, #f5f5f7);
+}
+
+/* ── 상단 헤더(풀폭) ── */
+.topHeader {
+  display: flex;
+  align-items: stretch;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 16px 0 0;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  user-select: none;
+  position: relative;
+  z-index: 100;
+}
+
+:global([data-theme='dark']) .topHeader {
+  background: rgba(44, 44, 48, 0.92);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+/* 좌측 스페이서 — 사이드바 폭만큼(탭이 사이드바 끝에서 시작) */
+.headerLeft {
+  width: 206px;
+  flex-shrink: 0;
+  transition: width 0.2s ease;
+}
+.collapsed .headerLeft {
+  width: 64px;
+}
+
+/* 중앙 — EditorTabs */
+.headerCenter {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.headerCenter > div[role='tablist'] {
+  background: transparent !important;
+  height: 100% !important;
+}
+.headerCenter button[role='tab'] {
+  height: 100% !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  max-width: 200px;
+}
+
+/* 우측 — 액션 */
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-left: 8px;
+}
+
+/* ── 메인 영역: 사이드바 + 콘텐츠 ── */
+.mainArea {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  padding-left: 206px;
+  transition: padding-left 0.2s ease;
+}
+.collapsed .mainArea {
+  padding-left: 64px;
+}
+
+/* 사이드바 — 화면 최상단부터 전체 높이 고정(헤더 위로), 카드형 */
+.sidebarWrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 200;
+  width: 206px;
+  flex-shrink: 0;
+  padding: 6px 4px;
+  box-sizing: border-box;
+  transition: width 0.2s ease;
+}
+.collapsed .sidebarWrap {
+  width: 64px;
+}
+
+.sidebarWrap > div {
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.78) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  overflow: hidden;
+  height: 100%;
+}
+:global([data-theme='dark']) .sidebarWrap > div {
+  background: rgba(44, 44, 48, 0.7) !important;
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.04),
+    0 4px 16px rgba(0, 0, 0, 0.24);
+}
+
+/* ── 콘텐츠 ── */
+.contentArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}

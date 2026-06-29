@@ -34,6 +34,7 @@ export default {
     orgUnits: 'Organizations',
   },
   navGroup: {
+    work: 'Workspace',
     sales: 'Sales',
     service: 'Service',
     finance: 'Finance',
@@ -265,4 +266,5 @@ export default {
     revenue: 'Revenue',
   },
   lead: { register: 'New lead', changeStatus: 'Change status', toEstimate: 'Create estimate' },
+  noti: { empty: 'No notifications' },
 } as const;

@@ -34,6 +34,7 @@ export default {
     orgUnits: '조직',
   },
   navGroup: {
+    work: '워크스페이스',
     sales: '영업',
     service: '서비스',
     finance: '정산',
@@ -265,4 +266,5 @@ export default {
     revenue: '매출',
   },
   lead: { register: '접수 등록', changeStatus: '상태변경', toEstimate: '견적 만들기' },
+  noti: { empty: '알림이 없습니다' },
 } as const;
