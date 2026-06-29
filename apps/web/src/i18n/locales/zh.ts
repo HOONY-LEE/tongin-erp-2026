@@ -34,6 +34,7 @@ export default {
     orgUnits: '组织',
   },
   navGroup: {
+    work: '工作区',
     sales: '营业',
     service: '服务',
     finance: '结算',
@@ -265,4 +266,5 @@ export default {
     revenue: '营收',
   },
   lead: { register: '新建受理', changeStatus: '更改状态', toEstimate: '创建报价' },
+  noti: { empty: '暂无通知' },
 } as const;

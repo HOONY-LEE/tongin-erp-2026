@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
@@ -24,30 +24,34 @@ import {
   SidebarGroup,
   SidebarItem,
   EditorTabs,
-  Button,
+  ThemeToggle,
+  NotificationBell,
   type EditorTab,
+  type NotificationBellItem,
 } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
-import { LangSwitch, ThemeSwitch } from '../components/Switchers';
+import { useTheme } from '../theme/ThemeProvider';
+import { api } from '../lib/api';
+import styles from './AppLayout.module.css';
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  perm?: string;
-}
-interface NavGroup {
-  label?: string;
-  items: NavItem[];
-}
+type NavItem = { to: string; label: string; icon: LucideIcon; perm?: string };
+type NavGroup = { label?: string; items: NavItem[] };
 
 const COLLAPSE_KEY = 'tongin_sidebar_collapsed';
+
+interface NotiRow {
+  id: string;
+  eventType: string;
+  message: string;
+  sentAt: string;
+}
 
 export default function AppLayout() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout, can } = useAuth();
+  const { resolved, setMode } = useTheme();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   const setCol = (v: boolean) => {
@@ -57,6 +61,7 @@ export default function AppLayout() {
 
   const groups: NavGroup[] = [
     {
+      label: t('navGroup.work'),
       items: [
         { to: '/', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
         { to: '/leads', label: t('nav.leads'), icon: TrendingUp, perm: 'LEAD.READ' },
@@ -111,7 +116,7 @@ export default function AppLayout() {
     .filter((g) => g.items.length > 0);
   const isActive = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
 
-  // ── 헤더 멀티탭 (workone EditorTabs) — 방문한 메뉴를 탭으로 누적 ──
+  // ── 헤더 멀티탭 ──
   const allItems = visibleGroups.flatMap((g) => g.items);
   const matched = allItems
     .filter((i) => (i.to === '/' ? pathname === '/' : pathname.startsWith(i.to)))
@@ -133,7 +138,7 @@ export default function AppLayout() {
     .filter(Boolean) as EditorTab[];
 
   const closeTab = (id: string) => {
-    const next = openTabs.filter((t) => t !== id);
+    const next = openTabs.filter((t2) => t2 !== id);
     if (next.length === 0) return;
     setOpenTabs(next);
     if (activeHref === id) navigate(next[next.length - 1]);
@@ -145,122 +150,149 @@ export default function AppLayout() {
     navigate(closed[0].to);
   };
 
-  return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <LayoutSidebar
-        collapsed={collapsed}
-        onCollapse={() => setCol(true)}
-        onExpand={() => setCol(false)}
-        style={{
-          position: 'relative',
-          zIndex: 2,
-          boxShadow: '4px 0 24px rgba(15, 23, 42, 0.06), 1px 0 0 rgba(15, 23, 42, 0.04)',
-        }}
-        header={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: 'var(--ark-color-primary-500)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 800,
-                flexShrink: 0,
-              }}
-            >
-              통
-            </div>
-            {!collapsed && <span style={{ fontWeight: 700, fontSize: 15 }}>통인 ERP</span>}
-          </div>
-        }
-        footer={
-          <div
-            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-            onClick={logout}
-            title={t('common.logout')}
-          >
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: 'var(--ark-color-gray-200)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <UserRound size={16} />
-            </div>
-            {!collapsed && (
-              <>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, minWidth: 0 }}>
-                  {user?.loginId}
-                </span>
-                <LogOut size={14} style={{ color: 'var(--ark-color-text-disabled)' }} />
-              </>
-            )}
-          </div>
-        }
-      >
-        {visibleGroups.map((g, gi) => (
-          <SidebarGroup key={g.label ?? `g${gi}`} label={collapsed ? undefined : g.label}>
-            {g.items.map((it) => (
-              <SidebarItem
-                key={it.to}
-                icon={<it.icon size={16} />}
-                active={isActive(it.to)}
-                tooltip={collapsed ? it.label : undefined}
-                onClick={() => navigate(it.to)}
-              >
-                {it.label}
-              </SidebarItem>
-            ))}
-          </SidebarGroup>
-        ))}
-      </LayoutSidebar>
+  // ── 알림 벨 (notification 기록 표시) ──
+  const [notis, setNotis] = useState<NotificationBellItem[]>([]);
+  const loadNotis = useCallback(async () => {
+    if (!can('NOTIFICATION.READ')) return;
+    try {
+      const rows = await api<NotiRow[]>('/notifications');
+      setNotis(
+        rows.slice(0, 20).map((n) => ({
+          id: n.id,
+          title: n.eventType,
+          message: n.message,
+          timestamp: n.sentAt,
+          read: false,
+          type: 'info' as const,
+        })),
+      );
+    } catch {
+      /* 권한/네트워크 실패 시 무시 */
+    }
+  }, [can]);
+  useEffect(() => {
+    void loadNotis();
+  }, [loadNotis]);
+  const unread = notis.filter((n) => !n.read).length;
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <header
-          style={{
-            height: 56,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '0 16px',
-            borderBottom: '1px solid var(--ark-color-gray-200)',
-            background: 'var(--ark-color-bg)',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-            <EditorTabs
-              tabs={editorTabs}
-              activeId={activeHref}
-              onTabChange={(id) => navigate(id)}
-              onTabClose={closeTab}
-              onTabAdd={addTab}
-              size="sm"
-            />
+  return (
+    <div className={`${styles.desktopLayout} ${collapsed ? styles.collapsed : ''}`}>
+      {/* 상단 풀폭 헤더 */}
+      <header className={styles.topHeader}>
+        <div className={styles.headerLeft} />
+        <div className={styles.headerCenter}>
+          <EditorTabs
+            tabs={editorTabs}
+            activeId={activeHref}
+            onTabChange={(id) => navigate(id)}
+            onTabClose={closeTab}
+            onTabAdd={addTab}
+            size="sm"
+          />
+        </div>
+        <div className={styles.headerRight}>
+          <ThemeToggle theme={resolved} size="sm" onChange={(th) => setMode(th)} />
+          <NotificationBell
+            count={unread}
+            notifications={notis}
+            size="sm"
+            emptyMessage={t('noti.empty')}
+            onMarkAllRead={() => setNotis((prev) => prev.map((n) => ({ ...n, read: true })))}
+            onClear={() => setNotis([])}
+          />
+        </div>
+      </header>
+
+      {/* 메인: 고정 사이드바 + 콘텐츠 */}
+      <div className={styles.mainArea}>
+        <aside className={styles.sidebarWrap}>
+          <LayoutSidebar
+            collapsed={collapsed}
+            onCollapse={() => setCol(true)}
+            onExpand={() => setCol(false)}
+            header={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: 'var(--ark-color-primary-500)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    flexShrink: 0,
+                  }}
+                >
+                  통
+                </div>
+                {!collapsed && <span style={{ fontWeight: 700, fontSize: 15 }}>통인 ERP</span>}
+              </div>
+            }
+            footer={
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+                onClick={logout}
+                title={t('common.logout')}
+              >
+                <div
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 10,
+                    background: 'var(--ark-color-gray-200)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <UserRound size={16} />
+                </div>
+                {!collapsed && (
+                  <>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{user?.loginId}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ark-color-text-secondary)' }}>
+                        {t('common.logout')}
+                      </div>
+                    </div>
+                    <LogOut size={14} style={{ color: 'var(--ark-color-text-disabled)' }} />
+                  </>
+                )}
+              </div>
+            }
+          >
+            {visibleGroups.map((g, gi) => (
+              <SidebarGroup
+                key={g.label ?? `g${gi}`}
+                label={collapsed ? undefined : g.label}
+                collapsible={!collapsed}
+                defaultOpen
+              >
+                {g.items.map((it) => (
+                  <SidebarItem
+                    key={it.to}
+                    icon={<it.icon size={16} />}
+                    active={isActive(it.to)}
+                    tooltip={collapsed ? it.label : undefined}
+                    onClick={() => navigate(it.to)}
+                  >
+                    {it.label}
+                  </SidebarItem>
+                ))}
+              </SidebarGroup>
+            ))}
+          </LayoutSidebar>
+        </aside>
+
+        <main className={styles.contentArea}>
+          <div style={{ padding: 24 }}>
+            <Outlet />
           </div>
-          <div style={{ flexShrink: 0, width: 140 }}>
-            <LangSwitch />
-          </div>
-          <div style={{ flexShrink: 0, width: 120 }}>
-            <ThemeSwitch />
-          </div>
-          <Button variant="outline" size="sm" onClick={logout}>
-            {t('common.logout')}
-          </Button>
-        </header>
-        <main style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-          <Outlet />
         </main>
       </div>
     </div>
