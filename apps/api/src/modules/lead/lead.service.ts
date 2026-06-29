@@ -50,10 +50,10 @@ export class LeadService {
     return lead;
   }
 
-  /** 케이스 뷰: 한 접수의 전체 여정(고객 + 견적·계약·작업 문서흐름)을 한 번에. */
+  /** 케이스 뷰: 한 접수의 전체 여정(고객 + 견적·계약·결제·작업 문서흐름 + CS·AS 이력)을 한 번에. */
   async caseView(id: string, principal?: AuthPrincipal) {
     await this.findOne(id, principal); // 존재 + 조직 스코프 검증
-    return this.prisma.lead.findUnique({
+    const lead = await this.prisma.lead.findUnique({
       where: { id },
       include: {
         customer: { select: { id: true, name: true, phonePrimary: true } },
@@ -76,6 +76,10 @@ export class LeadService {
             totalAmount: true,
             signedAt: true,
             createdAt: true,
+            payments: {
+              select: { id: true, kind: true, amount: true, status: true, paidAt: true },
+              orderBy: { createdAt: 'asc' },
+            },
           },
           orderBy: { createdAt: 'asc' },
         },
@@ -85,6 +89,23 @@ export class LeadService {
         },
       },
     });
+    // CS·AS 이력은 고객 기준(접수에 직접 FK 없음)
+    const supportTickets = lead?.customerId
+      ? await this.prisma.supportTicket.findMany({
+          where: { customerId: lead.customerId },
+          select: {
+            id: true,
+            kind: true,
+            subject: true,
+            status: true,
+            priority: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        })
+      : [];
+    return { ...lead, supportTickets };
   }
 
   async create(dto: CreateLeadDto) {
