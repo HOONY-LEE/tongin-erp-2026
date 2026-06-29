@@ -29,7 +29,7 @@ import ProductMgmt from './pages/ProductMgmt';
 import OrgMgmt from './pages/OrgMgmt';
 import PaymentConfirm from './pages/PaymentConfirm';
 import Branches from './pages/Branches';
-import Placeholder from './pages/Placeholder';
+import Accounts from './pages/Accounts';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -70,7 +70,7 @@ function Shell() {
         <Route path="/org-mgmt" element={<OrgMgmt />} />
         <Route path="/payments-confirm" element={<PaymentConfirm />} />
         <Route path="/branches" element={<Branches />} />
-        <Route path="/accounts" element={<Placeholder titleKey="nav.accounts" />} />
+        <Route path="/accounts" element={<Accounts />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
