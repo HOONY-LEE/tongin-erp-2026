@@ -35,6 +35,7 @@ export class LeadService {
         source: filter.source,
         orgUnitId: ids === null ? filter.orgUnitId : { in: ids },
       },
+      include: { customer: { select: { id: true, name: true, phonePrimary: true } } },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
@@ -109,10 +110,22 @@ export class LeadService {
   }
 
   async create(dto: CreateLeadDto) {
+    // 신규 접수: 고객명 입력 시 고객 자동 생성·연결(드롭다운 선택은 customerId)
+    let customerId = dto.customerId;
+    if (!customerId && dto.customerName?.trim()) {
+      const customer = await this.prisma.customer.create({
+        data: {
+          name: dto.customerName.trim(),
+          phonePrimary: dto.customerPhone,
+          ownerOrgId: dto.orgUnitId,
+        },
+      });
+      customerId = customer.id;
+    }
     const data = {
       leadNo: this.genLeadNo(),
       orgUnitId: dto.orgUnitId,
-      customerId: dto.customerId,
+      customerId,
       ownerEmpId: dto.ownerEmpId,
       partnerId: dto.partnerId,
       source: dto.source,

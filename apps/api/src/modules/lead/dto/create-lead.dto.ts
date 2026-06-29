@@ -8,7 +8,17 @@ export class CreateLeadDto extends MoveAddressDto {
 
   @IsOptional()
   @IsUUID()
-  customerId?: string;
+  customerId?: string; // 기존(재이용) 고객 선택 시
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  customerName?: string; // 신규 고객명(입력 시 고객 자동 생성·연결)
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  customerPhone?: string;
 
   @IsOptional()
   @IsUUID()
