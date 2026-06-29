@@ -55,7 +55,9 @@
   height: 100% !important;
   border-radius: 0 !important;
   background: transparent !important;
-  max-width: 200px;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+  max-width: 260px;
 }
 
 /* 우측 — 액션 */
