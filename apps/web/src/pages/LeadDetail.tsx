@@ -49,11 +49,26 @@ interface Estimate {
   totalCbm: string | number;
   totalAmount: string | number | null;
 }
+interface Payment {
+  id: string;
+  kind: string;
+  amount: string | number;
+  status: string;
+}
 interface Contract {
   id: string;
   contractNo: string;
   status: string;
   totalAmount: string | number;
+  payments: Payment[];
+}
+interface Ticket {
+  id: string;
+  kind: string;
+  subject: string;
+  status: string;
+  priority: string;
+  createdAt: string;
 }
 interface WorkOrder {
   id: string;
@@ -81,7 +96,22 @@ interface LeadCase {
   estimates: Estimate[];
   contracts: Contract[];
   workOrders: WorkOrder[];
+  supportTickets: Ticket[];
 }
+
+const PAY_STATUS: StatusMap = {
+  PENDING: { label: '대기', color: 'warning' },
+  PAID: { label: '완료', color: 'success' },
+  CANCELED: { label: '취소', color: 'error' },
+};
+const TICKET_STATUS: StatusMap = {
+  RECEIVED: { label: '접수', color: 'neutral' },
+  IN_PROGRESS: { label: '처리중', color: 'info' },
+  RESOLVED: { label: '해결', color: 'success' },
+  CLOSED: { label: '종료', color: 'neutral' },
+  CANCELED: { label: '취소', color: 'error' },
+};
+const PAY_KIND: Record<string, string> = { DEPOSIT: '계약금', BALANCE: '잔금' };
 
 /** 문서흐름 한 단계(카드). 비어 있으면 안내. */
 function Stage({
@@ -232,13 +262,24 @@ export default function LeadDetail() {
 
       <Stage step={3} title="계약" empty={data.contracts.length === 0}>
         {data.contracts.map((c) => (
-          <DocRow
-            key={c.id}
-            no={c.contractNo}
-            badge={<StatusBadge value={c.status} map={CONTRACT_STATUS} />}
-            info={`총액 ${won(c.totalAmount)}`}
-            onOpen={() => navigate(`/contracts/${c.id}`)}
-          />
+          <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <DocRow
+              no={c.contractNo}
+              badge={<StatusBadge value={c.status} map={CONTRACT_STATUS} />}
+              info={`총액 ${won(c.totalAmount)}`}
+              onOpen={() => navigate(`/contracts/${c.id}`)}
+            />
+            {c.payments.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingLeft: 12 }}>
+                {c.payments.map((p) => (
+                  <Badge key={p.id} variant="subtle" color={PAY_STATUS[p.status]?.color}>
+                    {PAY_KIND[p.kind] ?? p.kind} {won(p.amount)} ·{' '}
+                    {PAY_STATUS[p.status]?.label ?? p.status}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </Stage>
 
@@ -253,6 +294,21 @@ export default function LeadDetail() {
           />
         ))}
       </Stage>
+
+      {data.supportTickets.length > 0 && (
+        <PageCard title={`CS·AS 이력 (${data.supportTickets.length})`}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {data.supportTickets.map((tk) => (
+              <DocRow
+                key={tk.id}
+                no={`${tk.kind === 'AS' ? 'AS' : 'CS'} · ${tk.subject}`}
+                badge={<StatusBadge value={tk.status} map={TICKET_STATUS} />}
+                info={String(tk.createdAt).slice(0, 10)}
+              />
+            ))}
+          </div>
+        </PageCard>
+      )}
     </div>
   );
 }
