@@ -3,30 +3,34 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../components/ui';
 import Products from './Products';
 import CbmItems from './CbmItems';
+import Addons from './Addons';
 
-/** 상품관리 — 상품 / 품목 탭 (메뉴명에는 미표기, 내부 분류). */
+type Tab = 'product' | 'cbm' | 'addon';
+
+/** 상품관리 — 상품 / 품목 / 옵션 탭 (카탈로그 분리: 상품·CBM사전·부가서비스). */
 export default function ProductMgmt() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<'product' | 'cbm'>('product');
+  const [tab, setTab] = useState<Tab>('product');
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'product', label: t('nav.products') },
+    { key: 'cbm', label: t('nav.cbmItems') },
+    { key: 'addon', label: '옵션' },
+  ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        <Button
-          variant={tab === 'product' ? 'primary' : 'outline'}
-          size="sm"
-          onClick={() => setTab('product')}
-        >
-          {t('nav.products')}
-        </Button>
-        <Button
-          variant={tab === 'cbm' ? 'primary' : 'outline'}
-          size="sm"
-          onClick={() => setTab('cbm')}
-        >
-          {t('nav.cbmItems')}
-        </Button>
+        {tabs.map((tb) => (
+          <Button
+            key={tb.key}
+            variant={tab === tb.key ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => setTab(tb.key)}
+          >
+            {tb.label}
+          </Button>
+        ))}
       </div>
-      {tab === 'product' ? <Products /> : <CbmItems />}
+      {tab === 'product' ? <Products /> : tab === 'cbm' ? <CbmItems /> : <Addons />}
     </div>
   );
 }
