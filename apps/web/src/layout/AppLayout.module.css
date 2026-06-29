@@ -11,8 +11,8 @@
 .topHeader {
   display: flex;
   align-items: stretch;
-  height: 44px;
-  min-height: 44px;
+  height: 38px;
+  min-height: 38px;
   padding: 0 16px 0 0;
   background: rgba(255, 255, 255, 0.92);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -58,6 +58,11 @@
   padding-left: 24px !important;
   padding-right: 24px !important;
   max-width: 260px;
+}
+/* 탭 리스트 끝 + 추가 버튼 — 위아래 중앙 정렬 */
+.headerCenter > div[role='tablist'] > button,
+.headerCenter button:not([role='tab']) {
+  align-self: center !important;
 }
 
 /* 우측 — 액션 */

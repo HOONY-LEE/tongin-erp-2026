@@ -15,6 +15,7 @@ import {
   Building2,
   Store,
   ShieldCheck,
+  Globe,
   LogOut,
 } from 'lucide-react';
 import {
@@ -29,8 +30,11 @@ import {
 } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../theme/ThemeProvider';
+import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { api } from '../lib/api';
 import styles from './AppLayout.module.css';
+
+const LANG_SHORT: Record<string, string> = { ko: '한', en: 'EN', zh: '中' };
 
 type NavItem = { to: string; label: string; icon: LucideIcon; perm?: string };
 type NavGroup = { label?: string; items: NavItem[] };
@@ -45,7 +49,7 @@ interface NotiRow {
 }
 
 export default function AppLayout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout, can } = useAuth();
@@ -55,6 +59,12 @@ export default function AppLayout() {
   const setCol = (v: boolean) => {
     setCollapsed(v);
     localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0');
+  };
+
+  const cycleLang = () => {
+    const codes = SUPPORTED_LANGS.map((l) => l.code);
+    const idx = codes.indexOf(i18n.language as (typeof codes)[number]);
+    setLang(codes[(idx + 1) % codes.length]);
   };
 
   const groups: NavGroup[] = [
@@ -177,6 +187,28 @@ export default function AppLayout() {
           />
         </div>
         <div className={styles.headerRight}>
+          <button
+            type="button"
+            onClick={cycleLang}
+            title={t('lang.label')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              height: 28,
+              padding: '0 8px',
+              border: 'none',
+              borderRadius: 8,
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--ark-color-text-secondary)',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <Globe size={15} />
+            {LANG_SHORT[i18n.language] ?? i18n.language.toUpperCase()}
+          </button>
           <ThemeToggle theme={resolved} size="sm" onChange={(th) => setMode(th)} />
           <NotificationBell
             count={unread}
