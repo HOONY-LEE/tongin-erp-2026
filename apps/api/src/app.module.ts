@@ -28,6 +28,7 @@ import { GeoModule } from './modules/geo/geo.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { CampaignModule } from './modules/campaign/campaign.module';
 import { HrModule } from './modules/hr/hr.module';
+import { PaymentConfirmationModule } from './modules/payment-confirmation/payment-confirmation.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { SupportModule } from './modules/support/support.module';
@@ -67,6 +68,7 @@ import { ScopeModule } from './scope/scope.module';
     CalendarModule,
     CampaignModule,
     HrModule,
+    PaymentConfirmationModule,
   ],
   controllers: [AppController],
 })

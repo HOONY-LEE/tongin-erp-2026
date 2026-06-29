@@ -27,6 +27,7 @@ import Support from './pages/Support';
 import OrgUnits from './pages/OrgUnits';
 import ProductMgmt from './pages/ProductMgmt';
 import OrgMgmt from './pages/OrgMgmt';
+import PaymentConfirm from './pages/PaymentConfirm';
 import Placeholder from './pages/Placeholder';
 
 function Shell() {
@@ -66,7 +67,7 @@ function Shell() {
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}
         <Route path="/product-mgmt" element={<ProductMgmt />} />
         <Route path="/org-mgmt" element={<OrgMgmt />} />
-        <Route path="/payments-confirm" element={<Placeholder titleKey="nav.paymentsConfirm" />} />
+        <Route path="/payments-confirm" element={<PaymentConfirm />} />
         <Route path="/branches" element={<Placeholder titleKey="nav.branches" />} />
         <Route path="/accounts" element={<Placeholder titleKey="nav.accounts" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
