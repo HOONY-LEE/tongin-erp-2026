@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
@@ -24,6 +25,7 @@ const columns: Column[] = [
 ];
 
 export default function Products() {
+  const navigate = useNavigate();
   const orgs = useOptions('/org-units', 'name');
   const fields: FormField[] = [
     { name: 'code', label: '코드', required: true },
@@ -57,5 +59,13 @@ export default function Products() {
     { name: 'basePrice', label: '기본가격', type: 'number', placeholder: '예: 500000' },
     { name: 'brandOrgId', label: '브랜드(조직)', type: 'select', options: orgs },
   ];
-  return <CrudTable title="상품" path="/products" columns={columns} fields={fields} />;
+  return (
+    <CrudTable
+      title="상품"
+      path="/products"
+      columns={columns}
+      fields={fields}
+      onDetail={(r) => navigate(`/products/${r.id as string}`)}
+    />
+  );
 }

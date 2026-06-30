@@ -204,7 +204,21 @@ model Product {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   estimates Estimate[]
+  addons    ProductAddon[]
   @@map("product")
+}
+
+// 상품 ↔ 옵션(부가서비스) 연결 (상품별 제공 옵션). 가격 override 가능.
+model ProductAddon {
+  productId      String       @map("product_id") @db.Uuid
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  addonServiceId String       @map("addon_service_id") @db.Uuid
+  addon          AddonService @relation(fields: [addonServiceId], references: [id], onDelete: Cascade)
+  priceOverride  Decimal?     @map("price_override") @db.Decimal(14, 2) // 상품별 옵션가(없으면 옵션 기본가)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([productId, addonServiceId])
+  @@map("product_addon")
 }
 
 // B. CBM 품목사전: 짐량 측정용 표준 사전 (단일 표준·중복방지)
@@ -231,6 +245,7 @@ model AddonService {
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  products ProductAddon[]
   @@map("addon_service")
 }
 

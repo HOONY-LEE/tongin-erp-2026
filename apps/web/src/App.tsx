@@ -30,6 +30,7 @@ import OrgMgmt from './pages/OrgMgmt';
 import PaymentConfirm from './pages/PaymentConfirm';
 import Branches from './pages/Branches';
 import Accounts from './pages/Accounts';
+import ProductDetail from './pages/ProductDetail';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -55,6 +56,7 @@ function Shell() {
         <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/cbm-items" element={<CbmItems />} />
         <Route path="/materials" element={<Materials />} />
         <Route path="/settlements" element={<Settlement />} />
