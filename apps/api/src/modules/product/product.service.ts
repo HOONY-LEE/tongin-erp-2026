@@ -26,6 +26,45 @@ export class ProductService {
     return found;
   }
 
+  async findOneWithAddons(id: string) {
+    const found = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        addons: {
+          include: { addon: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+    if (!found) throw new NotFoundException(`상품을 찾을 수 없습니다: ${id}`);
+    return found;
+  }
+
+  async addAddon(productId: string, addonServiceId: string, priceOverride?: number) {
+    await this.findOne(productId);
+    const addon = await this.prisma.addonService.findUnique({ where: { id: addonServiceId } });
+    if (!addon) throw new NotFoundException(`옵션을 찾을 수 없습니다: ${addonServiceId}`);
+    try {
+      return await this.prisma.productAddon.create({
+        data: { productId, addonServiceId, priceOverride },
+        include: { addon: true },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('이미 연결된 옵션입니다.');
+      }
+      throw e;
+    }
+  }
+
+  async removeAddon(productId: string, addonServiceId: string) {
+    await this.prisma.productAddon.delete({
+      where: { productId_addonServiceId: { productId, addonServiceId } },
+    }).catch(() => {
+      throw new NotFoundException('연결된 옵션이 없습니다.');
+    });
+  }
+
   async create(dto: CreateProductDto) {
     try {
       return await this.prisma.product.create({ data: dto });

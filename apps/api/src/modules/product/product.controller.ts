@@ -10,10 +10,17 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+
+class AddAddonDto {
+  @IsUUID() addonServiceId!: string;
+  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0)
+  priceOverride?: number;
+}
 
 @Controller('products')
 export class ProductController {
@@ -28,7 +35,23 @@ export class ProductController {
   @Get(':id')
   @RequirePermissions('PRODUCT.READ')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.productService.findOne(id);
+    return this.productService.findOneWithAddons(id);
+  }
+
+  @Post(':id/addons')
+  @RequirePermissions('PRODUCT.WRITE')
+  addAddon(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AddAddonDto) {
+    return this.productService.addAddon(id, dto.addonServiceId, dto.priceOverride);
+  }
+
+  @Delete(':id/addons/:addonId')
+  @RequirePermissions('PRODUCT.WRITE')
+  @HttpCode(204)
+  removeAddon(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('addonId', ParseUUIDPipe) addonId: string,
+  ) {
+    return this.productService.removeAddon(id, addonId);
   }
 
   @Post()

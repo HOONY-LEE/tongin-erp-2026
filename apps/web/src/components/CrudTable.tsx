@@ -12,10 +12,11 @@ interface Props {
   path: string;
   columns: Column[];
   fields: FormField[];
+  onDetail?: (row: Row) => void;
 }
 
 /** 마스터 목록+등록 화면 공통 구성 (PageCard + DataTable + FormModal). */
-export default function CrudTable({ title, path, columns, fields }: Props) {
+export default function CrudTable({ title, path, columns, fields, onDetail }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]);
@@ -58,7 +59,25 @@ export default function CrudTable({ title, path, columns, fields }: Props) {
         </Button>
       }
     >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+      <DataTable
+        columns={
+          onDetail
+            ? [
+                ...columns,
+                {
+                  title: '',
+                  render: (r: Row) => (
+                    <Button variant="ghost" size="sm" onClick={() => onDetail(r)}>
+                      상세 →
+                    </Button>
+                  ),
+                },
+              ]
+            : columns
+        }
+        rows={rows}
+        loading={loading}
+      />
       <FormModal
         open={open}
         onOpenChange={setOpen}
