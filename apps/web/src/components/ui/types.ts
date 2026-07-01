@@ -13,7 +13,7 @@ export interface FormField {
   name: string;
   label: string;
   required?: boolean;
-  type?: 'text' | 'number' | 'select' | 'address';
+  type?: 'text' | 'number' | 'select' | 'address' | 'date';
   options?: { value: string; label: string }[];
   placeholder?: string;
   /** type='address'일 때 저장 키 접두('' | 'from' | 'to'). 미지정 시 ''. */

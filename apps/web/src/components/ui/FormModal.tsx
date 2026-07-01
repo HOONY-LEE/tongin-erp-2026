@@ -118,7 +118,7 @@ export function FormModal({
             <Input
               key={f.name}
               label={f.label}
-              type={f.type === 'number' ? 'number' : 'text'}
+              type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
               value={values[f.name] ?? ''}
               placeholder={f.placeholder}
               onChange={(e) => setField(f.name, e.target.value)}
