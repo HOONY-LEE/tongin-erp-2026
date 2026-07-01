@@ -15,6 +15,7 @@ import {
   Building2,
   Store,
   ShieldCheck,
+  Handshake,
   Globe,
   LogOut,
 } from 'lucide-react';
@@ -100,6 +101,7 @@ export default function AppLayout() {
       items: [
         { to: '/customers', label: t('nav.customers'), icon: UserRound, perm: 'CUSTOMER.READ' },
         { to: '/product-mgmt', label: t('nav.productMgmt'), icon: Tag, perm: 'PRODUCT.READ' },
+        { to: '/partner-mgmt', label: t('nav.partnerMgmt'), icon: Handshake, perm: 'PARTNER.READ' },
         { to: '/org-mgmt', label: t('nav.orgMgmt'), icon: Building2, perm: 'ORG_UNIT.READ' },
         { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
         { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },

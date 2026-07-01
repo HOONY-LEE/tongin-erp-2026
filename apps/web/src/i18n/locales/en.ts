@@ -34,6 +34,7 @@ export default {
     orgUnits: 'Organizations',
     paymentsConfirm: 'Payment Confirm',
     productMgmt: 'Products',
+    partnerMgmt: 'Partners',
     orgMgmt: 'Organization',
     branches: 'Branches',
     accounts: 'Accounts',

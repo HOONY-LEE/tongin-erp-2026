@@ -34,6 +34,7 @@ export default {
     orgUnits: '组织',
     paymentsConfirm: '入账确认',
     productMgmt: '商品管理',
+    partnerMgmt: '合作商管理',
     orgMgmt: '组织管理',
     branches: '网点管理',
     accounts: '账户管理',

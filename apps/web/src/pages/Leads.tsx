@@ -61,6 +61,7 @@ export default function Leads() {
   const orgs = useOptions('/org-units', 'name');
   const customers = useOptions('/customers', 'name');
   const products = useOptions('/products', 'name');
+  const partners = useOptions('/partners', 'name');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +82,7 @@ export default function Leads() {
     { name: 'orgUnitId', label: '담당 지점', required: true, type: 'select', options: orgs },
     { name: 'customerName', label: '고객명', required: true, placeholder: '홍길동' },
     { name: 'customerPhone', label: '연락처', placeholder: '010-0000-0000' },
+    { name: 'partnerId', label: '거래처(제휴·B2B)', type: 'select', options: partners },
     { name: 'source', label: '접수경로', placeholder: 'HOMEPAGE / AIBOT ...' },
     { name: 'serviceLine', label: '서비스라인', type: 'select', options: SERVICE_LINES },
     { name: 'fromAddress', label: '출발지', type: 'address', addrPrefix: 'from' },

@@ -31,6 +31,7 @@ import PaymentConfirm from './pages/PaymentConfirm';
 import Branches from './pages/Branches';
 import Accounts from './pages/Accounts';
 import ProductDetail from './pages/ProductDetail';
+import PartnerMgmt from './pages/PartnerMgmt';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -69,6 +70,7 @@ function Shell() {
         <Route path="/org-units" element={<OrgUnits />} />
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}
         <Route path="/product-mgmt" element={<ProductMgmt />} />
+        <Route path="/partner-mgmt" element={<PartnerMgmt />} />
         <Route path="/org-mgmt" element={<OrgMgmt />} />
         <Route path="/payments-confirm" element={<PaymentConfirm />} />
         <Route path="/branches" element={<Branches />} />

@@ -34,6 +34,7 @@ export default {
     orgUnits: '조직',
     paymentsConfirm: '입금확인',
     productMgmt: '상품관리',
+    partnerMgmt: '거래처관리',
     orgMgmt: '조직관리',
     branches: '지점관리',
     accounts: '계정관리',
