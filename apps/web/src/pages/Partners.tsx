@@ -51,5 +51,5 @@ const fields: FormField[] = [
 
 /** 거래처 CRUD 목록. */
 export default function Partners() {
-  return <CrudTable title="거래처" path="/partners" columns={columns} fields={fields} />;
+  return <CrudTable title="거래처" path="/partners" columns={columns} fields={fields} hideHeader />;
 }

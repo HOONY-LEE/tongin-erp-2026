@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   StatusBadge,
   useToast,
   type Column,
@@ -32,11 +34,13 @@ export default function Estimates() {
   const customers = useOptions('/customers', 'name');
   const orgs = useOptions('/org-units', 'name');
   const products = useOptions('/products', 'name');
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setRows(await api<Row[]>('/estimates'));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -93,16 +97,20 @@ export default function Estimates() {
   ];
 
   return (
-    <PageCard
-      title={t('nav.estimates')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-          + {t('estimate.create')}
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.estimates')}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+            + {t('estimate.create')}
+          </Button>
+        }
+        onRefresh={load}
+        updatedAt={updatedAt}
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+      </PageCard>
       <FormModal
         open={open}
         onOpenChange={setOpen}
@@ -110,6 +118,6 @@ export default function Estimates() {
         fields={fields}
         onSubmit={onCreate}
       />
-    </PageCard>
+    </div>
   );
 }

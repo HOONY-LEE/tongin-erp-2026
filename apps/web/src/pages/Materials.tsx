@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   StatusBadge,
   useToast,
   type Column,
@@ -38,11 +40,13 @@ export default function Materials() {
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [moveRow, setMoveRow] = useState<MaterialRow | null>(null);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setRows(await api<MaterialRow[]>('/materials'));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -116,16 +120,28 @@ export default function Materials() {
   ];
 
   return (
-    <PageCard
-      title={t('nav.materials')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-          + {t('material.register')}
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.materials')}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+            + {t('material.register')}
+          </Button>
+        }
+        onRefresh={load}
+        updatedAt={updatedAt}
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+
+        {rows.some((r) => r.lowStock) && (
+          <div style={{ marginTop: 12 }}>
+            <Badge color="error" variant="subtle">
+              ⚠ {t('material.lowStockWarn')}
+            </Badge>
+          </div>
+        )}
+      </PageCard>
 
       <FormModal
         open={createOpen}
@@ -163,14 +179,6 @@ export default function Materials() {
         ]}
         onSubmit={onMove}
       />
-
-      {rows.some((r) => r.lowStock) && (
-        <div style={{ marginTop: 12 }}>
-          <Badge color="error" variant="subtle">
-            ⚠ {t('material.lowStockWarn')}
-          </Badge>
-        </div>
-      )}
-    </PageCard>
+    </div>
   );
 }

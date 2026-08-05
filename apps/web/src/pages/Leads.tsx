@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { useAuth } from '../auth/AuthContext';
 import {
   AddressView,
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
+  SegmentedControl,
   StatusBadge,
   useToast,
   type Column,
@@ -35,6 +39,16 @@ const SERVICE_LINES = [
   { value: 'B2B_MOVING', label: '기업이전' },
   { value: 'GENERAL', label: '일반' },
 ];
+const RECEIPT_SOURCES = [
+  { value: 'HOMEPAGE', label: '홈페이지' },
+  { value: 'AIBOT', label: 'AI상담봇' },
+  { value: 'PHONE', label: '전화상담' },
+  { value: 'NAVER', label: '네이버' },
+  { value: 'INSTAGRAM', label: '인스타그램' },
+  { value: 'PARTNER', label: '제휴사' },
+  { value: 'WALK_IN', label: '방문접수' },
+  { value: 'ETC', label: '기타' },
+];
 
 // 단계 탭 = lead.status 그룹 (한 케이스가 상태로 전 단계를 관통)
 const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
@@ -46,27 +60,30 @@ const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
 ];
 const inStage = (status: string, statuses: string[] | null) =>
   statuses === null ? true : statuses.includes(status);
-const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '0');
 
 export default function Leads() {
   const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [transRow, setTransRow] = useState<Row | null>(null);
-  const [estRow, setEstRow] = useState<Row | null>(null);
   const [stage, setStage] = useState('ALL');
   const orgs = useOptions('/org-units', 'name');
-  const customers = useOptions('/customers', 'name');
-  const products = useOptions('/products', 'name');
   const partners = useOptions('/partners', 'name');
+  const { updatedAt, touch } = useUpdatedAt();
+
+  // 관리자(전체 데이터범위·슈퍼권한)만 담당 지점을 자유 선택 — 일반 직원은 본인 소속 지점으로 고정
+  const isAdmin = !!user && (user.permissions.includes('*') || user.scopes.some((s) => s.dataScope === 'ALL'));
+  const ownOrgId = user?.scopes.find((s) => s.orgScopeId)?.orgScopeId ?? '';
+  const lockOrg = !isAdmin && !!ownOrgId;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setRows(await api<Row[]>('/leads'));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -79,33 +96,52 @@ export default function Leads() {
   }, [load]);
 
   const createFields: FormField[] = [
-    { name: 'orgUnitId', label: '담당 지점', required: true, type: 'select', options: orgs },
-    { name: 'customerName', label: '고객명', required: true, placeholder: '홍길동' },
-    { name: 'customerPhone', label: '연락처', placeholder: '010-0000-0000' },
+    {
+      name: 'customerName',
+      label: '고객명',
+      required: true,
+      alwaysShow: true,
+      pairWithNext: true,
+      placeholder: '홍길동',
+    },
+    {
+      name: 'customerPhone',
+      label: '연락처',
+      required: true,
+      alwaysShow: true,
+      type: 'tel',
+    },
+    {
+      name: 'orgUnitId',
+      label: '담당 지점',
+      required: true,
+      alwaysShow: true,
+      pairWithNext: true,
+      type: 'select',
+      options: orgs,
+      disabled: lockOrg,
+    },
+    {
+      name: 'source',
+      label: '접수경로',
+      alwaysShow: true,
+      type: 'select',
+      options: RECEIPT_SOURCES,
+    },
+    {
+      name: 'serviceLine',
+      label: '상품명',
+      required: true,
+      alwaysShow: true,
+      type: 'select',
+      options: SERVICE_LINES,
+    },
+    { name: 'fromAddress', label: '출발지', alwaysShow: true, type: 'address', addrPrefix: 'from' },
+    { name: 'toAddress', label: '도착지', alwaysShow: true, type: 'address', addrPrefix: 'to' },
     { name: 'partnerId', label: '거래처(제휴·B2B)', type: 'select', options: partners },
-    { name: 'source', label: '접수경로', placeholder: 'HOMEPAGE / AIBOT ...' },
-    { name: 'serviceLine', label: '서비스라인', type: 'select', options: SERVICE_LINES },
-    { name: 'fromAddress', label: '출발지', type: 'address', addrPrefix: 'from' },
-    { name: 'toAddress', label: '도착지', type: 'address', addrPrefix: 'to' },
   ];
-
-  // 견적 생성 시 리드의 구조적 주소(우편번호·도로명·상세·시도/시군구·좌표)를 승계
-  const ADDR_KEYS = [
-    'fromZipcode',
-    'fromAddr',
-    'fromAddrDetail',
-    'fromSido',
-    'fromSigungu',
-    'fromLat',
-    'fromLng',
-    'toZipcode',
-    'toAddr',
-    'toAddrDetail',
-    'toSido',
-    'toSigungu',
-    'toLat',
-    'toLng',
-  ] as const;
+  const createInitial: Record<string, string> = { serviceLine: 'MOVING' };
+  if (lockOrg) createInitial.orgUnitId = ownOrgId;
 
   const onCreate = async (values: Record<string, unknown>) => {
     try {
@@ -118,111 +154,47 @@ export default function Leads() {
     }
   };
 
-  const onTransition = async (values: Record<string, unknown>) => {
-    if (!transRow) return;
-    try {
-      await api(`/leads/${transRow.id as string}/transition`, {
-        method: 'POST',
-        body: JSON.stringify(values),
-      });
-      toast({ type: 'success', title: t('common.created') });
-      setTransRow(null);
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
-
-  const onCreateEstimate = async (values: Record<string, unknown>) => {
-    if (!estRow) return;
-    try {
-      const inheritedAddr = Object.fromEntries(
-        ADDR_KEYS.filter((kk) => estRow[kk] != null).map((kk) => [kk, estRow[kk]]),
-      );
-      const created = await api<{ id: string }>('/estimates', {
-        method: 'POST',
-        body: JSON.stringify({
-          leadId: estRow.id,
-          orgUnitId: estRow.orgUnitId,
-          ...inheritedAddr,
-          ...values,
-        }),
-      });
-      toast({ type: 'success', title: t('common.created') });
-      setEstRow(null);
-      navigate(`/estimates/${created.id}`);
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
-
   const columns: Column[] = [
+    { title: '접수번호', render: (r) => <b>{String(r.leadNo)}</b> },
     {
-      title: '접수번호',
-      render: (r) => (
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/leads/${r.id as string}`)}>
-          {String(r.leadNo)}
-        </Button>
-      ),
+      title: '고객명',
+      render: (r) => {
+        const c = r.customer as { name?: string } | null;
+        return c?.name ?? '-';
+      },
     },
     {
-      title: '고객',
+      title: '전화번호',
       render: (r) => {
-        const c = r.customer as { name?: string; phonePrimary?: string } | null;
-        return c?.name ? (
-          <span>
-            <b>{c.name}</b>
-            {c.phonePrimary ? (
-              <span style={{ color: 'var(--ark-color-text-tertiary)' }}> · {c.phonePrimary}</span>
-            ) : null}
-          </span>
-        ) : (
-          '-'
-        );
+        const c = r.customer as { phonePrimary?: string } | null;
+        return c?.phonePrimary ?? '-';
       },
     },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
     { title: '출처', render: (r) => String(r.source ?? '-') },
     { title: '서비스', render: (r) => String(r.serviceLine ?? '-') },
     {
-      title: '이사 경로',
-      render: (r) =>
-        r.fromAddr || r.toAddr ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <AddressView
-              label="출발"
-              zipcode={r.fromZipcode as string}
-              addr={r.fromAddr as string}
-              addrDetail={r.fromAddrDetail as string}
-              lat={r.fromLat as number}
-              lng={r.fromLng as number}
-            />
-            <AddressView
-              label="도착"
-              zipcode={r.toZipcode as string}
-              addr={r.toAddr as string}
-              addrDetail={r.toAddrDetail as string}
-              lat={r.toLat as number}
-              lng={r.toLng as number}
-            />
-          </div>
-        ) : (
-          '-'
-        ),
+      title: '출발',
+      render: (r) => (
+        <AddressView
+          zipcode={r.fromZipcode as string}
+          addr={r.fromAddr as string}
+          addrDetail={r.fromAddrDetail as string}
+          lat={r.fromLat as number}
+          lng={r.fromLng as number}
+        />
+      ),
     },
     {
-      title: '작업',
+      title: '도착',
       render: (r) => (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="primary" size="sm" onClick={() => setEstRow(r)}>
-            {t('lead.toEstimate')}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setTransRow(r)}>
-            {t('lead.changeStatus')}
-          </Button>
-        </div>
+        <AddressView
+          zipcode={r.toZipcode as string}
+          addr={r.toAddr as string}
+          addrDetail={r.toAddrDetail as string}
+          lat={r.toLat as number}
+          lng={r.toLng as number}
+        />
       ),
     },
   ];
@@ -231,57 +203,34 @@ export default function Leads() {
   const filtered = rows.filter((r) => inStage(String(r.status), current.statuses));
   const countFor = (statuses: string[] | null) =>
     rows.filter((r) => inStage(String(r.status), statuses)).length;
-  const expectedSum = filtered.reduce((acc, r) => acc + Number(r.expectedAmount ?? 0), 0);
-  const doneCount = rows.filter((r) => r.status === 'DONE').length;
-  const doneRate = rows.length ? Math.round((doneCount / rows.length) * 100) : 0;
-
-  const kpis = [
-    { label: `케이스 수 (${current.label})`, value: String(filtered.length) },
-    { label: '예상가치', value: `₩${won(expectedSum)}` },
-    { label: '완료율 (전체)', value: `${doneRate}%` },
-  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        {kpis.map((k) => (
-          <div
-            key={k.label}
-            style={{
-              border: '1px solid var(--ark-color-gray-200)',
-              borderRadius: 12,
-              padding: '16px 20px',
-              background: 'var(--ark-color-bg)',
-            }}
-          >
-            <div style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>{k.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>{k.value}</div>
-          </div>
-        ))}
-      </div>
+      <PageHeader title={t('nav.leads')} onRefresh={load} updatedAt={updatedAt} />
 
       <PageCard
-        title="영업 파이프라인"
-        count={filtered.length}
+        title={
+          <SegmentedControl
+            value={stage}
+            onChange={setStage}
+            options={STAGES.map((s) => ({
+              value: s.key,
+              label: `${s.label} (${countFor(s.statuses)})`,
+            }))}
+          />
+        }
         actions={
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             + {t('lead.register')}
           </Button>
         }
       >
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          {STAGES.map((s) => (
-            <Button
-              key={s.key}
-              variant={stage === s.key ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => setStage(s.key)}
-            >
-              {s.label} ({countFor(s.statuses)})
-            </Button>
-          ))}
-        </div>
-        <DataTable columns={columns} rows={filtered} loading={loading} />
+        <DataTable
+          columns={columns}
+          rows={filtered}
+          loading={loading}
+          onRowClick={(r) => navigate(`/leads/${r.id as string}`)}
+        />
       </PageCard>
 
       <FormModal
@@ -290,44 +239,8 @@ export default function Leads() {
         title={t('lead.register')}
         size="md"
         fields={createFields}
+        initialValues={createInitial}
         onSubmit={onCreate}
-      />
-
-      <FormModal
-        open={!!transRow}
-        onOpenChange={(o) => !o && setTransRow(null)}
-        title={`${t('lead.changeStatus')} — ${(transRow?.leadNo as string) ?? ''}`}
-        fields={[
-          {
-            name: 'to',
-            label: '변경할 상태',
-            required: true,
-            type: 'select',
-            options: Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label })),
-          },
-        ]}
-        onSubmit={onTransition}
-      />
-
-      <FormModal
-        open={!!estRow}
-        onOpenChange={(o) => !o && setEstRow(null)}
-        title={`${t('lead.toEstimate')} — ${(estRow?.leadNo as string) ?? ''}`}
-        size="md"
-        initialValues={estRow?.customerId ? { customerId: String(estRow.customerId) } : undefined}
-        fields={[
-          { name: 'customerId', label: '고객', required: true, type: 'select', options: customers },
-          {
-            name: 'productId',
-            label: '이사상품',
-            required: true,
-            type: 'select',
-            options: products,
-          },
-          { name: 'fromPyeong', label: '출발지 평수', type: 'number' },
-          { name: 'toPyeong', label: '도착지 평수', type: 'number' },
-        ]}
-        onSubmit={onCreateEstimate}
       />
     </div>
   );

@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   useToast,
   type Column,
   type FormField,
@@ -35,6 +37,7 @@ export default function Accounts() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const orgs = useOptions('/org-units', 'name');
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,6 +48,7 @@ export default function Accounts() {
       ]);
       setRows(accs);
       setRoles(rls);
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -141,16 +145,20 @@ export default function Accounts() {
   ];
 
   return (
-    <PageCard
-      title={t('nav.accounts')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-          + 계정 생성
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.accounts')}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+            + 계정 생성
+          </Button>
+        }
+        onRefresh={load}
+        updatedAt={updatedAt}
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+      </PageCard>
       <FormModal
         open={open}
         onOpenChange={setOpen}
@@ -159,6 +167,6 @@ export default function Accounts() {
         fields={fields}
         onSubmit={onCreate}
       />
-    </PageCard>
+    </div>
   );
 }

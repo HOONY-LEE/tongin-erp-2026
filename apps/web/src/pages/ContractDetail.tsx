@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   Spinner,
   StatusBadge,
   useToast,
@@ -51,11 +53,13 @@ export default function ContractDetail() {
   const [data, setData] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [woOpen, setWoOpen] = useState(false);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setData(await api<Contract>(`/contracts/${id}`));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -127,32 +131,38 @@ export default function ContractDetail() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/contracts')}>
-          ← {t('contract.back')}
-        </Button>
-        <h3 style={{ margin: 0 }}>{data.contractNo}</h3>
-        <StatusBadge value={data.status} map={CONTRACT_STATUS} />
-        <Badge variant="subtle">
-          {t('contract.total')} {won(data.totalAmount)}
-        </Badge>
-        <Badge variant="subtle" color="info">
-          {t('contract.deposit')} {won(data.depositAmount)}
-        </Badge>
-        <Badge variant="subtle" color="neutral">
-          {t('contract.balance')} {won(data.balanceAmount)}
-        </Badge>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <Button variant="primary" size="sm" disabled={data.status !== 'DRAFT'} onClick={sign}>
-            {t('contract.sign')}
-          </Button>
-          {data.status === 'SIGNED' && (
-            <Button variant="primary" size="sm" onClick={() => setWoOpen(true)}>
-              {t('contract.toWorkOrder')}
+      <PageHeader
+        title={data.contractNo}
+        breadcrumbs={[{ label: t('contract.back'), onClick: () => navigate('/contracts') }]}
+        onRefresh={load}
+        updatedAt={updatedAt}
+        tags={
+          <>
+            <StatusBadge value={data.status} map={CONTRACT_STATUS} />
+            <Badge variant="subtle">
+              {t('contract.total')} {won(data.totalAmount)}
+            </Badge>
+            <Badge variant="subtle" color="info">
+              {t('contract.deposit')} {won(data.depositAmount)}
+            </Badge>
+            <Badge variant="subtle" color="neutral">
+              {t('contract.balance')} {won(data.balanceAmount)}
+            </Badge>
+          </>
+        }
+        actions={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="primary" size="sm" disabled={data.status !== 'DRAFT'} onClick={sign}>
+              {t('contract.sign')}
             </Button>
-          )}
-        </div>
-      </div>
+            {data.status === 'SIGNED' && (
+              <Button variant="primary" size="sm" onClick={() => setWoOpen(true)}>
+                {t('contract.toWorkOrder')}
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       <PageCard
         title={t('contract.payments')}

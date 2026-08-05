@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   StatusBadge,
   useToast,
   type Column,
@@ -58,6 +60,7 @@ export default function Support() {
   const [rows, setRows] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const customerName = useMemo(
     () => new Map(customers.map((o) => [o.value, o.label])),
@@ -74,6 +77,7 @@ export default function Support() {
     setLoading(true);
     try {
       setRows(await api<Ticket[]>('/support-tickets'));
+      touch();
     } catch (e) {
       fail(e);
     } finally {
@@ -189,16 +193,20 @@ export default function Support() {
   ];
 
   return (
-    <PageCard
-      title={t('nav.support')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-          + {t('support.register')}
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.support')}
+        onRefresh={load}
+        updatedAt={updatedAt}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+            + {t('support.register')}
+          </Button>
+        }
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+      </PageCard>
 
       <FormModal
         open={open}
@@ -208,6 +216,6 @@ export default function Support() {
         fields={fields}
         onSubmit={onCreate}
       />
-    </PageCard>
+    </div>
   );
 }

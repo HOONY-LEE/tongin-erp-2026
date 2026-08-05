@@ -16,6 +16,7 @@ export default {
   },
   nav: {
     dashboard: 'Dashboard',
+    calendar: 'Calendar',
     leads: 'Intake',
     estimates: 'Estimates',
     contracts: 'Contracts',
@@ -253,6 +254,7 @@ export default {
     exportDone: 'Calendar file downloaded',
     back: 'List',
   },
+  calendar: { today: 'Today' },
   theme: { label: 'Theme', system: 'System', light: 'Light', dark: 'Dark' },
   lang: { label: 'Language' },
   login: { id: 'Username', password: 'Password', failed: 'Sign in failed' },

@@ -11,8 +11,8 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@tongin/web", "dev"],
-      "port": 3000,
+      "runtimeArgs": ["--filter", "@tongin/web", "dev", "--port", "3002"],
+      "port": 3002,
       "autoPort": false
     }
   ]

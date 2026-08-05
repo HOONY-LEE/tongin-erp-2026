@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   StatusBadge,
   useToast,
   type Column,
@@ -70,6 +72,7 @@ export default function Billing() {
   const [precv, setPrecv] = useState<PartnerRecv[]>([]);
   const [invOpen, setInvOpen] = useState(false);
   const [receiptInv, setReceiptInv] = useState<Invoice | null>(null);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const fail = useCallback(
     (e: unknown) =>
@@ -86,16 +89,19 @@ export default function Billing() {
     }
   }, [fail]);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        setMargin(await api<MarginResult>('/billing/margins'));
-      } catch (e) {
-        fail(e);
-      }
-    })();
-    void loadInvoices();
+  const loadAll = useCallback(async () => {
+    try {
+      setMargin(await api<MarginResult>('/billing/margins'));
+      await loadInvoices();
+      touch();
+    } catch (e) {
+      fail(e);
+    }
   }, [loadInvoices, fail]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   const createInvoice = async (values: Record<string, unknown>) => {
     try {
@@ -224,6 +230,7 @@ export default function Billing() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader title={t('nav.billing')} onRefresh={loadAll} updatedAt={updatedAt} />
       <PageCard title={t('billing.margins')} count={margin?.count ?? 0}>
         {margin && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>

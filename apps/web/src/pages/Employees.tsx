@@ -52,7 +52,7 @@ export default function Employees() {
     { name: 'orgUnitId', label: '소속 지점', required: true, type: 'select', options: orgs },
     { name: 'name', label: '직원명', required: true },
     { name: 'empNo', label: '사번' },
-    { name: 'phone', label: '연락처' },
+    { name: 'phone', label: '연락처', type: 'tel' },
   ];
 
   const columns: Column[] = [

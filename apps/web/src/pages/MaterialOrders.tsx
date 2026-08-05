@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   Input,
   Modal,
   PageCard,
+  PageHeader,
   Select,
   StatusBadge,
   useToast,
@@ -54,6 +56,7 @@ export default function MaterialOrders() {
   const [orgId, setOrgId] = useState('');
   const [note, setNote] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([{ materialId: '', qty: '1' }]);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const fail = useCallback(
     (e: unknown) =>
@@ -65,6 +68,7 @@ export default function MaterialOrders() {
     setLoading(true);
     try {
       setRows(await api<Order[]>('/material-orders'));
+      touch();
     } catch (e) {
       fail(e);
     } finally {
@@ -193,23 +197,27 @@ export default function MaterialOrders() {
   ];
 
   return (
-    <PageCard
-      title={t('nav.materialOrders')}
-      count={rows.length}
-      actions={
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => {
-            resetForm();
-            setOpen(true);
-          }}
-        >
-          + {t('order.register')}
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.materialOrders')}
+        onRefresh={load}
+        updatedAt={updatedAt}
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              resetForm();
+              setOpen(true);
+            }}
+          >
+            + {t('order.register')}
+          </Button>
+        }
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+      </PageCard>
 
       <Modal
         open={open}
@@ -289,6 +297,6 @@ export default function MaterialOrders() {
           />
         </div>
       </Modal>
-    </PageCard>
+    </div>
   );
 }

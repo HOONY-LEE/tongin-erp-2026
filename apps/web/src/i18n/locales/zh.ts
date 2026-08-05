@@ -16,6 +16,7 @@ export default {
   },
   nav: {
     dashboard: '仪表盘',
+    calendar: '日历',
     leads: '受理',
     estimates: '报价',
     contracts: '合同',
@@ -253,6 +254,7 @@ export default {
     exportDone: '日历文件已下载',
     back: '列表',
   },
+  calendar: { today: '今天' },
   theme: { label: '主题', system: '系统', light: '浅色', dark: '深色' },
   lang: { label: '语言' },
   login: { id: '账号', password: '密码', failed: '登录失败' },

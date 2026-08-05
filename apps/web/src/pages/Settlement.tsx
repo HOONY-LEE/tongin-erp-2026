@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
@@ -9,6 +10,7 @@ import {
   FormModal,
   Input,
   PageCard,
+  PageHeader,
   Select,
   StatusBadge,
   useToast,
@@ -74,6 +76,7 @@ export default function Settlement() {
   const [year, setYear] = useState('2026');
   const [month, setMonth] = useState('6');
   const [branch, setBranch] = useState<BranchResult | null>(null);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const fail = useCallback(
     (e: unknown) =>
@@ -97,19 +100,20 @@ export default function Settlement() {
     }
   }, [fail]);
 
+  const loadAll = useCallback(async () => {
+    try {
+      await loadRecv();
+      setMonthly(await api<Monthly[]>('/settlements/monthly'));
+      await loadRules();
+      touch();
+    } catch (e) {
+      fail(e);
+    }
+  }, [loadRecv, loadRules, fail]);
+
   useEffect(() => {
-    void loadRecv();
-  }, [loadRecv]);
-  useEffect(() => {
-    void (async () => {
-      try {
-        setMonthly(await api<Monthly[]>('/settlements/monthly'));
-      } catch (e) {
-        fail(e);
-      }
-    })();
-    void loadRules();
-  }, [loadRules, fail]);
+    void loadAll();
+  }, [loadAll]);
 
   const createRule = async (values: Record<string, unknown>) => {
     try {
@@ -222,6 +226,7 @@ export default function Settlement() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader title={t('nav.settlement')} onRefresh={loadAll} updatedAt={updatedAt} />
       <PageCard
         title={t('settlement.receivables')}
         count={recv.length}

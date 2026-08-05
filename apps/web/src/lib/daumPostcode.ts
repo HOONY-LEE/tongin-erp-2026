@@ -12,7 +12,9 @@ export interface PostcodeResult {
 }
 
 interface DaumWindow {
-  daum?: { Postcode: new (opts: unknown) => { open: () => void } };
+  daum?: {
+    Postcode: new (opts: unknown) => { open: () => void; embed: (el: HTMLElement) => void };
+  };
 }
 
 let loading: Promise<void> | null = null;
@@ -42,4 +44,18 @@ export async function openPostcode(): Promise<PostcodeResult | null> {
       onclose: () => resolve(result),
     }).open();
   });
+}
+
+/** 새 브라우저 창 대신, 지정 컨테이너 안에 우편번호 검색 화면을 그대로 삽입(임베드). */
+export async function embedPostcode(
+  container: HTMLElement,
+  onComplete: (data: PostcodeResult) => void,
+): Promise<void> {
+  await loadScript();
+  const Postcode = (window as unknown as DaumWindow).daum!.Postcode;
+  new Postcode({
+    oncomplete: onComplete,
+    width: '100%',
+    height: '100%',
+  }).embed(container);
 }

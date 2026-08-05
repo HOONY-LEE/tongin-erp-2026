@@ -16,6 +16,7 @@ import {
   Store,
   ShieldCheck,
   Handshake,
+  CalendarDays,
   Globe,
   LogOut,
 } from 'lucide-react';
@@ -62,6 +63,20 @@ export default function AppLayout() {
     localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0');
   };
 
+  // 화면이 좁아지면 자동으로 접기(사용자가 수동으로 편 상태는 저장값 유지, 넓어지면 저장값으로 복원)
+  // akron-ui LayoutSidebar 자체에 769~1024px 구간에서 라벨을 숨기는 내장 media query가 있어
+  // 그 임계값(1024px)과 동일하게 맞춰야 "폭은 안 줄었는데 텍스트만 사라지는" 불일치 구간이 없다.
+  useEffect(() => {
+    const AUTO_COLLAPSE_WIDTH = 1024;
+    const onResize = () => {
+      const narrow = window.innerWidth < AUTO_COLLAPSE_WIDTH;
+      setCollapsed(narrow ? true : localStorage.getItem(COLLAPSE_KEY) === '1');
+    };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const cycleLang = () => {
     const codes = SUPPORTED_LANGS.map((l) => l.code);
     const idx = codes.indexOf(i18n.language as (typeof codes)[number]);
@@ -74,6 +89,12 @@ export default function AppLayout() {
       items: [
         { to: '/', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
         { to: '/leads', label: t('nav.leads'), icon: Inbox, perm: 'LEAD.READ' },
+        {
+          to: '/calendar',
+          label: t('nav.calendar'),
+          icon: CalendarDays,
+          perm: 'WORK_ORDER.READ',
+        },
         {
           to: '/payments-confirm',
           label: t('nav.paymentsConfirm'),
@@ -249,7 +270,7 @@ export default function AppLayout() {
                 >
                   통
                 </div>
-                {!collapsed && <span style={{ fontWeight: 700, fontSize: 15 }}>통인 ERP</span>}
+                {!collapsed && <span style={{ fontWeight: 700, fontSize: 15 }}>통인 Works</span>}
               </div>
             }
             footer={

@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { Badge, Button, FormModal, PageCard, Spinner, useToast, type FormField, type Row } from '../components/ui';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
+import {
+  Badge,
+  Button,
+  FormModal,
+  PageCard,
+  PageHeader,
+  Spinner,
+  useToast,
+  type FormField,
+  type Row,
+} from '../components/ui';
 
 const won = (v: unknown) => (v != null ? `${Number(v).toLocaleString()}원` : '-');
 
@@ -41,6 +52,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [allAddons, setAllAddons] = useState<{ value: string; label: string }[]>([]);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -57,6 +69,7 @@ export default function ProductDetail() {
           label: `[${a.code}] ${a.name}`,
         })),
       );
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '로드 실패' });
     } finally {
@@ -120,16 +133,29 @@ export default function ProductDetail() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 헤더 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          ← 목록
-        </Button>
-        <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>상품 상세</span>
-      </div>
+      <PageHeader
+        title={product.name}
+        subtitle={`코드 ${product.code}`}
+        breadcrumbs={[{ label: '목록', onClick: () => navigate(-1) }]}
+        onRefresh={load}
+        updatedAt={updatedAt}
+        tags={
+          <>
+            <Badge variant="subtle" color="primary">
+              {product.serviceLine}
+            </Badge>
+            <Badge variant="subtle">
+              {PRICING[product.pricingMethod] ?? product.pricingMethod}
+            </Badge>
+            <Badge variant="subtle" color={product.isActive ? 'success' : 'neutral'}>
+              {product.isActive ? '활성' : '비활성'}
+            </Badge>
+          </>
+        }
+      />
 
       {/* 기본 정보 */}
-      <PageCard title={`${product.name} (${product.code})`}>
+      <PageCard title="기본 정보">
         <div
           style={{
             display: 'grid',
@@ -139,20 +165,8 @@ export default function ProductDetail() {
           }}
         >
           {[
-            { label: '코드', value: product.code },
-            { label: '상품명', value: product.name },
             { label: '카테고리', value: product.category ?? '-' },
-            { label: '서비스라인', value: <Badge variant="subtle" color="primary">{product.serviceLine}</Badge> },
-            { label: '산정방식', value: <Badge variant="subtle">{PRICING[product.pricingMethod] ?? product.pricingMethod}</Badge> },
             { label: '기본가격', value: won(product.basePrice) },
-            {
-              label: '상태',
-              value: (
-                <Badge variant="subtle" color={product.isActive ? 'success' : 'neutral'}>
-                  {product.isActive ? '활성' : '비활성'}
-                </Badge>
-              ),
-            },
           ].map(({ label, value }) => (
             <div key={label}>
               <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{label}</div>

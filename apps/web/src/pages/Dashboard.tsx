@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, DataTable, PageCard, type Column } from '../components/ui';
+import { Card, DataTable, PageCard, PageHeader, type Column } from '../components/ui';
 import { api } from '../lib/api';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
@@ -34,12 +35,20 @@ interface Overview {
 export default function Dashboard() {
   const { t } = useTranslation();
   const [data, setData] = useState<Overview | null>(null);
+  const { updatedAt, touch } = useUpdatedAt();
 
-  useEffect(() => {
-    api<Overview>('/stats/overview')
-      .then(setData)
+  const load = useCallback(() => {
+    return api<Overview>('/stats/overview')
+      .then((d) => {
+        setData(d);
+        touch();
+      })
       .catch(() => setData(null));
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const kpi = data?.kpi;
   const kpiCards = [
@@ -65,7 +74,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <h3 style={{ margin: 0 }}>{t('dashboard.title')}</h3>
+      <PageHeader title={t('dashboard.title')} onRefresh={load} updatedAt={updatedAt} />
 
       <div
         style={{
@@ -104,7 +113,7 @@ export default function Dashboard() {
                     width: `${(f.count / maxFunnel) * 100}%`,
                     minWidth: f.count ? 24 : 0,
                     height: 22,
-                    background: 'var(--ark-color-primary-9, #6366f1)',
+                    background: 'var(--ark-color-primary-500)',
                     borderRadius: 4,
                     transition: 'width .3s',
                   }}

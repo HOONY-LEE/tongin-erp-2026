@@ -16,6 +16,7 @@ export default {
   },
   nav: {
     dashboard: '대시보드',
+    calendar: '캘린더',
     leads: '접수',
     estimates: '견적',
     contracts: '계약',
@@ -174,7 +175,7 @@ export default {
   },
   address: {
     zipcode: '우편번호',
-    search: '우편번호 찾기',
+    search: '주소 검색',
     road: '도로명주소',
     detail: '상세주소 입력',
     geocoded: '좌표 확인됨',
@@ -253,6 +254,7 @@ export default {
     exportDone: '캘린더 파일을 내려받았습니다',
     back: '목록',
   },
+  calendar: { today: '오늘' },
   theme: { label: '테마', system: '시스템', light: '라이트', dark: '다크' },
   lang: { label: '언어' },
   login: { id: '아이디', password: '비밀번호', failed: '로그인에 실패했습니다' },

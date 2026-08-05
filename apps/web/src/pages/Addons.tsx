@@ -29,6 +29,12 @@ const fields: FormField[] = [
 /** 옵션(AddonService) — 부가서비스(사다리차·에어컨 분리 등). */
 export default function Addons() {
   return (
-    <CrudTable title="옵션(부가서비스)" path="/addon-services" columns={columns} fields={fields} />
+    <CrudTable
+      title="옵션(부가서비스)"
+      path="/addon-services"
+      columns={columns}
+      fields={fields}
+      hideHeader
+    />
   );
 }

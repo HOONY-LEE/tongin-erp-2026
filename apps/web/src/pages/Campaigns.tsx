@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   StatusBadge,
   useToast,
   type Column,
@@ -26,11 +28,13 @@ export default function Campaigns() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setRows(await api<Row[]>('/campaigns'));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -108,16 +112,20 @@ export default function Campaigns() {
   ];
 
   return (
-    <PageCard
-      title={t('nav.campaigns')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-          + {t('campaign.register')}
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.campaigns')}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+            + {t('campaign.register')}
+          </Button>
+        }
+        onRefresh={load}
+        updatedAt={updatedAt}
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+      </PageCard>
       <FormModal
         open={open}
         onOpenChange={setOpen}
@@ -126,6 +134,6 @@ export default function Campaigns() {
         fields={fields}
         onSubmit={onCreate}
       />
-    </PageCard>
+    </div>
   );
 }
