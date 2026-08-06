@@ -315,6 +315,7 @@ export default function CalendarPage() {
         title={t('nav.calendar')}
         onRefresh={load}
         updatedAt={updatedAt}
+        style={{ flexShrink: 0 }}
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {google?.connected && (
@@ -352,7 +353,7 @@ export default function CalendarPage() {
         }
       />
 
-      <div style={{ flex: 1, minHeight: 520, position: 'relative' }}>
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         {loading && (
           <div
             style={{

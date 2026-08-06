@@ -331,7 +331,7 @@ export default function AppLayout() {
         </aside>
 
         <main className={styles.contentArea}>
-          <div style={{ padding: 24 }}>
+          <div className={styles.contentInner}>
             <Outlet />
           </div>
         </main>

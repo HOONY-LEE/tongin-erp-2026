@@ -134,3 +134,13 @@
   display: flex;
   flex-direction: column;
 }
+
+/* 페이지가 height:100%로 화면을 꽉 채울 수 있도록(캘린더 등) 높이를 전달한다.
+   내용이 짧은 페이지는 그대로 내용 높이만 차지한다. */
+.contentInner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
