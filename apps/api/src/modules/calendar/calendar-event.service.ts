@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
+import { GoogleCalendarService } from './google-calendar.service';
 import {
   CalendarQueryDto,
   CreateCalendarEventDto,
@@ -61,6 +62,7 @@ export class CalendarEventService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
+    private readonly google: GoogleCalendarService,
   ) {}
 
   /** 로그인 사용자의 소속 조직(직원 레코드 기준). 없으면 역할 스코프의 조직으로 대체. */
@@ -211,7 +213,7 @@ export class CalendarEventService {
       orgUnitId = null;
     }
 
-    return this.prisma.calendarEvent.update({
+    const updated = await this.prisma.calendarEvent.update({
       where: { id },
       data: {
         title: dto.title,
@@ -225,10 +227,25 @@ export class CalendarEventService {
         orgUnitId,
       },
     });
+
+    // 구글과 연결된 일정이면 원격도 갱신한다. 하지 않으면 다음 동기화의
+    // 가져오기 단계가 구글 원본으로 덮어써서 수정이 사라진다.
+    if (updated.googleEventId) {
+      await this.google.pushEventUpdate(principal.userId, updated);
+      await this.prisma.calendarEvent.update({
+        where: { id },
+        data: { syncedAt: new Date() },
+      });
+    }
+    return updated;
   }
 
   async remove(id: string, principal: AuthPrincipal) {
-    await this.findOwned(id, principal);
+    const found = await this.findOwned(id, principal);
+    // 구글 이벤트를 먼저 지운다(실패 시 로컬도 남겨 두어 상태 불일치를 막는다).
+    if (found.googleEventId) {
+      await this.google.pushEventDelete(principal.userId, found.googleEventId);
+    }
     await this.prisma.calendarEvent.delete({ where: { id } });
   }
 

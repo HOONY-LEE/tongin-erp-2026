@@ -269,6 +269,57 @@ export class GoogleCalendarService {
     };
   }
 
+  /**
+   * 자체 일정 변경을 구글에 반영(있을 때만).
+   * 구글에서 가져온 일정을 우리 화면에서 수정했을 때, 원격을 갱신하지 않으면
+   * 다음 동기화의 가져오기 단계가 구글 원본으로 되돌려버리므로 반드시 함께 밀어준다.
+   */
+  async pushEventUpdate(
+    userId: string,
+    ev: {
+      googleEventId: string | null;
+      title: string;
+      description: string | null;
+      location: string | null;
+      date: Date;
+      startTime: string | null;
+      endTime: string | null;
+    },
+  ): Promise<void> {
+    if (!ev.googleEventId || !this.configured) return;
+    const link = await this.prisma.googleCalendarLink.findUnique({ where: { userId } });
+    if (!link?.syncEnabled) return;
+
+    const accessToken = await this.validAccessToken(link.id);
+    const res = await fetch(
+      `${CALENDAR_API}/calendars/${encodeURIComponent(link.calendarId)}/events/${encodeURIComponent(ev.googleEventId)}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.toRemoteBody(ev)),
+      },
+    );
+    if (!res.ok) {
+      throw new BadRequestException(`구글 일정 수정 실패: ${await res.text()}`);
+    }
+  }
+
+  /** 자체 일정 삭제를 구글에도 반영. 이미 삭제된 경우(404/410)는 성공으로 본다. */
+  async pushEventDelete(userId: string, googleEventId: string | null): Promise<void> {
+    if (!googleEventId || !this.configured) return;
+    const link = await this.prisma.googleCalendarLink.findUnique({ where: { userId } });
+    if (!link?.syncEnabled) return;
+
+    const accessToken = await this.validAccessToken(link.id);
+    const res = await fetch(
+      `${CALENDAR_API}/calendars/${encodeURIComponent(link.calendarId)}/events/${encodeURIComponent(googleEventId)}`,
+      { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok && res.status !== 404 && res.status !== 410) {
+      throw new BadRequestException(`구글 일정 삭제 실패: ${await res.text()}`);
+    }
+  }
+
   // ── 내부 헬퍼 ──
 
   private assertConfigured(): void {
@@ -385,11 +436,15 @@ export class GoogleCalendarService {
     return items;
   }
 
-  private async createRemoteEvent(
-    accessToken: string,
-    calendarId: string,
-    ev: { title: string; description: string | null; location: string | null; date: Date; startTime: string | null; endTime: string | null },
-  ): Promise<{ id: string }> {
+  /** 자체 일정 → 구글 이벤트 본문. 시간이 없으면 종일 일정(DTEND는 익일). */
+  private toRemoteBody(ev: {
+    title: string;
+    description: string | null;
+    location: string | null;
+    date: Date;
+    startTime: string | null;
+    endTime: string | null;
+  }): Record<string, unknown> {
     const day = ymd(ev.date);
     const body: Record<string, unknown> = {
       summary: ev.title,
@@ -404,13 +459,27 @@ export class GoogleCalendarService {
       const next = new Date(ev.date);
       next.setUTCDate(next.getUTCDate() + 1);
       body.start = { date: day };
-      body.end = { date: ymd(next) }; // 종일 일정의 DTEND는 익일
+      body.end = { date: ymd(next) };
     }
+    return body;
+  }
 
+  private async createRemoteEvent(
+    accessToken: string,
+    calendarId: string,
+    ev: {
+      title: string;
+      description: string | null;
+      location: string | null;
+      date: Date;
+      startTime: string | null;
+      endTime: string | null;
+    },
+  ): Promise<{ id: string }> {
     const res = await fetch(`${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(this.toRemoteBody(ev)),
     });
     if (!res.ok) throw new Error(await res.text());
     return (await res.json()) as { id: string };
