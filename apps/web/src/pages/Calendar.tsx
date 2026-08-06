@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, downloadFile } from '../lib/api';
@@ -59,6 +59,8 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editing, setEditing] = useState<CalendarItem | null>(null);
+  /** 방금 연결을 마쳤을 때 스로틀을 무시하고 즉시 한 번 동기화하기 위한 플래그 */
+  const [justConnected, setJustConnected] = useState(false);
 
   const range = useMemo(() => rangeFor(view, currentDate), [view, currentDate]);
 
@@ -81,6 +83,50 @@ export default function CalendarPage() {
     void load();
   }, [load]);
 
+  /**
+   * 구글 일정은 "동기화" 시점에 우리 DB로 미러링된다(화면 조회 때마다 구글을 직접 부르면
+   * 월 이동마다 느려지고 API 할당량을 소모하므로). 사용자가 버튼을 누르지 않아도 되도록
+   * 보고 있는 기간이 바뀌면 조용히 백그라운드 동기화하고, 같은 기간은 스로틀로 재호출을 막는다.
+   */
+  const syncedRangesRef = useRef<Map<string, number>>(new Map());
+  const AUTO_SYNC_TTL = 60_000;
+
+  const autoSync = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (!google?.connected) return;
+      const key = `${range.from}~${range.to}`;
+      const last = syncedRangesRef.current.get(key) ?? 0;
+      if (!opts?.force && Date.now() - last < AUTO_SYNC_TTL) return;
+      syncedRangesRef.current.set(key, Date.now());
+      setSyncing(true);
+      try {
+        const r = await api<{ imported: number; exported: number; removed: number }>(
+          `/calendar/google/sync?from=${range.from}&to=${range.to}`,
+          { method: 'POST' },
+        );
+        // 변화가 있을 때만 다시 읽어 불필요한 깜빡임을 피한다
+        if (r.imported || r.exported || r.removed) await load();
+      } catch {
+        // 자동 동기화 실패는 조용히 넘어간다(수동 버튼으로 원인 확인 가능)
+        syncedRangesRef.current.delete(key);
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [google?.connected, range.from, range.to, load],
+  );
+
+  useEffect(() => {
+    void autoSync();
+  }, [autoSync]);
+
+  // 연결 직후에는 스로틀을 무시하고 즉시 동기화
+  useEffect(() => {
+    if (!justConnected || !google?.connected) return;
+    setJustConnected(false);
+    void autoSync({ force: true });
+  }, [justConnected, google?.connected, autoSync]);
+
   // 조직 목록 · 구글 연동 상태는 최초 1회
   useEffect(() => {
     void api<OrgUnitRow[]>('/calendar/org-units')
@@ -96,8 +142,14 @@ export default function CalendarPage() {
     const result = searchParams.get('google');
     if (!result) return;
     if (result === 'connected') {
-      toast({ type: 'success', title: '구글 캘린더가 연결되었습니다.' });
-      void api<GoogleStatus>('/calendar/google/status').then(setGoogle).catch(() => undefined);
+      toast({ type: 'success', title: '구글 캘린더가 연결되었습니다. 일정을 불러오는 중…' });
+      // 연결 직후 곧바로 1회 동기화 — 사용자가 별도로 버튼을 누르지 않아도 일정이 보이게 한다.
+      void api<GoogleStatus>('/calendar/google/status')
+        .then((s) => {
+          setGoogle(s);
+          setJustConnected(true);
+        })
+        .catch(() => undefined);
     } else if (result === 'denied') {
       toast({ type: 'warning', title: '구글 계정 연결이 취소되었습니다.' });
     } else {
@@ -180,6 +232,8 @@ export default function CalendarPage() {
       toast({ type: 'success', title: editing ? '일정이 수정되었습니다.' : '일정이 등록되었습니다.' });
       setModalOpen(false);
       await load();
+      // 구글 연결 상태면 새 일정을 곧바로 구글에도 반영
+      void autoSync({ force: true });
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
     } finally {
@@ -209,9 +263,11 @@ export default function CalendarPage() {
     }
   };
 
+  /** 수동 동기화 — 자동 동기화 스로틀과 무관하게 항상 즉시 실행하고 결과를 알려준다. */
   const syncGoogle = async () => {
     setSyncing(true);
     try {
+      syncedRangesRef.current.set(`${range.from}~${range.to}`, Date.now());
       const r = await api<{ imported: number; exported: number; removed: number }>(
         `/calendar/google/sync?from=${range.from}&to=${range.to}`,
         { method: 'POST' },
@@ -233,6 +289,7 @@ export default function CalendarPage() {
     try {
       await api('/calendar/google', { method: 'DELETE' });
       toast({ type: 'success', title: '구글 캘린더 연결을 해제했습니다.' });
+      syncedRangesRef.current.clear(); // 재연결 시 곧바로 다시 동기화되도록
       await api<GoogleStatus>('/calendar/google/status').then(setGoogle);
       await load();
     } catch (e) {
