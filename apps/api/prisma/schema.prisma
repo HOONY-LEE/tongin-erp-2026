@@ -12,26 +12,28 @@ datasource db {
 }
 
 model OrgUnit {
-  id        String     @id @default(uuid()) @db.Uuid
-  parentId  String?    @map("parent_id") @db.Uuid
-  parent    OrgUnit?   @relation("OrgUnitParent", fields: [parentId], references: [id])
-  children  OrgUnit[]  @relation("OrgUnitParent")
-  type      String // GROUP | COMPANY | BRANCH | PARTNER
-  code      String     @unique
-  name      String
-  isActive  Boolean    @default(true) @map("is_active")
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  employees Employee[]
-  customers Customer[]
-  userRoleScopes UserRole[] @relation("UserRoleOrgScope")
-  brandedProducts Product[] @relation("ProductBrand")
-  leads          Lead[]
+  id              String     @id @default(uuid()) @db.Uuid
+  parentId        String?    @map("parent_id") @db.Uuid
+  parent          OrgUnit?   @relation("OrgUnitParent", fields: [parentId], references: [id])
+  children        OrgUnit[]  @relation("OrgUnitParent")
+  type            String // GROUP | COMPANY | BRANCH | PARTNER
+  code            String     @unique
+  name            String
+  isActive        Boolean    @default(true) @map("is_active")
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  employees       Employee[]
+  customers       Customer[]
+  userRoleScopes  UserRole[] @relation("UserRoleOrgScope")
+  brandedProducts Product[]  @relation("ProductBrand")
+  leads           Lead[]
 
   estimates       Estimate[]
   contracts       Contract[]
   workOrders      WorkOrder[]
   commissionRules CommissionRule[] @relation("CommissionRuleOrg")
   materialOrders  MaterialOrder[]
+  calendarEvents  CalendarEvent[]
+
   @@map("org_unit")
 }
 
@@ -48,44 +50,45 @@ model CommonCode {
 }
 
 model Employee {
-  id        String   @id @default(uuid()) @db.Uuid
-  orgUnitId String   @map("org_unit_id") @db.Uuid
-  orgUnit   OrgUnit  @relation(fields: [orgUnitId], references: [id])
-  empNo     String?  @unique @map("emp_no")
-  name      String
-  phone     String?
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  appUsers  AppUser[]
+  id         String    @id @default(uuid()) @db.Uuid
+  orgUnitId  String    @map("org_unit_id") @db.Uuid
+  orgUnit    OrgUnit   @relation(fields: [orgUnitId], references: [id])
+  empNo      String?   @unique @map("emp_no")
+  name       String
+  phone      String?
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  appUsers   AppUser[]
   ownedLeads Lead[]
 
   estimatorEstimates Estimate[]
-  assignments WorkAssignment[]
+  assignments        WorkAssignment[]
+
   @@map("employee")
 }
 
 model Customer {
-  id           String   @id @default(uuid()) @db.Uuid
+  id           String     @id @default(uuid()) @db.Uuid
   name         String
-  phonePrimary String?  @map("phone_primary")
-  legacyId     String?  @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
+  phonePrimary String?    @map("phone_primary")
+  legacyId     String?    @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
   grade        String?
   status       String?
-  zipcode      String?  // 카카오/다음 우편번호
-  addr         String?  // 도로명주소
-  addrDetail   String?  @map("addr_detail")
+  zipcode      String? // 카카오/다음 우편번호
+  addr         String? // 도로명주소
+  addrDetail   String?    @map("addr_detail")
   sido         String?
   sigungu      String?
   lat          Float?
   lng          Float?
-  ownerOrgId   String?  @map("owner_org_id") @db.Uuid
-  ownerOrg     OrgUnit? @relation(fields: [ownerOrgId], references: [id])
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  ownerOrgId   String?    @map("owner_org_id") @db.Uuid
+  ownerOrg     OrgUnit?   @relation(fields: [ownerOrgId], references: [id])
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   leads        Lead[]
-
-  @@index([phonePrimary])
   estimates    Estimate[]
   contracts    Contract[]
+
+  @@index([phonePrimary])
   @@map("customer")
 }
 
@@ -106,6 +109,9 @@ model AppUser {
   createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   userRoles     UserRole[]
   apiTokens     ApiToken[]
+
+  calendarEvents     CalendarEvent[]
+  googleCalendarLink GoogleCalendarLink?
 
   @@map("app_user")
 }
@@ -186,6 +192,7 @@ model Partner {
   workOrders WorkOrder[]
   invoices   Invoice[]
   appUsers   AppUser[]
+
   @@map("partner")
 }
 
@@ -205,6 +212,7 @@ model Product {
 
   estimates Estimate[]
   addons    ProductAddon[]
+
   @@map("product")
 }
 
@@ -223,15 +231,15 @@ model ProductAddon {
 
 // B. CBM 품목사전: 짐량 측정용 표준 사전 (단일 표준·중복방지)
 model CbmItem {
-  id        String   @id @default(uuid()) @db.Uuid
-  category  String // common_code: ITEM_CATEGORY
-  name      String
-  cbm       Decimal  @db.Decimal(8, 2)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id            String         @id @default(uuid()) @db.Uuid
+  category      String // common_code: ITEM_CATEGORY
+  name          String
+  cbm           Decimal        @db.Decimal(8, 2)
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  estimateLines EstimateLine[]
 
   @@unique([category, name])
-  estimateLines EstimateLine[]
   @@map("cbm_item")
 }
 
@@ -246,6 +254,7 @@ model AddonService {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   products ProductAddon[]
+
   @@map("addon_service")
 }
 
@@ -301,93 +310,93 @@ model PriceCondition {
 
 // ── Phase 1: 리드(접수) — 이사 프로세스의 출발점 (DB스키마 §5) ──
 model Lead {
-  id             String    @id @default(uuid()) @db.Uuid
-  leadNo         String    @unique @map("lead_no") // 접수번호 R...
-  customerId     String?   @map("customer_id") @db.Uuid
-  customer       Customer? @relation(fields: [customerId], references: [id])
-  orgUnitId      String    @map("org_unit_id") @db.Uuid // 담당 지점
-  orgUnit        OrgUnit   @relation(fields: [orgUnitId], references: [id])
-  ownerEmpId     String?   @map("owner_emp_id") @db.Uuid
-  ownerEmp       Employee? @relation(fields: [ownerEmpId], references: [id])
-  partnerId      String?   @map("partner_id") @db.Uuid // 제휴/전속 출처
-  partner        Partner?  @relation(fields: [partnerId], references: [id])
+  id             String      @id @default(uuid()) @db.Uuid
+  leadNo         String      @unique @map("lead_no") // 접수번호 R...
+  customerId     String?     @map("customer_id") @db.Uuid
+  customer       Customer?   @relation(fields: [customerId], references: [id])
+  orgUnitId      String      @map("org_unit_id") @db.Uuid // 담당 지점
+  orgUnit        OrgUnit     @relation(fields: [orgUnitId], references: [id])
+  ownerEmpId     String?     @map("owner_emp_id") @db.Uuid
+  ownerEmp       Employee?   @relation(fields: [ownerEmpId], references: [id])
+  partnerId      String?     @map("partner_id") @db.Uuid // 제휴/전속 출처
+  partner        Partner?    @relation(fields: [partnerId], references: [id])
   source         String? // common_code: RECEIPT_PATH
-  serviceLine    String?   @map("service_line")
-  status         String    @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
-  fromZipcode    String?   @map("from_zipcode")
-  fromAddr       String?   @map("from_addr") // 도로명주소(카카오/다음 우편번호)
-  fromAddrDetail String?   @map("from_addr_detail") // 상세주소
-  fromSido       String?   @map("from_sido")
-  fromSigungu    String?   @map("from_sigungu")
-  fromLat        Float?    @map("from_lat") // 위도(카카오 Local geocode)
-  fromLng        Float?    @map("from_lng") // 경도
-  toZipcode      String?   @map("to_zipcode")
-  toAddr         String?   @map("to_addr")
-  toAddrDetail   String?   @map("to_addr_detail")
-  toSido         String?   @map("to_sido")
-  toSigungu      String?   @map("to_sigungu")
-  toLat          Float?    @map("to_lat")
-  toLng          Float?    @map("to_lng")
-  moveDate       DateTime? @map("move_date") @db.Date
-  visitDate      DateTime? @map("visit_date") @db.Date
-  expectedAmount Decimal?  @map("expected_amount") @db.Decimal(14, 2)
+  serviceLine    String?     @map("service_line")
+  status         String      @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
+  fromZipcode    String?     @map("from_zipcode")
+  fromAddr       String?     @map("from_addr") // 도로명주소(카카오/다음 우편번호)
+  fromAddrDetail String?     @map("from_addr_detail") // 상세주소
+  fromSido       String?     @map("from_sido")
+  fromSigungu    String?     @map("from_sigungu")
+  fromLat        Float?      @map("from_lat") // 위도(카카오 Local geocode)
+  fromLng        Float?      @map("from_lng") // 경도
+  toZipcode      String?     @map("to_zipcode")
+  toAddr         String?     @map("to_addr")
+  toAddrDetail   String?     @map("to_addr_detail")
+  toSido         String?     @map("to_sido")
+  toSigungu      String?     @map("to_sigungu")
+  toLat          Float?      @map("to_lat")
+  toLng          Float?      @map("to_lng")
+  moveDate       DateTime?   @map("move_date") @db.Date
+  visitDate      DateTime?   @map("visit_date") @db.Date
+  expectedAmount Decimal?    @map("expected_amount") @db.Decimal(14, 2)
   attributes     Json?
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  estimates      Estimate[]
+  contracts      Contract[]
+  workOrders     WorkOrder[]
 
   @@index([status])
   @@index([orgUnitId])
-  estimates Estimate[]
-  contracts Contract[]
-  workOrders WorkOrder[]
   @@map("lead")
 }
 
 // ── Phase 1: 견적 (부록 E·F) — 헤더 + 구역 + 품목라인 ──
 model Estimate {
-  id              String         @id @default(uuid()) @db.Uuid
-  estimateNo      String         @unique @map("estimate_no")
-  leadId          String         @map("lead_id") @db.Uuid
-  lead            Lead           @relation(fields: [leadId], references: [id])
-  customerId      String         @map("customer_id") @db.Uuid
-  customer        Customer       @relation(fields: [customerId], references: [id])
-  orgUnitId       String         @map("org_unit_id") @db.Uuid
-  orgUnit         OrgUnit        @relation(fields: [orgUnitId], references: [id])
-  productId       String         @map("product_id") @db.Uuid
-  product         Product        @relation(fields: [productId], references: [id])
-  estimatorEmpId  String?        @map("estimator_emp_id") @db.Uuid
-  estimator       Employee?      @relation(fields: [estimatorEmpId], references: [id])
-  fromZipcode     String?        @map("from_zipcode")
-  fromAddr        String?        @map("from_addr") // 도로명주소
-  fromAddrDetail  String?        @map("from_addr_detail")
-  fromSido        String?        @map("from_sido")
-  fromSigungu     String?        @map("from_sigungu")
-  fromLat         Float?         @map("from_lat")
-  fromLng         Float?         @map("from_lng")
-  fromPyeong      Int?           @map("from_pyeong")
-  fromElevator    Boolean?       @map("from_elevator")
-  toZipcode       String?        @map("to_zipcode")
-  toAddr          String?        @map("to_addr")
-  toAddrDetail    String?        @map("to_addr_detail")
-  toSido          String?        @map("to_sido")
-  toSigungu       String?        @map("to_sigungu")
-  toLat           Float?         @map("to_lat")
-  toLng           Float?         @map("to_lng")
-  toPyeong        Int?           @map("to_pyeong")
-  toElevator      Boolean?       @map("to_elevator")
-  totalCbm        Decimal        @default(0) @map("total_cbm") @db.Decimal(10, 2)
-  baseAmount      Decimal?       @map("base_amount") @db.Decimal(14, 2)
-  totalAmount     Decimal?       @map("total_amount") @db.Decimal(14, 2)
-  workInstructions String?       @map("work_instructions")
-  status          String         @default("DRAFT") // DRAFT | QUOTED
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  zones           EstimateZone[]
-  lines           EstimateLine[]
-  costLines       EstimateCostLine[]
-  costBuildup     EstimateCostBuildup?
+  id               String               @id @default(uuid()) @db.Uuid
+  estimateNo       String               @unique @map("estimate_no")
+  leadId           String               @map("lead_id") @db.Uuid
+  lead             Lead                 @relation(fields: [leadId], references: [id])
+  customerId       String               @map("customer_id") @db.Uuid
+  customer         Customer             @relation(fields: [customerId], references: [id])
+  orgUnitId        String               @map("org_unit_id") @db.Uuid
+  orgUnit          OrgUnit              @relation(fields: [orgUnitId], references: [id])
+  productId        String               @map("product_id") @db.Uuid
+  product          Product              @relation(fields: [productId], references: [id])
+  estimatorEmpId   String?              @map("estimator_emp_id") @db.Uuid
+  estimator        Employee?            @relation(fields: [estimatorEmpId], references: [id])
+  fromZipcode      String?              @map("from_zipcode")
+  fromAddr         String?              @map("from_addr") // 도로명주소
+  fromAddrDetail   String?              @map("from_addr_detail")
+  fromSido         String?              @map("from_sido")
+  fromSigungu      String?              @map("from_sigungu")
+  fromLat          Float?               @map("from_lat")
+  fromLng          Float?               @map("from_lng")
+  fromPyeong       Int?                 @map("from_pyeong")
+  fromElevator     Boolean?             @map("from_elevator")
+  toZipcode        String?              @map("to_zipcode")
+  toAddr           String?              @map("to_addr")
+  toAddrDetail     String?              @map("to_addr_detail")
+  toSido           String?              @map("to_sido")
+  toSigungu        String?              @map("to_sigungu")
+  toLat            Float?               @map("to_lat")
+  toLng            Float?               @map("to_lng")
+  toPyeong         Int?                 @map("to_pyeong")
+  toElevator       Boolean?             @map("to_elevator")
+  totalCbm         Decimal              @default(0) @map("total_cbm") @db.Decimal(10, 2)
+  baseAmount       Decimal?             @map("base_amount") @db.Decimal(14, 2)
+  totalAmount      Decimal?             @map("total_amount") @db.Decimal(14, 2)
+  workInstructions String?              @map("work_instructions")
+  status           String               @default("DRAFT") // DRAFT | QUOTED
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  zones            EstimateZone[]
+  lines            EstimateLine[]
+  costLines        EstimateCostLine[]
+  costBuildup      EstimateCostBuildup?
+  contract         Contract?
 
   @@index([leadId])
-  contract Contract?
   @@map("estimate")
 }
 
@@ -482,6 +491,7 @@ model Contract {
   payments      Payment[]
 
   workOrder WorkOrder?
+
   @@map("contract")
 }
 
@@ -590,14 +600,14 @@ model WorkAssignment {
 
 // ── INT-01: 알림톡/SMS 발송 기록 (이벤트 구독 발송, 스텁) ──
 model Notification {
-  id        String    @id @default(uuid()) @db.Uuid
-  channel   String    @default("ALIMTALK") // ALIMTALK | SMS
-  eventType String    @map("event_type")
+  id        String   @id @default(uuid()) @db.Uuid
+  channel   String   @default("ALIMTALK") // ALIMTALK | SMS
+  eventType String   @map("event_type")
   recipient String? // 수신자(고객 연락처 등)
   message   String
-  status    String    @default("SENT") // SENT | FAILED (스텁은 SENT)
+  status    String   @default("SENT") // SENT | FAILED (스텁은 SENT)
   payload   Json?
-  sentAt    DateTime  @default(now()) @map("sent_at") @db.Timestamptz(6)
+  sentAt    DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
 
   @@index([eventType])
   @@map("notification")
@@ -605,17 +615,17 @@ model Notification {
 
 // ── MM-01: 자재·재고 (자재마스터 + 입출고 수불 → 현재고는 수불 합산) ──
 model Material {
-  id          String          @id @default(uuid()) @db.Uuid
-  code        String          @unique
-  name        String
-  category    String? // common_code: MATERIAL_CATEGORY (박스/포장지/유니폼…)
-  unit        String          @default("EA") // EA | SET | ROLL | BOX
-  safetyStock Int             @default(0) @map("safety_stock") // 안전재고(미만 시 경고)
-  isActive    Boolean         @default(true) @map("is_active")
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  movements   StockMovement[]
+  id                String              @id @default(uuid()) @db.Uuid
+  code              String              @unique
+  name              String
+  category          String? // common_code: MATERIAL_CATEGORY (박스/포장지/유니폼…)
+  unit              String              @default("EA") // EA | SET | ROLL | BOX
+  safetyStock       Int                 @default(0) @map("safety_stock") // 안전재고(미만 시 경고)
+  isActive          Boolean             @default(true) @map("is_active")
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  movements         StockMovement[]
   estimateCostLines EstimateCostLine[]
-  orderLines  MaterialOrderLine[]
+  orderLines        MaterialOrderLine[]
 
   @@map("material")
 }
@@ -736,4 +746,65 @@ model HrPolicy {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("hr_policy")
+}
+
+// ── CAL-01: 캘린더 — 자체 일정(개인/조직) + 구글 캘린더 양방향 동기화 ──
+
+// 자체 캘린더 일정. visibility=PRIVATE(개인) | ORG(소속 조직 공유).
+// 구글 연동 시 googleEventId로 원격 이벤트와 1:1 매핑된다.
+model CalendarEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  date        DateTime @db.Date // 일정 날짜
+  startTime   String?  @map("start_time") // "HH:mm" — null이면 종일
+  endTime     String?  @map("end_time") // "HH:mm"
+  color       String   @default("#FF3B30") // 캘린더 색상(EVENT_COLORS 키)
+  location    String?
+
+  visibility String @default("PRIVATE") // PRIVATE(개인) | ORG(조직 공유)
+
+  ownerUserId String  @map("owner_user_id") @db.Uuid
+  owner       AppUser @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  orgUnitId String?  @map("org_unit_id") @db.Uuid // visibility=ORG일 때 공유 대상 조직
+  orgUnit   OrgUnit? @relation(fields: [orgUnitId], references: [id])
+
+  // 구글 캘린더 동기화 상태
+  source        String    @default("LOCAL") // LOCAL(자체 생성) | GOOGLE(구글에서 가져옴)
+  googleEventId String?   @map("google_event_id")
+  syncedAt      DateTime? @map("synced_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([ownerUserId, googleEventId]) // 같은 구글 이벤트 중복 임포트 방지
+  @@index([date])
+  @@index([ownerUserId, date])
+  @@index([orgUnitId, date])
+  @@map("calendar_event")
+}
+
+// 사용자별 구글 계정 연결(OAuth 토큰). 앱 단위 Client ID/Secret은 환경변수,
+// 실제 캘린더 접근 권한은 사용자가 개인 구글 계정으로 각자 동의해 발급받는다.
+model GoogleCalendarLink {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String  @unique @map("user_id") @db.Uuid
+  user   AppUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  googleEmail  String    @map("google_email")
+  accessToken  String    @map("access_token")
+  refreshToken String?   @map("refresh_token") // 최초 동의 시에만 내려옴 — 보관 필수
+  tokenExpiry  DateTime? @map("token_expiry") @db.Timestamptz(6)
+  scope        String?
+
+  calendarId  String    @default("primary") @map("calendar_id")
+  syncEnabled Boolean   @default(true) @map("sync_enabled")
+  syncToken   String?   @map("sync_token") // 구글 증분 동기화 토큰
+  lastSyncAt  DateTime? @map("last_sync_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("google_calendar_link")
 }

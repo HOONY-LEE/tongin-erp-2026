@@ -241,6 +241,8 @@ export const PERMISSIONS = [
   'MARKETING.WRITE',
   'HR.READ',
   'HR.WRITE',
+  'CALENDAR.READ',
+  'CALENDAR.WRITE',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
