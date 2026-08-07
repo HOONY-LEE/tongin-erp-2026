@@ -7,11 +7,10 @@ import {
   Badge,
   Button,
   PageHeader,
-  SegmentedControl,
   Spinner,
   useToast,
 } from '../components/ui';
-import CalendarGrid from '../components/calendar/CalendarGrid';
+import CalendarGrid, { type CalendarSource } from '../components/calendar/CalendarGrid';
 import EventModal, { type EventFormValues } from '../components/calendar/EventModal';
 import {
   addDays,
@@ -22,8 +21,6 @@ import {
   type CalendarItem,
   type CalendarView,
 } from '../lib/calendarUtils';
-
-type Scope = 'MINE' | 'ORG';
 
 interface GoogleStatus {
   configured: boolean;
@@ -47,7 +44,9 @@ export default function CalendarPage() {
 
   const [view, setView] = useState<CalendarView>('month');
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [scope, setScope] = useState<Scope>('MINE');
+  /** 표시할 캘린더(내 일정·조직 일정·작업 일정) — 기본 전체 선택 */
+  const [selectedSources, setSelectedSources] = useState<string[]>(['MINE', 'ORG', 'WORK']);
+  const [search, setSearch] = useState('');
   const [events, setEvents] = useState<CalendarItem[]>([]);
   const [orgUnits, setOrgUnits] = useState<OrgUnitRow[]>([]);
   const [google, setGoogle] = useState<GoogleStatus | null>(null);
@@ -64,11 +63,13 @@ export default function CalendarPage() {
 
   const range = useMemo(() => rangeFor(view, currentDate), [view, currentDate]);
 
+  // 서버에서는 항상 조직 범위까지 받아오고(권한 밖 데이터는 서버가 걸러줌),
+  // 어떤 캘린더를 보여줄지는 아래 selectedSources로 화면에서 거른다.
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const rows = await api<CalendarItem[]>(
-        `/calendar/events?from=${range.from}&to=${range.to}&scope=${scope}`,
+        `/calendar/events?from=${range.from}&to=${range.to}&scope=ORG`,
       );
       setEvents(rows);
       touch();
@@ -77,7 +78,7 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, [range.from, range.to, scope, toast, t]);
+  }, [range.from, range.to, toast, t]);
 
   useEffect(() => {
     void load();
@@ -309,6 +310,30 @@ export default function CalendarPage() {
   const orgOptions = orgUnits.map((o) => ({ value: o.id, label: o.name }));
   const defaultOrgUnitId = orgUnits[0]?.id;
 
+  /** 드롭다운에 노출할 캘린더 목록 */
+  const sources: CalendarSource[] = [
+    { key: 'MINE', label: '내 일정', color: '#AF52DE' },
+    { key: 'ORG', label: '조직 일정', color: '#34C759' },
+    { key: 'WORK', label: '작업 일정', color: '#007AFF' },
+  ];
+
+  const toggleSource = (key: string) =>
+    setSelectedSources((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+
+  /** 선택한 캘린더 + 검색어로 필터링 */
+  const visibleEvents = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return events.filter((e) => {
+      const kind =
+        e.source === 'WORK_ORDER' ? 'WORK' : e.visibility === 'ORG' ? 'ORG' : 'MINE';
+      if (!selectedSources.includes(kind)) return false;
+      if (q && !e.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [events, selectedSources, search]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', minHeight: 0 }}>
       <PageHeader
@@ -375,21 +400,15 @@ export default function CalendarPage() {
           onPrev={handlePrev}
           onNext={handleNext}
           onToday={handleToday}
-          events={events}
+          events={visibleEvents}
           onDateClick={openAdd}
           onEventClick={openEdit}
           onPickMonth={handlePickMonth}
-          toolbar={
-            <SegmentedControl
-              size="sm"
-              value={scope}
-              onChange={(v) => setScope(v as Scope)}
-              options={[
-                { value: 'MINE', label: '내 일정' },
-                { value: 'ORG', label: '조직 전체' },
-              ]}
-            />
-          }
+          sources={sources}
+          selectedSources={selectedSources}
+          onToggleSource={toggleSource}
+          search={search}
+          onSearchChange={setSearch}
         />
       </div>
 

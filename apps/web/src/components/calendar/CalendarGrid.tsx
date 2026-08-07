@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Search, X, Check, ChevronDown } from 'lucide-react';
 import { Button, SegmentedControl } from '../ui';
 import {
   WEEKDAYS,
@@ -19,22 +21,26 @@ import {
 } from '../../lib/calendarUtils';
 
 const VIEW_OPTIONS = [
-  { value: 'day', label: '일' },
-  { value: 'week', label: '주' },
-  { value: 'month', label: '월' },
-  { value: 'year', label: '년' },
+  { value: 'day', label: '일간' },
+  { value: 'week', label: '주간' },
+  { value: 'month', label: '월간' },
+  { value: 'year', label: '연간' },
 ];
 
+const BORDER = '1px solid var(--ark-color-border)';
+/** 일요일 빨강 · 토요일 파랑 · 평일 기본 */
 const weekendColor = (i: number) =>
   i === 0 ? '#FF3B30' : i === 6 ? '#007AFF' : 'var(--ark-color-text-secondary)';
 
-function NavBtn({
+function IconBtn({
   onClick,
   label,
+  active,
   children,
 }: {
   onClick: () => void;
   label: string;
+  active?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -42,18 +48,19 @@ function NavBtn({
       type="button"
       onClick={onClick}
       aria-label={label}
+      title={label}
       style={{
-        width: 32,
-        height: 32,
+        width: 30,
+        height: 30,
         borderRadius: 8,
         border: 'none',
         cursor: 'pointer',
-        background: 'transparent',
-        color: 'var(--ark-color-text)',
+        background: active ? 'var(--ark-color-bg-muted)' : 'transparent',
+        color: 'var(--ark-color-text-secondary)',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 18,
+        flexShrink: 0,
       }}
     >
       {children}
@@ -61,62 +68,196 @@ function NavBtn({
   );
 }
 
-function EventChip({
+/** 표시할 캘린더 다중 선택 — "N개 선택됨" 드롭다운. */
+export interface CalendarSource {
+  key: string;
+  label: string;
+  color: string;
+}
+
+function SourceFilter({
+  sources,
+  selected,
+  onToggle,
+}: {
+  sources: CalendarSource[];
+  selected: string[];
+  onToggle: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          minWidth: 150,
+          height: 34,
+          padding: '0 12px',
+          borderRadius: 8,
+          border: BORDER,
+          background: 'var(--ark-color-bg)',
+          color: 'var(--ark-color-text)',
+          fontSize: 13,
+          cursor: 'pointer',
+        }}
+      >
+        <span>{selected.length}개 선택됨</span>
+        <ChevronDown size={14} style={{ color: 'var(--ark-color-text-tertiary)' }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            right: 0,
+            zIndex: 30,
+            minWidth: 200,
+            padding: 6,
+            borderRadius: 10,
+            border: BORDER,
+            background: 'var(--ark-color-bg)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          }}
+        >
+          {sources.map((s) => {
+            const on = selected.includes(s.key);
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => onToggle(s.key)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  color: 'var(--ark-color-text)',
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                    background: on ? s.color : 'transparent',
+                    border: on ? 'none' : `1.5px solid var(--ark-color-border-strong)`,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {on && <Check size={12} color="#fff" strokeWidth={3} />}
+                </span>
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 일정 한 줄 — 세로 컬러 바 + 제목, 시간이 있으면 우측에 표시. */
+function EventRow({
   event,
   onClick,
-  compact,
+  dense,
 }: {
   event: CalendarItem;
   onClick: (e: CalendarItem) => void;
-  compact?: boolean;
+  dense?: boolean;
 }) {
+  const [hover, setHover] = useState(false);
   const c = EVENT_COLORS[event.color] || EVENT_COLORS['#FF3B30'];
+  const allDay = !event.startTime;
+
   return (
     <button
       type="button"
-      title={[event.title, event.ownerName ? `· ${event.ownerName}` : '']
-        .filter(Boolean)
-        .join(' ')}
+      title={event.title}
       onClick={(e) => {
         e.stopPropagation();
         onClick(event);
       }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 6,
         width: '100%',
-        padding: compact ? '1px 5px' : '4px 8px',
-        borderRadius: 5,
+        // 종일 일정은 연한 배경 바, 시간 일정은 배경 없이 컬러 바만
+        padding: dense ? '1px 5px' : '2px 6px',
+        borderRadius: 4,
         border: 'none',
-        background: c.bg,
+        background: allDay ? c.bg : hover ? 'var(--ark-color-bg-muted)' : 'transparent',
         cursor: 'pointer',
         textAlign: 'left',
         overflow: 'hidden',
       }}
     >
+      {!allDay && (
+        <span
+          style={{
+            width: 3,
+            height: 12,
+            borderRadius: 2,
+            background: c.dot,
+            flexShrink: 0,
+          }}
+        />
+      )}
       <span
         style={{
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          background: c.dot,
-          flexShrink: 0,
-        }}
-      />
-      <span
-        style={{
-          fontSize: compact ? 11 : 13,
+          flex: 1,
+          minWidth: 0,
+          fontSize: dense ? 11.5 : 12.5,
           fontWeight: 500,
-          color: c.text,
+          color: allDay ? c.text : 'var(--ark-color-text)',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}
       >
-        {event.startTime ? `${formatTime(event.startTime)} ` : ''}
         {event.title}
       </span>
+      {event.startTime && (
+        <span
+          style={{
+            fontSize: dense ? 10.5 : 11.5,
+            color: 'var(--ark-color-text-tertiary)',
+            flexShrink: 0,
+          }}
+        >
+          {formatTime(event.startTime)}
+        </span>
+      )}
     </button>
   );
 }
@@ -134,31 +275,28 @@ function MonthView({ currentDate, today, eventMap, onDateClick, onEventClick }: 
   const month = currentDate.getMonth();
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          borderBottom: '1px solid var(--ark-color-border)',
-        }}
-      >
+      {/* 요일 헤더 — 우측 정렬 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
         {WEEKDAYS.map((d, i) => (
           <div
             key={d}
             style={{
-              textAlign: 'center',
-              fontSize: 13,
-              fontWeight: 600,
-              padding: '8px 0',
+              textAlign: 'right',
+              fontSize: 12,
+              fontWeight: 500,
+              padding: '7px 10px',
               color: weekendColor(i),
+              borderRight: i < 6 ? BORDER : 'none',
+              borderBottom: BORDER,
+              background: 'var(--ark-color-bg-subtle)',
             }}
           >
             {d}
           </div>
         ))}
       </div>
-      <div
-        style={{ flex: 1, display: 'grid', gridTemplateRows: 'repeat(6, 1fr)', minHeight: 0 }}
-      >
+
+      <div style={{ flex: 1, display: 'grid', gridTemplateRows: 'repeat(6, 1fr)', minHeight: 0 }}>
         {Array.from({ length: 6 }, (_, w) => (
           <div key={w} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
             {days.slice(w * 7, w * 7 + 7).map((date, i) => {
@@ -171,56 +309,58 @@ function MonthView({ currentDate, today, eventMap, onDateClick, onEventClick }: 
                   key={i}
                   onClick={() => onDateClick(date)}
                   style={{
-                    borderRight: i < 6 ? '1px solid var(--ark-color-border)' : 'none',
-                    borderBottom: w < 5 ? '1px solid var(--ark-color-border)' : 'none',
-                    padding: '4px 4px 0',
+                    borderRight: i < 6 ? BORDER : 'none',
+                    borderBottom: w < 5 ? BORDER : 'none',
+                    // 다른 달 날짜는 배경을 눌러 구분
+                    background: outside ? 'var(--ark-color-bg-subtle)' : 'var(--ark-color-bg)',
+                    padding: '4px 5px 0',
                     cursor: 'pointer',
                     overflow: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
+                    gap: 2,
                     minHeight: 0,
-                    opacity: outside ? 0.4 : 1,
                   }}
                 >
-                  <div style={{ textAlign: 'center', marginBottom: 2 }}>
+                  {/* 날짜 — 우측 정렬, 오늘만 원형 강조 */}
+                  <div style={{ textAlign: 'right', paddingRight: 2, marginBottom: 1 }}>
                     <span
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minWidth: 22,
-                        height: 22,
-                        padding: '0 5px',
+                        minWidth: 20,
+                        height: 20,
                         borderRadius: 999,
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: isToday ? 700 : 500,
                         background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
-                        color: isToday ? '#fff' : weekendColor(i),
+                        color: isToday
+                          ? '#fff'
+                          : outside
+                            ? 'var(--ark-color-text-disabled)'
+                            : weekendColor(i),
                       }}
                     >
                       {date.getDate()}
                     </span>
                   </div>
+
                   <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                      overflow: 'hidden',
-                    }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}
                   >
-                    {list.slice(0, 3).map((ev) => (
-                      <EventChip key={ev.id} event={ev} onClick={onEventClick} compact />
+                    {list.slice(0, 4).map((ev) => (
+                      <EventRow key={ev.id} event={ev} onClick={onEventClick} dense />
                     ))}
-                    {list.length > 3 && (
+                    {list.length > 4 && (
                       <span
                         style={{
-                          fontSize: 10,
+                          fontSize: 11,
                           color: 'var(--ark-color-text-secondary)',
-                          paddingLeft: 5,
+                          paddingLeft: 6,
                         }}
                       >
-                        +{list.length - 3}개 더보기
+                        +{list.length - 4}개 더보기
                       </span>
                     )}
                   </div>
@@ -237,9 +377,7 @@ function MonthView({ currentDate, today, eventMap, onDateClick, onEventClick }: 
 function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: ViewProps) {
   const days = getWeekDays(currentDate);
   return (
-    <div
-      style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', minHeight: 0 }}
-    >
+    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', minHeight: 0 }}>
       {days.map((date, i) => {
         const key = dateKey(date);
         const isToday = isSameDay(date, today);
@@ -249,7 +387,7 @@ function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: V
             key={i}
             onClick={() => onDateClick(date)}
             style={{
-              borderRight: i < 6 ? '1px solid var(--ark-color-border)' : 'none',
+              borderRight: i < 6 ? BORDER : 'none',
               display: 'flex',
               flexDirection: 'column',
               cursor: 'pointer',
@@ -258,21 +396,22 @@ function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: V
           >
             <div
               style={{
-                textAlign: 'center',
-                padding: '10px 0',
-                borderBottom: '1px solid var(--ark-color-border)',
+                textAlign: 'right',
+                padding: '8px 10px',
+                borderBottom: BORDER,
+                background: 'var(--ark-color-bg-subtle)',
               }}
             >
               <div style={{ fontSize: 12, color: weekendColor(i) }}>{WEEKDAYS[i]}</div>
-              <div
+              <span
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 30,
-                  height: 30,
-                  marginTop: 4,
-                  borderRadius: '50%',
+                  minWidth: 26,
+                  height: 26,
+                  marginTop: 2,
+                  borderRadius: 999,
                   fontSize: 15,
                   fontWeight: 600,
                   background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
@@ -280,20 +419,20 @@ function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: V
                 }}
               >
                 {date.getDate()}
-              </div>
+              </span>
             </div>
             <div
               style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 4,
+                gap: 3,
                 padding: 6,
                 overflowY: 'auto',
               }}
             >
               {list.map((ev) => (
-                <EventChip key={ev.id} event={ev} onClick={onEventClick} />
+                <EventRow key={ev.id} event={ev} onClick={onEventClick} />
               ))}
             </div>
           </div>
@@ -303,23 +442,21 @@ function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: V
   );
 }
 
-function DayView({
-  currentDate,
-  eventMap,
-  onDateClick,
-  onEventClick,
-}: Omit<ViewProps, 'today'>) {
+function DayView({ currentDate, eventMap, onDateClick, onEventClick }: Omit<ViewProps, 'today'>) {
   const list = sortEvents(eventMap.get(dateKey(currentDate)) || []);
   return (
-    <div onClick={() => onDateClick(currentDate)} style={{ flex: 1, overflowY: 'auto', cursor: 'pointer' }}>
+    <div
+      onClick={() => onDateClick(currentDate)}
+      style={{ flex: 1, overflowY: 'auto', cursor: 'pointer' }}
+    >
       <div
         style={{
-          maxWidth: 640,
+          maxWidth: 680,
           margin: '0 auto',
           padding: '24px 20px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 10,
+          gap: 8,
         }}
       >
         {list.length === 0 ? (
@@ -347,10 +484,10 @@ function DayView({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 14,
-                  padding: '14px 16px',
-                  borderRadius: 12,
+                  padding: '12px 16px',
+                  borderRadius: 10,
                   background: 'var(--ark-color-bg-subtle)',
-                  borderLeft: `4px solid ${c.dot}`,
+                  borderLeft: `3px solid ${c.dot}`,
                   cursor: 'pointer',
                 }}
               >
@@ -490,12 +627,7 @@ function YearView({
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 8,
-          padding: 16,
-        }}
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: 16 }}
       >
         {Array.from({ length: 12 }, (_, m) => (
           <MiniMonth
@@ -523,11 +655,16 @@ interface Props {
   onDateClick: (d: Date) => void;
   onEventClick: (e: CalendarItem) => void;
   onPickMonth: (d: Date) => void;
-  /** 헤더 우측(오늘 버튼 앞)에 끼워넣을 추가 컨트롤 — 범위 전환·구글 연동 등 */
-  toolbar?: React.ReactNode;
+  /** 표시할 캘린더 목록 + 선택 상태 */
+  sources: CalendarSource[];
+  selectedSources: string[];
+  onToggleSource: (key: string) => void;
+  /** 제목 검색어 */
+  search: string;
+  onSearchChange: (v: string) => void;
 }
 
-/** 일/주/월/년 뷰 캘린더 (calendar-app 레퍼런스와 동일한 UI). */
+/** 일간/주간/월간/연간 캘린더. */
 export default function CalendarGrid({
   view,
   onViewChange,
@@ -539,8 +676,13 @@ export default function CalendarGrid({
   onDateClick,
   onEventClick,
   onPickMonth,
-  toolbar,
+  sources,
+  selectedSources,
+  onToggleSource,
+  search,
+  onSearchChange,
 }: Props) {
+  const [searchOpen, setSearchOpen] = useState(false);
   const today = new Date();
   const eventMap = buildEventMap(events);
 
@@ -560,47 +702,96 @@ export default function CalendarGrid({
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
-        border: '1px solid var(--ark-color-border)',
-        borderRadius: 16,
+        border: BORDER,
+        borderRadius: 12,
         overflow: 'hidden',
         background: 'var(--ark-color-bg)',
       }}
     >
+      {/* 상단 툴바 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--ark-color-border)',
-          gap: 12,
+          gap: 8,
+          padding: '10px 14px',
+          borderBottom: BORDER,
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <NavBtn onClick={onPrev} label="이전">
-            ‹
-          </NavBtn>
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: 'var(--ark-color-text)',
-              minWidth: 180,
-              textAlign: 'center',
-            }}
-          >
-            {title}
-          </span>
-          <NavBtn onClick={onNext} label="다음">
-            ›
-          </NavBtn>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {toolbar}
-          <Button variant="outline" size="sm" onClick={onToday}>
-            오늘
-          </Button>
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 21,
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: 'var(--ark-color-text)',
+            marginRight: 4,
+          }}
+        >
+          {title}
+        </h2>
+
+        <IconBtn onClick={onPrev} label="이전">
+          <ChevronLeft size={18} />
+        </IconBtn>
+        <IconBtn onClick={onNext} label="다음">
+          <ChevronRight size={18} />
+        </IconBtn>
+
+        <Button variant="outline" size="sm" onClick={onToday}>
+          오늘
+        </Button>
+
+        {searchOpen ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="일정 검색"
+              style={{
+                height: 32,
+                width: 180,
+                padding: '0 10px',
+                borderRadius: 8,
+                border: BORDER,
+                background: 'var(--ark-color-bg)',
+                color: 'var(--ark-color-text)',
+                fontSize: 13,
+                outline: 'none',
+              }}
+            />
+            <IconBtn
+              label="검색 닫기"
+              onClick={() => {
+                onSearchChange('');
+                setSearchOpen(false);
+              }}
+            >
+              <X size={16} />
+            </IconBtn>
+          </div>
+        ) : (
+          <IconBtn label="검색" onClick={() => setSearchOpen(true)}>
+            <Search size={17} />
+          </IconBtn>
+        )}
+
+        <div
+          style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}
+        >
+          <SourceFilter
+            sources={sources}
+            selected={selectedSources}
+            onToggle={onToggleSource}
+          />
           <SegmentedControl
             options={VIEW_OPTIONS}
             value={view}

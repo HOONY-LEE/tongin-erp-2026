@@ -77,8 +77,10 @@ export function addYears(date: Date, n: number): Date {
   return new Date(date.getFullYear() + n, date.getMonth(), 1);
 }
 
+// 제목 표기는 "8월 2026"처럼 월(또는 일)을 앞에, 연도를 뒤에 둔다.
+
 export function formatDayTitle(date: Date): string {
-  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${DAY_NAMES[date.getDay()]}요일`;
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getFullYear()} ${DAY_NAMES[date.getDay()]}요일`;
 }
 
 export function formatSelectedDate(date: Date): string {
@@ -90,17 +92,17 @@ export function formatWeekTitle(date: Date): string {
   const a = w[0];
   const b = w[6];
   if (a.getMonth() === b.getMonth()) {
-    return `${a.getFullYear()}년 ${a.getMonth() + 1}월 ${a.getDate()}일 – ${b.getDate()}일`;
+    return `${a.getMonth() + 1}월 ${a.getDate()} – ${b.getDate()}일 ${a.getFullYear()}`;
   }
-  return `${a.getFullYear()}년 ${a.getMonth() + 1}월 ${a.getDate()}일 – ${b.getMonth() + 1}월 ${b.getDate()}일`;
+  return `${a.getMonth() + 1}월 ${a.getDate()}일 – ${b.getMonth() + 1}월 ${b.getDate()}일 ${b.getFullYear()}`;
 }
 
 export function formatMonthTitle(date: Date): string {
-  return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+  return `${date.getMonth() + 1}월 ${date.getFullYear()}`;
 }
 
 export function formatYearTitle(date: Date): string {
-  return `${date.getFullYear()}년`;
+  return `${date.getFullYear()}`;
 }
 
 /** 조회 구간 — 뷰에 따라 필요한 앞뒤 여유까지 포함해 서버에 한 번만 요청. */
