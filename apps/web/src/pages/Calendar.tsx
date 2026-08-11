@@ -213,6 +213,7 @@ export default function CalendarPage() {
     const body = {
       title: v.title,
       date: dateKey(selectedDate),
+      endDate: v.endDate || undefined,
       startTime: v.startTime || undefined,
       endTime: v.endTime || undefined,
       color: v.color,

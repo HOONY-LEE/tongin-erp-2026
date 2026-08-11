@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Badge, Button, Input, Modal, Select } from '../ui';
 import {
   COLORS,
+  dateKey,
   formatSelectedDate,
   formatTime,
   type CalendarItem,
@@ -9,6 +10,8 @@ import {
 
 export interface EventFormValues {
   title: string;
+  /** 여러 날 일정의 마지막 날 YYYY-MM-DD. 비우면 하루짜리 */
+  endDate: string;
   startTime: string;
   endTime: string;
   color: string;
@@ -47,6 +50,7 @@ export default function EventModal({
   onOpenRef,
 }: Props) {
   const [title, setTitle] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [color, setColor] = useState(COLORS[0]);
@@ -58,6 +62,8 @@ export default function EventModal({
   useEffect(() => {
     if (!open) return;
     setTitle(event?.title ?? '');
+    // 하루짜리면 종료일 칸을 비워 둔다
+    setEndDate(event && event.endDate !== event.date ? event.endDate : '');
     setStartTime(event?.startTime ?? '');
     setEndTime(event?.endTime ?? '');
     setColor(event?.color ?? COLORS[0]);
@@ -73,6 +79,7 @@ export default function EventModal({
     if (!title.trim()) return;
     onSave({
       title: title.trim(),
+      endDate,
       startTime,
       endTime,
       color,
@@ -156,6 +163,14 @@ export default function EventModal({
           }}
         />
 
+        <Input
+          label="종료일 (여러 날에 걸치는 일정)"
+          type="date"
+          value={endDate}
+          min={selectedDate ? dateKey(selectedDate) : undefined}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Input
@@ -175,7 +190,7 @@ export default function EventModal({
           </div>
         </div>
         <div style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)', marginTop: -10 }}>
-          시간을 비워두면 종일 일정으로 저장됩니다.
+          시간을 비워두면 종일 일정으로 저장됩니다. 종료일을 지정하면 여러 날 막대로 표시됩니다.
         </div>
 
         <Select

@@ -16,6 +16,8 @@ import {
   formatYearTitle,
   buildEventMap,
   sortEvents,
+  isMultiDay,
+  layoutWeekSegments,
   type CalendarItem,
   type CalendarView,
 } from '../../lib/calendarUtils';
@@ -266,11 +268,74 @@ interface ViewProps {
   currentDate: Date;
   today: Date;
   eventMap: Map<string, CalendarItem[]>;
+  /** 여러 날 일정 막대 계산용 원본 목록 */
+  allEvents: CalendarItem[];
   onDateClick: (d: Date) => void;
   onEventClick: (e: CalendarItem) => void;
 }
 
-function MonthView({ currentDate, today, eventMap, onDateClick, onEventClick }: ViewProps) {
+/** 여러 날 일정 막대 — 이어지는 쪽 모서리를 각지게 해서 연속임을 드러낸다. */
+function SpanBar({
+  segment,
+  onClick,
+}: {
+  segment: ReturnType<typeof layoutWeekSegments>[number];
+  onClick: (e: CalendarItem) => void;
+}) {
+  const { event, continuesFromPrev, continuesToNext } = segment;
+  const c = EVENT_COLORS[event.color] || EVENT_COLORS['#FF3B30'];
+  return (
+    <button
+      type="button"
+      title={event.title}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(event);
+      }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        width: '100%',
+        height: SPAN_BAR_H,
+        padding: '0 7px',
+        border: 'none',
+        background: c.bg,
+        color: c.text,
+        cursor: 'pointer',
+        textAlign: 'left',
+        overflow: 'hidden',
+        borderTopLeftRadius: continuesFromPrev ? 0 : 4,
+        borderBottomLeftRadius: continuesFromPrev ? 0 : 4,
+        borderTopRightRadius: continuesToNext ? 0 : 4,
+        borderBottomRightRadius: continuesToNext ? 0 : 4,
+      }}
+    >
+      {continuesFromPrev && <span style={{ fontSize: 10, opacity: 0.7 }}>◀</span>}
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontSize: 11.5,
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {event.title}
+      </span>
+      {continuesToNext && <span style={{ fontSize: 10, opacity: 0.7 }}>▶</span>}
+    </button>
+  );
+}
+
+const SPAN_BAR_H = 17;
+const SPAN_LANE_H = SPAN_BAR_H + 2;
+/** 날짜 숫자가 차지하는 높이 */
+const DATE_ROW_H = 24;
+
+function MonthView({ currentDate, today, eventMap, allEvents, onDateClick, onEventClick }: ViewProps) {
   const days = getMonthMatrix(currentDate.getFullYear(), currentDate.getMonth());
   const month = currentDate.getMonth();
   return (
@@ -297,13 +362,23 @@ function MonthView({ currentDate, today, eventMap, onDateClick, onEventClick }: 
       </div>
 
       <div style={{ flex: 1, display: 'grid', gridTemplateRows: 'repeat(6, 1fr)', minHeight: 0 }}>
-        {Array.from({ length: 6 }, (_, w) => (
-          <div key={w} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {days.slice(w * 7, w * 7 + 7).map((date, i) => {
+        {Array.from({ length: 6 }, (_, w) => {
+          const weekDays = days.slice(w * 7, w * 7 + 7);
+          // 여러 날 일정은 칸이 아니라 주 전체를 가로지르는 막대로 그린다.
+          const segments = layoutWeekSegments(weekDays, allEvents);
+          const laneCount = segments.reduce((m, s) => Math.max(m, s.lane + 1), 0);
+          const spanAreaH = laneCount * SPAN_LANE_H;
+          return (
+          <div
+            key={w}
+            style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}
+          >
+            {weekDays.map((date, i) => {
               const key = dateKey(date);
               const outside = date.getMonth() !== month;
               const isToday = isSameDay(date, today);
-              const list = sortEvents(eventMap.get(key) || []);
+              // 막대로 그린 여러 날 일정은 칸 목록에서 제외(중복 방지)
+              const list = sortEvents((eventMap.get(key) || []).filter((e) => !isMultiDay(e)));
               return (
                 <div
                   key={i}
@@ -346,6 +421,9 @@ function MonthView({ currentDate, today, eventMap, onDateClick, onEventClick }: 
                     </span>
                   </div>
 
+                  {/* 여러 날 막대가 차지하는 만큼 자리를 비워 겹치지 않게 한다 */}
+                  {spanAreaH > 0 && <div style={{ height: spanAreaH, flexShrink: 0 }} />}
+
                   <div
                     style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}
                   >
@@ -367,14 +445,31 @@ function MonthView({ currentDate, today, eventMap, onDateClick, onEventClick }: 
                 </div>
               );
             })}
+
+            {/* 여러 날 일정 막대 — 칸 위에 겹쳐 그린다 */}
+            {segments.map((seg) => (
+              <div
+                key={seg.event.id}
+                style={{
+                  position: 'absolute',
+                  top: DATE_ROW_H + seg.lane * SPAN_LANE_H,
+                  left: `calc(${(seg.startCol / 7) * 100}% + 4px)`,
+                  width: `calc(${(seg.span / 7) * 100}% - 8px)`,
+                  height: SPAN_BAR_H,
+                }}
+              >
+                <SpanBar segment={seg} onClick={onEventClick} />
+              </div>
+            ))}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: ViewProps) {
+function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: Omit<ViewProps, 'allEvents'>) {
   const days = getWeekDays(currentDate);
   return (
     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', minHeight: 0 }}>
@@ -442,7 +537,7 @@ function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: V
   );
 }
 
-function DayView({ currentDate, eventMap, onDateClick, onEventClick }: Omit<ViewProps, 'today'>) {
+function DayView({ currentDate, eventMap, onDateClick, onEventClick }: Omit<ViewProps, 'today' | 'allEvents'>) {
   const list = sortEvents(eventMap.get(dateKey(currentDate)) || []);
   return (
     <div
@@ -823,6 +918,7 @@ export default function CalendarGrid({
           currentDate={currentDate}
           today={today}
           eventMap={eventMap}
+          allEvents={events}
           onDateClick={onDateClick}
           onEventClick={onEventClick}
         />

@@ -186,6 +186,7 @@ export class GoogleCalendarService {
       seen.add(ev.id);
       const startTime = ev.start?.dateTime ? ev.start.dateTime.slice(11, 16) : null;
       const endTime = ev.end?.dateTime ? ev.end.dateTime.slice(11, 16) : null;
+      const endDate = remoteEndDate(date, ev);
       await this.prisma.calendarEvent.upsert({
         where: {
           ownerUserId_googleEventId: { ownerUserId: principal.userId, googleEventId: ev.id },
@@ -195,6 +196,7 @@ export class GoogleCalendarService {
           description: ev.description,
           location: ev.location,
           date: toDateOnly(date),
+          endDate,
           startTime,
           endTime,
           color: '#007AFF',
@@ -209,6 +211,7 @@ export class GoogleCalendarService {
           description: ev.description,
           location: ev.location,
           date: toDateOnly(date),
+          endDate,
           startTime,
           endTime,
           syncedAt: new Date(),
@@ -282,6 +285,7 @@ export class GoogleCalendarService {
       description: string | null;
       location: string | null;
       date: Date;
+      endDate?: Date | null;
       startTime: string | null;
       endTime: string | null;
     },
@@ -436,12 +440,13 @@ export class GoogleCalendarService {
     return items;
   }
 
-  /** 자체 일정 → 구글 이벤트 본문. 시간이 없으면 종일 일정(DTEND는 익일). */
+  /** 자체 일정 → 구글 이벤트 본문. 시간이 없으면 종일 일정(구글 DTEND는 배타적이라 +1일). */
   private toRemoteBody(ev: {
     title: string;
     description: string | null;
     location: string | null;
     date: Date;
+    endDate?: Date | null;
     startTime: string | null;
     endTime: string | null;
   }): Record<string, unknown> {
@@ -451,15 +456,17 @@ export class GoogleCalendarService {
       description: ev.description ?? undefined,
       location: ev.location ?? undefined,
     };
-    if (ev.startTime) {
+    // 여러 날에 걸치면 시간이 있어도 종일(기간) 일정으로 내보낸다.
+    const lastDay = ev.endDate && ev.endDate.getTime() > ev.date.getTime() ? ev.endDate : null;
+    if (ev.startTime && !lastDay) {
       const endTime = ev.endTime ?? addHour(ev.startTime);
       body.start = { dateTime: `${day}T${ev.startTime}:00`, timeZone: TIMEZONE };
       body.end = { dateTime: `${day}T${endTime}:00`, timeZone: TIMEZONE };
     } else {
-      const next = new Date(ev.date);
-      next.setUTCDate(next.getUTCDate() + 1);
+      const exclusiveEnd = new Date(lastDay ?? ev.date);
+      exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);
       body.start = { date: day };
-      body.end = { date: ymd(next) };
+      body.end = { date: ymd(exclusiveEnd) };
     }
     return body;
   }
@@ -472,6 +479,7 @@ export class GoogleCalendarService {
       description: string | null;
       location: string | null;
       date: Date;
+      endDate?: Date | null;
       startTime: string | null;
       endTime: string | null;
     },
@@ -497,6 +505,20 @@ export class GoogleCalendarService {
       return null;
     }
   }
+}
+
+/**
+ * 구글 이벤트의 마지막 날(포함)을 계산한다.
+ * 구글 종일 일정의 end.date는 "다음 날"이라 하루를 뺀다(8/1~8/2 일정 → end.date=8/3).
+ * 하루짜리면 null을 돌려 endDate를 비워 둔다.
+ */
+function remoteEndDate(startYmd: string, ev: GoogleEvent): Date | null {
+  const raw = ev.end?.date ?? ev.end?.dateTime?.slice(0, 10);
+  if (!raw) return null;
+  const start = toDateOnly(startYmd);
+  const end = toDateOnly(raw);
+  if (ev.end?.date) end.setUTCDate(end.getUTCDate() - 1); // 종일 일정은 종료일이 배타적
+  return end.getTime() > start.getTime() ? end : null;
 }
 
 function addHour(hhmm: string): string {

@@ -137,7 +137,10 @@ export interface CalendarItem {
   id: string;
   source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER';
   title: string;
+  /** 시작 날짜 YYYY-MM-DD */
   date: string;
+  /** 마지막 날(포함). 하루짜리면 date와 같다 */
+  endDate: string;
   startTime: string | null;
   endTime: string | null;
   color: string;
@@ -152,12 +155,97 @@ export interface CalendarItem {
   refId: string | null;
 }
 
+/** 여러 날에 걸친 일정인지 */
+export function isMultiDay(e: CalendarItem): boolean {
+  return Boolean(e.endDate) && e.endDate !== e.date;
+}
+
+/** 한 주 안에서 일정이 차지하는 자리(칸 시작 위치·길이·잘림 여부). */
+export interface WeekSegment {
+  event: CalendarItem;
+  /** 0=일요일 … 6=토요일 */
+  startCol: number;
+  /** 차지하는 칸 수 */
+  span: number;
+  /** 이전 주에서 이어져 온 일정인지 */
+  continuesFromPrev: boolean;
+  /** 다음 주로 이어지는 일정인지 */
+  continuesToNext: boolean;
+  /** 겹치지 않게 쌓은 세로 줄 번호(0부터) */
+  lane: number;
+}
+
+/**
+ * 한 주(7일)에 걸쳐 있는 여러 날 일정을 겹치지 않는 줄(lane)에 배치한다.
+ * 구글/애플 캘린더처럼 기간 일정이 가로 막대로 이어져 보이게 하기 위한 계산.
+ */
+export function layoutWeekSegments(weekDays: Date[], events: CalendarItem[]): WeekSegment[] {
+  const weekStart = dateKey(weekDays[0]);
+  const weekEnd = dateKey(weekDays[6]);
+
+  const spanning = events
+    .filter(isMultiDay)
+    .filter((e) => e.date <= weekEnd && e.endDate >= weekStart)
+    // 긴 일정을 위쪽 줄에 두어 시각적으로 안정되게 한다
+    .sort((a, b) => (a.date === b.date ? b.endDate.localeCompare(a.endDate) : a.date.localeCompare(b.date)));
+
+  const lanes: string[][] = []; // lane별로 이미 사용한 날짜 키
+  const segments: WeekSegment[] = [];
+
+  for (const e of spanning) {
+    const startIdx = Math.max(0, weekDays.findIndex((d) => dateKey(d) === e.date));
+    const endIdxRaw = weekDays.findIndex((d) => dateKey(d) === e.endDate);
+    const endIdx = endIdxRaw === -1 ? 6 : endIdxRaw;
+    const startCol = e.date < weekStart ? 0 : startIdx;
+    const span = endIdx - startCol + 1;
+    if (span <= 0) continue;
+
+    const usedDays = weekDays.slice(startCol, startCol + span).map(dateKey);
+    let lane = lanes.findIndex((used) => usedDays.every((d) => !used.includes(d)));
+    if (lane === -1) {
+      lanes.push([]);
+      lane = lanes.length - 1;
+    }
+    lanes[lane].push(...usedDays);
+
+    segments.push({
+      event: e,
+      startCol,
+      span,
+      continuesFromPrev: e.date < weekStart,
+      continuesToNext: e.endDate > weekEnd,
+      lane,
+    });
+  }
+  return segments;
+}
+
+/**
+ * 날짜별 일정 맵. 여러 날 일정은 걸쳐 있는 모든 날짜에 들어간다
+ * (일/주/연 뷰에서 중간 날짜에도 보여야 하므로).
+ */
 export function buildEventMap(events: CalendarItem[]): Map<string, CalendarItem[]> {
   const map = new Map<string, CalendarItem[]>();
-  for (const e of events) {
-    const arr = map.get(e.date) ?? [];
+  const push = (key: string, e: CalendarItem) => {
+    const arr = map.get(key) ?? [];
     arr.push(e);
-    map.set(e.date, arr);
+    map.set(key, arr);
+  };
+
+  for (const e of events) {
+    if (!isMultiDay(e)) {
+      push(e.date, e);
+      continue;
+    }
+    const [sy, sm, sd] = e.date.split('-').map(Number);
+    const cursor = new Date(sy, sm - 1, sd);
+    // 무한 루프 방지를 위해 최대 366일까지만 펼친다
+    for (let i = 0; i < 366; i++) {
+      const key = dateKey(cursor);
+      if (key > e.endDate) break;
+      push(key, e);
+      cursor.setDate(cursor.getDate() + 1);
+    }
   }
   return map;
 }

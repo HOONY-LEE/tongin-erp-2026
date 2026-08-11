@@ -23,9 +23,14 @@ export class CreateCalendarEventDto {
   @MaxLength(2000)
   description?: string;
 
-  /** YYYY-MM-DD */
+  /** 시작 날짜 YYYY-MM-DD */
   @IsDateString()
   date!: string;
+
+  /** 여러 날 일정의 마지막 날(포함) YYYY-MM-DD. 미지정 시 하루짜리 */
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 
   @IsOptional()
   @Matches(HHMM, { message: 'startTime은 HH:mm 형식이어야 합니다.' })

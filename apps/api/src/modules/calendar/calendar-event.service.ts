@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -24,8 +29,10 @@ export interface CalendarItem {
   /** LOCAL=자체 일정, GOOGLE=구글에서 가져온 일정, WORK_ORDER=작업(읽기전용) */
   source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER';
   title: string;
-  /** YYYY-MM-DD */
+  /** 시작 날짜 YYYY-MM-DD */
   date: string;
+  /** 여러 날 일정의 마지막 날(포함). 하루짜리면 date와 동일 */
+  endDate: string;
   startTime: string | null;
   endTime: string | null;
   color: string;
@@ -55,6 +62,20 @@ function toDateOnly(s: string): Date {
 function dateColToYmd(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}`;
+}
+
+/**
+ * 종료일 정규화. 하루짜리(미지정이거나 시작일과 같음)는 null로 저장해
+ * "여러 날 일정"만 endDate를 갖도록 한다. 종료일이 시작일보다 빠르면 거부.
+ */
+function normalizeEndDate(start: string, end?: string): Date | null {
+  if (!end) return null;
+  const s = toDateOnly(start);
+  const e = toDateOnly(end);
+  if (e.getTime() < s.getTime()) {
+    throw new BadRequestException('종료일은 시작일보다 빠를 수 없습니다.');
+  }
+  return e.getTime() === s.getTime() ? null : e;
 }
 
 @Injectable()
@@ -100,8 +121,18 @@ export class CalendarEventService {
       orConditions.push(orgShared);
     }
 
+    // 여러 날 일정은 시작일이 조회 구간 밖이어도 구간과 "겹치면" 보여야 한다.
+    // 겹침 조건: date <= to  AND  (endDate ?? date) >= from
+    const overlap: Prisma.CalendarEventWhereInput[] = [];
+    if (to) overlap.push({ date: { lte: to } });
+    if (from) {
+      overlap.push({
+        OR: [{ endDate: { gte: from } }, { endDate: null, date: { gte: from } }],
+      });
+    }
+
     const events = await this.prisma.calendarEvent.findMany({
-      where: { date: dateFilter, OR: orConditions },
+      where: { AND: [...overlap, { OR: orConditions }] },
       include: {
         owner: { select: { loginId: true, employee: { select: { name: true } } } },
         orgUnit: { select: { name: true } },
@@ -115,6 +146,7 @@ export class CalendarEventService {
       source: e.source === 'GOOGLE' ? 'GOOGLE' : 'LOCAL',
       title: e.title,
       date: dateColToYmd(e.date),
+      endDate: dateColToYmd(e.endDate ?? e.date),
       startTime: e.startTime,
       endTime: e.endTime,
       color: e.color,
@@ -156,6 +188,7 @@ export class CalendarEventService {
           source: 'WORK_ORDER',
           title: `[작업] ${customer}${route ? ` · ${route}` : ''}`,
           date: dateColToYmd(o.scheduledDate as Date),
+          endDate: dateColToYmd(o.scheduledDate as Date),
           startTime: null,
           endTime: null,
           color: WORK_ORDER_COLOR,
@@ -190,6 +223,7 @@ export class CalendarEventService {
         title: dto.title,
         description: dto.description,
         date: toDateOnly(dto.date),
+        endDate: normalizeEndDate(dto.date, dto.endDate),
         startTime: dto.startTime,
         endTime: dto.endTime,
         color: dto.color ?? '#FF3B30',
@@ -219,6 +253,11 @@ export class CalendarEventService {
         title: dto.title,
         description: dto.description,
         date: dto.date ? toDateOnly(dto.date) : undefined,
+        // 시작일이나 종료일 중 하나라도 바뀌면 둘을 함께 다시 계산한다.
+        endDate:
+          dto.date !== undefined || dto.endDate !== undefined
+            ? normalizeEndDate(dto.date ?? dateColToYmd(found.date), dto.endDate)
+            : undefined,
         startTime: dto.startTime,
         endTime: dto.endTime,
         color: dto.color,
