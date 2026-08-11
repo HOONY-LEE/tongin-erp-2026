@@ -18,37 +18,10 @@ import {
   type Column,
   type FormField,
   type Row,
-  type StatusMap,
 } from '../components/ui';
+import { LEAD_STATUS, RECEIPT_SOURCES, SERVICE_LINES, codeLabel } from '../lib/leadCodes';
 
-const STATUS: StatusMap = {
-  RECEIVED: { label: '접수', color: 'neutral' },
-  CONSULT_ASSIGNED: { label: '상담배정', color: 'info' },
-  CONSULT_TOSS: { label: '상담토스', color: 'info' },
-  QUOTED: { label: '견적완료', color: 'warning' },
-  CONTRACTED: { label: '계약', color: 'primary' },
-  WORK_TOSS: { label: '작업토스', color: 'primary' },
-  IN_PROGRESS: { label: '작업중', color: 'info' },
-  DONE: { label: '완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
-};
-const SERVICE_LINES = [
-  { value: 'MOVING', label: '이사(무빙)' },
-  { value: 'LIVING', label: '리빙' },
-  { value: 'CARE', label: '케어' },
-  { value: 'B2B_MOVING', label: '기업이전' },
-  { value: 'GENERAL', label: '일반' },
-];
-const RECEIPT_SOURCES = [
-  { value: 'HOMEPAGE', label: '홈페이지' },
-  { value: 'AIBOT', label: 'AI상담봇' },
-  { value: 'PHONE', label: '전화상담' },
-  { value: 'NAVER', label: '네이버' },
-  { value: 'INSTAGRAM', label: '인스타그램' },
-  { value: 'PARTNER', label: '제휴사' },
-  { value: 'WALK_IN', label: '방문접수' },
-  { value: 'ETC', label: '기타' },
-];
+const STATUS = LEAD_STATUS;
 
 // 단계 탭 = lead.status 그룹 (한 케이스가 상태로 전 단계를 관통)
 const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
@@ -171,8 +144,8 @@ export default function Leads() {
       },
     },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
-    { title: '출처', render: (r) => String(r.source ?? '-') },
-    { title: '서비스', render: (r) => String(r.serviceLine ?? '-') },
+    { title: '접수경로', render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string) },
+    { title: '상품', render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string) },
     {
       title: '출발',
       render: (r) => (

@@ -10,6 +10,7 @@ export default {
     login: '登录',
     logout: '退出',
     created: '已创建',
+    saved: '已保存',
     loadFailed: '加载失败',
     saveFailed: '保存失败',
     required: '此项为必填',

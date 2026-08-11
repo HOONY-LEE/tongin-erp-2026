@@ -10,6 +10,7 @@ export default {
     login: 'Sign in',
     logout: 'Sign out',
     created: 'Created successfully',
+    saved: 'Saved successfully',
     loadFailed: 'Failed to load',
     saveFailed: 'Failed to save',
     required: 'This field is required',

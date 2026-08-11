@@ -10,6 +10,7 @@ export default {
     login: '로그인',
     logout: '로그아웃',
     created: '등록되었습니다',
+    saved: '저장되었습니다',
     loadFailed: '조회에 실패했습니다',
     saveFailed: '저장에 실패했습니다',
     required: '필수 항목입니다',

@@ -58,6 +58,9 @@ export class LeadService {
       where: { id },
       include: {
         customer: { select: { id: true, name: true, phonePrimary: true } },
+        orgUnit: { select: { id: true, name: true } },
+        ownerEmp: { select: { id: true, name: true } },
+        partner: { select: { id: true, name: true } },
         estimates: {
           select: {
             id: true,
@@ -172,10 +175,21 @@ export class LeadService {
           partnerId: dto.partnerId,
           source: dto.source,
           serviceLine: dto.serviceLine,
+          // 주소는 생성 때와 동일하게 구조적 필드(상세·시도/시군구·좌표)까지 함께 갱신
           fromZipcode: dto.fromZipcode,
           fromAddr: dto.fromAddr,
+          fromAddrDetail: dto.fromAddrDetail,
+          fromSido: dto.fromSido,
+          fromSigungu: dto.fromSigungu,
+          fromLat: dto.fromLat,
+          fromLng: dto.fromLng,
           toZipcode: dto.toZipcode,
           toAddr: dto.toAddr,
+          toAddrDetail: dto.toAddrDetail,
+          toSido: dto.toSido,
+          toSigungu: dto.toSigungu,
+          toLat: dto.toLat,
+          toLng: dto.toLng,
           moveDate: dto.moveDate ? new Date(dto.moveDate) : undefined,
           visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
         },
