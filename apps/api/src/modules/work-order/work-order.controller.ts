@@ -23,25 +23,29 @@ export class WorkOrderController {
 
   @Post()
   @RequirePermissions('WORK_ORDER.WRITE')
-  create(@Body() dto: CreateWorkOrderDto) {
-    return this.workOrderService.create(dto);
+  create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateWorkOrderDto) {
+    return this.workOrderService.create(dto, user);
   }
 
   @Post(':id/assignments')
   @RequirePermissions('WORK_ORDER.WRITE')
-  addAssignment(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateAssignmentDto) {
-    return this.workOrderService.addAssignment(id, dto);
+  addAssignment(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateAssignmentDto,
+  ) {
+    return this.workOrderService.addAssignment(id, dto, user);
   }
 
   @Post(':id/start')
   @RequirePermissions('WORK_ORDER.WRITE')
-  start(@Param('id', ParseUUIDPipe) id: string) {
-    return this.workOrderService.start(id);
+  start(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.workOrderService.start(id, user);
   }
 
   @Post(':id/complete')
   @RequirePermissions('WORK_ORDER.WRITE')
-  complete(@Param('id', ParseUUIDPipe) id: string) {
-    return this.workOrderService.complete(id);
+  complete(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.workOrderService.complete(id, user);
   }
 }

@@ -1,5 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 import { ContractService } from '../contract/contract.service';
 
 /** 입금확인 상태: 입금전(미계약) → 계약금완료 → 완료 */
@@ -28,13 +35,23 @@ interface PayConfirmRow {
 export class PaymentConfirmationService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
     private readonly contractService: ContractService,
   ) {}
 
+  /** 소속 조직의 견적인지 검증. */
+  private async assertScope(orgUnitId: string, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 견적만 조회할 수 있습니다.');
+    }
+  }
+
   /** 견적서가 전달된(QUOTED) 건들의 입금 현황 목록. */
-  async list(): Promise<PayConfirmRow[]> {
+  async list(principal?: AuthPrincipal): Promise<PayConfirmRow[]> {
+    const ids = await this.scope.orgScopeIds(principal);
     const estimates = await this.prisma.estimate.findMany({
-      where: { status: 'QUOTED' },
+      where: { status: 'QUOTED', ...(ids === null ? {} : { orgUnitId: { in: ids } }) },
       select: {
         id: true,
         estimateNo: true,
@@ -95,9 +112,10 @@ export class PaymentConfirmationService {
   }
 
   /** 계약금 입금확인 = 계약 성립. 계약 없으면 생성·서명 후 계약금 결제 생성·확인. */
-  async confirmDeposit(estimateId: string, totalAmount?: number) {
+  async confirmDeposit(estimateId: string, totalAmount?: number, principal?: AuthPrincipal) {
     const estimate = await this.prisma.estimate.findUnique({ where: { id: estimateId } });
     if (!estimate) throw new NotFoundException('견적을 찾을 수 없습니다.');
+    await this.assertScope(estimate.orgUnitId, principal);
 
     let contract = await this.prisma.contract.findUnique({ where: { estimateId } });
     if (!contract) {
@@ -120,12 +138,13 @@ export class PaymentConfirmationService {
   }
 
   /** 잔금 입금확인. 계약금 완료 후 가능. */
-  async confirmBalance(estimateId: string) {
+  async confirmBalance(estimateId: string, principal?: AuthPrincipal) {
     const contract = await this.prisma.contract.findUnique({
       where: { estimateId },
       include: { payments: true },
     });
     if (!contract) throw new BadRequestException('아직 계약(계약금 입금)이 없습니다.');
+    await this.assertScope(contract.orgUnitId, principal);
     const depositPaid = contract.payments.some((p) => p.kind === 'DEPOSIT' && p.status === 'PAID');
     if (!depositPaid) throw new BadRequestException('계약금 입금이 먼저 확인되어야 합니다.');
     await this.confirmPaymentOfKind(contract.id, 'BALANCE');

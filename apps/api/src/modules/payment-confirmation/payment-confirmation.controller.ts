@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/commo
 import { IsNumber, IsOptional, Min } from 'class-validator';
 import { PaymentConfirmationService } from './payment-confirmation.service';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthPrincipal } from '@tongin/shared';
 
 class ConfirmDepositDto {
   @IsOptional()
@@ -16,22 +18,26 @@ export class PaymentConfirmationController {
 
   @Get()
   @RequirePermissions('PAYMENT.READ')
-  list() {
-    return this.svc.list();
+  list(@CurrentUser() user: AuthPrincipal) {
+    return this.svc.list(user);
   }
 
   @Post(':estimateId/deposit')
   @RequirePermissions('PAYMENT.WRITE')
   confirmDeposit(
+    @CurrentUser() user: AuthPrincipal,
     @Param('estimateId', ParseUUIDPipe) estimateId: string,
     @Body() dto: ConfirmDepositDto,
   ) {
-    return this.svc.confirmDeposit(estimateId, dto.totalAmount);
+    return this.svc.confirmDeposit(estimateId, dto.totalAmount, user);
   }
 
   @Post(':estimateId/balance')
   @RequirePermissions('PAYMENT.WRITE')
-  confirmBalance(@Param('estimateId', ParseUUIDPipe) estimateId: string) {
-    return this.svc.confirmBalance(estimateId);
+  confirmBalance(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('estimateId', ParseUUIDPipe) estimateId: string,
+  ) {
+    return this.svc.confirmBalance(estimateId, user);
   }
 }

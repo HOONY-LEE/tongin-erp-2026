@@ -46,9 +46,13 @@ export class ContractService {
     return contract;
   }
 
-  async create(dto: CreateContractDto) {
+  async create(dto: CreateContractDto, principal?: AuthPrincipal) {
     const estimate = await this.prisma.estimate.findUnique({ where: { id: dto.estimateId } });
     if (!estimate) throw new BadRequestException('존재하지 않는 견적입니다.');
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(estimate.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 견적만 계약할 수 있습니다.');
+    }
     if (estimate.status !== 'QUOTED')
       throw new BadRequestException('확정(QUOTED)된 견적만 계약할 수 있습니다.');
     const existing = await this.prisma.contract.findUnique({
@@ -88,8 +92,8 @@ export class ContractService {
   }
 
   /** 전자서명(스텁) — 서명 시점 데이터 동결(E-0) */
-  async sign(id: string) {
-    const c = await this.findOne(id);
+  async sign(id: string, principal?: AuthPrincipal) {
+    const c = await this.findOne(id, principal);
     if (c.status === 'SIGNED') return c;
     if (c.status !== 'DRAFT') throw new BadRequestException(`서명 불가 상태: ${c.status}`);
     const snapshot = {
@@ -117,8 +121,8 @@ export class ContractService {
     return updated;
   }
 
-  async createPayment(contractId: string, dto: CreatePaymentDto) {
-    const c = await this.findOne(contractId);
+  async createPayment(contractId: string, dto: CreatePaymentDto, principal?: AuthPrincipal) {
+    const c = await this.findOne(contractId, principal);
     const amount = dto.amount ?? Number(dto.kind === 'DEPOSIT' ? c.depositAmount : c.balanceAmount);
     const va = await this.payments.issueVirtualAccount(amount);
     const payment = await this.prisma.payment.create({
@@ -162,7 +166,8 @@ export class ContractService {
     return updated;
   }
 
-  listPayments(contractId: string) {
+  async listPayments(contractId: string, principal?: AuthPrincipal) {
+    await this.findOne(contractId, principal); // 조직 스코프 검증
     return this.prisma.payment.findMany({
       where: { contractId },
       orderBy: { createdAt: 'asc' },

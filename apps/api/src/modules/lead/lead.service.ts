@@ -112,7 +112,11 @@ export class LeadService {
     return { ...lead, supportTickets };
   }
 
-  async create(dto: CreateLeadDto) {
+  async create(dto: CreateLeadDto, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(dto.orgUnitId)) {
+      throw new ForbiddenException('소속 조직으로만 접수할 수 있습니다.');
+    }
     // 신규 접수: 고객명 입력 시 고객 자동 생성·연결(드롭다운 선택은 customerId)
     let customerId = dto.customerId;
     if (!customerId && dto.customerName?.trim()) {
@@ -164,8 +168,8 @@ export class LeadService {
     }
   }
 
-  async update(id: string, dto: UpdateLeadDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateLeadDto, principal?: AuthPrincipal) {
+    await this.findOne(id, principal);
     try {
       return await this.prisma.lead.update({
         where: { id },
@@ -200,8 +204,8 @@ export class LeadService {
   }
 
   /** 상태 전이(상태머신). 다른 모듈(계약·작업)에서도 호출. */
-  async transitionTo(id: string, to: LeadStatus) {
-    const lead = await this.findOne(id);
+  async transitionTo(id: string, to: LeadStatus, principal?: AuthPrincipal) {
+    const lead = await this.findOne(id, principal);
     const from = lead.status as LeadStatus;
     if (from === to) return lead;
     if (!canTransition(from, to)) {
@@ -217,8 +221,8 @@ export class LeadService {
     return updated;
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, principal?: AuthPrincipal) {
+    await this.findOne(id, principal);
     return this.prisma.lead.delete({ where: { id } });
   }
 

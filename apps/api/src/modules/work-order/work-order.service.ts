@@ -7,6 +7,7 @@ import {
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
 import { CreateAssignmentDto, CreateWorkOrderDto } from './dto/work-order.dto';
 
@@ -15,15 +16,27 @@ export class WorkOrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
     private readonly leadService: LeadService,
   ) {}
 
+  /**
+   * 조회 가능한 조직 id. 전속업체 사용자는 조직이 아니라 partnerId로 제한되므로 스코프를 적용하지 않는다.
+   * null = 제한 없음.
+   */
+  private async orgIds(principal?: AuthPrincipal): Promise<string[] | null> {
+    if (principal?.partnerId) return null;
+    return this.scope.orgScopeIds(principal);
+  }
+
   /** 전속업체 사용자(principal.partnerId)는 본인 소속 작업오더만 + 원가(billedCost) 마스킹 (OPS-04). */
   async findAll(status?: string, principal?: AuthPrincipal) {
+    const ids = await this.orgIds(principal);
     const rows = await this.prisma.workOrder.findMany({
       where: {
         ...(status ? { status } : {}),
         ...(principal?.partnerId ? { partnerId: principal.partnerId } : {}),
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
@@ -41,6 +54,10 @@ export class WorkOrderService {
     if (principal?.partnerId && wo.partnerId !== principal.partnerId) {
       throw new ForbiddenException('해당 작업오더에 접근 권한이 없습니다.');
     }
+    const ids = await this.orgIds(principal);
+    if (ids !== null && !ids.includes(wo.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 작업오더만 조회할 수 있습니다.');
+    }
     if (principal?.partnerId) this.maskCost(wo);
     return wo;
   }
@@ -51,9 +68,13 @@ export class WorkOrderService {
   }
 
   /** 작업토스: 계약(SIGNED)→작업오더 전환 + 리드 CONTRACTED→WORK_TOSS */
-  async create(dto: CreateWorkOrderDto) {
+  async create(dto: CreateWorkOrderDto, principal?: AuthPrincipal) {
     const contract = await this.prisma.contract.findUnique({ where: { id: dto.contractId } });
     if (!contract) throw new BadRequestException('존재하지 않는 계약입니다.');
+    const ids = await this.orgIds(principal);
+    if (ids !== null && !ids.includes(contract.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 계약만 작업토스할 수 있습니다.');
+    }
     if (contract.status !== 'SIGNED')
       throw new BadRequestException('서명완료(SIGNED)된 계약만 작업토스 가능합니다.');
     const dup = await this.prisma.workOrder.findUnique({ where: { contractId: dto.contractId } });
@@ -80,8 +101,8 @@ export class WorkOrderService {
     return created;
   }
 
-  async addAssignment(workOrderId: string, dto: CreateAssignmentDto) {
-    await this.findOne(workOrderId);
+  async addAssignment(workOrderId: string, dto: CreateAssignmentDto, principal?: AuthPrincipal) {
+    await this.findOne(workOrderId, principal);
     return this.prisma.workAssignment.create({
       data: {
         workOrderId,
@@ -94,8 +115,8 @@ export class WorkOrderService {
   }
 
   /** 작업 시작 → IN_PROGRESS + 리드 전이 */
-  async start(id: string) {
-    const wo = await this.findOne(id);
+  async start(id: string, principal?: AuthPrincipal) {
+    const wo = await this.findOne(id, principal);
     if (wo.status !== 'ASSIGNED') throw new BadRequestException(`시작 불가 상태: ${wo.status}`);
     const updated = await this.prisma.workOrder.update({
       where: { id },
@@ -107,8 +128,8 @@ export class WorkOrderService {
   }
 
   /** 작업 완료 → DONE + 리드 DONE (잔금은 contract payment kind=BALANCE로 처리) */
-  async complete(id: string) {
-    const wo = await this.findOne(id);
+  async complete(id: string, principal?: AuthPrincipal) {
+    const wo = await this.findOne(id, principal);
     if (wo.status !== 'IN_PROGRESS') throw new BadRequestException(`완료 불가 상태: ${wo.status}`);
     const updated = await this.prisma.workOrder.update({
       where: { id },
