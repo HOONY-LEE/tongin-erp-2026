@@ -14,7 +14,7 @@ export class CreateInvoiceDto {
   @IsUUID()
   partnerId!: string;
 
-  /** 발행 지점. 지점 사용자는 본인 지점만, 비우면 본사 발행. */
+  /** 담당 지점(실적 귀속). 발행은 본사만 하고, 지점은 본인 담당 건을 조회한다. */
   @IsOptional()
   @IsUUID()
   orgUnitId?: string;

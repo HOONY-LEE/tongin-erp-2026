@@ -490,6 +490,7 @@ model Contract {
   esignRef      String?   @map("esign_ref") // 전자계약 업체 참조(스텁)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   payments      Payment[]
+  invoices      Invoice[]
 
   workOrder WorkOrder?
 
@@ -520,8 +521,10 @@ model Invoice {
   invoiceNo String           @unique @map("invoice_no")
   partnerId String           @map("partner_id") @db.Uuid
   partner   Partner          @relation(fields: [partnerId], references: [id])
-  orgUnitId String?          @map("org_unit_id") @db.Uuid // 발행 지점(null=본사 발행)
+  orgUnitId String?          @map("org_unit_id") @db.Uuid // 담당 지점(실적 귀속). 발행은 본사만
   orgUnit   OrgUnit?         @relation("InvoiceOrg", fields: [orgUnitId], references: [id])
+  contractId String?         @map("contract_id") @db.Uuid // 계약에서 자동 생성된 경우 원본 계약
+  contract  Contract?        @relation(fields: [contractId], references: [id])
   title     String
   amount    Decimal          @db.Decimal(14, 2) // 청구액
   status    String           @default("DRAFT") // DRAFT | ISSUED | COLLECTED | CANCELED
@@ -533,6 +536,7 @@ model Invoice {
 
   @@index([partnerId])
   @@index([orgUnitId])
+  @@index([contractId])
   @@map("invoice")
 }
 

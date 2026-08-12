@@ -65,7 +65,9 @@ interface PartnerRecv extends Row {
 export default function Billing() {
   const { t } = useTranslation();
   const toast = useToast();
-  const partners = useOptions('/partners', 'name');
+  // 청구 대상은 기업고객·제휴사만 — 전속업체는 우리가 지급하는 쪽이라 작업오더 전속원가로 관리한다
+  const partners = useOptions('/partners', 'name', 'id', (r) => r.type !== 'OUTSOURCE');
+  const orgs = useOptions('/org-units', 'name');
 
   const [margin, setMargin] = useState<MarginResult | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -217,7 +219,14 @@ export default function Billing() {
       type: 'select',
       options: partners,
     },
-    { name: 'title', label: t('billing.title'), required: true, placeholder: '6월 전속 작업비' },
+    {
+      name: 'orgUnitId',
+      label: '담당 지점',
+      alwaysShow: true,
+      type: 'select',
+      options: orgs,
+    },
+    { name: 'title', label: t('billing.title'), required: true, placeholder: '6월 기업이전 대금' },
     {
       name: 'amount',
       label: t('billing.amount'),
