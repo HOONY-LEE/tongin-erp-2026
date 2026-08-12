@@ -3,13 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, downloadFile } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
-import {
-  Badge,
-  Button,
-  PageHeader,
-  Spinner,
-  useToast,
-} from '../components/ui';
+import { Badge, Button, PageHeader, Spinner, useToast } from '../components/ui';
 import CalendarGrid, { type CalendarSource } from '../components/calendar/CalendarGrid';
 import EventModal, { type EventFormValues } from '../components/calendar/EventModal';
 import {
@@ -231,7 +225,10 @@ export default function CalendarPage() {
       } else {
         await api('/calendar/events', { method: 'POST', body: JSON.stringify(body) });
       }
-      toast({ type: 'success', title: editing ? '일정이 수정되었습니다.' : '일정이 등록되었습니다.' });
+      toast({
+        type: 'success',
+        title: editing ? '일정이 수정되었습니다.' : '일정이 등록되었습니다.',
+      });
       setModalOpen(false);
       await load();
       // 구글 연결 상태면 새 일정을 곧바로 구글에도 반영
@@ -327,8 +324,7 @@ export default function CalendarPage() {
   const visibleEvents = useMemo(() => {
     const q = search.trim().toLowerCase();
     return events.filter((e) => {
-      const kind =
-        e.source === 'WORK_ORDER' ? 'WORK' : e.visibility === 'ORG' ? 'ORG' : 'MINE';
+      const kind = e.source === 'WORK_ORDER' ? 'WORK' : e.visibility === 'ORG' ? 'ORG' : 'MINE';
       if (!selectedSources.includes(kind)) return false;
       if (q && !e.title.toLowerCase().includes(q)) return false;
       return true;
@@ -336,7 +332,9 @@ export default function CalendarPage() {
   }, [events, selectedSources, search]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', minHeight: 0 }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', minHeight: 0 }}
+    >
       <PageHeader
         title={t('nav.calendar')}
         onRefresh={load}

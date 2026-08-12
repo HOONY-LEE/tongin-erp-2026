@@ -34,7 +34,11 @@ export default function OrgMgmt() {
           />
         }
       />
-      {tab === 'org' ? <OrgUnits key={`org-${refreshKey}`} /> : <Employees key={`emp-${refreshKey}`} />}
+      {tab === 'org' ? (
+        <OrgUnits key={`org-${refreshKey}`} />
+      ) : (
+        <Employees key={`emp-${refreshKey}`} />
+      )}
     </div>
   );
 }

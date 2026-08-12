@@ -187,13 +187,18 @@ export function layoutWeekSegments(weekDays: Date[], events: CalendarItem[]): We
     .filter(isMultiDay)
     .filter((e) => e.date <= weekEnd && e.endDate >= weekStart)
     // 긴 일정을 위쪽 줄에 두어 시각적으로 안정되게 한다
-    .sort((a, b) => (a.date === b.date ? b.endDate.localeCompare(a.endDate) : a.date.localeCompare(b.date)));
+    .sort((a, b) =>
+      a.date === b.date ? b.endDate.localeCompare(a.endDate) : a.date.localeCompare(b.date),
+    );
 
   const lanes: string[][] = []; // lane별로 이미 사용한 날짜 키
   const segments: WeekSegment[] = [];
 
   for (const e of spanning) {
-    const startIdx = Math.max(0, weekDays.findIndex((d) => dateKey(d) === e.date));
+    const startIdx = Math.max(
+      0,
+      weekDays.findIndex((d) => dateKey(d) === e.date),
+    );
     const endIdxRaw = weekDays.findIndex((d) => dateKey(d) === e.endDate);
     const endIdx = endIdxRaw === -1 ? 6 : endIdxRaw;
     const startCol = e.date < weekStart ? 0 : startIdx;

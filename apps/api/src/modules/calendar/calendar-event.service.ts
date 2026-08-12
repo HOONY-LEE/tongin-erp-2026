@@ -174,7 +174,9 @@ export class CalendarEventService {
         where,
         include: {
           orgUnit: { select: { name: true } },
-          lead: { select: { fromSigungu: true, toSigungu: true, customer: { select: { name: true } } } },
+          lead: {
+            select: { fromSigungu: true, toSigungu: true, customer: { select: { name: true } } },
+          },
         },
         orderBy: { scheduledDate: 'asc' },
         take: 1000,
@@ -242,7 +244,8 @@ export class CalendarEventService {
     let orgUnitId = found.orgUnitId;
     if (visibility === 'ORG') {
       orgUnitId = dto.orgUnitId ?? found.orgUnitId ?? (await this.myOrgUnitId(principal));
-      if (!orgUnitId) throw new ForbiddenException('소속 조직이 없어 조직 일정으로 바꿀 수 없습니다.');
+      if (!orgUnitId)
+        throw new ForbiddenException('소속 조직이 없어 조직 일정으로 바꿀 수 없습니다.');
     } else {
       orgUnitId = null;
     }

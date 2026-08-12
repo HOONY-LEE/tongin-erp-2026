@@ -378,7 +378,10 @@ export default function LeadDetail() {
   const changeStatus = async (to: string) => {
     try {
       await api(`/leads/${id}/transition`, { method: 'POST', body: JSON.stringify({ to }) });
-      toast({ type: 'success', title: `상태를 '${LEAD_STATUS[to]?.label ?? to}'(으)로 변경했습니다` });
+      toast({
+        type: 'success',
+        title: `상태를 '${LEAD_STATUS[to]?.label ?? to}'(으)로 변경했습니다`,
+      });
       setTransOpen(false);
       await load();
     } catch (e) {
@@ -466,9 +469,7 @@ export default function LeadDetail() {
             {data.customer && (
               <Badge variant="subtle" color="info">
                 {data.customer.name}
-                {data.customer.phonePrimary
-                  ? ` · ${formatPhone(data.customer.phonePrimary)}`
-                  : ''}
+                {data.customer.phonePrimary ? ` · ${formatPhone(data.customer.phonePrimary)}` : ''}
               </Badge>
             )}
           </>
@@ -729,7 +730,13 @@ export default function LeadDetail() {
         initialValues={editInitial}
         fields={
           [
-            { name: 'customerId', label: '고객', alwaysShow: true, type: 'select', options: customers },
+            {
+              name: 'customerId',
+              label: '고객',
+              alwaysShow: true,
+              type: 'select',
+              options: customers,
+            },
             {
               name: 'ownerEmpId',
               label: '담당자',

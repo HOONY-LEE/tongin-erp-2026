@@ -169,7 +169,9 @@ export default function ProductDetail() {
             { label: '기본가격', value: won(product.basePrice) },
           ].map(({ label, value }) => (
             <div key={label}>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>
+                {label}
+              </div>
               <div style={{ fontSize: 14, fontWeight: 500 }}>{value}</div>
             </div>
           ))}
@@ -181,13 +183,25 @@ export default function ProductDetail() {
         title="연결 옵션(부가서비스)"
         count={product.addons.length}
         actions={
-          <Button variant="primary" size="sm" onClick={() => setAddOpen(true)} disabled={availableAddons.length === 0}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setAddOpen(true)}
+            disabled={availableAddons.length === 0}
+          >
             + 옵션 연결
           </Button>
         }
       >
         {product.addons.length === 0 ? (
-          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+          <div
+            style={{
+              padding: '24px 0',
+              textAlign: 'center',
+              color: 'var(--color-text-muted)',
+              fontSize: 13,
+            }}
+          >
             연결된 옵션이 없습니다.
           </div>
         ) : (
@@ -211,13 +225,18 @@ export default function ProductDetail() {
             </thead>
             <tbody>
               {product.addons.map((entry) => (
-                <tr key={entry.addonServiceId} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <tr
+                  key={entry.addonServiceId}
+                  style={{ borderBottom: '1px solid var(--color-border)' }}
+                >
                   <td style={{ padding: '8px 12px' }}>{entry.addon.code}</td>
                   <td style={{ padding: '8px 12px' }}>{entry.addon.name}</td>
                   <td style={{ padding: '8px 12px' }}>
                     <Badge variant="subtle">{entry.addon.unit}</Badge>
                   </td>
-                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>{won(entry.addon.price)}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                    {won(entry.addon.price)}
+                  </td>
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                     {entry.priceOverride != null ? (
                       <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>

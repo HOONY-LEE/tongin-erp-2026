@@ -335,7 +335,14 @@ const SPAN_LANE_H = SPAN_BAR_H + 2;
 /** 날짜 숫자가 차지하는 높이 */
 const DATE_ROW_H = 24;
 
-function MonthView({ currentDate, today, eventMap, allEvents, onDateClick, onEventClick }: ViewProps) {
+function MonthView({
+  currentDate,
+  today,
+  eventMap,
+  allEvents,
+  onDateClick,
+  onEventClick,
+}: ViewProps) {
   const days = getMonthMatrix(currentDate.getFullYear(), currentDate.getMonth());
   const month = currentDate.getMonth();
   return (
@@ -369,99 +376,108 @@ function MonthView({ currentDate, today, eventMap, allEvents, onDateClick, onEve
           const laneCount = segments.reduce((m, s) => Math.max(m, s.lane + 1), 0);
           const spanAreaH = laneCount * SPAN_LANE_H;
           return (
-          <div
-            key={w}
-            style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}
-          >
-            {weekDays.map((date, i) => {
-              const key = dateKey(date);
-              const outside = date.getMonth() !== month;
-              const isToday = isSameDay(date, today);
-              // 막대로 그린 여러 날 일정은 칸 목록에서 제외(중복 방지)
-              const list = sortEvents((eventMap.get(key) || []).filter((e) => !isMultiDay(e)));
-              return (
-                <div
-                  key={i}
-                  onClick={() => onDateClick(date)}
-                  style={{
-                    borderRight: i < 6 ? BORDER : 'none',
-                    borderBottom: w < 5 ? BORDER : 'none',
-                    // 다른 달 날짜는 배경을 눌러 구분
-                    background: outside ? 'var(--ark-color-bg-subtle)' : 'var(--ark-color-bg)',
-                    padding: '4px 5px 0',
-                    cursor: 'pointer',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    minHeight: 0,
-                  }}
-                >
-                  {/* 날짜 — 우측 정렬, 오늘만 원형 강조 */}
-                  <div style={{ textAlign: 'right', paddingRight: 2, marginBottom: 1 }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: 20,
-                        height: 20,
-                        borderRadius: 999,
-                        fontSize: 12,
-                        fontWeight: isToday ? 700 : 500,
-                        background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
-                        color: isToday
-                          ? '#fff'
-                          : outside
-                            ? 'var(--ark-color-text-disabled)'
-                            : weekendColor(i),
-                      }}
-                    >
-                      {date.getDate()}
-                    </span>
-                  </div>
-
-                  {/* 여러 날 막대가 차지하는 만큼 자리를 비워 겹치지 않게 한다 */}
-                  {spanAreaH > 0 && <div style={{ height: spanAreaH, flexShrink: 0 }} />}
-
+            <div
+              key={w}
+              style={{
+                position: 'relative',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+              }}
+            >
+              {weekDays.map((date, i) => {
+                const key = dateKey(date);
+                const outside = date.getMonth() !== month;
+                const isToday = isSameDay(date, today);
+                // 막대로 그린 여러 날 일정은 칸 목록에서 제외(중복 방지)
+                const list = sortEvents((eventMap.get(key) || []).filter((e) => !isMultiDay(e)));
+                return (
                   <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}
+                    key={i}
+                    onClick={() => onDateClick(date)}
+                    style={{
+                      borderRight: i < 6 ? BORDER : 'none',
+                      borderBottom: w < 5 ? BORDER : 'none',
+                      // 다른 달 날짜는 배경을 눌러 구분
+                      background: outside ? 'var(--ark-color-bg-subtle)' : 'var(--ark-color-bg)',
+                      padding: '4px 5px 0',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      minHeight: 0,
+                    }}
                   >
-                    {list.slice(0, 4).map((ev) => (
-                      <EventRow key={ev.id} event={ev} onClick={onEventClick} dense />
-                    ))}
-                    {list.length > 4 && (
+                    {/* 날짜 — 우측 정렬, 오늘만 원형 강조 */}
+                    <div style={{ textAlign: 'right', paddingRight: 2, marginBottom: 1 }}>
                       <span
                         style={{
-                          fontSize: 11,
-                          color: 'var(--ark-color-text-secondary)',
-                          paddingLeft: 6,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 20,
+                          height: 20,
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: isToday ? 700 : 500,
+                          background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
+                          color: isToday
+                            ? '#fff'
+                            : outside
+                              ? 'var(--ark-color-text-disabled)'
+                              : weekendColor(i),
                         }}
                       >
-                        +{list.length - 4}개 더보기
+                        {date.getDate()}
                       </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                    </div>
 
-            {/* 여러 날 일정 막대 — 칸 위에 겹쳐 그린다 */}
-            {segments.map((seg) => (
-              <div
-                key={seg.event.id}
-                style={{
-                  position: 'absolute',
-                  top: DATE_ROW_H + seg.lane * SPAN_LANE_H,
-                  left: `calc(${(seg.startCol / 7) * 100}% + 4px)`,
-                  width: `calc(${(seg.span / 7) * 100}% - 8px)`,
-                  height: SPAN_BAR_H,
-                }}
-              >
-                <SpanBar segment={seg} onClick={onEventClick} />
-              </div>
-            ))}
-          </div>
+                    {/* 여러 날 막대가 차지하는 만큼 자리를 비워 겹치지 않게 한다 */}
+                    {spanAreaH > 0 && <div style={{ height: spanAreaH, flexShrink: 0 }} />}
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {list.slice(0, 4).map((ev) => (
+                        <EventRow key={ev.id} event={ev} onClick={onEventClick} dense />
+                      ))}
+                      {list.length > 4 && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--ark-color-text-secondary)',
+                            paddingLeft: 6,
+                          }}
+                        >
+                          +{list.length - 4}개 더보기
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* 여러 날 일정 막대 — 칸 위에 겹쳐 그린다 */}
+              {segments.map((seg) => (
+                <div
+                  key={seg.event.id}
+                  style={{
+                    position: 'absolute',
+                    top: DATE_ROW_H + seg.lane * SPAN_LANE_H,
+                    left: `calc(${(seg.startCol / 7) * 100}% + 4px)`,
+                    width: `calc(${(seg.span / 7) * 100}% - 8px)`,
+                    height: SPAN_BAR_H,
+                  }}
+                >
+                  <SpanBar segment={seg} onClick={onEventClick} />
+                </div>
+              ))}
+            </div>
           );
         })}
       </div>
@@ -469,7 +485,13 @@ function MonthView({ currentDate, today, eventMap, allEvents, onDateClick, onEve
   );
 }
 
-function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: Omit<ViewProps, 'allEvents'>) {
+function WeekView({
+  currentDate,
+  today,
+  eventMap,
+  onDateClick,
+  onEventClick,
+}: Omit<ViewProps, 'allEvents'>) {
   const days = getWeekDays(currentDate);
   return (
     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', minHeight: 0 }}>
@@ -537,7 +559,12 @@ function WeekView({ currentDate, today, eventMap, onDateClick, onEventClick }: O
   );
 }
 
-function DayView({ currentDate, eventMap, onDateClick, onEventClick }: Omit<ViewProps, 'today' | 'allEvents'>) {
+function DayView({
+  currentDate,
+  eventMap,
+  onDateClick,
+  onEventClick,
+}: Omit<ViewProps, 'today' | 'allEvents'>) {
   const list = sortEvents(eventMap.get(dateKey(currentDate)) || []);
   return (
     <div
@@ -721,9 +748,7 @@ function YearView({
   const year = currentDate.getFullYear();
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
-      <div
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: 16 }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: 16 }}>
         {Array.from({ length: 12 }, (_, m) => (
           <MiniMonth
             key={m}
@@ -882,11 +907,7 @@ export default function CalendarGrid({
             flexWrap: 'wrap',
           }}
         >
-          <SourceFilter
-            sources={sources}
-            selected={selectedSources}
-            onToggle={onToggleSource}
-          />
+          <SourceFilter sources={sources} selected={selectedSources} onToggle={onToggleSource} />
           <SegmentedControl
             options={VIEW_OPTIONS}
             value={view}

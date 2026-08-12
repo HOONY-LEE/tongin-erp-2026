@@ -18,14 +18,7 @@ interface Props {
 }
 
 /** 마스터 목록+등록 화면 공통 구성 (PageHeader + PageCard + DataTable + FormModal). */
-export default function CrudTable({
-  title,
-  path,
-  columns,
-  fields,
-  onDetail,
-  hideHeader,
-}: Props) {
+export default function CrudTable({ title, path, columns, fields, onDetail, hideHeader }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]);

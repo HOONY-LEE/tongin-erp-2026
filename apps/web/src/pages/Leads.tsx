@@ -48,7 +48,8 @@ export default function Leads() {
   const { updatedAt, touch } = useUpdatedAt();
 
   // 관리자(전체 데이터범위·슈퍼권한)만 담당 지점을 자유 선택 — 일반 직원은 본인 소속 지점으로 고정
-  const isAdmin = !!user && (user.permissions.includes('*') || user.scopes.some((s) => s.dataScope === 'ALL'));
+  const isAdmin =
+    !!user && (user.permissions.includes('*') || user.scopes.some((s) => s.dataScope === 'ALL'));
   const ownOrgId = user?.scopes.find((s) => s.orgScopeId)?.orgScopeId ?? '';
   const lockOrg = !isAdmin && !!ownOrgId;
 

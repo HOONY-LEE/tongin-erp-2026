@@ -27,11 +27,7 @@ export class BillingService {
   // ── 마진 (D-3) ──
 
   /** 작업오더 전속원가 입력 → 해당 계약 마진 반환. */
-  async setOutsourceCost(
-    workOrderId: string,
-    dto: SetOutsourceCostDto,
-    principal?: AuthPrincipal,
-  ) {
+  async setOutsourceCost(workOrderId: string, dto: SetOutsourceCostDto, principal?: AuthPrincipal) {
     const wo = await this.prisma.workOrder.findUnique({ where: { id: workOrderId } });
     if (!wo) throw new NotFoundException(`작업오더를 찾을 수 없습니다: ${workOrderId}`);
     const ids = await this.scope.orgScopeIds(principal);
