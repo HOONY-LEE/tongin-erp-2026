@@ -153,11 +153,16 @@ export class EstimateService {
   /** 견적 확정 → 리드 QUOTED 전이 + 이벤트 */
   async quote(estimateId: string, principal?: AuthPrincipal) {
     const estimate = await this.findOne(estimateId, principal);
-    const updated = await this.prisma.estimate.update({
-      where: { id: estimateId },
-      data: { status: 'QUOTED' },
+    // 견적 확정과 리드 전이는 한 트랜잭션 — 전이가 막히면 견적 상태만 바뀌는 일이 없도록
+    const { updated, transition } = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.estimate.update({
+        where: { id: estimateId },
+        data: { status: 'QUOTED' },
+      });
+      const t = await this.leadService.transitionInTx(tx, estimate.leadId, 'QUOTED');
+      return { updated: row, transition: t };
     });
-    await this.leadService.transitionTo(estimate.leadId, 'QUOTED');
+    await this.leadService.emitTransition(transition, 'QUOTED');
     await this.eventBus.record({
       aggregateType: 'estimate',
       aggregateId: estimateId,

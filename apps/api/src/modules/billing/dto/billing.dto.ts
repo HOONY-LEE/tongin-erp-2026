@@ -14,6 +14,11 @@ export class CreateInvoiceDto {
   @IsUUID()
   partnerId!: string;
 
+  /** 발행 지점. 지점 사용자는 본인 지점만, 비우면 본사 발행. */
+  @IsOptional()
+  @IsUUID()
+  orgUnitId?: string;
+
   @IsString()
   @MaxLength(200)
   title!: string;

@@ -67,21 +67,26 @@ export class ContractService {
     const deposit = round2(total * ratio);
     const balance = round2(total - deposit);
 
-    const created = await this.prisma.contract.create({
-      data: {
-        contractNo: this.genNo(),
-        estimateId: dto.estimateId,
-        leadId: estimate.leadId,
-        customerId: estimate.customerId,
-        orgUnitId: estimate.orgUnitId,
-        contractDate: dto.contractDate ? new Date(dto.contractDate) : undefined,
-        totalAmount: total,
-        depositRatio: ratio,
-        depositAmount: deposit,
-        balanceAmount: balance,
-      },
+    // 계약 생성과 리드 전이는 한 트랜잭션 — 전이가 막히면 계약만 남는 일이 없도록
+    const { created, transition } = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.contract.create({
+        data: {
+          contractNo: this.genNo(),
+          estimateId: dto.estimateId,
+          leadId: estimate.leadId,
+          customerId: estimate.customerId,
+          orgUnitId: estimate.orgUnitId,
+          contractDate: dto.contractDate ? new Date(dto.contractDate) : undefined,
+          totalAmount: total,
+          depositRatio: ratio,
+          depositAmount: deposit,
+          balanceAmount: balance,
+        },
+      });
+      const t = await this.leadService.transitionInTx(tx, estimate.leadId, 'CONTRACTED');
+      return { created: row, transition: t };
     });
-    await this.leadService.transitionTo(estimate.leadId, 'CONTRACTED');
+    await this.leadService.emitTransition(transition, 'CONTRACTED');
     await this.eventBus.record({
       aggregateType: 'contract',
       aggregateId: created.id,

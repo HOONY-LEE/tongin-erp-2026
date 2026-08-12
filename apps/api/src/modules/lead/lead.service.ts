@@ -206,19 +206,41 @@ export class LeadService {
   /** 상태 전이(상태머신). 다른 모듈(계약·작업)에서도 호출. */
   async transitionTo(id: string, to: LeadStatus, principal?: AuthPrincipal) {
     const lead = await this.findOne(id, principal);
+    const result = await this.transitionInTx(this.prisma, id, to);
+    await this.emitTransition(result, to);
+    return result.changed ? result.lead : lead;
+  }
+
+  /**
+   * 트랜잭션 안에서의 상태 전이 — 문서(견적확정·계약·작업오더) 생성과 원자적으로 묶기 위해
+   * tx 클라이언트를 받는다. 전이가 막히면 예외로 문서 쓰기까지 함께 롤백된다.
+   * 조직 스코프는 호출한 문서 쪽에서 이미 검증된 것으로 본다(같은 조직의 리드).
+   * 이벤트 기록은 커밋 후 emitTransition()으로 따로 한다.
+   */
+  async transitionInTx(tx: Prisma.TransactionClient, id: string, to: LeadStatus) {
+    const lead = await tx.lead.findUnique({ where: { id } });
+    if (!lead) throw new NotFoundException(`리드를 찾을 수 없습니다: ${id}`);
     const from = lead.status as LeadStatus;
-    if (from === to) return lead;
+    if (from === to) return { lead, from, changed: false };
     if (!canTransition(from, to)) {
       throw new BadRequestException(`허용되지 않은 상태 전이: ${from} → ${to}`);
     }
-    const updated = await this.prisma.lead.update({ where: { id }, data: { status: to } });
+    const updated = await tx.lead.update({ where: { id }, data: { status: to } });
+    return { lead: updated, from, changed: true };
+  }
+
+  /** transitionInTx 커밋 후 상태변경 이벤트 기록(전이가 실제로 일어났을 때만). */
+  async emitTransition(
+    result: { lead: { id: string; leadNo: string }; from: LeadStatus; changed: boolean },
+    to: LeadStatus,
+  ) {
+    if (!result.changed) return;
     await this.eventBus.record({
       aggregateType: 'lead',
-      aggregateId: id,
+      aggregateId: result.lead.id,
       eventType: 'lead.status_changed',
-      payload: { from, to, leadNo: lead.leadNo },
+      payload: { from: result.from, to, leadNo: result.lead.leadNo },
     });
-    return updated;
   }
 
   async remove(id: string, principal?: AuthPrincipal) {

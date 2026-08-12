@@ -80,18 +80,23 @@ export class WorkOrderService {
     const dup = await this.prisma.workOrder.findUnique({ where: { contractId: dto.contractId } });
     if (dup) throw new BadRequestException('이미 작업오더가 생성된 계약입니다.');
 
-    const created = await this.prisma.workOrder.create({
-      data: {
-        workNo: this.genNo(),
-        contractId: contract.id,
-        leadId: contract.leadId,
-        orgUnitId: contract.orgUnitId,
-        partnerId: dto.partnerId,
-        scheduledDate: dto.scheduledDate ? new Date(dto.scheduledDate) : undefined,
-        billedCost: dto.billedCost,
-      },
+    // 작업오더 생성과 리드 전이는 한 트랜잭션 — 전이가 막히면 작업오더만 남는 일이 없도록
+    const { created, transition } = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.workOrder.create({
+        data: {
+          workNo: this.genNo(),
+          contractId: contract.id,
+          leadId: contract.leadId,
+          orgUnitId: contract.orgUnitId,
+          partnerId: dto.partnerId,
+          scheduledDate: dto.scheduledDate ? new Date(dto.scheduledDate) : undefined,
+          billedCost: dto.billedCost,
+        },
+      });
+      const t = await this.leadService.transitionInTx(tx, contract.leadId, 'WORK_TOSS');
+      return { created: row, transition: t };
     });
-    await this.leadService.transitionTo(contract.leadId, 'WORK_TOSS');
+    await this.leadService.emitTransition(transition, 'WORK_TOSS');
     await this.eventBus.record({
       aggregateType: 'work_order',
       aggregateId: created.id,
@@ -118,11 +123,12 @@ export class WorkOrderService {
   async start(id: string, principal?: AuthPrincipal) {
     const wo = await this.findOne(id, principal);
     if (wo.status !== 'ASSIGNED') throw new BadRequestException(`시작 불가 상태: ${wo.status}`);
-    const updated = await this.prisma.workOrder.update({
-      where: { id },
-      data: { status: 'IN_PROGRESS' },
+    const { updated, transition } = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.workOrder.update({ where: { id }, data: { status: 'IN_PROGRESS' } });
+      const t = await this.leadService.transitionInTx(tx, wo.leadId, 'IN_PROGRESS');
+      return { updated: row, transition: t };
     });
-    await this.leadService.transitionTo(wo.leadId, 'IN_PROGRESS');
+    await this.leadService.emitTransition(transition, 'IN_PROGRESS');
     await this.emit(id, 'work_order.started', wo.workNo);
     return updated;
   }
@@ -131,11 +137,12 @@ export class WorkOrderService {
   async complete(id: string, principal?: AuthPrincipal) {
     const wo = await this.findOne(id, principal);
     if (wo.status !== 'IN_PROGRESS') throw new BadRequestException(`완료 불가 상태: ${wo.status}`);
-    const updated = await this.prisma.workOrder.update({
-      where: { id },
-      data: { status: 'DONE' },
+    const { updated, transition } = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.workOrder.update({ where: { id }, data: { status: 'DONE' } });
+      const t = await this.leadService.transitionInTx(tx, wo.leadId, 'DONE');
+      return { updated: row, transition: t };
     });
-    await this.leadService.transitionTo(wo.leadId, 'DONE');
+    await this.leadService.emitTransition(transition, 'DONE');
     await this.emit(id, 'work_order.completed', wo.workNo);
     return updated;
   }

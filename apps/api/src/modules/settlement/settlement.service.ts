@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { CustomerReceivable, MonthlyInflow } from '@tongin/shared';
+import type { AuthPrincipal, CustomerReceivable, MonthlyInflow } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 import { PaymentQueryDto } from './dto/payment-query.dto';
 
 /**
@@ -10,14 +11,24 @@ import { PaymentQueryDto } from './dto/payment-query.dto';
  */
 @Injectable()
 export class SettlementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+  ) {}
 
-  /** 입금 현황: 결제 목록(계약·고객 조인) + 필터(상태/종류/고객/기간). */
-  async payments(q: PaymentQueryDto) {
+  /** 입금 현황: 결제 목록(계약·고객 조인) + 필터(상태/종류/고객/기간). 소속 지점 계약만. */
+  async payments(q: PaymentQueryDto, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
     const where: Prisma.PaymentWhereInput = {};
     if (q.status) where.status = q.status;
     if (q.kind) where.kind = q.kind;
-    if (q.customerId) where.contract = { customerId: q.customerId };
+    // 결제는 계약을 통해 지점에 매인다
+    if (q.customerId || ids !== null) {
+      where.contract = {
+        ...(q.customerId ? { customerId: q.customerId } : {}),
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+      };
+    }
     if (q.from || q.to) {
       where.createdAt = {
         ...(q.from ? { gte: new Date(q.from) } : {}),
@@ -47,9 +58,13 @@ export class SettlementService {
   }
 
   /** 고객별 미수금: 청구(SIGNED 계약 총액) − 입금(PAID) = 미수금. */
-  async receivables(onlyOutstanding = false): Promise<CustomerReceivable[]> {
+  async receivables(
+    onlyOutstanding = false,
+    principal?: AuthPrincipal,
+  ): Promise<CustomerReceivable[]> {
+    const ids = await this.scope.orgScopeIds(principal);
     const contracts = await this.prisma.contract.findMany({
-      where: { status: 'SIGNED' },
+      where: { status: 'SIGNED', ...(ids === null ? {} : { orgUnitId: { in: ids } }) },
       include: { customer: true, payments: true },
     });
     const map = new Map<string, CustomerReceivable>();
@@ -80,8 +95,10 @@ export class SettlementService {
   }
 
   /** 월별 입금액: PAID 결제의 paidAt 기준 YYYY-MM 집계. */
-  async monthlyInflow(year?: number): Promise<MonthlyInflow[]> {
+  async monthlyInflow(year?: number, principal?: AuthPrincipal): Promise<MonthlyInflow[]> {
+    const ids = await this.scope.orgScopeIds(principal);
     const where: Prisma.PaymentWhereInput = { status: 'PAID', paidAt: { not: null } };
+    if (ids !== null) where.contract = { orgUnitId: { in: ids } };
     if (year) {
       where.paidAt = { gte: new Date(`${year}-01-01`), lt: new Date(`${year + 1}-01-01`) };
     }

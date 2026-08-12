@@ -14,6 +14,8 @@ import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthPrincipal } from '@tongin/shared';
 
 @Controller('customers')
 export class CustomerController {
@@ -21,32 +23,36 @@ export class CustomerController {
 
   @Get()
   @RequirePermissions('CUSTOMER.READ')
-  findAll(@Query('phone') phone?: string) {
-    return this.customerService.findAll(phone);
+  findAll(@CurrentUser() user: AuthPrincipal, @Query('phone') phone?: string) {
+    return this.customerService.findAll(phone, user);
   }
 
   @Get(':id')
   @RequirePermissions('CUSTOMER.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.customerService.findOne(id);
+  findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.customerService.findOne(id, user);
   }
 
   @Post()
   @RequirePermissions('CUSTOMER.WRITE')
-  create(@Body() dto: CreateCustomerDto) {
-    return this.customerService.create(dto);
+  create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateCustomerDto) {
+    return this.customerService.create(dto, user);
   }
 
   @Patch(':id')
   @RequirePermissions('CUSTOMER.WRITE')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCustomerDto) {
-    return this.customerService.update(id, dto);
+  update(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCustomerDto,
+  ) {
+    return this.customerService.update(id, dto, user);
   }
 
   @Delete(':id')
   @RequirePermissions('CUSTOMER.WRITE')
   @HttpCode(204)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.customerService.remove(id);
+  remove(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.customerService.remove(id, user);
   }
 }

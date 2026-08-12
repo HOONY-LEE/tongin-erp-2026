@@ -31,6 +31,7 @@ model OrgUnit {
   contracts       Contract[]
   workOrders      WorkOrder[]
   commissionRules CommissionRule[] @relation("CommissionRuleOrg")
+  invoices        Invoice[]        @relation("InvoiceOrg")
   materialOrders  MaterialOrder[]
   calendarEvents  CalendarEvent[]
 
@@ -519,6 +520,8 @@ model Invoice {
   invoiceNo String           @unique @map("invoice_no")
   partnerId String           @map("partner_id") @db.Uuid
   partner   Partner          @relation(fields: [partnerId], references: [id])
+  orgUnitId String?          @map("org_unit_id") @db.Uuid // 발행 지점(null=본사 발행)
+  orgUnit   OrgUnit?         @relation("InvoiceOrg", fields: [orgUnitId], references: [id])
   title     String
   amount    Decimal          @db.Decimal(14, 2) // 청구액
   status    String           @default("DRAFT") // DRAFT | ISSUED | COLLECTED | CANCELED
@@ -529,6 +532,7 @@ model Invoice {
   receipts  InvoiceReceipt[]
 
   @@index([partnerId])
+  @@index([orgUnitId])
   @@map("invoice")
 }
 

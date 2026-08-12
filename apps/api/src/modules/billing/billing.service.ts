@@ -1,8 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { ContractMargin, PartnerReceivable } from '@tongin/shared';
+import type { AuthPrincipal, ContractMargin, PartnerReceivable } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { CreateInvoiceDto, CreateReceiptDto, SetOutsourceCostDto } from './dto/billing.dto';
 
 /**
@@ -15,14 +21,23 @@ export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
   ) {}
 
   // ── 마진 (D-3) ──
 
   /** 작업오더 전속원가 입력 → 해당 계약 마진 반환. */
-  async setOutsourceCost(workOrderId: string, dto: SetOutsourceCostDto) {
+  async setOutsourceCost(
+    workOrderId: string,
+    dto: SetOutsourceCostDto,
+    principal?: AuthPrincipal,
+  ) {
     const wo = await this.prisma.workOrder.findUnique({ where: { id: workOrderId } });
     if (!wo) throw new NotFoundException(`작업오더를 찾을 수 없습니다: ${workOrderId}`);
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(wo.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 작업오더만 다룰 수 있습니다.');
+    }
     await this.prisma.workOrder.update({
       where: { id: workOrderId },
       data: { billedCost: dto.billedCost },
@@ -38,9 +53,14 @@ export class BillingService {
   }
 
   /** 계약별 마진(매출−전속원가) 목록 + 합계. */
-  async margins(orgUnitId?: string, from?: string, to?: string) {
+  async margins(orgUnitId?: string, from?: string, to?: string, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (orgUnitId && ids !== null && !ids.includes(orgUnitId)) {
+      throw new ForbiddenException('소속 지점의 마진만 조회할 수 있습니다.');
+    }
     const where: Prisma.ContractWhereInput = { status: 'SIGNED' };
     if (orgUnitId) where.orgUnitId = orgUnitId;
+    else if (ids !== null) where.orgUnitId = { in: ids };
     if (from || to) {
       where.signedAt = {
         ...(from ? { gte: new Date(from) } : {}),
@@ -76,10 +96,13 @@ export class BillingService {
 
   // ── 청구·수금 ──
 
-  listInvoices(partnerId?: string, status?: string) {
+  async listInvoices(partnerId?: string, status?: string, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
     const where: Prisma.InvoiceWhereInput = {};
     if (partnerId) where.partnerId = partnerId;
     if (status) where.status = status;
+    // 본사 발행(orgUnitId=null)은 무제한 스코프에게만 보인다
+    if (ids !== null) where.orgUnitId = { in: ids };
     return this.prisma.invoice.findMany({
       where,
       include: { partner: true, receipts: true },
@@ -88,13 +111,15 @@ export class BillingService {
     });
   }
 
-  async createInvoice(dto: CreateInvoiceDto) {
+  async createInvoice(dto: CreateInvoiceDto, principal?: AuthPrincipal) {
     const partner = await this.prisma.partner.findUnique({ where: { id: dto.partnerId } });
     if (!partner) throw new BadRequestException('존재하지 않는 거래처(partnerId)입니다.');
+    await this.assertInvoiceScope(dto.orgUnitId ?? null, principal);
     return this.prisma.invoice.create({
       data: {
         invoiceNo: this.genNo(),
         partnerId: dto.partnerId,
+        orgUnitId: dto.orgUnitId,
         title: dto.title,
         amount: dto.amount,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
@@ -103,8 +128,9 @@ export class BillingService {
     });
   }
 
-  async issueInvoice(id: string) {
+  async issueInvoice(id: string, principal?: AuthPrincipal) {
     const inv = await this.getInvoice(id);
+    await this.assertInvoiceScope(inv.orgUnitId, principal);
     if (inv.status !== 'DRAFT') throw new BadRequestException(`발행 불가 상태: ${inv.status}`);
     const updated = await this.prisma.invoice.update({
       where: { id },
@@ -119,12 +145,13 @@ export class BillingService {
     return updated;
   }
 
-  async addReceipt(invoiceId: string, dto: CreateReceiptDto) {
+  async addReceipt(invoiceId: string, dto: CreateReceiptDto, principal?: AuthPrincipal) {
     const inv = await this.prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: { receipts: true },
     });
     if (!inv) throw new NotFoundException(`청구서를 찾을 수 없습니다: ${invoiceId}`);
+    await this.assertInvoiceScope(inv.orgUnitId, principal);
     if (inv.status === 'DRAFT')
       throw new BadRequestException('발행(ISSUED)된 청구서만 수금 가능합니다.');
     if (inv.status === 'CANCELED') throw new BadRequestException('취소된 청구서입니다.');
@@ -149,9 +176,13 @@ export class BillingService {
   }
 
   /** 거래처별 미수금: 청구(ISSUED+COLLECTED) − 수금. */
-  async partnerReceivables(): Promise<PartnerReceivable[]> {
+  async partnerReceivables(principal?: AuthPrincipal): Promise<PartnerReceivable[]> {
+    const ids = await this.scope.orgScopeIds(principal);
     const invoices = await this.prisma.invoice.findMany({
-      where: { status: { in: ['ISSUED', 'COLLECTED'] } },
+      where: {
+        status: { in: ['ISSUED', 'COLLECTED'] },
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+      },
       include: { partner: true, receipts: true },
     });
     const map = new Map<string, PartnerReceivable>();
@@ -177,6 +208,18 @@ export class BillingService {
         outstanding: Math.round((r.billed - r.collected) * 100) / 100,
       }))
       .sort((a, b) => b.outstanding - a.outstanding);
+  }
+
+  /** 청구서는 발행 지점 기준. 본사 발행(null)은 무제한 스코프만 다룰 수 있다. */
+  private async assertInvoiceScope(orgUnitId: string | null, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids === null) return;
+    if (orgUnitId === null) {
+      throw new ForbiddenException('본사 발행 청구서는 본사만 다룰 수 있습니다.');
+    }
+    if (!ids.includes(orgUnitId)) {
+      throw new ForbiddenException('소속 지점의 청구서만 다룰 수 있습니다.');
+    }
   }
 
   private async getInvoice(id: string) {

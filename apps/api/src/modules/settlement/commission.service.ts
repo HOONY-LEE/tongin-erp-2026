@@ -1,7 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { CommissionRule } from '@prisma/client';
-import type { BranchSettlement, BranchSettlementLine, CommissionCalcType } from '@tongin/shared';
+import type {
+  AuthPrincipal,
+  BranchSettlement,
+  BranchSettlementLine,
+  CommissionCalcType,
+} from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 import { CreateCommissionRuleDto, UpdateCommissionRuleDto } from './dto/commission-rule.dto';
 
 /**
@@ -11,21 +22,45 @@ import { CreateCommissionRuleDto, UpdateCommissionRuleDto } from './dto/commissi
  */
 @Injectable()
 export class CommissionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+  ) {}
 
-  listRules() {
+  /**
+   * 수수료 규칙은 지점별 단가 정보라 소속 지점 것만 다루게 한다.
+   * orgUnitId가 null인 전체 적용 규칙은 본사(무제한 스코프)만.
+   */
+  private async assertRuleScope(orgUnitId: string | null, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids === null) return;
+    if (orgUnitId === null) {
+      throw new ForbiddenException('전체 적용 수수료 규칙은 본사만 다룰 수 있습니다.');
+    }
+    if (!ids.includes(orgUnitId)) {
+      throw new ForbiddenException('소속 지점의 수수료 규칙만 다룰 수 있습니다.');
+    }
+  }
+
+  async listRules(principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
     return this.prisma.commissionRule.findMany({
+      where: ids === null ? undefined : { orgUnitId: { in: ids } },
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
     });
   }
 
-  createRule(dto: CreateCommissionRuleDto) {
+  async createRule(dto: CreateCommissionRuleDto, principal?: AuthPrincipal) {
+    await this.assertRuleScope(dto.orgUnitId ?? null, principal);
     this.validate(dto.calcType, dto.rate, dto.fixedAmount);
     return this.prisma.commissionRule.create({ data: { ...dto } });
   }
 
-  async updateRule(id: string, dto: UpdateCommissionRuleDto) {
+  async updateRule(id: string, dto: UpdateCommissionRuleDto, principal?: AuthPrincipal) {
     const current = await this.getRule(id);
+    await this.assertRuleScope(current.orgUnitId, principal);
+    // 다른 지점으로 옮기는 것도 대상 지점 권한이 있어야 한다
+    if (dto.orgUnitId !== undefined) await this.assertRuleScope(dto.orgUnitId ?? null, principal);
     const calcType = (dto.calcType ?? current.calcType) as CommissionCalcType;
     const rate = dto.rate ?? (current.rate == null ? undefined : Number(current.rate));
     const fixedAmount =
@@ -34,8 +69,9 @@ export class CommissionService {
     return this.prisma.commissionRule.update({ where: { id }, data: { ...dto } });
   }
 
-  async removeRule(id: string) {
-    await this.getRule(id);
+  async removeRule(id: string, principal?: AuthPrincipal) {
+    const rule = await this.getRule(id);
+    await this.assertRuleScope(rule.orgUnitId, principal);
     await this.prisma.commissionRule.delete({ where: { id } });
     return { deleted: true };
   }
@@ -45,8 +81,13 @@ export class CommissionService {
     orgUnitId: string,
     year: number,
     month: number,
+    principal?: AuthPrincipal,
   ): Promise<BranchSettlement> {
     if (month < 1 || month > 12) throw new BadRequestException('month는 1~12여야 합니다.');
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(orgUnitId)) {
+      throw new ForbiddenException('소속 지점의 정산만 조회할 수 있습니다.');
+    }
     const org = await this.prisma.orgUnit.findUnique({ where: { id: orgUnitId } });
     if (!org) throw new NotFoundException(`조직단위를 찾을 수 없습니다: ${orgUnitId}`);
 
