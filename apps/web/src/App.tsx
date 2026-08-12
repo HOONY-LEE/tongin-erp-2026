@@ -32,6 +32,7 @@ import Branches from './pages/Branches';
 import Accounts from './pages/Accounts';
 import ProductDetail from './pages/ProductDetail';
 import PartnerMgmt from './pages/PartnerMgmt';
+import CalendarPage from './pages/Calendar';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ function Shell() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/leads/:id" element={<LeadDetail />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/estimates" element={<Estimates />} />
         <Route path="/estimates/:id" element={<EstimateDetail />} />
         <Route path="/contracts" element={<Contracts />} />

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
   DataTable,
   PageCard,
+  PageHeader,
   StatusBadge,
   useToast,
   type Column,
@@ -39,11 +41,13 @@ export default function PaymentConfirm() {
   const toast = useToast();
   const [rows, setRows] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setRows(await api<PayRow[]>('/payment-confirmations'));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -126,13 +130,16 @@ export default function PaymentConfirm() {
   ];
 
   return (
-    <PageCard title={t('nav.paymentsConfirm')} count={rows.length}>
-      <div style={{ marginBottom: 12 }}>
-        <Badge variant="subtle" color="info">
-          견적서 전달 후 계약금(10%) 입금 시 계약 성립 · 잔금 입금 시 완료 (토스페이먼츠 연동 예정)
-        </Badge>
-      </div>
-      <DataTable columns={columns} rows={rows} loading={loading} />
-    </PageCard>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.paymentsConfirm')}
+        subtitle="견적서 전달 후 계약금(10%) 입금 시 계약 성립 · 잔금 입금 시 완료 (토스페이먼츠 연동 예정)"
+        onRefresh={load}
+        updatedAt={updatedAt}
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+      </PageCard>
+    </div>
   );
 }

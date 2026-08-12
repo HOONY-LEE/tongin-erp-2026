@@ -18,7 +18,9 @@ import { RequirePermissions } from '../../auth/decorators/require-permissions.de
 
 class AddAddonDto {
   @IsUUID() addonServiceId!: string;
-  @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
   priceOverride?: number;
 }
 

@@ -71,15 +71,15 @@ export class MaterialOrderService {
     });
   }
 
-  async approve(id: string) {
-    const order = await this.findOne(id);
+  async approve(id: string, principal?: AuthPrincipal) {
+    const order = await this.findOne(id, principal);
     if (order.status !== 'REQUESTED')
       throw new BadRequestException(`승인 불가 상태: ${order.status}`);
     return this.prisma.materialOrder.update({ where: { id }, data: { status: 'APPROVED' } });
   }
 
-  async cancel(id: string) {
-    const order = await this.findOne(id);
+  async cancel(id: string, principal?: AuthPrincipal) {
+    const order = await this.findOne(id, principal);
     if (order.status === 'SHIPPED')
       throw new BadRequestException('이미 출고된 발주는 취소할 수 없습니다.');
     if (order.status === 'CANCELED') return order;
@@ -87,12 +87,16 @@ export class MaterialOrderService {
   }
 
   /** 출고: 승인된 발주의 자재를 본사 재고에서 일괄 OUT(전표). 트랜잭션·재고부족 방지. */
-  async ship(id: string) {
+  async ship(id: string, principal?: AuthPrincipal) {
     const order = await this.prisma.materialOrder.findUnique({
       where: { id },
       include: { lines: { include: { material: true } } },
     });
     if (!order) throw new NotFoundException(`발주를 찾을 수 없습니다: ${id}`);
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(order.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 발주만 출고할 수 있습니다.');
+    }
     if (order.status !== 'APPROVED')
       throw new BadRequestException(`출고 불가 상태: ${order.status} (APPROVED만 가능)`);
 

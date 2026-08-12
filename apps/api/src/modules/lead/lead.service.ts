@@ -58,6 +58,9 @@ export class LeadService {
       where: { id },
       include: {
         customer: { select: { id: true, name: true, phonePrimary: true } },
+        orgUnit: { select: { id: true, name: true } },
+        ownerEmp: { select: { id: true, name: true } },
+        partner: { select: { id: true, name: true } },
         estimates: {
           select: {
             id: true,
@@ -109,7 +112,11 @@ export class LeadService {
     return { ...lead, supportTickets };
   }
 
-  async create(dto: CreateLeadDto) {
+  async create(dto: CreateLeadDto, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(dto.orgUnitId)) {
+      throw new ForbiddenException('소속 조직으로만 접수할 수 있습니다.');
+    }
     // 신규 접수: 고객명 입력 시 고객 자동 생성·연결(드롭다운 선택은 customerId)
     let customerId = dto.customerId;
     if (!customerId && dto.customerName?.trim()) {
@@ -161,8 +168,8 @@ export class LeadService {
     }
   }
 
-  async update(id: string, dto: UpdateLeadDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateLeadDto, principal?: AuthPrincipal) {
+    await this.findOne(id, principal);
     try {
       return await this.prisma.lead.update({
         where: { id },
@@ -172,10 +179,21 @@ export class LeadService {
           partnerId: dto.partnerId,
           source: dto.source,
           serviceLine: dto.serviceLine,
+          // 주소는 생성 때와 동일하게 구조적 필드(상세·시도/시군구·좌표)까지 함께 갱신
           fromZipcode: dto.fromZipcode,
           fromAddr: dto.fromAddr,
+          fromAddrDetail: dto.fromAddrDetail,
+          fromSido: dto.fromSido,
+          fromSigungu: dto.fromSigungu,
+          fromLat: dto.fromLat,
+          fromLng: dto.fromLng,
           toZipcode: dto.toZipcode,
           toAddr: dto.toAddr,
+          toAddrDetail: dto.toAddrDetail,
+          toSido: dto.toSido,
+          toSigungu: dto.toSigungu,
+          toLat: dto.toLat,
+          toLng: dto.toLng,
           moveDate: dto.moveDate ? new Date(dto.moveDate) : undefined,
           visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
         },
@@ -186,25 +204,47 @@ export class LeadService {
   }
 
   /** 상태 전이(상태머신). 다른 모듈(계약·작업)에서도 호출. */
-  async transitionTo(id: string, to: LeadStatus) {
-    const lead = await this.findOne(id);
+  async transitionTo(id: string, to: LeadStatus, principal?: AuthPrincipal) {
+    const lead = await this.findOne(id, principal);
+    const result = await this.transitionInTx(this.prisma, id, to);
+    await this.emitTransition(result, to);
+    return result.changed ? result.lead : lead;
+  }
+
+  /**
+   * 트랜잭션 안에서의 상태 전이 — 문서(견적확정·계약·작업오더) 생성과 원자적으로 묶기 위해
+   * tx 클라이언트를 받는다. 전이가 막히면 예외로 문서 쓰기까지 함께 롤백된다.
+   * 조직 스코프는 호출한 문서 쪽에서 이미 검증된 것으로 본다(같은 조직의 리드).
+   * 이벤트 기록은 커밋 후 emitTransition()으로 따로 한다.
+   */
+  async transitionInTx(tx: Prisma.TransactionClient, id: string, to: LeadStatus) {
+    const lead = await tx.lead.findUnique({ where: { id } });
+    if (!lead) throw new NotFoundException(`리드를 찾을 수 없습니다: ${id}`);
     const from = lead.status as LeadStatus;
-    if (from === to) return lead;
+    if (from === to) return { lead, from, changed: false };
     if (!canTransition(from, to)) {
       throw new BadRequestException(`허용되지 않은 상태 전이: ${from} → ${to}`);
     }
-    const updated = await this.prisma.lead.update({ where: { id }, data: { status: to } });
-    await this.eventBus.record({
-      aggregateType: 'lead',
-      aggregateId: id,
-      eventType: 'lead.status_changed',
-      payload: { from, to, leadNo: lead.leadNo },
-    });
-    return updated;
+    const updated = await tx.lead.update({ where: { id }, data: { status: to } });
+    return { lead: updated, from, changed: true };
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  /** transitionInTx 커밋 후 상태변경 이벤트 기록(전이가 실제로 일어났을 때만). */
+  async emitTransition(
+    result: { lead: { id: string; leadNo: string }; from: LeadStatus; changed: boolean },
+    to: LeadStatus,
+  ) {
+    if (!result.changed) return;
+    await this.eventBus.record({
+      aggregateType: 'lead',
+      aggregateId: result.lead.id,
+      eventType: 'lead.status_changed',
+      payload: { from: result.from, to, leadNo: result.lead.leadNo },
+    });
+  }
+
+  async remove(id: string, principal?: AuthPrincipal) {
+    await this.findOne(id, principal);
     return this.prisma.lead.delete({ where: { id } });
   }
 

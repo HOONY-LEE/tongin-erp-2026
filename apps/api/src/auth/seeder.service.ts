@@ -55,6 +55,8 @@ export class AuthSeederService implements OnModuleInit {
       'SERVICE_ORDER.WRITE',
       'SUPPORT.READ',
       'SUPPORT.WRITE',
+      'CALENDAR.READ',
+      'CALENDAR.WRITE',
     ];
     for (const code of grant) {
       const perm = await this.prisma.permission.findUnique({ where: { code } });

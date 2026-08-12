@@ -1,0 +1,7 @@
+/* akron-ui SegmentedControl의 최대 크기(lg)보다 더 큰 세그먼트가 필요할 때 사용.
+   내부 세그먼트 버튼은 클래스 해시가 붙어 있어 부분일치 속성 선택자로 지정한다. */
+.large [class*='_segment_'] {
+  padding: 8px 16px;
+  min-height: 36px;
+  font-size: var(--ark-font-size-sm);
+}

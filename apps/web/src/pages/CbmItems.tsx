@@ -13,5 +13,7 @@ const fields: FormField[] = [
 ];
 
 export default function CbmItems() {
-  return <CrudTable title="품목사전" path="/cbm-items" columns={columns} fields={fields} />;
+  return (
+    <CrudTable title="품목사전" path="/cbm-items" columns={columns} fields={fields} hideHeader />
+  );
 }

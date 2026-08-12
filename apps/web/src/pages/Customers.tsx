@@ -12,7 +12,7 @@ export default function Customers() {
   const orgs = useOptions('/org-units', 'name');
   const fields: FormField[] = [
     { name: 'name', label: '고객명', required: true },
-    { name: 'phonePrimary', label: '연락처' },
+    { name: 'phonePrimary', label: '연락처', type: 'tel' },
     { name: 'grade', label: '등급' },
     { name: 'ownerOrgId', label: '담당 조직', type: 'select', options: orgs },
     { name: 'address', label: '주소', type: 'address', addrPrefix: '' },

@@ -47,26 +47,34 @@ export class LeadController {
 
   @Post()
   @RequirePermissions('LEAD.WRITE')
-  create(@Body() dto: CreateLeadDto) {
-    return this.leadService.create(dto);
+  create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateLeadDto) {
+    return this.leadService.create(dto, user);
   }
 
   @Patch(':id')
   @RequirePermissions('LEAD.WRITE')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto) {
-    return this.leadService.update(id, dto);
+  update(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateLeadDto,
+  ) {
+    return this.leadService.update(id, dto, user);
   }
 
   @Post(':id/transition')
   @RequirePermissions('LEAD.WRITE')
-  transition(@Param('id', ParseUUIDPipe) id: string, @Body() dto: TransitionLeadDto) {
-    return this.leadService.transitionTo(id, dto.to);
+  transition(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TransitionLeadDto,
+  ) {
+    return this.leadService.transitionTo(id, dto.to, user);
   }
 
   @Delete(':id')
   @RequirePermissions('LEAD.WRITE')
   @HttpCode(204)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.leadService.remove(id);
+  remove(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.leadService.remove(id, user);
   }
 }

@@ -58,11 +58,13 @@ export class ProductService {
   }
 
   async removeAddon(productId: string, addonServiceId: string) {
-    await this.prisma.productAddon.delete({
-      where: { productId_addonServiceId: { productId, addonServiceId } },
-    }).catch(() => {
-      throw new NotFoundException('연결된 옵션이 없습니다.');
-    });
+    await this.prisma.productAddon
+      .delete({
+        where: { productId_addonServiceId: { productId, addonServiceId } },
+      })
+      .catch(() => {
+        throw new NotFoundException('연결된 옵션이 없습니다.');
+      });
   }
 
   async create(dto: CreateProductDto) {

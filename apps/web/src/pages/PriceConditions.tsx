@@ -65,6 +65,7 @@ export default function PriceConditions() {
       path="/price-conditions"
       columns={columns}
       fields={fields}
+      hideHeader
     />
   );
 }

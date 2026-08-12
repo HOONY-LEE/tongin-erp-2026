@@ -5,6 +5,7 @@ export interface Principal {
   userId: string;
   loginId: string;
   permissions: string[];
+  scopes: { roleCode: string; dataScope: 'OWN' | 'ORG' | 'ALL'; orgScopeId: string | null }[];
 }
 
 interface AuthCtx {

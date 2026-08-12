@@ -1,7 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { B2bCostBreakdown, B2bDocumentKind } from '@tongin/shared';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { AuthPrincipal, B2bCostBreakdown, B2bDocumentKind } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 
 const num = (v: unknown): number => Number(v ?? 0);
@@ -24,11 +30,25 @@ export class EstimateB2bService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
   ) {}
 
-  async upsertBuildup(estimateId: string, dto: UpsertCostBuildupDto): Promise<B2bCostBreakdown> {
+  /** 소속 조직의 견적인지 검증(견적 본체와 동일 규칙). */
+  private async assertScope(orgUnitId: string, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 견적만 조회할 수 있습니다.');
+    }
+  }
+
+  async upsertBuildup(
+    estimateId: string,
+    dto: UpsertCostBuildupDto,
+    principal?: AuthPrincipal,
+  ): Promise<B2bCostBreakdown> {
     const estimate = await this.prisma.estimate.findUnique({ where: { id: estimateId } });
     if (!estimate) throw new NotFoundException(`견적을 찾을 수 없습니다: ${estimateId}`);
+    await this.assertScope(estimate.orgUnitId, principal);
 
     await this.prisma.estimateCostBuildup.upsert({
       where: { estimateId },
@@ -41,16 +61,17 @@ export class EstimateB2bService {
       eventType: 'estimate.cost_buildup_set',
       payload: { estimateNo: estimate.estimateNo },
     });
-    return this.getBreakdown(estimateId);
+    return this.getBreakdown(estimateId, principal);
   }
 
   /** 적상식 산출(저장값에서 즉석 계산 — stale 방지). */
-  async getBreakdown(estimateId: string): Promise<B2bCostBreakdown> {
+  async getBreakdown(estimateId: string, principal?: AuthPrincipal): Promise<B2bCostBreakdown> {
     const estimate = await this.prisma.estimate.findUnique({
       where: { id: estimateId },
       include: { costLines: true, costBuildup: true },
     });
     if (!estimate) throw new NotFoundException(`견적을 찾을 수 없습니다: ${estimateId}`);
+    await this.assertScope(estimate.orgUnitId, principal);
 
     const materialCost = estimate.costLines.reduce((s, l) => s + num(l.totalPrice), 0);
     const b = estimate.costBuildup;
@@ -85,7 +106,11 @@ export class EstimateB2bService {
   }
 
   /** 3종 문서(견적서/물품내역서/산출내역서)를 데이터에서 즉석 HTML 생성(무저장, E-0). */
-  async document(estimateId: string, kind: B2bDocumentKind): Promise<string> {
+  async document(
+    estimateId: string,
+    kind: B2bDocumentKind,
+    principal?: AuthPrincipal,
+  ): Promise<string> {
     const e = await this.prisma.estimate.findUnique({
       where: { id: estimateId },
       include: {
@@ -99,7 +124,8 @@ export class EstimateB2bService {
       },
     });
     if (!e) throw new NotFoundException(`견적을 찾을 수 없습니다: ${estimateId}`);
-    const breakdown = await this.getBreakdown(estimateId);
+    await this.assertScope(e.orgUnitId, principal);
+    const breakdown = await this.getBreakdown(estimateId, principal);
 
     const title = kind === 'quote' ? '견 적 서' : kind === 'items' ? '물품내역서' : '산출내역서';
     let body: string;

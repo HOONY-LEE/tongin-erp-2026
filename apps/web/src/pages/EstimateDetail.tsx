@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, openDocument } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   AddressView,
   Badge,
@@ -10,6 +11,7 @@ import {
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   Spinner,
   StatusBadge,
   useToast,
@@ -67,11 +69,13 @@ export default function EstimateDetail() {
   const [lineOpen, setLineOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);
   const cbmItems = useOptions('/cbm-items', 'name');
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setData(await api<Estimate>(`/estimates/${id}`));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -150,37 +154,43 @@ export default function EstimateDetail() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/estimates')}>
-          ← {t('estimate.back')}
-        </Button>
-        <h3 style={{ margin: 0 }}>{data.estimateNo}</h3>
-        <StatusBadge value={data.status} map={STATUS} />
-        <Badge variant="subtle" color="info">
-          {t('estimate.totalCbm')} {String(data.totalCbm)}
-        </Badge>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              openDocument(`/estimates/${id}/document`).catch((e) =>
-                toast({ type: 'error', title: e instanceof ApiError ? e.message : '문서 오류' }),
-              )
-            }
-          >
-            {t('estimate.document')}
-          </Button>
-          <Button variant="primary" size="sm" disabled={data.status === 'QUOTED'} onClick={quote}>
-            {t('estimate.quote')}
-          </Button>
-          {data.status === 'QUOTED' && (
-            <Button variant="primary" size="sm" onClick={() => setContractOpen(true)}>
-              {t('estimate.toContract')}
+      <PageHeader
+        title={data.estimateNo}
+        breadcrumbs={[{ label: t('estimate.back'), onClick: () => navigate('/estimates') }]}
+        onRefresh={load}
+        updatedAt={updatedAt}
+        tags={
+          <>
+            <StatusBadge value={data.status} map={STATUS} />
+            <Badge variant="subtle" color="info">
+              {t('estimate.totalCbm')} {String(data.totalCbm)}
+            </Badge>
+          </>
+        }
+        actions={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                openDocument(`/estimates/${id}/document`).catch((e) =>
+                  toast({ type: 'error', title: e instanceof ApiError ? e.message : '문서 오류' }),
+                )
+              }
+            >
+              {t('estimate.document')}
             </Button>
-          )}
-        </div>
-      </div>
+            <Button variant="primary" size="sm" disabled={data.status === 'QUOTED'} onClick={quote}>
+              {t('estimate.quote')}
+            </Button>
+            {data.status === 'QUOTED' && (
+              <Button variant="primary" size="sm" onClick={() => setContractOpen(true)}>
+                {t('estimate.toContract')}
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {(data.fromAddr || data.toAddr) && (
         <PageCard title={t('estimate.moveAddress')}>

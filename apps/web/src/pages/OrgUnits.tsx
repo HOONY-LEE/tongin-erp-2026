@@ -27,5 +27,5 @@ export default function OrgUnits() {
     { name: 'name', label: '이름', required: true },
     { name: 'parentId', label: '상위 조직', type: 'select', options: parents },
   ];
-  return <CrudTable title="조직" path="/org-units" columns={columns} fields={fields} />;
+  return <CrudTable title="조직" path="/org-units" columns={columns} fields={fields} hideHeader />;
 }

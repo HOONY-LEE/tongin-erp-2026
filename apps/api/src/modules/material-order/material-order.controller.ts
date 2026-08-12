@@ -33,21 +33,21 @@ export class MaterialOrderController {
 
   @Post(':id/approve')
   @RequirePermissions('MATERIAL_ORDER.WRITE')
-  approve(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.approve(id);
+  approve(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.approve(id, user);
   }
 
   /** 출고: 승인 발주 자재를 본사 재고에서 OUT 차감. */
   @Post(':id/ship')
   @RequirePermissions('MATERIAL_ORDER.WRITE')
-  ship(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.ship(id);
+  ship(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.ship(id, user);
   }
 
   @Post(':id/cancel')
   @RequirePermissions('MATERIAL_ORDER.WRITE')
   @HttpCode(200)
-  cancel(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.cancel(id);
+  cancel(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.service.cancel(id, user);
   }
 }

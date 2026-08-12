@@ -66,6 +66,7 @@ export default function Products() {
       columns={columns}
       fields={fields}
       onDetail={(r) => navigate(`/products/${r.id as string}`)}
+      hideHeader
     />
   );
 }

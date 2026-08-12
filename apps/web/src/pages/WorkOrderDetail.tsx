@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   Spinner,
   StatusBadge,
   useToast,
@@ -39,11 +41,13 @@ export default function WorkOrderDetail() {
   const [data, setData] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setData(await api<WorkOrder>(`/work-orders/${id}`));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
@@ -91,31 +95,42 @@ export default function WorkOrderDetail() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/work-orders')}>
-          ← {t('work.back')}
-        </Button>
-        <h3 style={{ margin: 0 }}>{data.workNo}</h3>
-        <StatusBadge value={data.status} map={WORK_STATUS} />
-        {data.scheduledDate && (
-          <Badge variant="subtle" color="info">
-            {t('work.scheduled')} {String(data.scheduledDate).slice(0, 10)}
-          </Badge>
-        )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <Button variant="primary" size="sm" disabled={data.status !== 'ASSIGNED'} onClick={start}>
-            {t('work.start')}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={data.status !== 'IN_PROGRESS'}
-            onClick={complete}
-          >
-            {t('work.complete')}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={data.workNo}
+        breadcrumbs={[{ label: t('work.back'), onClick: () => navigate('/work-orders') }]}
+        onRefresh={load}
+        updatedAt={updatedAt}
+        tags={
+          <>
+            <StatusBadge value={data.status} map={WORK_STATUS} />
+            {data.scheduledDate && (
+              <Badge variant="subtle" color="info">
+                {t('work.scheduled')} {String(data.scheduledDate).slice(0, 10)}
+              </Badge>
+            )}
+          </>
+        }
+        actions={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={data.status !== 'ASSIGNED'}
+              onClick={start}
+            >
+              {t('work.start')}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={data.status !== 'IN_PROGRESS'}
+              onClick={complete}
+            >
+              {t('work.complete')}
+            </Button>
+          </div>
+        }
+      />
 
       <PageCard
         title={t('work.assignments')}

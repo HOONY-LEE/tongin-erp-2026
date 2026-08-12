@@ -1,21 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import { LEAD_STATUS, type LeadStatus, type StatsOverview } from '@tongin/shared';
+import {
+  LEAD_STATUS,
+  type AuthPrincipal,
+  type LeadStatus,
+  type StatsOverview,
+} from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 
 @Injectable()
 export class StatsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+  ) {}
 
-  /** CRM-01: 대시보드 통계 — 퍼널·KPI·가맹점별 매출. */
-  async overview(): Promise<StatsOverview> {
+  /** CRM-01: 대시보드 통계 — 퍼널·KPI·가맹점별 매출. 소속 지점 범위로만 집계. */
+  async overview(principal?: AuthPrincipal): Promise<StatsOverview> {
+    const ids = await this.scope.orgScopeIds(principal);
+    const org = ids === null ? {} : { orgUnitId: { in: ids } };
     const [leadGroups, signedContracts, paidAgg, doneCount] = await Promise.all([
-      this.prisma.lead.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.lead.groupBy({ by: ['status'], where: org, _count: { _all: true } }),
       this.prisma.contract.findMany({
-        where: { status: 'SIGNED' },
+        where: { status: 'SIGNED', ...org },
         select: { totalAmount: true, lead: { select: { orgUnit: { select: { name: true } } } } },
       }),
-      this.prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
-      this.prisma.workOrder.count({ where: { status: 'DONE' } }),
+      this.prisma.payment.aggregate({
+        where: { status: 'PAID', ...(ids === null ? {} : { contract: org }) },
+        _sum: { amount: true },
+      }),
+      this.prisma.workOrder.count({ where: { status: 'DONE', ...org } }),
     ]);
 
     const countByStatus = new Map(leadGroups.map((g) => [g.status, g._count._all]));

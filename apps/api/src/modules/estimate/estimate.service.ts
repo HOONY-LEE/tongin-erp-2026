@@ -53,7 +53,11 @@ export class EstimateService {
     return estimate;
   }
 
-  async create(dto: CreateEstimateDto) {
+  async create(dto: CreateEstimateDto, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(dto.orgUnitId)) {
+      throw new ForbiddenException('소속 조직으로만 견적을 만들 수 있습니다.');
+    }
     try {
       const created = await this.prisma.estimate.create({
         data: {
@@ -98,15 +102,15 @@ export class EstimateService {
     }
   }
 
-  async addZone(estimateId: string, dto: CreateZoneDto) {
-    await this.findOne(estimateId);
+  async addZone(estimateId: string, dto: CreateZoneDto, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
     return this.prisma.estimateZone.create({
       data: { estimateId, name: dto.name, sortOrder: dto.sortOrder ?? 0 },
     });
   }
 
-  async addLine(estimateId: string, dto: CreateLineDto) {
-    await this.findOne(estimateId);
+  async addLine(estimateId: string, dto: CreateLineDto, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
     const qty = dto.qty ?? 1;
     let itemName = dto.itemName;
     let lineCbm = dto.cbm ?? 0;
@@ -139,21 +143,26 @@ export class EstimateService {
     }
   }
 
-  async removeLine(estimateId: string, lineId: string) {
-    await this.findOne(estimateId);
+  async removeLine(estimateId: string, lineId: string, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
     await this.prisma.estimateLine.delete({ where: { id: lineId } });
     await this.recomputeTotalCbm(estimateId);
     return { deleted: true };
   }
 
   /** 견적 확정 → 리드 QUOTED 전이 + 이벤트 */
-  async quote(estimateId: string) {
-    const estimate = await this.findOne(estimateId);
-    const updated = await this.prisma.estimate.update({
-      where: { id: estimateId },
-      data: { status: 'QUOTED' },
+  async quote(estimateId: string, principal?: AuthPrincipal) {
+    const estimate = await this.findOne(estimateId, principal);
+    // 견적 확정과 리드 전이는 한 트랜잭션 — 전이가 막히면 견적 상태만 바뀌는 일이 없도록
+    const { updated, transition } = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.estimate.update({
+        where: { id: estimateId },
+        data: { status: 'QUOTED' },
+      });
+      const t = await this.leadService.transitionInTx(tx, estimate.leadId, 'QUOTED');
+      return { updated: row, transition: t };
     });
-    await this.leadService.transitionTo(estimate.leadId, 'QUOTED');
+    await this.leadService.emitTransition(transition, 'QUOTED');
     await this.eventBus.record({
       aggregateType: 'estimate',
       aggregateId: estimateId,
@@ -166,8 +175,8 @@ export class EstimateService {
   // ── EST-03: 재료비 라인 ↔ 자재·재고 연동 (설계노트 F-4) ──
 
   /** 재료비 라인 추가 (DRAFT). 자재 마스터 참조 + 단가 → 합계 자동계산. */
-  async addCostLine(estimateId: string, dto: CreateCostLineDto) {
-    await this.findOne(estimateId);
+  async addCostLine(estimateId: string, dto: CreateCostLineDto, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
     const material = await this.prisma.material.findUnique({ where: { id: dto.materialId } });
     if (!material) throw new BadRequestException('존재하지 않는 자재(materialId)입니다.');
 
@@ -186,8 +195,8 @@ export class EstimateService {
   }
 
   /** 재료비 라인 삭제 (이미 차감된 라인은 전표 무결성 위해 불가). */
-  async removeCostLine(estimateId: string, costLineId: string) {
-    await this.findOne(estimateId);
+  async removeCostLine(estimateId: string, costLineId: string, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
     const line = await this.prisma.estimateCostLine.findUnique({ where: { id: costLineId } });
     if (!line || line.estimateId !== estimateId) {
       throw new NotFoundException(`재료비 라인을 찾을 수 없습니다: ${costLineId}`);
@@ -203,8 +212,8 @@ export class EstimateService {
    * 재료비 라인의 자재를 재고에서 일괄 차감(전표 OUT). 트랜잭션: 전부 성공 또는 전부 롤백.
    * 재고 부족 시 차감 없이 실패(전표 무결성). 차감된 라인은 DEDUCTED.
    */
-  async deductMaterials(estimateId: string) {
-    const estimate = await this.findOne(estimateId);
+  async deductMaterials(estimateId: string, principal?: AuthPrincipal) {
+    const estimate = await this.findOne(estimateId, principal);
     const draftLines = await this.prisma.estimateCostLine.findMany({
       where: { estimateId, status: 'DRAFT' },
       include: { material: true },
@@ -283,7 +292,8 @@ export class EstimateService {
   }
 
   /** 견적서 문서를 데이터에서 즉석 HTML로 생성(무저장, 설계노트 E-0). 브라우저에서 인쇄→PDF. */
-  async document(id: string): Promise<string> {
+  async document(id: string, principal?: AuthPrincipal): Promise<string> {
+    await this.findOne(id, principal); // 조직 스코프 검증
     const e = await this.prisma.estimate.findUnique({
       where: { id },
       include: {

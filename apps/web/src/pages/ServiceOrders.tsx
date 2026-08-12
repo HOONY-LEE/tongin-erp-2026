@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FormModal,
   PageCard,
+  PageHeader,
   StatusBadge,
   useToast,
   type Column,
@@ -49,6 +51,7 @@ export default function ServiceOrders() {
   const [rows, setRows] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const nameOf = useMemo(() => {
     const p = new Map(products.map((o) => [o.value, o.label]));
@@ -66,6 +69,7 @@ export default function ServiceOrders() {
     setLoading(true);
     try {
       setRows(await api<ServiceOrder[]>('/service-orders'));
+      touch();
     } catch (e) {
       fail(e);
     } finally {
@@ -178,16 +182,20 @@ export default function ServiceOrders() {
   ];
 
   return (
-    <PageCard
-      title={t('nav.serviceOrders')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-          + {t('service.register')}
-        </Button>
-      }
-    >
-      <DataTable columns={columns} rows={rows} loading={loading} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={t('nav.serviceOrders')}
+        onRefresh={load}
+        updatedAt={updatedAt}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+            + {t('service.register')}
+          </Button>
+        }
+      />
+      <PageCard title="목록" count={rows.length}>
+        <DataTable columns={columns} rows={rows} loading={loading} />
+      </PageCard>
 
       <FormModal
         open={open}
@@ -197,6 +205,6 @@ export default function ServiceOrders() {
         fields={fields}
         onSubmit={onCreate}
       />
-    </PageCard>
+    </div>
   );
 }

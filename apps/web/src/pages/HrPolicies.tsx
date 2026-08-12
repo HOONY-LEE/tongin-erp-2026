@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
@@ -8,6 +10,7 @@ import {
   FormModal,
   Input,
   PageCard,
+  PageHeader,
   Select,
   StatusBadge,
   useToast,
@@ -51,6 +54,7 @@ interface PayoutTarget {
 }
 
 export default function HrPolicies() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,11 +65,13 @@ export default function HrPolicies() {
   const [year, setYear] = useState('2026');
   const [month, setMonth] = useState('6');
   const [result, setResult] = useState<PayoutTarget[] | null>(null);
+  const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setRows(await api<Row[]>('/hr/policies'));
+      touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '조회 실패' });
     } finally {
@@ -184,6 +190,7 @@ export default function HrPolicies() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader title={t('nav.hr')} onRefresh={load} updatedAt={updatedAt} />
       <PageCard
         title="인센티브/패널티 정책"
         count={rows.length}

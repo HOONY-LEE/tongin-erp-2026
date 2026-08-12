@@ -1,3 +1,5 @@
+import { MapPin } from 'lucide-react';
+
 interface Props {
   label?: string;
   zipcode?: string | null;
@@ -31,9 +33,17 @@ export function AddressView({ label, zipcode, addr, addrDetail, lat, lng }: Prop
         href={mapUrl}
         target="_blank"
         rel="noopener noreferrer"
-        style={{ fontSize: 12, color: 'var(--ark-color-primary-600)', textDecoration: 'none' }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 2,
+          fontSize: 12,
+          color: 'var(--ark-color-primary-600)',
+          textDecoration: 'none',
+        }}
       >
-        🗺️ 지도
+        <MapPin size={12} />
+        지도
       </a>
     </span>
   );

@@ -23,25 +23,29 @@ export class ContractController {
 
   @Post()
   @RequirePermissions('CONTRACT.WRITE')
-  create(@Body() dto: CreateContractDto) {
-    return this.contractService.create(dto);
+  create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateContractDto) {
+    return this.contractService.create(dto, user);
   }
 
   @Post(':id/sign')
   @RequirePermissions('CONTRACT.WRITE')
-  sign(@Param('id', ParseUUIDPipe) id: string) {
-    return this.contractService.sign(id);
+  sign(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.contractService.sign(id, user);
   }
 
   @Get(':id/payments')
   @RequirePermissions('PAYMENT.READ')
-  listPayments(@Param('id', ParseUUIDPipe) id: string) {
-    return this.contractService.listPayments(id);
+  listPayments(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.contractService.listPayments(id, user);
   }
 
   @Post(':id/payments')
   @RequirePermissions('PAYMENT.WRITE')
-  createPayment(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreatePaymentDto) {
-    return this.contractService.createPayment(id, dto);
+  createPayment(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreatePaymentDto,
+  ) {
+    return this.contractService.createPayment(id, dto, user);
   }
 }
