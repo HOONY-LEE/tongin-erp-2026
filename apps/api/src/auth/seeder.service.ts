@@ -3,6 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import {
   PERMISSIONS,
   PERMISSION_WILDCARD,
+  ROLE_FIELD,
   ROLE_FRANCHISE,
   ROLE_OUTSOURCE,
   ROLE_SUPER_ADMIN,
@@ -24,6 +25,7 @@ export class AuthSeederService implements OnModuleInit {
     const role = await this.seedSuperAdminRole();
     await this.seedAdminUser(role.id);
     await this.seedOutsourceRole();
+    await this.seedFieldRole();
     await this.seedFranchiseRoleAndUser();
   }
 
@@ -103,6 +105,28 @@ export class AuthSeederService implements OnModuleInit {
     });
     const perm = await this.prisma.permission.findUnique({ where: { code: 'WORK_ORDER.READ' } });
     if (perm) {
+      await this.prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: role.id, permissionId: perm.id } },
+        update: {},
+        create: { roleId: role.id, permissionId: perm.id },
+      });
+    }
+  }
+
+  /** APP-03: 현장 작업팀 역할 — 본인에게 배정된 작업 조회 + 시작·완료. */
+  private async seedFieldRole(): Promise<void> {
+    const role = await this.prisma.role.upsert({
+      where: { code: ROLE_FIELD },
+      update: {},
+      create: {
+        code: ROLE_FIELD,
+        name: '현장 작업팀',
+        description: '본인 배정 작업 조회 + 시작·완료 (현장 화면)',
+      },
+    });
+    for (const code of ['WORK_ORDER.READ', 'WORK_ORDER.WRITE']) {
+      const perm = await this.prisma.permission.findUnique({ where: { code } });
+      if (!perm) continue;
       await this.prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: role.id, permissionId: perm.id } },
         update: {},

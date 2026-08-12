@@ -185,6 +185,7 @@ model Partner {
   type            String // AFFILIATE(제휴) | OUTSOURCE(전속) | B2B_CLIENT
   code            String           @unique
   name            String
+  phone           String? // 담당자 연락처 — 전속 작업 배정 알림톡 수신처
   isActive        Boolean          @default(true) @map("is_active")
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   priceConditions PriceCondition[]

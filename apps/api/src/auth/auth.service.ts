@@ -65,6 +65,7 @@ export class AuthService {
       userId: user.id,
       loginId: user.loginId,
       principalType: user.principalType as PrincipalType,
+      employeeId: user.employeeId,
       partnerId: user.partnerId,
       permissions,
       scopes,

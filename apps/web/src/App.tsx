@@ -1,7 +1,7 @@
 import { Spinner, ToastProvider } from '@sunghoon_lee/akron-ui';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
-import { AuthProvider, useAuth } from './auth/AuthContext';
+import { AuthProvider, isFieldUser, useAuth } from './auth/AuthContext';
 import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -33,6 +33,9 @@ import Accounts from './pages/Accounts';
 import ProductDetail from './pages/ProductDetail';
 import PartnerMgmt from './pages/PartnerMgmt';
 import CalendarPage from './pages/Calendar';
+import FieldLayout from './field/FieldLayout';
+import FieldWorkOrders from './field/FieldWorkOrders';
+import FieldWorkOrderDetail from './field/FieldWorkOrderDetail';
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -44,8 +47,16 @@ function Shell() {
     );
   }
   if (!user) return <Login />;
+  // 전속업체·현장 작업팀은 관리자 ERP 대신 현장 화면으로 (관리자는 /field 로 직접 들어갈 수 있다)
+  const field = isFieldUser(user);
   return (
     <Routes>
+      <Route path="/field" element={<FieldLayout />}>
+        <Route index element={<FieldWorkOrders />} />
+        <Route path="work-orders/:id" element={<FieldWorkOrderDetail />} />
+        <Route path="*" element={<Navigate to="/field" replace />} />
+      </Route>
+      {field && <Route path="*" element={<Navigate to="/field" replace />} />}
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />

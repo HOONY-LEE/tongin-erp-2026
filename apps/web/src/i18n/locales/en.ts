@@ -18,6 +18,7 @@ export default {
   nav: {
     dashboard: 'Dashboard',
     calendar: 'Calendar',
+    field: 'Field',
     leads: 'Intake',
     estimates: 'Estimates',
     contracts: 'Contracts',

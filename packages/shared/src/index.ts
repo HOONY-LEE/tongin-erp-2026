@@ -253,6 +253,11 @@ export const ROLE_SUPER_ADMIN = 'SUPER_ADMIN';
 export const ROLE_OUTSOURCE = 'OUTSOURCE';
 // 가맹점 역할 (APP-02): 본인 소속 조직(+하위)의 리드·견적·계약·작업·발주만 조회/발주
 export const ROLE_FRANCHISE = 'FRANCHISE';
+// 현장 작업팀 역할 (APP-03): 본인에게 배정된 작업만 조회 + 시작·완료. 로그인 시 현장 화면으로 진입
+export const ROLE_FIELD = 'FIELD';
+
+/** 이 역할들은 로그인 시 관리자 ERP가 아니라 현장 화면(/field)으로 들어간다. */
+export const FIELD_ROLES: string[] = [ROLE_FIELD, ROLE_OUTSOURCE];
 
 export interface LoginRequest {
   loginId: string;
@@ -270,6 +275,7 @@ export interface AuthPrincipal {
   userId: string;
   loginId: string;
   principalType: PrincipalType;
+  employeeId: string | null; // 직원 계정이면 연결된 직원(현장 배정 조회에 사용). 외부인·에이전트는 null
   partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
   scopes: { roleCode: string; dataScope: DataScope; orgScopeId: string | null }[];
