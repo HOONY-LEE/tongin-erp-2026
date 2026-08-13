@@ -19,6 +19,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY . .
+# prisma generate 는 스키마의 env("DATABASE_URL") 을 검증하므로 값이 있어야 통과한다.
+# 실제 접속은 하지 않으니 자리표시자면 충분하다 — 진짜 값은 런타임에 주입된다.
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 RUN pnpm --filter @tongin/shared build \
   && pnpm --filter @tongin/api exec prisma generate \
   && pnpm --filter @tongin/api exec nest build
@@ -38,6 +41,8 @@ COPY --from=build /app/apps/api/package.json ./apps/api/
 COPY --from=build /app/package.json ./
 
 WORKDIR /app/apps/api
+# 빌드 스테이지의 자리표시자가 런타임으로 새지 않게 (플랫폼이 주입한 값만 쓰도록)
+ENV DATABASE_URL=""
 EXPOSE 3001
 # 배포마다 스키마를 맞춘 뒤 기동 — 마이그레이션 실패 시 기동하지 않는다(부분 적용 방지)
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

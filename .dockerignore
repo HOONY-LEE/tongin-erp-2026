@@ -1,0 +1,29 @@
+# Docker 빌드 컨텍스트에서 제외.
+#
+# .env 를 빼는 게 특히 중요하다 — 이게 없으면 로컬 빌드는 .env 가 딸려 들어가
+# 성공하고, git 에서 클론하는 CI/배포는 실패한다(로컬에서만 되는 빌드가 된다).
+# 빌드 레이어에 자격증명이 남는 문제도 함께 막는다.
+# 패턴은 컨텍스트 루트 기준이라 중첩 경로(apps/api/.env)는 **/ 가 필요하다
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+node_modules
+**/node_modules
+dist
+**/dist
+.turbo
+**/.turbo
+
+.git
+.github
+.vercel
+.claude
+
+backup
+*.md
+!README.md
+legacy-schema.sql
+legacy-inventory.csv
