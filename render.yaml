@@ -13,12 +13,12 @@ services:
     plan: free # 15분 미사용 시 잠듦 — 실사용 전 starter($7/월)로 올릴 것
     healthCheckPath: /api/health
     envVars:
-      - key: DATABASE_URL
-        sync: false # Neon 접속 문자열 — 대시보드에서 직접 입력(저장소에 남기지 않는다)
+      # DATABASE_URL, ADMIN_PASSWORD 는 여기에 두지 않는다.
+      # sync:false 로 선언하면 Blueprint 생성 화면에서 입력을 받는데, 그 값이
+      # 저장되지 않는 경우가 있어 배포가 빈 값으로 떨어졌다.
+      # 두 값은 대시보드 Environment 에서 직접 추가한다(가이드 참고).
       - key: JWT_SECRET
         generateValue: true # Render가 안전한 임의값을 생성
-      - key: ADMIN_PASSWORD
-        sync: false # 반드시 지정 — 비우면 admin1234 가 된다
       - key: WEB_APP_URL
         value: https://tongin-erp.vercel.app
       - key: NODE_ENV
