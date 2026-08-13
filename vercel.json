@@ -6,6 +6,10 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://tongin-erp-api.onrender.com/api/:path*"
+    },
+    {
       "source": "/((?!api/|assets/|icon-|manifest\\.webmanifest|sw\\.js).*)",
       "destination": "/index.html"
     }
