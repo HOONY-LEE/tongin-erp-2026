@@ -47,16 +47,29 @@ function Shell() {
     );
   }
   if (!user) return <Login />;
-  // 전속업체·현장 작업팀은 관리자 ERP 대신 현장 화면으로 (관리자는 /field 로 직접 들어갈 수 있다)
-  const field = isFieldUser(user);
+
+  // 전속업체·현장 작업팀은 관리자 ERP를 쓸 일이 없다 — 라우트 트리 자체를 분리한다.
+  // (같은 트리에 두고 catch-all 리다이렉트를 넣으면, 라우터가 "/" 같은 구체적 경로를
+  //  와일드카드보다 우선해서 관리자 대시보드로 들어가 버린다.)
+  if (isFieldUser(user)) {
+    return (
+      <Routes>
+        <Route path="/field" element={<FieldLayout />}>
+          <Route index element={<FieldWorkOrders />} />
+          <Route path="work-orders/:id" element={<FieldWorkOrderDetail />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/field" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
+      {/* 관리자도 현장 화면을 열어볼 수 있다 */}
       <Route path="/field" element={<FieldLayout />}>
         <Route index element={<FieldWorkOrders />} />
         <Route path="work-orders/:id" element={<FieldWorkOrderDetail />} />
-        <Route path="*" element={<Navigate to="/field" replace />} />
       </Route>
-      {field && <Route path="*" element={<Navigate to="/field" replace />} />}
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
