@@ -2,8 +2,10 @@
 # Render 대시보드에서 이 저장소를 연결하면 이 파일을 읽어 서비스를 만든다.
 # DB는 Render가 아니라 Neon(Vercel 마켓플레이스)을 쓴다 — 웹과 같은 계정에서 관리하기 위함.
 services:
+  # 이름이 tongin-erp-api 인 이유: 같은 계정에 이 저장소와 무관한 예전 tongin-api 서비스가
+  # 이미 있어서 충돌을 피했다.
   - type: web
-    name: tongin-api
+    name: tongin-erp-api
     runtime: docker
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
