@@ -9,8 +9,9 @@ export default function Login() {
   const { login } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
-  const [loginId, setLoginId] = useState('admin');
-  const [password, setPassword] = useState('admin1234');
+  // 개발 편의용 기본값은 개발 모드에서만. 운영 빌드에 남으면 기본 계정을 광고하는 꼴이 된다.
+  const [loginId, setLoginId] = useState(import.meta.env.DEV ? 'admin' : '');
+  const [password, setPassword] = useState(import.meta.env.DEV ? 'admin1234' : '');
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
@@ -46,6 +47,7 @@ export default function Login() {
               label={t('login.id')}
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
+              autoComplete="username"
               autoFocus
             />
             <Input
@@ -53,6 +55,7 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
             />
             <Button type="submit" variant="primary" size="md" disabled={loading}>
               {t('common.login')}
