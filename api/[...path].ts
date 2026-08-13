@@ -12,6 +12,10 @@
  */
 export const config = { runtime: 'edge' };
 
+// 엣지 런타임에도 process.env 는 주입되지만 @types/node 가 없어 타입만 없다.
+// 이 파일은 웹 앱 tsconfig(include: src) 밖이라 로컬 typecheck 에도 안 잡힌다.
+declare const process: { env: Record<string, string | undefined> };
+
 export default async function handler(req: Request): Promise<Response> {
   const origin = process.env.API_ORIGIN;
   if (!origin) {
