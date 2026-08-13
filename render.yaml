@@ -1,0 +1,25 @@
+# Render 배포 정의(Blueprint).
+# Render 대시보드에서 이 저장소를 연결하면 이 파일을 읽어 서비스를 만든다.
+# DB는 Render가 아니라 Neon(Vercel 마켓플레이스)을 쓴다 — 웹과 같은 계정에서 관리하기 위함.
+services:
+  # 이름이 tongin-erp-api 인 이유: 같은 계정에 이 저장소와 무관한 예전 tongin-api 서비스가
+  # 이미 있어서 충돌을 피했다.
+  - type: web
+    name: tongin-erp-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    region: singapore # 무료 플랜에서 한국과 가장 가까운 리전
+    plan: free # 15분 미사용 시 잠듦 — 실사용 전 starter($7/월)로 올릴 것
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Neon 접속 문자열 — 대시보드에서 직접 입력(저장소에 남기지 않는다)
+      - key: JWT_SECRET
+        generateValue: true # Render가 안전한 임의값을 생성
+      - key: ADMIN_PASSWORD
+        sync: false # 반드시 지정 — 비우면 admin1234 가 된다
+      - key: WEB_APP_URL
+        value: https://tongin-erp.vercel.app
+      - key: NODE_ENV
+        value: production

@@ -42,3 +42,5 @@ tmp/
 
 # Claude local settings
 .claude/settings.local.json
+.vercel
+.env*.local

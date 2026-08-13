@@ -7,5 +7,6 @@ import { LeadModule } from '../lead/lead.module';
   imports: [LeadModule], // 작업 단계마다 리드 상태 전이
   controllers: [WorkOrderController],
   providers: [WorkOrderService],
+  exports: [WorkOrderService], // 현장 모듈이 시작·완료에 재사용
 })
 export class WorkOrderModule {}

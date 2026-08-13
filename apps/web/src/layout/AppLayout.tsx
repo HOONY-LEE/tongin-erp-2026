@@ -19,6 +19,7 @@ import {
   CalendarDays,
   Globe,
   LogOut,
+  HardHat,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -101,6 +102,7 @@ export default function AppLayout() {
           icon: Banknote,
           perm: 'PAYMENT.READ',
         },
+        { to: '/field', label: t('nav.field'), icon: HardHat, perm: 'WORK_ORDER.READ' },
         { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
         { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
       ],

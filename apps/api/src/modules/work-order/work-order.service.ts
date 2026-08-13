@@ -103,18 +103,58 @@ export class WorkOrderService {
       eventType: 'work_order.created',
       payload: { workNo: created.workNo, contractId: contract.id },
     });
+    // 전속업체는 앱을 설치하지 않으므로 알림톡이 유일하게 닿는 채널(OPS-04)
+    if (created.partnerId) await this.notifyOutsource(created.id, created.partnerId);
     return created;
   }
 
   async addAssignment(workOrderId: string, dto: CreateAssignmentDto, principal?: AuthPrincipal) {
-    await this.findOne(workOrderId, principal);
-    return this.prisma.workAssignment.create({
+    const wo = await this.findOne(workOrderId, principal);
+    const created = await this.prisma.workAssignment.create({
       data: {
         workOrderId,
         employeeId: dto.employeeId,
         resourceType: dto.resourceType,
         resourceRef: dto.resourceRef,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+      },
+    });
+    // 배정된 직원에게 알림톡 — 현장은 앱 푸시 대신 알림톡으로 받는다
+    if (dto.employeeId) {
+      const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
+      if (emp?.phone) {
+        await this.eventBus.record({
+          aggregateType: 'work_order',
+          aggregateId: workOrderId,
+          eventType: 'work_order.assigned',
+          payload: {
+            recipient: emp.phone,
+            workNo: wo.workNo,
+            scheduledDate: wo.scheduledDate ? wo.scheduledDate.toISOString().slice(0, 10) : null,
+            workOrderId,
+          },
+        });
+      }
+    }
+    return created;
+  }
+
+  /** 전속업체 담당자에게 작업 배정 알림톡. 연락처가 없으면 조용히 건너뛴다. */
+  private async notifyOutsource(workOrderId: string, partnerId: string) {
+    const [wo, partner] = await Promise.all([
+      this.prisma.workOrder.findUnique({ where: { id: workOrderId } }),
+      this.prisma.partner.findUnique({ where: { id: partnerId } }),
+    ]);
+    if (!wo || !partner?.phone) return;
+    await this.eventBus.record({
+      aggregateType: 'work_order',
+      aggregateId: workOrderId,
+      eventType: 'work_order.assigned',
+      payload: {
+        recipient: partner.phone,
+        workNo: wo.workNo,
+        scheduledDate: wo.scheduledDate ? wo.scheduledDate.toISOString().slice(0, 10) : null,
+        workOrderId,
       },
     });
   }

@@ -1,4 +1,5 @@
 import { Badge } from '../components/ui';
+import { formatPhone } from '../lib/phone';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 
 const TYPE: Record<string, string> = {
@@ -15,6 +16,7 @@ const TYPE_COLOR: Record<string, 'primary' | 'info' | 'warning'> = {
 const columns: Column[] = [
   { title: '코드', dataIndex: 'code' },
   { title: '거래처명', dataIndex: 'name' },
+  { title: '연락처', render: (r) => formatPhone(String(r.phone ?? '')) || '-' },
   {
     title: '유형',
     render: (r: Row) => (
@@ -47,6 +49,8 @@ const fields: FormField[] = [
   },
   { name: 'code', label: '코드', required: true, placeholder: 'P-001' },
   { name: 'name', label: '거래처명', required: true, placeholder: '예: 홈케어파트너스' },
+  // 전속 작업 배정 알림톡 수신처
+  { name: 'phone', label: '담당자 연락처', alwaysShow: true, type: 'tel' },
 ];
 
 /** 거래처 CRUD 목록. */

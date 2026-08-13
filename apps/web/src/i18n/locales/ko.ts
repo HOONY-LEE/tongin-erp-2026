@@ -18,6 +18,7 @@ export default {
   nav: {
     dashboard: '대시보드',
     calendar: '캘린더',
+    field: '현장',
     leads: '접수',
     estimates: '견적',
     contracts: '계약',

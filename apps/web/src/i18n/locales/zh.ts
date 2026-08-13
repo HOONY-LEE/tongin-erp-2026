@@ -18,6 +18,7 @@ export default {
   nav: {
     dashboard: '仪表盘',
     calendar: '日历',
+    field: '现场',
     leads: '受理',
     estimates: '报价',
     contracts: '合同',
