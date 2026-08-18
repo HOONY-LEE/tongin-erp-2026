@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "demo:seed": "tsx prisma/seed-demo.ts"
+    "demo:seed": "tsx prisma/seed-demo.ts",
+    "demo:seed:cases": "tsx prisma/seed-demo-cases.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

@@ -59,6 +59,9 @@ export class AuthSeederService implements OnModuleInit {
       'SUPPORT.WRITE',
       'CALENDAR.READ',
       'CALENDAR.WRITE',
+      // 대시보드 — 로그인 후 첫 화면이다. 통계는 조직 스코프로 집계되므로
+      // 지점장은 자기 지점 수치만 본다(stats.service 참고).
+      'STATS.READ',
     ];
     for (const code of grant) {
       const perm = await this.prisma.permission.findUnique({ where: { code } });
