@@ -18,7 +18,12 @@ interface Props {
   exportable?: boolean;
   /** 내보내기 파일명(확장자 제외). 기본 'table'. */
   exportFileName?: string;
+  /** 한 페이지 행 수. 0을 주면 페이지 없이 전체를 그린다(상세 화면의 짧은 목록 등). */
+  pageSize?: number;
 }
+
+/** 목록 화면 기본 페이지 크기. 푸터의 선택지(10/20/50/100) 중 하나여야 셀렉트와 값이 맞는다. */
+const DEFAULT_PAGE_SIZE = 20;
 
 /** 컬럼 정의로 렌더하는 공통 테이블 — softium-ui Table(정렬·검색·컬럼설정 내장) 기반. */
 export function DataTable({
@@ -31,6 +36,7 @@ export function DataTable({
   filters,
   exportable,
   exportFileName,
+  pageSize = DEFAULT_PAGE_SIZE,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +75,9 @@ export function DataTable({
     data: rows,
     columns: softiumColumns,
     getRowId: (r) => String(r[rowKey]),
+    // 넘기지 않으면 softium Table이 페이지네이션을 끄고(전체 렌더) 푸터의
+    // "N개씩 보기" 선택기도 감춘다.
+    pageSize,
   });
 
   // softium-ui Table에는 아직 로우 클릭 prop이 없어 DOM 위임으로 처리한다.

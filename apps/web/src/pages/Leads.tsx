@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   AddressView,
   Button,
+  CopyText,
   DataTable,
   FormModal,
   PageHeader,
@@ -138,7 +139,13 @@ export default function Leads() {
   };
 
   const columns: Column[] = [
-    { title: '접수번호', dataIndex: 'leadNo', render: (r) => <b>{String(r.leadNo)}</b> },
+    {
+      title: '접수번호',
+      dataIndex: 'leadNo',
+      // 접수번호 + 호버 복사 버튼이 잘리지 않을 만큼은 확보한다.
+      minWidth: 110,
+      render: (r) => <CopyText value={String(r.leadNo)} />,
+    },
     {
       title: '고객명',
       render: (r) => (r.customer as { name?: string } | null)?.name ?? '-',
@@ -147,7 +154,7 @@ export default function Leads() {
       title: '전화번호',
       render: (r) => {
         const phone = (r.customer as { phonePrimary?: string } | null)?.phonePrimary;
-        return phone ? <Phone value={phone} /> : '-';
+        return phone ? <Phone value={phone} link={false} /> : '-';
       },
     },
     {

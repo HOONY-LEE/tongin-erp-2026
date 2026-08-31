@@ -114,6 +114,20 @@ a {
   box-sizing: border-box;
 }
 
+/* 검색·필터 포커스 링 — akron 기본은 테마 오렌지(--ark-color-primary-500)라 브랜드 컬러와
+   섞여 눈에 잘 안 띈다. info 토큰은 테마가 건드리지 않는 고정 블루(라이트/다크 각각 대비
+   맞춰 정의돼 있음)라 이걸 쓴다. 검색 인풋(softium-ui)은 원래 border-color만 바뀌어 얇고,
+   필터(akron Select, role=combobox)는 border+box-shadow라 더 두꺼워 두께가 서로 달랐던 것도
+   같은 두께(2px 링)로 맞춘다. Select는 열려 있는 동안([data-state=open])에도 같은 스타일이
+   걸려 있어 그 상태도 같이 잡아야 한다. */
+.dt-wrap .sft-toolbar__search:focus,
+[role='combobox']:focus-visible,
+[role='combobox'][data-state='open'] {
+  outline: none;
+  border-color: var(--ark-color-info-500);
+  box-shadow: 0 0 0 2px var(--ark-color-info-500);
+}
+
 /* PageHeader 새로고침 아이콘 회전 애니메이션 */
 .ark-spin {
   animation: ark-spin 0.7s linear infinite;

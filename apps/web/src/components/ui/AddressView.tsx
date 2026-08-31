@@ -38,7 +38,7 @@ export function AddressView({
   if (nowrap) {
     return (
       <span
-        title={`${zipcode ? `(${zipcode}) ` : ''}${full}`}
+        title={`${full}${zipcode ? `(${zipcode})` : ''}`}
         style={{
           display: 'block',
           overflow: 'hidden',
@@ -47,12 +47,8 @@ export function AddressView({
         }}
       >
         {label && <b style={{ fontSize: 13 }}>{label} </b>}
-        {zipcode && (
-          <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
-            ({zipcode}){' '}
-          </span>
-        )}
         {full}
+        {zipcode && <span style={{ color: 'var(--ark-color-text-tertiary)' }}>({zipcode})</span>}
       </span>
     );
   }
@@ -60,10 +56,10 @@ export function AddressView({
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
       {label && <b style={{ fontSize: 13 }}>{label}</b>}
-      {zipcode && (
-        <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>({zipcode})</span>
-      )}
-      <span>{full}</span>
+      <span>
+        {full}
+        {zipcode && <span style={{ color: 'var(--ark-color-text-tertiary)' }}>({zipcode})</span>}
+      </span>
       {map && (
         <a
           href={mapUrl}
