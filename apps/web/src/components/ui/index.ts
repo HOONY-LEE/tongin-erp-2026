@@ -7,6 +7,7 @@ export { DataTable } from './DataTable';
 export { FormModal } from './FormModal';
 export { StatusBadge, type StatusMap } from './StatusBadge';
 export { AddressView } from './AddressView';
+export { CopyText } from './CopyText';
 
 // 자주 쓰는 akron 프리미티브 재노출
 export {

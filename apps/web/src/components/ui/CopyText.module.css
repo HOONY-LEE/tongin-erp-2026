@@ -1,0 +1,53 @@
+/* 값 옆의 복사 버튼은 평소 감춰 두고 행/셀에 마우스를 올렸을 때만 보인다.
+   표가 조용해 보이도록 하되, 키보드 포커스에는 항상 드러나야 접근 가능하다. */
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+/* 셀이 좁을 때 잘려야 하는 쪽은 값이고, 복사 버튼은 항상 자리를 지킨다. */
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  border-radius: var(--ark-radius-sm, 4px);
+  background: transparent;
+  color: var(--ark-color-text-tertiary);
+  line-height: 1;
+  cursor: pointer;
+  /* display:none 이 아니라 visibility 로 감춘다 — 폭을 계속 차지해야
+     호버할 때 옆 텍스트가 밀리지 않는다. */
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* 셀 단위 호버로는 표의 행을 훑을 때 반응이 늦어, 행 호버에도 걸어 둔다.
+   softium-ui 표의 행은 <tr>이 아니라 div.sft-tr 이라 전역 선택자로 지정한다. */
+.wrap:hover .button,
+:global(.sft-tr):hover .button,
+.button:focus-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.button:hover {
+  background: var(--ark-color-bg-hover, rgba(127, 127, 127, 0.16));
+  color: var(--ark-color-text-primary);
+}
+
+.copied {
+  color: var(--ark-color-success-600, #16a34a);
+  opacity: 1;
+  visibility: visible;
+}
