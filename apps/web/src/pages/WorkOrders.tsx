@@ -8,7 +8,6 @@ import {
   Button,
   DataTable,
   FormModal,
-  PageCard,
   PageHeader,
   StatusBadge,
   useToast,
@@ -105,11 +104,12 @@ export default function WorkOrders() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.workOrders')}
-        onRefresh={load}
-        updatedAt={updatedAt}
-        actions={
+      <PageHeader title={t('nav.workOrders')} onRefresh={load} updatedAt={updatedAt} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        loading={loading}
+        toolbarActions={
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="outline" size="sm" onClick={exportIcs}>
               📅 {t('work.exportIcs')}
@@ -120,9 +120,6 @@ export default function WorkOrders() {
           </div>
         }
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
-      </PageCard>
       <FormModal
         open={open}
         onOpenChange={setOpen}

@@ -199,6 +199,7 @@ export default function HrPolicies() {
             + 정책 등록
           </Button>
         }
+        plain
       >
         <DataTable columns={policyCols} rows={rows} loading={loading} />
         <FormModal

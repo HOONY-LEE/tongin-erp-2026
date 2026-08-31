@@ -7,7 +7,6 @@ import {
   Button,
   DataTable,
   FormModal,
-  PageCard,
   PageHeader,
   StatusBadge,
   useToast,
@@ -183,19 +182,17 @@ export default function ServiceOrders() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.serviceOrders')}
-        onRefresh={load}
-        updatedAt={updatedAt}
-        actions={
+      <PageHeader title={t('nav.serviceOrders')} onRefresh={load} updatedAt={updatedAt} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        loading={loading}
+        toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
             + {t('service.register')}
           </Button>
         }
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
-      </PageCard>
 
       <FormModal
         open={open}

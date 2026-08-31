@@ -140,6 +140,7 @@ export default function WorkOrderDetail() {
             + {t('work.assign')}
           </Button>
         }
+        plain
       >
         <DataTable columns={columns} rows={data.assignments as unknown as Row[]} />
       </PageCard>

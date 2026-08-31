@@ -40,6 +40,15 @@ a {
   --ark-color-primary-700: #b84a1f;
   --ark-color-primary-foreground: #ffffff;
   --ark-color-primary-hover: #e35f28;
+
+  /* softium-ui Table 기본 폰트를 한 단계 키움(md→lg) */
+  --sft-table-font-size: var(--sft-font-size-lg);
+
+  /* 차트 막대 — 단일 색상(sequential) 시각화용.
+     라이트/다크 각각 표면 대비·명도 밴드를 통과하는 단계를 따로 고른 값이라
+     테마별로 자동 반전시키지 말 것. */
+  --chart-bar: var(--ark-color-primary-500);
+  --chart-track: var(--ark-color-gray-100);
 }
 [data-theme='dark'] {
   color-scheme: dark;
@@ -54,11 +63,55 @@ a {
   --ark-color-primary-700: #ffc3a1;
   --ark-color-primary-foreground: #ffffff;
   --ark-color-primary-hover: #fea173;
+
+  /* 다크 표면(#1a1a19)에서는 primary-500이 너무 밝아 명도 밴드를 벗어난다 → 400단계 사용 */
+  --chart-bar: var(--ark-color-primary-400);
+  --chart-track: var(--ark-color-gray-200);
 }
 
 /* Radix 팝퍼(Select/Popover/Tooltip)를 모달 위로 — akron z-dropdown(100) < z-modal(400) 스태킹 해결 */
 [data-radix-popper-content-wrapper] {
   z-index: 1000 !important;
+}
+
+/* DataTable(onRowClick 지정 시) 로우 클릭 가능 표시 — softium-ui Table의 rowgroup에만 적용 */
+.dt-row-clickable .sft-tbody > [role='row'] {
+  cursor: pointer;
+}
+
+/* ── DataTable 툴바 배치 통일 ──
+   softium Table 툴바는 [left: 검색] [right: 내보내기·액션] 두 칸뿐이라 필터를 넣을 왼쪽
+   슬롯이 없다. left를 콘텐츠 폭으로 고정하고 right가 남는 폭을 갖게 한 뒤, 필터에만
+   margin-right:auto 를 줘서 검색창 옆에 붙이고 나머지는 오른쪽 끝으로 민다.
+   결과: [검색][필터] ……… [내보내기][+ 등록] */
+.dt-wrap .sft-toolbar__left {
+  flex: 0 0 auto;
+}
+.dt-wrap .sft-toolbar__right {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.dt-wrap .dt-toolbar-filters {
+  /* 내보내기 버튼이 DOM상 먼저 오므로 order로 맨 앞(검색창 옆)으로 당긴다 */
+  order: -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+}
+
+/* 검색 인풋을 넓히고, 툴바 컨트롤 높이를 한 값으로 통일 */
+.dt-wrap .sft-toolbar__search-wrap {
+  width: 440px;
+}
+.dt-wrap .sft-toolbar__search,
+.dt-wrap .sft-export__trigger,
+.dt-wrap .sft-toolbar__right button,
+.dt-wrap .dt-toolbar-filters button,
+.dt-wrap .dt-toolbar-filters [role='combobox'] {
+  height: 38px;
+  box-sizing: border-box;
 }
 
 /* PageHeader 새로고침 아이콘 회전 애니메이션 */

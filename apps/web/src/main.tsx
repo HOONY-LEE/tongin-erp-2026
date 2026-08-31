@@ -1,6 +1,7 @@
 import 'pretendard/dist/web/static/pretendard-dynamic-subset.css';
 import '@sunghoon_lee/akron-ui/tokens';
 import '@sunghoon_lee/akron-ui/styles';
+import 'softium-ui/styles.css';
 import './styles/base.css';
 import './i18n';
 import React from 'react';

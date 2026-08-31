@@ -72,6 +72,7 @@ export default function Employees() {
           + 직원 등록
         </Button>
       }
+      plain
     >
       <DataTable columns={columns} rows={rows} loading={loading} />
       <FormModal

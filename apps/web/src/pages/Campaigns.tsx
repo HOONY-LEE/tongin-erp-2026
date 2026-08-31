@@ -6,7 +6,6 @@ import {
   Button,
   DataTable,
   FormModal,
-  PageCard,
   PageHeader,
   StatusBadge,
   useToast,
@@ -113,19 +112,17 @@ export default function Campaigns() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.campaigns')}
-        actions={
+      <PageHeader title={t('nav.campaigns')} onRefresh={load} updatedAt={updatedAt} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        loading={loading}
+        toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
             + {t('campaign.register')}
           </Button>
         }
-        onRefresh={load}
-        updatedAt={updatedAt}
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
-      </PageCard>
       <FormModal
         open={open}
         onOpenChange={setOpen}

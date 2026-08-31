@@ -8,7 +8,6 @@ import {
   DataTable,
   Input,
   Modal,
-  PageCard,
   PageHeader,
   Select,
   StatusBadge,
@@ -198,11 +197,12 @@ export default function MaterialOrders() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.materialOrders')}
-        onRefresh={load}
-        updatedAt={updatedAt}
-        actions={
+      <PageHeader title={t('nav.materialOrders')} onRefresh={load} updatedAt={updatedAt} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        loading={loading}
+        toolbarActions={
           <Button
             variant="primary"
             size="sm"
@@ -215,9 +215,6 @@ export default function MaterialOrders() {
           </Button>
         }
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
-      </PageCard>
 
       <Modal
         open={open}

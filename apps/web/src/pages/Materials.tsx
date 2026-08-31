@@ -7,7 +7,6 @@ import {
   Button,
   DataTable,
   FormModal,
-  PageCard,
   PageHeader,
   StatusBadge,
   useToast,
@@ -121,27 +120,25 @@ export default function Materials() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.materials')}
-        actions={
+      <PageHeader title={t('nav.materials')} onRefresh={load} updatedAt={updatedAt} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        loading={loading}
+        toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             + {t('material.register')}
           </Button>
         }
-        onRefresh={load}
-        updatedAt={updatedAt}
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
 
-        {rows.some((r) => r.lowStock) && (
-          <div style={{ marginTop: 12 }}>
-            <Badge color="error" variant="subtle">
-              ⚠ {t('material.lowStockWarn')}
-            </Badge>
-          </div>
-        )}
-      </PageCard>
+      {rows.some((r) => r.lowStock) && (
+        <div>
+          <Badge color="error" variant="subtle">
+            ⚠ {t('material.lowStockWarn')}
+          </Badge>
+        </div>
+      )}
 
       <FormModal
         open={createOpen}

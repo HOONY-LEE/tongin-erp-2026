@@ -245,6 +245,7 @@ export default function EstimateDetail() {
             + {t('estimate.addLine')}
           </Button>
         }
+        plain
       >
         <DataTable columns={lineColumns} rows={data.lines as unknown as Row[]} />
       </PageCard>

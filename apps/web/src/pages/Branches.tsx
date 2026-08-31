@@ -2,15 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
-import {
-  Badge,
-  DataTable,
-  PageCard,
-  PageHeader,
-  useToast,
-  type Column,
-  type Row,
-} from '../components/ui';
+import { Badge, DataTable, PageHeader, useToast, type Column, type Row } from '../components/ui';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '0');
 
@@ -74,9 +66,7 @@ export default function Branches() {
         onRefresh={load}
         updatedAt={updatedAt}
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
-      </PageCard>
+      <DataTable columns={columns} rows={rows} loading={loading} rowKey="orgUnitId" />
     </div>
   );
 }

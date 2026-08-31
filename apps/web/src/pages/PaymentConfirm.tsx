@@ -6,7 +6,6 @@ import {
   Badge,
   Button,
   DataTable,
-  PageCard,
   PageHeader,
   StatusBadge,
   useToast,
@@ -137,9 +136,7 @@ export default function PaymentConfirm() {
         onRefresh={load}
         updatedAt={updatedAt}
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
-      </PageCard>
+      <DataTable columns={columns} rows={rows} loading={loading} />
     </div>
   );
 }

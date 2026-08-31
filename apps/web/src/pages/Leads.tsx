@@ -10,18 +10,27 @@ import {
   Button,
   DataTable,
   FormModal,
-  PageCard,
   PageHeader,
-  SegmentedControl,
-  StatusBadge,
+  Select,
   useToast,
   type Column,
   type FormField,
   type Row,
 } from '../components/ui';
 import { LEAD_STATUS, RECEIPT_SOURCES, SERVICE_LINES, codeLabel } from '../lib/leadCodes';
+import { Chip, Phone, type ChipTone } from 'softium-ui/table';
 
 const STATUS = LEAD_STATUS;
+
+// softium-ui Chip은 akron-ui StatusBadge와 톤 이름이 달라 매핑 필요(primary→accent, error→danger)
+const CHIP_TONE: Record<string, ChipTone> = {
+  neutral: 'neutral',
+  info: 'info',
+  warning: 'warning',
+  primary: 'accent',
+  success: 'success',
+  error: 'danger',
+};
 
 // 단계 탭 = lead.status 그룹 (한 케이스가 상태로 전 단계를 관통)
 const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
@@ -129,45 +138,53 @@ export default function Leads() {
   };
 
   const columns: Column[] = [
-    { title: '접수번호', render: (r) => <b>{String(r.leadNo)}</b> },
+    { title: '접수번호', dataIndex: 'leadNo', render: (r) => <b>{String(r.leadNo)}</b> },
     {
       title: '고객명',
-      render: (r) => {
-        const c = r.customer as { name?: string } | null;
-        return c?.name ?? '-';
-      },
+      render: (r) => (r.customer as { name?: string } | null)?.name ?? '-',
     },
     {
       title: '전화번호',
       render: (r) => {
-        const c = r.customer as { phonePrimary?: string } | null;
-        return c?.phonePrimary ?? '-';
+        const phone = (r.customer as { phonePrimary?: string } | null)?.phonePrimary;
+        return phone ? <Phone value={phone} /> : '-';
       },
     },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
+    {
+      title: '상태',
+      dataIndex: 'status',
+      render: (r) => {
+        const s = STATUS[String(r.status)];
+        return <Chip tone={CHIP_TONE[s?.color ?? 'neutral']}>{s?.label ?? String(r.status)}</Chip>;
+      },
+    },
     { title: '접수경로', render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string) },
     { title: '상품', render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string) },
     {
       title: '출발',
+      flex: 1,
+      minWidth: 220,
       render: (r) => (
         <AddressView
           zipcode={r.fromZipcode as string}
           addr={r.fromAddr as string}
           addrDetail={r.fromAddrDetail as string}
-          lat={r.fromLat as number}
-          lng={r.fromLng as number}
+          map={false}
+          nowrap
         />
       ),
     },
     {
       title: '도착',
+      flex: 1,
+      minWidth: 220,
       render: (r) => (
         <AddressView
           zipcode={r.toZipcode as string}
           addr={r.toAddr as string}
           addrDetail={r.toAddrDetail as string}
-          lat={r.toLat as number}
-          lng={r.toLng as number}
+          map={false}
+          nowrap
         />
       ),
     },
@@ -182,30 +199,31 @@ export default function Leads() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.leads')} onRefresh={load} updatedAt={updatedAt} />
 
-      <PageCard
-        title={
-          <SegmentedControl
-            value={stage}
-            onChange={setStage}
-            options={STAGES.map((s) => ({
-              value: s.key,
-              label: `${s.label} (${countFor(s.statuses)})`,
-            }))}
-          />
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        loading={loading}
+        onRowClick={(r) => navigate(`/leads/${r.id as string}`)}
+        filters={
+          <div style={{ width: 170 }}>
+            <Select
+              value={stage}
+              onValueChange={setStage}
+              options={STAGES.map((s) => ({
+                value: s.key,
+                label: `${s.label} (${countFor(s.statuses)})`,
+              }))}
+            />
+          </div>
         }
-        actions={
+        toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             + {t('lead.register')}
           </Button>
         }
-      >
-        <DataTable
-          columns={columns}
-          rows={filtered}
-          loading={loading}
-          onRowClick={(r) => navigate(`/leads/${r.id as string}`)}
-        />
-      </PageCard>
+        exportable
+        exportFileName="leads"
+      />
 
       <FormModal
         open={createOpen}
