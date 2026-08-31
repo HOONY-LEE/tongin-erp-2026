@@ -20,6 +20,10 @@ import {
   Globe,
   LogOut,
   HardHat,
+  Sparkles,
+  Calculator,
+  Receipt,
+  Award,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -88,7 +92,7 @@ export default function AppLayout() {
     {
       label: t('navGroup.ops'),
       items: [
-        { to: '/', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
+        { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
         { to: '/leads', label: t('nav.leads'), icon: Inbox, perm: 'LEAD.READ' },
         {
           to: '/calendar',
@@ -103,8 +107,27 @@ export default function AppLayout() {
           perm: 'PAYMENT.READ',
         },
         { to: '/field', label: t('nav.field'), icon: HardHat, perm: 'WORK_ORDER.READ' },
+        {
+          to: '/service-orders',
+          label: t('nav.serviceOrders'),
+          icon: Sparkles,
+          perm: 'SERVICE_ORDER.READ',
+        },
         { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
         { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
+      ],
+    },
+    {
+      label: t('navGroup.finance'),
+      items: [
+        {
+          to: '/settlements',
+          label: t('nav.settlement'),
+          icon: Calculator,
+          perm: 'SETTLEMENT.READ',
+        },
+        { to: '/billing', label: t('nav.billing'), icon: Receipt, perm: 'BILLING.READ' },
+        { to: '/hr', label: t('nav.hr'), icon: Award, perm: 'HR.READ' },
       ],
     },
     {
@@ -135,14 +158,14 @@ export default function AppLayout() {
   const visibleGroups = groups
     .map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || can(it.perm)) }))
     .filter((g) => g.items.length > 0);
-  const isActive = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to));
+  const isActive = (to: string) => pathname.startsWith(to);
 
   // ── 헤더 멀티탭 ──
   const allItems = visibleGroups.flatMap((g) => g.items);
   const matched = allItems
-    .filter((i) => (i.to === '/' ? pathname === '/' : pathname.startsWith(i.to)))
+    .filter((i) => pathname.startsWith(i.to))
     .sort((a, b) => b.to.length - a.to.length)[0];
-  const activeHref = matched?.to ?? '/';
+  const activeHref = matched?.to ?? '/dashboard';
 
   const [openTabs, setOpenTabs] = useState<string[]>([activeHref]);
   useEffect(() => {

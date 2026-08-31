@@ -30,7 +30,7 @@
 
 /* 좌측 스페이서 — 사이드바 폭만큼(탭이 사이드바 끝에서 시작) */
 .headerLeft {
-  width: 206px;
+  width: 240px;
   flex-shrink: 0;
   transition: width 0.2s ease;
 }
@@ -79,7 +79,7 @@
   display: flex;
   flex: 1;
   overflow: hidden;
-  padding-left: 206px;
+  padding-left: 240px;
   transition: padding-left 0.2s ease;
 }
 .collapsed .mainArea {
@@ -93,7 +93,7 @@
   left: 0;
   bottom: 0;
   z-index: 200;
-  width: 206px;
+  width: 240px;
   flex-shrink: 0;
   box-sizing: border-box;
   transition: width 0.2s ease;

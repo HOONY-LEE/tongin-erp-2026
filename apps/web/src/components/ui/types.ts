@@ -7,6 +7,12 @@ export interface Column {
   dataIndex?: string;
   numeric?: boolean;
   render?: (row: Row) => ReactNode;
+  /** 고정 픽셀 너비. 미지정 시 테이블이 자동 배분. */
+  width?: number;
+  /** 최소 너비(px). flex와 함께 쓰면 유용. */
+  minWidth?: number;
+  /** 남는 가로 공간을 이 비율로 흡수(0/미지정 = 고정폭). */
+  flex?: number;
 }
 
 export interface FormField {

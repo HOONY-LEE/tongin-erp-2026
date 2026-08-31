@@ -235,11 +235,12 @@ export default function Settlement() {
             {onlyOut ? t('settlement.showAll') : t('settlement.onlyOutstanding')}
           </Button>
         }
+        plain
       >
         <DataTable columns={recvCols} rows={recv} />
       </PageCard>
 
-      <PageCard title={t('settlement.monthlyInflow')} count={monthly.length}>
+      <PageCard title={t('settlement.monthlyInflow')} count={monthly.length} plain>
         <DataTable columns={monthlyCols} rows={monthly} />
       </PageCard>
 
@@ -251,6 +252,7 @@ export default function Settlement() {
             + {t('settlement.addRule')}
           </Button>
         }
+        plain
       >
         <DataTable columns={ruleCols} rows={rules} />
       </PageCard>

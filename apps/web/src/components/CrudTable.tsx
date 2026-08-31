@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
-import { Button, DataTable, FormModal, PageCard, PageHeader, useToast } from './ui';
+import { Button, DataTable, FormModal, PageHeader, useToast } from './ui';
 import type { Column, FormField, Row } from './ui';
 
 // 기존 import 경로 유지를 위한 재노출
@@ -61,30 +61,27 @@ export default function CrudTable({ title, path, columns, fields, onDetail, hide
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {!hideHeader && (
-        <PageHeader title={title} actions={addButton} onRefresh={load} updatedAt={updatedAt} />
-      )}
-      <PageCard title="목록" count={rows.length} actions={hideHeader ? addButton : undefined}>
-        <DataTable
-          columns={
-            onDetail
-              ? [
-                  ...columns,
-                  {
-                    title: '',
-                    render: (r: Row) => (
-                      <Button variant="ghost" size="sm" onClick={() => onDetail(r)}>
-                        상세 →
-                      </Button>
-                    ),
-                  },
-                ]
-              : columns
-          }
-          rows={rows}
-          loading={loading}
-        />
-      </PageCard>
+      {!hideHeader && <PageHeader title={title} onRefresh={load} updatedAt={updatedAt} />}
+      <DataTable
+        columns={
+          onDetail
+            ? [
+                ...columns,
+                {
+                  title: '',
+                  render: (r: Row) => (
+                    <Button variant="ghost" size="sm" onClick={() => onDetail(r)}>
+                      상세 →
+                    </Button>
+                  ),
+                },
+              ]
+            : columns
+        }
+        rows={rows}
+        loading={loading}
+        toolbarActions={addButton}
+      />
       <FormModal
         open={open}
         onOpenChange={setOpen}

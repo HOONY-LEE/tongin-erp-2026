@@ -71,7 +71,8 @@ function Shell() {
         <Route path="work-orders/:id" element={<FieldWorkOrderDetail />} />
       </Route>
       <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/leads/:id" element={<LeadDetail />} />
         <Route path="/calendar" element={<CalendarPage />} />
@@ -101,7 +102,7 @@ function Shell() {
         <Route path="/payments-confirm" element={<PaymentConfirm />} />
         <Route path="/branches" element={<Branches />} />
         <Route path="/accounts" element={<Accounts />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );

@@ -240,7 +240,7 @@ export default function Billing() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.billing')} onRefresh={loadAll} updatedAt={updatedAt} />
-      <PageCard title={t('billing.margins')} count={margin?.count ?? 0}>
+      <PageCard title={t('billing.margins')} count={margin?.count ?? 0} plain>
         {margin && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
             <Badge variant="subtle" color="info">
@@ -265,11 +265,12 @@ export default function Billing() {
             + {t('billing.newInvoice')}
           </Button>
         }
+        plain
       >
         <DataTable columns={invCols} rows={invoices} />
       </PageCard>
 
-      <PageCard title={t('billing.partnerReceivables')} count={precv.length}>
+      <PageCard title={t('billing.partnerReceivables')} count={precv.length} plain>
         <DataTable columns={precvCols} rows={precv} />
       </PageCard>
 

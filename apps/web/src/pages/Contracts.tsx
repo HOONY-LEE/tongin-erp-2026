@@ -8,7 +8,6 @@ import {
   Button,
   DataTable,
   FormModal,
-  PageCard,
   PageHeader,
   StatusBadge,
   useToast,
@@ -97,19 +96,17 @@ export default function Contracts() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.contracts')}
-        actions={
+      <PageHeader title={t('nav.contracts')} onRefresh={load} updatedAt={updatedAt} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        loading={loading}
+        toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
             + {t('contract.create')}
           </Button>
         }
-        onRefresh={load}
-        updatedAt={updatedAt}
       />
-      <PageCard title="목록" count={rows.length}>
-        <DataTable columns={columns} rows={rows} loading={loading} />
-      </PageCard>
       <FormModal
         open={open}
         onOpenChange={setOpen}

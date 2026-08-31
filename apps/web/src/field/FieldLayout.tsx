@@ -83,7 +83,12 @@ export default function FieldLayout() {
           {user?.loginId}
         </span>
         {canSeeAdmin && (
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="관리자 화면">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/dashboard')}
+            aria-label="관리자 화면"
+          >
             <ShieldCheck size={18} />
           </Button>
         )}

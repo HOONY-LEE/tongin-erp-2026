@@ -177,6 +177,7 @@ export default function ContractDetail() {
             </Button>
           </div>
         }
+        plain
       >
         <DataTable columns={payColumns} rows={data.payments as unknown as Row[]} />
       </PageCard>
