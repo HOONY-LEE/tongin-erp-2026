@@ -84,12 +84,23 @@ a {
    슬롯이 없다. left를 콘텐츠 폭으로 고정하고 right가 남는 폭을 갖게 한 뒤, 필터에만
    margin-right:auto 를 줘서 검색창 옆에 붙이고 나머지는 오른쪽 끝으로 민다.
    결과: [검색][필터] ……… [내보내기][+ 등록] */
+/* 패널이 좁아지면(예: 사이드바가 넓어진 채 창 폭이 줄어드는 경우) 검색(고정폭)+필터+
+   내보내기+등록 버튼이 한 줄에 다 안 들어가 필터가 검색창 뒤로 겹쳐 보이지 않게 되던
+   문제 — 검색창을 고정폭 대신 줄어들 수 있는 폭으로 바꾸고, 그래도 안 맞으면 툴바
+   자체가 다음 줄로 넘어가게 한다(겹침 대신 줄바꿈). */
+.dt-wrap .sft-toolbar {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
 .dt-wrap .sft-toolbar__left {
-  flex: 0 0 auto;
+  flex: 1 1 200px;
+  min-width: 160px;
 }
 .dt-wrap .sft-toolbar__right {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  flex-wrap: wrap;
+  row-gap: 8px;
   justify-content: flex-end;
 }
 .dt-wrap .dt-toolbar-filters {
@@ -101,9 +112,11 @@ a {
   margin-right: auto;
 }
 
-/* 검색 인풋을 넓히고, 툴바 컨트롤 높이를 한 값으로 통일 */
+/* 검색 인풋 최대폭은 440px이되, 공간이 부족하면 줄어든다(고정폭이면 좁은 화면에서
+   옆 컨트롤들과 겹친다). */
 .dt-wrap .sft-toolbar__search-wrap {
-  width: 440px;
+  width: 100%;
+  max-width: 440px;
 }
 .dt-wrap .sft-toolbar__search,
 .dt-wrap .sft-export__trigger,
@@ -125,7 +138,62 @@ a {
 [role='combobox'][data-state='open'] {
   outline: none;
   border-color: var(--ark-color-info-500);
-  box-shadow: 0 0 0 2px var(--ark-color-info-500);
+  box-shadow: 0 0 0 1px var(--ark-color-info-500);
+}
+
+/* Select 드롭다운의 선택/호버 표시도 같은 블루로 — akron 기본은 primary(주황)라
+   브랜드 컬러와 "지금 고른 값"이 같은 색이 돼 구분이 안 된다. 체크 아이콘은
+   currentColor를 쓰므로 글자색만 바꾸면 함께 따라온다.
+   클래스명(_item_xxx)은 빌드마다 해시가 바뀌므로 role 속성으로만 잡고,
+   akron 원본 규칙(클래스+속성)을 이기도록 listbox를 앞에 둬 특이도를 높인다. */
+[role='listbox'] [role='option'][data-state='checked'] {
+  color: var(--ark-color-info-600);
+}
+/* 체크 아이콘은 currentColor가 아니라 자체 color(primary)를 갖고 있어 위 규칙이 안 먹는다 */
+[role='listbox'] [role='option'][data-state='checked'] > span[aria-hidden] {
+  color: var(--ark-color-info-600);
+}
+[role='listbox'] [role='option']:hover,
+[role='listbox'] [role='option'][data-highlighted] {
+  background-color: color-mix(in srgb, var(--ark-color-info-500) 8%, transparent);
+  color: var(--ark-color-info-600);
+}
+
+/* 텍스트 입력류 포커스 링도 검색·필터와 같은 블루로 통일 — akron 기본은 primary(주황)라
+   브랜드 컬러와 "지금 입력 중" 표시가 같은 색이 된다.
+   해시가 바뀌는 클래스명(_input_) 대신 요소 선택자로 잡되, akron 원본 규칙(클래스+의사클래스,
+   특이도 0-2-0)을 이기려면 특이도를 한 칸 올려야 해서 :not([readonly])을 덧붙였다.
+   오류 상태 규칙은 특이도가 더 높아(0-3-0) 그대로 빨간 링을 유지한다. */
+input:focus:not([readonly]),
+textarea:focus:not([readonly]) {
+  outline: none;
+  border-color: var(--ark-color-info-500);
+  box-shadow: 0 0 0 1px var(--ark-color-info-500);
+}
+
+/* 캘린더 툴바 — 필터 버튼(34px)과 일간/주간/월간/연간 SegmentedControl 높이를 맞추고
+   글자 크기를 한 단계 낮춘다(기존 sm → 실질 xs). 컴포넌트 자체엔 xs가 없어 sm에
+   CSS로 덮어쓴다. 클래스명(_track_/_segment_)은 빌드마다 해시가 바뀌는 데다,
+   akron-ui 다른 컴포넌트도 우연히 같은 부분 클래스명(_segment_)을 써서 부분일치
+   선택자가 엉뚱한 규칙과 충돌했다 — role/data 속성 두 개를 겹쳐 특이도를 확실히
+   높이고, 이 컴포넌트에서만 쓰는 값이라 다른 곳과 안 부딪힌다. */
+.cal-view-switch {
+  height: 34px;
+}
+.cal-view-switch [role='radiogroup'] {
+  height: 100%;
+  box-sizing: border-box;
+}
+.cal-view-switch [role='radio'][data-segment='true'] {
+  height: 100%;
+  min-height: 0;
+  font-size: var(--ark-font-size-xs);
+}
+
+/* 일정 추가 버튼도 툴바의 다른 컨트롤(34px)과 높이를 맞춘다 */
+.cal-add-btn {
+  height: 34px;
+  min-height: 0;
 }
 
 /* PageHeader 새로고침 아이콘 회전 애니메이션 */
@@ -139,4 +207,19 @@ a {
   to {
     transform: rotate(360deg);
   }
+}
+
+/*
+ * softium-ui 팝오버 층위 올리기.
+ *
+ * 라이브러리 기본값이 앱의 고정 사이드바(AppLayout .sidebarWrap, z-index 200)보다 낮아
+ * 테이블 컬럼 메뉴와 캘린더 팝오버가 사이드바 뒤로 깔렸다.
+ *   --sft-z-overlay: 10  → 컬럼 메뉴(.sft-colmenu)가 11
+ *   --sft-z-modal:  100  → 캘린더 팝오버/메뉴/오버레이
+ * 라이브러리가 앱의 층위를 알 수 없으니 값 결정은 앱 몫이다. 위의 Radix 팝퍼(1000)와
+ * 같은 단으로 맞춰 팝오버끼리 일관되게 쌓이도록 한다.
+ */
+:root {
+  --sft-z-overlay: 1000;
+  --sft-z-modal: 1100;
 }
