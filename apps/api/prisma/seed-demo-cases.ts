@@ -12,12 +12,22 @@ import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-/** 오늘 기준 상대일 → Date(자정). 시드를 언제 돌려도 "오늘 작업"이 생기도록. */
+/**
+ * 오늘 기준 상대일 → Date.
+ *
+ * DATE 컬럼(move_date, scheduled_date 등)은 UTC 기준으로 잘리므로 UTC 자정으로 만든다.
+ * 로컬 자정(KST 00:00 = UTC 전날 15:00)을 넣으면 하루씩 밀려 "오늘 작업"이 어제로 잡힌다.
+ */
 function day(offset: number): Date {
   const d = new Date();
-  d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + offset);
-  return d;
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
+/** 작업오더 상태 — 완료 건은 DONE, 앞으로 할 작업은 배정됨, 오늘/지난 건은 작업중. */
+function workStatus(c: { stage: Stage; schedule?: number }): string {
+  if (c.stage === 'DONE') return 'DONE';
+  return (c.schedule ?? 0) > 0 ? 'ASSIGNED' : 'IN_PROGRESS';
 }
 
 const PRODUCTS = [
@@ -338,6 +348,249 @@ const CASES: CaseSpec[] = [
     amount: 3_380_000,
     schedule: -3,
   },
+  // ── 아래는 오늘 주변으로 촘촘히 채운 건들 (데모 화면이 늘 "지금 돌아가는 중"으로 보이게) ──
+
+  // 이번 주 접수 (아직 상담 단계)
+  {
+    branch: 'BR-GN',
+    customer: '백승현',
+    phone: '010-5101-0011',
+    stage: 'INTAKE',
+    product: 'P-HOME',
+    source: 'HOMEPAGE',
+    from: ['06292', '서울 강남구 남부순환로 2621', '1104호'],
+    to: ['06611', '서울 서초구 반포대로 58', '902호'],
+    amount: 0,
+    schedule: 12,
+  },
+  {
+    branch: 'BR-SP',
+    customer: '천예지',
+    phone: '010-5102-0011',
+    stage: 'INTAKE',
+    product: 'P-HALF',
+    source: 'AIBOT',
+    from: ['05545', '서울 송파구 송파대로 345', '1503호'],
+    to: ['05116', '서울 광진구 워커힐로 177', '806호'],
+    amount: 0,
+    schedule: 9,
+  },
+  {
+    branch: 'BR-BD',
+    customer: '구자현',
+    phone: '010-5103-0011',
+    stage: 'INTAKE',
+    product: 'P-OFFICE',
+    source: 'PARTNER',
+    from: ['13561', '경기 성남시 분당구 황새울로 335', '5층'],
+    to: ['13494', '경기 성남시 분당구 대왕판교로 606', '8층'],
+    amount: 0,
+    schedule: 15,
+  },
+  {
+    branch: 'BR-IS',
+    customer: '민사랑',
+    phone: '010-5104-0011',
+    stage: 'INTAKE',
+    product: 'P-HOME',
+    source: 'NAVER',
+    from: ['10364', '경기 고양시 일산동구 백마로 195', '703호'],
+    to: ['10223', '경기 고양시 일산서구 킨텍스로 217', '2101호'],
+    amount: 0,
+    schedule: 11,
+  },
+
+  // 견적 나간 건 (계약 대기 — 이번 주·다음 주 이사)
+  {
+    branch: 'BR-GN',
+    customer: '표지훈',
+    phone: '010-5101-0012',
+    stage: 'QUOTED',
+    product: 'P-HOME',
+    source: 'PHONE',
+    from: ['06043', '서울 강남구 도산대로 318', '1201호'],
+    to: ['06147', '서울 강남구 영동대로 511', '3304호'],
+    amount: 2_760_000,
+    schedule: 8,
+  },
+  {
+    branch: 'BR-BS',
+    customer: '하윤슬',
+    phone: '010-5105-0011',
+    stage: 'QUOTED',
+    product: 'P-HALF',
+    source: 'INSTAGRAM',
+    from: ['48267', '부산 수영구 수영로 677', '1402호'],
+    to: ['48007', '부산 해운대구 해운대로 570', '905호'],
+    amount: 1_930_000,
+    schedule: 6,
+  },
+
+  // 계약 완료 (작업 대기 — 며칠 뒤 이사)
+  {
+    branch: 'BR-SP',
+    customer: '양다온',
+    phone: '010-5102-0012',
+    stage: 'CONTRACTED',
+    product: 'P-HOME',
+    source: 'HOMEPAGE',
+    from: ['05702', '서울 송파구 마천로 215', '1802호'],
+    to: ['05421', '서울 강동구 양재대로 1471', '1105호'],
+    amount: 3_120_000,
+    schedule: 4,
+  },
+  {
+    branch: 'BR-GN',
+    customer: '정이든',
+    phone: '010-5101-0013',
+    stage: 'CONTRACTED',
+    product: 'P-STORE',
+    source: 'NAVER',
+    from: ['06236', '서울 강남구 테헤란로 129', '1601호'],
+    to: ['06531', '서울 서초구 신반포로 176', '2203호'],
+    amount: 2_580_000,
+    schedule: 2,
+  },
+  {
+    branch: 'BR-BD',
+    customer: '주하람',
+    phone: '010-5103-0012',
+    stage: 'CONTRACTED',
+    product: 'P-HOME',
+    source: 'WALK_IN',
+    from: ['13590', '경기 성남시 분당구 정자일로 95', '1504호'],
+    to: ['13636', '경기 성남시 분당구 돌마로 46', '802호'],
+    amount: 2_890_000,
+    schedule: 5,
+    outsource: 'OS-HANIL',
+  },
+
+  // 오늘 작업중 (현장 앱에 "오늘"로 뜬다)
+  {
+    branch: 'BR-GN',
+    customer: '유시온',
+    phone: '010-5101-0014',
+    stage: 'WORKING',
+    product: 'P-HOME',
+    source: 'HOMEPAGE',
+    from: ['06120', '서울 강남구 언주로 726', '1203호'],
+    to: ['06782', '서울 서초구 효령로 210', '1004호'],
+    amount: 3_240_000,
+    schedule: 0,
+  },
+  {
+    branch: 'BR-BD',
+    customer: '남궁민',
+    phone: '010-5103-0013',
+    stage: 'WORKING',
+    product: 'P-HALF',
+    source: 'PHONE',
+    from: ['13529', '경기 성남시 분당구 분당내곡로 151', '904호'],
+    to: ['13606', '경기 성남시 분당구 서현로 180', '1702호'],
+    amount: 1_870_000,
+    schedule: 0,
+  },
+  {
+    branch: 'BR-BS',
+    customer: '탁서진',
+    phone: '010-5105-0012',
+    stage: 'WORKING',
+    product: 'P-HOME',
+    source: 'AIBOT',
+    from: ['48058', '부산 해운대구 센텀동로 25', '1801호'],
+    to: ['46241', '부산 금정구 중앙대로 1927', '1203호'],
+    amount: 2_450_000,
+    schedule: 1,
+    outsource: 'OS-DAEYANG',
+  },
+
+  // 며칠 뒤 예정 작업 — 현장 앱 "예정" 탭에 잡힌다
+  {
+    branch: 'BR-GN',
+    customer: '하윤슬',
+    phone: '010-5101-0021',
+    stage: 'WORKING',
+    product: 'P-HOME',
+    source: 'NAVER',
+    from: ['06035', '서울 강남구 가로수길 43', '502호'],
+    to: ['06611', '서울 서초구 서초대로 397', '1802호'],
+    amount: 2_760_000,
+    schedule: 2,
+  },
+  {
+    branch: 'BR-GN',
+    customer: '노경태',
+    phone: '010-5101-0022',
+    stage: 'WORKING',
+    product: 'P-HALF',
+    source: 'PHONE',
+    from: ['06236', '서울 강남구 테헤란로 152', '1103호'],
+    to: ['05510', '서울 송파구 올림픽로 300', '2405호'],
+    amount: 1_940_000,
+    schedule: 4,
+  },
+  {
+    branch: 'BR-SP',
+    customer: '음소윤',
+    phone: '010-5102-0023',
+    stage: 'WORKING',
+    product: 'P-HOME',
+    source: 'HOMEPAGE',
+    from: ['05544', '서울 송파구 백제고분로 362', '901호'],
+    to: ['05854', '서울 송파구 위례성대로 2', '1506호'],
+    amount: 3_080_000,
+    schedule: 3,
+  },
+
+  // 최근 완료 (정산·미수금에 잡힌다)
+  {
+    branch: 'BR-SP',
+    customer: '설윤아',
+    phone: '010-5102-0013',
+    stage: 'DONE',
+    product: 'P-HOME',
+    source: 'HOMEPAGE',
+    from: ['05854', '서울 송파구 위례광장로 220', '1105호'],
+    to: ['05288', '서울 강동구 고덕로 333', '2004호'],
+    amount: 2_980_000,
+    schedule: -2,
+  },
+  {
+    branch: 'BR-GN',
+    customer: '오리온',
+    phone: '010-5101-0015',
+    stage: 'DONE',
+    product: 'P-HALF',
+    source: 'NAVER',
+    from: ['06015', '서울 강남구 선릉로 826', '703호'],
+    to: ['06367', '서울 강남구 밤고개로 79', '1502호'],
+    amount: 2_140_000,
+    schedule: -4,
+  },
+  {
+    branch: 'BR-IS',
+    customer: '강서온',
+    phone: '010-5104-0012',
+    stage: 'DONE',
+    product: 'P-HOME',
+    source: 'PHONE',
+    from: ['10403', '경기 고양시 일산동구 호수로 596', '1203호'],
+    to: ['10881', '경기 파주시 회동길 145', '502호'],
+    amount: 2_320_000,
+    schedule: -6,
+  },
+  {
+    branch: 'BR-BS',
+    customer: '문가온',
+    phone: '010-5105-0013',
+    stage: 'DONE',
+    product: 'P-STORE',
+    source: 'WALK_IN',
+    from: ['48120', '부산 해운대구 우동1로 51', '1502호'],
+    to: ['48400', '부산 남구 유엔평화로 76', '904호'],
+    amount: 3_510_000,
+    schedule: -9,
+  },
 ];
 
 /** 견적 품목 — 금액대에 맞춰 적당히 뽑는다(무작위 대신 결정적으로: 재실행 시 동일). */
@@ -434,7 +687,14 @@ async function main() {
     };
     const lead = await prisma.lead.upsert({
       where: { leadNo },
-      update: { status: STAGE_LEAD_STATUS[c.stage], orgUnitId, customerId: customer.id, ...addr },
+      // 날짜도 함께 갱신한다 — 재실행 시점을 "오늘"로 다시 잡아야 데모가 늘 최신으로 보인다
+      update: {
+        status: STAGE_LEAD_STATUS[c.stage],
+        orgUnitId,
+        customerId: customer.id,
+        moveDate: c.schedule !== undefined ? day(c.schedule) : day(i + 3),
+        ...addr,
+      },
       create: {
         leadNo,
         orgUnitId,
@@ -453,7 +713,10 @@ async function main() {
 
     // 견적
     const items = pickItems(i, c.amount);
-    const totalCbm = items.reduce((s, it) => s + it.cbm, 0);
+    // 수량은 라인 생성 때와 같은 규칙으로 미리 정해 둔다 — 헤더 totalCbm과 라인 합계가
+    // 어긋나지 않으려면 둘 다 "단위CBM × 수량"을 써야 한다.
+    const itemQty = items.map((_, ii) => (ii % 3 === 0 ? 2 : 1));
+    const totalCbm = items.reduce((s, it, ii) => s + it.cbm * itemQty[ii], 0);
     const estimateNo = `EQ${String(i + 1).padStart(4, '0')}`;
     const estimate = await prisma.estimate.upsert({
       where: { estimateNo },
@@ -494,7 +757,7 @@ async function main() {
       zoneByCategory.set(name, z.id);
     }
     for (const [ii, it] of items.entries()) {
-      const qty = ii % 3 === 0 ? 2 : 1;
+      const qty = itemQty[ii];
       await prisma.estimateLine.create({
         data: {
           estimateId: estimate.id,
@@ -520,6 +783,9 @@ async function main() {
         totalAmount: c.amount,
         depositAmount: deposit,
         balanceAmount: balance,
+        // 계약일·서명일도 오늘 기준으로 다시 잡는다(월별 입금 집계가 최근 달에 잡히도록)
+        contractDate: day((c.schedule ?? 5) - 7),
+        signedAt: day((c.schedule ?? 5) - 7),
       },
       create: {
         contractNo,
@@ -569,7 +835,7 @@ async function main() {
     const wo = await prisma.workOrder.upsert({
       where: { contractId: contract.id },
       update: {
-        status: c.stage === 'DONE' ? 'DONE' : 'IN_PROGRESS',
+        status: workStatus(c),
         scheduledDate: day(c.schedule ?? 0),
         partnerId: c.outsource ? partnerByCode.get(c.outsource) : null,
       },
@@ -580,7 +846,7 @@ async function main() {
         orgUnitId,
         partnerId: c.outsource ? partnerByCode.get(c.outsource) : undefined,
         scheduledDate: day(c.schedule ?? 0),
-        status: c.stage === 'DONE' ? 'DONE' : 'IN_PROGRESS',
+        status: workStatus(c),
         billedCost: c.outsource ? Math.round(c.amount * 0.62) : null,
       },
     });
