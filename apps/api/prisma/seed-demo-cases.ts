@@ -9,6 +9,7 @@
  * 대시보드·퍼널·정산·현장 화면이 실제처럼 채워지도록 단계를 골고루 배치했다.
  */
 import { PrismaClient, Prisma } from '@prisma/client';
+import { ROOM_PRESETS } from '@tongin/shared';
 
 const prisma = new PrismaClient();
 
@@ -61,17 +62,64 @@ const PRODUCTS = [
   },
 ];
 
+/**
+ * 품목사전(CbmItem) 시드 + 견적 물품 시드 공용.
+ * 견적에는 견적서 기본 틀(shared ROOM_PRESETS)의 방·물품 이름으로 넣고, 세부는 메모로 남긴다
+ * (실제 견적사원이 "안방 · 침대 · 퀸 사이즈"처럼 적는 방식).
+ */
 const CBM_ITEMS = [
-  { category: '침실', name: '퀸 침대', cbm: 1.8 },
-  { category: '침실', name: '킹 침대', cbm: 2.2 },
-  { category: '침실', name: '장롱 3자', cbm: 1.5 },
-  { category: '거실', name: '3인 소파', cbm: 1.6 },
-  { category: '거실', name: 'TV 65인치', cbm: 0.5 },
-  { category: '주방', name: '양문형 냉장고', cbm: 1.2 },
-  { category: '주방', name: '식탁 4인', cbm: 0.9 },
-  { category: '기타', name: '세탁기', cbm: 0.6 },
-  { category: '기타', name: '책상', cbm: 0.7 },
-  { category: '기타', name: '피아노', cbm: 1.4 },
+  {
+    category: '침실',
+    name: '퀸 침대',
+    cbm: 1.8,
+    room: 'MASTER',
+    preset: '침대',
+    memo: '퀸 사이즈',
+  },
+  { category: '침실', name: '킹 침대', cbm: 2.2, room: 'BED1', preset: '침대', memo: '킹 사이즈' },
+  { category: '침실', name: '장롱 3자', cbm: 1.5, room: 'MASTER', preset: '장롱', memo: '3자' },
+  { category: '거실', name: '3인 소파', cbm: 1.6, room: 'LIVING', preset: '소파', memo: '3인용' },
+  {
+    category: '거실',
+    name: 'TV 65인치',
+    cbm: 0.5,
+    room: 'LIVING',
+    preset: '홈시어터',
+    memo: 'TV 65인치',
+  },
+  {
+    category: '주방',
+    name: '양문형 냉장고',
+    cbm: 1.2,
+    room: 'KITCHEN',
+    preset: '냉장고',
+    memo: '양문형',
+  },
+  {
+    category: '주방',
+    name: '식탁 4인',
+    cbm: 0.9,
+    room: 'KITCHEN',
+    preset: '식탁/의자',
+    memo: '4인용',
+  },
+  {
+    category: '기타',
+    name: '세탁기',
+    cbm: 0.6,
+    room: 'BALCONY_BACK',
+    preset: '세탁기/건조기',
+    memo: '드럼',
+  },
+  { category: '기타', name: '책상', cbm: 0.7, room: 'BED1', preset: '탁자/책상', memo: '' },
+  {
+    category: '기타',
+    name: '피아노',
+    cbm: 1.4,
+    room: 'MASTER',
+    preset: '피아노',
+    memo: '업라이트',
+  },
 ];
 
 /** 단계별 목표 분포 — 퍼널이 위에서 아래로 줄어드는 자연스러운 모양이 되게. */
@@ -630,7 +678,8 @@ async function main() {
     const row = await prisma.cbmItem.upsert({
       where: { category_name: { category: c.category, name: c.name } },
       update: { cbm: c.cbm },
-      create: c,
+      // 사전에는 사전 필드만 — room/preset/memo는 견적 물품을 만들 때만 쓴다
+      create: { category: c.category, name: c.name, cbm: c.cbm },
     });
     cbmByName.set(c.name, row.id);
   }
@@ -756,26 +805,44 @@ async function main() {
     // 구역·품목 (재실행 시 중복되지 않게 지우고 다시)
     await prisma.estimateLine.deleteMany({ where: { estimateId: estimate.id } });
     await prisma.estimateZone.deleteMany({ where: { estimateId: estimate.id } });
-    // 구역은 품목 카테고리를 그대로 쓴다 — 소파가 안방에 들어가는 식의 어색함을 피한다
-    const usedCategories = [...new Set(items.map((it) => it.category))];
-    const zoneByCategory = new Map<string, string>();
-    for (const [zi, name] of usedCategories.entries()) {
+    // 방은 견적서 기본 틀 순서대로, 쓰인 방만 만든다
+    const usedRooms = ROOM_PRESETS.filter((r) => items.some((it) => it.room === r.key));
+    const zoneByRoom = new Map<string, string>();
+    for (const room of usedRooms) {
       const z = await prisma.estimateZone.create({
-        data: { estimateId: estimate.id, name, sortOrder: zi },
+        data: {
+          estimateId: estimate.id,
+          name: room.name,
+          roomKey: room.key,
+          sortOrder: ROOM_PRESETS.indexOf(room),
+        },
       });
-      zoneByCategory.set(name, z.id);
+      zoneByRoom.set(room.key, z.id);
     }
     for (const [ii, it] of items.entries()) {
       const qty = itemQty[ii];
+      const preset = ROOM_PRESETS.find((r) => r.key === it.room)?.items.find(
+        (x) => x.name === it.preset,
+      );
+      // 견적 물품은 "물품별 부피(CBM) 합계"로 적는다 — 수량은 메모에 남긴다
+      const memo = [it.memo, qty > 1 ? `${qty}개` : ''].filter(Boolean).join(' · ');
       await prisma.estimateLine.create({
         data: {
           estimateId: estimate.id,
-          zoneId: zoneByCategory.get(it.category),
+          zoneId: zoneByRoom.get(it.room),
           cbmItemId: cbmByName.get(it.name),
-          itemName: it.name,
-          qty,
+          itemName: it.preset,
+          itemNameEng: preset?.nameEng,
+          qty: 1,
           cbm: new Prisma.Decimal(it.cbm * qty),
-          handling: ii === items.length - 1 && i % 4 === 0 ? 'DISPOSE' : 'CARRY',
+          // 처리방법도 현장처럼 섞는다: 마지막 물품은 가끔 폐기, 첫 물품은 가끔 경유
+          handling:
+            ii === items.length - 1 && i % 4 === 0
+              ? 'DISPOSE'
+              : ii === 0 && i % 5 === 0
+                ? 'VIA'
+                : 'CARRY',
+          memo: memo || null,
         },
       });
     }

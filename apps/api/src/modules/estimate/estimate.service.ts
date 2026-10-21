@@ -8,8 +8,11 @@ import {
 import { Prisma } from '@prisma/client';
 import {
   ACCESS_LABEL,
+  ESTIMATE_OPTION_BY_CODE,
   HANDLING_LABEL,
   LEAD_STATUS_LABEL,
+  optionLabel,
+  summarizeVolume,
   type AccessMethod,
   type AuthPrincipal,
   type EstimateMeta,
@@ -28,6 +31,7 @@ import {
   UpdateConditionsDto,
 } from './dto/estimate-child.dto';
 import { CreateCostLineDto } from './dto/cost-line.dto';
+import { SaveBasicDto, SaveItemsDto, SaveOptionsDto } from './dto/estimate-tabs.dto';
 
 @Injectable()
 export class EstimateService {
@@ -75,7 +79,24 @@ export class EstimateService {
    */
   async detail(id: string, principal?: AuthPrincipal) {
     const estimate = await this.findOne(id, principal);
-    return { ...estimate, meta: await this.buildMeta(id) };
+    // 기본정보 탭에서 고치는 원본 값(접수의 상담일·이사일)과 상품 서비스라인 — 메타는 표시용 파생값이라 따로 준다
+    const [lead, product] = await Promise.all([
+      this.prisma.lead.findUnique({
+        where: { id: estimate.leadId },
+        select: { id: true, leadNo: true, visitDate: true, moveDate: true },
+      }),
+      this.prisma.product.findUnique({
+        where: { id: estimate.productId },
+        select: { serviceLine: true },
+      }),
+    ]);
+    const day = (d?: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+    return {
+      ...estimate,
+      lead: lead && { ...lead, visitDate: day(lead.visitDate), moveDate: day(lead.moveDate) },
+      serviceLine: product?.serviceLine ?? null,
+      meta: await this.buildMeta(id),
+    };
   }
 
   private async buildMeta(id: string): Promise<EstimateMeta> {
@@ -413,6 +434,144 @@ export class EstimateService {
     return { deleted: true };
   }
 
+  // ── 견적 상세 4단계 탭 저장 (기본정보 / 물품정보 / 옵션선택) ──
+
+  /**
+   * 1. 기본정보 저장. 주소·상담일·이사일은 접수(lead)에도 같이 쓴다 —
+   * 현장 작업지시서는 접수의 주소를 읽으므로, 견적에서만 고치면 현장에 옛 주소가 간다.
+   */
+  async saveBasic(estimateId: string, dto: SaveBasicDto, principal?: AuthPrincipal) {
+    const estimate = await this.findOne(estimateId, principal);
+    if (dto.productId) {
+      const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
+      if (!product) throw new BadRequestException('존재하지 않는 상품(productId)입니다.');
+    }
+    const address = {
+      fromZipcode: dto.fromZipcode,
+      fromAddr: dto.fromAddr,
+      fromAddrDetail: dto.fromAddrDetail,
+      fromSido: dto.fromSido,
+      fromSigungu: dto.fromSigungu,
+      fromLat: dto.fromLat,
+      fromLng: dto.fromLng,
+      toZipcode: dto.toZipcode,
+      toAddr: dto.toAddr,
+      toAddrDetail: dto.toAddrDetail,
+      toSido: dto.toSido,
+      toSigungu: dto.toSigungu,
+      toLat: dto.toLat,
+      toLng: dto.toLng,
+    };
+    // 날짜 전용 컬럼은 UTC 자정으로 넣어야 하루씩 밀리지 않는다('YYYY-MM-DD' → UTC 00:00)
+    const dateOnly = (v?: string) =>
+      v === undefined ? undefined : v ? new Date(`${v.slice(0, 10)}T00:00:00Z`) : null;
+    await this.prisma.$transaction([
+      this.prisma.estimate.update({
+        where: { id: estimateId },
+        data: { productId: dto.productId, ...address },
+      }),
+      this.prisma.lead.update({
+        where: { id: estimate.leadId },
+        data: { ...address, visitDate: dateOnly(dto.visitDate), moveDate: dateOnly(dto.moveDate) },
+      }),
+    ]);
+    return this.detail(estimateId, principal);
+  }
+
+  /**
+   * 2. 물품정보 저장 — 방·물품을 통째로 바꾼다. 값이 있는 물품(부피 > 0 또는 메모)만 남기고,
+   * 기본 틀의 빈 행은 저장하지 않는다. 직접 만든 방은 비어 있어도 남긴다(나중에 채우도록).
+   */
+  async saveItems(estimateId: string, dto: SaveItemsDto, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
+    const rooms = dto.rooms
+      .map((r, i) => ({
+        ...r,
+        sortOrder: r.sortOrder ?? i,
+        lines: r.lines.filter((l) => l.cbm > 0 || l.memo?.trim()),
+      }))
+      .filter((r) => r.lines.length || !r.roomKey);
+    const allLines = rooms.flatMap((r) => r.lines);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.estimateLine.deleteMany({ where: { estimateId } });
+      await tx.estimateZone.deleteMany({ where: { estimateId } });
+      for (const r of rooms) {
+        const zone = await tx.estimateZone.create({
+          data: { estimateId, name: r.name.trim(), roomKey: r.roomKey, sortOrder: r.sortOrder },
+        });
+        if (!r.lines.length) continue;
+        await tx.estimateLine.createMany({
+          data: r.lines.map((l) => ({
+            estimateId,
+            zoneId: zone.id,
+            itemName: l.itemName.trim(),
+            itemNameEng: l.itemNameEng?.trim() || null,
+            qty: 1,
+            cbm: l.cbm,
+            handling: l.handling,
+            memo: l.memo?.trim() || null,
+          })),
+        });
+      }
+      await tx.estimate.update({
+        where: { id: estimateId },
+        data: { totalCbm: summarizeVolume(allLines).total },
+      });
+    });
+    return this.detail(estimateId, principal);
+  }
+
+  /**
+   * 3. 옵션선택 저장 — 작업조건과 고른 옵션 전체를 바꾼다.
+   * 옵션 이름은 정의에서 만들어 스냅샷으로 남긴다(정의가 바뀌어도 발송한 견적서는 그대로).
+   */
+  async saveOptions(estimateId: string, dto: SaveOptionsDto, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
+    for (const o of dto.options) {
+      const def = ESTIMATE_OPTION_BY_CODE[o.code];
+      if (!def) throw new BadRequestException(`알 수 없는 옵션입니다: ${o.code}`);
+      if (o.variant && !def.variants?.some((v) => v.value === o.variant)) {
+        throw new BadRequestException(`${def.label}의 종류가 올바르지 않습니다: ${o.variant}`);
+      }
+    }
+    const note = (access: string | undefined, text: string | undefined) =>
+      access === undefined ? text : access === 'ETC' ? (text?.trim() ?? null) : null;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.estimate.update({
+        where: { id: estimateId },
+        data: {
+          fromPyeong: dto.fromPyeong,
+          fromAccess: dto.fromAccess,
+          fromAccessNote: note(dto.fromAccess, dto.fromAccessNote),
+          toPyeong: dto.toPyeong,
+          toAccess: dto.toAccess,
+          toAccessNote: note(dto.toAccess, dto.toAccessNote),
+        },
+      });
+      await tx.estimateAddon.deleteMany({ where: { estimateId } });
+      if (dto.options.length) {
+        await tx.estimateAddon.createMany({
+          data: dto.options.map((o, i) => ({
+            estimateId,
+            code: o.code,
+            variant: o.variant ?? null,
+            serviceDate: o.serviceDate ? new Date(`${o.serviceDate.slice(0, 10)}T00:00:00Z`) : null,
+            name: optionLabel(o.code, o.variant),
+            qty: 1,
+            unitPrice: o.amount,
+            amount: o.amount,
+            memo: o.memo?.trim() || null,
+            sortOrder: i,
+          })),
+        });
+      }
+    });
+    await this.recomputeAmounts(estimateId);
+    return this.detail(estimateId, principal);
+  }
+
   /** 작업조건(전/후 평수·작업방식) 수정. 기타가 아니면 남아 있던 메모를 지운다. */
   async updateConditions(estimateId: string, dto: UpdateConditionsDto, principal?: AuthPrincipal) {
     await this.findOne(estimateId, principal);
@@ -474,14 +633,15 @@ export class EstimateService {
     });
   }
 
+  /** 견적 전체물량 = 운반+경유+폐기(하역 포함). 방치·업체는 싣지 않으므로 뺀다(shared 규칙). */
   private async recomputeTotalCbm(estimateId: string) {
-    const agg = await this.prisma.estimateLine.aggregate({
+    const lines = await this.prisma.estimateLine.findMany({
       where: { estimateId },
-      _sum: { cbm: true },
+      select: { cbm: true, handling: true },
     });
     await this.prisma.estimate.update({
       where: { id: estimateId },
-      data: { totalCbm: agg._sum.cbm ?? 0 },
+      data: { totalCbm: summarizeVolume(lines).total },
     });
   }
 
@@ -511,17 +671,14 @@ export class EstimateService {
       `${esc(ACCESS_LABEL[a as AccessMethod] ?? a)}${a === 'ETC' && note ? `(${esc(note)})` : ''}`;
     const addr = (a: string | null, d: string | null) => (a ? `${esc(a)} ${esc(d ?? '')}` : '-');
 
-    // 물량 요약 — 처리구분별(운반/경유/방치/폐기). 방치는 있을 때만 보인다.
-    const cbmOf = (h: string) =>
-      e.lines.filter((l) => l.handling === h).reduce((sum, l) => sum + Number(l.cbm), 0);
-    const r1 = (n: number) => Math.round(n * 100) / 100;
-    const volume = [
-      ['전체물량', r1(e.lines.reduce((sum, l) => sum + Number(l.cbm), 0))],
-      ['운반물량', r1(cbmOf('CARRY'))],
-      ['경유물량', r1(cbmOf('VIA'))],
-      ...(cbmOf('LEAVE') ? [['방치물량', r1(cbmOf('LEAVE'))]] : []),
-      ['폐기물량', r1(cbmOf('DISPOSE'))],
-    ] as [string, number][];
+    // 물량 요약 — 화면과 같은 규칙(shared summarizeVolume): 폐기에 하역 포함, 방치·업체 제외
+    const v = summarizeVolume(e.lines);
+    const volume: [string, number][] = [
+      ['이사물량(운반)', v.moving],
+      ['경유물량', v.transit],
+      ['폐기물량', v.discard],
+      ['전체물량', v.total],
+    ];
 
     // 방별 품목 — 구역 순서대로, 구역 없는 품목은 맨 끝 "기타"로
     const groups = [
@@ -533,9 +690,7 @@ export class EstimateService {
         g.lines
           .map(
             (l, i) =>
-              `<tr>${i === 0 ? `<td rowspan="${g.lines.length}">${esc(g.name)}</td>` : ''}<td>${esc(
-                l.itemName,
-              )}</td><td class="r">${esc(Number(l.qty))}</td><td class="r">${esc(
+              `<tr>${i === 0 ? `<td rowspan="${g.lines.length}">${esc(g.name)}</td>` : ''}<td>${esc(l.itemName)}${l.itemNameEng ? ` <span class="muted">${esc(l.itemNameEng)}</span>` : ''}</td><td class="r">${esc(Number(l.qty))}</td><td class="r">${esc(
                 Number(l.cbm),
               )}</td><td>${esc(handling[l.handling] ?? l.handling)}</td><td>${dash(l.memo)}</td></tr>`,
           )
@@ -546,7 +701,7 @@ export class EstimateService {
     const addonRows = e.addons
       .map(
         (a) =>
-          `<tr><td>${esc(a.name)}${a.memo ? ` <span class="muted">· ${esc(a.memo)}</span>` : ''}</td><td class="r">${won(
+          `<tr><td>${esc(a.name)}${a.memo ? ` <span class="muted">· ${esc(a.memo)}</span>` : ''}${a.serviceDate ? ` <span class="muted">· 요청일 ${a.serviceDate.toISOString().slice(0, 10)}</span>` : ''}</td><td class="r">${won(
             a.unitPrice,
           )}</td><td class="r">${esc(Number(a.qty))}</td><td class="r">${won(a.amount)}</td></tr>`,
       )

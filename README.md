@@ -30,20 +30,21 @@
 
 ---
 
-## 현재 상태 스냅샷 (2026-06-24)
+## 현재 상태 스냅샷 (2026-10-21)
 
 - **단계: ✅ Phase 0 완료 · ✅ Phase 1 핵심 도메인 스파인 완료** (외부연동·문서생성·프론트 일부 잔여)
-- **기술 스택 확정**: NestJS(TS) / PostgreSQL / React+AntD(반응형 웹 우선→네이티브 RN) / AWS 서울 / 모노레포 / GitHub Flow
+- **기술 스택 확정**: NestJS(TS) / PostgreSQL / React + **akron-ui**(디자인 시스템) + **softium-ui**(표·데이터그리드) (반응형 웹 우선→네이티브 RN) / AWS 서울 / 모노레포 / GitHub Flow
 - **Phase 0(FND-01~09)**: 모노레포·DB/Prisma·인증(JWT)+RBAC(에이전트1급주체)·마스터9종·이벤트 outbox+감사로그
 - **Phase 1 스파인(LEAD/EST/CON/OPS)**: **리드→견적(CBM합산)→계약(서명동결)→결제(가상계좌)→작업토스→배정→완료** 상태머신·이벤트로 end-to-end 동작 (리드 RECEIVED→…→DONE 검증)
 - **Phase 1 잔여**: EST-02(견적 PDF 동적생성) · INT-01(알림톡, 이벤트 구독 발송) · 실외부연동(토스/전자계약/알림톡 — 현재 추상화 스텁) · APP-01/02(프론트 화면)
+- **견적(2026-10)**: 견적 상세 4단계 탭(기본정보·물품정보·옵션선택·견적/계약서), 옵션·금액·작업조건, 견적서 메타·문서 재구성, 계약금 승계 — 규칙은 [설계노트 E-4](통인익스프레스-ERP-설계노트.md), 항목은 기능목록 EST-05/06
 - **AI 개방 계층(AX)**: 에이전트=RBAC 1급주체 + 이벤트 디스패치 + 선언적 워크플로우 ([설계노트 1-B](통인익스프레스-ERP-설계노트.md)). 구현 P2~3.
 - **로그인(개발)**: `admin` / `admin1234` (⚠️ `ADMIN_PASSWORD` env로 변경)
 
 ### 모노레포 구조
 ```
 apps/api      NestJS + Prisma (백엔드, API-first)
-apps/web      React + Vite + Ant Design (반응형 웹)
+apps/web      React + Vite + akron-ui + softium-ui (반응형 웹)
 packages/shared  공유 타입/상수 (@tongin/shared)
 ```
 실행: `pnpm install` → `pnpm --filter @tongin/api exec prisma generate` → `pnpm dev` (turbo). 빌드: `pnpm build`.
@@ -81,6 +82,15 @@ pnpm dev
 > ⚠️ DB 데이터는 각 컴퓨터의 로컬 docker라 공유되지 않음(스키마만 마이그레이션으로 동일). 운영 공용 DB는 추후 클라우드(FND-02 클라우드 파트).
 
 ---
+
+## ⚠️ 개발 DB 주의 (2026-10-21 사고 후 추가)
+
+로컬 개발 DB(`localhost:5433/tongin`)는 **여러 세션이 같이 쓰고, 백업이 없다.**
+
+- `prisma migrate diff/dev`의 **`--shadow-database-url`에 `DATABASE_URL`을 절대 넣지 말 것** — Prisma는 섀도 DB를 초기화한다. 실제로 이 실수로 개발 DB 전체가 지워졌다.
+- 마이그레이션 SQL이 필요하면 `prisma migrate dev --create-only`, 컬럼 삭제처럼 거부되면 **SQL을 직접 작성**(기존 값 이관 → 삭제 순)하고 `prisma migrate deploy`로 적용.
+- `migrate reset`·`db push --force-reset` 같은 초기화 명령은 사용자 확인 없이 실행하지 않는다.
+- 데모 데이터 복구: `pnpm --filter @tongin/api demo:seed:all` (+ API 기동 시 시더가 권한·역할·admin 생성). 손으로 넣은 데이터는 시드로 돌아오지 않는다.
 
 ## ⚠️ 멀티 세션 충돌 방지 규칙 (요약)
 

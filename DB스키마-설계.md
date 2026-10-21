@@ -1,7 +1,7 @@
 # DB 스키마 설계 (신규, 이상적 설계 — 레거시 미답습)
 
 > 레거시(TigerSys, 부록 G)를 따라가지 않고 **처음부터 정규화·규칙 기반**으로 재설계.
-> 대상 DB: PostgreSQL. 최종 수정: 2026-06-22.
+> 대상 DB: PostgreSQL. 최종 수정: 2026-10-21 (§6 견적 — 구현 확정본 반영).
 > 범위: 핵심 스파인(Phase 0~1) 중심 + 확장 모듈은 §끝에 스텁.
 
 ---
@@ -242,39 +242,56 @@ CREATE TABLE estimate (
   customer_id  uuid NOT NULL REFERENCES customer(id),
   org_unit_id  uuid NOT NULL REFERENCES org_unit(id),
   product_id   uuid NOT NULL REFERENCES product(id),   -- 이사종류
-  estimator_emp_id uuid REFERENCES employee(id),
-  from_addr text, from_pyeong int, from_elevator boolean,
-  to_addr   text, to_pyeong int, to_elevator boolean,
-  total_cbm    numeric(10,2),                  -- 라인 합산
-  base_amount  numeric(14,2),                  -- 기본 운임/산정가
-  total_amount numeric(14,2),                  -- 최종가
+  estimator_emp_id uuid REFERENCES employee(id),        -- 견적(계약) 담당자
+  -- 주소: from_/to_ × zipcode·addr·addr_detail·sido·sigungu·lat·lng (접수와 같은 구조)
+  -- 작업조건(전/후): 평수 + 작업방식. 엘리베이터 불리언을 대체(2026-10, 기존 true→ELEVATOR 이관)
+  from_pyeong int, from_access text NOT NULL DEFAULT 'NONE', from_access_note text,
+  to_pyeong   int, to_access   text NOT NULL DEFAULT 'NONE', to_access_note   text,
+                                               -- access: NONE|LADDER|ELEVATOR|STAIRS|ETC (note는 ETC일 때만)
+  total_cbm    numeric(10,2),                  -- 운반+경유+폐기(하역 포함), 방치·업체 제외 (설계노트 E-4)
+  -- 금액 — 견적사원이 견적서 발송 전에 정한다
+  move_amount    numeric(14,2),                -- 이사비용(옵션 제외)
+  vat_mode       text NOT NULL DEFAULT 'EXCLUDED', -- EXCLUDED | INCLUDED
+  vat_amount     numeric(14,2),                -- INCLUDED일 때만 값
+  base_amount    numeric(14,2),                -- = move_amount + Σ estimate_addon.amount (서버 계산)
+  total_amount   numeric(14,2),                -- = base_amount + (INCLUDED면 vat_amount) (서버 계산)
+  deposit_amount numeric(14,2),                -- 계약금 → 계약 전환 시 그대로 승계
+  balance_amount numeric(14,2),                -- 잔금 (계약에선 total − deposit로 재계산)
   work_instructions text,                      -- 작업지시 메모(현장팀용)
-  status       text NOT NULL,
+  status       text NOT NULL,                  -- DRAFT | QUOTED
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE estimate_zone (                   -- 구역(유연): 안방/거실/사무실…
+CREATE TABLE estimate_zone (                   -- 방(위치): 기본 틀 10개 + 직접 만든 방
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   estimate_id uuid NOT NULL REFERENCES estimate(id) ON DELETE CASCADE,
-  name text NOT NULL, sort_order int DEFAULT 0
+  name text NOT NULL, sort_order int DEFAULT 0,
+  room_key text                                -- shared ROOM_PRESETS 키(MASTER/BED1~4/LIVING/KITCHEN/…). 직접 만든 방은 NULL
 );
 
-CREATE TABLE estimate_line (                   -- 품목 라인
+CREATE TABLE estimate_line (                   -- 물품 라인 — "물품별 부피(CBM) 합계"로 적는다
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   estimate_id uuid NOT NULL REFERENCES estimate(id) ON DELETE CASCADE,
-  zone_id     uuid REFERENCES estimate_zone(id),
-  cbm_item_id uuid REFERENCES cbm_item(id),    -- 품목사전 참조 (FK!)
-  qty         numeric(8,2) NOT NULL DEFAULT 1,
+  zone_id     uuid REFERENCES estimate_zone(id) ON DELETE SET NULL,
+  cbm_item_id uuid REFERENCES cbm_item(id),    -- 품목사전 참조(선택)
+  item_name     text NOT NULL,                 -- 스냅샷
+  item_name_eng text,                          -- 영문 병기(견적서)
+  qty         numeric(8,2) NOT NULL DEFAULT 1, -- 견적 화면은 1 고정, 수량은 메모로
   cbm         numeric(8,2),
-  handling    text,                            -- common_code: HANDLING (운반/방치/폐기)
+  handling    text NOT NULL DEFAULT 'CARRY',   -- CARRY 운반|DISPOSE 폐기|UNLOAD 하역|VIA 경유|LEAVE 방치|VENDOR 업체
   memo        text
 );
 
-CREATE TABLE estimate_addon (                  -- 부가서비스/옵션 선택
+CREATE TABLE estimate_addon (                  -- 견적에 고른 옵션 — 이름·단가 스냅샷(카탈로그가 바뀌어도 불변)
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   estimate_id uuid NOT NULL REFERENCES estimate(id) ON DELETE CASCADE,
-  addon_id uuid REFERENCES addon_service(id),
-  qty numeric(8,2) DEFAULT 1, amount numeric(14,2)
+  code         text,                           -- shared ESTIMATE_OPTIONS 코드(LADDER_BEFORE, MOVE_IN_CLEANING, ASM_WALL_TV…)
+  variant      text,                           -- 종류(일반/프리미엄, 분해·설치/분해만/설치만 …)
+  service_date date,                           -- 서비스 요청일
+  addon_service_id uuid REFERENCES addon_service(id), -- (예전 카탈로그 방식 — 새 화면은 쓰지 않음)
+  name text NOT NULL,                          -- 표기 스냅샷: "입주청소서비스(프리미엄)"
+  qty numeric(8,2) DEFAULT 1, unit_price numeric(14,2), amount numeric(14,2),
+  memo text, sort_order int DEFAULT 0
 );
 
 CREATE TABLE estimate_applied_condition (      -- 적용된 가격조건(제휴·할인) 이력
@@ -406,7 +423,7 @@ org_unit ─┬─ employee ─ app_user ─ user_role ─ role ─ role_permiss
 customer ─ lead ─ estimate ─ contract ─ payment
                     │            └─ work_order ─ work_assignment
                     ├─ estimate_zone ─ estimate_line ─ cbm_item
-                    ├─ estimate_addon ─ addon_service
+                    ├─ estimate_addon (옵션 정의=코드 상수, 가격은 견적마다)
                     ├─ estimate_applied_condition ─ price_condition ─ partner
                     └─ estimate_cost_line ─(material)→ product
 product / cbm_item / addon_service / price_condition  = 카탈로그 4엔티티

@@ -24,6 +24,7 @@ import {
   UpdateConditionsDto,
 } from './dto/estimate-child.dto';
 import { CreateCostLineDto } from './dto/cost-line.dto';
+import { SaveBasicDto, SaveItemsDto, SaveOptionsDto } from './dto/estimate-tabs.dto';
 import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -105,6 +106,41 @@ export class EstimateController {
     @Param('addonId', ParseUUIDPipe) addonId: string,
   ) {
     return this.estimateService.removeAddon(id, addonId, user);
+  }
+
+  // ── 견적 상세 4단계 탭 저장 ──
+
+  /** 1. 기본정보(이사종류·주소·상담일·이사일). 주소·날짜는 접수에도 반영된다. */
+  @Put(':id/basic')
+  @RequirePermissions('ESTIMATE.WRITE')
+  saveBasic(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SaveBasicDto,
+  ) {
+    return this.estimateService.saveBasic(id, dto, user);
+  }
+
+  /** 2. 물품정보(방·물품 전체 교체). */
+  @Put(':id/items')
+  @RequirePermissions('ESTIMATE.WRITE')
+  saveItems(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SaveItemsDto,
+  ) {
+    return this.estimateService.saveItems(id, dto, user);
+  }
+
+  /** 3. 옵션선택(작업조건 + 옵션 전체 교체). */
+  @Put(':id/options')
+  @RequirePermissions('ESTIMATE.WRITE')
+  saveOptions(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SaveOptionsDto,
+  ) {
+    return this.estimateService.saveOptions(id, dto, user);
   }
 
   /** 작업조건(전/후 평수·사다리차/엘리베이터/계단/기타) 수정. */

@@ -437,6 +437,9 @@ model EstimateAddon {
   estimateId     String        @map("estimate_id") @db.Uuid
   estimate       Estimate      @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   addonServiceId String?       @map("addon_service_id") @db.Uuid // 자유 입력 항목(기타서비스)이면 null
+  code           String? // 견적 옵션 정의 코드(shared ESTIMATE_OPTIONS). 예전 자유 입력 행은 null
+  variant        String? // 옵션 안의 종류(일반/프리미엄, 분해·설치 여부 등)
+  serviceDate    DateTime?     @map("service_date") @db.Date // 서비스 요청일
   addonService   AddonService? @relation(fields: [addonServiceId], references: [id])
   name           String // 스냅샷(옵션명)
   qty            Decimal       @default(1) @db.Decimal(8, 2)
@@ -455,6 +458,7 @@ model EstimateZone {
   estimateId String         @map("estimate_id") @db.Uuid
   estimate   Estimate       @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   name       String // 안방/거실/사무실 등 (유연)
+  roomKey    String?        @map("room_key") // 기본 방 틀(shared ROOM_PRESETS)의 키. 직접 만든 방은 null
   sortOrder  Int            @default(0) @map("sort_order")
   lines      EstimateLine[]
 
@@ -462,18 +466,19 @@ model EstimateZone {
 }
 
 model EstimateLine {
-  id         String        @id @default(uuid()) @db.Uuid
-  estimateId String        @map("estimate_id") @db.Uuid
-  estimate   Estimate      @relation(fields: [estimateId], references: [id], onDelete: Cascade)
-  zoneId     String?       @map("zone_id") @db.Uuid
-  zone       EstimateZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  cbmItemId  String?       @map("cbm_item_id") @db.Uuid
-  cbmItem    CbmItem?      @relation(fields: [cbmItemId], references: [id])
-  itemName   String        @map("item_name") // 스냅샷(품목명)
-  qty        Decimal       @default(1) @db.Decimal(8, 2)
-  cbm        Decimal       @default(0) @db.Decimal(8, 2) // 라인 합계 CBM (단위CBM×수량)
-  handling   String        @default("CARRY") // common_code: HANDLING (운반/방치/폐기)
-  memo       String?
+  id          String        @id @default(uuid()) @db.Uuid
+  estimateId  String        @map("estimate_id") @db.Uuid
+  estimate    Estimate      @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  zoneId      String?       @map("zone_id") @db.Uuid
+  zone        EstimateZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  cbmItemId   String?       @map("cbm_item_id") @db.Uuid
+  cbmItem     CbmItem?      @relation(fields: [cbmItemId], references: [id])
+  itemName    String        @map("item_name") // 스냅샷(품목명)
+  itemNameEng String?       @map("item_name_eng") // 영문 품목명(견적서 병기용)
+  qty         Decimal       @default(1) @db.Decimal(8, 2)
+  cbm         Decimal       @default(0) @db.Decimal(8, 2) // 라인 합계 CBM (단위CBM×수량)
+  handling    String        @default("CARRY") // common_code: HANDLING (운반/방치/폐기)
+  memo        String?
 
   @@map("estimate_line")
 }
