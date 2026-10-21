@@ -4,7 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { AuthPrincipal, B2bCostBreakdown, B2bDocumentKind } from '@tongin/shared';
+import {
+  HANDLING_LABEL,
+  type AuthPrincipal,
+  type B2bCostBreakdown,
+  type B2bDocumentKind,
+} from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -202,7 +207,7 @@ ${row(`공과잡비 (${(b.overheadRate * 100).toFixed(1)}%)`, b.overhead)}${row(
     }[];
     costLines: { material: { name: string }; qty: number; totalPrice: unknown }[];
   }): string {
-    const handling: Record<string, string> = { CARRY: '운반', LEAVE: '방치', DISPOSE: '폐기' };
+    const handling: Record<string, string> = HANDLING_LABEL;
     const zoneName = (zid: string | null) => e.zones.find((z) => z.id === zid)?.name ?? '-';
     const itemRows =
       e.lines

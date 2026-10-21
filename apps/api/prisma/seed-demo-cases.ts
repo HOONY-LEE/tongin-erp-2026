@@ -685,6 +685,12 @@ async function main() {
       toSido: c.to[1].split(' ')[0],
       toSigungu: c.to[1].split(' ')[1],
     };
+    // 케이스 타임라인: 접수 → 상담(방문견적) → 계약(작업일 −7, 아래) → 작업.
+    // 접수일(createdAt)을 따로 잡지 않으면 전부 "오늘 접수"가 되어 계약일보다 늦어 보인다.
+    const anchor = c.schedule ?? 5;
+    const receivedAt = c.stage === 'INTAKE' ? day(-(i % 4)) : day(anchor - 14);
+    const visitDate = c.stage === 'INTAKE' ? undefined : day(anchor - 10);
+    const timeline = { createdAt: receivedAt, visitDate };
     const lead = await prisma.lead.upsert({
       where: { leadNo },
       // 날짜도 함께 갱신한다 — 재실행 시점을 "오늘"로 다시 잡아야 데모가 늘 최신으로 보인다
@@ -693,6 +699,7 @@ async function main() {
         orgUnitId,
         customerId: customer.id,
         moveDate: c.schedule !== undefined ? day(c.schedule) : day(i + 3),
+        ...timeline,
         ...addr,
       },
       create: {
@@ -705,6 +712,7 @@ async function main() {
         status: STAGE_LEAD_STATUS[c.stage],
         moveDate: c.schedule !== undefined ? day(c.schedule) : day(i + 3),
         partnerId: c.outsource ? partnerByCode.get(c.outsource) : undefined,
+        ...timeline,
         ...addr,
       },
     });
@@ -733,9 +741,10 @@ async function main() {
         baseAmount: Math.round(c.amount * 0.85),
         totalAmount: c.amount,
         fromPyeong: 24 + (i % 3) * 8,
-        fromElevator: i % 4 !== 0,
+        // 엘리베이터가 아니면 사다리차·계단을 섞어 현실적인 데모가 되게 한다
+        fromAccess: i % 4 !== 0 ? 'ELEVATOR' : i % 8 === 0 ? 'LADDER' : 'STAIRS',
         toPyeong: 26 + (i % 4) * 6,
-        toElevator: i % 3 !== 0,
+        toAccess: i % 3 !== 0 ? 'ELEVATOR' : i % 6 === 0 ? 'LADDER' : 'STAIRS',
         workInstructions:
           i % 3 === 0
             ? '오전 8시 시작. 사다리차 필요(고층).\n주차는 지하 2층, 높이제한 2.1m 주의.'

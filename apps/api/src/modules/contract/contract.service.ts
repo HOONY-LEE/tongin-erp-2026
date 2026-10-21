@@ -63,9 +63,18 @@ export class ContractService {
     const total = dto.totalAmount ?? Number(estimate.totalAmount ?? 0);
     if (!total || total <= 0)
       throw new BadRequestException('총 계약금액(totalAmount)이 필요합니다.');
-    const ratio = dto.depositRatio ?? 0.1;
-    const deposit = round2(total * ratio);
+    // 계약금 우선순위: 직접 입력한 금액 → 견적사원이 견적서에 적어 보낸 계약금 → 비율(기본 10%).
+    // 견적서로 고객과 합의한 계약금이 계약에서 다른 숫자로 바뀌면 안 되기 때문이다.
+    const deposit = round2(
+      dto.depositAmount ??
+        (dto.depositRatio == null && estimate.depositAmount != null
+          ? Number(estimate.depositAmount)
+          : total * (dto.depositRatio ?? 0.1)),
+    );
+    if (deposit > total) throw new BadRequestException('계약금이 총 계약금액보다 큽니다.');
+    // 잔금은 언제나 총액 − 계약금. 두 값을 따로 받으면 합이 총액과 어긋날 수 있다.
     const balance = round2(total - deposit);
+    const ratio = Math.round((deposit / total) * 10000) / 10000;
 
     // 계약 생성과 리드 전이는 한 트랜잭션 — 전이가 막히면 계약만 남는 일이 없도록
     const { created, transition } = await this.prisma.$transaction(async (tx) => {

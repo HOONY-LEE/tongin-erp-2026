@@ -137,6 +137,11 @@ export function AddressField({ addrPrefix, label, values, setField, required }: 
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              // 이 모달을 여는 FormModal(Radix Dialog)이 열려 있는 동안 배경 상호작용을 막으려고
+              // document.body에 pointer-events:none을 걸어둔다. body의 직계 자식으로 포털되는
+              // 이 오버레이는 그 값을 그대로 상속해 버튼도 임베드된 iframe도 클릭이 전혀 먹지
+              // 않게 되므로, 명시적으로 auto를 되돌려줘야 한다.
+              pointerEvents: 'auto',
             }}
           >
             <div

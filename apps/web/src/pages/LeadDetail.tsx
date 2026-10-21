@@ -1,10 +1,11 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Check, ChevronRight, Pencil } from 'lucide-react';
-import { LEAD_TRANSITIONS, type LeadStatus } from '@tongin/shared';
+import { ACCESS_LABEL, ACCESS_METHODS, LEAD_TRANSITIONS, type LeadStatus } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { EstimatePanel } from '../components/EstimatePanel';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { formatPhone } from '../lib/phone';
 import { josaRo } from '../lib/korean';
@@ -126,6 +127,15 @@ interface LeadCase {
   contracts: Contract[];
   workOrders: WorkOrder[];
   supportTickets: Ticket[];
+}
+
+/** 작업방식 선택지(선택안함/사다리차/엘리베이터/계단/기타) */
+const ACCESS_OPTIONS = ACCESS_METHODS.map((a) => ({ value: a, label: ACCESS_LABEL[a] }));
+
+interface ProductRow {
+  id: string;
+  name: string;
+  serviceLine: string;
 }
 
 // 견적 생성 시 리드의 구조적 주소(우편번호·도로명·상세·시도/시군구·좌표)를 승계
@@ -355,9 +365,30 @@ export default function LeadDetail() {
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
   const customers = useOptions('/customers', 'name');
-  const products = useOptions('/products', 'name');
   const employees = useOptions('/employees', 'name');
+  // 견적용 상품 후보 — 접수의 서비스라인(이사/리빙/케어…)에 속한 상품만 남긴다.
+  // useOptions의 filter는 조회 시점에 한 번만 걸려서, 뒤늦게 도착하는 접수 정보로는
+  // 다시 걸리지 않는다. 그래서 원본을 그대로 받아 렌더 시점에 좁힌다.
+  const [productRows, setProductRows] = useState<ProductRow[]>([]);
+  useEffect(() => {
+    api<ProductRow[]>('/products')
+      .then(setProductRows)
+      .catch(() => setProductRows([]));
+  }, []);
+  const estimateProducts = useMemo(
+    () =>
+      productRows
+        .filter((p) => !data?.serviceLine || p.serviceLine === data.serviceLine)
+        .map((p) => ({ value: p.id, label: p.name })),
+    [productRows, data?.serviceLine],
+  );
   const partners = useOptions('/partners', 'name');
+
+  // 케이스 화면에서 펼쳐 보여줄 견적 — 기본은 가장 최근 것(목록은 최신순)
+  const [shownEstimateId, setShownEstimateId] = useState<string | null>(null);
+  const estimateList = data?.estimates ?? [];
+  const shownEstimate =
+    estimateList.find((e) => e.id === shownEstimateId) ?? estimateList[0] ?? null;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -413,6 +444,9 @@ export default function LeadDetail() {
         body: JSON.stringify({
           leadId: data.id,
           orgUnitId: data.orgUnitId,
+          customerId: data.customerId,
+          // 접수 담당자를 견적 작성자로 이어받는다(견적 상세에서 바꿀 수 있다)
+          estimatorEmpId: data.ownerEmp?.id,
           ...inheritedAddr,
           ...values,
         }),
@@ -591,16 +625,51 @@ export default function LeadDetail() {
               }
             />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {data.estimates.map((e) => (
-                <DocRow
-                  key={e.id}
-                  no={e.estimateNo}
-                  badge={<StatusBadge value={e.status} map={EST_STATUS} />}
-                  info={`물량 ${String(e.totalCbm)}CBM · 금액 ${won(e.totalAmount)} · 작성 ${ymd(e.createdAt)}`}
-                  onOpen={() => navigate(`/estimates/${e.id}`)}
-                />
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* 견적이 둘 이상일 때만 고르는 줄을 보여준다 — 보통은 한 건이라 바로 내용이 나온다 */}
+              {data.estimates.length > 1 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {data.estimates.map((e) => (
+                    <Button
+                      key={e.id}
+                      size="sm"
+                      variant={e.id === shownEstimateId ? 'primary' : 'outline'}
+                      onClick={() => setShownEstimateId(e.id)}
+                    >
+                      {e.estimateNo}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {shownEstimate && (
+                <>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <b>{shownEstimate.estimateNo}</b>
+                    <StatusBadge value={shownEstimate.status} map={EST_STATUS} />
+                    <span style={{ color: 'var(--ark-color-text-tertiary)', fontSize: 13 }}>
+                      작성 {ymd(shownEstimate.createdAt)}
+                    </span>
+                    <div style={{ marginLeft: 'auto' }}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/estimates/${shownEstimate.id}`)}
+                      >
+                        견적서 편집 →
+                      </Button>
+                    </div>
+                  </div>
+                  <EstimatePanel estimateId={shownEstimate.id} />
+                </>
+              )}
             </div>
           )}
         </PageCard>
@@ -786,25 +855,50 @@ export default function LeadDetail() {
         onOpenChange={setEstOpen}
         title={`${t('lead.toEstimate')} — ${data.leadNo}`}
         size="md"
-        initialValues={data.customerId ? { customerId: data.customerId } : undefined}
+        // 고객·주소·담당자·지점은 접수가 이미 아는 값이라 다시 묻지 않고 그대로 승계한다.
+        // 상품만 남긴 이유 — 접수는 서비스라인(이사/리빙/케어)까지만 정해져 있고
+        // 그 안에 상품이 여러 개(포장/반포장/보관…)라 어느 것인지는 여기서 정해야 한다.
+        initialValues={
+          estimateProducts.length === 1 ? { productId: estimateProducts[0].value } : undefined
+        }
         fields={
           [
-            {
-              name: 'customerId',
-              label: '고객',
-              required: true,
-              type: 'select',
-              options: customers,
-            },
             {
               name: 'productId',
               label: '이사상품',
               required: true,
+              alwaysShow: true,
               type: 'select',
-              options: products,
+              options: estimateProducts,
             },
-            { name: 'fromPyeong', label: '출발지 평수', type: 'number' },
-            { name: 'toPyeong', label: '도착지 평수', type: 'number' },
+            {
+              name: 'fromPyeong',
+              label: '출발지 평수',
+              alwaysShow: true,
+              pairWithNext: true,
+              type: 'number',
+            },
+            {
+              name: 'fromAccess',
+              label: '출발지 작업방식',
+              alwaysShow: true,
+              type: 'select',
+              options: ACCESS_OPTIONS,
+            },
+            {
+              name: 'toPyeong',
+              label: '도착지 평수',
+              alwaysShow: true,
+              pairWithNext: true,
+              type: 'number',
+            },
+            {
+              name: 'toAccess',
+              label: '도착지 작업방식',
+              alwaysShow: true,
+              type: 'select',
+              options: ACCESS_OPTIONS,
+            },
           ] as FormField[]
         }
         onSubmit={onCreateEstimate}

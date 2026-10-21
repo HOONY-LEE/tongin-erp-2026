@@ -20,7 +20,8 @@ export interface FormField {
   label: string;
   required?: boolean;
   type?: 'text' | 'number' | 'select' | 'address' | 'date' | 'tel';
-  options?: { value: string; label: string }[];
+  /** disabled=true인 항목은 목록에 보이되 선택할 수 없다(권한 밖 선택지를 감추는 대신 흐리게). */
+  options?: { value: string; label: string; disabled?: boolean }[];
   placeholder?: string;
   /** type='address'일 때 저장 키 접두('' | 'from' | 'to'). 미지정 시 ''. */
   addrPrefix?: string;

@@ -31,6 +31,18 @@ export const LEAD_STATUS = [
   'CANCELED', // 취소
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUS)[number];
+/** 진행상태 라벨 — 화면과 견적서 문서가 같은 표기를 쓰도록 공용으로 둔다 */
+export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
+  RECEIVED: '접수',
+  CONSULT_ASSIGNED: '상담배정',
+  CONSULT_TOSS: '상담토스',
+  QUOTED: '견적완료',
+  CONTRACTED: '계약',
+  WORK_TOSS: '작업토스',
+  IN_PROGRESS: '작업중',
+  DONE: '완료',
+  CANCELED: '취소',
+};
 
 // 리드 상태머신: 허용 전이만 가능 (부록 D-4). CANCELED는 종료 전 어디서든 가능.
 export const LEAD_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
@@ -49,9 +61,54 @@ export function canTransition(from: LeadStatus, to: LeadStatus): boolean {
   return LEAD_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-// 품목 처리구분 (운반/방치/폐기)
-export const HANDLING = ['CARRY', 'LEAVE', 'DISPOSE'] as const;
+// 품목 처리구분 (운반/경유/방치/폐기)
+// VIA(경유) — 목적지로 바로 가지 않고 중간 경유지에 내리거나 들르는 짐. 물량 집계를
+// 운반과 분리해야 해서 별도 코드로 둔다.
+export const HANDLING = ['CARRY', 'VIA', 'LEAVE', 'DISPOSE'] as const;
 export type Handling = (typeof HANDLING)[number];
+/** 화면·문서 공용 라벨 (여러 곳에 흩어져 있던 것을 한곳으로) */
+export const HANDLING_LABEL: Record<Handling, string> = {
+  CARRY: '운반',
+  VIA: '경유',
+  LEAVE: '방치',
+  DISPOSE: '폐기',
+};
+
+// EST: 작업조건(전/후) — 짐을 내리고 올리는 방법. 견적 단가·인원 산정의 근거가 된다.
+export const ACCESS_METHODS = ['NONE', 'LADDER', 'ELEVATOR', 'STAIRS', 'ETC'] as const;
+export type AccessMethod = (typeof ACCESS_METHODS)[number];
+export const ACCESS_LABEL: Record<AccessMethod, string> = {
+  NONE: '선택안함',
+  LADDER: '사다리차',
+  ELEVATOR: '엘리베이터',
+  STAIRS: '계단',
+  ETC: '기타',
+};
+
+/**
+ * 견적서 메타 — 견적 한 장에 필요한 머리 정보를 접수·계약·작업에서 모아 온 것.
+ * 따로 저장하지 않고 조회할 때마다 원본에서 모은다(원본이 바뀌면 견적서도 따라가야 하므로).
+ * 날짜는 모두 'YYYY-MM-DD'(한국 시간 기준) 문자열이다.
+ */
+export interface EstimateMeta {
+  customerName: string | null;
+  customerPhone: string | null;
+  contractId: string | null; // 이미 계약됐으면 그 계약(견적 화면에서 바로 이동)
+  contractNo: string | null;
+  estimatorName: string | null;
+  estimatorPhone: string | null;
+  leadStatus: LeadStatus | null;
+  productName: string | null;
+  orgUnitName: string | null;
+  receivedDate: string | null; // 접수일
+  consultDate: string | null; // 상담일(방문견적일)
+  contractDate: string | null; // 계약일
+  workDate: string | null; // 작업일(이사일)
+}
+
+// EST: 부가세 처리 — 상품/거래처에 따라 견적서에 포함으로 적기도 하고 별도로 적기도 한다.
+export const VAT_MODES = ['EXCLUDED', 'INCLUDED'] as const;
+export type VatMode = (typeof VAT_MODES)[number];
 
 // MM-01: 재고 수불 유형 (입고/출고/조정)
 export const STOCK_MOVEMENT_TYPES = ['IN', 'OUT', 'ADJUST'] as const;
@@ -276,6 +333,7 @@ export interface AuthPrincipal {
   loginId: string;
   principalType: PrincipalType;
   employeeId: string | null; // 직원 계정이면 연결된 직원(현장 배정 조회에 사용). 외부인·에이전트는 null
+  employeeName: string | null; // 연결된 직원 이름(담당자 기본값 표시용). employeeId가 null이면 null
   partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
   scopes: { roleCode: string; dataScope: DataScope; orgScopeId: string | null }[];

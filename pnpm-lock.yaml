@@ -139,8 +139,8 @@ importers:
         specifier: ^7.18.0
         version: 7.18.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       softium-ui:
-        specifier: ^0.1.3
-        version: 0.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^0.2.0
+        version: 0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       '@types/react':
         specifier: ^18.3.17
@@ -1566,17 +1566,17 @@ packages:
   '@softium/styles@0.1.0':
     resolution: {integrity: sha512-PcAwW5W5qZBxoIbE5mDkO+7W0crKXWnZbkYaKXSJ6H4kJMy7jDj60OtkhpexYpqoLsMC6D5l/zynz//Iwkm9TQ==}
 
-  '@softium/table-core@0.1.0':
-    resolution: {integrity: sha512-+TLAYLLSGdUlQJ222b7Cl6GXqyj2O8PN25q8tSLrOwE2RzPZi146tV5fCFXMyPFP5AVzfl0/K86Y8xdH5AquGg==}
+  '@softium/table-core@0.2.0':
+    resolution: {integrity: sha512-F/jEBlWIcKbdzl6WWPPs7PtO6zZgBVa2F0Yg6QRAsb+VcIjFXve4dANunPYhe0hxVzkJ/U/2V5YcjGxQPsmXTg==}
 
-  '@softium/table-react@0.1.1':
-    resolution: {integrity: sha512-YNz5Q5YnFsZfSkPplkNyo8/VmiZiJlyi7WUOHUhCJRXd2qd3qpg5q8w399IlbkphVH/eJnktI9MkF3F+hJieTw==}
+  '@softium/table-react@0.2.0':
+    resolution: {integrity: sha512-y8m/SzoOe/CaaE93u5tgY2jcAccvjgf+AaTAG4V9/VmMncfyyVOkuVr310fV5HTNVHzFKnAFSwr9M5jrEzni6Q==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@softium/table-styles@0.2.0':
-    resolution: {integrity: sha512-Szy6syj8QGu5qJ+gsS8ETU9VoUjqYhdGQKVGZNKkNeHekDpEhi2H16nVmwoyDHQnJJ+dgWKk/7NDd4L8TMkZDg==}
+  '@softium/table-styles@0.3.0':
+    resolution: {integrity: sha512-TSmVCnOi0UFhQfTHsPkdh/c2r0n9NLeq3qYf85hHc3Iko5jAT9I4ttBJu/ZL6uwKS/Jf+ldtZQq5Ew7Z7uI4fQ==}
 
   '@softium/ui@0.1.0':
     resolution: {integrity: sha512-ziKqn0lwT5j/qi2vbebpORZLhGMAgAd2xmLs9QRPVDkQfNdfN2kAg7uxqqvZwVP0qkXeUXO2iK+to1q0dOgj/w==}
@@ -3109,8 +3109,8 @@ packages:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
 
-  softium-ui@0.1.3:
-    resolution: {integrity: sha512-osk/jlsPz6sRY7SY2Y9vUhcWmy100LZ/eM9Ig9QG2VxgBLL6rHZ1ndEONck/9qnX/UyszAUmLym49J3z92j+nA==}
+  softium-ui@0.2.0:
+    resolution: {integrity: sha512-cnhY1Cof3TpgYi9ZhgWkimqCcZp1ge1OukgY0HneaQgiDQLNYHLsf2RqUo77G4kQYuWuBYPB4eW2wLTMQjvYLg==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
@@ -4760,19 +4760,19 @@ snapshots:
 
   '@softium/styles@0.1.0': {}
 
-  '@softium/table-core@0.1.0': {}
+  '@softium/table-core@0.2.0': {}
 
-  '@softium/table-react@0.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@softium/table-react@0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@dnd-kit/core': 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@dnd-kit/sortable': 10.0.0(@dnd-kit/core@6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@dnd-kit/utilities': 3.2.2(react@18.3.1)
-      '@softium/table-core': 0.1.0
+      '@softium/table-core': 0.2.0
       lucide-react: 0.460.0(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@softium/table-styles@0.2.0':
+  '@softium/table-styles@0.3.0':
     dependencies:
       '@softium/styles': 0.1.0
 
@@ -6439,14 +6439,14 @@ snapshots:
 
   signal-exit@4.1.0: {}
 
-  softium-ui@0.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  softium-ui@0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@softium/calendar': 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@softium/sheet': 0.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@softium/styles': 0.1.0
-      '@softium/table-core': 0.1.0
-      '@softium/table-react': 0.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@softium/table-styles': 0.2.0
+      '@softium/table-core': 0.2.0
+      '@softium/table-react': 0.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@softium/table-styles': 0.3.0
       '@softium/ui': 0.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)

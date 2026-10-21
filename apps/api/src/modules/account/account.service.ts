@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 
@@ -88,9 +89,36 @@ export class AccountService {
   }
 
   /** 활성/비활성 토글. */
-  async setActive(id: string, isActive: boolean) {
+  /**
+   * 활성/비활성 전환. 비활성화는 두 경우를 막는다 —
+   *  1) 본인 계정: 지금 쓰고 있는 관리자가 스스로를 잠가 버린다.
+   *  2) 마지막 전체관리자('*'): 다시 켜 줄 사람이 아무도 남지 않는다.
+   * 화면에서 버튼을 숨기는 것만으로는 API·다른 클라이언트 호출을 못 막아 서버에서 판정한다.
+   */
+  async setActive(id: string, isActive: boolean, actor?: AuthPrincipal) {
     const user = await this.prisma.appUser.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('계정을 찾을 수 없습니다.');
+    if (!isActive) {
+      if (actor && actor.userId === id) {
+        throw new BadRequestException('본인 계정은 비활성화할 수 없습니다.');
+      }
+      const superAdmin = {
+        role: { rolePerms: { some: { permission: { code: PERMISSION_WILDCARD } } } },
+      };
+      const isSuperAdmin = await this.prisma.userRole.count({
+        where: { userId: id, ...superAdmin },
+      });
+      if (isSuperAdmin) {
+        const othersActive = await this.prisma.appUser.count({
+          where: { id: { not: id }, isActive: true, userRoles: { some: superAdmin } },
+        });
+        if (othersActive === 0) {
+          throw new BadRequestException(
+            '마지막 전체관리자 계정은 비활성화할 수 없습니다. 다른 전체관리자를 먼저 만드세요.',
+          );
+        }
+      }
+    }
     return this.prisma.appUser.update({
       where: { id },
       data: { isActive },

@@ -19,7 +19,6 @@ import {
   CalendarDays,
   Globe,
   LogOut,
-  HardHat,
   Sparkles,
   Calculator,
   Receipt,
@@ -43,7 +42,15 @@ import styles from './AppLayout.module.css';
 
 const LANG_SHORT: Record<string, string> = { ko: '한', en: 'EN', zh: '中' };
 
-type NavItem = { to: string; label: string; icon: LucideIcon; perm?: string };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  perm?: string;
+  /** 자체 메뉴가 없는 하위 화면 경로 — 이 메뉴에 속한 것으로 보고 탭·선택표시를 유지한다.
+   *  (예: 견적/계약/작업 상세는 접수 케이스의 문서라 '접수' 탭에 머물러야 한다) */
+  owns?: string[];
+};
 type NavGroup = { label?: string; items: NavItem[] };
 
 const COLLAPSE_KEY = 'tongin_sidebar_collapsed';
@@ -93,7 +100,14 @@ export default function AppLayout() {
       label: t('navGroup.ops'),
       items: [
         { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
-        { to: '/leads', label: t('nav.leads'), icon: Inbox, perm: 'LEAD.READ' },
+        {
+          to: '/leads',
+          label: t('nav.leads'),
+          icon: Inbox,
+          perm: 'LEAD.READ',
+          // 견적·계약·작업 상세는 접수 케이스가 낳은 문서들이라 '접수' 탭 안에 머문다
+          owns: ['/estimates', '/contracts', '/work-orders'],
+        },
         {
           to: '/calendar',
           label: t('nav.calendar'),
@@ -106,7 +120,8 @@ export default function AppLayout() {
           icon: Banknote,
           perm: 'PAYMENT.READ',
         },
-        { to: '/field', label: t('nav.field'), icon: HardHat, perm: 'WORK_ORDER.READ' },
+        // 현장(/field)은 폰·태블릿 전용 화면이라 PC 메뉴에 두지 않는다.
+        // 현장 작업팀 계정은 로그인하면 자동으로 그 화면으로 간다(App.tsx 분기).
         {
           to: '/service-orders',
           label: t('nav.serviceOrders'),
@@ -146,9 +161,21 @@ export default function AppLayout() {
       label: t('navGroup.admin'),
       items: [
         { to: '/customers', label: t('nav.customers'), icon: UserRound, perm: 'CUSTOMER.READ' },
-        { to: '/product-mgmt', label: t('nav.productMgmt'), icon: Tag, perm: 'PRODUCT.READ' },
+        {
+          to: '/product-mgmt',
+          label: t('nav.productMgmt'),
+          icon: Tag,
+          perm: 'PRODUCT.READ',
+          owns: ['/products', '/cbm-items'],
+        },
         { to: '/partner-mgmt', label: t('nav.partnerMgmt'), icon: Handshake, perm: 'PARTNER.READ' },
-        { to: '/org-mgmt', label: t('nav.orgMgmt'), icon: Building2, perm: 'ORG_UNIT.READ' },
+        {
+          to: '/org-mgmt',
+          label: t('nav.orgMgmt'),
+          icon: Building2,
+          perm: 'ORG_UNIT.READ',
+          owns: ['/org-units'],
+        },
         { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
         { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
       ],
@@ -158,13 +185,18 @@ export default function AppLayout() {
   const visibleGroups = groups
     .map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || can(it.perm)) }))
     .filter((g) => g.items.length > 0);
-  const isActive = (to: string) => pathname.startsWith(to);
+  const allItems = visibleGroups.flatMap((g) => g.items);
+
+  /** 이 메뉴가 현재 경로를 담당하는가 — 자기 경로이거나, owns에 등록된 하위 화면이거나. */
+  const ownsPath = (i: NavItem) =>
+    pathname.startsWith(i.to) || (i.owns ?? []).some((o) => pathname.startsWith(o));
+  const isActive = (to: string) => {
+    const item = allItems.find((i) => i.to === to);
+    return item ? ownsPath(item) : pathname.startsWith(to);
+  };
 
   // ── 헤더 멀티탭 ──
-  const allItems = visibleGroups.flatMap((g) => g.items);
-  const matched = allItems
-    .filter((i) => pathname.startsWith(i.to))
-    .sort((a, b) => b.to.length - a.to.length)[0];
+  const matched = allItems.filter(ownsPath).sort((a, b) => b.to.length - a.to.length)[0];
   const activeHref = matched?.to ?? '/dashboard';
 
   const [openTabs, setOpenTabs] = useState<string[]>([activeHref]);

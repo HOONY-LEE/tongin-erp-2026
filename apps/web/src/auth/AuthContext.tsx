@@ -10,6 +10,8 @@ export interface Principal {
   loginId: string;
   /** 직원 계정이면 연결된 직원 id (현장 배정 조회 기준) */
   employeeId: string | null;
+  /** 연결된 직원 이름 — 담당자 기본값을 이름으로 보여줄 때 쓴다(직원 목록 권한 없어도 자기 이름은 안다) */
+  employeeName: string | null;
   /** 외부 전속/제휴 소속 (있으면 현장 화면으로 진입) */
   partnerId: string | null;
   permissions: string[];

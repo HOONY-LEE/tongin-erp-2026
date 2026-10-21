@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useOrgScope } from '../lib/useOrgScope';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -53,15 +54,21 @@ export default function Leads() {
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [stage, setStage] = useState('ALL');
-  const orgs = useOptions('/org-units', 'name');
   const partners = useOptions('/partners', 'name');
   const { updatedAt, touch } = useUpdatedAt();
 
-  // 관리자(전체 데이터범위·슈퍼권한)만 담당 지점을 자유 선택 — 일반 직원은 본인 소속 지점으로 고정
-  const isAdmin =
-    !!user && (user.permissions.includes('*') || user.scopes.some((s) => s.dataScope === 'ALL'));
-  const ownOrgId = user?.scopes.find((s) => s.orgScopeId)?.orgScopeId ?? '';
-  const lockOrg = !isAdmin && !!ownOrgId;
+  // 담당 지점 — 목록은 전체를 보여주고, 권한 밖 지점만 흐리게(선택 불가) 처리한다.
+  const { options: orgs, ownOrgId, unrestricted: isAdmin } = useOrgScope();
+
+  // 담당자 — 기본값은 항상 본인. 권한이 넓은 사용자만 다른 직원으로 바꿀 수 있다.
+  // 직원 목록(/employees)은 EMPLOYEE.READ가 있어야 읽히는데, 바꿀 수 없는 사용자에게는
+  // 애초에 필요 없다 — 그 경우 본인 한 명만 담은 목록을 만들어 비활성 상태로 보여준다.
+  const employees = useOptions('/employees', 'name');
+  const ownEmpOption =
+    user?.employeeId && user.employeeName
+      ? [{ value: user.employeeId, label: user.employeeName }]
+      : [];
+  const ownerOptions = isAdmin && employees.length ? employees : ownEmpOption;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,12 +110,21 @@ export default function Leads() {
       pairWithNext: true,
       type: 'select',
       options: orgs,
-      disabled: lockOrg,
+    },
+    {
+      name: 'ownerEmpId',
+      label: '담당자',
+      alwaysShow: true,
+      type: 'select',
+      options: ownerOptions,
+      // 본인 고정 — 담당자를 바꿀 권한이 없으면 목록을 열 필요도 없다.
+      disabled: !isAdmin,
     },
     {
       name: 'source',
       label: '접수경로',
       alwaysShow: true,
+      pairWithNext: true,
       type: 'select',
       options: RECEIPT_SOURCES,
     },
@@ -124,8 +140,10 @@ export default function Leads() {
     { name: 'toAddress', label: '도착지', alwaysShow: true, type: 'address', addrPrefix: 'to' },
     { name: 'partnerId', label: '거래처(제휴·B2B)', type: 'select', options: partners },
   ];
-  const createInitial: Record<string, string> = { serviceLine: 'MOVING' };
-  if (lockOrg) createInitial.orgUnitId = ownOrgId;
+  // ERP 화면에서 직원이 직접 등록하는 접수라 경로는 '시스템'이 기본이다.
+  const createInitial: Record<string, string> = { serviceLine: 'MOVING', source: 'SYSTEM' };
+  if (ownOrgId) createInitial.orgUnitId = ownOrgId;
+  if (user?.employeeId) createInitial.ownerEmpId = user.employeeId;
 
   const onCreate = async (values: Record<string, unknown>) => {
     try {

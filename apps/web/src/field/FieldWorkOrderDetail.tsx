@@ -1,3 +1,4 @@
+import { ACCESS_LABEL } from '@tongin/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone } from 'lucide-react';
@@ -124,7 +125,8 @@ export default function FieldWorkOrderDetail() {
           lat={d.fromLat}
           lng={d.fromLng}
           pyeong={d.fromPyeong}
-          elevator={d.fromElevator}
+          access={d.fromAccess}
+          accessNote={d.fromAccessNote}
         />
         <div style={{ height: 1, background: 'var(--ark-color-gray-200)', margin: '12px 0' }} />
         <Place
@@ -135,7 +137,8 @@ export default function FieldWorkOrderDetail() {
           lat={d.toLat}
           lng={d.toLng}
           pyeong={d.toPyeong}
-          elevator={d.toElevator}
+          access={d.toAccess}
+          accessNote={d.toAccessNote}
         />
       </Card>
 
@@ -244,6 +247,9 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+/** 서버에서 오는 작업방식 코드는 문자열이라 넓은 타입으로 받는다 */
+const ACCESS_TEXT: Record<string, string> = ACCESS_LABEL;
+
 function Place({
   label,
   addr,
@@ -252,7 +258,8 @@ function Place({
   lat,
   lng,
   pyeong,
-  elevator,
+  access,
+  accessNote,
 }: {
   label: string;
   addr: string | null;
@@ -261,7 +268,8 @@ function Place({
   lat: number | null;
   lng: number | null;
   pyeong: string | null;
-  elevator: boolean | null;
+  access: string;
+  accessNote: string | null;
 }) {
   if (!addr) {
     return (
@@ -282,9 +290,11 @@ function Place({
         {pyeong && (
           <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>{pyeong}평</span>
         )}
-        {elevator != null && (
-          <Badge variant="subtle" color={elevator ? 'success' : 'warning'}>
-            {elevator ? '엘리베이터 있음' : '엘리베이터 없음'}
+        {access !== 'NONE' && (
+          // 엘리베이터만 '수월', 사다리차·계단은 장비·인원 준비가 필요해 주의색
+          <Badge variant="subtle" color={access === 'ELEVATOR' ? 'success' : 'warning'}>
+            {ACCESS_TEXT[access] ?? access}
+            {access === 'ETC' && accessNote ? ` · ${accessNote}` : ''}
           </Badge>
         )}
       </div>

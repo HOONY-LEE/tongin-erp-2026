@@ -25,13 +25,17 @@ export interface FieldWorkOrderDetail extends FieldWorkOrderSummary {
   fromLat: number | null;
   fromLng: number | null;
   fromPyeong: string | null;
-  fromElevator: boolean | null;
+  /** 작업방식(사다리차/엘리베이터/계단/기타…) — 현장 장비·인원 준비에 필요 */
+  fromAccess: string;
+  fromAccessNote: string | null;
   toZipcode: string | null;
   toAddrDetail: string | null;
   toLat: number | null;
   toLng: number | null;
   toPyeong: string | null;
-  toElevator: boolean | null;
+  /** 작업방식(사다리차/엘리베이터/계단/기타…) — 현장 장비·인원 준비에 필요 */
+  toAccess: string;
+  toAccessNote: string | null;
   /** 견적에 적힌 작업지시 메모 — 작업토스 시 재입력 없이 그대로 전달(설계노트 E-2) */
   workInstructions: string | null;
   totalCbm: string;
@@ -164,14 +168,16 @@ export class FieldService {
       fromLat: w.lead.fromLat,
       fromLng: w.lead.fromLng,
       fromPyeong: estimate?.fromPyeong == null ? null : String(estimate.fromPyeong),
-      fromElevator: estimate?.fromElevator ?? null,
+      fromAccess: estimate?.fromAccess ?? 'NONE',
+      fromAccessNote: estimate?.fromAccessNote ?? null,
       toAddr: w.lead.toAddr,
       toZipcode: w.lead.toZipcode,
       toAddrDetail: w.lead.toAddrDetail,
       toLat: w.lead.toLat,
       toLng: w.lead.toLng,
       toPyeong: estimate?.toPyeong == null ? null : String(estimate.toPyeong),
-      toElevator: estimate?.toElevator ?? null,
+      toAccess: estimate?.toAccess ?? 'NONE',
+      toAccessNote: estimate?.toAccessNote ?? null,
       workInstructions: estimate?.workInstructions ?? null,
       totalCbm: String(estimate?.totalCbm ?? 0),
       zones: (estimate?.zones ?? []).map((z) => ({

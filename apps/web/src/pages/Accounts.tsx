@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useAuth } from '../auth/AuthContext';
 import { useOptions } from '../lib/useOptions';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -29,6 +30,7 @@ interface AccountRole {
 const SCOPE_LABEL: Record<string, string> = { OWN: '본인', ORG: '조직', ALL: '전체' };
 
 export default function Accounts() {
+  const { user } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]);
@@ -135,11 +137,15 @@ export default function Accounts() {
     },
     {
       title: '관리',
-      render: (r) => (
-        <Button variant="outline" size="sm" onClick={() => toggleActive(r)}>
-          {r.isActive ? '비활성화' : '활성화'}
-        </Button>
-      ),
+      render: (r) =>
+        // 본인 계정은 끌 수 없다(서버에서도 막는다) — 누르면 실패할 버튼은 아예 내주지 않는다
+        r.id === user?.userId ? (
+          <span style={{ fontSize: 13, color: 'var(--ark-color-text-tertiary)' }}>본인 계정</span>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => toggleActive(r)}>
+            {r.isActive ? '비활성화' : '활성화'}
+          </Button>
+        ),
     },
   ];
 

@@ -1,4 +1,5 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
+import { ACCESS_METHODS, type AccessMethod } from '@tongin/shared';
 import { MoveAddressDto } from '../../../common/dto/address-fields.dto';
 
 export class CreateEstimateDto extends MoveAddressDto {
@@ -26,8 +27,13 @@ export class CreateEstimateDto extends MoveAddressDto {
   fromPyeong?: number;
 
   @IsOptional()
-  @IsBoolean()
-  fromElevator?: boolean;
+  @IsIn(ACCESS_METHODS)
+  fromAccess?: AccessMethod;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  fromAccessNote?: string;
 
   @IsOptional()
   @IsInt()
@@ -35,8 +41,13 @@ export class CreateEstimateDto extends MoveAddressDto {
   toPyeong?: number;
 
   @IsOptional()
-  @IsBoolean()
-  toElevator?: boolean;
+  @IsIn(ACCESS_METHODS)
+  toAccess?: AccessMethod;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  toAccessNote?: string;
 
   @IsOptional()
   @IsString()
