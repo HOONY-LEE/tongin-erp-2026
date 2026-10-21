@@ -24,6 +24,7 @@ export {
   Button,
   Card,
   Badge,
+  Checkbox,
   Input,
   Select,
   Modal,

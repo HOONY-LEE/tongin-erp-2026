@@ -388,7 +388,14 @@ export default function AppLayout() {
         </aside>
 
         <main className={styles.contentArea}>
-          <div className={styles.contentInner}>
+          <div
+            className={[
+              styles.contentInner,
+              pathname.startsWith('/calendar') ? styles.contentInnerTight : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
             <Outlet />
           </div>
         </main>

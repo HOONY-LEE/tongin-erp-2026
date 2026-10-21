@@ -61,18 +61,247 @@ export function canTransition(from: LeadStatus, to: LeadStatus): boolean {
   return LEAD_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-// 품목 처리구분 (운반/경유/방치/폐기)
-// VIA(경유) — 목적지로 바로 가지 않고 중간 경유지에 내리거나 들르는 짐. 물량 집계를
-// 운반과 분리해야 해서 별도 코드로 둔다.
-export const HANDLING = ['CARRY', 'VIA', 'LEAVE', 'DISPOSE'] as const;
+// 품목 처리구분 — 현장 견적 실무의 6종(운반/폐기/하역/경유/방치/업체).
+export const HANDLING = ['CARRY', 'DISPOSE', 'UNLOAD', 'VIA', 'LEAVE', 'VENDOR'] as const;
 export type Handling = (typeof HANDLING)[number];
-/** 화면·문서 공용 라벨 (여러 곳에 흩어져 있던 것을 한곳으로) */
+/** 화면·문서 공용 라벨 */
 export const HANDLING_LABEL: Record<Handling, string> = {
   CARRY: '운반',
-  VIA: '경유',
-  LEAVE: '방치',
   DISPOSE: '폐기',
+  UNLOAD: '하역', // 내려만 주고 이사짐으로 싣지 않는 짐 — 폐기물량으로 집계
+  VIA: '경유', // 목적지 전에 다른 곳에 들르는 짐
+  LEAVE: '방치', // 두고 가는 짐 — 물량에 넣지 않는다
+  VENDOR: '업체', // 다른 업체가 처리 — 물량에 넣지 않는다
 };
+
+/** 물량 요약 — 이사물량(운반) / 경유물량 / 폐기물량(폐기+하역). 방치·업체는 넣지 않는다. */
+export interface VolumeSummary {
+  moving: number;
+  transit: number;
+  discard: number;
+  total: number;
+}
+export function summarizeVolume(
+  lines: { cbm: number | string | { toString(): string }; handling: string }[],
+): VolumeSummary {
+  let moving = 0;
+  let transit = 0;
+  let discard = 0;
+  for (const l of lines) {
+    const cbm = Number(l.cbm) || 0;
+    if (l.handling === 'CARRY') moving += cbm;
+    else if (l.handling === 'VIA') transit += cbm;
+    else if (l.handling === 'DISPOSE' || l.handling === 'UNLOAD') discard += cbm;
+  }
+  const r = (n: number) => Math.round(n * 100) / 100;
+  return {
+    moving: r(moving),
+    transit: r(transit),
+    discard: r(discard),
+    total: r(moving + transit + discard),
+  };
+}
+
+/**
+ * 견적 물품 입력 기본 틀 — 방(위치)과 방마다 기본으로 펼쳐 둘 물품.
+ * 견적사원은 값이 있는 물품만 채우고, 저장은 채운 물품만 한다(빈 행은 저장하지 않음).
+ * 목록에 없는 물품은 방마다 직접 추가할 수 있다.
+ */
+export interface RoomPreset {
+  key: string;
+  name: string;
+  nameEng: string;
+  items: { name: string; nameEng: string }[];
+}
+const BEDROOM_ITEMS: RoomPreset['items'] = [
+  { name: '장롱', nameEng: 'Wardrobe' },
+  { name: '이불', nameEng: 'Bedding' },
+  { name: '의류', nameEng: 'Clothes' },
+  { name: '침대', nameEng: 'Bed' },
+  { name: '협탁', nameEng: 'Side Table' },
+  { name: '책장', nameEng: 'Bookshelf' },
+  { name: '책', nameEng: 'Books' },
+  { name: '장식장', nameEng: 'Display Cabinet' },
+  { name: '공기청정기', nameEng: 'Air Purifier' },
+  { name: '고가구', nameEng: 'Antique Furniture' },
+  { name: '화장대', nameEng: 'Dresser' },
+  { name: '서랍장', nameEng: 'Drawers' },
+  { name: '탁자/책상', nameEng: 'Table, Desk' },
+  { name: '의자', nameEng: 'Chair' },
+  { name: '홈시어터', nameEng: 'Home Theater' },
+  { name: '오디오', nameEng: 'Audio' },
+  { name: '컴퓨터', nameEng: 'Computer' },
+  { name: '피아노', nameEng: 'Piano' },
+  { name: '에어컨', nameEng: 'Air Conditioner' },
+  { name: '장난감', nameEng: 'Toys' },
+  { name: 'BOX류', nameEng: 'Boxes' },
+  { name: '에어드레서', nameEng: 'Air Dresser' },
+];
+export const ROOM_PRESETS: RoomPreset[] = [
+  { key: 'MASTER', name: '안방', nameEng: "MASTER'S ROOM", items: BEDROOM_ITEMS },
+  { key: 'BED1', name: '건너방', nameEng: 'BEDROOM', items: BEDROOM_ITEMS },
+  { key: 'BED2', name: '건너방2', nameEng: 'BEDROOM 2', items: BEDROOM_ITEMS },
+  { key: 'BED3', name: '건너방3', nameEng: 'BEDROOM 3', items: BEDROOM_ITEMS },
+  { key: 'BED4', name: '건너방4', nameEng: 'BEDROOM 4', items: BEDROOM_ITEMS },
+  {
+    key: 'LIVING',
+    name: '거실',
+    nameEng: 'LIVING ROOM',
+    items: [
+      { name: '소파', nameEng: 'Sofa' },
+      { name: '탁자', nameEng: 'Table' },
+      { name: '책', nameEng: 'Books' },
+      { name: '책상', nameEng: 'Desk' },
+      { name: '고가구', nameEng: 'Antique Furniture' },
+      { name: '도자기류', nameEng: 'Chinaware' },
+      { name: '홈시어터', nameEng: 'Home Theater' },
+      { name: '오디오', nameEng: 'Audio' },
+      { name: '장식장', nameEng: 'Display Cabinet' },
+      { name: '장식품', nameEng: 'Ornaments' },
+      { name: '에어컨', nameEng: 'Air Conditioner' },
+      { name: '콘솔', nameEng: 'Console' },
+      { name: '거실장', nameEng: 'TV Cabinet' },
+      { name: '에어드레서', nameEng: 'Air Dresser' },
+      { name: '공기청정기', nameEng: 'Air Purifier' },
+    ],
+  },
+  {
+    key: 'KITCHEN',
+    name: '주방',
+    nameEng: 'KITCHEN',
+    items: [
+      { name: '식탁/의자', nameEng: 'Dining Table, Chair' },
+      { name: '장식장', nameEng: 'Display Cabinet' },
+      { name: '수납장', nameEng: 'Storage Cabinet' },
+      { name: '냉장고', nameEng: 'Refrigerator' },
+      { name: '정수기냉장고', nameEng: 'Water Purifier Refrigerator' },
+      { name: '냉동고', nameEng: 'Freezer' },
+      { name: '식기세척기', nameEng: 'Dishwasher' },
+      { name: '식기건조기', nameEng: 'Dish Dryer' },
+      { name: '김치냉장고', nameEng: 'Kimchi Refrigerator' },
+      { name: '가스레인지', nameEng: 'Gas Range' },
+      { name: '전자레인지', nameEng: 'Microwave' },
+      { name: '쌀통', nameEng: 'Rice Bin' },
+      { name: '식기류', nameEng: 'Dishes' },
+      { name: '정수기', nameEng: 'Water Purifier' },
+    ],
+  },
+  {
+    key: 'BALCONY_FRONT',
+    name: '앞 발코니',
+    nameEng: 'FRONT BALCONY',
+    items: [
+      { name: '화분', nameEng: 'Flower Pots' },
+      { name: '항아리', nameEng: 'Jars' },
+      { name: '운동기구', nameEng: 'Exercise Equipment' },
+      { name: '자전거', nameEng: 'Bicycle' },
+    ],
+  },
+  {
+    key: 'BALCONY_BACK',
+    name: '뒤 발코니',
+    nameEng: 'BACK BALCONY',
+    items: [{ name: '세탁기/건조기', nameEng: 'Washer, Dryer' }],
+  },
+  {
+    key: 'ETC',
+    name: '다용도실·현관·화장실·창고',
+    nameEng: 'ETC',
+    items: [{ name: '신발류', nameEng: 'Shoes' }],
+  },
+];
+
+/**
+ * 견적 옵션 정의 — 견적서 3단계(옵션선택)에서 고르는 항목.
+ * 가격은 카탈로그에 두지 않고 견적마다 견적사원이 입력한다(현장 조건마다 달라서).
+ *  - variants: 같은 서비스 안의 종류(입주청소 일반/프리미엄 등)
+ *  - hasDate: 서비스 요청일을 받는다 / hasNote: 내용을 적는다
+ */
+export type EstimateOptionGroup = 'LADDER' | 'LIVING' | 'ASSEMBLY' | 'ETC';
+export interface EstimateOptionDef {
+  code: string;
+  group: EstimateOptionGroup;
+  label: string;
+  variants?: { value: string; label: string }[];
+  hasDate?: boolean;
+  hasNote?: boolean;
+}
+/** 분해/설치는 물품마다 분해만·설치만·둘 다를 고른다 */
+export const ASSEMBLY_VARIANTS = [
+  { value: 'BOTH', label: '분해·설치' },
+  { value: 'DISASSEMBLE', label: '분해만' },
+  { value: 'INSTALL', label: '설치만' },
+];
+const asm = (code: string, label: string, hasNote = false): EstimateOptionDef => ({
+  code: `ASM_${code}`,
+  group: 'ASSEMBLY',
+  label,
+  variants: ASSEMBLY_VARIANTS,
+  hasNote,
+});
+export const ESTIMATE_OPTIONS: EstimateOptionDef[] = [
+  { code: 'LADDER_BEFORE', group: 'LADDER', label: '사다리차 서비스(전)' },
+  { code: 'LADDER_AFTER', group: 'LADDER', label: '사다리차 서비스(후)' },
+  {
+    code: 'MOVE_IN_CLEANING',
+    group: 'LIVING',
+    label: '입주청소서비스',
+    variants: [
+      { value: 'STANDARD', label: '일반' },
+      { value: 'PREMIUM', label: '프리미엄' },
+    ],
+    hasDate: true,
+  },
+  {
+    code: 'APPLIANCE_CLEANING',
+    group: 'LIVING',
+    label: '가전청소서비스',
+    variants: [
+      { value: 'AIRCON', label: '에어컨' },
+      { value: 'WASHER', label: '세탁기' },
+    ],
+    hasDate: true,
+  },
+  {
+    code: 'ORGANIZING',
+    group: 'LIVING',
+    label: '정리수납서비스',
+    variants: [
+      { value: 'STANDARD', label: '일반' },
+      { value: 'VIP', label: 'VIP' },
+    ],
+    hasDate: true,
+  },
+  { code: 'DEODORIZING', group: 'LIVING', label: '탈취살균(새집증후군)서비스', hasDate: true },
+  { code: 'PIPE_CARE', group: 'LIVING', label: '배관케어서비스', hasDate: true },
+  { code: 'MATTRESS_CARE', group: 'LIVING', label: '매트리스케어', hasDate: true },
+  { code: 'APRON', group: 'LIVING', label: '에이프런서비스', hasDate: true },
+  { code: 'MOVJE_DIRECTOR', group: 'LIVING', label: '무브제 디렉터 상담', hasDate: true },
+  { code: 'OTHER_SERVICE', group: 'LIVING', label: '기타서비스', hasDate: true, hasNote: true },
+  asm('WARDROBE_NORMAL', '일반 장롱'),
+  asm('WARDROBE_SLIDE', '슬라이드 장롱'),
+  asm('SYSTEM_HANGER', '시스템 행거'),
+  asm('DESK_SET', '책상/책장 세트'),
+  asm('WALL_TV', '벽걸이 TV'),
+  asm('AIRCON', '에어컨'),
+  asm('FRIDGE', '정수기/냉장고'),
+  asm('STONE_BED_SINGLE', '돌침대(싱글)'),
+  asm('STONE_BED_DOUBLE', '돌침대(더블)'),
+  asm('SAFE', '금고'),
+  asm('ETC', '기타', true),
+  { code: 'STORAGE', group: 'ETC', label: '보관비용', hasNote: true },
+];
+export const ESTIMATE_OPTION_BY_CODE: Record<string, EstimateOptionDef> = Object.fromEntries(
+  ESTIMATE_OPTIONS.map((o) => [o.code, o]),
+);
+/** 견적서·목록에 쓰는 옵션 표기 — "입주청소서비스(프리미엄)", "일반 장롱 분해·설치" */
+export function optionLabel(code: string, variant?: string | null): string {
+  const def = ESTIMATE_OPTION_BY_CODE[code];
+  if (!def) return code;
+  const v = def.variants?.find((x) => x.value === variant)?.label;
+  if (!v) return def.label;
+  return def.group === 'ASSEMBLY' ? `${def.label} ${v}` : `${def.label}(${v})`;
+}
 
 // EST: 작업조건(전/후) — 짐을 내리고 올리는 방법. 견적 단가·인원 산정의 근거가 된다.
 export const ACCESS_METHODS = ['NONE', 'LADDER', 'ELEVATOR', 'STAIRS', 'ETC'] as const;

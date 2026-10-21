@@ -142,5 +142,15 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  padding: 32px 36px 40px;
+}
+/* 캘린더는 화면을 꽉 채워 쓰는 페이지라 여백을 예전대로 좁게 둔다 */
+.contentInnerTight {
   padding: 24px;
+}
+/* 좁은 화면에선 여백이 콘텐츠를 너무 잡아먹지 않게 줄인다 */
+@media (max-width: 768px) {
+  .contentInner {
+    padding: 20px 16px 28px;
+  }
 }
