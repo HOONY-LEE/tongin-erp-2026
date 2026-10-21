@@ -16,7 +16,13 @@ import { B2B_DOCUMENT_KINDS, type AuthPrincipal, type B2bDocumentKind } from '@t
 import { EstimateService } from './estimate.service';
 import { EstimateB2bService } from './estimate-b2b.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
-import { CreateLineDto, CreateZoneDto } from './dto/estimate-child.dto';
+import {
+  CreateAddonDto,
+  CreateLineDto,
+  CreateZoneDto,
+  UpdateAmountsDto,
+  UpdateConditionsDto,
+} from './dto/estimate-child.dto';
 import { CreateCostLineDto } from './dto/cost-line.dto';
 import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
@@ -38,7 +44,8 @@ export class EstimateController {
   @Get(':id')
   @RequirePermissions('ESTIMATE.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
-    return this.estimateService.findOne(id, user);
+    // 화면용 — 견적서 메타(접수·계약·작업에서 모은 머리 정보)까지 함께 준다
+    return this.estimateService.detail(id, user);
   }
 
   @Post()
@@ -76,6 +83,50 @@ export class EstimateController {
     @Param('lineId', ParseUUIDPipe) lineId: string,
   ) {
     return this.estimateService.removeLine(id, lineId, user);
+  }
+
+  /** 견적 옵션(부가서비스) 담기 — 상품관리의 옵션 카탈로그에서 고르거나 자유 입력. */
+  @Post(':id/addons')
+  @RequirePermissions('ESTIMATE.WRITE')
+  addAddon(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateAddonDto,
+  ) {
+    return this.estimateService.addAddon(id, dto, user);
+  }
+
+  @Delete(':id/addons/:addonId')
+  @RequirePermissions('ESTIMATE.WRITE')
+  @HttpCode(200)
+  removeAddon(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('addonId', ParseUUIDPipe) addonId: string,
+  ) {
+    return this.estimateService.removeAddon(id, addonId, user);
+  }
+
+  /** 작업조건(전/후 평수·사다리차/엘리베이터/계단/기타) 수정. */
+  @Put(':id/conditions')
+  @RequirePermissions('ESTIMATE.WRITE')
+  updateConditions(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateConditionsDto,
+  ) {
+    return this.estimateService.updateConditions(id, dto, user);
+  }
+
+  /** 이사비용·부가세·계약금·잔금 확정(견적서 발송 전). 총액은 서버가 계산한다. */
+  @Put(':id/amounts')
+  @RequirePermissions('ESTIMATE.WRITE')
+  updateAmounts(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAmountsDto,
+  ) {
+    return this.estimateService.updateAmounts(id, dto, user);
   }
 
   @Post(':id/quote')

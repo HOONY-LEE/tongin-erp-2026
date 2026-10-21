@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { api, ApiError, downloadFile } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
-import { Badge, Button, PageHeader, Spinner, useToast } from '../components/ui';
+import { PageHeader, Spinner, useToast } from '../components/ui';
 import CalendarGrid, { type CalendarSource } from '../components/calendar/CalendarGrid';
 import EventModal, { type EventFormValues } from '../components/calendar/EventModal';
 import {
@@ -296,15 +296,6 @@ export default function CalendarPage() {
     }
   };
 
-  const exportIcs = async () => {
-    try {
-      await downloadFile('/calendar/work-orders.ics', 'tongin-schedule.ics');
-      toast({ type: 'success', title: t('work.exportDone') });
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
-    }
-  };
-
   const orgOptions = orgUnits.map((o) => ({ value: o.id, label: o.name }));
   const defaultOrgUnitId = orgUnits[0]?.id;
 
@@ -335,46 +326,12 @@ export default function CalendarPage() {
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', minHeight: 0 }}
     >
+      {/* 연동 상태·일정 추가는 캘린더 툴바(뷰 전환 옆)로 내렸다 — 제목줄은 비워 둔다 */}
       <PageHeader
         title={t('nav.calendar')}
         onRefresh={load}
         updatedAt={updatedAt}
         style={{ flexShrink: 0 }}
-        actions={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {google?.connected && (
-              <Badge variant="subtle" color="success">
-                {google.googleEmail}
-              </Badge>
-            )}
-            {google?.configured ? (
-              google.connected ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={syncGoogle} disabled={syncing}>
-                    {syncing ? '동기화 중…' : '구글 동기화'}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={disconnectGoogle}>
-                    연결 해제
-                  </Button>
-                </>
-              ) : (
-                <Button variant="outline" size="sm" onClick={connectGoogle}>
-                  구글 캘린더 연결
-                </Button>
-              )
-            ) : (
-              <Badge variant="subtle" color="neutral">
-                구글 연동 미설정
-              </Badge>
-            )}
-            <Button variant="outline" size="sm" onClick={exportIcs}>
-              📅 {t('work.exportIcs')}
-            </Button>
-            <Button variant="primary" size="sm" onClick={() => openAdd(currentDate)}>
-              일정 추가
-            </Button>
-          </div>
-        }
       />
 
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
@@ -408,6 +365,12 @@ export default function CalendarPage() {
           onToggleSource={toggleSource}
           search={search}
           onSearchChange={setSearch}
+          onAddEvent={() => openAdd(currentDate)}
+          google={google}
+          syncing={syncing}
+          onGoogleConnect={connectGoogle}
+          onGoogleSync={syncGoogle}
+          onGoogleDisconnect={disconnectGoogle}
         />
       </div>
 

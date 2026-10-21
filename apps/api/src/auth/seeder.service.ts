@@ -31,14 +31,11 @@ export class AuthSeederService implements OnModuleInit {
 
   /** APP-02: 가맹점 역할 + 데모 가맹점 사용자(첫 BRANCH 조직 스코프). 멱등. */
   private async seedFranchiseRoleAndUser(): Promise<void> {
+    const description = '본인 소속 조직(+하위)의 접수·견적 작성, 계약·작업·발주 조회/발주';
     const role = await this.prisma.role.upsert({
       where: { code: ROLE_FRANCHISE },
-      update: {},
-      create: {
-        code: ROLE_FRANCHISE,
-        name: '가맹점',
-        description: '본인 소속 조직(+하위)의 리드·견적·계약·작업·발주 조회/발주',
-      },
+      update: { description },
+      create: { code: ROLE_FRANCHISE, name: '가맹점', description },
     });
     const grant = [
       'ORG_UNIT.READ',
@@ -47,7 +44,11 @@ export class AuthSeederService implements OnModuleInit {
       'CBM_ITEM.READ',
       'MATERIAL.READ',
       'LEAD.READ',
+      // 지점장이 자기 지점 접수·견적을 직접 등록·작성한다(현장 견적사원 업무).
+      // 쓰기도 서비스에서 소속 조직(+하위)만 허용하므로 다른 지점 건은 건드릴 수 없다.
+      'LEAD.WRITE',
       'ESTIMATE.READ',
+      'ESTIMATE.WRITE',
       'CONTRACT.READ',
       'PAYMENT.READ',
       'WORK_ORDER.READ',

@@ -22,6 +22,8 @@ export const SERVICE_LINES = [
 ];
 
 export const RECEIPT_SOURCES = [
+  // ERP 화면에서 직원이 직접 등록한 건 — CS가 상담 중 남기는 접수도 여기에 해당한다.
+  { value: 'SYSTEM', label: '시스템' },
   { value: 'HOMEPAGE', label: '홈페이지' },
   { value: 'AIBOT', label: 'AI상담봇' },
   { value: 'PHONE', label: '전화상담' },

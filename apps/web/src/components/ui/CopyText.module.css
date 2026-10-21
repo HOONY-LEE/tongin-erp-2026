@@ -3,7 +3,7 @@
 .wrap {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
   max-width: 100%;
 }
 
@@ -19,11 +19,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  /* 아이콘(14px)보다 클릭 영역을 키운다 — 실제 여백은 margin의 음수 상쇄로
+     주변 레이아웃(폭 계산)에 영향을 주지 않는다. */
+  padding: 6px;
+  margin: -6px;
   border: none;
   border-radius: var(--ark-radius-sm, 4px);
   background: transparent;
-  color: var(--ark-color-text-tertiary);
+  color: var(--ark-color-info-500, #3b82f6);
   line-height: 1;
   cursor: pointer;
   /* display:none 이 아니라 visibility 로 감춘다 — 폭을 계속 차지해야
@@ -42,8 +45,7 @@
 }
 
 .button:hover {
-  background: var(--ark-color-bg-hover, rgba(127, 127, 127, 0.16));
-  color: var(--ark-color-text-primary);
+  color: var(--ark-color-info-600, #2563eb);
 }
 
 .copied {

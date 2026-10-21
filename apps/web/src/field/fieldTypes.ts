@@ -1,3 +1,4 @@
+import { HANDLING_LABEL as SHARED_HANDLING_LABEL } from '@tongin/shared';
 // 현장 API 응답 타입 — apps/api/src/modules/field/field.service.ts 와 1:1.
 
 export interface FieldWorkOrder {
@@ -27,13 +28,15 @@ export interface FieldWorkOrderDetail extends FieldWorkOrder {
   fromLat: number | null;
   fromLng: number | null;
   fromPyeong: string | null;
-  fromElevator: boolean | null;
+  fromAccess: string;
+  fromAccessNote: string | null;
   toZipcode: string | null;
   toAddrDetail: string | null;
   toLat: number | null;
   toLng: number | null;
   toPyeong: string | null;
-  toElevator: boolean | null;
+  toAccess: string;
+  toAccessNote: string | null;
   workInstructions: string | null;
   totalCbm: string;
   zones: { id: string; name: string; lines: FieldLine[] }[];
@@ -51,11 +54,8 @@ export const WORK_STATUS: Record<
   CANCELED: { label: '취소', color: 'error' },
 };
 
-export const HANDLING_LABEL: Record<string, string> = {
-  CARRY: '운반',
-  LEAVE: '방치',
-  DISPOSE: '폐기',
-};
+// 작업지시 라인의 handling은 서버에서 오는 문자열이라 넓은 타입으로 다시 노출한다.
+export const HANDLING_LABEL: Record<string, string> = SHARED_HANDLING_LABEL;
 
 /** 오늘 기준 YYYY-MM-DD */
 export function todayKey(): string {

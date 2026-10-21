@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Search, X, Check, ChevronDown } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+  Check,
+  ChevronDown,
+  CalendarDays,
+} from 'lucide-react';
 import { Button, SegmentedControl } from '../ui';
 import {
   WEEKDAYS,
@@ -179,6 +187,182 @@ function SourceFilter({
               </button>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 구글 캘린더 연동 상태 표시 겸 조작 메뉴 — 툴바에는 아이콘만 두고 상세는 이 안에서 본다. */
+export interface GoogleState {
+  configured: boolean;
+  connected: boolean;
+  googleEmail: string | null;
+  lastSyncAt: string | null;
+}
+
+function GoogleMenu({
+  google,
+  syncing,
+  onConnect,
+  onSync,
+  onDisconnect,
+}: {
+  google: GoogleState | null;
+  syncing: boolean;
+  onConnect: () => void;
+  onSync: () => void;
+  onDisconnect: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  // 아이콘 자체가 연동 상태를 먼저 알려준다 — 연결됨(초록)·미연결(회색)·동기화중(테마색)
+  const dot = !google?.configured
+    ? 'var(--ark-color-text-disabled)'
+    : syncing
+      ? 'var(--ark-color-primary-500)'
+      : google.connected
+        ? '#34C759'
+        : 'var(--ark-color-text-tertiary)';
+
+  const statusText = !google?.configured
+    ? '구글 연동이 설정되지 않았습니다'
+    : syncing
+      ? '동기화 중…'
+      : google.connected
+        ? (google.googleEmail ?? '연결됨')
+        : '연결되지 않음';
+
+  const lastSync = google?.lastSyncAt
+    ? new Date(google.lastSyncAt).toLocaleString('ko-KR', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
+
+  const item = (label: string, onClick: () => void, disabled?: boolean) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        setOpen(false);
+        onClick();
+      }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        padding: '8px 10px',
+        borderRadius: 6,
+        border: 'none',
+        background: 'transparent',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+        fontSize: 13,
+        color: 'var(--ark-color-text)',
+        textAlign: 'left',
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="구글 캘린더 연동"
+        title="구글 캘린더 연동"
+        style={{
+          position: 'relative',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 34,
+          height: 34,
+          borderRadius: 8,
+          border: BORDER,
+          background: 'var(--ark-color-bg)',
+          color: 'var(--ark-color-text-secondary)',
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        <CalendarDays size={16} />
+        <span
+          style={{
+            position: 'absolute',
+            right: 4,
+            bottom: 4,
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: dot,
+            border: '1.5px solid var(--ark-color-bg)',
+          }}
+        />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            // 이 아이콘은 툴바 우측 그룹의 맨 왼쪽에 있다 — right:0으로 걸면 230px 패널이
+            // 왼쪽으로 밀려 화면 밖으로 잘린다(실제로 left:-39px까지 나갔다).
+            left: 0,
+            zIndex: 30,
+            minWidth: 230,
+            padding: 6,
+            borderRadius: 10,
+            border: BORDER,
+            background: 'var(--ark-color-bg)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          }}
+        >
+          <div style={{ padding: '8px 10px 10px' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>구글 캘린더</div>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--ark-color-text-secondary)',
+                wordBreak: 'break-all',
+              }}
+            >
+              {statusText}
+            </div>
+            {google?.connected && (
+              <div style={{ fontSize: 11, color: 'var(--ark-color-text-tertiary)', marginTop: 3 }}>
+                마지막 동기화 {lastSync ?? '없음'}
+              </div>
+            )}
+          </div>
+
+          {google?.configured && (
+            <div style={{ borderTop: BORDER, paddingTop: 4 }}>
+              {google.connected ? (
+                <>
+                  {item(syncing ? '동기화 중…' : '지금 동기화', onSync, syncing)}
+                  {item('연결 해제', onDisconnect)}
+                </>
+              ) : (
+                item('구글 캘린더 연결', onConnect)
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -782,6 +966,14 @@ interface Props {
   /** 제목 검색어 */
   search: string;
   onSearchChange: (v: string) => void;
+  /** 일정 추가 — 뷰 전환 오른쪽에 둔다 */
+  onAddEvent: () => void;
+  /** 구글 연동 상태 + 조작(툴바에는 아이콘만, 상세는 메뉴 안) */
+  google: GoogleState | null;
+  syncing: boolean;
+  onGoogleConnect: () => void;
+  onGoogleSync: () => void;
+  onGoogleDisconnect: () => void;
 }
 
 /** 일간/주간/월간/연간 캘린더. */
@@ -801,6 +993,12 @@ export default function CalendarGrid({
   onToggleSource,
   search,
   onSearchChange,
+  onAddEvent,
+  google,
+  syncing,
+  onGoogleConnect,
+  onGoogleSync,
+  onGoogleDisconnect,
 }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const today = new Date();
@@ -822,21 +1020,17 @@ export default function CalendarGrid({
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
-        border: BORDER,
-        borderRadius: 12,
-        overflow: 'hidden',
-        background: 'var(--ark-color-bg)',
+        gap: 10,
       }}
     >
-      {/* 상단 툴바 */}
+      {/* 상단 툴바 — 캘린더 셀 영역과 별개라 아웃라인 밖에 둔다 */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '10px 14px',
-          borderBottom: BORDER,
           flexWrap: 'wrap',
+          flexShrink: 0,
         }}
       >
         <h2
@@ -907,51 +1101,76 @@ export default function CalendarGrid({
             flexWrap: 'wrap',
           }}
         >
+          <GoogleMenu
+            google={google}
+            syncing={syncing}
+            onConnect={onGoogleConnect}
+            onSync={onGoogleSync}
+            onDisconnect={onGoogleDisconnect}
+          />
           <SourceFilter sources={sources} selected={selectedSources} onToggle={onToggleSource} />
           <SegmentedControl
+            className="cal-view-switch"
             options={VIEW_OPTIONS}
             value={view}
             onChange={(v) => onViewChange(v as CalendarView)}
             size="sm"
           />
+          <Button className="cal-add-btn" variant="primary" size="sm" onClick={onAddEvent}>
+            일정 추가
+          </Button>
         </div>
       </div>
 
-      {view === 'day' && (
-        <DayView
-          currentDate={currentDate}
-          eventMap={eventMap}
-          onDateClick={onDateClick}
-          onEventClick={onEventClick}
-        />
-      )}
-      {view === 'week' && (
-        <WeekView
-          currentDate={currentDate}
-          today={today}
-          eventMap={eventMap}
-          onDateClick={onDateClick}
-          onEventClick={onEventClick}
-        />
-      )}
-      {view === 'month' && (
-        <MonthView
-          currentDate={currentDate}
-          today={today}
-          eventMap={eventMap}
-          allEvents={events}
-          onDateClick={onDateClick}
-          onEventClick={onEventClick}
-        />
-      )}
-      {view === 'year' && (
-        <YearView
-          currentDate={currentDate}
-          today={today}
-          eventMap={eventMap}
-          onPickMonth={onPickMonth}
-        />
-      )}
+      {/* 캘린더 셀 영역 — 아웃라인은 여기(타이틀·툴바 제외)에만 그린다 */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          border: BORDER,
+          borderRadius: 12,
+          overflow: 'hidden',
+          background: 'var(--ark-color-bg)',
+        }}
+      >
+        {view === 'day' && (
+          <DayView
+            currentDate={currentDate}
+            eventMap={eventMap}
+            onDateClick={onDateClick}
+            onEventClick={onEventClick}
+          />
+        )}
+        {view === 'week' && (
+          <WeekView
+            currentDate={currentDate}
+            today={today}
+            eventMap={eventMap}
+            onDateClick={onDateClick}
+            onEventClick={onEventClick}
+          />
+        )}
+        {view === 'month' && (
+          <MonthView
+            currentDate={currentDate}
+            today={today}
+            eventMap={eventMap}
+            allEvents={events}
+            onDateClick={onDateClick}
+            onEventClick={onEventClick}
+          />
+        )}
+        {view === 'year' && (
+          <YearView
+            currentDate={currentDate}
+            today={today}
+            eventMap={eventMap}
+            onPickMonth={onPickMonth}
+          />
+        )}
+      </div>
     </div>
   );
 }

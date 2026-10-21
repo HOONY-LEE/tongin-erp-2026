@@ -255,7 +255,8 @@ model AddonService {
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  products ProductAddon[]
+  products       ProductAddon[]
+  estimateAddons EstimateAddon[]
 
   @@map("addon_service")
 }
@@ -376,7 +377,8 @@ model Estimate {
   fromLat          Float?               @map("from_lat")
   fromLng          Float?               @map("from_lng")
   fromPyeong       Int?                 @map("from_pyeong")
-  fromElevator     Boolean?             @map("from_elevator")
+  fromAccess       String               @default("NONE") @map("from_access") // NONE|LADDER|ELEVATOR|STAIRS|ETC (shared ACCESS_METHODS)
+  fromAccessNote   String?              @map("from_access_note") // 기타일 때 내용
   toZipcode        String?              @map("to_zipcode")
   toAddr           String?              @map("to_addr")
   toAddrDetail     String?              @map("to_addr_detail")
@@ -385,15 +387,23 @@ model Estimate {
   toLat            Float?               @map("to_lat")
   toLng            Float?               @map("to_lng")
   toPyeong         Int?                 @map("to_pyeong")
-  toElevator       Boolean?             @map("to_elevator")
+  toAccess         String               @default("NONE") @map("to_access") // NONE|LADDER|ELEVATOR|STAIRS|ETC (shared ACCESS_METHODS)
+  toAccessNote     String?              @map("to_access_note") // 기타일 때 내용
   totalCbm         Decimal              @default(0) @map("total_cbm") @db.Decimal(10, 2)
   baseAmount       Decimal?             @map("base_amount") @db.Decimal(14, 2)
   totalAmount      Decimal?             @map("total_amount") @db.Decimal(14, 2)
+  // 견적 금액 확정 — 현장 견적사원이 견적서를 발송하기 전에 정한다.
+  moveAmount       Decimal?             @map("move_amount") @db.Decimal(14, 2) // 이사비용(옵션 제외)
+  vatMode          String               @default("EXCLUDED") @map("vat_mode") // EXCLUDED | INCLUDED
+  vatAmount        Decimal?             @map("vat_amount") @db.Decimal(14, 2) // 포함일 때 명시 금액
+  depositAmount    Decimal?             @map("deposit_amount") @db.Decimal(14, 2) // 계약금
+  balanceAmount    Decimal?             @map("balance_amount") @db.Decimal(14, 2) // 잔금
   workInstructions String?              @map("work_instructions")
   status           String               @default("DRAFT") // DRAFT | QUOTED
   createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   zones            EstimateZone[]
   lines            EstimateLine[]
+  addons           EstimateAddon[]
   costLines        EstimateCostLine[]
   costBuildup      EstimateCostBuildup?
   contract         Contract?
@@ -417,6 +427,27 @@ model EstimateCostBuildup {
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("estimate_cost_buildup")
+}
+
+// 견적에 선택된 옵션(부가서비스) — 카탈로그(AddonService)에서 골라 담는다.
+// 카탈로그를 참조만 하지 않고 이름·단가를 함께 스냅샷하는 이유: 견적서는 발송 시점의
+// 조건을 증빙하는 문서라, 나중에 카탈로그 가격이 바뀌어도 과거 견적 금액이 흔들리면 안 된다.
+model EstimateAddon {
+  id             String        @id @default(uuid()) @db.Uuid
+  estimateId     String        @map("estimate_id") @db.Uuid
+  estimate       Estimate      @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  addonServiceId String?       @map("addon_service_id") @db.Uuid // 자유 입력 항목(기타서비스)이면 null
+  addonService   AddonService? @relation(fields: [addonServiceId], references: [id])
+  name           String // 스냅샷(옵션명)
+  qty            Decimal       @default(1) @db.Decimal(8, 2)
+  unitPrice      Decimal       @default(0) @map("unit_price") @db.Decimal(14, 2)
+  amount         Decimal       @default(0) @db.Decimal(14, 2) // qty × unitPrice
+  memo           String? // 분해/설치 대상(일반장롱 등) 같은 세부를 적는다
+  sortOrder      Int           @default(0) @map("sort_order")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([estimateId])
+  @@map("estimate_addon")
 }
 
 model EstimateZone {
@@ -518,22 +549,22 @@ model Payment {
 
 // SET-03: 전속/B2B 청구·수금 (설계노트 D-3). 거래처(전속/B2B) 대상 청구서 + 수금 기록.
 model Invoice {
-  id        String           @id @default(uuid()) @db.Uuid
-  invoiceNo String           @unique @map("invoice_no")
-  partnerId String           @map("partner_id") @db.Uuid
-  partner   Partner          @relation(fields: [partnerId], references: [id])
-  orgUnitId String?          @map("org_unit_id") @db.Uuid // 담당 지점(실적 귀속). 발행은 본사만
-  orgUnit   OrgUnit?         @relation("InvoiceOrg", fields: [orgUnitId], references: [id])
-  contractId String?         @map("contract_id") @db.Uuid // 계약에서 자동 생성된 경우 원본 계약
-  contract  Contract?        @relation(fields: [contractId], references: [id])
-  title     String
-  amount    Decimal          @db.Decimal(14, 2) // 청구액
-  status    String           @default("DRAFT") // DRAFT | ISSUED | COLLECTED | CANCELED
-  issuedAt  DateTime?        @map("issued_at") @db.Timestamptz(6)
-  dueDate   DateTime?        @map("due_date") @db.Date
-  memo      String?
-  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  receipts  InvoiceReceipt[]
+  id         String           @id @default(uuid()) @db.Uuid
+  invoiceNo  String           @unique @map("invoice_no")
+  partnerId  String           @map("partner_id") @db.Uuid
+  partner    Partner          @relation(fields: [partnerId], references: [id])
+  orgUnitId  String?          @map("org_unit_id") @db.Uuid // 담당 지점(실적 귀속). 발행은 본사만
+  orgUnit    OrgUnit?         @relation("InvoiceOrg", fields: [orgUnitId], references: [id])
+  contractId String?          @map("contract_id") @db.Uuid // 계약에서 자동 생성된 경우 원본 계약
+  contract   Contract?        @relation(fields: [contractId], references: [id])
+  title      String
+  amount     Decimal          @db.Decimal(14, 2) // 청구액
+  status     String           @default("DRAFT") // DRAFT | ISSUED | COLLECTED | CANCELED
+  issuedAt   DateTime?        @map("issued_at") @db.Timestamptz(6)
+  dueDate    DateTime?        @map("due_date") @db.Date
+  memo       String?
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  receipts   InvoiceReceipt[]
 
   @@index([partnerId])
   @@index([orgUnitId])

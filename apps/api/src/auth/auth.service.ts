@@ -43,6 +43,9 @@ export class AuthService {
     const user = await this.prisma.appUser.findUnique({
       where: { id: userId },
       include: {
+        // 담당자 기본값을 이름으로 보여주려면 직원명이 필요하다(직원 목록 조회 권한이
+        // 없는 역할도 자기 이름은 봐야 하므로 여기서 함께 실어 보낸다).
+        employee: { select: { name: true } },
         userRoles: {
           include: { role: { include: { rolePerms: { include: { permission: true } } } } },
         },
@@ -66,6 +69,7 @@ export class AuthService {
       loginId: user.loginId,
       principalType: user.principalType as PrincipalType,
       employeeId: user.employeeId,
+      employeeName: user.employee?.name ?? null,
       partnerId: user.partnerId,
       permissions,
       scopes,

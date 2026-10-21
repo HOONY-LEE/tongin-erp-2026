@@ -12,7 +12,12 @@ export class CreateContractDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  depositRatio?: number; // 기본 0.1 (설정값)
+  depositAmount?: number; // 계약금 금액. 미지정 시 견적에서 정한 계약금 → 비율 순
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  depositRatio?: number; // 금액이 어디에도 없을 때만 쓰는 비율(기본 0.1)
 
   @IsOptional()
   @IsDateString()
