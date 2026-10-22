@@ -9,7 +9,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
-import { StubPaymentProvider } from './payment-provider';
+import { StubPaymentProvider, type IssueContext } from './payment-provider';
 import { CreateContractDto, CreatePaymentDto } from './dto/contract.dto';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -135,18 +135,30 @@ export class ContractService {
     return updated;
   }
 
-  async createPayment(contractId: string, dto: CreatePaymentDto, principal?: AuthPrincipal) {
+  async createPayment(
+    contractId: string,
+    dto: CreatePaymentDto,
+    principal?: AuthPrincipal,
+    ctx: IssueContext = {},
+  ) {
     const c = await this.findOne(contractId, principal);
     const amount = dto.amount ?? Number(dto.kind === 'DEPOSIT' ? c.depositAmount : c.balanceAmount);
-    const va = await this.payments.issueVirtualAccount(amount);
+    const va = await this.payments.issueVirtualAccount(amount, {
+      orderId: `${c.contractNo}-${dto.kind === 'DEPOSIT' ? 'D' : 'B'}-${Date.now().toString(36)}`,
+      orderName: `${dto.kind === 'DEPOSIT' ? '이사 계약금' : '이사 잔금'} ${c.contractNo}`,
+      ...ctx,
+    });
     const payment = await this.prisma.payment.create({
       data: {
         contractId,
         kind: dto.kind,
         amount,
         method: 'VIRTUAL_ACCOUNT',
+        pgProvider: va.provider,
         virtualAccount: `${va.bank} ${va.account}`,
         pgRef: va.pgRef,
+        pgSecret: va.secret,
+        dueAt: va.dueAt,
       },
     });
     await this.eventBus.record({
@@ -178,6 +190,29 @@ export class ContractService {
       },
     });
     return updated;
+  }
+
+  /**
+   * 입금이 확인됐을 때(토스 웹훅·시연 시뮬레이션·수동 확인 공통) — 결제를 PAID로 바꾸고,
+   * 계약금이면 접수를 '계약'으로 넘긴다(서명 전이라도 계약금이 들어오면 계약 성립으로 본다).
+   */
+  async markPaid(paymentId: string) {
+    const payment = await this.confirmPayment(paymentId);
+    if (payment.kind === 'DEPOSIT') {
+      const c = await this.prisma.contract.findUnique({ where: { id: payment.contractId } });
+      if (c) {
+        const t = await this.prisma.$transaction((tx) =>
+          this.leadService.advanceInTx(tx, c.leadId, 'CONTRACTED'),
+        );
+        await this.leadService.emitTransition(t, 'CONTRACTED');
+      }
+    }
+    return payment;
+  }
+
+  /** 계좌 발급 방식 — 화면 안내용 */
+  get paymentMode() {
+    return { provider: this.payments.providerName, autoConfirm: this.payments.autoConfirm };
   }
 
   async listPayments(contractId: string, principal?: AuthPrincipal) {

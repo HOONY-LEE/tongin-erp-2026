@@ -201,6 +201,13 @@ export class EstimateController {
     return this.estimateService.deductMaterials(id, user);
   }
 
+  /** 접수 상세 = 견적서 화면 — 접수의 견적(없으면 만들어서) id */
+  @Post('for-lead/:leadId')
+  @RequirePermissions('ESTIMATE.READ')
+  forLead(@CurrentUser() user: AuthPrincipal, @Param('leadId', ParseUUIDPipe) leadId: string) {
+    return this.estimateService.forLead(leadId, user);
+  }
+
   @Get(':id/document')
   @RequirePermissions('ESTIMATE.READ')
   @Header('Content-Type', 'text/html; charset=utf-8')

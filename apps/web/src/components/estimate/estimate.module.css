@@ -403,3 +403,111 @@
     gap: 4px;
   }
 }
+
+/* ── 고객에게 견적서 보내기 ── */
+.sendBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+}
+.sendRow {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+.sendRow > span:first-child {
+  width: 72px;
+  flex-shrink: 0;
+  color: var(--ark-color-text-secondary);
+}
+.sendLink {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  word-break: break-all;
+}
+.sendWarn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--ark-color-warning-50, #fff7ed);
+  color: var(--ark-color-warning-700, #b45309);
+  font-size: 13px;
+}
+.sendList {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.sendMsg {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle, #f9fafb);
+  border: 1px solid var(--ark-color-border);
+  font: inherit;
+  font-size: 12px;
+  white-space: pre-wrap;
+  max-height: 260px;
+  overflow: auto;
+}
+
+/* ── 진행(접수 → 발송 → 서명 → 계약금 → 작업) ── */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg-surface, transparent);
+  overflow-x: auto;
+}
+.flowStep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ark-color-text-tertiary, #9ca3af);
+}
+.flowDot {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  font-size: 11px;
+  font-weight: 700;
+}
+.flowStep.done {
+  color: var(--ark-color-text-primary);
+}
+.flowStep.done .flowDot {
+  background: var(--ark-color-primary-500);
+  border-color: var(--ark-color-primary-500);
+  color: #fff;
+}
+.flowStep.current {
+  color: var(--ark-color-primary-600);
+  font-weight: 700;
+}
+.flowWhen {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ark-color-text-secondary);
+}
+.flowLine {
+  flex: 1;
+  min-width: 18px;
+  height: 1.5px;
+  margin: 0 10px;
+  background: var(--ark-color-border);
+}
+.flowLine.done {
+  background: var(--ark-color-primary-500);
+}

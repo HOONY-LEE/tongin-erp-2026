@@ -1,30 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Send } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, openDocument } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useAuth } from '../auth/AuthContext';
-import {
-  Badge,
-  Button,
-  FormModal,
-  PageHeader,
-  Spinner,
-  StatusBadge,
-  useToast,
-  type StatusMap,
-} from '../components/ui';
+import { Badge, Button, PageHeader, Spinner, StatusBadge, useToast } from '../components/ui';
+import { SendEstimateModal } from '../components/estimate/SendEstimate';
+import { LEAD_STATUS } from '../lib/leadCodes';
+import { formatPhone } from '../lib/phone';
+import estStyles from '../components/estimate/estimate.module.css';
 import { StepTabs, type StepDef } from '../components/estimate/parts';
 import { BasicTab } from '../components/estimate/BasicTab';
 import { ItemsTab } from '../components/estimate/ItemsTab';
 import { OptionsTab } from '../components/estimate/OptionsTab';
 import { SummaryTab } from '../components/estimate/SummaryTab';
 import type { EstimateDetailData } from '../components/estimate/types';
-
-const STATUS: StatusMap = {
-  DRAFT: { label: '작성중', color: 'neutral' },
-  QUOTED: { label: '견적완료', color: 'success' },
-};
 
 /** 견적서 작성 순서 — 현장 견적사원이 실제로 채워 가는 순서 그대로 */
 const STEPS: StepDef[] = [
@@ -35,8 +26,61 @@ const STEPS: StepDef[] = [
 ];
 type StepKey = 'basic' | 'items' | 'options' | 'summary';
 
-export default function EstimateDetail() {
-  const { id } = useParams<{ id: string }>();
+const shortDate = (iso: string | null) =>
+  iso
+    ? new Date(iso).toLocaleString('ko-KR', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
+
+/** 진행 — 접수 → 견적서 발송 → 고객 서명 → 계약금 입금 → 작업. 단계는 저절로 넘어간다 */
+function FlowBar({ data }: { data: EstimateDetailData }) {
+  const m = data.meta;
+  const done = m.leadStatus === 'DONE';
+  const steps = [
+    { label: '접수', when: m.receivedDate, ok: true },
+    // 문자가 막혀도 링크를 직접 전해 서명했다면 발송된 것으로 본다
+    { label: '견적서 발송', when: shortDate(m.sentAt), ok: !!m.sentAt || !!m.signedAt },
+    { label: '고객 서명', when: shortDate(m.signedAt), ok: !!m.signedAt },
+    { label: '계약금 입금', when: shortDate(m.depositPaidAt), ok: !!m.depositPaidAt },
+    { label: '작업', when: m.workDate, ok: !!m.workOrderId || done },
+    { label: '완료', when: null, ok: done },
+  ];
+  const current = steps.findIndex((s) => !s.ok);
+  return (
+    <div className={estStyles.flow} aria-label="진행 상황">
+      {steps.map((s, i) => (
+        <Fragment key={s.label}>
+          {i > 0 && <span className={[estStyles.flowLine, s.ok ? estStyles.done : ''].join(' ')} />}
+          <span
+            className={[
+              estStyles.flowStep,
+              s.ok ? estStyles.done : '',
+              i === current ? estStyles.current : '',
+            ].join(' ')}
+          >
+            <span className={estStyles.flowDot}>{s.ok ? '✓' : i + 1}</span>
+            <span>
+              {s.label}
+              {s.ok && s.when && <span className={estStyles.flowWhen}> · {s.when}</span>}
+            </span>
+          </span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 접수 상세 = 견적서 화면. 접수(/leads/:id)를 열면 그 접수의 견적을 바로 띄운다.
+ * 견적은 '고객에게 보내기' 한 번으로 고객 서명·계약금 입금까지 이어지고, 진행 단계는 저절로 넘어간다.
+ */
+export default function EstimateDetail({ estimateId }: { estimateId?: string } = {}) {
+  const params = useParams<{ id: string }>();
+  const id = estimateId ?? params.id;
   const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
@@ -44,7 +88,7 @@ export default function EstimateDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<EstimateDetailData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [contractOpen, setContractOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   const { updatedAt, touch } = useUpdatedAt();
 
@@ -105,33 +149,6 @@ export default function EstimateDetail() {
     touch();
   };
 
-  const quote = async () => {
-    if (anyDirty && !window.confirm('저장하지 않은 변경이 있습니다. 그대로 견적을 확정할까요?')) {
-      return;
-    }
-    try {
-      await api(`/estimates/${id}/quote`, { method: 'POST' });
-      toast({ type: 'success', title: t('estimate.quote') });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-    }
-  };
-
-  const createContract = async (values: Record<string, unknown>) => {
-    try {
-      const created = await api<{ id: string }>('/contracts', {
-        method: 'POST',
-        body: JSON.stringify({ estimateId: id, ...values }),
-      });
-      toast({ type: 'success', title: t('common.created') });
-      navigate(`/contracts/${created.id}`);
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
-
   if (!data) {
     return <div style={{ padding: 40, textAlign: 'center' }}>{loading ? <Spinner /> : null}</div>;
   }
@@ -141,32 +158,41 @@ export default function EstimateDetail() {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '문서 오류' }),
     );
 
+  const leadStatus = data.meta.leadStatus;
+  const closed = leadStatus === 'DONE' || leadStatus === 'CANCELED';
+  const cancelLead = async () => {
+    if (!data.lead || !window.confirm('이 접수를 취소할까요? 취소하면 되돌릴 수 없습니다.')) return;
+    try {
+      await api(`/leads/${data.lead.id}/transition`, {
+        method: 'POST',
+        body: JSON.stringify({ to: 'CANCELED' }),
+      });
+      toast({ type: 'success', title: '접수를 취소했습니다' });
+      await load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
+    }
+  };
+
   const flowActions = (
     <>
+      {canEdit && !closed && data.lead && (
+        <Button variant="ghost" size="sm" onClick={() => void cancelLead()}>
+          접수 취소
+        </Button>
+      )}
       <Button variant="outline" size="sm" onClick={openDoc}>
         {t('estimate.document')}
       </Button>
-      {canEdit && (
-        <Button variant="primary" size="sm" disabled={data.status === 'QUOTED'} onClick={quote}>
-          {data.status === 'QUOTED' ? '견적 확정됨' : t('estimate.quote')}
-        </Button>
-      )}
-      {/* 이미 계약된 견적이면 만들기 대신 그 계약으로 보낸다(서버도 중복 계약은 거절한다) */}
-      {data.meta.contractId ? (
+      {canEdit && !closed && (
         <Button
-          variant="outline"
+          variant="primary"
           size="sm"
-          onClick={() => navigate(`/contracts/${data.meta.contractId}`)}
+          leftIcon={<Send size={14} />}
+          onClick={() => setSendOpen(true)}
         >
-          계약 보기 →
+          {data.meta.sentAt ? '견적서 다시 보내기' : '고객에게 견적서 보내기'}
         </Button>
-      ) : (
-        data.status === 'QUOTED' &&
-        can('CONTRACT.WRITE') && (
-          <Button variant="primary" size="sm" onClick={() => setContractOpen(true)}>
-            {t('estimate.toContract')}
-          </Button>
-        )
       )}
     </>
   );
@@ -176,25 +202,28 @@ export default function EstimateDetail() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
-        title={data.estimateNo}
-        breadcrumbs={[
-          {
-            label: data.lead ? `접수 ${data.lead.leadNo}` : '접수',
-            onClick: () => navigate(data.lead ? `/leads/${data.lead.id}` : '/leads'),
-          },
-        ]}
+        title={data.lead?.leadNo ?? data.estimateNo}
+        breadcrumbs={[{ label: t('nav.leads'), onClick: () => navigate('/leads') }]}
         onRefresh={load}
         updatedAt={updatedAt}
         tags={
           <>
-            <StatusBadge value={data.status} map={STATUS} />
-            <Badge variant="subtle" color="info">
-              {t('estimate.totalCbm')} {Number(data.totalCbm)}
+            {leadStatus && <StatusBadge value={leadStatus} map={LEAD_STATUS} />}
+            {data.meta.customerName && (
+              <Badge variant="subtle" color="info">
+                {data.meta.customerName}
+                {data.meta.customerPhone ? ` · ${formatPhone(data.meta.customerPhone)}` : ''}
+              </Badge>
+            )}
+            <Badge variant="subtle" color="neutral">
+              견적 {data.estimateNo}
             </Badge>
           </>
         }
         actions={<div style={{ display: 'flex', gap: 8 }}>{flowActions}</div>}
       />
+
+      <FlowBar data={data} />
 
       <StepTabs steps={STEPS} value={tab} onChange={setTab} dirty={dirty} />
 
@@ -232,34 +261,12 @@ export default function EstimateDetail() {
         <SummaryTab {...tabProps} onDirtyChange={dirtyHandlers.summary} actions={flowActions} />
       </div>
 
-      <FormModal
-        open={contractOpen}
-        onOpenChange={setContractOpen}
-        title={t('estimate.toContract')}
-        // 견적서로 고객과 합의한 금액을 그대로 가져온다. 잔금은 서버가 총액 − 계약금으로 정한다.
-        initialValues={{
-          totalAmount: data.totalAmount == null ? '' : String(Number(data.totalAmount)),
-          depositAmount: data.depositAmount == null ? '' : String(Number(data.depositAmount)),
-        }}
-        fields={[
-          {
-            name: 'totalAmount',
-            label: t('contract.total'),
-            required: true,
-            alwaysShow: true,
-            pairWithNext: true,
-            type: 'number',
-            placeholder: '예: 1800000',
-          },
-          {
-            name: 'depositAmount',
-            label: '계약금',
-            alwaysShow: true,
-            type: 'number',
-            placeholder: '비우면 총액의 10%',
-          },
-        ]}
-        onSubmit={createContract}
+      <SendEstimateModal
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        data={data}
+        dirty={anyDirty}
+        onSent={() => void load()}
       />
     </div>
   );
