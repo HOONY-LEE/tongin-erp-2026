@@ -1,0 +1,166 @@
+/* 대시보드 — 지점·지역 실적 */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.empty {
+  color: var(--ark-color-text-tertiary);
+  font-size: 13px;
+  padding: 8px 0;
+}
+.plot {
+  position: relative;
+}
+
+/* 세로 막대 — 단일 계열. 값은 막대 위, 지점명은 아래 */
+.columns {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  height: 260px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.column {
+  flex: 1 0 56px;
+  max-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 56px;
+  cursor: default;
+}
+.colValue {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ark-color-text-primary, var(--ark-color-text));
+  white-space: nowrap;
+}
+.colTrack {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.colBar {
+  width: 100%;
+  background: var(--chart-bar);
+  /* 기준선 쪽은 각지게, 데이터 끝만 4px 둥글게 */
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s;
+}
+.column:hover .colBar {
+  filter: brightness(1.08);
+}
+.colLabel {
+  width: 100%;
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 지도 */
+.mapWrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 16px;
+  align-items: start;
+}
+.map {
+  width: 100%;
+  max-height: 440px;
+  display: block;
+}
+.region {
+  stroke: var(--ark-color-bg);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition: opacity 0.15s;
+}
+.region:hover {
+  stroke: var(--ark-color-text);
+  stroke-width: 1.5;
+}
+.mapLabel {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--ark-color-text);
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--ark-color-bg);
+  stroke-width: 2.5px;
+}
+.mapValue {
+  font-weight: 700;
+}
+.mapSide {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+}
+.legendSwatch {
+  width: 18px;
+  height: 10px;
+  border-radius: 2px;
+}
+.legendNote {
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+.rank {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rank li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+
+/* 툴팁 */
+.tip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  min-width: 160px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  border: 1px solid var(--ark-color-border);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 10%);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ark-color-text);
+}
+.tipTitle {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 760px) {
+  .mapWrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

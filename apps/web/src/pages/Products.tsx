@@ -14,7 +14,7 @@ import { useOptions } from '../lib/useOptions';
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 const columns: Column[] = [
-  { title: '상품명', dataIndex: 'name', flex: 1, minWidth: 160 },
+  { title: '상품구성', dataIndex: 'name', flex: 1, minWidth: 160 },
   { title: '카테고리', render: (r: Row) => String(r.category ?? '-') },
   {
     title: '서비스라인',
@@ -43,12 +43,15 @@ const columns: Column[] = [
   },
 ];
 
-/** 상품 — 코드는 서버가 발급(PRD-0001)하고, 화면에서는 이름으로 다룬다 */
+/**
+ * 상품구성 — 가정이사·기업이전처럼 견적서·CS에 대표로 보이는 묶음. 실제로 파는 건 그 안의 상품들이다.
+ * 구성(필수·기본선택·선택, 구성별 단가)은 상세에서 정한다. 코드는 서버 발급(PRD-0001).
+ */
 export default function Products() {
   const navigate = useNavigate();
   const orgs = useOptions('/org-units', 'name');
   const fields: FormField[] = [
-    { name: 'name', label: '상품명', required: true, placeholder: '예: 포장이사' },
+    { name: 'name', label: '상품구성 이름', required: true, placeholder: '예: 포장이사' },
     {
       name: 'serviceLine',
       label: '서비스라인',
@@ -70,7 +73,7 @@ export default function Products() {
   ];
   return (
     <CrudTable
-      title="상품"
+      title="상품구성"
       path="/products"
       columns={columns}
       fields={fields}

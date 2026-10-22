@@ -9,7 +9,6 @@
  * 대시보드·퍼널·정산·현장 화면이 실제처럼 채워지도록 단계를 골고루 배치했다.
  */
 import { PrismaClient, Prisma } from '@prisma/client';
-import { ROOM_PRESETS } from '@tongin/shared';
 
 const prisma = new PrismaClient();
 
@@ -63,9 +62,9 @@ const PRODUCTS = [
 ];
 
 /**
- * 품목사전(CbmItem) 시드 + 견적 물품 시드 공용.
- * 견적에는 견적서 기본 틀(shared ROOM_PRESETS)의 방·물품 이름으로 넣고, 세부는 메모로 남긴다
- * (실제 견적사원이 "안방 · 침대 · 퀸 사이즈"처럼 적는 방식).
+ * 견적 물품 시드. 방·물품은 DB의 방 틀(room_template)·이사물품(cbm_item)을 그대로 쓰고
+ * (마이그레이션이 기본 10개 방과 물품을 넣어 둔다), 세부는 메모로 남긴다
+ * (실제 견적사원이 "안방 · 침대 · 퀸 사이즈"처럼 적는 방식). cbm은 그 물품의 기본 부피가 된다.
  */
 const CBM_ITEMS = [
   {
@@ -672,18 +671,16 @@ async function main() {
     productByCode.set(p.code, row.id);
   }
 
-  // ── 품목사전 ──
-  const cbmByName = new Map<string, string>();
+  // ── 이사물품 기본 부피 — 방 틀의 물품(침대·장롱 …)에 기본 CBM을 채운다 ──
+  const itemByName = new Map<string, { id: string; nameEng: string | null }>();
   for (const c of CBM_ITEMS) {
-    const row = await prisma.cbmItem.upsert({
-      where: { category_name: { category: c.category, name: c.name } },
-      update: { cbm: c.cbm },
-      // 사전에는 사전 필드만 — room/preset/memo는 견적 물품을 만들 때만 쓴다
-      create: { category: c.category, name: c.name, cbm: c.cbm },
-    });
-    cbmByName.set(c.name, row.id);
+    const row = await prisma.cbmItem.findUnique({ where: { name: c.preset } });
+    if (!row) continue; // 마이그레이션이 넣는 기본 물품이 없으면 건너뛴다
+    if (row.cbm == null) await prisma.cbmItem.update({ where: { id: row.id }, data: { cbm: c.cbm } });
+    itemByName.set(c.preset, { id: row.id, nameEng: row.nameEng });
   }
-  console.log(`상품 ${PRODUCTS.length}개 / 품목사전 ${CBM_ITEMS.length}개`);
+  const rooms = await prisma.roomTemplate.findMany({ orderBy: { sortOrder: 'asc' } });
+  console.log(`상품 ${PRODUCTS.length}개 / 이사물품 ${itemByName.size}개 기본 부피`);
 
   // ── 참조 조회 ──
   const branches = await prisma.orgUnit.findMany({ where: { type: 'BRANCH' } });
@@ -805,34 +802,32 @@ async function main() {
     // 구역·품목 (재실행 시 중복되지 않게 지우고 다시)
     await prisma.estimateLine.deleteMany({ where: { estimateId: estimate.id } });
     await prisma.estimateZone.deleteMany({ where: { estimateId: estimate.id } });
-    // 방은 견적서 기본 틀 순서대로, 쓰인 방만 만든다
-    const usedRooms = ROOM_PRESETS.filter((r) => items.some((it) => it.room === r.key));
+    // 방은 방 틀 순서대로, 쓰인 방만 만든다
+    const usedRooms = rooms.filter((r) => items.some((it) => it.room === r.code));
     const zoneByRoom = new Map<string, string>();
     for (const room of usedRooms) {
       const z = await prisma.estimateZone.create({
         data: {
           estimateId: estimate.id,
           name: room.name,
-          roomKey: room.key,
-          sortOrder: ROOM_PRESETS.indexOf(room),
+          roomKey: room.code,
+          sortOrder: rooms.indexOf(room),
         },
       });
-      zoneByRoom.set(room.key, z.id);
+      zoneByRoom.set(room.code, z.id);
     }
     for (const [ii, it] of items.entries()) {
       const qty = itemQty[ii];
-      const preset = ROOM_PRESETS.find((r) => r.key === it.room)?.items.find(
-        (x) => x.name === it.preset,
-      );
+      const item = itemByName.get(it.preset);
       // 견적 물품은 "물품별 부피(CBM) 합계"로 적는다 — 수량은 메모에 남긴다
       const memo = [it.memo, qty > 1 ? `${qty}개` : ''].filter(Boolean).join(' · ');
       await prisma.estimateLine.create({
         data: {
           estimateId: estimate.id,
           zoneId: zoneByRoom.get(it.room),
-          cbmItemId: cbmByName.get(it.name),
+          cbmItemId: item?.id,
           itemName: it.preset,
-          itemNameEng: preset?.nameEng,
+          itemNameEng: item?.nameEng,
           qty: 1,
           cbm: new Prisma.Decimal(it.cbm * qty),
           // 처리방법도 현장처럼 섞는다: 마지막 물품은 가끔 폐기, 첫 물품은 가끔 경유

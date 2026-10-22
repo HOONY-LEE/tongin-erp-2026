@@ -18,6 +18,8 @@ export interface FieldLine {
   itemName: string;
   qty: string;
   handling: string;
+  /** 처리방법 이름 — 서버가 상품관리 › 처리방법에서 채운다 */
+  handlingName?: string;
   memo: string | null;
 }
 

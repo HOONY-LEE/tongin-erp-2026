@@ -62,7 +62,14 @@ export class AiService {
     private readonly domain: DomainTools,
   ) {
     const key = process.env.ANTHROPIC_API_KEY;
-    this.client = key ? new Anthropic({ apiKey: key }) : null;
+    // 워크스페이스에 묶이지 않은 키(sk-ant-usr-…)는 어느 워크스페이스로 쓸지 헤더로 알려야 한다
+    const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
+    this.client = key
+      ? new Anthropic({
+          apiKey: key,
+          ...(workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {}),
+        })
+      : null;
   }
 
   status() {
@@ -481,6 +488,9 @@ function describeError(e: unknown): string {
     return 'Claude API 사용량 한도에 걸렸습니다. 잠시 후 다시 시도하세요.';
   if (e instanceof Anthropic.APIConnectionError)
     return 'Claude API에 연결하지 못했습니다(네트워크 확인).';
+  if (e instanceof Anthropic.APIError && /workspace/i.test(e.message)) {
+    return '이 Claude API 키는 워크스페이스가 정해지지 않은 키입니다. 서버 ANTHROPIC_WORKSPACE_ID에 워크스페이스 ID를 넣거나, 워크스페이스용 키(sk-ant-api…)로 바꿔 주세요.';
+  }
   if (e instanceof Anthropic.APIError) return `Claude API 오류 ${e.status ?? ''}: ${e.message}`;
   return e instanceof Error ? e.message : String(e);
 }

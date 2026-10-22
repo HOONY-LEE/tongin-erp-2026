@@ -15,45 +15,76 @@ export class StatsService {
     private readonly scope: ScopeService,
   ) {}
 
-  /** CRM-01: 대시보드 통계 — 퍼널·KPI·가맹점별 매출. 소속 지점 범위로만 집계. */
+  /** CRM-01: 대시보드 통계 — 퍼널·KPI·지점별/시도별 실적. 소속 지점 범위로만 집계. */
   async overview(principal?: AuthPrincipal): Promise<StatsOverview> {
     const ids = await this.scope.orgScopeIds(principal);
     const org = ids === null ? {} : { orgUnitId: { in: ids } };
-    const [leadGroups, signedContracts, paidAgg, doneCount] = await Promise.all([
-      this.prisma.lead.groupBy({ by: ['status'], where: org, _count: { _all: true } }),
+    const [leads, signedContracts, paidAgg, workOrders] = await Promise.all([
+      this.prisma.lead.findMany({
+        where: org,
+        select: { status: true, fromSido: true, orgUnit: { select: { name: true } } },
+      }),
       this.prisma.contract.findMany({
         where: { status: 'SIGNED', ...org },
-        select: { totalAmount: true, lead: { select: { orgUnit: { select: { name: true } } } } },
+        select: {
+          totalAmount: true,
+          lead: { select: { fromSido: true, orgUnit: { select: { name: true } } } },
+        },
       }),
       this.prisma.payment.aggregate({
         where: { status: 'PAID', ...(ids === null ? {} : { contract: org }) },
         _sum: { amount: true },
       }),
-      this.prisma.workOrder.count({ where: { status: 'DONE', ...org } }),
+      this.prisma.workOrder.findMany({
+        where: org,
+        select: {
+          status: true,
+          lead: { select: { fromSido: true, orgUnit: { select: { name: true } } } },
+        },
+      }),
     ]);
 
-    const countByStatus = new Map(leadGroups.map((g) => [g.status, g._count._all]));
+    const countByStatus = new Map<string, number>();
+    for (const l of leads) countByStatus.set(l.status, (countByStatus.get(l.status) ?? 0) + 1);
     const funnel = LEAD_STATUS.map((status) => ({
       status: status as LeadStatus,
       count: countByStatus.get(status) ?? 0,
     }));
 
-    const leadTotal = leadGroups.reduce((s, g) => s + g._count._all, 0);
+    const leadTotal = leads.length;
     const contractCount = signedContracts.length;
     const revenue = signedContracts.reduce((s, c) => s + Number(c.totalAmount), 0);
     const collected = Number(paidAgg._sum.amount ?? 0);
+    const doneCount = workOrders.filter((w) => w.status === 'DONE').length;
 
-    const branchMap = new Map<string, { contractCount: number; revenue: number }>();
-    for (const c of signedContracts) {
-      const name = c.lead?.orgUnit?.name ?? '(미지정)';
-      const cur = branchMap.get(name) ?? { contractCount: 0, revenue: 0 };
-      cur.contractCount += 1;
-      cur.revenue += Number(c.totalAmount);
-      branchMap.set(name, cur);
+    // 지점·시도별로 같은 네 칸을 센다
+    type Acc = { leadCount: number; contractCount: number; workCount: number; revenue: number };
+    const blank = (): Acc => ({ leadCount: 0, contractCount: 0, workCount: 0, revenue: 0 });
+    const branch = new Map<string, Acc>();
+    const region = new Map<string, Acc>();
+    const bump = (m: Map<string, Acc>, key: string | null | undefined, f: (a: Acc) => void) => {
+      if (!key) return;
+      const a = m.get(key) ?? blank();
+      f(a);
+      m.set(key, a);
+    };
+    for (const l of leads) {
+      bump(branch, l.orgUnit?.name ?? '(미지정)', (a) => a.leadCount++);
+      bump(region, l.fromSido, (a) => a.leadCount++);
     }
-    const byBranch = [...branchMap.entries()]
-      .map(([orgUnitName, v]) => ({ orgUnitName, ...v }))
-      .sort((a, b) => b.revenue - a.revenue);
+    for (const c of signedContracts) {
+      const amt = Number(c.totalAmount);
+      const add = (a: Acc) => {
+        a.contractCount++;
+        a.revenue += amt;
+      };
+      bump(branch, c.lead?.orgUnit?.name ?? '(미지정)', add);
+      bump(region, c.lead?.fromSido, add);
+    }
+    for (const w of workOrders) {
+      bump(branch, w.lead?.orgUnit?.name ?? '(미지정)', (a) => a.workCount++);
+      bump(region, w.lead?.fromSido, (a) => a.workCount++);
+    }
 
     return {
       funnel,
@@ -66,7 +97,10 @@ export class StatsService {
         outstanding: revenue - collected,
         conversionRate: leadTotal ? contractCount / leadTotal : 0,
       },
-      byBranch,
+      byBranch: [...branch.entries()]
+        .map(([orgUnitName, v]) => ({ orgUnitName, ...v }))
+        .sort((a, b) => b.revenue - a.revenue),
+      byRegion: [...region.entries()].map(([sido, v]) => ({ sido, ...v })),
     };
   }
 }

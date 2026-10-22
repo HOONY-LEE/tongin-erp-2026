@@ -16,12 +16,16 @@ import {
   type AuthPrincipal,
   type EstimateMeta,
   type LeadStatus,
+  type BundleRole,
+  type EstimateOptionGroup,
   type OptionVariant,
+  type VolumeUnit,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
+import { MoveCatalogService } from '../move-catalog/move-catalog.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
 import {
   CreateAddonDto,
@@ -40,6 +44,7 @@ export class EstimateService {
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
     private readonly leadService: LeadService,
+    private readonly moveCatalog: MoveCatalogService,
   ) {}
 
   async findAll(leadId?: string, principal?: AuthPrincipal) {
@@ -96,32 +101,50 @@ export class EstimateService {
       lead: lead && { ...lead, visitDate: day(lead.visitDate), moveDate: day(lead.moveDate) },
       serviceLine: product?.serviceLine ?? null,
       meta: await this.buildMeta(id),
-      optionCatalog: await this.optionCatalog(id),
+      optionCatalog: await this.optionCatalog(id, estimate.productId),
+      moveCatalog: await this.moveCatalog.forEstimate([
+        ...new Set(estimate.lines.map((l) => l.handling)),
+      ]),
     };
   }
 
   /**
-   * 3단계 옵션 목록 — 상품관리 '옵션' 탭의 카탈로그.
-   * '사용 안 함' 옵션은 빼되, 이 견적에 이미 담긴 옵션은 남겨 둔다(저장된 견적이 깨지지 않게).
+   * 3단계 상품 목록 — 상품관리 '상품' 탭의 카탈로그 + 이 견적의 상품 구성(가정이사 등)에서의 역할.
+   * 구성에 있는 상품은 역할(필수·기본선택·선택)과 구성 단가를, 구성 밖 상품은 role=null('추가 상품')로 준다.
+   * '사용 안 함' 상품은 빼되, 이 견적에 이미 담긴 상품은 남겨 둔다(저장된 견적이 깨지지 않게).
    */
-  private optionCatalog(estimateId: string) {
-    return this.prisma.addonService.findMany({
-      where: {
-        OR: [{ isActive: true }, { estimateAddons: { some: { estimateId } } }],
-      },
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        groupCode: true,
-        variants: true,
-        hasDate: true,
-        hasNote: true,
-        price: true,
-        isActive: true,
-      },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    });
+  private async optionCatalog(estimateId: string, productId: string) {
+    const [rows, bundle] = await Promise.all([
+      this.prisma.addonService.findMany({
+        where: {
+          OR: [{ isActive: true }, { estimateAddons: { some: { estimateId } } }],
+        },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      }),
+      this.prisma.productAddon.findMany({ where: { productId }, orderBy: { sortOrder: 'asc' } }),
+    ]);
+    const inBundle = new Map(bundle.map((b, i) => [b.addonServiceId, { ...b, order: i }]));
+    return rows
+      .map((r) => {
+        const b = inBundle.get(r.id);
+        return {
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          groupCode: r.groupCode as EstimateOptionGroup,
+          variants: (r.variants as OptionVariant[] | null) ?? null,
+          hasDate: r.hasDate,
+          hasNote: r.hasNote,
+          price: r.price,
+          isActive: r.isActive,
+          kind: r.kind as 'VOLUME' | 'SERVICE',
+          role: (b?.role as BundleRole | undefined) ?? null,
+          bundlePrice: b?.priceOverride ?? r.price,
+          order: b ? b.order : 1000 + r.sortOrder,
+        };
+      })
+      .sort((a, b) => a.order - b.order)
+      .map(({ order: _order, ...r }) => r);
   }
 
   private async buildMeta(id: string): Promise<EstimateMeta> {
@@ -508,15 +531,23 @@ export class EstimateService {
    * 기본 틀의 빈 행은 저장하지 않는다. 직접 만든 방은 비어 있어도 남긴다(나중에 채우도록).
    */
   async saveItems(estimateId: string, dto: SaveItemsDto, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
+    const current = await this.findOne(estimateId, principal);
+    const unit = dto.volumeUnit ?? (current.volumeUnit as VolumeUnit);
+    // 화면은 체크한 물품만 보낸다 — 기본 부피가 없는 물품도 '넣었다'는 사실은 남긴다
     const rooms = dto.rooms
-      .map((r, i) => ({
-        ...r,
-        sortOrder: r.sortOrder ?? i,
-        lines: r.lines.filter((l) => l.cbm > 0 || l.memo?.trim()),
-      }))
+      .map((r, i) => ({ ...r, sortOrder: r.sortOrder ?? i }))
       .filter((r) => r.lines.length || !r.roomKey);
     const allLines = rooms.flatMap((r) => r.lines);
+
+    // 처리방법·물품은 카탈로그에 있는 값만(지어낸 코드로 물량이 새지 않게)
+    const buckets = await this.moveCatalog.bucketMap();
+    const badHandling = allLines.find((l) => !buckets[l.handling]);
+    if (badHandling) throw new BadRequestException(`없는 처리방법입니다: ${badHandling.handling}`);
+    const itemIds = [...new Set(allLines.map((l) => l.cbmItemId).filter(Boolean))] as string[];
+    if (itemIds.length) {
+      const found = await this.prisma.cbmItem.count({ where: { id: { in: itemIds } } });
+      if (found !== itemIds.length) throw new BadRequestException('없는 이사물품이 섞여 있습니다.');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.estimateLine.deleteMany({ where: { estimateId } });
@@ -530,10 +561,12 @@ export class EstimateService {
           data: r.lines.map((l) => ({
             estimateId,
             zoneId: zone.id,
+            cbmItemId: l.cbmItemId ?? null,
             itemName: l.itemName.trim(),
             itemNameEng: l.itemNameEng?.trim() || null,
             qty: 1,
-            cbm: l.cbm,
+            cbm: l.cbm ?? 0,
+            ton: l.ton ?? null,
             handling: l.handling,
             memo: l.memo?.trim() || null,
           })),
@@ -541,7 +574,11 @@ export class EstimateService {
       }
       await tx.estimate.update({
         where: { id: estimateId },
-        data: { totalCbm: summarizeVolume(allLines).total },
+        data: {
+          volumeUnit: unit,
+          totalCbm: summarizeVolume(allLines, { buckets, unit: 'CBM' }).total,
+          totalTon: summarizeVolume(allLines, { buckets, unit: 'TON' }).total,
+        },
       });
     });
     return this.detail(estimateId, principal);
@@ -557,9 +594,32 @@ export class EstimateService {
       where: { id: { in: dto.options.map((o) => o.addonServiceId) } },
     });
     const byId = new Map(defs.map((d) => [d.id, d]));
+    // 상품 구성(가정이사 등) — 필수 상품은 빠질 수 없고, 구성 밖 상품은 '추가 상품'으로 표시한다.
+    // 이사물량(VOLUME)은 2단계 물품정보·4단계 이사비용으로 견적하므로 이 목록에 담지 않는다.
+    const estimate = await this.prisma.estimate.findUnique({
+      where: { id: estimateId },
+      select: { productId: true },
+    });
+    const bundle = await this.prisma.productAddon.findMany({
+      where: { productId: estimate!.productId },
+      include: { addon: { select: { name: true, kind: true } } },
+    });
+    const bundleIds = new Set(bundle.map((b) => b.addonServiceId));
+    const chosen = new Set(dto.options.map((o) => o.addonServiceId));
+    const missing = bundle.filter(
+      (b) => b.role === 'REQUIRED' && b.addon.kind !== 'VOLUME' && !chosen.has(b.addonServiceId),
+    );
+    if (missing.length) {
+      throw new BadRequestException(
+        `필수 상품이 빠졌습니다: ${missing.map((m) => m.addon.name).join(', ')}`,
+      );
+    }
     for (const o of dto.options) {
       const def = byId.get(o.addonServiceId);
-      if (!def) throw new BadRequestException(`알 수 없는 옵션입니다: ${o.addonServiceId}`);
+      if (!def) throw new BadRequestException(`알 수 없는 상품입니다: ${o.addonServiceId}`);
+      if (def.kind === 'VOLUME') {
+        throw new BadRequestException('이사물량은 물품정보·이사비용으로 견적합니다.');
+      }
       const variants = (def.variants as OptionVariant[] | null) ?? null;
       if (o.variant && !variants?.some((v) => v.value === o.variant)) {
         throw new BadRequestException(`${def.name}의 종류가 올바르지 않습니다: ${o.variant}`);
@@ -578,6 +638,7 @@ export class EstimateService {
           toPyeong: dto.toPyeong,
           toAccess: dto.toAccess,
           toAccessNote: note(dto.toAccess, dto.toAccessNote),
+          optionsSavedAt: new Date(),
         },
       });
       await tx.estimateAddon.deleteMany({ where: { estimateId } });
@@ -601,6 +662,7 @@ export class EstimateService {
               unitPrice: o.amount,
               amount: o.amount,
               memo: o.memo?.trim() || null,
+              isExtra: !bundleIds.has(def.id),
               sortOrder: i,
             };
           }),
@@ -672,15 +734,21 @@ export class EstimateService {
     });
   }
 
-  /** 견적 전체물량 = 운반+경유+폐기(하역 포함). 방치·업체는 싣지 않으므로 뺀다(shared 규칙). */
+  /** 견적 전체물량 = 처리방법의 물량 칸(이사·경유·폐기) 합. '물량 제외' 처리방법은 뺀다. */
   private async recomputeTotalCbm(estimateId: string) {
-    const lines = await this.prisma.estimateLine.findMany({
-      where: { estimateId },
-      select: { cbm: true, handling: true },
-    });
+    const [lines, buckets] = await Promise.all([
+      this.prisma.estimateLine.findMany({
+        where: { estimateId },
+        select: { cbm: true, ton: true, handling: true },
+      }),
+      this.moveCatalog.bucketMap(),
+    ]);
     await this.prisma.estimate.update({
       where: { id: estimateId },
-      data: { totalCbm: summarizeVolume(lines).total },
+      data: {
+        totalCbm: summarizeVolume(lines, { buckets, unit: 'CBM' }).total,
+        totalTon: summarizeVolume(lines, { buckets, unit: 'TON' }).total,
+      },
     });
   }
 
@@ -705,13 +773,22 @@ export class EstimateService {
     const dash = (v: unknown) => (v == null || v === '' ? '-' : esc(v));
     const won = (v: unknown) =>
       v == null || v === '' ? '-' : `${Number(v).toLocaleString('ko-KR')}원`;
-    const handling: Record<string, string> = HANDLING_LABEL;
+    const handlingRows = await this.prisma.handlingMethod.findMany({
+      select: { code: true, name: true, bucket: true },
+    });
+    const handling: Record<string, string> = {
+      ...HANDLING_LABEL,
+      ...Object.fromEntries(handlingRows.map((h) => [h.code, h.name])),
+    };
+    const buckets = Object.fromEntries(handlingRows.map((h) => [h.code, h.bucket]));
+    const unit = e.volumeUnit === 'TON' ? 'TON' : 'CBM';
+    const unitText = unit === 'TON' ? '톤' : 'CBM';
     const access = (a: string, note: string | null) =>
       `${esc(ACCESS_LABEL[a as AccessMethod] ?? a)}${a === 'ETC' && note ? `(${esc(note)})` : ''}`;
     const addr = (a: string | null, d: string | null) => (a ? `${esc(a)} ${esc(d ?? '')}` : '-');
 
-    // 물량 요약 — 화면과 같은 규칙(shared summarizeVolume): 폐기에 하역 포함, 방치·업체 제외
-    const v = summarizeVolume(e.lines);
+    // 물량 요약 — 화면과 같은 규칙(shared summarizeVolume): 처리방법의 물량 칸대로, '물량 제외'는 빼고
+    const v = summarizeVolume(e.lines, { buckets, unit });
     const volume: [string, number][] = [
       ['이사물량(운반)', v.moving],
       ['경유물량', v.transit],
@@ -730,7 +807,7 @@ export class EstimateService {
           .map(
             (l, i) =>
               `<tr>${i === 0 ? `<td rowspan="${g.lines.length}">${esc(g.name)}</td>` : ''}<td>${esc(l.itemName)}${l.itemNameEng ? ` <span class="muted">${esc(l.itemNameEng)}</span>` : ''}</td><td class="r">${esc(Number(l.qty))}</td><td class="r">${esc(
-                Number(l.cbm),
+                Number(unit === 'TON' ? (l.ton ?? 0) : l.cbm),
               )}</td><td>${esc(handling[l.handling] ?? l.handling)}</td><td>${dash(l.memo)}</td></tr>`,
           )
           .join(''),
@@ -782,8 +859,8 @@ td.r,th.r{text-align:right}
 
 <h2>물품 정보</h2>
 <table class="vol"><tr>${volume.map(([k]) => `<th>${k}</th>`).join('')}</tr>
-<tr>${volume.map(([, v]) => `<td>${v} CBM</td>`).join('')}</tr></table>
-<table style="margin-top:8px"><thead><tr><th>방</th><th>품목</th><th class="r">수량</th><th class="r">CBM</th><th>처리방법</th><th>메모</th></tr></thead>
+<tr>${volume.map(([, v]) => `<td>${v} ${unitText}</td>`).join('')}</tr></table>
+<table style="margin-top:8px"><thead><tr><th>방</th><th>품목</th><th class="r">수량</th><th class="r">${unitText}</th><th>처리방법</th><th>메모</th></tr></thead>
 <tbody>${itemRows || '<tr><td colspan="6" class="muted">품목 없음</td></tr>'}</tbody></table>
 
 <h2>작업 조건 · 옵션</h2>

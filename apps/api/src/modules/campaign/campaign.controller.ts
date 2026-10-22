@@ -1,7 +1,19 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { CampaignService } from './campaign.service';
-import { CreateCampaignDto } from './dto/create-campaign.dto';
+import { AudienceQueryDto, CreateCampaignDto, UpdateCampaignDto } from './dto/create-campaign.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
 @Controller('campaigns')
 export class CampaignController {
@@ -13,10 +25,24 @@ export class CampaignController {
     return this.campaignService.findAll();
   }
 
+  /** 받을 고객 찾기(조건 + 페이지) */
+  @Post('audience')
+  @RequirePermissions('MARKETING.READ')
+  audience(@CurrentUser() user: AuthPrincipal, @Body() q: AudienceQueryDto) {
+    return this.campaignService.searchAudience(q, user);
+  }
+
+  /** 조건에 맞는 고객 전체 id — 검색 결과 전체 선택 */
+  @Post('audience/ids')
+  @RequirePermissions('MARKETING.READ')
+  audienceIds(@CurrentUser() user: AuthPrincipal, @Body() q: AudienceQueryDto) {
+    return this.campaignService.audienceIds(q, user);
+  }
+
   @Get(':id')
   @RequirePermissions('MARKETING.READ')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.campaignService.findOne(id);
+    return this.campaignService.detail(id);
   }
 
   @Get(':id/preview')
@@ -27,13 +53,37 @@ export class CampaignController {
 
   @Post()
   @RequirePermissions('MARKETING.WRITE')
-  create(@Body() dto: CreateCampaignDto) {
-    return this.campaignService.create(dto);
+  create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateCampaignDto) {
+    return this.campaignService.create(dto, user);
   }
 
+  @Patch(':id')
+  @RequirePermissions('MARKETING.WRITE')
+  update(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCampaignDto,
+  ) {
+    return this.campaignService.update(id, dto, user);
+  }
+
+  @Delete(':id')
+  @RequirePermissions('MARKETING.WRITE')
+  @HttpCode(204)
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.campaignService.remove(id);
+  }
+
+  /** 발송(예약 시각이 미래면 예약) */
   @Post(':id/send')
   @RequirePermissions('MARKETING.WRITE')
-  send(@Param('id', ParseUUIDPipe) id: string) {
-    return this.campaignService.send(id);
+  send(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.campaignService.send(id, user);
+  }
+
+  @Post(':id/cancel')
+  @RequirePermissions('MARKETING.WRITE')
+  cancel(@Param('id', ParseUUIDPipe) id: string) {
+    return this.campaignService.cancel(id);
   }
 }

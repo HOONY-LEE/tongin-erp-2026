@@ -1,23 +1,30 @@
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
-import { HANDLING, HANDLING_LABEL, ROOM_PRESETS, summarizeVolume } from '@tongin/shared';
+import {
+  summarizeVolume,
+  VOLUME_UNIT_LABEL,
+  type MoveItemDef,
+  type VolumeUnit,
+} from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
-import { Button, Select, useToast } from '../ui';
+import { Button, Checkbox, SegmentedControl, Select, useToast } from '../ui';
 import { SaveBar, UnitField } from './parts';
 import { useTabForm } from './useTabForm';
-import { toNum, type EstimateDetailData, type TabProps } from './types';
+import { toNum, type EstimateDetailData, type EstimateLine, type TabProps } from './types';
 import styles from './estimate.module.css';
-
-const HANDLING_OPTIONS = HANDLING.map((h) => ({ value: h, label: HANDLING_LABEL[h] }));
 
 interface ItemRow {
   uid: string;
+  cbmItemId: string | null;
   itemName: string;
   itemNameEng: string;
+  /** 이 견적에 넣은 물품인가 — 켜면 물품의 기본 부피·무게가 채워진다 */
+  on: boolean;
   cbm: string;
+  ton: string;
   handling: string;
   memo: string;
-  /** 기본 틀에서 온 물품이면 이름을 고정하고 삭제 대신 비워 둔다 */
+  /** 방 틀에서 온 물품이면 이름을 고정하고 삭제 대신 끈다 */
   preset: boolean;
 }
 interface RoomForm {
@@ -27,67 +34,86 @@ interface RoomForm {
   nameEng: string;
   rows: ItemRow[];
 }
+interface ItemsForm {
+  unit: VolumeUnit;
+  rooms: RoomForm[];
+}
 
-const cbmText = (v: string | number) => (Number(v) ? String(Number(v)) : '');
+const numText = (v: string | number | null | undefined) =>
+  v == null || !Number(v) ? '' : String(Number(v));
 
-/** 서버 견적 → 화면 틀. 기본 방·물품을 깔고 저장된 값을 이름으로 맞춰 채운다. */
-const derive = (d: EstimateDetailData): RoomForm[] => {
+/**
+ * 서버 견적 → 화면 틀. 방 틀(상품관리 › 방)을 깔고, 저장된 물품을 같은 물품(없으면 같은 이름)에 맞춰 켠다.
+ * 물품은 방에 속한 게 아니라 사전의 물품 하나를 가리킨다 — 방 틀은 자주 쓰는 물품을 펼쳐 둘 뿐.
+ */
+const derive = (d: EstimateDetailData): ItemsForm => {
+  const { rooms: roomDefs, items } = d.moveCatalog;
+  const itemById = new Map(items.map((i) => [i.id, i]));
+  const firstHandling = d.moveCatalog.handlings[0]?.code ?? 'CARRY';
   const used = new Set<string>();
-  const toRow = (l: EstimateDetailData['lines'][number], preset: boolean): ItemRow => {
+  const fromLine = (l: EstimateLine, preset: boolean): ItemRow => {
     used.add(l.id);
     return {
       uid: `l:${l.id}`,
+      cbmItemId: l.cbmItemId,
       itemName: l.itemName,
       itemNameEng: l.itemNameEng ?? '',
-      cbm: cbmText(l.cbm),
+      on: true,
+      cbm: numText(l.cbm),
+      ton: numText(l.ton),
       handling: l.handling,
       memo: l.memo ?? '',
       preset,
     };
   };
 
-  const rooms: RoomForm[] = ROOM_PRESETS.map((preset) => {
-    const zone = d.zones.find((z) => z.roomKey === preset.key);
+  const rooms: RoomForm[] = roomDefs.map((room) => {
+    const zone = d.zones.find((z) => z.roomKey === room.code);
     const saved = zone ? d.lines.filter((l) => l.zoneId === zone.id) : [];
-    const rows: ItemRow[] = preset.items.map((item, i) => {
-      const hit = saved.find((l) => !used.has(l.id) && l.itemName === item.name);
-      if (hit) return { ...toRow(hit, true), uid: `${preset.key}:${i}`, itemNameEng: item.nameEng };
-      return {
-        uid: `${preset.key}:${i}`,
-        itemName: item.name,
-        itemNameEng: item.nameEng,
-        cbm: '',
-        handling: 'CARRY',
-        memo: '',
-        preset: true,
-      };
-    });
-    // 기본 틀에 없는 물품(직접 추가한 것)은 그 방 끝에
-    for (const l of saved) if (!used.has(l.id)) rows.push(toRow(l, false));
+    const rows: ItemRow[] = room.itemIds
+      .map((id) => itemById.get(id))
+      .filter((it): it is MoveItemDef => !!it)
+      .map((it) => {
+        const hit = saved.find(
+          (l) => !used.has(l.id) && (l.cbmItemId === it.id || l.itemName === it.name),
+        );
+        if (hit) return { ...fromLine(hit, true), uid: `${room.code}:${it.id}` };
+        return {
+          uid: `${room.code}:${it.id}`,
+          cbmItemId: it.id,
+          itemName: it.name,
+          itemNameEng: it.nameEng ?? '',
+          on: false,
+          cbm: '',
+          ton: '',
+          handling: firstHandling,
+          memo: '',
+          preset: true,
+        };
+      });
+    // 방 틀에 없는 물품(직접 추가한 것)은 그 방 끝에
+    for (const l of saved) if (!used.has(l.id)) rows.push(fromLine(l, false));
     return {
-      uid: preset.key,
-      roomKey: preset.key,
-      name: preset.name,
-      nameEng: preset.nameEng,
+      uid: room.code,
+      roomKey: room.code,
+      name: room.name,
+      nameEng: room.nameEng ?? '',
       rows,
     };
   });
 
-  // 직접 만든 방(또는 예전 데이터의 구역)
-  const presetKeys = new Set(ROOM_PRESETS.map((r) => r.key));
-  const custom = d.zones
-    .filter((z) => !z.roomKey || !presetKeys.has(z.roomKey))
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-  for (const z of custom) {
+  // 견적에서 직접 만든 방(또는 지금은 '사용 안 함'인 방 틀)
+  const known = new Set(roomDefs.map((r) => r.code));
+  for (const z of [...d.zones].sort((a, b) => a.sortOrder - b.sortOrder)) {
+    if (z.roomKey && known.has(z.roomKey)) continue;
     rooms.push({
       uid: `z:${z.id}`,
       roomKey: null,
       name: z.name,
       nameEng: '',
-      rows: d.lines.filter((l) => l.zoneId === z.id).map((l) => toRow(l, false)),
+      rows: d.lines.filter((l) => l.zoneId === z.id).map((l) => fromLine(l, false)),
     });
   }
-  // 어느 방에도 속하지 않은 물품
   const loose = d.lines.filter((l) => !used.has(l.id));
   if (loose.length) {
     rooms.push({
@@ -95,31 +121,48 @@ const derive = (d: EstimateDetailData): RoomForm[] => {
       roomKey: null,
       name: '미분류',
       nameEng: '',
-      rows: loose.map((l) => toRow(l, false)),
+      rows: loose.map((l) => fromLine(l, false)),
     });
   }
-  return rooms;
+  return { unit: d.volumeUnit ?? 'CBM', rooms };
 };
 
-const filled = (r: ItemRow) => toNum(r.cbm) > 0 || r.memo.trim() !== '';
-const asLines = (rows: ItemRow[]) => rows.map((r) => ({ cbm: toNum(r.cbm), handling: r.handling }));
 let seq = 0;
 const newUid = (p: string) => `${p}:new${++seq}`;
 
-/** 2. 물품정보 — 방마다 물품의 부피·처리방법·메모를 적는다. */
+/** 2. 물품정보 — 방마다 물품을 고르고 부피(또는 무게)·처리방법·메모를 적는다. */
 export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
   const toast = useToast();
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
   const [saving, setSaving] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
+  const catalog = data.moveCatalog;
+  const itemByName = useMemo(() => new Map(catalog.items.map((i) => [i.name, i])), [catalog]);
+  const itemById = useMemo(() => new Map(catalog.items.map((i) => [i.id, i])), [catalog]);
+  const buckets = useMemo(
+    () => Object.fromEntries(catalog.handlings.map((h) => [h.code, h.bucket])),
+    [catalog],
+  );
+  const handlingOptions = catalog.handlings.map((h) => ({
+    value: h.code,
+    label: h.isActive ? h.name : `${h.name} (사용 안 함)`,
+  }));
+  const unit = form.unit;
+  const unitText = VOLUME_UNIT_LABEL[unit];
+  const valueKey = unit === 'TON' ? 'ton' : 'cbm';
+
   // 펼침 상태는 입력값이 아니라서 따로 둔다(저장 안 됨 판정에 섞이지 않게)
   const [open, setOpen] = useState<Set<string>>(() => {
-    const init = derive(data);
-    const withValues = init.filter((r) => r.rows.some(filled)).map((r) => r.uid);
+    const init = derive(data).rooms;
+    const withValues = init.filter((r) => r.rows.some((x) => x.on)).map((r) => r.uid);
     return new Set(withValues.length ? withValues : [init[0]?.uid]);
   });
 
-  const total = useMemo(() => summarizeVolume(asLines(form.flatMap((r) => r.rows))), [form]);
+  const onRows = (rows: ItemRow[]) => rows.filter((r) => r.on);
+  const total = useMemo(
+    () => summarizeVolume(onRows(form.rooms.flatMap((r) => r.rows)), { buckets, unit }),
+    [form, buckets, unit],
+  );
 
   const toggle = (uid: string) =>
     setOpen((s) => {
@@ -128,16 +171,39 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
       else n.add(uid);
       return n;
     });
+  const setRooms = (fn: (rooms: RoomForm[]) => RoomForm[]) =>
+    setForm((f) => ({ ...f, rooms: fn(f.rooms) }));
   const patchRow = (roomUid: string, rowUid: string, patch: Partial<ItemRow>) =>
-    setForm((rooms) =>
+    setRooms((rooms) =>
       rooms.map((r) =>
         r.uid !== roomUid
           ? r
           : { ...r, rows: r.rows.map((row) => (row.uid === rowUid ? { ...row, ...patch } : row)) },
       ),
     );
+
+  /** 켜면 비어 있는 값을 물품의 기본 부피·무게로 채운다(기본값을 안 쓰려면 지우면 된다) */
+  const switchRow = (roomUid: string, row: ItemRow, on: boolean) => {
+    const def = row.cbmItemId ? itemById.get(row.cbmItemId) : undefined;
+    patchRow(roomUid, row.uid, {
+      on,
+      ...(on && def ? { cbm: row.cbm || numText(def.cbm), ton: row.ton || numText(def.ton) } : {}),
+    });
+  };
+
+  /** 직접 추가한 물품의 이름 — 사전에 있는 이름이면 그 물품으로 연결하고 기본값을 채운다 */
+  const renameRow = (roomUid: string, row: ItemRow, name: string) => {
+    const def = itemByName.get(name.trim());
+    patchRow(roomUid, row.uid, {
+      itemName: name,
+      cbmItemId: def?.id ?? null,
+      itemNameEng: def?.nameEng ?? '',
+      ...(def ? { cbm: row.cbm || numText(def.cbm), ton: row.ton || numText(def.ton) } : {}),
+    });
+  };
+
   const addRow = (roomUid: string) =>
-    setForm((rooms) =>
+    setRooms((rooms) =>
       rooms.map((r) =>
         r.uid !== roomUid
           ? r
@@ -147,10 +213,13 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                 ...r.rows,
                 {
                   uid: newUid(roomUid),
+                  cbmItemId: null,
                   itemName: '',
                   itemNameEng: '',
+                  on: true,
                   cbm: '',
-                  handling: 'CARRY',
+                  ton: '',
+                  handling: catalog.handlings[0]?.code ?? 'CARRY',
                   memo: '',
                   preset: false,
                 },
@@ -159,7 +228,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
       ),
     );
   const removeRow = (roomUid: string, rowUid: string) =>
-    setForm((rooms) =>
+    setRooms((rooms) =>
       rooms.map((r) =>
         r.uid !== roomUid ? r : { ...r, rows: r.rows.filter((x) => x.uid !== rowUid) },
       ),
@@ -168,32 +237,36 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
     const name = newRoomName.trim();
     if (!name) return;
     const uid = newUid('room');
-    setForm((rooms) => [...rooms, { uid, roomKey: null, name, nameEng: '', rows: [] }]);
+    setRooms((rooms) => [...rooms, { uid, roomKey: null, name, nameEng: '', rows: [] }]);
     setOpen((s) => new Set(s).add(uid));
     setNewRoomName('');
   };
   const removeRoom = (roomUid: string) =>
-    setForm((rooms) => rooms.filter((r) => r.uid !== roomUid));
+    setRooms((rooms) => rooms.filter((r) => r.uid !== roomUid));
 
   const save = async () => {
-    const unnamed = form.some((r) => r.rows.some((row) => filled(row) && !row.itemName.trim()));
+    const unnamed = form.rooms.some((r) => r.rows.some((row) => row.on && !row.itemName.trim()));
     if (unnamed) {
       toast({ type: 'warning', title: '직접 추가한 물품의 이름을 입력하세요.' });
       return;
     }
     setSaving(true);
     try {
+      const n = (v: string) => (v === '' ? undefined : toNum(v));
       const next = await api<EstimateDetailData>(`/estimates/${data.id}/items`, {
         method: 'PUT',
         body: JSON.stringify({
-          rooms: form.map((r, i) => ({
+          volumeUnit: unit,
+          rooms: form.rooms.map((r, i) => ({
             roomKey: r.roomKey ?? undefined,
             name: r.name,
             sortOrder: i,
-            lines: r.rows.filter(filled).map((row) => ({
+            lines: onRows(r.rows).map((row) => ({
+              cbmItemId: row.cbmItemId ?? undefined,
               itemName: row.itemName.trim(),
               itemNameEng: row.itemNameEng || undefined,
-              cbm: toNum(row.cbm),
+              cbm: n(row.cbm),
+              ton: n(row.ton),
               handling: row.handling,
               memo: row.memo.trim() || undefined,
             })),
@@ -212,35 +285,52 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* 직접 입력한 물품 이름에서 사전 물품을 고를 수 있게 */}
+      <datalist id={`move-items-${data.id}`}>
+        {catalog.items.map((i) => (
+          <option key={i.id} value={i.name} />
+        ))}
+      </datalist>
+
       <div className={styles.panel}>
-        <h3 className={styles.panelTitle}>
-          합계 <span className={styles.sub}>/Total Amount</span>
-        </h3>
+        <div className={styles.panelHead}>
+          <h3 className={styles.panelTitle} style={{ marginBottom: 0 }}>
+            합계 <span className={styles.sub}>/Total Amount</span>
+          </h3>
+          <SegmentedControl
+            value={unit}
+            onChange={(v) => setForm((f) => ({ ...f, unit: v as VolumeUnit }))}
+            options={[
+              { value: 'CBM', label: 'CBM 견적' },
+              { value: 'TON', label: '톤 견적' },
+            ]}
+            size="sm"
+            disabled={!canEdit}
+          />
+        </div>
         <div className={styles.volGrid}>
           {(
             [
-              ['운반물량', total.moving, ''],
-              ['경유물량', total.transit, ''],
-              ['폐기물량', total.discard, '폐기 + 하역'],
-              ['전체물량', total.total, '방치·업체 제외'],
+              ['이사물량', total.moving],
+              ['경유물량', total.transit],
+              ['폐기물량', total.discard],
+              ['전체물량', total.total],
             ] as const
-          ).map(([label, v, note], i) => (
+          ).map(([label, v], i) => (
             <div key={label} className={[styles.volCard, i === 3 ? styles.volTotal : ''].join(' ')}>
-              <div className={styles.infoLabel}>
-                {label}
-                {note && <span style={{ marginLeft: 6, fontSize: 11 }}>({note})</span>}
-              </div>
+              <div className={styles.infoLabel}>{label}</div>
               <div className={styles.volValue}>
-                {v} <span className={styles.unit}>CBM</span>
+                {v} <span className={styles.unit}>{unitText}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {form.map((room, ri) => {
+      {form.rooms.map((room, ri) => {
         const isOpen = open.has(room.uid);
-        const roomTotal = summarizeVolume(asLines(room.rows)).total;
+        const roomTotal = summarizeVolume(onRows(room.rows), { buckets, unit }).total;
+        const count = onRows(room.rows).length;
         return (
           <section key={room.uid} className={styles.room}>
             <button
@@ -254,8 +344,9 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                 <div className={styles.roomName}>{room.name}</div>
                 {room.nameEng && <div className={styles.roomEng}>/{room.nameEng}</div>}
               </span>
-              <span className={[styles.cbmPill, roomTotal ? styles.cbmPillOn : ''].join(' ')}>
-                {roomTotal} CBM
+              <span className={[styles.cbmPill, count ? styles.cbmPillOn : ''].join(' ')}>
+                {count ? `${count}개 · ` : ''}
+                {roomTotal} {unitText}
               </span>
               {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
@@ -265,74 +356,81 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                 <div className={[styles.itemGrid, styles.itemHeadRow].join(' ')}>
                   <span>물품</span>
                   <span>메모</span>
-                  <span style={{ textAlign: 'right' }}>부피(CBM)</span>
+                  <span style={{ textAlign: 'right' }}>
+                    {unit === 'TON' ? '무게(톤)' : '부피(CBM)'}
+                  </span>
                   <span>처리방법</span>
                   <span />
                 </div>
-                {room.rows.map((row) => (
-                  <div
-                    key={row.uid}
-                    className={[
-                      styles.itemGrid,
-                      styles.itemRow,
-                      filled(row) ? styles.itemRowFilled : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    {row.preset ? (
-                      <span className={styles.itemName}>
-                        {row.itemName}
-                        {row.itemNameEng && (
-                          <span className={styles.itemEng}>{row.itemNameEng}</span>
-                        )}
-                      </span>
-                    ) : (
+                {room.rows.map((row) => {
+                  const def = row.cbmItemId ? itemById.get(row.cbmItemId) : undefined;
+                  const fallback = numText(unit === 'TON' ? def?.ton : def?.cbm);
+                  return (
+                    <div
+                      key={row.uid}
+                      className={[
+                        styles.itemGrid,
+                        styles.itemRow,
+                        row.on ? styles.itemRowFilled : styles.itemRowOff,
+                      ].join(' ')}
+                    >
+                      {row.preset ? (
+                        <Checkbox
+                          checked={row.on}
+                          onCheckedChange={(v) => switchRow(room.uid, row, v === true)}
+                          label={row.itemName}
+                          description={row.itemNameEng || undefined}
+                          disabled={!canEdit}
+                        />
+                      ) : (
+                        <input
+                          className={styles.textInput}
+                          value={row.itemName}
+                          list={`move-items-${data.id}`}
+                          placeholder="물품명 (목록에서 고르거나 직접 입력)"
+                          aria-label="물품명"
+                          disabled={!canEdit}
+                          onChange={(e) => renameRow(room.uid, row, e.target.value)}
+                        />
+                      )}
                       <input
                         className={styles.textInput}
-                        value={row.itemName}
-                        placeholder="물품명"
-                        aria-label="물품명"
-                        disabled={!canEdit}
-                        onChange={(e) => patchRow(room.uid, row.uid, { itemName: e.target.value })}
+                        value={row.memo}
+                        placeholder="메모"
+                        aria-label={`${row.itemName || '물품'} 메모`}
+                        disabled={!canEdit || !row.on}
+                        onChange={(e) => patchRow(room.uid, row.uid, { memo: e.target.value })}
                       />
-                    )}
-                    <input
-                      className={styles.textInput}
-                      value={row.memo}
-                      placeholder="메모"
-                      aria-label={`${row.itemName || '물품'} 메모`}
-                      disabled={!canEdit}
-                      onChange={(e) => patchRow(room.uid, row.uid, { memo: e.target.value })}
-                    />
-                    <UnitField
-                      value={row.cbm}
-                      unit="CBM"
-                      ariaLabel={`${row.itemName || '물품'} 부피`}
-                      disabled={!canEdit}
-                      onChange={(v) => patchRow(room.uid, row.uid, { cbm: v })}
-                    />
-                    <Select
-                      value={row.handling}
-                      onValueChange={(v) => patchRow(room.uid, row.uid, { handling: v })}
-                      options={HANDLING_OPTIONS}
-                      disabled={!canEdit}
-                    />
-                    {row.preset ? (
-                      <span />
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        aria-label="물품 삭제"
-                        disabled={!canEdit}
-                        onClick={() => removeRow(room.uid, row.uid)}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                      <UnitField
+                        value={row[valueKey]}
+                        unit={unitText}
+                        ariaLabel={`${row.itemName || '물품'} ${unit === 'TON' ? '무게' : '부피'}`}
+                        placeholder={fallback || '0'}
+                        disabled={!canEdit || !row.on}
+                        onChange={(v) => patchRow(room.uid, row.uid, { [valueKey]: v })}
+                      />
+                      <Select
+                        value={row.handling}
+                        onValueChange={(v) => patchRow(room.uid, row.uid, { handling: v })}
+                        options={handlingOptions}
+                        disabled={!canEdit || !row.on}
+                      />
+                      {row.preset ? (
+                        <span />
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.iconBtn}
+                          aria-label="물품 삭제"
+                          disabled={!canEdit}
+                          onClick={() => removeRow(room.uid, row.uid)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
                 {canEdit && (
                   <div className={styles.roomFoot}>
                     <Button variant="outline" size="sm" onClick={() => addRow(room.uid)}>
@@ -374,7 +472,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         canEdit={canEdit}
         onSave={save}
         onReset={reset}
-        hint="부피나 메모를 적은 물품만 저장됩니다."
+        hint="체크한 물품만 저장됩니다. 체크하면 물품의 기본 부피·무게가 채워지고, 고쳐 쓸 수 있습니다."
       />
     </div>
   );

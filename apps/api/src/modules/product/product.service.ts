@@ -9,6 +9,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { createWithCode, normalizeName } from '../../common/util/master-code';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import type { BundleItemInput } from './dto/bundle-items.dto';
 
 @Injectable()
 export class ProductService {
@@ -33,12 +34,44 @@ export class ProductService {
       include: {
         addons: {
           include: { addon: true },
-          orderBy: { createdAt: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         },
       },
     });
     if (!found) throw new NotFoundException(`상품을 찾을 수 없습니다: ${id}`);
     return found;
+  }
+
+  /**
+   * 상품 구성을 통째로 바꾼다 — 가정이사 = 이사물량(필수) + 사다리차·정리수납…(선택).
+   * 이사물량 같은 VOLUME 상품은 하나만 둘 수 있다.
+   */
+  async setItems(productId: string, items: BundleItemInput[]) {
+    await this.findOne(productId);
+    const ids = items.map((i) => i.addonServiceId);
+    if (new Set(ids).size !== ids.length)
+      throw new BadRequestException('같은 상품이 두 번 들어 있습니다.');
+    const found = await this.prisma.addonService.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, kind: true },
+    });
+    if (found.length !== ids.length) throw new BadRequestException('없는 상품이 섞여 있습니다.');
+    if (found.filter((f) => f.kind === 'VOLUME').length > 1) {
+      throw new BadRequestException('이사물량 상품은 한 구성에 하나만 넣을 수 있습니다.');
+    }
+    await this.prisma.$transaction([
+      this.prisma.productAddon.deleteMany({ where: { productId } }),
+      this.prisma.productAddon.createMany({
+        data: items.map((it, i) => ({
+          productId,
+          addonServiceId: it.addonServiceId,
+          role: it.role,
+          priceOverride: it.priceOverride ?? null,
+          sortOrder: (i + 1) * 10,
+        })),
+      }),
+    ]);
+    return this.findOneWithAddons(productId);
   }
 
   async addAddon(productId: string, addonServiceId: string, priceOverride?: number) {

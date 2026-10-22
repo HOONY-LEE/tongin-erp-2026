@@ -1,0 +1,247 @@
+/* 캠페인 작성 화면 */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.panel {
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.panelTitle {
+  margin: 0;
+  font-size: var(--ark-font-size-md);
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ark-color-text-secondary);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ark-color-text-secondary);
+}
+.row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.textarea {
+  min-height: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  font: inherit;
+  color: var(--ark-color-text);
+  line-height: 1.55;
+  resize: vertical;
+}
+.textarea:focus {
+  outline: none;
+  border-color: var(--ark-color-info-500);
+  box-shadow: 0 0 0 1px var(--ark-color-info-500);
+}
+.counter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+}
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dateInput {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  font: inherit;
+  color: var(--ark-color-text);
+  min-width: 0;
+}
+
+/* 고르기 칩(시·도, 접수상태, 등급) */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 5px 11px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  font: inherit;
+  font-size: 13px;
+  color: var(--ark-color-text);
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--ark-color-primary-500);
+}
+.chipOn,
+.chipOn:hover {
+  border-color: var(--ark-color-primary-500);
+  background: var(--ark-color-primary-50);
+  color: var(--ark-color-primary-600);
+  font-weight: 600;
+}
+.chip:focus-visible {
+  outline: 2px solid var(--ark-color-info-500);
+  outline-offset: 2px;
+}
+
+/* 고객 목록 */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th,
+.table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--ark-color-border);
+  white-space: nowrap;
+}
+.table th {
+  background: var(--ark-color-bg-muted);
+  font-weight: 600;
+  color: var(--ark-color-text-secondary);
+}
+.table tr:last-child td {
+  border-bottom: none;
+}
+.rowOn td {
+  background: color-mix(in srgb, var(--ark-color-primary-500) 5%, transparent);
+}
+.addr {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+/* 오른쪽 — 미리보기·요약 */
+.sticky {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.phone {
+  border-radius: 22px;
+  background: var(--ark-color-bg-muted);
+  padding: 16px 14px;
+  min-height: 220px;
+}
+.bubble {
+  background: var(--ark-color-bg);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+.kakaoHead {
+  margin: -12px -14px 10px;
+  padding: 8px 14px;
+  border-radius: 14px 14px 0 0;
+  background: #fee500;
+  color: #191919;
+  font-weight: 700;
+  font-size: 12px;
+}
+.kakaoBtn {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-muted);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.summary b {
+  font-size: 15px;
+}
+.warn {
+  font-size: 12px;
+  color: var(--ark-color-warning-600, #d97706);
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sticky {
+    position: static;
+  }
+}
+@media (max-width: 760px) {
+  .row2,
+  .row3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

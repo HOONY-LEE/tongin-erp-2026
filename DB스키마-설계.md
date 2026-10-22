@@ -183,7 +183,13 @@ CREATE TABLE cbm_item (
 );
 
 -- C. 옵션/부가서비스: 애드온 (분해설치·사다리차·보관…)
-CREATE TABLE addon_service (            -- 옵션 카탈로그 = 견적 3단계 옵션 목록의 원본
+-- 상품구성(product = 가정이사 등 묶음) ↔ 상품(addon_service) — 설계노트 E-5
+--   product_addon(product_id, addon_service_id, role REQUIRED|DEFAULT|OPTIONAL, price_override 구성 단가, sort_order)
+-- 이사물량 카탈로그 — 이사물품(cbm_item: code ITM-, name 유일, name_eng, cbm·ton 기본값 nullable)
+--   room_template(code, name, name_eng) + room_template_item(room_id, cbm_item_id, sort_order) — 방은 물품을 가리키기만
+--   handling_method(code, name, bucket MOVING|TRANSIT|DISCARD|EXCLUDED) — estimate_line.handling = code
+--   estimate.volume_unit CBM|TON, total_ton, options_saved_at / estimate_line.ton / estimate_addon.is_extra
+CREATE TABLE addon_service (            -- 상품 = 실제로 파는 것(이사물량 kind=VOLUME 포함). 견적 3단계 목록의 원본
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   code text UNIQUE NOT NULL,            -- 서버 발급 OPT-0001
   name text NOT NULL,                   -- 중복 불가(서버 검사)

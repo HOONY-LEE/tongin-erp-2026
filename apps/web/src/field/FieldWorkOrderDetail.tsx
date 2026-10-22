@@ -342,7 +342,7 @@ function LineList({ lines }: { lines: FieldLine[] }) {
           <span style={{ flex: 1, minWidth: 0 }}>{l.itemName}</span>
           {l.handling !== 'CARRY' && (
             <Badge variant="subtle" color="warning">
-              {HANDLING_LABEL[l.handling] ?? l.handling}
+              {l.handlingName ?? HANDLING_LABEL[l.handling] ?? l.handling}
             </Badge>
           )}
           <span style={{ fontWeight: 700 }}>{Number(l.qty)}개</span>

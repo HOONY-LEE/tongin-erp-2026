@@ -87,24 +87,54 @@ export const HANDLING_LABEL: Record<Handling, string> = {
   VENDOR: '업체', // 다른 업체가 처리 — 물량에 넣지 않는다
 };
 
-/** 물량 요약 — 이사물량(운반) / 경유물량 / 폐기물량(폐기+하역). 방치·업체는 넣지 않는다. */
+/**
+ * 처리방법은 데이터(handling_method)로 관리하고, 각 처리방법이 물량의 어느 칸에 들어가는지(bucket)를 정한다.
+ * 위 HANDLING·HANDLING_LABEL은 기본 6종(처음 데이터와 같음) — 처리방법 목록을 못 받았을 때의 기본값.
+ */
+export const HANDLING_BUCKETS = ['MOVING', 'TRANSIT', 'DISCARD', 'EXCLUDED'] as const;
+export type HandlingBucket = (typeof HANDLING_BUCKETS)[number];
+export const HANDLING_BUCKET_LABEL: Record<HandlingBucket, string> = {
+  MOVING: '이사물량',
+  TRANSIT: '경유물량',
+  DISCARD: '폐기물량',
+  EXCLUDED: '물량 제외',
+};
+export const DEFAULT_HANDLING_BUCKET: Record<string, HandlingBucket> = {
+  CARRY: 'MOVING',
+  VIA: 'TRANSIT',
+  DISPOSE: 'DISCARD',
+  UNLOAD: 'DISCARD',
+  LEAVE: 'EXCLUDED',
+  VENDOR: 'EXCLUDED',
+};
+
+/** 이사물량을 무엇으로 견적하나 — 부피(CBM) 또는 무게(톤) */
+export const VOLUME_UNITS = ['CBM', 'TON'] as const;
+export type VolumeUnit = (typeof VOLUME_UNITS)[number];
+export const VOLUME_UNIT_LABEL: Record<VolumeUnit, string> = { CBM: 'CBM', TON: '톤' };
+
+/** 물량 요약 — 이사물량 / 경유물량 / 폐기물량. '물량 제외' 처리방법은 넣지 않는다. */
 export interface VolumeSummary {
   moving: number;
   transit: number;
   discard: number;
   total: number;
 }
+type Num = number | string | { toString(): string } | null | undefined;
 export function summarizeVolume(
-  lines: { cbm: number | string | { toString(): string }; handling: string }[],
+  lines: { cbm?: Num; ton?: Num; handling: string }[],
+  opts: { unit?: VolumeUnit; buckets?: Record<string, string> } = {},
 ): VolumeSummary {
+  const buckets = opts.buckets ?? DEFAULT_HANDLING_BUCKET;
   let moving = 0;
   let transit = 0;
   let discard = 0;
   for (const l of lines) {
-    const cbm = Number(l.cbm) || 0;
-    if (l.handling === 'CARRY') moving += cbm;
-    else if (l.handling === 'VIA') transit += cbm;
-    else if (l.handling === 'DISPOSE' || l.handling === 'UNLOAD') discard += cbm;
+    const v = Number(opts.unit === 'TON' ? l.ton : l.cbm) || 0;
+    const b = buckets[l.handling] ?? DEFAULT_HANDLING_BUCKET[l.handling];
+    if (b === 'MOVING') moving += v;
+    else if (b === 'TRANSIT') transit += v;
+    else if (b === 'DISCARD') discard += v;
   }
   const r = (n: number) => Math.round(n * 100) / 100;
   return {
@@ -115,114 +145,42 @@ export function summarizeVolume(
   };
 }
 
-/**
- * 견적 물품 입력 기본 틀 — 방(위치)과 방마다 기본으로 펼쳐 둘 물품.
- * 견적사원은 값이 있는 물품만 채우고, 저장은 채운 물품만 한다(빈 행은 저장하지 않음).
- * 목록에 없는 물품은 방마다 직접 추가할 수 있다.
- */
-export interface RoomPreset {
-  key: string;
+/** 견적 물품정보에 내려주는 이사물량 카탈로그(방 틀·물품 사전·처리방법) */
+export interface MoveItemDef {
+  id: string;
   name: string;
-  nameEng: string;
-  items: { name: string; nameEng: string }[];
+  nameEng: string | null;
+  category: string;
+  cbm: string | number | null;
+  ton: string | number | null;
 }
-const BEDROOM_ITEMS: RoomPreset['items'] = [
-  { name: '장롱', nameEng: 'Wardrobe' },
-  { name: '이불', nameEng: 'Bedding' },
-  { name: '의류', nameEng: 'Clothes' },
-  { name: '침대', nameEng: 'Bed' },
-  { name: '협탁', nameEng: 'Side Table' },
-  { name: '책장', nameEng: 'Bookshelf' },
-  { name: '책', nameEng: 'Books' },
-  { name: '장식장', nameEng: 'Display Cabinet' },
-  { name: '공기청정기', nameEng: 'Air Purifier' },
-  { name: '고가구', nameEng: 'Antique Furniture' },
-  { name: '화장대', nameEng: 'Dresser' },
-  { name: '서랍장', nameEng: 'Drawers' },
-  { name: '탁자/책상', nameEng: 'Table, Desk' },
-  { name: '의자', nameEng: 'Chair' },
-  { name: '홈시어터', nameEng: 'Home Theater' },
-  { name: '오디오', nameEng: 'Audio' },
-  { name: '컴퓨터', nameEng: 'Computer' },
-  { name: '피아노', nameEng: 'Piano' },
-  { name: '에어컨', nameEng: 'Air Conditioner' },
-  { name: '장난감', nameEng: 'Toys' },
-  { name: 'BOX류', nameEng: 'Boxes' },
-  { name: '에어드레서', nameEng: 'Air Dresser' },
-];
-export const ROOM_PRESETS: RoomPreset[] = [
-  { key: 'MASTER', name: '안방', nameEng: "MASTER'S ROOM", items: BEDROOM_ITEMS },
-  { key: 'BED1', name: '건너방', nameEng: 'BEDROOM', items: BEDROOM_ITEMS },
-  { key: 'BED2', name: '건너방2', nameEng: 'BEDROOM 2', items: BEDROOM_ITEMS },
-  { key: 'BED3', name: '건너방3', nameEng: 'BEDROOM 3', items: BEDROOM_ITEMS },
-  { key: 'BED4', name: '건너방4', nameEng: 'BEDROOM 4', items: BEDROOM_ITEMS },
-  {
-    key: 'LIVING',
-    name: '거실',
-    nameEng: 'LIVING ROOM',
-    items: [
-      { name: '소파', nameEng: 'Sofa' },
-      { name: '탁자', nameEng: 'Table' },
-      { name: '책', nameEng: 'Books' },
-      { name: '책상', nameEng: 'Desk' },
-      { name: '고가구', nameEng: 'Antique Furniture' },
-      { name: '도자기류', nameEng: 'Chinaware' },
-      { name: '홈시어터', nameEng: 'Home Theater' },
-      { name: '오디오', nameEng: 'Audio' },
-      { name: '장식장', nameEng: 'Display Cabinet' },
-      { name: '장식품', nameEng: 'Ornaments' },
-      { name: '에어컨', nameEng: 'Air Conditioner' },
-      { name: '콘솔', nameEng: 'Console' },
-      { name: '거실장', nameEng: 'TV Cabinet' },
-      { name: '에어드레서', nameEng: 'Air Dresser' },
-      { name: '공기청정기', nameEng: 'Air Purifier' },
-    ],
-  },
-  {
-    key: 'KITCHEN',
-    name: '주방',
-    nameEng: 'KITCHEN',
-    items: [
-      { name: '식탁/의자', nameEng: 'Dining Table, Chair' },
-      { name: '장식장', nameEng: 'Display Cabinet' },
-      { name: '수납장', nameEng: 'Storage Cabinet' },
-      { name: '냉장고', nameEng: 'Refrigerator' },
-      { name: '정수기냉장고', nameEng: 'Water Purifier Refrigerator' },
-      { name: '냉동고', nameEng: 'Freezer' },
-      { name: '식기세척기', nameEng: 'Dishwasher' },
-      { name: '식기건조기', nameEng: 'Dish Dryer' },
-      { name: '김치냉장고', nameEng: 'Kimchi Refrigerator' },
-      { name: '가스레인지', nameEng: 'Gas Range' },
-      { name: '전자레인지', nameEng: 'Microwave' },
-      { name: '쌀통', nameEng: 'Rice Bin' },
-      { name: '식기류', nameEng: 'Dishes' },
-      { name: '정수기', nameEng: 'Water Purifier' },
-    ],
-  },
-  {
-    key: 'BALCONY_FRONT',
-    name: '앞 발코니',
-    nameEng: 'FRONT BALCONY',
-    items: [
-      { name: '화분', nameEng: 'Flower Pots' },
-      { name: '항아리', nameEng: 'Jars' },
-      { name: '운동기구', nameEng: 'Exercise Equipment' },
-      { name: '자전거', nameEng: 'Bicycle' },
-    ],
-  },
-  {
-    key: 'BALCONY_BACK',
-    name: '뒤 발코니',
-    nameEng: 'BACK BALCONY',
-    items: [{ name: '세탁기/건조기', nameEng: 'Washer, Dryer' }],
-  },
-  {
-    key: 'ETC',
-    name: '다용도실·현관·화장실·창고',
-    nameEng: 'ETC',
-    items: [{ name: '신발류', nameEng: 'Shoes' }],
-  },
-];
+export interface RoomTemplateDef {
+  id: string;
+  code: string;
+  name: string;
+  nameEng: string | null;
+  itemIds: string[];
+}
+export interface HandlingDef {
+  code: string;
+  name: string;
+  bucket: HandlingBucket;
+  isActive: boolean;
+}
+export interface MoveCatalog {
+  rooms: RoomTemplateDef[];
+  items: MoveItemDef[];
+  handlings: HandlingDef[];
+}
+
+/** 상품 구성(가정이사 등)에서 상품의 역할 */
+export const BUNDLE_ROLES = ['REQUIRED', 'DEFAULT', 'OPTIONAL'] as const;
+export type BundleRole = (typeof BUNDLE_ROLES)[number];
+export const BUNDLE_ROLE_LABEL: Record<BundleRole, string> = {
+  REQUIRED: '필수',
+  DEFAULT: '기본선택',
+  OPTIONAL: '선택',
+};
 
 /**
  * 견적 옵션 — 견적서 3단계(옵션선택)에서 고르는 항목.
@@ -252,6 +210,12 @@ export interface EstimateOptionDef {
   hasNote: boolean;
   price: string | number | null;
   isActive: boolean;
+  /** VOLUME = 이사물량(물품정보로 견적) | SERVICE */
+  kind: 'VOLUME' | 'SERVICE';
+  /** 이 견적의 상품 구성에서의 역할. null이면 구성 밖 — '추가 상품'으로만 고를 수 있다 */
+  role: BundleRole | null;
+  /** 구성에서 정한 단가(없으면 price). 이사물량이면 CBM·톤당 단가 */
+  bundlePrice: string | number | null;
 }
 /** 견적서·목록에 쓰는 옵션 표기 — "입주청소서비스(프리미엄)", "일반 장롱 분해·설치" */
 export function optionLabel(
@@ -326,8 +290,42 @@ export type MaterialOrderStatus = (typeof MATERIAL_ORDER_STATUS)[number];
 // MKT-01: 마케팅 캠페인 채널/상태
 export const CAMPAIGN_CHANNELS = ['SMS', 'ALIMTALK'] as const;
 export type CampaignChannel = (typeof CAMPAIGN_CHANNELS)[number];
-export const CAMPAIGN_STATUS = ['DRAFT', 'SENT'] as const;
+export const CAMPAIGN_CHANNEL_LABEL: Record<CampaignChannel, string> = {
+  SMS: '문자(SMS·LMS)',
+  ALIMTALK: '카카오 알림톡',
+};
+export const CAMPAIGN_STATUS = ['DRAFT', 'SCHEDULED', 'SENDING', 'SENT', 'CANCELED'] as const;
 export type CampaignStatus = (typeof CAMPAIGN_STATUS)[number];
+export const CAMPAIGN_STATUS_LABEL: Record<CampaignStatus, string> = {
+  DRAFT: '작성 중',
+  SCHEDULED: '예약됨',
+  SENDING: '발송 중',
+  SENT: '발송 완료',
+  CANCELED: '취소',
+};
+
+/** 캠페인 받을 고객 고르기 조건 — 화면·서버 공용 */
+export interface CampaignAudienceFilter {
+  keyword?: string; // 이름·전화번호 일부
+  sido?: string[]; // 시·도(고객 주소 또는 접수 출발·도착지)
+  addressKeyword?: string; // 주소 일부(구·동·아파트명 …)
+  moveDateFrom?: string; // 이사일(접수) 범위 YYYY-MM-DD
+  moveDateTo?: string;
+  receivedFrom?: string; // 접수일 범위
+  receivedTo?: string;
+  leadStatuses?: string[]; // 접수 진행상태(하나라도 해당하는 접수가 있는 고객)
+  grades?: string[]; // 고객 등급
+  orgUnitId?: string; // 담당 지점
+  excludeRecentDays?: number; // 최근 N일 안에 캠페인을 받은 고객 제외
+}
+
+/** 문자 바이트 길이(EUC-KR 기준: 한글 2바이트) — 90바이트 넘으면 장문(LMS) */
+export function smsBytes(text: string): number {
+  let n = 0;
+  for (const ch of text) n += ch.charCodeAt(0) > 0x7f ? 2 : 1;
+  return n;
+}
+export const SMS_MAX_BYTES = 90;
 
 // ── HR-01: 인센티브/패널티 정책 엔진 (설정 기반 — 규칙=데이터) ──
 export const HR_POLICY_KINDS = ['INCENTIVE', 'PENALTY'] as const; // 수당(+) / 패널티(−)
@@ -420,8 +418,26 @@ export interface StatsOverview {
     outstanding: number; // 미수금(revenue − collected)
     conversionRate: number; // 계약수 / 리드수 (0~1)
   };
-  byBranch: { orgUnitName: string; contractCount: number; revenue: number }[];
+  /** 지점별 실적 — 접수·계약(SIGNED)·작업(전체)·매출(SIGNED 총액) */
+  byBranch: StatsByUnit[];
+  /** 시·도별 실적 — 접수 출발지 기준(지도 모드) */
+  byRegion: (Omit<StatsByUnit, 'orgUnitName'> & { sido: string })[];
 }
+export interface StatsByUnit {
+  orgUnitName: string;
+  leadCount: number;
+  contractCount: number;
+  workCount: number;
+  revenue: number;
+}
+export const STATS_METRICS = ['leadCount', 'contractCount', 'workCount', 'revenue'] as const;
+export type StatsMetric = (typeof STATS_METRICS)[number];
+export const STATS_METRIC_LABEL: Record<StatsMetric, string> = {
+  leadCount: '접수 건수',
+  contractCount: '계약 건수',
+  workCount: '작업 건수',
+  revenue: '매출',
+};
 
 // ── FND-03: 인증 + RBAC ──
 
