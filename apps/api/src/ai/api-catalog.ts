@@ -280,7 +280,8 @@ export class ApiCatalog implements OnApplicationBootstrap {
     const description =
       `[${domain.split(' — ')[0]}] ${verb}. ${domain}. ` +
       `(${r.httpMethod} /${path}${r.permissions.length ? ` · 권한 ${r.permissions.join(',')}` : ''}` +
-      `${mode === 'WRITE' ? ' · 실행 전 사용자 승인 필요' : ''})`;
+      `${mode === 'WRITE' ? ' · 실행 전 사용자 승인 필요' : ''})` +
+      `\n검색어: ${keywords(domain, verb, path, r.handlerName)}`;
 
     return {
       name: `erp_${snake(r.base)}_${snake(r.handlerName)}`.slice(0, 64),
@@ -306,6 +307,20 @@ export class ApiCatalog implements OnApplicationBootstrap {
         }),
     };
   }
+}
+
+/**
+ * tool search(BM25)는 띄어쓰기로 낱말을 나눈다 — "미수금(청구"처럼 문장부호에 붙은 낱말은
+ * "미수금"으로 찾히지 않는다. 설명의 낱말·경로·동작 이름을 깨끗이 쪼개 한 줄로 덧붙인다.
+ */
+function keywords(...parts: string[]) {
+  const words = parts
+    .join(' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .split(/[^0-9A-Za-z가-힣]+/)
+    .map((w) => w.toLowerCase())
+    .filter((w) => w.length > 1 && !/^\d+$/.test(w));
+  return [...new Set(words)].join(' ');
 }
 
 function fillPath(path: string, input: Record<string, unknown>) {
