@@ -11,6 +11,8 @@ import { ScopeService } from '../../scope/scope.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
+const GRADE_GROUP = 'CUSTOMER_GRADE';
+
 @Injectable()
 export class CustomerService {
   constructor(
@@ -48,6 +50,25 @@ export class CustomerService {
     });
   }
 
+  /** 고객 등급 — 공통코드 CUSTOMER_GRADE(관리자가 고객관리 설정에서 정의) */
+  grades() {
+    return this.prisma.commonCode.findMany({
+      where: { codeGroup: GRADE_GROUP, isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { code: true, name: true },
+    });
+  }
+
+  /** 등급은 정의된 값만 — 없는 값이면 400 */
+  private async assertGrade(grade?: string | null) {
+    if (!grade) return;
+    const ok = await this.prisma.commonCode.findFirst({
+      where: { codeGroup: GRADE_GROUP, code: grade },
+      select: { id: true },
+    });
+    if (!ok) throw new BadRequestException(`없는 고객 등급입니다: ${grade}`);
+  }
+
   async findOne(id: string, principal?: AuthPrincipal) {
     const found = await this.prisma.customer.findUnique({ where: { id } });
     if (!found) throw new NotFoundException(`고객을 찾을 수 없습니다: ${id}`);
@@ -57,6 +78,7 @@ export class CustomerService {
 
   async create(dto: CreateCustomerDto, principal?: AuthPrincipal) {
     await this.assertScope(dto.ownerOrgId ?? null, principal);
+    await this.assertGrade(dto.grade);
     try {
       return await this.prisma.customer.create({ data: dto });
     } catch (e) {
@@ -67,6 +89,7 @@ export class CustomerService {
   async update(id: string, dto: UpdateCustomerDto, principal?: AuthPrincipal) {
     await this.findOne(id, principal);
     if (dto.ownerOrgId !== undefined) await this.assertScope(dto.ownerOrgId ?? null, principal);
+    if (dto.grade !== undefined) await this.assertGrade(dto.grade);
     try {
       return await this.prisma.customer.update({ where: { id }, data: dto });
     } catch (e) {

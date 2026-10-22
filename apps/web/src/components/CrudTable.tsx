@@ -24,6 +24,8 @@ interface Props {
   rowActions?: (row: Row, reload: () => Promise<void>) => ReactNode;
   /** 버튼 칸 폭을 더 잡아야 할 때(rowActions 버튼 폭) */
   extraActionWidth?: number;
+  /** 머리글 오른쪽에 둘 버튼(예: 설정) */
+  headerActions?: ReactNode;
 }
 
 /** 행 값을 폼 초기값(문자열)으로 — 주소 칸은 우편번호·주소·좌표 등 여러 키로 나뉜다 */
@@ -48,6 +50,7 @@ export default function CrudTable({
   deletable,
   rowActions,
   extraActionWidth = 0,
+  headerActions,
 }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -145,7 +148,9 @@ export default function CrudTable({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {!hideHeader && <PageHeader title={title} onRefresh={load} updatedAt={updatedAt} />}
+      {!hideHeader && (
+        <PageHeader title={title} onRefresh={load} updatedAt={updatedAt} actions={headerActions} />
+      )}
       <DataTable
         columns={hasActions ? [...columns, actionColumn] : columns}
         rows={rows}

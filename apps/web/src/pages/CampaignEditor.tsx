@@ -47,11 +47,6 @@ const SIDO = [
   '경남',
   '제주',
 ];
-const GRADES = [
-  { value: 'VIP', label: 'VIP' },
-  { value: 'GOLD', label: '우수' },
-  { value: 'NORMAL', label: '일반' },
-];
 const NAME_TOKEN = '{고객명}';
 const DEFAULT_OPT_OUT = '무료수신거부 080-000-0000';
 const PAGE_SIZE = 50;
@@ -150,6 +145,7 @@ export default function CampaignEditor() {
   const navigate = useNavigate();
   const toast = useToast();
   const orgs = useOptions('/org-units', 'name');
+  const grades = useOptions('/customers/grades', 'name', 'code');
 
   const [loaded, setLoaded] = useState<CampaignData | null>(null);
   const [loading, setLoading] = useState(!isNew);
@@ -808,7 +804,7 @@ export default function CampaignEditor() {
               <div className={styles.field}>
                 <span className={styles.label}>고객 등급</span>
                 <Chips
-                  options={GRADES}
+                  options={grades}
                   value={filter.grades ?? []}
                   onChange={(v) => setF('grades', v)}
                 />
