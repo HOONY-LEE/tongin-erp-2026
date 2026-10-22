@@ -268,11 +268,12 @@ model RoomTemplate {
   id        String             @id @default(uuid()) @db.Uuid
   code      String             @unique // 견적 방(estimate_zone.room_key)이 가리키는 키. 기본 방은 MASTER 등, 새 방은 ROOM-0001
   name      String             @unique
-  nameEng   String?            @map("name_eng")
-  sortOrder Int                @default(0) @map("sort_order")
-  isActive  Boolean            @default(true) @map("is_active")
-  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  items     RoomTemplateItem[]
+  nameEng    String?            @map("name_eng")
+  extraSlots Int                @default(2) @map("extra_slots") // 견적표에 둘 '기타' 칸 수(목록 밖 물품은 여기에 메모와 함께 적는다)
+  sortOrder  Int                @default(0) @map("sort_order")
+  isActive   Boolean            @default(true) @map("is_active")
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  items      RoomTemplateItem[]
 
   @@map("room_template")
 }

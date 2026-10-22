@@ -217,7 +217,7 @@ export default {
   },
   estimate: {
     detail: 'Detail',
-    document: 'Estimate sheet',
+    document: 'Contract & estimate',
     toContract: 'Create contract',
     moveAddress: 'Move addresses',
     from: 'From',

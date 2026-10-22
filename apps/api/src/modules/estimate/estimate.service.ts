@@ -7,12 +7,8 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
-  ACCESS_LABEL,
-  HANDLING_LABEL,
-  LEAD_STATUS_LABEL,
   optionLabel,
   summarizeVolume,
-  type AccessMethod,
   type AuthPrincipal,
   type EstimateMeta,
   type LeadStatus,
@@ -36,6 +32,7 @@ import {
 } from './dto/estimate-child.dto';
 import { CreateCostLineDto } from './dto/cost-line.dto';
 import { SaveBasicDto, SaveItemsDto, SaveOptionsDto } from './dto/estimate-tabs.dto';
+import { renderEstimateDocument } from './estimate-document';
 
 @Injectable()
 export class EstimateService {
@@ -753,6 +750,7 @@ export class EstimateService {
   }
 
   /** 견적서 문서를 데이터에서 즉석 HTML로 생성(무저장, 설계노트 E-0). 브라우저에서 인쇄→PDF. */
+  /** 계약서·견적서(A4 2쪽, 종이 양식 그대로) — 렌더는 estimate-document.ts */
   async document(id: string, principal?: AuthPrincipal): Promise<string> {
     await this.findOne(id, principal); // 조직 스코프 검증
     const e = await this.prisma.estimate.findUnique({
@@ -761,128 +759,48 @@ export class EstimateService {
         zones: { orderBy: { sortOrder: 'asc' } },
         lines: true,
         addons: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+        contract: { select: { contractNo: true, signedAt: true } },
       },
     });
     if (!e) throw new NotFoundException(`견적을 찾을 수 없습니다: ${id}`);
-    const m = await this.buildMeta(id);
-
-    const esc = (v: unknown) =>
-      String(v ?? '').replace(/[&<>"]/g, (c) =>
-        c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;',
-      );
-    const dash = (v: unknown) => (v == null || v === '' ? '-' : esc(v));
-    const won = (v: unknown) =>
-      v == null || v === '' ? '-' : `${Number(v).toLocaleString('ko-KR')}원`;
-    const handlingRows = await this.prisma.handlingMethod.findMany({
-      select: { code: true, name: true, bucket: true },
+    const [meta, catalog, rooms, handlings] = await Promise.all([
+      this.buildMeta(id),
+      this.prisma.addonService.findMany({
+        where: {
+          OR: [{ isActive: true }, { id: { in: e.addons.flatMap((a) => a.addonServiceId ?? []) } }],
+        },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, name: true, groupCode: true, kind: true, variants: true },
+      }),
+      this.prisma.roomTemplate.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        include: {
+          items: {
+            orderBy: { sortOrder: 'asc' },
+            select: { cbmItem: { select: { id: true, name: true } } },
+          },
+        },
+      }),
+      this.prisma.handlingMethod.findMany({ select: { code: true, name: true, bucket: true } }),
+    ]);
+    return renderEstimateDocument({
+      ...e,
+      contractNo: e.contract?.contractNo ?? null,
+      signedAt: e.contract?.signedAt ?? null,
+      meta,
+      catalog: catalog.map((c) => ({
+        ...c,
+        variants: (c.variants as { value: string; label: string }[] | null) ?? null,
+      })),
+      rooms: rooms.map((r) => ({
+        code: r.code,
+        name: r.name,
+        extraSlots: r.extraSlots,
+        items: r.items.map((i) => i.cbmItem),
+      })),
+      handlings,
     });
-    const handling: Record<string, string> = {
-      ...HANDLING_LABEL,
-      ...Object.fromEntries(handlingRows.map((h) => [h.code, h.name])),
-    };
-    const buckets = Object.fromEntries(handlingRows.map((h) => [h.code, h.bucket]));
-    const unit = e.volumeUnit === 'TON' ? 'TON' : 'CBM';
-    const unitText = unit === 'TON' ? '톤' : 'CBM';
-    const access = (a: string, note: string | null) =>
-      `${esc(ACCESS_LABEL[a as AccessMethod] ?? a)}${a === 'ETC' && note ? `(${esc(note)})` : ''}`;
-    const addr = (a: string | null, d: string | null) => (a ? `${esc(a)} ${esc(d ?? '')}` : '-');
-
-    // 물량 요약 — 화면과 같은 규칙(shared summarizeVolume): 처리방법의 물량 칸대로, '물량 제외'는 빼고
-    const v = summarizeVolume(e.lines, { buckets, unit });
-    const volume: [string, number][] = [
-      ['이사물량(운반)', v.moving],
-      ['경유물량', v.transit],
-      ['폐기물량', v.discard],
-      ['전체물량', v.total],
-    ];
-
-    // 방별 품목 — 구역 순서대로, 구역 없는 품목은 맨 끝 "기타"로
-    const groups = [
-      ...e.zones.map((z) => ({ name: z.name, lines: e.lines.filter((l) => l.zoneId === z.id) })),
-      { name: '기타', lines: e.lines.filter((l) => !l.zoneId) },
-    ].filter((g) => g.lines.length);
-    const itemRows = groups
-      .map((g) =>
-        g.lines
-          .map(
-            (l, i) =>
-              `<tr>${i === 0 ? `<td rowspan="${g.lines.length}">${esc(g.name)}</td>` : ''}<td>${esc(l.itemName)}${l.itemNameEng ? ` <span class="muted">${esc(l.itemNameEng)}</span>` : ''}</td><td class="r">${esc(Number(l.qty))}</td><td class="r">${esc(
-                Number(unit === 'TON' ? (l.ton ?? 0) : l.cbm),
-              )}</td><td>${esc(handling[l.handling] ?? l.handling)}</td><td>${dash(l.memo)}</td></tr>`,
-          )
-          .join(''),
-      )
-      .join('');
-
-    const addonRows = e.addons
-      .map(
-        (a) =>
-          `<tr><td>${esc(a.name)}${a.memo ? ` <span class="muted">· ${esc(a.memo)}</span>` : ''}${a.serviceDate ? ` <span class="muted">· 요청일 ${a.serviceDate.toISOString().slice(0, 10)}</span>` : ''}</td><td class="r">${won(
-            a.unitPrice,
-          )}</td><td class="r">${esc(Number(a.qty))}</td><td class="r">${won(a.amount)}</td></tr>`,
-      )
-      .join('');
-    const addonTotal = e.addons.reduce((sum, a) => sum + Number(a.amount), 0);
-    const vatIncluded = e.vatMode === 'INCLUDED';
-
-    return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>견적서 ${esc(
-      e.estimateNo,
-    )}</title><style>
-body{font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;color:#111827;max-width:820px;margin:24px auto;padding:0 24px;font-size:13px}
-h1{font-size:24px;letter-spacing:.3em;text-align:center;border-bottom:2px solid #111827;padding-bottom:10px;margin-bottom:6px}
-h2{font-size:15px;margin:22px 0 8px;padding-left:8px;border-left:3px solid #111827}
-.top{display:flex;justify-content:space-between;color:#4b5563;margin-bottom:14px}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #e5e7eb;padding:6px 9px;text-align:left;vertical-align:top}
-th{background:#f9fafb;font-weight:600;white-space:nowrap}
-.kv th{width:13%}
-td.r,th.r{text-align:right}
-.muted{color:#6b7280}
-.vol td{text-align:center;font-weight:600}
-.total td{font-weight:700;font-size:15px;background:#f9fafb}
-@media print{body{margin:0}}
-</style></head><body>
-<h1>견 적 서</h1>
-<div class="top"><b>통인익스프레스</b><span>견적번호 ${esc(e.estimateNo)}</span></div>
-
-<h2>견적 정보</h2>
-<table class="kv">
-<tr><th>고객명</th><td>${dash(m.customerName)}</td><th>고객연락처</th><td>${dash(m.customerPhone)}</td></tr>
-<tr><th>계약번호</th><td>${dash(m.contractNo)}</td><th>진행상태</th><td>${m.leadStatus ? esc(LEAD_STATUS_LABEL[m.leadStatus]) : '-'}</td></tr>
-<tr><th>담당자</th><td>${dash(m.estimatorName)}</td><th>담당자연락처</th><td>${dash(m.estimatorPhone)}</td></tr>
-<tr><th>이사종류</th><td>${dash(m.productName)}</td><th>지점명</th><td>${dash(m.orgUnitName)}</td></tr>
-<tr><th>전주소</th><td colspan="3">${addr(e.fromAddr, e.fromAddrDetail)}</td></tr>
-<tr><th>후주소</th><td colspan="3">${addr(e.toAddr, e.toAddrDetail)}</td></tr>
-<tr><th>접수일</th><td>${dash(m.receivedDate)}</td><th>상담일</th><td>${dash(m.consultDate)}</td></tr>
-<tr><th>계약일</th><td>${dash(m.contractDate)}</td><th>작업일(이사일)</th><td>${dash(m.workDate)}</td></tr>
-</table>
-
-<h2>물품 정보</h2>
-<table class="vol"><tr>${volume.map(([k]) => `<th>${k}</th>`).join('')}</tr>
-<tr>${volume.map(([, v]) => `<td>${v} ${unitText}</td>`).join('')}</tr></table>
-<table style="margin-top:8px"><thead><tr><th>방</th><th>품목</th><th class="r">수량</th><th class="r">${unitText}</th><th>처리방법</th><th>메모</th></tr></thead>
-<tbody>${itemRows || '<tr><td colspan="6" class="muted">품목 없음</td></tr>'}</tbody></table>
-
-<h2>작업 조건 · 옵션</h2>
-<table class="kv">
-<tr><th>전 작업조건</th><td>${e.fromPyeong != null ? `${esc(e.fromPyeong)}평 · ` : ''}${access(e.fromAccess, e.fromAccessNote)}</td>
-<th>후 작업조건</th><td>${e.toPyeong != null ? `${esc(e.toPyeong)}평 · ` : ''}${access(e.toAccess, e.toAccessNote)}</td></tr>
-</table>
-<table style="margin-top:8px"><thead><tr><th>옵션상품</th><th class="r">단가</th><th class="r">수량</th><th class="r">금액</th></tr></thead>
-<tbody>${addonRows || '<tr><td colspan="4" class="muted">선택한 옵션 없음</td></tr>'}</tbody></table>
-
-<h2>견적 금액</h2>
-<table>
-<tr><th>이사비용</th><td class="r">${won(e.moveAmount)}</td></tr>
-${e.addons.map((a) => `<tr><th>${esc(a.name)}</th><td class="r">${won(a.amount)}</td></tr>`).join('')}
-<tr><th>부가세</th><td class="r">${vatIncluded ? won(e.vatAmount) : '불포함(별도)'}</td></tr>
-<tr class="total"><td>총비용${vatIncluded ? ' (부가세 포함)' : ''}</td><td class="r">${won(
-      e.totalAmount ?? Number(e.moveAmount ?? 0) + addonTotal,
-    )}</td></tr>
-<tr><th>계약금</th><td class="r">${won(e.depositAmount)}</td></tr>
-<tr><th>잔금</th><td class="r">${won(e.balanceAmount)}</td></tr>
-</table>
-</body></html>`;
   }
 
   private genNo(): string {

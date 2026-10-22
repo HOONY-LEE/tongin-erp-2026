@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -23,6 +24,13 @@ export class CreateRoomTemplateDto {
   @IsString()
   @MaxLength(50)
   nameEng?: string;
+
+  /** 견적표 '기타' 칸 수 */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  extraSlots?: number;
 
   @IsOptional()
   @IsInt()

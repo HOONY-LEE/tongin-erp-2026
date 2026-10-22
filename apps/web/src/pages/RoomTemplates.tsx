@@ -51,6 +51,7 @@ const columns: Column[] = [
 const fields: FormField[] = [
   { name: 'name', label: '방 이름', required: true, placeholder: '예: 드레스룸' },
   { name: 'nameEng', label: '영문명(견적서 병기)', placeholder: 'DRESS ROOM', alwaysShow: true },
+  { name: 'extraSlots', label: "견적표 '기타' 칸 수", type: 'number', placeholder: '2' },
   { name: 'sortOrder', label: '표시 순서(작을수록 위)', type: 'number' },
   { name: 'isActive', label: '사용 여부', type: 'boolean' },
 ];
