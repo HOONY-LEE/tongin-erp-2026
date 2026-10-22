@@ -150,3 +150,80 @@ export function projectLatLng(lat: number, lng: number): [number, number] {
   const rad = Math.PI / 180;
   return [tx + k * lng * rad, ty - k * Math.log(Math.tan(Math.PI / 4 + (lat * rad) / 2))];
 }
+
+/** 시·도 짧은 이름 → 행정구역 코드(통계청 2018) — 시군구 경계 파일 이름(public/maps/<코드>.json) */
+export const SIDO_CODE: Record<string, string> = {
+  서울: '11',
+  부산: '21',
+  대구: '22',
+  인천: '23',
+  광주: '24',
+  대전: '25',
+  울산: '26',
+  세종: '29',
+  경기: '31',
+  강원: '32',
+  충북: '33',
+  충남: '34',
+  전북: '35',
+  전남: '36',
+  경북: '37',
+  경남: '38',
+  제주: '39',
+};
+
+/** 정식 이름·바뀐 이름(강원·전북특별자치도) → 짧은 이름 */
+const SIDO_ALIAS = new Map<string, string>([
+  ...KOREA_MAP.regions.flatMap((r): [string, string][] => [
+    [r.sido, r.sido],
+    [r.name, r.sido],
+  ]),
+  ['강원특별자치도', '강원'],
+  ['전북특별자치도', '전북'],
+]);
+
+/**
+ * 시·도 표기를 지도의 짧은 이름('서울', '경기' …)으로 맞춘다.
+ * 주소 검색(카카오·다음)은 '서울'처럼 짧게 주지만, 손으로 넣은 값은 '서울특별시'일 수 있다.
+ */
+export function normalizeSido(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const v = s.trim();
+  const hit = SIDO_ALIAS.get(v);
+  if (hit) return hit;
+  return KOREA_MAP.regions.find((r) => v.startsWith(r.sido))?.sido ?? null;
+}
+
+/**
+ * 확대 화면의 시군구 경계 — public/maps/<코드>.json.
+ * 같은 원본(southkorea-maps kostat 2018 municipalities topo-simple)을 위 KOREA_MAP과 똑같은 투영
+ * (scale·translate)으로 미리 바꾸고 시·도마다 따로 단순화했다(광역시 70%·도 35% 점 유지, topojson-simplify).
+ * 시·도를 누를 때만 받아 오므로 본 번들 크기에는 영향이 없다(17개 합계 약 400KB).
+ */
+export interface MuniMap {
+  code: string;
+  sido: string;
+  /** 확대 범위 [x0, y0, x1, y1] — 본 지도 밖 섬(울릉·옹진)은 뺐다 */
+  bbox: [number, number, number, number];
+  areas: { name: string; d: string }[];
+  /** 이름표 — 구가 있는 시(수원시장안구 …)는 시 이름 하나로 묶었다 */
+  labels: { name: string; x: number; y: number }[];
+}
+
+const muniCache = new Map<string, Promise<MuniMap>>();
+/** 시·도 하나의 시군구 경계를 처음 필요할 때 받아 온다 */
+export function loadMuniMap(sido: string): Promise<MuniMap> {
+  const code = SIDO_CODE[sido];
+  if (!code) return Promise.reject(new Error(`unknown sido ${sido}`));
+  let p = muniCache.get(code);
+  if (!p) {
+    p = fetch(`${import.meta.env.BASE_URL}maps/${code}.json`).then((r) => {
+      if (!r.ok) throw new Error(`maps/${code}.json ${r.status}`);
+      return r.json() as Promise<MuniMap>;
+    });
+    // 실패하면 다음에 다시 받도록 캐시에서 뺀다
+    p.catch(() => muniCache.delete(code));
+    muniCache.set(code, p);
+  }
+  return p;
+}

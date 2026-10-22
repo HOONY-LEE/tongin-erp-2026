@@ -119,9 +119,70 @@
   stroke: var(--ark-color-bg);
   stroke-width: 2.5px;
 }
-.leader {
-  stroke: var(--ark-color-text-tertiary);
-  stroke-width: 0.8;
+/* 시·도 확대 — 누를 수 있는 시·도, 확대 중 다른 시·도는 흐리게 */
+.regionClickable {
+  cursor: pointer;
+  transition: fill 0.15s;
+}
+.regionClickable:hover,
+.regionClickable:focus-visible {
+  fill: color-mix(in srgb, var(--chart-bar) 14%, var(--chart-track));
+  outline: none;
+}
+.regionDim {
+  opacity: 0.45;
+}
+.muni {
+  fill: var(--chart-track);
+  stroke: var(--ark-color-bg);
+  stroke-width: 0.75;
+  stroke-linejoin: round;
+  transition: fill 0.15s;
+}
+.muni:hover {
+  fill: color-mix(in srgb, var(--chart-bar) 18%, var(--chart-track));
+}
+.muniLabel {
+  fill: var(--ark-color-text-tertiary);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.muniLabelOn {
+  fill: var(--ark-color-text-secondary);
+  font-weight: 700;
+}
+.labels {
+  transition: opacity 0.2s;
+}
+.titleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.backBtn {
+  padding: 2px 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.backBtn:hover {
+  color: var(--ark-color-text);
+  border-color: var(--ark-color-text-tertiary);
+}
+.mapNote {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+  pointer-events: none;
 }
 /* 퍼널 | 지점 실적 — 지도에 폭을 더 준다 */
 .twoCol {
