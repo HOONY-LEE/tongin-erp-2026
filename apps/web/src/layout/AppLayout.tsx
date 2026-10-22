@@ -153,21 +153,10 @@ export default function AppLayout() {
       ],
     },
     {
-      label: t('navGroup.materials'),
-      items: [
-        { to: '/materials', label: t('nav.materials'), icon: Package, perm: 'MATERIAL.READ' },
-        {
-          to: '/material-orders',
-          label: t('nav.materialOrders'),
-          icon: ShoppingCart,
-          perm: 'MATERIAL_ORDER.READ',
-        },
-      ],
-    },
-    {
       label: t('navGroup.finance'),
-      // 자주 쓰지 않는 메뉴라 맨 아래에 접어 둔다
-      defaultOpen: false,
+      // 본사는 자주 쓰지 않아 맨 아래에 접어 둔다. 지점장(정산 권한 없음)은 이 묶음에서
+      // 자재/재고·가맹점발주만 보며 매일 쓰므로 펼쳐 둔다
+      defaultOpen: !can('SETTLEMENT.READ'),
       items: [
         {
           to: '/settlements',
@@ -177,6 +166,14 @@ export default function AppLayout() {
         },
         { to: '/billing', label: t('nav.billing'), icon: Receipt, perm: 'BILLING.READ' },
         { to: '/hr', label: t('nav.hr'), icon: Award, perm: 'HR.READ' },
+        // 자재·발주도 돈(원가·정산)과 묶여 정산 아래에 둔다
+        { to: '/materials', label: t('nav.materials'), icon: Package, perm: 'MATERIAL.READ' },
+        {
+          to: '/material-orders',
+          label: t('nav.materialOrders'),
+          icon: ShoppingCart,
+          perm: 'MATERIAL_ORDER.READ',
+        },
       ],
     },
   ];
