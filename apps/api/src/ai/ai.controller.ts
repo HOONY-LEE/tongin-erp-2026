@@ -7,6 +7,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -26,7 +27,7 @@ import {
 import type { AuthPrincipal } from '@tongin/shared';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AiService, ATTACHMENT_TYPES } from './ai.service';
+import { AiService, ATTACHMENT_TYPES, TITLE_INPUT_MAX } from './ai.service';
 
 /** 첨부 — 이미지(png·jpg·gif·webp), PDF, 텍스트(txt·csv·json·md). 내용은 base64 */
 class AttachmentInput {
@@ -53,6 +54,14 @@ class SendMessageDto {
   @ValidateNested({ each: true })
   @Type(() => AttachmentInput)
   attachments?: AttachmentInput[];
+}
+
+/** 대화 제목 바꾸기 — 1~60자 */
+class RenameDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(TITLE_INPUT_MAX)
+  title!: string;
 }
 
 class DecisionInput {
@@ -116,6 +125,15 @@ export class AiController {
   @Get('conversations/:id')
   get(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.ai.view(id, user.userId);
+  }
+
+  @Patch('conversations/:id')
+  rename(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RenameDto,
+  ) {
+    return this.ai.rename(id, user.userId, dto.title);
   }
 
   @Delete('conversations/:id')
