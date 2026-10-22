@@ -27,6 +27,13 @@ export class CustomerController {
     return this.customerService.findAll(phone, user);
   }
 
+  /** 고객 등급 목록(공통코드 CUSTOMER_GRADE, 사용 중인 것만) — 등급 고르기·필터용 */
+  @Get('grades')
+  @RequirePermissions('CUSTOMER.READ')
+  grades() {
+    return this.customerService.grades();
+  }
+
   @Get(':id')
   @RequirePermissions('CUSTOMER.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
