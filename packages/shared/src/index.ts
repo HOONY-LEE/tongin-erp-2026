@@ -159,6 +159,8 @@ export interface RoomTemplateDef {
   code: string;
   name: string;
   nameEng: string | null;
+  /** 견적표 '기타' 칸 수 — 목록 밖 물품은 기타N 칸에 메모(품목명)와 함께 적는다 */
+  extraSlots: number;
   itemIds: string[];
 }
 export interface HandlingDef {

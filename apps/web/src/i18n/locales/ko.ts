@@ -217,7 +217,7 @@ export default {
   },
   estimate: {
     detail: '상세',
-    document: '견적서',
+    document: '계약서·견적서',
     toContract: '계약 만들기',
     moveAddress: '이사 주소',
     from: '출발',

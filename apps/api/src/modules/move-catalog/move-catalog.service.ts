@@ -52,6 +52,7 @@ export class MoveCatalogService {
         code: r.code,
         name: r.name,
         nameEng: r.nameEng,
+        extraSlots: r.extraSlots,
         itemIds: r.items.map((x) => x.cbmItemId).filter((id) => active.has(id)),
       })),
       items: items.map((i) => ({

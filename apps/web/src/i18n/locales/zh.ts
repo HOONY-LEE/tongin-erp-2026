@@ -217,7 +217,7 @@ export default {
   },
   estimate: {
     detail: '详情',
-    document: '报价单',
+    document: '合同·报价单',
     toContract: '创建合同',
     moveAddress: '搬家地址',
     from: '出发',
