@@ -30,8 +30,9 @@ export class ProductController {
 
   @Get()
   @RequirePermissions('PRODUCT.READ')
-  findAll(@Query('serviceLine') serviceLine?: string) {
-    return this.productService.findAll(serviceLine);
+  findAll(@Query('serviceLine') serviceLine?: string, @Query('active') active?: string) {
+    // active=1 — 새로 고를 때는 '사용' 상품만(관리 화면은 전체)
+    return this.productService.findAll(serviceLine, active === '1' || active === 'true');
   }
 
   @Get(':id')

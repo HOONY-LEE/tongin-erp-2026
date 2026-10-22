@@ -23,6 +23,7 @@ import {
   Calculator,
   Receipt,
   Award,
+  Bot,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -100,6 +101,7 @@ export default function AppLayout() {
       label: t('navGroup.ops'),
       items: [
         { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
+        { to: '/ai', label: t('nav.ai'), icon: Bot, perm: 'AI.USE' },
         {
           to: '/leads',
           label: t('nav.leads'),

@@ -1,13 +1,10 @@
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PARTNER_TYPES, type PartnerType } from '@tongin/shared';
 
+/** 코드는 서버가 발급한다(PTN-0001) — 입력받지 않는다 */
 export class CreatePartnerDto {
   @IsIn(PARTNER_TYPES)
   type!: PartnerType;
-
-  @IsString()
-  @MaxLength(50)
-  code!: string;
 
   @IsString()
   @MaxLength(200)

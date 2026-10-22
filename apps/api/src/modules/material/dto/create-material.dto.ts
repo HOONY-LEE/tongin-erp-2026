@@ -1,10 +1,7 @@
 import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
+/** 코드는 서버가 발급한다(MAT-0001) — 입력받지 않는다 */
 export class CreateMaterialDto {
-  @IsString()
-  @MaxLength(50)
-  code!: string;
-
   @IsString()
   @MaxLength(100)
   name!: string;

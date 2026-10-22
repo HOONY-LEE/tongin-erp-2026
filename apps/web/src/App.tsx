@@ -24,6 +24,7 @@ import Billing from './pages/Billing';
 import MaterialOrders from './pages/MaterialOrders';
 import ServiceOrders from './pages/ServiceOrders';
 import Support from './pages/Support';
+import AiAssistant from './pages/AiAssistant';
 import OrgUnits from './pages/OrgUnits';
 import ProductMgmt from './pages/ProductMgmt';
 import OrgMgmt from './pages/OrgMgmt';
@@ -73,6 +74,7 @@ function Shell() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/ai" element={<AiAssistant />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/leads/:id" element={<LeadDetail />} />
         <Route path="/calendar" element={<CalendarPage />} />

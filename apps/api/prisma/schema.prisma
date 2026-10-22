@@ -113,6 +113,7 @@ model AppUser {
 
   calendarEvents     CalendarEvent[]
   googleCalendarLink GoogleCalendarLink?
+  aiConversations    AiConversation[]
 
   @@map("app_user")
 }
@@ -246,12 +247,19 @@ model CbmItem {
 }
 
 // C. 옵션/부가서비스: 애드온 (분해설치·사다리차·보관…)
+// 옵션(부가서비스) 카탈로그 — 견적 3단계(옵션선택)에 나오는 목록의 원본.
+// 상품관리 '옵션' 탭에서 관리하고, 견적에는 이름·종류·금액을 스냅샷으로 담는다(EstimateAddon).
 model AddonService {
   id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique
+  code      String   @unique // 서버 발급(OPT-0001)
   name      String
   unit      String // EA | FLAT
-  price     Decimal? @db.Decimal(14, 2)
+  price     Decimal? @db.Decimal(14, 2) // 참고 기본가 — 견적 금액은 견적마다 입력
+  groupCode String   @default("ETC") @map("group_code") // 견적 화면 묶음: LADDER | LIVING | ASSEMBLY | ETC
+  variants  Json? // 종류 [{value,label}] — 입주청소 일반/프리미엄, 분해·설치/분해만/설치만 등
+  hasDate   Boolean  @default(false) @map("has_date") // 서비스 요청일을 받는다
+  hasNote   Boolean  @default(false) @map("has_note") // 내용을 적는다(기타·보관 등)
+  sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -437,7 +445,7 @@ model EstimateAddon {
   estimateId     String        @map("estimate_id") @db.Uuid
   estimate       Estimate      @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   addonServiceId String?       @map("addon_service_id") @db.Uuid // 자유 입력 항목(기타서비스)이면 null
-  code           String? // 견적 옵션 정의 코드(shared ESTIMATE_OPTIONS). 예전 자유 입력 행은 null
+  code           String? // 고른 옵션의 카탈로그 코드 스냅샷. 예전 자유 입력 행은 null
   variant        String? // 옵션 안의 종류(일반/프리미엄, 분해·설치 여부 등)
   serviceDate    DateTime?     @map("service_date") @db.Date // 서비스 요청일
   addonService   AddonService? @relation(fields: [addonServiceId], references: [id])
@@ -853,4 +861,45 @@ model GoogleCalendarLink {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("google_calendar_link")
+}
+
+// ── AIX-03: AI 비서 (Claude 도구 사용 루프) ──
+// 사용자가 시킨 일을 AI가 ERP 도구(조회·등록·발송)로 나눠 실행한다. AI는 요청한 사용자의
+// 권한·조직범위로만 움직이고, 쓰기·발송 도구는 사용자가 승인해야 실행된다.
+model AiConversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("새 대화")
+  // Claude Messages API 대화 원문. thinking 블록까지 받은 그대로 이어 붙인다(중간 수정 금지 — 수정하면 API가 거부)
+  messages  Json     @default("[]")
+  // 승인 대기 중인 도구 호출 묶음. 승인·거절이 끝나야 다음 턴으로 넘어간다
+  pending   Json?
+  status    String   @default("IDLE") // IDLE | RUNNING | AWAITING_APPROVAL | ERROR
+  lastError String?  @map("last_error") // ERROR일 때 이유(키 미설정·한도 초과 등) — 다시 시도하면 지운다
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  toolCalls AiToolCall[]
+
+  @@index([userId, updatedAt])
+  @@map("ai_conversation")
+}
+
+/// AI가 실행(또는 요청)한 도구 호출 이력 — 누가 무엇을 승인했는지 남기는 감사 기록
+model AiToolCall {
+  id             String         @id @default(uuid()) @db.Uuid
+  conversationId String         @map("conversation_id") @db.Uuid
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  toolUseId      String         @map("tool_use_id")
+  toolName       String         @map("tool_name")
+  mode           String // READ | WRITE
+  input          Json
+  status         String // DONE | ERROR | REJECTED
+  result         Json? // 결과 요약(길면 잘라서 보관)
+  approvedBy     String?        @map("approved_by") @db.Uuid // 쓰기 도구를 승인한 사용자
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([conversationId])
+  @@map("ai_tool_call")
 }
