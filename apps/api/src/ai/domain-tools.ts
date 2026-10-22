@@ -388,8 +388,8 @@ export class DomainTools {
           failures,
           skippedNoPhone: r.noPhone,
           notFoundCount: r.notFound.length,
-          note: this.provider.smsLive
-            ? '알리고로 실제 발송함'
+          note: this.provider.smsVendor
+            ? `${this.provider.smsVendor}로 실제 발송함`
             : '문자 발송사 미연결 — 실제 전송 없이 기록만 남김',
         };
       },
