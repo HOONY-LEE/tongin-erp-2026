@@ -676,7 +676,8 @@ async function main() {
   for (const c of CBM_ITEMS) {
     const row = await prisma.cbmItem.findUnique({ where: { name: c.preset } });
     if (!row) continue; // 마이그레이션이 넣는 기본 물품이 없으면 건너뛴다
-    if (row.cbm == null) await prisma.cbmItem.update({ where: { id: row.id }, data: { cbm: c.cbm } });
+    if (row.cbm == null)
+      await prisma.cbmItem.update({ where: { id: row.id }, data: { cbm: c.cbm } });
     itemByName.set(c.preset, { id: row.id, nameEng: row.nameEng });
   }
   const rooms = await prisma.roomTemplate.findMany({ orderBy: { sortOrder: 'asc' } });
