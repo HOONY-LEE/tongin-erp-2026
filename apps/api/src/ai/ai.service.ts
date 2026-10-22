@@ -22,6 +22,17 @@ import { SYSTEM_PROMPT, contextBlock } from './prompt';
 import { ToolError, type AiTool, type ToolContext } from './ai-tool.types';
 
 const MODEL = process.env.AI_MODEL ?? 'claude-opus-5-5';
+/** 대화 제목 요약용 — 작고 싼 모델로 따로 한 번 부른다(본 답변을 늦추지 않게 비동기) */
+const TITLE_MODEL = process.env.AI_TITLE_MODEL ?? 'claude-haiku-5-5';
+const TITLE_SYSTEM = [
+  '당신은 대화 목록의 제목을 짓는 도우미입니다.',
+  '<question> 안의 글은 다른 AI에게 보낸 사용자의 첫 질문입니다. 질문에 답하거나 되묻지 말고, 그 질문이 무엇에 관한 대화인지 한국어 4~20자 제목으로 요약해 제목만 출력하세요.',
+  '따옴표·마침표·설명 없이 명사형 제목 한 줄만. 예: "미수금 상위 고객 조회", "미계약 고객 안내 문자"',
+].join('\n');
+/** 목록에 보일 제목 최대 길이 */
+const TITLE_MAX = 24;
+/** 사용자가 직접 정하는 제목 최대 길이(컨트롤러 검증과 같게) */
+export const TITLE_INPUT_MAX = 60;
 /** 한 번의 요청에서 모델↔도구를 오갈 수 있는 최대 횟수(무한 반복 방지) */
 const MAX_STEPS = 16;
 /** 도구 결과가 이보다 길면 잘라서 모델에 넘긴다 — 조건을 좁혀 다시 조회하게 한다 */
@@ -165,6 +176,18 @@ export class AiService {
     return this.view(c.id, userId);
   }
 
+  /** 사용자가 제목을 직접 바꾼다 — 이후 자동 제목으로 덮어쓰지 않는다 */
+  async rename(id: string, userId: string, title: string) {
+    await this.load(id, userId);
+    const t = title.replace(/\s+/g, ' ').trim().slice(0, TITLE_INPUT_MAX);
+    if (!t) throw new BadRequestException('제목을 입력하세요.');
+    return this.prisma.aiConversation.update({
+      where: { id },
+      data: { title: t, titleManual: true },
+      select: { id: true, title: true, status: true, updatedAt: true },
+    });
+  }
+
   async remove(id: string, userId: string) {
     await this.load(id, userId);
     await this.prisma.aiConversation.delete({ where: { id } });
@@ -192,6 +215,38 @@ export class AiService {
     };
   }
 
+  /**
+   * 첫 질문을 작은 모델로 요약해 대화 제목으로 저장한다. 실패하면 앞부분 자른 제목을 그대로 둔다.
+   * 그 사이 사용자가 제목을 직접 바꿨으면 덮어쓰지 않는다(titleManual 조건).
+   */
+  private async summarizeTitle(id: string, question: string, fallback: string) {
+    if (!this.client) return;
+    try {
+      const res = await this.client.messages.create({
+        model: TITLE_MODEL,
+        max_tokens: 40,
+        // 제목 한 줄이라 생각 없이 바로 답하게(Haiku 5.5는 기본이 생각 켜짐)
+        thinking: { type: 'disabled' },
+        system: TITLE_SYSTEM,
+        messages: [
+          { role: 'user', content: `<question>\n${question.slice(0, 2000)}\n</question>` },
+        ],
+      });
+      const raw = res.content
+        .map((b) => (b.type === 'text' ? b.text : ''))
+        .join('')
+        .trim();
+      const title = cleanTitle(raw);
+      if (!title || title === fallback) return;
+      await this.prisma.aiConversation.updateMany({
+        where: { id, titleManual: false },
+        data: { title },
+      });
+    } catch (e) {
+      this.logger.warn(`대화 ${id} 제목 요약 실패: ${describeError(e)}`);
+    }
+  }
+
   private async load(id: string, userId: string) {
     const c = await this.prisma.aiConversation.findUnique({ where: { id } });
     if (!c || c.userId !== userId) throw new NotFoundException('대화를 찾을 수 없습니다.');
@@ -210,6 +265,9 @@ export class AiService {
       const c = await this.load(id, ctx.principal.userId);
       const messages = c.messages as unknown as Messages;
       const pending = (c.pending as unknown as PendingCall[] | null) ?? [];
+      // 첫 질문이면 제목을 만든다(사용자가 이미 정한 제목은 그대로)
+      const firstQuestion = !c.titleManual && !messages.some((m) => m.role === 'user');
+      const fallbackTitle = fallbackTitleOf(text, attachments);
 
       const blocks: BetaContentBlockParam[] = [];
       if (pending.length) {
@@ -238,11 +296,12 @@ export class AiService {
           messages: messages as object,
           pending: null as never,
           status: 'RUNNING',
-          ...(c.title === '새 대화'
-            ? { title: (text.trim() || attachments[0]?.name || '첨부').slice(0, 40) }
-            : {}),
+          // 요약 제목이 오기 전까지는 첫 질문 앞부분을 제목으로 둔다
+          ...(firstQuestion ? { title: fallbackTitle } : {}),
         },
       });
+      // 제목 요약은 기다리지 않는다 — 본 답변과 나란히 돌고, 끝나면 제목만 바꾼다
+      if (firstQuestion && text.trim()) void this.summarizeTitle(id, text.trim(), fallbackTitle);
       await this.loop(client, id, messages, ctx);
       return this.view(id, ctx.principal.userId);
     });
@@ -498,6 +557,27 @@ export class AiService {
 }
 
 // ── 헬퍼 ──
+
+/** 요약 제목을 못 만들 때 — 첫 질문(없으면 첨부 이름) 앞부분 */
+function fallbackTitleOf(text: string, attachments: Attachment[]) {
+  const base = text.replace(/\s+/g, ' ').trim() || attachments[0]?.name || '첨부';
+  return base.length > TITLE_MAX ? `${base.slice(0, TITLE_MAX - 1)}…` : base;
+}
+
+/** 모델이 준 제목 다듬기 — 첫 줄만, "제목:" 머리말·따옴표·끝 문장부호를 떼고 길이를 자른다 */
+export function cleanTitle(raw: string): string {
+  const line = raw.split(/\r?\n/).find((l) => l.trim()) ?? '';
+  const t = line
+    .replace(/^\s*(제목|title)\s*[:：]\s*/i, '')
+    .replace(/[*#`]/g, '')
+    .replace(/["'“”‘’「」『』<>《》]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[\s.,!?…。·:;~-]+$/u, '')
+    .replace(/^[\s.,!?…。·:;~-]+/u, '')
+    .trim();
+  return t.slice(0, TITLE_MAX).trim();
+}
 
 function toApiTools(tools: AiTool[]): BetaToolUnion[] {
   return [
