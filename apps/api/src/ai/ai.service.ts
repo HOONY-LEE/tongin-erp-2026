@@ -430,7 +430,8 @@ export class AiService {
 function toApiTools(tools: AiTool[]): BetaToolUnion[] {
   return [
     // 도구가 많아(ERP API 전부) 처음엔 이름만 숨겨 두고, 모델이 키워드로 찾아 쓰게 한다
-    { type: 'tool_search_tool_bm25_20251119', name: 'tool_search_tool_bm25' },
+    // BM25 검색은 한글 낱말을 못 찾는다(실측: "미수금" → 0건) — 정규식 검색은 부분 일치라 한글도 찾는다
+    { type: 'tool_search_tool_regex_20251119', name: 'tool_search_tool_regex' },
     ...tools.map(
       (t) =>
         ({
@@ -534,8 +535,9 @@ function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
       } else if (m.role === 'assistant' && b.type === 'text' && String(b.text).trim()) {
         items.push({ kind: 'assistant', text: String(b.text) });
       } else if (m.role === 'assistant' && b.type === 'server_tool_use') {
-        const input = (b.input ?? {}) as { query?: string };
-        items.push({ kind: 'search', query: input.query ?? '' });
+        // bm25는 query, 정규식 검색은 pattern
+        const input = (b.input ?? {}) as { query?: string; pattern?: string };
+        items.push({ kind: 'search', query: input.pattern ?? input.query ?? '' });
       } else if (m.role === 'assistant' && b.type === 'tool_use') {
         const t: Extract<Item, { kind: 'tool' }> = {
           kind: 'tool',
