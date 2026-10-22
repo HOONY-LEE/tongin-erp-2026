@@ -92,7 +92,7 @@ export class ContractService {
           balanceAmount: balance,
         },
       });
-      const t = await this.leadService.transitionInTx(tx, estimate.leadId, 'CONTRACTED');
+      const t = await this.leadService.advanceInTx(tx, estimate.leadId, 'CONTRACTED');
       return { created: row, transition: t };
     });
     await this.leadService.emitTransition(transition, 'CONTRACTED');

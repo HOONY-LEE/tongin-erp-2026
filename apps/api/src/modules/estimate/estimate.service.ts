@@ -302,7 +302,7 @@ export class EstimateService {
         where: { id: estimateId },
         data: { status: 'QUOTED' },
       });
-      const t = await this.leadService.transitionInTx(tx, estimate.leadId, 'QUOTED');
+      const t = await this.leadService.advanceInTx(tx, estimate.leadId, 'QUOTED');
       return { updated: row, transition: t };
     });
     await this.leadService.emitTransition(transition, 'QUOTED');

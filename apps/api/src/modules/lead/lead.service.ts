@@ -6,7 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { canTransition, type AuthPrincipal, type LeadStatus } from '@tongin/shared';
+import {
+  canTransition,
+  LEAD_STATUS,
+  LEAD_STATUS_LABEL,
+  type AuthPrincipal,
+  type LeadStatus,
+} from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -242,6 +248,27 @@ export class LeadService {
     if (from === to) return { lead, from, changed: false };
     if (!canTransition(from, to)) {
       throw new BadRequestException(`허용되지 않은 상태 전이: ${from} → ${to}`);
+    }
+    const updated = await tx.lead.update({ where: { id }, data: { status: to } });
+    return { lead: updated, from, changed: true };
+  }
+
+  /**
+   * 업무 흐름이 앞으로 나아가며 생기는 전이(견적 확정·계약·작업 생성) — 중간 단계를 건너뛰어도 된다.
+   * 예: 접수 상태에서 바로 견적을 확정하면 상담배정·상담토스를 건너 견적완료로.
+   * 이미 그 단계거나 지났으면 그대로 두고(두 번째 견적 확정 등), 완료·취소된 접수만 막는다.
+   */
+  async advanceInTx(tx: Prisma.TransactionClient, id: string, to: LeadStatus) {
+    const lead = await tx.lead.findUnique({ where: { id } });
+    if (!lead) throw new NotFoundException(`리드를 찾을 수 없습니다: ${id}`);
+    const from = lead.status as LeadStatus;
+    if (from === 'CANCELED' || from === 'DONE') {
+      throw new BadRequestException(
+        `${LEAD_STATUS_LABEL[from]}된 접수입니다 — ${LEAD_STATUS_LABEL[to]}(으)로 진행할 수 없습니다.`,
+      );
+    }
+    if (LEAD_STATUS.indexOf(from) >= LEAD_STATUS.indexOf(to)) {
+      return { lead, from, changed: false };
     }
     const updated = await tx.lead.update({ where: { id }, data: { status: to } });
     return { lead: updated, from, changed: true };

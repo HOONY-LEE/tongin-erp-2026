@@ -93,7 +93,7 @@ export class WorkOrderService {
           billedCost: dto.billedCost,
         },
       });
-      const t = await this.leadService.transitionInTx(tx, contract.leadId, 'WORK_TOSS');
+      const t = await this.leadService.advanceInTx(tx, contract.leadId, 'WORK_TOSS');
       return { created: row, transition: t };
     });
     await this.leadService.emitTransition(transition, 'WORK_TOSS');
