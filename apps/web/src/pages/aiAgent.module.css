@@ -159,9 +159,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 760px;
+  max-width: 1040px;
   margin: 0 auto;
-  padding: 12px 24px 32px;
+  padding: 12px 32px 32px;
 }
 
 /* 사용자 — 오른쪽 말풍선, 첨부는 위에 */
@@ -215,6 +215,45 @@
   line-height: 1.75;
   color: var(--ark-color-text);
 }
+.nextList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ark-color-border);
+  margin-top: -4px;
+}
+.nextItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 6px;
+  border: none;
+  border-bottom: 1px solid var(--ark-color-border);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ark-color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.nextItem:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted);
+}
+.nextItem:focus-visible {
+  outline: 2px solid var(--ark-color-info-500);
+  outline-offset: -2px;
+}
+.nextNo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--ark-color-bg-muted);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ark-color-text-secondary);
+}
 .searchRow {
   display: flex;
   align-items: center;
@@ -266,9 +305,9 @@
 .composerWrap {
   flex: none;
   width: 100%;
-  max-width: 760px;
+  max-width: 1040px;
   margin: 0 auto;
-  padding: 0 24px 14px;
+  padding: 0 32px 14px;
   box-sizing: border-box;
 }
 .composer {

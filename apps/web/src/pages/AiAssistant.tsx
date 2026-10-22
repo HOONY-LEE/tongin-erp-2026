@@ -257,7 +257,20 @@ export default function AiAssistant() {
   };
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.nativeEvent.isComposing) return;
+    // 빈 입력칸에서 Tab — 미리보기로 보이던 이어지는 요청을 입력칸에 넣는다
+    if (e.key === 'Tab' && !draft && nextUp.length) {
+      e.preventDefault();
+      setDraft(nextUp[0]);
+      return;
+    }
+    // 빈 입력칸에서 숫자 — 그 번호의 제안을 바로 보낸다(Claude처럼 1·2·3 고르기)
+    if (!draft && /^[1-9]$/.test(e.key) && nextUp[Number(e.key) - 1]) {
+      e.preventDefault();
+      void send(nextUp[Number(e.key) - 1]);
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void send(draft);
     }
@@ -271,6 +284,7 @@ export default function AiAssistant() {
     [conv, echo],
   );
   const awaiting = conv?.status === 'AWAITING_APPROVAL' && conv.pending.length > 0;
+  const nextUp = !busy && !echo ? (conv?.suggestions ?? []) : [];
   const notReady = status !== null && !status.configured;
   const empty = items.length === 0;
   const canSend = (!!draft.trim() || files.length > 0) && !busy && !notReady;
@@ -312,7 +326,9 @@ export default function AiAssistant() {
               ? 'AI가 처리하는 중입니다…'
               : awaiting
                 ? '위 작업을 승인·거절하거나, 새 요청을 입력하세요(대기 중인 작업은 취소됩니다)'
-                : 'AI 에이전트에게 일을 시켜 보세요'
+                : nextUp.length
+                  ? `${nextUp[0]}   ⇥ Tab`
+                  : 'AI 에이전트에게 일을 시켜 보세요'
           }
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKey}
@@ -486,6 +502,24 @@ export default function AiAssistant() {
                   <div className={styles.working} role="status">
                     <span className={styles.spark} aria-hidden />
                     생각하는 중…
+                  </div>
+                )}
+
+                {nextUp.length > 0 && (
+                  <div className={styles.nextList} role="list" aria-label="이어서 할 일">
+                    {nextUp.map((q, i) => (
+                      <button
+                        key={q}
+                        type="button"
+                        role="listitem"
+                        className={styles.nextItem}
+                        onClick={() => void send(q)}
+                        disabled={notReady}
+                      >
+                        <span className={styles.nextNo}>{i + 1}</span>
+                        <span>{q}</span>
+                      </button>
+                    ))}
                   </div>
                 )}
 

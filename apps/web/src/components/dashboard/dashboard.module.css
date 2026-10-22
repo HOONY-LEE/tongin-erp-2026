@@ -13,24 +13,32 @@
 .plot {
   position: relative;
 }
+/* 퍼널·지점 실적 카드의 그림 칸 — 막대·지도 어느 쪽이든 같은 높이 */
+.plotBox {
+  height: 360px;
+}
+.plotBox > .plot,
+.plotBox .columns {
+  height: 100%;
+}
 
 /* 세로 막대 — 단일 계열. 값은 막대 위, 지점명은 아래 */
 .columns {
   display: flex;
   align-items: stretch;
   gap: 10px;
-  height: 260px;
+  height: 100%;
   overflow-x: auto;
   padding-bottom: 2px;
 }
 .column {
-  flex: 1 0 56px;
+  flex: 1 1 0;
   max-width: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  min-width: 56px;
+  min-width: 34px;
   cursor: default;
 }
 .colValue {
@@ -38,6 +46,12 @@
   font-weight: 600;
   color: var(--ark-color-text-primary, var(--ark-color-text));
   white-space: nowrap;
+}
+.colSub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ark-color-text-tertiary);
 }
 .colTrack {
   flex: 1;
@@ -69,7 +83,7 @@
 /* 지도 — 시·도는 바탕만, 값은 지점 점의 크기로 */
 .map {
   width: 100%;
-  max-height: 560px;
+  height: 100%;
   display: block;
   margin: 0 auto;
 }
@@ -112,9 +126,13 @@
 /* 퍼널 | 지점 실적 — 지도에 폭을 더 준다 */
 .twoCol {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+}
+.twoCol > * {
+  height: 100%;
+  box-sizing: border-box;
 }
 @media (max-width: 1100px) {
   .twoCol {

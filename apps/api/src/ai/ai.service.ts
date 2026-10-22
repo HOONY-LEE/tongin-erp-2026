@@ -186,6 +186,8 @@ export class AiService {
         c.messages as unknown as Messages,
         new Map(calls.map((x) => [x.toolUseId, x.status])),
       ),
+      // 마지막 답이 제안한 이어서 할 일(1·2·3 버튼, 입력칸 미리보기) — 답이 끝난 상태에서만
+      suggestions: c.status === 'IDLE' ? lastSuggestions(c.messages as unknown as Messages) : [],
       pending: (c.pending as unknown as PendingCall[] | null) ?? [],
     };
   }
@@ -585,6 +587,30 @@ type Item =
       isError?: boolean;
     };
 
+const NEXT_RE = /<next>([\s\S]*?)<\/next>/i;
+
+/** 답 끝의 <next> 제안 묶음을 화면 글에서 뺀다 */
+function stripNext(text: string) {
+  return text.replace(NEXT_RE, '').trimEnd();
+}
+
+/** 마지막 AI 답의 <next> 제안 → 요청문 목록(최대 3개) */
+function lastSuggestions(messages: Messages): string[] {
+  const last = messages.at(-1);
+  if (!last || last.role !== 'assistant' || typeof last.content === 'string') return [];
+  for (const b of [...last.content].reverse() as unknown as Array<Record<string, unknown>>) {
+    if (b.type !== 'text') continue;
+    const m = NEXT_RE.exec(String(b.text));
+    if (!m) return [];
+    return m[1]
+      .split('\n')
+      .map((l) => l.replace(/^\s*(\d+[.)]|[-*])\s*/, '').trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+  return [];
+}
+
 function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
   const items: Item[] = [];
   const tools = new Map<string, Extract<Item, { kind: 'tool' }>>();
@@ -626,7 +652,7 @@ function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
           t.status = callStatus.get(t.toolUseId) ?? (t.isError ? 'ERROR' : 'DONE');
         }
       } else if (m.role === 'assistant' && b.type === 'text' && String(b.text).trim()) {
-        items.push({ kind: 'assistant', text: String(b.text) });
+        items.push({ kind: 'assistant', text: stripNext(String(b.text)) });
       } else if (m.role === 'assistant' && b.type === 'server_tool_use') {
         // bm25는 query, 정규식 검색은 pattern
         const input = (b.input ?? {}) as { query?: string; pattern?: string };

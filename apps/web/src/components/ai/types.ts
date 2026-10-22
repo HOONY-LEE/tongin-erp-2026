@@ -77,6 +77,8 @@ export interface Conversation {
   updatedAt: string;
   items: ChatItem[];
   pending: PendingCall[];
+  /** 마지막 답이 제안한 이어서 할 일(최대 3개) */
+  suggestions: string[];
 }
 
 /** "[견적] 견적 금액 저장(…). 견적 — …" → "견적 · 견적 금액 저장(…)" */

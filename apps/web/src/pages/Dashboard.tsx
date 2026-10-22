@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StatsOverview } from '@tongin/shared';
 import { UnitPerformance } from '../components/dashboard/UnitPerformance';
+import { ColumnChart } from '../components/dashboard/ColumnChart';
 import dashStyles from '../components/dashboard/dashboard.module.css';
 import { Card, DataTable, PageCard, PageHeader, type Column, type Row } from '../components/ui';
 import { api } from '../lib/api';
@@ -55,89 +56,6 @@ interface BarItem {
   valueLabel?: string;
   /** 마우스오버 시 보여줄 정확한 값 */
   title?: string;
-}
-
-/**
- * 가로 막대 차트 — 단일 계열(sequential)이라 범례 없이 제목이 무엇을 그렸는지 말한다.
- * 막대 끝에 값을 직접 표기(표면 대비가 3:1 미만인 브랜드 색이라 라벨이 필수 보조 수단).
- */
-function BarChart({
-  items,
-  labelWidth = 76,
-  valueWidth = 76,
-}: {
-  items: BarItem[];
-  labelWidth?: number;
-  valueWidth?: number;
-}) {
-  const max = Math.max(1, ...items.map((i) => i.value));
-  if (!items.length) {
-    return (
-      <div style={{ color: 'var(--ark-color-text-tertiary)', fontSize: 13, padding: '8px 0' }}>
-        데이터가 없습니다
-      </div>
-    );
-  }
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {items.map((it) => (
-        <div
-          key={it.key}
-          style={{ display: 'flex', alignItems: 'center', gap: 12 }}
-          title={it.title}
-        >
-          <div
-            style={{
-              width: labelWidth,
-              flexShrink: 0,
-              fontSize: 13,
-              color: 'var(--ark-color-text-secondary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {it.label}
-          </div>
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: 'var(--chart-track)',
-              borderRadius: 4,
-            }}
-          >
-            <div
-              style={{
-                width: `${(it.value / max) * 100}%`,
-                minWidth: it.value ? 3 : 0,
-                height: 20,
-                background: 'var(--chart-bar)',
-                /* 기준선 쪽은 각지게, 데이터 끝만 4px 둥글게 */
-                borderRadius: '2px 4px 4px 2px',
-                transition: 'width .3s',
-              }}
-            />
-          </div>
-          {/* 값은 막대 뒤가 아니라 고정폭 열에 둔다 — 최장 막대에서 라벨이 잘리지 않고
-              숫자끼리 세로로 정렬돼 비교가 쉬워진다. */}
-          <div
-            style={{
-              width: valueWidth,
-              flexShrink: 0,
-              textAlign: 'right',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--ark-color-text-primary)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {it.valueLabel ?? it.value.toLocaleString()}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export default function Dashboard() {
@@ -249,7 +167,19 @@ export default function Dashboard() {
 
       <div className={dashStyles.twoCol}>
         <PageCard title={t('dashboard.funnel')}>
-          <BarChart items={funnelItems} />
+          <div className={dashStyles.plotBox}>
+            <ColumnChart
+              label={t('dashboard.funnel')}
+              items={funnelItems.map((f) => ({
+                key: f.key,
+                label: f.label,
+                value: f.value,
+                valueLabel: String(f.value),
+                subLabel: leadTotal ? `${Math.round((f.value / leadTotal) * 100)}%` : undefined,
+                tip: [f.title ?? f.label],
+              }))}
+            />
+          </div>
         </PageCard>
         <UnitPerformance byBranch={data?.byBranch ?? []} />
       </div>
