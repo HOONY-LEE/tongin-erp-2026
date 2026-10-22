@@ -14,6 +14,7 @@ import {
   ArrowUp,
   FileText,
   Paperclip,
+  Pencil,
   RotateCcw,
   Search,
   SquarePen,
@@ -58,6 +59,10 @@ const BY_EXT: Record<string, string> = {
 };
 const MAX_FILES = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
+/** 첫 질문 뒤 요약 제목(서버가 따로 만든다)을 목록에 반영하려고 다시 읽는 시점 */
+const TITLE_REFRESH_MS = 2500;
+/** 대화 제목 최대 길이 — 서버 검증과 같게 */
+const TITLE_MAX = 60;
 /** 입력칸이 이 높이까지 늘어나고, 넘으면 안에서 스크롤 */
 const MAX_INPUT_PX = 220;
 
@@ -104,6 +109,14 @@ export default function AiAssistant() {
   const [busy, setBusy] = useState(false);
   /** 응답을 기다리는 동안 화면에 먼저 보여 줄 사용자 글 */
   const [echo, setEcho] = useState<{ text: string; attachments: ChatAttachment[] } | null>(null);
+  /** 제목 바꾸는 중인 대화 */
+  const [editing, setEditing] = useState<{ id: string; title: string } | null>(null);
+  /** Enter·Esc로 끝낸 뒤 입력칸이 사라지며 생기는 blur가 한 번 더 저장하지 않게 */
+  const editDone = useRef(false);
+  const startEdit = (id: string, title: string) => {
+    editDone.current = false;
+    setEditing({ id, title });
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -222,8 +235,11 @@ export default function AiAssistant() {
         src: a.preview,
       })),
     });
+    // 첫 질문이면 서버가 요약 제목을 따로 만든다 — 답을 기다리는 동안·끝난 뒤 목록을 다시 읽어 반영
+    const first = !conv || conv.items.length === 0;
     await run(async () => {
       const id = conv?.id ?? (await api<Conversation>('/ai/conversations', { method: 'POST' })).id;
+      if (first) setTimeout(loadList, TITLE_REFRESH_MS);
       return api<Conversation>(`/ai/conversations/${id}/messages`, {
         method: 'POST',
         body: JSON.stringify({
@@ -232,6 +248,7 @@ export default function AiAssistant() {
         }),
       });
     });
+    if (first) setTimeout(loadList, TITLE_REFRESH_MS);
   };
 
   const decide = (decisions: Decision[]) =>
@@ -245,6 +262,40 @@ export default function AiAssistant() {
 
   const retry = () =>
     conv && run(() => api<Conversation>(`/ai/conversations/${conv.id}/retry`, { method: 'POST' }));
+
+  /** 제목 바꾸기 저장 — 빈 제목·그대로면 취소 */
+  const saveTitle = async () => {
+    if (!editing || editDone.current) return;
+    editDone.current = true;
+    const { id, title } = editing;
+    setEditing(null);
+    const t = title.trim();
+    const before = rows.find((r) => r.id === id)?.title;
+    if (!t || t === before) return;
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, title: t } : r)));
+    try {
+      await api(`/ai/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title: t }) });
+      setConv((c) => (c && c.id === id ? { ...c, title: t } : c));
+    } catch (e) {
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : '제목을 바꾸지 못했습니다',
+      });
+    }
+    loadList();
+  };
+
+  const onTitleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void saveTitle();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      editDone.current = true;
+      setEditing(null);
+    }
+  };
 
   const remove = async (id: string) => {
     try {
@@ -385,16 +436,47 @@ export default function AiAssistant() {
               key={r.id}
               className={[styles.convRow, r.id === activeId ? styles.convActive : ''].join(' ')}
             >
-              <button type="button" className={styles.convBtn} onClick={() => select(r.id)}>
-                <span className={styles.convTitle}>{r.title}</span>
-                {r.status === 'AWAITING_APPROVAL' && (
-                  <span className={styles.dot} title="승인 대기" />
-                )}
-              </button>
+              {editing?.id === r.id ? (
+                <input
+                  className={styles.convInput}
+                  value={editing.title}
+                  maxLength={TITLE_MAX}
+                  autoFocus
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setEditing({ id: r.id, title: e.target.value })}
+                  onKeyDown={onTitleKey}
+                  onBlur={() => void saveTitle()}
+                  aria-label="대화 제목"
+                />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={styles.convBtn}
+                    onClick={() => select(r.id)}
+                    onDoubleClick={() => startEdit(r.id, r.title)}
+                  >
+                    <span className={styles.convTitle}>{r.title}</span>
+                    {r.status === 'AWAITING_APPROVAL' && (
+                      <span className={styles.dot} title="승인 대기" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.convDel}
+                    aria-label={`${r.title} 제목 바꾸기`}
+                    title="제목 바꾸기"
+                    onClick={() => startEdit(r.id, r.title)}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className={styles.convDel}
                 aria-label={`${r.title} 삭제`}
+                title="삭제"
                 onClick={() => void remove(r.id)}
               >
                 <Trash2 size={14} />
@@ -459,7 +541,11 @@ export default function AiAssistant() {
           </div>
         ) : (
           <>
-            {conv && <div className={styles.topbar}>{conv.title}</div>}
+            {conv && (
+              <div className={styles.topbar}>
+                {rows.find((r) => r.id === conv.id)?.title ?? conv.title}
+              </div>
+            )}
             <div className={styles.scroll} ref={scrollRef}>
               <div className={styles.thread}>
                 {items.map((it, i) =>

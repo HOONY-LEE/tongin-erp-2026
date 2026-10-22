@@ -265,9 +265,9 @@ model CbmItem {
 
 // 방 틀 — 견적 물품정보에 기본으로 펼쳐 둘 방과, 그 방에 자주 들어가는 물품 목록
 model RoomTemplate {
-  id        String             @id @default(uuid()) @db.Uuid
-  code      String             @unique // 견적 방(estimate_zone.room_key)이 가리키는 키. 기본 방은 MASTER 등, 새 방은 ROOM-0001
-  name      String             @unique
+  id         String             @id @default(uuid()) @db.Uuid
+  code       String             @unique // 견적 방(estimate_zone.room_key)이 가리키는 키. 기본 방은 MASTER 등, 새 방은 ROOM-0001
+  name       String             @unique
   nameEng    String?            @map("name_eng")
   extraSlots Int                @default(2) @map("extra_slots") // 견적표에 둘 '기타' 칸 수(목록 밖 물품은 여기에 메모와 함께 적는다)
   sortOrder  Int                @default(0) @map("sort_order")
@@ -960,18 +960,20 @@ model GoogleCalendarLink {
 // 사용자가 시킨 일을 AI가 ERP 도구(조회·등록·발송)로 나눠 실행한다. AI는 요청한 사용자의
 // 권한·조직범위로만 움직이고, 쓰기·발송 도구는 사용자가 승인해야 실행된다.
 model AiConversation {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  user      AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String   @default("새 대화")
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String   @default("새 대화")
+  // 사용자가 직접 바꾼 제목 — 자동 제목(첫 질문 요약)으로 덮어쓰지 않는다
+  titleManual Boolean  @default(false) @map("title_manual")
   // Claude Messages API 대화 원문. thinking 블록까지 받은 그대로 이어 붙인다(중간 수정 금지 — 수정하면 API가 거부)
-  messages  Json     @default("[]")
+  messages    Json     @default("[]")
   // 승인 대기 중인 도구 호출 묶음. 승인·거절이 끝나야 다음 턴으로 넘어간다
-  pending   Json?
-  status    String   @default("IDLE") // IDLE | RUNNING | AWAITING_APPROVAL | ERROR
-  lastError String?  @map("last_error") // ERROR일 때 이유(키 미설정·한도 초과 등) — 다시 시도하면 지운다
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  pending     Json?
+  status      String   @default("IDLE") // IDLE | RUNNING | AWAITING_APPROVAL | ERROR
+  lastError   String?  @map("last_error") // ERROR일 때 이유(키 미설정·한도 초과 등) — 다시 시도하면 지운다
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   toolCalls AiToolCall[]
 
