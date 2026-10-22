@@ -200,6 +200,7 @@ model Partner {
 }
 
 // A. 판매상품(SKU): 고객이 사는 것, 견적/계약 라인에 오름
+// 상품구성 — 가정이사·기업이전 등 견적서에 대표로 보이는 묶음. 실제로 파는 건 구성 상품(product_addon → addon_service)
 model Product {
   id            String   @id @default(uuid()) @db.Uuid
   code          String   @unique
@@ -225,7 +226,9 @@ model ProductAddon {
   product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   addonServiceId String       @map("addon_service_id") @db.Uuid
   addon          AddonService @relation(fields: [addonServiceId], references: [id], onDelete: Cascade)
-  priceOverride  Decimal?     @map("price_override") @db.Decimal(14, 2) // 상품별 옵션가(없으면 옵션 기본가)
+  priceOverride  Decimal?     @map("price_override") @db.Decimal(14, 2) // 이 구성에서의 단가(없으면 상품 기본가). 이사물량이면 CBM·톤당 단가
+  role           String       @default("OPTIONAL") // REQUIRED 필수 | DEFAULT 기본선택 | OPTIONAL 선택
+  sortOrder      Int          @default(0) @map("sort_order")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@id([productId, addonServiceId])
@@ -233,17 +236,61 @@ model ProductAddon {
 }
 
 // B. CBM 품목사전: 짐량 측정용 표준 사전 (단일 표준·중복방지)
+// 이사물품 사전 — 견적 물품정보에서 고르는 물품. 물품은 하나이고, 방(RoomTemplate)은 자주 쓰는
+// 물품을 모아 둔 틀일 뿐이다(안방 컴퓨터와 서재 컴퓨터는 같은 물품을 가리킨다).
 model CbmItem {
-  id            String         @id @default(uuid()) @db.Uuid
-  category      String // common_code: ITEM_CATEGORY
-  name          String
-  cbm           Decimal        @db.Decimal(8, 2)
-  isActive      Boolean        @default(true) @map("is_active")
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  id            String             @id @default(uuid()) @db.Uuid
+  code          String             @unique // 서버 발급(ITM-0001)
+  category      String // 분류(침실/거실/주방/가전 …) — 관리용
+  name          String             @unique
+  nameEng       String?            @map("name_eng") // 견적서 영문 병기
+  cbm           Decimal?           @db.Decimal(8, 2) // 기본 부피 — 없으면 견적 때 직접 입력
+  ton           Decimal?           @db.Decimal(8, 2) // 기본 무게(톤 견적용)
+  sortOrder     Int                @default(0) @map("sort_order")
+  isActive      Boolean            @default(true) @map("is_active")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   estimateLines EstimateLine[]
+  rooms         RoomTemplateItem[]
 
-  @@unique([category, name])
   @@map("cbm_item")
+}
+
+// 방 틀 — 견적 물품정보에 기본으로 펼쳐 둘 방과, 그 방에 자주 들어가는 물품 목록
+model RoomTemplate {
+  id        String             @id @default(uuid()) @db.Uuid
+  code      String             @unique // 견적 방(estimate_zone.room_key)이 가리키는 키. 기본 방은 MASTER 등, 새 방은 ROOM-0001
+  name      String             @unique
+  nameEng   String?            @map("name_eng")
+  sortOrder Int                @default(0) @map("sort_order")
+  isActive  Boolean            @default(true) @map("is_active")
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  items     RoomTemplateItem[]
+
+  @@map("room_template")
+}
+
+model RoomTemplateItem {
+  roomId    String       @map("room_id") @db.Uuid
+  room      RoomTemplate @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  cbmItemId String       @map("cbm_item_id") @db.Uuid
+  cbmItem   CbmItem      @relation(fields: [cbmItemId], references: [id], onDelete: Cascade)
+  sortOrder Int          @default(0) @map("sort_order")
+
+  @@id([roomId, cbmItemId])
+  @@map("room_template_item")
+}
+
+// 처리방법 — 물품마다 고르는 처리(운반·폐기·하역·경유·방치·업체 …). 물량 집계 칸(bucket)을 정해 둔다
+model HandlingMethod {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique // 견적 물품(estimate_line.handling)이 가리키는 키. 기본은 CARRY 등, 새 값은 HDL-0001
+  name      String   @unique
+  bucket    String // MOVING 이사물량 | TRANSIT 경유물량 | DISCARD 폐기물량 | EXCLUDED 물량 제외
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("handling_method")
 }
 
 // C. 옵션/부가서비스: 애드온 (분해설치·사다리차·보관…)
@@ -259,6 +306,7 @@ model AddonService {
   variants  Json? // 종류 [{value,label}] — 입주청소 일반/프리미엄, 분해·설치/분해만/설치만 등
   hasDate   Boolean  @default(false) @map("has_date") // 서비스 요청일을 받는다
   hasNote   Boolean  @default(false) @map("has_note") // 내용을 적는다(기타·보관 등)
+  kind      String   @default("SERVICE") // VOLUME 이사물량(물품정보로 견적) | SERVICE 일반 상품
   sortOrder Int      @default(0) @map("sort_order")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -398,6 +446,9 @@ model Estimate {
   toAccess         String               @default("NONE") @map("to_access") // NONE|LADDER|ELEVATOR|STAIRS|ETC (shared ACCESS_METHODS)
   toAccessNote     String?              @map("to_access_note") // 기타일 때 내용
   totalCbm         Decimal              @default(0) @map("total_cbm") @db.Decimal(10, 2)
+  totalTon         Decimal              @default(0) @map("total_ton") @db.Decimal(10, 2)
+  volumeUnit       String               @default("CBM") @map("volume_unit") // CBM | TON — 이사물량을 무엇으로 견적하나
+  optionsSavedAt   DateTime?            @map("options_saved_at") @db.Timestamptz(6) // 3단계를 한 번이라도 저장했나(기본선택 상품 미리 체크 여부)
   baseAmount       Decimal?             @map("base_amount") @db.Decimal(14, 2)
   totalAmount      Decimal?             @map("total_amount") @db.Decimal(14, 2)
   // 견적 금액 확정 — 현장 견적사원이 견적서를 발송하기 전에 정한다.
@@ -454,6 +505,7 @@ model EstimateAddon {
   unitPrice      Decimal       @default(0) @map("unit_price") @db.Decimal(14, 2)
   amount         Decimal       @default(0) @db.Decimal(14, 2) // qty × unitPrice
   memo           String? // 분해/설치 대상(일반장롱 등) 같은 세부를 적는다
+  isExtra        Boolean       @default(false) @map("is_extra") // 상품 구성 밖에서 추가한 상품
   sortOrder      Int           @default(0) @map("sort_order")
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -466,7 +518,7 @@ model EstimateZone {
   estimateId String         @map("estimate_id") @db.Uuid
   estimate   Estimate       @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   name       String // 안방/거실/사무실 등 (유연)
-  roomKey    String?        @map("room_key") // 기본 방 틀(shared ROOM_PRESETS)의 키. 직접 만든 방은 null
+  roomKey    String?        @map("room_key") // 방 틀(room_template.code). 견적에서 직접 만든 방은 null
   sortOrder  Int            @default(0) @map("sort_order")
   lines      EstimateLine[]
 
@@ -485,7 +537,8 @@ model EstimateLine {
   itemNameEng String?       @map("item_name_eng") // 영문 품목명(견적서 병기용)
   qty         Decimal       @default(1) @db.Decimal(8, 2)
   cbm         Decimal       @default(0) @db.Decimal(8, 2) // 라인 합계 CBM (단위CBM×수량)
-  handling    String        @default("CARRY") // common_code: HANDLING (운반/방치/폐기)
+  ton         Decimal?      @db.Decimal(8, 2) // 톤 견적일 때 무게
+  handling    String        @default("CARRY") // handling_method.code (운반/폐기/경유 …)
   memo        String?
 
   @@map("estimate_line")
@@ -770,18 +823,49 @@ model SupportTicket {
 }
 
 // ── MKT-01: 마케팅 캠페인 (문자/알림톡 대량발송 — 세그먼트 타겟) ──
+// 캠페인 — 고객을 골라(필터 + 개별 선택) 문자·알림톡을 보낸다. 받는 사람은 CampaignRecipient에 건별로 남는다.
 model Campaign {
-  id             String    @id @default(uuid()) @db.Uuid
+  id             String              @id @default(uuid()) @db.Uuid
   name           String
-  channel        String    @default("SMS") // SMS | ALIMTALK
-  message        String
-  targetGrade    String?   @map("target_grade") // null=전체 고객(전화 보유)
-  status         String    @default("DRAFT") // DRAFT | SENT
-  recipientCount Int       @default(0) @map("recipient_count")
-  sentAt         DateTime? @map("sent_at") @db.Timestamptz(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  channel        String              @default("SMS") // SMS | ALIMTALK
+  message        String // 본문. {고객명}은 받는 사람마다 이름으로 바뀐다
+  title          String? // 장문(LMS) 제목 · 알림톡 강조 제목
+  isAd           Boolean             @default(false) @map("is_ad") // 광고성 — 본문 앞 (광고), 끝에 수신거부 문구
+  optOutText     String?             @map("opt_out_text") // 무료수신거부 안내(광고일 때 본문 끝에 붙는다)
+  templateCode   String?             @map("template_code") // 알림톡 템플릿 코드(카카오 검수 완료된 것)
+  buttons        Json? // 알림톡 버튼 [{name,url}]
+  fallbackSms    Boolean             @default(true) @map("fallback_sms") // 알림톡 실패 시 문자로 대체 발송
+  filters        Json? // 대상 고를 때 쓴 조건(기록용)
+  targetGrade    String?             @map("target_grade") // (예전 방식) 등급 일괄 대상
+  status         String              @default("DRAFT") // DRAFT | SCHEDULED | SENDING | SENT | CANCELED
+  scheduledAt    DateTime?           @map("scheduled_at") @db.Timestamptz(6) // 예약 발송 시각
+  recipientCount Int                 @default(0) @map("recipient_count")
+  sentCount      Int                 @default(0) @map("sent_count")
+  failedCount    Int                 @default(0) @map("failed_count")
+  sentAt         DateTime?           @map("sent_at") @db.Timestamptz(6)
+  createdBy      String?             @map("created_by") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  recipients     CampaignRecipient[]
 
   @@map("campaign")
+}
+
+/// 캠페인 받는 사람 — 고를 때의 이름·번호를 남기고, 건별 발송 결과를 기록한다
+model CampaignRecipient {
+  id         String    @id @default(uuid()) @db.Uuid
+  campaignId String    @map("campaign_id") @db.Uuid
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customerId String    @map("customer_id") @db.Uuid
+  name       String
+  phone      String
+  status     String    @default("PENDING") // PENDING | SENT | FAILED
+  reason     String? // 실패 사유
+  sentAt     DateTime? @map("sent_at") @db.Timestamptz(6)
+
+  @@unique([campaignId, customerId])
+  @@index([customerId])
+  @@map("campaign_recipient")
 }
 
 // ── HR-01: 인센티브/패널티 정책 (설정 기반 룰 — 화면에서 등록, 실적으로 자동계산) ──

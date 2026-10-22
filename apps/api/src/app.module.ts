@@ -14,6 +14,7 @@ import { CustomerModule } from './modules/customer/customer.module';
 import { PartnerModule } from './modules/partner/partner.module';
 import { ProductModule } from './modules/product/product.module';
 import { CbmItemModule } from './modules/cbm-item/cbm-item.module';
+import { MoveCatalogModule } from './modules/move-catalog/move-catalog.module';
 import { AddonServiceModule } from './modules/addon-service/addon-service.module';
 import { PriceConditionModule } from './modules/price-condition/price-condition.module';
 import { LeadModule } from './modules/lead/lead.module';
@@ -55,6 +56,7 @@ import { AiModule } from './ai/ai.module';
     PartnerModule,
     ProductModule,
     CbmItemModule,
+    MoveCatalogModule,
     AddonServiceModule,
     PriceConditionModule,
     LeadModule,

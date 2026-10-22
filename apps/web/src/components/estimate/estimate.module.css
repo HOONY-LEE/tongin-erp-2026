@@ -61,6 +61,14 @@
   font-size: var(--ark-font-size-md);
   font-weight: 700;
 }
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
 .sub {
   font-size: 13px;
   font-weight: 400;
@@ -262,6 +270,9 @@
 }
 .itemRowFilled {
   background: color-mix(in srgb, var(--ark-color-primary-500) 4%, transparent);
+}
+.itemRowOff {
+  color: var(--ark-color-text-secondary);
 }
 .itemName {
   font-weight: 700;

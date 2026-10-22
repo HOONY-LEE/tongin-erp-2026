@@ -25,6 +25,7 @@ import MaterialOrders from './pages/MaterialOrders';
 import ServiceOrders from './pages/ServiceOrders';
 import Support from './pages/Support';
 import AiAssistant from './pages/AiAssistant';
+import CampaignEditor from './pages/CampaignEditor';
 import OrgUnits from './pages/OrgUnits';
 import ProductMgmt from './pages/ProductMgmt';
 import OrgMgmt from './pages/OrgMgmt';
@@ -95,6 +96,7 @@ function Shell() {
         <Route path="/service-orders" element={<ServiceOrders />} />
         <Route path="/support" element={<Support />} />
         <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/campaigns/:id" element={<CampaignEditor />} />
         <Route path="/hr" element={<HrPolicies />} />
         <Route path="/org-units" element={<OrgUnits />} />
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}

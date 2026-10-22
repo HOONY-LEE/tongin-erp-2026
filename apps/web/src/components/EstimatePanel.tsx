@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ACCESS_LABEL, HANDLING_LABEL } from '@tongin/shared';
+import { ACCESS_LABEL, HANDLING_LABEL, summarizeVolume, VOLUME_UNIT_LABEL } from '@tongin/shared';
 
 /** 서버에서 오는 handling은 문자열이라 넓은 타입으로 받는다 */
 const HANDLING_TEXT: Record<string, string> = HANDLING_LABEL;
@@ -12,6 +12,7 @@ interface Line {
   itemName: string;
   qty: string | number;
   cbm: string | number;
+  ton?: string | number | null;
   handling: string;
   zoneId?: string | null;
 }
@@ -41,6 +42,9 @@ interface EstimateDetail {
   zones: Zone[];
   lines: Line[];
   addons: Addon[];
+  /** 처리방법 이름(상품관리 › 처리방법) */
+  moveCatalog?: { handlings: { code: string; name: string; bucket: string }[] };
+  volumeUnit?: 'CBM' | 'TON';
   fromPyeong: number | null;
   toPyeong: number | null;
   fromAccess: string;
@@ -119,17 +123,31 @@ export function EstimatePanel({ estimateId }: { estimateId: string }) {
   }
 
   const zoneName = new Map(data.zones.map((z) => [z.id, z.name]));
+  const handlingName: Record<string, string> = {
+    ...HANDLING_TEXT,
+    ...Object.fromEntries((data.moveCatalog?.handlings ?? []).map((h) => [h.code, h.name])),
+  };
+  const unit = data.volumeUnit ?? 'CBM';
+  const unitText = VOLUME_UNIT_LABEL[unit];
   const lineColumns: Column[] = [
     { title: '구역', render: (r) => zoneName.get(String(r.zoneId)) ?? '-' },
     { title: '품목', dataIndex: 'itemName' },
     { title: '수량', numeric: true, render: (r) => String(Number(r.qty)) },
-    { title: 'CBM', numeric: true, render: (r) => String(Number(r.cbm)) },
-    { title: '처리', render: (r) => HANDLING_TEXT[String(r.handling)] ?? String(r.handling) },
+    {
+      title: unitText,
+      numeric: true,
+      render: (r) => String(Number((unit === 'TON' ? r.ton : r.cbm) ?? 0)),
+    },
+    { title: '처리', render: (r) => handlingName[String(r.handling)] ?? String(r.handling) },
   ];
 
-  // 물량 요약 — 처리구분별로 나눠 본다(운반/경유/방치/폐기)
-  const cbmBy = (h: string) =>
-    data.lines.filter((l) => l.handling === h).reduce((s, l) => s + Number(l.cbm ?? 0), 0);
+  // 물량 요약 — 처리방법의 물량 칸대로(이사·경유·폐기, '물량 제외'는 뺀다)
+  const vol = summarizeVolume(data.lines, {
+    unit,
+    buckets: data.moveCatalog
+      ? Object.fromEntries(data.moveCatalog.handlings.map((h) => [h.code, h.bucket]))
+      : undefined,
+  });
   const addonTotal = data.addons.reduce((s, a) => s + Number(a.amount ?? 0), 0);
 
   return (
@@ -137,12 +155,11 @@ export function EstimatePanel({ estimateId }: { estimateId: string }) {
       <Section title="물량">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <Badge variant="subtle" color="info">
-            전체 {Number(data.totalCbm)} CBM
+            전체 {vol.total} {unitText}
           </Badge>
-          <Badge variant="subtle">운반 {cbmBy('CARRY')}</Badge>
-          <Badge variant="subtle">경유 {cbmBy('VIA')}</Badge>
-          <Badge variant="subtle">방치 {cbmBy('LEAVE')}</Badge>
-          <Badge variant="subtle">폐기 {cbmBy('DISPOSE')}</Badge>
+          <Badge variant="subtle">이사 {vol.moving}</Badge>
+          <Badge variant="subtle">경유 {vol.transit}</Badge>
+          <Badge variant="subtle">폐기 {vol.discard}</Badge>
         </div>
       </Section>
 

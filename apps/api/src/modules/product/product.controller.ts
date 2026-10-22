@@ -8,12 +8,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { SetBundleItemsDto } from './dto/bundle-items.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 
 class AddAddonDto {
@@ -39,6 +41,13 @@ export class ProductController {
   @RequirePermissions('PRODUCT.READ')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.productService.findOneWithAddons(id);
+  }
+
+  /** 상품 구성(필수·기본선택·선택 + 구성별 단가) 전체 저장 */
+  @Put(':id/items')
+  @RequirePermissions('PRODUCT.WRITE')
+  setItems(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetBundleItemsDto) {
+    return this.productService.setItems(id, dto.items);
   }
 
   @Post(':id/addons')

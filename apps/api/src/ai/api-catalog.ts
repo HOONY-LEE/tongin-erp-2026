@@ -37,9 +37,14 @@ const DOMAIN: Record<string, string> = {
   branches: '지점 현황 — 지점별 실적 요약',
   accounts: '사용자 계정 — 로그인 계정·역할(권한) 관리',
   partners: '파트너 — 제휴사·전속(외주)업체·B2B 고객사',
-  products: '상품 — 이사 종류(가정이사·사무실이사 …)·리빙케어 상품과 연결 부가서비스',
-  'addon-services': '옵션 카탈로그 — 견적 3단계 옵션 목록(사다리차·입주청소·분해설치·보관 등)의 원본',
-  'cbm-items': 'CBM 물품 사전 — 가구·가전 품목별 부피(CBM)',
+  products:
+    '상품구성 — 가정이사·기업이전처럼 견적서에 대표로 보이는 묶음. 구성 상품(필수·기본선택·선택)과 구성별 단가',
+  'addon-services':
+    '상품 — 실제로 파는 것(이사물량·사다리차·입주청소·분해설치·보관 등). 견적 3단계 목록의 원본',
+  'cbm-items': '이사물품 사전 — 가구·가전 물품별 기본 부피(CBM)·무게(톤)',
+  'room-templates': '방 틀 — 견적 물품정보의 기본 방(안방·거실 …)과 방마다 자주 들어가는 이사물품',
+  'handling-methods':
+    '처리방법 — 운반·폐기·하역·경유·방치·업체 등과 물량 집계 칸(이사·경유·폐기·제외)',
   'price-conditions': '단가 조건 — 파트너별 할인·고정가 조건',
   'common-codes': '공통코드 — 접수경로 등 코드표',
   materials: '자재·재고 — 박스·테이프 등 자재와 입출고(수불)',
@@ -68,8 +73,6 @@ const OVERRIDE: Record<string, string> = {
   'estimates.quote': '견적 확정 — 견적을 확정 상태로 바꾸고 접수 상태를 견적완료로 넘긴다',
   'estimates.document': '견적서 문서 데이터 조회(견적서 화면·PDF에 쓰는 형태)',
   'estimates.saveBasic': '견적 1단계 기본정보 저장(이사종류·주소·상담일·이사일)',
-  'estimates.saveItems': '견적 2단계 물품정보 저장(방별 물품·CBM·처리방법) — 방 목록 전체를 교체',
-  'estimates.saveOptions': '견적 3단계 옵션 저장(사다리차·입주청소 등) — 옵션 목록 전체를 교체',
   'estimates.updateConditions': '견적 작업조건 저장(출발·도착지 층수·엘리베이터/사다리 등)',
   'estimates.updateAmounts': '견적 금액 저장(이사비용·부가세·계약금·잔금)',
   'estimates.getBuildup': '견적 원가 구성(인건비·차량·자재) 조회',
@@ -114,8 +117,14 @@ const OVERRIDE: Record<string, string> = {
   'material-orders.approve': '자재 발주 승인',
   'material-orders.ship': '자재 발주 출고',
   'material-orders.cancel': '자재 발주 취소',
-  'products.addAddon': '상품에 부가서비스 연결',
-  'products.removeAddon': '상품에서 부가서비스 연결 해제',
+  'products.addAddon': '상품구성에 상품 하나 추가',
+  'products.removeAddon': '상품구성에서 상품 하나 빼기',
+  'products.setItems': '상품구성 전체 저장(필수·기본선택·선택, 구성 단가, 순서)',
+  'room-templates.setItems': '방 틀의 물품 목록 전체 저장(순서대로)',
+  'estimates.saveItems':
+    '견적 2단계 물품정보 저장(방별 물품·CBM 또는 톤·처리방법, CBM/톤 견적 선택) — 방 목록 전체를 교체',
+  'estimates.saveOptions':
+    '견적 3단계 저장(작업조건 + 구성 상품·추가 상품) — 필수 상품은 빠질 수 없다',
   'accounts.roles': '역할 목록',
   'geo.geocode': '도로명주소 → 좌표·시도/시군구',
 };

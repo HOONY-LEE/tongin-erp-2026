@@ -17,8 +17,18 @@ export interface SendResult {
   delivered?: boolean;
 }
 
+export interface SendOptions {
+  /** 장문(LMS) 제목 */
+  title?: string;
+}
+
 export interface NotificationProvider {
-  send(channel: string, recipient: string | null, message: string): Promise<SendResult>;
+  send(
+    channel: string,
+    recipient: string | null,
+    message: string,
+    opts?: SendOptions,
+  ): Promise<SendResult>;
 }
 
 const digits = (s: string) => s.replace(/\D/g, '');
@@ -42,7 +52,12 @@ export class StubNotificationProvider implements NotificationProvider {
     return !!(this.aligo.key && this.aligo.userId && this.aligo.sender);
   }
 
-  async send(channel: string, recipient: string | null, message: string): Promise<SendResult> {
+  async send(
+    channel: string,
+    recipient: string | null,
+    message: string,
+    opts: SendOptions = {},
+  ): Promise<SendResult> {
     if (channel !== 'SMS' || !this.smsLive) {
       this.logger.log(`[${channel}·스텁] → ${recipient ?? '고객'} : ${message}`);
       return { ok: true, delivered: false };
@@ -57,17 +72,18 @@ export class StubNotificationProvider implements NotificationProvider {
         reason: '허용 번호 아님(개발·시연 환경은 SMS_ALLOWED_RECIPIENTS 번호로만 발송)',
       };
     }
-    return this.sendAligo(recipient, message);
+    return this.sendAligo(recipient, message, opts.title);
   }
 
   /** 알리고 SMS/LMS — 90바이트 넘으면 알리고가 LMS로 자동 전환 */
-  private async sendAligo(recipient: string, message: string): Promise<SendResult> {
+  private async sendAligo(recipient: string, message: string, title?: string): Promise<SendResult> {
     const form = new URLSearchParams({
       key: this.aligo.key!,
       user_id: this.aligo.userId!,
       sender: digits(this.aligo.sender!),
       receiver: digits(recipient),
       msg: message,
+      ...(title ? { title } : {}),
       ...(this.aligo.testmode ? { testmode_yn: 'Y' } : {}),
     });
     try {

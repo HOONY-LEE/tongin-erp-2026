@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, DataTable, PageCard, PageHeader, type Column } from '../components/ui';
+import type { StatsOverview } from '@tongin/shared';
+import { UnitPerformance } from '../components/dashboard/UnitPerformance';
+import { Card, DataTable, PageCard, PageHeader, type Column, type Row } from '../components/ui';
 import { api } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 
@@ -40,7 +42,8 @@ interface Overview {
     outstanding: number;
     conversionRate: number;
   };
-  byBranch: { orgUnitName: string; contractCount: number; revenue: number }[];
+  byBranch: StatsOverview['byBranch'];
+  byRegion: StatsOverview['byRegion'];
 }
 
 interface BarItem {
@@ -192,19 +195,11 @@ export default function Dashboard() {
     title: `${STATUS_LABEL[f.status] ?? f.status} ${f.count}건`,
   }));
 
-  const branchItems: BarItem[] = [...(data?.byBranch ?? [])]
-    .sort((a, b) => Number(b.revenue) - Number(a.revenue))
-    .map((b) => ({
-      key: b.orgUnitName,
-      label: b.orgUnitName,
-      value: Number(b.revenue),
-      valueLabel: wonShort(b.revenue),
-      title: `${b.orgUnitName} ${won(b.revenue)}원 · 계약 ${b.contractCount}건`,
-    }));
-
   const branchCols: Column[] = [
     { title: t('dashboard.branch'), dataIndex: 'orgUnitName' },
+    { title: '접수', numeric: true, render: (r) => String(r.leadCount ?? 0) },
     { title: t('dashboard.contractCount'), numeric: true, render: (r) => String(r.contractCount) },
+    { title: '작업', numeric: true, render: (r) => String(r.workCount ?? 0) },
     { title: t('dashboard.revenue'), numeric: true, render: (r) => won(r.revenue) },
   ];
 
@@ -262,14 +257,12 @@ export default function Dashboard() {
         <PageCard title={t('dashboard.funnel')}>
           <BarChart items={funnelItems} />
         </PageCard>
-
-        <PageCard title={t('dashboard.byBranch')}>
-          <BarChart items={branchItems} labelWidth={92} valueWidth={68} />
-        </PageCard>
       </div>
 
+      <UnitPerformance byBranch={data?.byBranch ?? []} byRegion={data?.byRegion ?? []} />
+
       <PageCard title="지점별 상세" count={data?.byBranch.length ?? 0} plain>
-        <DataTable columns={branchCols} rows={data?.byBranch ?? []} rowKey="orgUnitName" />
+        <DataTable columns={branchCols} rows={(data?.byBranch ?? []) as unknown as Row[]} rowKey="orgUnitName" />
       </PageCard>
     </div>
   );

@@ -50,6 +50,8 @@ interface FieldLine {
   itemName: string;
   qty: string;
   handling: string;
+  /** 처리방법 이름(상품관리 › 처리방법) */
+  handlingName: string;
   memo: string | null;
 }
 
@@ -140,6 +142,11 @@ export class FieldService {
       },
     });
 
+    const handlingName = new Map(
+      (await this.prisma.handlingMethod.findMany({ select: { code: true, name: true } })).map(
+        (h) => [h.code, h.name],
+      ),
+    );
     const toLine = (l: {
       id: string;
       itemName: string;
@@ -151,6 +158,7 @@ export class FieldService {
       itemName: l.itemName,
       qty: String(l.qty),
       handling: l.handling,
+      handlingName: handlingName.get(l.handling) ?? l.handling,
       memo: l.memo,
     });
 

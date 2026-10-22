@@ -19,7 +19,22 @@ const columns: Column[] = [
       </Badge>
     ),
   },
-  { title: '옵션명', dataIndex: 'name', flex: 1, minWidth: 160 },
+  {
+    title: '상품명',
+    dataIndex: 'name',
+    flex: 1,
+    minWidth: 160,
+    render: (r: Row) => (
+      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+        {String(r.name)}
+        {r.kind === 'VOLUME' && (
+          <Badge variant="subtle" color="info">
+            물품정보로 견적
+          </Badge>
+        )}
+      </span>
+    ),
+  },
   { title: '종류', render: (r: Row) => String(r.variantText || '-') },
   {
     title: '입력',
@@ -39,7 +54,7 @@ const columns: Column[] = [
 ];
 
 const fields: FormField[] = [
-  { name: 'name', label: '옵션명', required: true, placeholder: '에어컨 분리·설치' },
+  { name: 'name', label: '상품명', required: true, placeholder: '에어컨 분리·설치' },
   {
     name: 'groupCode',
     label: '견적 화면 묶음',
@@ -74,13 +89,14 @@ const fields: FormField[] = [
 ];
 
 /**
- * 옵션 — 견적 3단계(옵션선택)에 나오는 목록의 원본. 여기서 추가·수정하면 견적 화면에 바로 반영된다.
- * 코드는 서버 발급(OPT-0001). 견적에 쓰인 옵션은 삭제 대신 '사용 안 함'.
+ * 상품 — 실제로 파는 것(이사물량·사다리차·입주청소 …). 상품구성에 넣으면 그 구성의 견적 3단계에 나오고,
+ * 구성 밖이어도 견적에서 '추가 상품'으로 고를 수 있다. 코드는 서버 발급(OPT-0001).
+ * 이사물량은 물품정보(방·물품·처리방법)로 물량을 잡는 특별한 상품이다.
  */
 export default function Addons() {
   return (
     <CrudTable
-      title="옵션"
+      title="상품"
       path="/addon-services"
       columns={columns}
       fields={fields}

@@ -13,7 +13,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { ACCESS_METHODS, HANDLING, type AccessMethod, type Handling } from '@tongin/shared';
+import { ACCESS_METHODS, VOLUME_UNITS, type AccessMethod, type VolumeUnit } from '@tongin/shared';
 import { MoveAddressDto } from '../../../common/dto/address-fields.dto';
 
 /**
@@ -37,6 +37,11 @@ export class SaveBasicDto extends MoveAddressDto {
 }
 
 export class ItemLineInput {
+  /** 이사물품 사전의 물품(직접 적은 물품이면 생략) */
+  @IsOptional()
+  @IsUUID()
+  cbmItemId?: string;
+
   @IsString()
   @MaxLength(100)
   itemName!: string;
@@ -46,12 +51,21 @@ export class ItemLineInput {
   @MaxLength(100)
   itemNameEng?: string;
 
+  @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  cbm!: number;
+  cbm?: number;
 
-  @IsIn(HANDLING)
-  handling!: Handling;
+  /** 톤 견적일 때 무게 */
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  ton?: number;
+
+  /** 처리방법 코드(handling_method) — 서버가 있는 값인지 확인한다 */
+  @IsString()
+  @MaxLength(40)
+  handling!: string;
 
   @IsOptional()
   @IsString()
@@ -82,6 +96,11 @@ export class ItemRoomInput {
 
 /** 2. 물품정보 — 방·물품 전체를 한 번에 바꿔 저장한다. */
 export class SaveItemsDto {
+  /** 이사물량을 CBM으로 견적하나 톤으로 견적하나 */
+  @IsOptional()
+  @IsIn(VOLUME_UNITS)
+  volumeUnit?: VolumeUnit;
+
   @IsArray()
   @ArrayMaxSize(60)
   @ValidateNested({ each: true })

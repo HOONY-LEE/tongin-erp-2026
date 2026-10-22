@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { summarizeVolume } from '@tongin/shared';
+import { summarizeVolume, VOLUME_UNIT_LABEL } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { Button, SegmentedControl, useToast } from '../ui';
 import { SaveBar, UnitField } from './parts';
@@ -49,7 +49,20 @@ export function SummaryTab({
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
   const [saving, setSaving] = useState(false);
 
-  const volume = useMemo(() => summarizeVolume(data.lines), [data.lines]);
+  const unit = data.volumeUnit ?? 'CBM';
+  const unitText = VOLUME_UNIT_LABEL[unit];
+  const volume = useMemo(
+    () =>
+      summarizeVolume(data.lines, {
+        unit,
+        buckets: Object.fromEntries(data.moveCatalog.handlings.map((h) => [h.code, h.bucket])),
+      }),
+    [data.lines, data.moveCatalog, unit],
+  );
+  // 이사물량 단가(상품 구성에서 정한 CBM·톤당 단가) — 이사비용 참고값
+  const volumeDef = data.optionCatalog.find((d) => d.kind === 'VOLUME' && d.role !== null);
+  const unitPrice = Number(volumeDef?.bundlePrice ?? 0);
+  const suggested = Math.round(volume.total * unitPrice);
   const optionTotal = data.addons.reduce((s, a) => s + Number(a.amount || 0), 0);
   const included = form.vatMode === 'INCLUDED';
   const total = toNum(form.moveAmount) + optionTotal + (included ? toNum(form.vatAmount) : 0);
@@ -106,7 +119,7 @@ export function SummaryTab({
             <div key={label} className={[styles.volCard, i === 3 ? styles.volTotal : ''].join(' ')}>
               <div className={styles.infoLabel}>{label}</div>
               <div className={styles.volValue} style={{ fontSize: 18 }}>
-                {v} <span className={styles.unit}>CBM</span>
+                {v} <span className={styles.unit}>{unitText}</span>
               </div>
             </div>
           ))}
@@ -151,14 +164,34 @@ export function SummaryTab({
         </h3>
         <div className={styles.row2}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>이사비용 (옵션 제외)</span>
-            <UnitField
-              value={form.moveAmount}
-              unit="원"
-              ariaLabel="이사비용"
-              disabled={!canEdit}
-              onChange={(v) => set('moveAmount', v)}
-            />
+            <span className={styles.fieldLabel}>이사비용 (이사물량 · 옵션 제외)</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <UnitField
+                  value={form.moveAmount}
+                  unit="원"
+                  ariaLabel="이사비용"
+                  disabled={!canEdit}
+                  placeholder={suggested ? String(suggested) : '0'}
+                  onChange={(v) => set('moveAmount', v)}
+                />
+              </div>
+              {canEdit && suggested > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => set('moveAmount', String(suggested))}
+                >
+                  물량×단가
+                </Button>
+              )}
+            </div>
+            {unitPrice > 0 && (
+              <span className={styles.sub}>
+                전체물량 {volume.total}
+                {unitText} × {unitText}당 {won(unitPrice)} = {won(suggested)}
+              </span>
+            )}
           </div>
           <div className={styles.field}>
             <span className={styles.fieldLabel}>부가세</span>

@@ -1,32 +1,38 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { CAMPAIGN_CHANNEL_LABEL, type CampaignChannel } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
-  FormModal,
   PageHeader,
   StatusBadge,
   useToast,
   type Column,
-  type FormField,
   type Row,
   type StatusMap,
 } from '../components/ui';
 
-const STATUS: StatusMap = {
-  DRAFT: { label: '작성중', color: 'neutral' },
-  SENT: { label: '발송완료', color: 'success' },
+export const CAMPAIGN_STATUS_MAP: StatusMap = {
+  DRAFT: { label: '작성 중', color: 'neutral' },
+  SCHEDULED: { label: '예약됨', color: 'info' },
+  SENDING: { label: '발송 중', color: 'warning' },
+  SENT: { label: '발송 완료', color: 'success' },
+  CANCELED: { label: '취소', color: 'error' },
 };
-const CHANNEL: Record<string, string> = { SMS: '문자(SMS)', ALIMTALK: '알림톡' };
 
+const dt = (v: unknown) =>
+  v ? new Date(String(v)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+
+/** 마케팅 캠페인 목록 — 등록·수정은 별도 화면(대상 고르기까지 한 곳에서) */
 export default function Campaigns() {
   const { t } = useTranslation();
   const toast = useToast();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
@@ -39,98 +45,51 @@ export default function Campaigns() {
     } finally {
       setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, touch]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const onCreate = async (values: Record<string, unknown>) => {
-    try {
-      await api('/campaigns', { method: 'POST', body: JSON.stringify(values) });
-      toast({ type: 'success', title: t('common.created') });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
-
-  const send = async (r: Row) => {
-    try {
-      const sent = await api<{ recipientCount: number }>(`/campaigns/${r.id as string}/send`, {
-        method: 'POST',
-      });
-      toast({ type: 'success', title: `${t('campaign.sentMsg')} (${sent.recipientCount})` });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-    }
-  };
-
-  const fields: FormField[] = [
-    { name: 'name', label: t('campaign.name'), required: true, placeholder: '6월 이사고객 안내' },
-    {
-      name: 'channel',
-      label: t('campaign.channel'),
-      type: 'select',
-      options: [
-        { value: 'SMS', label: CHANNEL.SMS },
-        { value: 'ALIMTALK', label: CHANNEL.ALIMTALK },
-      ],
-    },
-    { name: 'targetGrade', label: t('campaign.targetGrade'), placeholder: '미입력 = 전체 고객' },
-    { name: 'message', label: t('campaign.message'), required: true, placeholder: '안내 메시지…' },
-  ];
-
   const columns: Column[] = [
-    { title: t('campaign.name'), dataIndex: 'name' },
+    { title: '캠페인', dataIndex: 'name', flex: 1, minWidth: 180 },
     {
-      title: t('campaign.channel'),
-      render: (r) => CHANNEL[r.channel as string] ?? String(r.channel),
-    },
-    { title: t('campaign.targetGrade'), render: (r) => String(r.targetGrade ?? '전체') },
-    {
-      title: t('campaign.status'),
-      render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
+      title: '채널',
+      render: (r) => CAMPAIGN_CHANNEL_LABEL[r.channel as CampaignChannel] ?? String(r.channel),
     },
     {
-      title: t('campaign.recipients'),
-      numeric: true,
-      render: (r) => String(r.recipientCount ?? 0),
+      title: '상태',
+      render: (r) => <StatusBadge value={String(r.status)} map={CAMPAIGN_STATUS_MAP} />,
     },
+    { title: '받는 사람', numeric: true, render: (r) => `${Number(r.recipientCount ?? 0)}명` },
     {
-      title: '',
+      title: '결과',
       render: (r) =>
-        r.status === 'DRAFT' ? (
-          <Button variant="primary" size="sm" onClick={() => send(r)}>
-            {t('campaign.send')}
-          </Button>
-        ) : null,
+        r.status === 'SENT'
+          ? `성공 ${Number(r.sentCount ?? 0)} · 실패 ${Number(r.failedCount ?? 0)}`
+          : '-',
     },
+    {
+      title: '발송(예약) 시각',
+      render: (r) => (r.status === 'SCHEDULED' ? `${dt(r.scheduledAt)} 예약` : dt(r.sentAt)),
+    },
+    { title: '작성', render: (r) => dt(r.createdAt) },
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <>
       <PageHeader title={t('nav.campaigns')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
         columns={columns}
         rows={rows}
         loading={loading}
+        onRowClick={(r) => navigate(`/campaigns/${String(r.id)}`)}
         toolbarActions={
-          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-            + {t('campaign.register')}
+          <Button variant="primary" size="sm" onClick={() => navigate('/campaigns/new')}>
+            + 캠페인 등록
           </Button>
         }
       />
-      <FormModal
-        open={open}
-        onOpenChange={setOpen}
-        title={t('campaign.register')}
-        size="md"
-        fields={fields}
-        onSubmit={onCreate}
-      />
-    </div>
+    </>
   );
 }

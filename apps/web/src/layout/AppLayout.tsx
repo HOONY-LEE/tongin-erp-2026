@@ -19,7 +19,6 @@ import {
   CalendarDays,
   Globe,
   LogOut,
-  Sparkles,
   Calculator,
   Receipt,
   Award,
@@ -52,7 +51,8 @@ type NavItem = {
    *  (예: 견적/계약/작업 상세는 접수 케이스의 문서라 '접수' 탭에 머물러야 한다) */
   owns?: string[];
 };
-type NavGroup = { label?: string; items: NavItem[] };
+/** defaultOpen=false면 처음엔 접어 둔다(그 그룹 화면에 있으면 펼친다) */
+type NavGroup = { label?: string; items: NavItem[]; defaultOpen?: boolean };
 
 const COLLAPSE_KEY = 'tongin_sidebar_collapsed';
 
@@ -124,39 +124,9 @@ export default function AppLayout() {
         },
         // 현장(/field)은 폰·태블릿 전용 화면이라 PC 메뉴에 두지 않는다.
         // 현장 작업팀 계정은 로그인하면 자동으로 그 화면으로 간다(App.tsx 분기).
-        {
-          to: '/service-orders',
-          label: t('nav.serviceOrders'),
-          icon: Sparkles,
-          perm: 'SERVICE_ORDER.READ',
-        },
+        // 리빙·케어는 따로 메뉴를 두지 않는다 — 접수에서 고객마다 상품(입주청소 등)으로 들어간다.
         { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
         { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
-      ],
-    },
-    {
-      label: t('navGroup.finance'),
-      items: [
-        {
-          to: '/settlements',
-          label: t('nav.settlement'),
-          icon: Calculator,
-          perm: 'SETTLEMENT.READ',
-        },
-        { to: '/billing', label: t('nav.billing'), icon: Receipt, perm: 'BILLING.READ' },
-        { to: '/hr', label: t('nav.hr'), icon: Award, perm: 'HR.READ' },
-      ],
-    },
-    {
-      label: t('navGroup.materials'),
-      items: [
-        { to: '/materials', label: t('nav.materials'), icon: Package, perm: 'MATERIAL.READ' },
-        {
-          to: '/material-orders',
-          label: t('nav.materialOrders'),
-          icon: ShoppingCart,
-          perm: 'MATERIAL_ORDER.READ',
-        },
       ],
     },
     {
@@ -180,6 +150,33 @@ export default function AppLayout() {
         },
         { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
         { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
+      ],
+    },
+    {
+      label: t('navGroup.materials'),
+      items: [
+        { to: '/materials', label: t('nav.materials'), icon: Package, perm: 'MATERIAL.READ' },
+        {
+          to: '/material-orders',
+          label: t('nav.materialOrders'),
+          icon: ShoppingCart,
+          perm: 'MATERIAL_ORDER.READ',
+        },
+      ],
+    },
+    {
+      label: t('navGroup.finance'),
+      // 자주 쓰지 않는 메뉴라 맨 아래에 접어 둔다
+      defaultOpen: false,
+      items: [
+        {
+          to: '/settlements',
+          label: t('nav.settlement'),
+          icon: Calculator,
+          perm: 'SETTLEMENT.READ',
+        },
+        { to: '/billing', label: t('nav.billing'), icon: Receipt, perm: 'BILLING.READ' },
+        { to: '/hr', label: t('nav.hr'), icon: Award, perm: 'HR.READ' },
       ],
     },
   ];
@@ -371,7 +368,7 @@ export default function AppLayout() {
                 key={g.label ?? `g${gi}`}
                 label={collapsed ? undefined : g.label}
                 collapsible={!collapsed}
-                defaultOpen
+                defaultOpen={g.defaultOpen !== false || g.items.some(ownsPath)}
               >
                 {g.items.map((it) => (
                   <SidebarItem

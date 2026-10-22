@@ -1,4 +1,4 @@
-import type { EstimateMeta, EstimateOptionDef } from '@tongin/shared';
+import type { EstimateMeta, EstimateOptionDef, MoveCatalog, VolumeUnit } from '@tongin/shared';
 
 /** GET /estimates/:id 응답(견적 상세 화면에서 쓰는 부분) */
 export interface EstimateZone {
@@ -10,15 +10,18 @@ export interface EstimateZone {
 export interface EstimateLine {
   id: string;
   zoneId: string | null;
+  cbmItemId: string | null;
   itemName: string;
   itemNameEng: string | null;
   cbm: string | number;
+  ton: string | number | null;
   handling: string;
   memo: string | null;
 }
 export interface EstimateAddon {
   id: string;
   addonServiceId: string | null;
+  isExtra: boolean;
   code: string | null;
   variant: string | null;
   serviceDate: string | null;
@@ -35,6 +38,10 @@ export interface EstimateDetailData {
   productId: string;
   serviceLine: string | null;
   totalCbm: string | number;
+  totalTon: string | number;
+  volumeUnit: VolumeUnit;
+  /** 3단계를 한 번이라도 저장했나 — 아직이면 '기본선택' 상품을 미리 체크해 둔다 */
+  optionsSavedAt: string | null;
   baseAmount: string | number | null;
   totalAmount: string | number | null;
   moveAmount: string | number | null;
@@ -65,8 +72,10 @@ export interface EstimateDetailData {
   zones: EstimateZone[];
   lines: EstimateLine[];
   addons: EstimateAddon[];
-  /** 3단계 옵션 목록(상품관리 '옵션' 탭 카탈로그) */
+  /** 상품 카탈로그 + 이 견적 상품 구성에서의 역할(필수·기본선택·선택, 구성 밖은 null) */
   optionCatalog: EstimateOptionDef[];
+  /** 2단계 물품정보 — 방 틀·이사물품·처리방법 */
+  moveCatalog: MoveCatalog;
   lead: { id: string; leadNo: string; visitDate: string | null; moveDate: string | null } | null;
   meta: EstimateMeta;
 }

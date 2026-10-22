@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { Button, DataTable, FormModal, PageHeader, useToast } from './ui';
@@ -19,6 +19,10 @@ interface Props {
   editable?: boolean;
   /** 행마다 삭제(DELETE path/:id) 버튼 — 확인창 후 삭제. 쓰는 곳이 있으면 서버가 409로 막는다 */
   deletable?: boolean;
+  /** 행마다 더 붙일 버튼(예: 방의 물품 구성). reload로 목록을 다시 읽는다 */
+  rowActions?: (row: Row, reload: () => Promise<void>) => ReactNode;
+  /** 버튼 칸 폭을 더 잡아야 할 때(rowActions 버튼 폭) */
+  extraActionWidth?: number;
 }
 
 /** 행 값을 폼 초기값(문자열)으로 */
@@ -39,6 +43,8 @@ export default function CrudTable({
   hideHeader,
   editable,
   deletable,
+  rowActions,
+  extraActionWidth = 0,
 }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -99,14 +105,16 @@ export default function CrudTable({
     }
   };
 
-  const hasActions = !!onDetail || editable || deletable;
+  const hasActions = !!onDetail || editable || deletable || !!rowActions;
   // 버튼이 잘리지 않게 개수만큼 폭을 잡는다(상세 → 는 조금 더 넓다)
-  const actionWidth = (editable ? 60 : 0) + (deletable ? 60 : 0) + (onDetail ? 80 : 0) + 48;
+  const actionWidth =
+    (editable ? 60 : 0) + (deletable ? 60 : 0) + (onDetail ? 80 : 0) + extraActionWidth + 48;
   const actionColumn: Column = {
     title: '',
     width: actionWidth,
     render: (r: Row) => (
       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+        {rowActions?.(r, load)}
         {editable && (
           <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>
             수정
