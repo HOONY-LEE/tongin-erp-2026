@@ -421,10 +421,15 @@ export interface StatsOverview {
   /** 지점별 실적 — 접수·계약(SIGNED)·작업(전체)·매출(SIGNED 총액) */
   byBranch: StatsByUnit[];
   /** 시·도별 실적 — 접수 출발지 기준(지도 모드) */
-  byRegion: (Omit<StatsByUnit, 'orgUnitName'> & { sido: string })[];
+  byRegion: (Omit<StatsByUnit, 'orgUnitName' | 'orgUnitId' | 'lat' | 'lng'> & { sido: string })[];
 }
 export interface StatsByUnit {
   orgUnitName: string;
+  /** 지점 위치(지도의 점). 좌표가 없으면 시·도 중심에 찍는다 */
+  orgUnitId?: string | null;
+  sido?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   leadCount: number;
   contractCount: number;
   workCount: number;

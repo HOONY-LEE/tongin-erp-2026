@@ -345,6 +345,55 @@
   display: flex;
   gap: 8px;
 }
+.recipientEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.editedTag {
+  color: var(--ark-color-primary-600);
+  font-weight: 700;
+}
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ark-color-text-secondary);
+}
+.addRow > :last-child {
+  flex: 1;
+}
+.found {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.found button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ark-color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.found button:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted);
+}
+.found button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
 .approvalActions {
   display: flex;
   justify-content: flex-end;

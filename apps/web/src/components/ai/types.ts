@@ -35,10 +35,21 @@ export type ChatItem =
       isError?: boolean;
     };
 
+export interface Recipient {
+  customerId: string;
+  name: string;
+  phone: string;
+}
 export interface SmsPreview {
   message: string;
-  recipients: { name: string; phone: string }[];
+  recipients: Recipient[];
   skipped: string[];
+}
+/** 승인 결정 — 문자는 직원이 고친 받는 사람(customerIds)을 함께 보낼 수 있다 */
+export interface Decision {
+  toolUseId: string;
+  approve: boolean;
+  customerIds?: string[];
 }
 
 export interface PendingCall {

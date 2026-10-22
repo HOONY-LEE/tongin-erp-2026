@@ -22,13 +22,13 @@ export class StatsService {
     const [leads, signedContracts, paidAgg, workOrders] = await Promise.all([
       this.prisma.lead.findMany({
         where: org,
-        select: { status: true, fromSido: true, orgUnit: { select: { name: true } } },
+        select: { status: true, fromSido: true, orgUnitId: true },
       }),
       this.prisma.contract.findMany({
         where: { status: 'SIGNED', ...org },
         select: {
           totalAmount: true,
-          lead: { select: { fromSido: true, orgUnit: { select: { name: true } } } },
+          lead: { select: { fromSido: true, orgUnitId: true } },
         },
       }),
       this.prisma.payment.aggregate({
@@ -39,10 +39,16 @@ export class StatsService {
         where: org,
         select: {
           status: true,
-          lead: { select: { fromSido: true, orgUnit: { select: { name: true } } } },
+          lead: { select: { fromSido: true, orgUnitId: true } },
         },
       }),
     ]);
+    // 지점은 실적이 없어도 지도·목록에 나온다(범위 안 지점 전부)
+    const units = await this.prisma.orgUnit.findMany({
+      where: { type: 'BRANCH', isActive: true, ...(ids === null ? {} : { id: { in: ids } }) },
+      select: { id: true, name: true, sido: true, lat: true, lng: true },
+    });
+    const unitById = new Map(units.map((u) => [u.id, u]));
 
     const countByStatus = new Map<string, number>();
     for (const l of leads) countByStatus.set(l.status, (countByStatus.get(l.status) ?? 0) + 1);
@@ -60,7 +66,7 @@ export class StatsService {
     // 지점·시도별로 같은 네 칸을 센다
     type Acc = { leadCount: number; contractCount: number; workCount: number; revenue: number };
     const blank = (): Acc => ({ leadCount: 0, contractCount: 0, workCount: 0, revenue: 0 });
-    const branch = new Map<string, Acc>();
+    const branch = new Map<string, Acc>(units.map((u) => [u.id, blank()]));
     const region = new Map<string, Acc>();
     const bump = (m: Map<string, Acc>, key: string | null | undefined, f: (a: Acc) => void) => {
       if (!key) return;
@@ -69,7 +75,7 @@ export class StatsService {
       m.set(key, a);
     };
     for (const l of leads) {
-      bump(branch, l.orgUnit?.name ?? '(미지정)', (a) => a.leadCount++);
+      bump(branch, l.orgUnitId, (a) => a.leadCount++);
       bump(region, l.fromSido, (a) => a.leadCount++);
     }
     for (const c of signedContracts) {
@@ -78,11 +84,11 @@ export class StatsService {
         a.contractCount++;
         a.revenue += amt;
       };
-      bump(branch, c.lead?.orgUnit?.name ?? '(미지정)', add);
+      bump(branch, c.lead?.orgUnitId, add);
       bump(region, c.lead?.fromSido, add);
     }
     for (const w of workOrders) {
-      bump(branch, w.lead?.orgUnit?.name ?? '(미지정)', (a) => a.workCount++);
+      bump(branch, w.lead?.orgUnitId, (a) => a.workCount++);
       bump(region, w.lead?.fromSido, (a) => a.workCount++);
     }
 
@@ -98,7 +104,17 @@ export class StatsService {
         conversionRate: leadTotal ? contractCount / leadTotal : 0,
       },
       byBranch: [...branch.entries()]
-        .map(([orgUnitName, v]) => ({ orgUnitName, ...v }))
+        .map(([orgUnitId, v]) => {
+          const u = unitById.get(orgUnitId);
+          return {
+            orgUnitId,
+            orgUnitName: u?.name ?? '(다른 조직)',
+            sido: u?.sido ?? null,
+            lat: u?.lat ?? null,
+            lng: u?.lng ?? null,
+            ...v,
+          };
+        })
         .sort((a, b) => b.revenue - a.revenue),
       byRegion: [...region.entries()].map(([sido, v]) => ({ sido, ...v })),
     };

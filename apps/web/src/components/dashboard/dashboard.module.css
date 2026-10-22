@@ -66,77 +66,80 @@
   white-space: nowrap;
 }
 
-/* 지도 */
-.mapWrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 200px;
-  gap: 16px;
-  align-items: start;
-}
+/* 지도 — 시·도는 바탕만, 값은 지점 점의 크기로 */
 .map {
   width: 100%;
-  max-height: 440px;
+  max-height: 560px;
   display: block;
+  margin: 0 auto;
 }
 .region {
+  fill: var(--chart-track);
   stroke: var(--ark-color-bg);
   stroke-width: 1;
   stroke-linejoin: round;
-  transition: opacity 0.15s;
 }
-.region:hover {
-  stroke: var(--ark-color-text);
+.dot {
+  cursor: default;
+}
+.dotFill {
+  fill: color-mix(in srgb, var(--chart-bar) 72%, transparent);
+  stroke: var(--ark-color-bg);
   stroke-width: 1.5;
 }
-.mapLabel {
+.dot:hover .dotFill {
+  fill: var(--chart-bar);
+}
+.dotEmpty {
+  fill: var(--ark-color-bg);
+  stroke: var(--ark-color-text-tertiary);
+  stroke-width: 1;
+}
+.dotLabel {
   font-size: 10px;
   font-weight: 600;
   fill: var(--ark-color-text);
-  text-anchor: middle;
+  dominant-baseline: middle;
   pointer-events: none;
   paint-order: stroke;
   stroke: var(--ark-color-bg);
   stroke-width: 2.5px;
 }
+.leader {
+  stroke: var(--ark-color-text-tertiary);
+  stroke-width: 0.8;
+}
+/* 퍼널 | 지점 실적 — 지도에 폭을 더 준다 */
+.twoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .twoCol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .mapValue {
   font-weight: 700;
 }
-.mapSide {
+.mapFoot {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 13px;
+  gap: 4px;
+  margin-top: 6px;
 }
 .legend {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 12px;
   color: var(--ark-color-text-secondary);
-}
-.legendSwatch {
-  width: 18px;
-  height: 10px;
-  border-radius: 2px;
 }
 .legendNote {
   font-size: 12px;
   color: var(--ark-color-text-tertiary);
-}
-.rank {
-  margin: 4px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.rank li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--ark-color-border);
 }
 
 /* 툴팁 */
@@ -157,10 +160,4 @@
 .tipTitle {
   font-weight: 700;
   margin-bottom: 2px;
-}
-
-@media (max-width: 760px) {
-  .mapWrap {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

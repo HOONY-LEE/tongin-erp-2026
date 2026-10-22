@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StatsOverview } from '@tongin/shared';
 import { UnitPerformance } from '../components/dashboard/UnitPerformance';
+import dashStyles from '../components/dashboard/dashboard.module.css';
 import { Card, DataTable, PageCard, PageHeader, type Column, type Row } from '../components/ui';
 import { api } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -246,20 +247,12 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: 16,
-          alignItems: 'start',
-        }}
-      >
+      <div className={dashStyles.twoCol}>
         <PageCard title={t('dashboard.funnel')}>
           <BarChart items={funnelItems} />
         </PageCard>
+        <UnitPerformance byBranch={data?.byBranch ?? []} />
       </div>
-
-      <UnitPerformance byBranch={data?.byBranch ?? []} byRegion={data?.byRegion ?? []} />
 
       <PageCard title="지점별 상세" count={data?.byBranch.length ?? 0} plain>
         <DataTable

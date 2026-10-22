@@ -244,6 +244,33 @@ export class DomainTools {
     };
   }
 
+  /** 승인 카드에서 받는 사람을 더할 때 — 이름·번호 일부로 범위 안 고객(번호 있는 사람만) */
+  async findCustomers(keyword: string, principal: AuthPrincipal) {
+    const scope = await this.customerScope(principal);
+    const kw = keyword.trim();
+    if (!kw) return [];
+    const digits = kw.replace(/\D/g, '');
+    const rows = await this.prisma.customer.findMany({
+      where: {
+        AND: [
+          ...(scope ? [scope] : []),
+          { phonePrimary: { not: null } },
+          {
+            OR: [
+              { name: { contains: kw } },
+              ...(digits.length >= 3 ? [{ phonePrimary: { contains: digits } }] : []),
+              ...(digits.length >= 3 ? [{ phonePrimary: { contains: kw } }] : []),
+            ],
+          },
+        ],
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, name: true, phonePrimary: true },
+    });
+    return rows.map((c) => ({ customerId: c.id, name: c.name, phone: c.phonePrimary }));
+  }
+
   /** 고객 접근 범위: 담당 지점이 내 조직이거나, 내 조직 접수에 걸린 고객 */
   private async customerScope(principal: AuthPrincipal): Promise<Prisma.CustomerWhereInput | null> {
     const ids = await this.scope.orgScopeIds(principal);
@@ -311,7 +338,11 @@ export class DomainTools {
         const r = await this.resolveRecipients(input, ctx.principal);
         return {
           message: String(input.message ?? ''),
-          recipients: r.sendable.map((c) => ({ name: c.name, phone: c.phonePrimary })),
+          recipients: r.sendable.map((c) => ({
+            customerId: c.id,
+            name: c.name,
+            phone: c.phonePrimary,
+          })),
           skipped: [
             ...r.noPhone.map((n) => `${n}(번호 없음)`),
             ...(r.notFound.length ? [`조회 불가 ${r.notFound.length}명`] : []),
@@ -347,6 +378,11 @@ export class DomainTools {
           else failures.push({ name: c.name, reason: res.reason ?? '발송 실패' });
         }
         return {
+          // 직원이 승인 화면에서 명단을 고칠 수 있어서, 실제로 보낸 사람을 이름으로 돌려준다
+          sentTo: r.sendable
+            .filter((c) => !failures.some((f) => f.name === c.name))
+            .slice(0, 100)
+            .map((c) => c.name),
           sent,
           failed: failures.length,
           failures,
