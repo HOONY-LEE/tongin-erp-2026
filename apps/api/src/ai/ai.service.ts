@@ -51,6 +51,50 @@ export interface Decision {
 
 type Messages = BetaMessageParam[];
 
+/** 첨부로 받는 파일 형식 — 이미지는 image 블록, PDF·텍스트는 document 블록으로 넘긴다 */
+export const ATTACHMENT_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'text/plain',
+  'text/csv',
+  'text/markdown',
+  'application/json',
+] as const;
+export interface Attachment {
+  name: string;
+  mediaType: string;
+  data: string; // base64
+}
+
+/** 첨부 → Claude 내용 블록. 문서는 제목(파일 이름)을 달아 화면에서도 이름을 보여 준다 */
+function attachmentBlock(a: Attachment): BetaContentBlockParam {
+  if (a.mediaType.startsWith('image/')) {
+    return {
+      type: 'image',
+      source: { type: 'base64', media_type: a.mediaType as 'image/png', data: a.data },
+    };
+  }
+  if (a.mediaType === 'application/pdf') {
+    return {
+      type: 'document',
+      title: a.name,
+      source: { type: 'base64', media_type: 'application/pdf', data: a.data },
+    };
+  }
+  return {
+    type: 'document',
+    title: a.name,
+    source: {
+      type: 'text',
+      media_type: 'text/plain',
+      data: Buffer.from(a.data, 'base64').toString('utf8'),
+    },
+  };
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger('AiService');
@@ -155,7 +199,10 @@ export class AiService {
   // ── 대화 진행 ──
 
   /** 사용자 메시지를 붙이고 루프를 돌린다. 승인 대기 중이면 대기 건은 거절로 처리한 뒤 이어 간다 */
-  async send(id: string, text: string, ctx: ToolContext) {
+  async send(id: string, text: string, ctx: ToolContext, attachments: Attachment[] = []) {
+    if (!text.trim() && !attachments.length) {
+      throw new BadRequestException('메시지나 첨부가 있어야 합니다.');
+    }
     const client = this.requireClient();
     return this.exclusive(id, async () => {
       const c = await this.load(id, ctx.principal.userId);
@@ -175,7 +222,12 @@ export class AiService {
           await this.logCall(id, p, 'REJECTED', null, null);
         }
       }
-      blocks.push({ type: 'text', text: `${contextBlock(ctx.principal)}\n\n${text}` });
+      // 첨부는 질문보다 앞에 둔다(문서를 먼저 읽고 질문에 답하게)
+      for (const a of attachments) blocks.push(attachmentBlock(a));
+      blocks.push({
+        type: 'text',
+        text: `${contextBlock(ctx.principal)}\n\n${text.trim() || '첨부한 파일을 확인해 주세요.'}`,
+      });
       appendUser(messages, blocks);
 
       await this.prisma.aiConversation.update({
@@ -184,7 +236,9 @@ export class AiService {
           messages: messages as object,
           pending: null as never,
           status: 'RUNNING',
-          ...(c.title === '새 대화' ? { title: text.slice(0, 40) } : {}),
+          ...(c.title === '새 대화'
+            ? { title: (text.trim() || attachments[0]?.name || '첨부').slice(0, 40) }
+            : {}),
         },
       });
       await this.loop(client, id, messages, ctx);
@@ -514,7 +568,11 @@ function describeError(e: unknown): string {
 
 /** 화면 표시용으로 대화 원문을 정리 — 사용자 글·AI 답변·도구 실행 기록 */
 type Item =
-  | { kind: 'user'; text: string }
+  | {
+      kind: 'user';
+      text: string;
+      attachments?: { name: string; kind: 'image' | 'file'; src?: string }[];
+    }
   | { kind: 'assistant'; text: string }
   | { kind: 'search'; query: string }
   | {
@@ -530,13 +588,32 @@ type Item =
 function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
   const items: Item[] = [];
   const tools = new Map<string, Extract<Item, { kind: 'tool' }>>();
+  let pendingFiles: NonNullable<Extract<Item, { kind: 'user' }>['attachments']> = [];
   for (const m of messages) {
     const blocks = typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content;
     for (const b of blocks as Array<Record<string, unknown>>) {
       if (m.role === 'user' && b.type === 'text') {
         // 매 메시지 앞에 붙인 <context>는 화면에서 숨긴다
         const text = String(b.text).replace(/^<context>[\s\S]*?<\/context>\s*/, '');
-        items.push({ kind: 'user', text });
+        items.push({
+          kind: 'user',
+          text,
+          ...(pendingFiles.length ? { attachments: pendingFiles } : {}),
+        });
+        pendingFiles = [];
+      } else if (m.role === 'user' && (b.type === 'image' || b.type === 'document')) {
+        // 첨부 — 다음 글과 한 말풍선으로 묶는다
+        const src = b.source as { type: string; media_type?: string; data?: string };
+        pendingFiles.push(
+          b.type === 'image'
+            ? {
+                name: '이미지',
+                kind: 'image',
+                src:
+                  src.type === 'base64' ? `data:${src.media_type};base64,${src.data}` : undefined,
+              }
+            : { name: String(b.title ?? '문서'), kind: 'file' },
+        );
       } else if (m.role === 'user' && b.type === 'tool_result') {
         const t = tools.get(String(b.tool_use_id));
         if (t) {

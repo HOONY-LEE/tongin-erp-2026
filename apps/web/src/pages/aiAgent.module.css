@@ -1,0 +1,523 @@
+/* AI 에이전트 — Claude 대화 화면 구성: 왼쪽 대화 목록 | 가운데 대화 + 아래 입력칸 */
+
+.page {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: var(--ark-color-bg);
+}
+
+/* ── 대화 목록 ── */
+.side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 10px;
+  border-right: 1px solid var(--ark-color-border);
+  background: color-mix(in srgb, var(--ark-color-bg-muted) 55%, var(--ark-color-bg));
+}
+.newChat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ark-color-text);
+  cursor: pointer;
+  text-align: left;
+}
+.newChat:hover {
+  background: var(--ark-color-bg-muted);
+}
+.sideLabel {
+  margin: 16px 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ark-color-text-tertiary);
+}
+.sideEmpty {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--ark-color-text-tertiary);
+}
+.convList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.convRow {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+.convRow:hover {
+  background: var(--ark-color-bg-muted);
+}
+.convActive,
+.convActive:hover {
+  background: var(--ark-color-bg-muted);
+}
+.convBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ark-color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.convActive .convBtn {
+  font-weight: 600;
+}
+.convTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ark-color-warning-500, #f59e0b);
+}
+.convDel {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+}
+.convRow:hover .convDel,
+.convRow:focus-within .convDel {
+  opacity: 1;
+}
+.convDel:hover {
+  color: var(--ark-color-text);
+  background: var(--ark-color-gray-200);
+}
+
+/* ── 가운데 ── */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 12%, transparent);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.banner code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--ark-color-bg-muted);
+  font-size: 12px;
+}
+.topbar {
+  flex: none;
+  padding: 14px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ark-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px 24px 32px;
+}
+
+/* 사용자 — 오른쪽 말풍선, 첨부는 위에 */
+.userTurn {
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 80%;
+}
+.userMsg {
+  padding: 10px 16px;
+  border-radius: 18px;
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.userFiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.userImg {
+  height: 140px;
+  min-width: 80px;
+  max-width: 240px;
+  image-rendering: auto;
+  border-radius: 12px;
+  border: 1px solid var(--ark-color-border);
+  object-fit: cover;
+}
+.userFile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  font-size: 13px;
+}
+
+/* AI — 말풍선 없이 본문처럼 */
+.aiMsg {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ark-color-text);
+}
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+.working {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ark-color-text-secondary);
+}
+/* 생각 중 표시 — 천천히 도는 별 */
+.spark {
+  width: 18px;
+  height: 18px;
+  background: var(--ark-color-primary-500);
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+  animation: spin 2.4s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spark {
+    animation: none;
+  }
+}
+.errorBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ark-color-error-500, #ef4444) 8%, transparent);
+  font-size: 13px;
+}
+.errorBox span {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* ── 입력칸 ── */
+.composerWrap {
+  flex: none;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 24px 14px;
+  box-sizing: border-box;
+}
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 12px 10px 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 22px;
+  background: var(--ark-color-bg);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 6%);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.composer:focus-within {
+  border-color: color-mix(in srgb, var(--ark-color-text) 25%, transparent);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 9%);
+}
+.composerOff {
+  opacity: 0.6;
+}
+.input {
+  width: 100%;
+  min-height: 26px;
+  max-height: 220px;
+  padding: 2px 4px 0 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ark-color-text);
+}
+/* 전역 입력 포커스 링이 안쪽에 겹치지 않게 — 포커스는 바깥 상자(.composer)가 표시한다 */
+.composer .input,
+.composer .input:focus,
+.composer .input:focus-visible {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+.composerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.iconBtn:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.sendBtn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 12px;
+  background: var(--ark-color-primary-500);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    opacity 0.15s;
+}
+.sendBtn:hover:not(:disabled) {
+  background: var(--ark-color-primary-600);
+}
+.sendBtn:disabled {
+  background: var(--ark-color-gray-200);
+  color: var(--ark-color-text-tertiary);
+  cursor: default;
+}
+.sendBtn:focus-visible,
+.iconBtn:focus-visible,
+.newChat:focus-visible,
+.convBtn:focus-visible {
+  outline: 2px solid var(--ark-color-info-500);
+  outline-offset: 2px;
+}
+.footnote {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--ark-color-text-tertiary);
+}
+
+/* 첨부 미리보기(보내기 전) */
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+.fileChip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  padding: 6px 28px 6px 6px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg-muted);
+  font-size: 12.5px;
+}
+.fileThumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: none;
+}
+.fileIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  flex: none;
+}
+.fileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fileRemove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+
+/* 빈 화면 — 인사 + 입력칸이 가운데 */
+.welcome {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 0 8vh;
+  overflow-y: auto;
+}
+.greeting {
+  margin: 0 0 22px;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ark-color-text);
+  text-align: center;
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 760px;
+  padding: 4px 24px 0;
+}
+.suggestion {
+  padding: 8px 14px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  font: inherit;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.suggestion:hover:not(:disabled) {
+  color: var(--ark-color-text);
+  background: var(--ark-color-bg-muted);
+}
+.suggestion:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mobileBar {
+  display: none;
+}
+.mobileSelect {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  font: inherit;
+  font-size: 14px;
+  color: var(--ark-color-text);
+}
+
+/* 좁은 화면 — 대화 목록을 숨기고(새 채팅은 위에) 대화만 */
+@media (max-width: 760px) {
+  .mobileBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ark-color-border);
+  }
+  .topbar {
+    display: none;
+  }
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side {
+    display: none;
+  }
+  .thread,
+  .composerWrap {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .userTurn {
+    max-width: 90%;
+  }
+  .greeting {
+    font-size: 24px;
+  }
+}

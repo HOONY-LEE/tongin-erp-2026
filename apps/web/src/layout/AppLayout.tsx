@@ -388,6 +388,7 @@ export default function AppLayout() {
             className={[
               styles.contentInner,
               pathname.startsWith('/calendar') ? styles.contentInnerTight : '',
+              pathname.startsWith('/ai') ? styles.contentInnerFlush : '',
             ]
               .filter(Boolean)
               .join(' ')}

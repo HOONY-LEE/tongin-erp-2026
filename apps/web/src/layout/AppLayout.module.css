@@ -154,3 +154,8 @@
     padding: 20px 16px 28px;
   }
 }
+/* AI 에이전트 — 대화 화면이 콘텐츠 영역 전체를 쓴다(여백·스크롤은 페이지가 직접) */
+.contentInner.contentInnerFlush {
+  padding: 0;
+  overflow: hidden;
+}
