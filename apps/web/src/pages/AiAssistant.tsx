@@ -11,6 +11,7 @@ import type {
   ChatItem,
   Conversation,
   ConversationRow,
+  Decision,
 } from '../components/ai/types';
 import styles from '../components/ai/ai.module.css';
 
@@ -116,7 +117,7 @@ export default function AiAssistant() {
     });
   };
 
-  const decide = (decisions: { toolUseId: string; approve: boolean }[]) =>
+  const decide = (decisions: Decision[]) =>
     conv &&
     run(() =>
       api<Conversation>(`/ai/conversations/${conv.id}/decisions`, {

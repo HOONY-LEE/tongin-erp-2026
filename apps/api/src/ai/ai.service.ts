@@ -45,6 +45,8 @@ interface PendingCall {
 export interface Decision {
   toolUseId: string;
   approve: boolean;
+  /** 문자 발송 승인 때 직원이 고친 받는 사람(고객 id). 없으면 AI가 고른 그대로 */
+  customerIds?: string[];
 }
 
 type Messages = BetaMessageParam[];
@@ -86,6 +88,11 @@ export class AiService {
       if (!byName.has(t.name) && can(t.permissions)) byName.set(t.name, t);
     }
     return [...byName.values()];
+  }
+
+  /** 승인 카드의 받는 사람 더하기용 고객 검색 */
+  findCustomers(q: string, principal: AuthPrincipal) {
+    return this.domain.findCustomers(q, principal);
   }
 
   /** 도구 목록(화면의 "AI가 할 수 있는 일" 안내용) */
@@ -193,6 +200,9 @@ export class AiService {
       const pending = (c.pending as unknown as PendingCall[] | null) ?? [];
       if (!pending.length) throw new BadRequestException('승인 대기 중인 작업이 없습니다.');
       const byId = new Map(decisions.map((d) => [d.toolUseId, d.approve]));
+      const edits = new Map(
+        decisions.filter((d) => d.customerIds).map((d) => [d.toolUseId, d.customerIds!]),
+      );
       const tools = new Map(this.toolsFor(ctx.principal).map((t) => [t.name, t]));
 
       const results: BetaToolResultBlockParam[] = [];
@@ -206,15 +216,21 @@ export class AiService {
           await this.logCall(id, p, 'REJECTED', null, null);
           continue;
         }
-        results.push(
-          await this.execute(
-            id,
-            tools.get(p.name),
-            p,
-            ctx,
-            p.mode === 'WRITE' ? ctx.principal.userId : null,
-          ),
+        // 문자 받는 사람을 직원이 고쳐서 승인했으면 그 명단으로 보내고, AI에게도 고친 사실을 알린다
+        const edited = p.name === 'send_sms' ? edits.get(p.toolUseId) : undefined;
+        const call = edited ? { ...p, input: { ...p.input, customerIds: edited } } : p;
+        const result = await this.execute(
+          id,
+          tools.get(p.name),
+          call,
+          ctx,
+          p.mode === 'WRITE' ? ctx.principal.userId : null,
         );
+        if (edited) {
+          const before = Array.isArray(p.input.customerIds) ? p.input.customerIds.length : 0;
+          result.content = `직원이 받는 사람을 고쳐서 승인했습니다(처음 ${before}명 → ${edited.length}명). 결과: ${String(result.content)}`;
+        }
+        results.push(result);
       }
       const messages = c.messages as unknown as Messages;
       appendUser(messages, results);

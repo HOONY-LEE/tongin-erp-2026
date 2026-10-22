@@ -21,12 +21,27 @@ const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'tongin1234';
 
 // ── 조직 ──────────────────────────────────────────────
 // 그룹사 > 법인 > 지점. 설계노트의 4단계(그룹/법인/지점/외부업체) 구조를 따른다.
+// 위치는 구(區) 중심 좌표 — 대시보드 지도에 지점 점을 찍는 데 쓴다(실제 주소는 조직관리에서 검색해 고친다)
 const BRANCHES = [
-  { code: 'BR-GN', name: '강남점' },
-  { code: 'BR-SP', name: '송파점' },
-  { code: 'BR-BD', name: '분당점' },
-  { code: 'BR-IS', name: '일산점' },
-  { code: 'BR-BS', name: '부산점' },
+  { code: 'BR-GN', name: '강남점', sido: '서울', sigungu: '강남구', lat: 37.5172, lng: 127.0473 },
+  { code: 'BR-SP', name: '송파점', sido: '서울', sigungu: '송파구', lat: 37.5145, lng: 127.1059 },
+  {
+    code: 'BR-BD',
+    name: '분당점',
+    sido: '경기',
+    sigungu: '성남시 분당구',
+    lat: 37.3827,
+    lng: 127.1189,
+  },
+  {
+    code: 'BR-IS',
+    name: '일산점',
+    sido: '경기',
+    sigungu: '고양시 일산동구',
+    lat: 37.6584,
+    lng: 126.7748,
+  },
+  { code: 'BR-BS', name: '부산점', sido: '부산', sigungu: '해운대구', lat: 35.1631, lng: 129.1636 },
 ];
 
 // ── 전속업체(외부) ────────────────────────────────────
@@ -89,10 +104,17 @@ async function main() {
 
   const branchByCode = new Map<string, string>();
   for (const b of BRANCHES) {
+    const loc = {
+      sido: b.sido,
+      sigungu: b.sigungu,
+      addr: `${b.sido} ${b.sigungu}`,
+      lat: b.lat,
+      lng: b.lng,
+    };
     const row = await prisma.orgUnit.upsert({
       where: { code: b.code },
       update: { name: b.name, parentId: company.id },
-      create: { code: b.code, name: b.name, type: 'BRANCH', parentId: company.id },
+      create: { code: b.code, name: b.name, type: 'BRANCH', parentId: company.id, ...loc },
     });
     branchByCode.set(b.code, row.id);
   }

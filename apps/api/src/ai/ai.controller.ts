@@ -8,13 +8,16 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
   ValidateNested,
@@ -37,6 +40,13 @@ class DecisionInput {
 
   @IsBoolean()
   approve!: boolean;
+
+  /** 문자 발송 — 직원이 고친 받는 사람 */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(300)
+  @IsUUID('all', { each: true })
+  customerIds?: string[];
 }
 
 class DecideDto {
@@ -64,6 +74,12 @@ export class AiController {
   @Get('tools')
   tools(@CurrentUser() user: AuthPrincipal) {
     return this.ai.catalogFor(user);
+  }
+
+  /** 승인 카드에서 받는 사람 더하기 — 내 범위 고객 검색 */
+  @Get('customers')
+  customers(@CurrentUser() user: AuthPrincipal, @Query('q') q = '') {
+    return this.ai.findCustomers(q, user);
   }
 
   @Get('conversations')

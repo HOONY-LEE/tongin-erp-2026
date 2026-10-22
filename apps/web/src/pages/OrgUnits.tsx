@@ -17,6 +17,7 @@ const columns: Column[] = [
       <Badge variant="subtle">{TYPE_LABEL[r.type as string] ?? String(r.type)}</Badge>
     ),
   },
+  { title: '위치', minWidth: 140, render: (r: Row) => String(r.addr ?? '-') },
   {
     title: '상태',
     render: (r: Row) => (
@@ -39,6 +40,8 @@ export default function OrgUnits() {
     },
     { name: 'name', label: '이름', required: true },
     { name: 'parentId', label: '상위 조직', type: 'select', options: parents },
+    // 지점 위치 — 넣어 두면 대시보드 지도에 점으로 찍힌다(주소 검색으로 좌표까지)
+    { name: 'address', label: '위치(주소)', type: 'address', alwaysShow: true },
     { name: 'isActive', label: '사용 여부', type: 'boolean' },
   ];
   // 코드는 서버 발급(ORG-0001), 이름 중복 불가

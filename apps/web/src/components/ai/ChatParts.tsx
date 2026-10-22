@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { CheckCircle2, CircleSlash, Clock, PenLine, Search, XCircle } from 'lucide-react';
-import { Button, Checkbox } from '../ui';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, CircleSlash, Clock, PenLine, Plus, Search, XCircle } from 'lucide-react';
+import { api } from '../../lib/api';
+import { Button, Checkbox, Input } from '../ui';
 import {
   toolLabel,
   type AiToolInfo,
   type ChatItem,
+  type Decision,
   type PendingCall,
+  type Recipient,
   type SmsPreview,
 } from './types';
 import styles from './ai.module.css';
@@ -91,21 +94,39 @@ export function ApprovalCard({
   pending: PendingCall[];
   tools: Map<string, AiToolInfo>;
   busy: boolean;
-  onDecide: (decisions: { toolUseId: string; approve: boolean }[]) => void;
+  onDecide: (decisions: Decision[]) => void;
 }) {
   const writes = pending.filter((p) => p.mode === 'WRITE');
+  /** 문자 받는 사람 — 직원이 빼거나 더한 명단(도구 호출별) */
+  const [lists, setLists] = useState<Record<string, Recipient[]>>(() =>
+    Object.fromEntries(
+      writes
+        .filter((w) => isSms(w.preview))
+        .map((w) => [w.toolUseId, (w.preview as SmsPreview).recipients]),
+    ),
+  );
+  const editedIds = (w: PendingCall) => {
+    const list = lists[w.toolUseId];
+    if (!list || !isSms(w.preview)) return undefined;
+    const orig = (w.preview as SmsPreview).recipients.map((r) => r.customerId).join();
+    const now = list.map((r) => r.customerId);
+    return now.join() === orig ? undefined : now;
+  };
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(writes.map((w) => [w.toolUseId, true])),
   );
   const decide = (all?: boolean) =>
     onDecide(
-      writes.map((w) => ({
-        toolUseId: w.toolUseId,
-        approve: all === undefined ? !!checked[w.toolUseId] : all,
-      })),
+      writes.map((w) => {
+        const approve = all === undefined ? !!checked[w.toolUseId] : all;
+        const customerIds = approve ? editedIds(w) : undefined;
+        return { toolUseId: w.toolUseId, approve, ...(customerIds ? { customerIds } : {}) };
+      }),
     );
   const multi = writes.length > 1;
   const selected = writes.filter((w) => checked[w.toolUseId]).length;
+  // 받는 사람을 다 빼면 보낼 수 없다
+  const emptySms = writes.some((w) => checked[w.toolUseId] && lists[w.toolUseId]?.length === 0);
 
   return (
     <div className={styles.approval} role="region" aria-label="승인이 필요한 작업">
@@ -135,15 +156,14 @@ export function ApprovalCard({
             {isSms(preview) ? (
               <div className={styles.smsPreview}>
                 <MessagePreview text={preview.message} />
-                <div className={styles.toolLabel}>받는 사람 {preview.recipients.length}명</div>
-                <ul className={styles.recipients}>
-                  {preview.recipients.map((r, i) => (
-                    <li key={i}>
-                      <span>{r.name}</span>
-                      <span className={styles.sub}>{r.phone}</span>
-                    </li>
-                  ))}
-                </ul>
+                <RecipientEditor
+                  // 예전 미리보기(고객 id 없음)는 고칠 수 없다 — 보기만
+                  readOnly={!preview.recipients.every((r) => r.customerId)}
+                  original={preview.recipients}
+                  value={lists[w.toolUseId] ?? preview.recipients}
+                  onChange={(v) => setLists((l) => ({ ...l, [w.toolUseId]: v }))}
+                  disabled={busy}
+                />
                 {preview.skipped.length > 0 && (
                   <div className={styles.sub}>제외: {preview.skipped.join(', ')}</div>
                 )}
@@ -167,12 +187,109 @@ export function ApprovalCard({
           variant="primary"
           size="sm"
           loading={busy}
-          disabled={multi && selected === 0}
+          disabled={(multi && selected === 0) || emptySms}
           onClick={() => decide(multi ? undefined : true)}
         >
           {multi ? `선택한 ${selected}건 실행` : '승인하고 실행'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 문자 받는 사람 고치기 — AI가 고른 명단에서 빼고(체크 해제), 고객을 찾아 더한다.
+ * 번호는 화면이 아니라 서버가 고객 원장에서 다시 꺼낸다(여기서는 고객만 고른다).
+ */
+function RecipientEditor({
+  original,
+  value,
+  onChange,
+  disabled,
+  readOnly,
+}: {
+  original: Recipient[];
+  value: Recipient[];
+  onChange: (v: Recipient[]) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const [q, setQ] = useState('');
+  const [found, setFound] = useState<Recipient[]>([]);
+  // 처음 명단 + 더한 사람을 한 목록에 보여 주고, 체크로 넣고 뺀다
+  const [shown, setShown] = useState<Recipient[]>(original);
+  const on = new Set(value.map((r) => r.customerId));
+
+  useEffect(() => {
+    const kw = q.trim();
+    if (kw.length < 1) {
+      setFound([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      api<Recipient[]>(`/ai/customers?q=${encodeURIComponent(kw)}`)
+        .then(setFound)
+        .catch(() => setFound([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const toggle = (r: Recipient, checked: boolean) =>
+    onChange(checked ? [...value, r] : value.filter((x) => x.customerId !== r.customerId));
+  const add = (r: Recipient) => {
+    if (!shown.some((x) => x.customerId === r.customerId)) setShown((s) => [...s, r]);
+    if (!on.has(r.customerId)) onChange([...value, r]);
+    setQ('');
+    setFound([]);
+  };
+  const edited =
+    value.length !== original.length ||
+    value.some((r) => !original.some((o) => o.customerId === r.customerId));
+
+  return (
+    <div className={styles.recipientEditor}>
+      <div className={styles.toolLabel}>
+        받는 사람 {value.length}명{edited && <span className={styles.editedTag}> · 고침</span>}
+        <span className={styles.sub}> — 체크를 풀면 빠집니다</span>
+      </div>
+      <ul className={styles.recipients}>
+        {shown.map((r) => (
+          <li key={r.customerId}>
+            <Checkbox
+              checked={on.has(r.customerId)}
+              onCheckedChange={(v) => toggle(r, v === true)}
+              label={r.name}
+              description={r.phone}
+              disabled={disabled || readOnly}
+            />
+          </li>
+        ))}
+      </ul>
+      {!readOnly && (
+        <div className={styles.addRow}>
+          <Plus size={14} aria-hidden />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="받는 사람 더하기 — 이름·전화번호로 찾기"
+            aria-label="받는 사람 찾기"
+            disabled={disabled}
+          />
+        </div>
+      )}
+      {found.length > 0 && (
+        <ul className={styles.found}>
+          {found.map((r) => (
+            <li key={r.customerId}>
+              <button type="button" onClick={() => add(r)} disabled={on.has(r.customerId)}>
+                <span>{r.name}</span>
+                <span className={styles.sub}>{r.phone}</span>
+                <span className={styles.sub}>{on.has(r.customerId) ? '이미 있음' : '더하기'}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

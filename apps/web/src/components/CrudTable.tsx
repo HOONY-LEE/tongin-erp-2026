@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { Button, DataTable, FormModal, PageHeader, useToast } from './ui';
 import type { Column, FormField, Row } from './ui';
+import { ADDRESS_PARTS, addrKey } from './ui/address';
 
 // 기존 import 경로 유지를 위한 재노출
 export type { Column, FormField, Row } from './ui';
@@ -25,13 +26,15 @@ interface Props {
   extraActionWidth?: number;
 }
 
-/** 행 값을 폼 초기값(문자열)으로 */
-const toInitial = (row: Row, fields: FormField[]) =>
-  Object.fromEntries(
-    fields
-      .filter((f) => row[f.name] !== null && row[f.name] !== undefined)
-      .map((f) => [f.name, String(row[f.name])]),
+/** 행 값을 폼 초기값(문자열)으로 — 주소 칸은 우편번호·주소·좌표 등 여러 키로 나뉜다 */
+const toInitial = (row: Row, fields: FormField[]) => {
+  const keys = fields.flatMap((f) =>
+    f.type === 'address' ? ADDRESS_PARTS.map((p) => addrKey(f.addrPrefix ?? '', p)) : [f.name],
   );
+  return Object.fromEntries(
+    keys.filter((k) => row[k] !== null && row[k] !== undefined).map((k) => [k, String(row[k])]),
+  );
+};
 
 /** 마스터 목록+등록 화면 공통 구성 (PageHeader + PageCard + DataTable + FormModal). */
 export default function CrudTable({
