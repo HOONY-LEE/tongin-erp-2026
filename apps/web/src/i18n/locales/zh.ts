@@ -17,7 +17,7 @@ export default {
   },
   nav: {
     dashboard: '仪表盘',
-    ai: 'AI 助手',
+    ai: 'AI 智能体',
     calendar: '日历',
     field: '现场',
     leads: '受理',

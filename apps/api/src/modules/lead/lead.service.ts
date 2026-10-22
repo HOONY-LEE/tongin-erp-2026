@@ -117,8 +117,14 @@ export class LeadService {
     if (ids !== null && !ids.includes(dto.orgUnitId)) {
       throw new ForbiddenException('소속 조직으로만 접수할 수 있습니다.');
     }
-    // 신규 접수: 고객명 입력 시 고객 자동 생성·연결(드롭다운 선택은 customerId)
+    // 신규 접수: 고객명 입력 시 고객 자동 생성·연결(드롭다운 선택은 customerId).
+    // 같은 전화번호의 고객이 이미 있으면 새로 만들지 않고 그 고객에 잇는다(같은 사람이 두 번 생기면
+    // 문자가 두 번 가고 이력이 갈라진다). 번호는 하이픈·공백을 빼고 비교한다.
     let customerId = dto.customerId;
+    if (!customerId && dto.customerPhone?.trim()) {
+      const existing = await this.findCustomerByPhone(dto.customerPhone);
+      if (existing) customerId = existing.id;
+    }
     if (!customerId && dto.customerName?.trim()) {
       const customer = await this.prisma.customer.create({
         data: {
@@ -166,6 +172,18 @@ export class LeadService {
     } catch (e) {
       throw this.mapError(e);
     }
+  }
+
+  /** 전화번호(숫자만 비교)로 고객 찾기 — 가장 먼저 등록된 고객 */
+  private async findCustomerByPhone(phone: string) {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 9) return null;
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM customer
+      WHERE regexp_replace(coalesce(phone_primary, ''), '[^0-9]', '', 'g') = ${digits}
+      ORDER BY created_at ASC
+      LIMIT 1`;
+    return rows[0] ?? null;
   }
 
   async update(id: string, dto: UpdateLeadDto, principal?: AuthPrincipal) {

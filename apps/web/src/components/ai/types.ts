@@ -22,7 +22,7 @@ export interface ConversationRow {
 export type ToolStatus = 'PENDING' | 'DONE' | 'ERROR' | 'REJECTED';
 
 export type ChatItem =
-  | { kind: 'user'; text: string }
+  | { kind: 'user'; text: string; attachments?: ChatAttachment[] }
   | { kind: 'assistant'; text: string }
   | { kind: 'search'; query: string }
   | {
@@ -40,6 +40,13 @@ export interface Recipient {
   name: string;
   phone: string;
 }
+/** 말풍선에 붙는 첨부 — 이미지는 미리보기(src), 문서는 이름만 */
+export interface ChatAttachment {
+  name: string;
+  kind: 'image' | 'file';
+  src?: string;
+}
+
 export interface SmsPreview {
   message: string;
   recipients: Recipient[];

@@ -15,6 +15,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -25,13 +26,33 @@ import {
 import type { AuthPrincipal } from '@tongin/shared';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AiService } from './ai.service';
+import { AiService, ATTACHMENT_TYPES } from './ai.service';
+
+/** 첨부 — 이미지(png·jpg·gif·webp), PDF, 텍스트(txt·csv·json·md). 내용은 base64 */
+class AttachmentInput {
+  @IsString()
+  @MaxLength(200)
+  name!: string;
+
+  @IsIn(ATTACHMENT_TYPES)
+  mediaType!: string;
+
+  @IsString()
+  @MaxLength(14_000_000) // base64 ≈ 10MB 파일
+  data!: string;
+}
 
 class SendMessageDto {
   @IsString()
-  @MinLength(1)
   @MaxLength(4000)
   text!: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentInput)
+  attachments?: AttachmentInput[];
 }
 
 class DecisionInput {
@@ -110,7 +131,7 @@ export class AiController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.ai.send(id, dto.text, { principal: user, authorization });
+    return this.ai.send(id, dto.text, { principal: user, authorization }, dto.attachments ?? []);
   }
 
   @Post('conversations/:id/decisions')

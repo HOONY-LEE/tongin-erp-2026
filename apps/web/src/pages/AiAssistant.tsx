@@ -1,19 +1,39 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Bot, Plus, RotateCcw, Search, Send, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowUp,
+  FileText,
+  Paperclip,
+  RotateCcw,
+  Search,
+  SquarePen,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { api, ApiError } from '../lib/api';
-import { Button, PageHeader, Spinner, useToast } from '../components/ui';
+import { Button, useToast } from '../components/ui';
 import { Markdown } from '../components/ai/Markdown';
 import { ApprovalCard, ToolRow } from '../components/ai/ChatParts';
 import type {
   AiStatus,
   AiToolInfo,
+  ChatAttachment,
   ChatItem,
   Conversation,
   ConversationRow,
   Decision,
 } from '../components/ai/types';
-import styles from '../components/ai/ai.module.css';
+import styles from './aiAgent.module.css';
 
 const SUGGESTIONS = [
   '이번 주 미계약 고객들에게 계약 안내 문자 한 번 더 보내줘',
@@ -22,9 +42,54 @@ const SUGGESTIONS = [
   '이번 달 미수금이 많은 고객 5명 알려줘',
 ];
 
+/** 올릴 수 있는 파일 — 서버 ATTACHMENT_TYPES와 맞춘다 */
+const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.csv,.md,.json';
+const BY_EXT: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  csv: 'text/csv',
+  md: 'text/markdown',
+  json: 'application/json',
+};
+const MAX_FILES = 5;
+const MAX_BYTES = 10 * 1024 * 1024;
+/** 입력칸이 이 높이까지 늘어나고, 넘으면 안에서 스크롤 */
+const MAX_INPUT_PX = 220;
+
+interface Draft {
+  name: string;
+  mediaType: string;
+  data: string; // base64
+  preview?: string; // 이미지 미리보기 data URL
+}
+
+const readFile = (f: File) =>
+  new Promise<Draft>((resolve, reject) => {
+    const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+    const mediaType = BY_EXT[ext] ?? f.type;
+    const r = new FileReader();
+    r.onload = () => {
+      const url = String(r.result);
+      resolve({
+        name: f.name,
+        mediaType,
+        data: url.slice(url.indexOf(',') + 1),
+        preview: mediaType.startsWith('image/') ? url : undefined,
+      });
+    };
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(f);
+  });
+
 /**
- * AI 비서 — 시킨 일을 AI가 ERP 도구(조회·등록·발송)로 나눠서 처리한다.
+ * AI 에이전트 — 시킨 일을 AI가 ERP 도구(조회·등록·발송)로 나눠서 처리한다.
  * 조회는 바로 실행되고, 등록·수정·발송은 승인 카드에서 확인해야 실행된다.
+ * 화면은 Claude 대화 화면처럼: 왼쪽 대화 목록, 가운데 대화, 아래 늘어나는 입력칸(첨부·보내기 포함).
  */
 export default function AiAssistant() {
   const toast = useToast();
@@ -35,11 +100,13 @@ export default function AiAssistant() {
   const [rows, setRows] = useState<ConversationRow[]>([]);
   const [conv, setConv] = useState<Conversation | null>(null);
   const [draft, setDraft] = useState('');
+  const [files, setFiles] = useState<Draft[]>([]);
   const [busy, setBusy] = useState(false);
   /** 응답을 기다리는 동안 화면에 먼저 보여 줄 사용자 글 */
-  const [echo, setEcho] = useState<string | null>(null);
+  const [echo, setEcho] = useState<{ text: string; attachments: ChatAttachment[] } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const loadList = useCallback(() => {
     api<ConversationRow[]>('/ai/conversations')
@@ -75,6 +142,14 @@ export default function AiAssistant() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [conv, echo, busy]);
 
+  // 입력칸 — 한 줄에서 시작해 내용만큼 늘어난다
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_PX)}px`;
+  }, [draft]);
+
   const select = (id: string | null) => {
     setEcho(null);
     setParams(id ? { c: id } : {});
@@ -103,16 +178,58 @@ export default function AiAssistant() {
     }
   };
 
+  const pickFiles = async (e: ChangeEvent<HTMLInputElement>) => {
+    const list = [...(e.target.files ?? [])];
+    e.target.value = '';
+    const room = MAX_FILES - files.length;
+    if (list.length > room)
+      toast({ type: 'warning', title: `파일은 ${MAX_FILES}개까지 올릴 수 있습니다` });
+    const ok: Draft[] = [];
+    for (const f of list.slice(0, Math.max(0, room))) {
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
+      if (!BY_EXT[ext]) {
+        toast({
+          type: 'warning',
+          title: `${f.name}: 이미지·PDF·텍스트(csv·md·json)만 올릴 수 있습니다`,
+        });
+        continue;
+      }
+      if (f.size > MAX_BYTES) {
+        toast({ type: 'warning', title: `${f.name}: 10MB까지 올릴 수 있습니다` });
+        continue;
+      }
+      try {
+        ok.push(await readFile(f));
+      } catch {
+        toast({ type: 'error', title: `${f.name}을(를) 읽지 못했습니다` });
+      }
+    }
+    setFiles((cur) => [...cur, ...ok]);
+    inputRef.current?.focus();
+  };
+
   const send = async (text: string) => {
     const t = text.trim();
-    if (!t || busy) return;
+    if ((!t && !files.length) || busy) return;
+    const attachments = files;
     setDraft('');
-    setEcho(t);
+    setFiles([]);
+    setEcho({
+      text: t,
+      attachments: attachments.map((a) => ({
+        name: a.name,
+        kind: a.preview ? 'image' : 'file',
+        src: a.preview,
+      })),
+    });
     await run(async () => {
       const id = conv?.id ?? (await api<Conversation>('/ai/conversations', { method: 'POST' })).id;
       return api<Conversation>(`/ai/conversations/${id}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ text: t }),
+        body: JSON.stringify({
+          text: t,
+          attachments: attachments.map(({ name, mediaType, data }) => ({ name, mediaType, data })),
+        }),
       });
     });
   };
@@ -147,96 +264,210 @@ export default function AiAssistant() {
   };
 
   const items: ChatItem[] = useMemo(
-    () => [...(conv?.items ?? []), ...(echo ? [{ kind: 'user' as const, text: echo }] : [])],
+    () => [
+      ...(conv?.items ?? []),
+      ...(echo ? [{ kind: 'user' as const, text: echo.text, attachments: echo.attachments }] : []),
+    ],
     [conv, echo],
   );
   const awaiting = conv?.status === 'AWAITING_APPROVAL' && conv.pending.length > 0;
   const notReady = status !== null && !status.configured;
-  const readCount = useMemo(
-    () => [...tools.values()].filter((t) => t.mode === 'READ').length,
-    [tools],
-  );
+  const empty = items.length === 0;
+  const canSend = (!!draft.trim() || files.length > 0) && !busy && !notReady;
 
-  return (
-    <>
-      <PageHeader title="AI 비서" />
-      <div className={styles.layout}>
-        <aside className={styles.side} aria-label="대화 목록">
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<Plus size={14} />}
-            onClick={() => select(null)}
-          >
-            새 대화
-          </Button>
-          <div className={styles.convList}>
-            {rows.length === 0 && <div className={styles.sub}>아직 대화가 없습니다.</div>}
-            {rows.map((r) => (
-              <div
-                key={r.id}
-                className={[styles.convRow, r.id === activeId ? styles.convActive : ''].join(' ')}
-              >
-                <button type="button" className={styles.convBtn} onClick={() => select(r.id)}>
-                  <span className={styles.convTitle}>{r.title}</span>
-                  {r.status === 'AWAITING_APPROVAL' && (
-                    <span className={styles.dot} title="승인 대기" />
-                  )}
-                </button>
+  const composer = (
+    <div className={styles.composerWrap}>
+      <div className={[styles.composer, notReady ? styles.composerOff : ''].join(' ')}>
+        {files.length > 0 && (
+          <div className={styles.files}>
+            {files.map((f, i) => (
+              <div key={`${f.name}-${i}`} className={styles.fileChip}>
+                {f.preview ? (
+                  <img src={f.preview} alt="" className={styles.fileThumb} />
+                ) : (
+                  <span className={styles.fileIcon}>
+                    <FileText size={16} />
+                  </span>
+                )}
+                <span className={styles.fileName}>{f.name}</span>
                 <button
                   type="button"
-                  className={styles.iconBtn}
-                  aria-label={`${r.title} 삭제`}
-                  onClick={() => void remove(r.id)}
+                  className={styles.fileRemove}
+                  aria-label={`${f.name} 빼기`}
+                  onClick={() => setFiles((fs) => fs.filter((_, k) => k !== i))}
                 >
-                  <Trash2 size={14} />
+                  <X size={12} />
                 </button>
               </div>
             ))}
           </div>
-        </aside>
+        )}
+        <textarea
+          ref={inputRef}
+          className={styles.input}
+          value={draft}
+          rows={1}
+          placeholder={
+            busy
+              ? 'AI가 처리하는 중입니다…'
+              : awaiting
+                ? '위 작업을 승인·거절하거나, 새 요청을 입력하세요(대기 중인 작업은 취소됩니다)'
+                : 'AI 에이전트에게 일을 시켜 보세요'
+          }
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onKey}
+          disabled={notReady}
+          aria-label="AI에게 보낼 메시지"
+        />
+        <div className={styles.composerBar}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            aria-label="파일 첨부"
+            title="파일 첨부 (이미지·PDF·텍스트)"
+            onClick={() => fileRef.current?.click()}
+            disabled={notReady || files.length >= MAX_FILES}
+          >
+            <Paperclip size={18} />
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPT}
+            multiple
+            hidden
+            onChange={(e) => void pickFiles(e)}
+          />
+          <button
+            type="button"
+            className={styles.sendBtn}
+            aria-label="보내기"
+            disabled={!canSend}
+            onClick={() => void send(draft)}
+          >
+            <ArrowUp size={20} strokeWidth={2.4} />
+          </button>
+        </div>
+      </div>
+      <div className={styles.footnote}>
+        AI는 실수할 수 있습니다. 등록·수정·문자 발송은 실행 전에 확인을 받습니다.
+      </div>
+    </div>
+  );
 
-        <section className={styles.chat}>
-          {notReady && (
-            <div className={styles.banner} role="status">
-              <AlertTriangle size={16} aria-hidden />
-              <span>
-                AI 비서가 아직 연결되지 않았습니다. 서버 <code>apps/api/.env</code>에{' '}
-                <code>ANTHROPIC_API_KEY</code>를 넣고 API를 다시 시작하면 사용할 수 있습니다.
-              </span>
+  return (
+    <div className={styles.page}>
+      <aside className={styles.side} aria-label="대화 목록">
+        <button type="button" className={styles.newChat} onClick={() => select(null)}>
+          <SquarePen size={16} /> 새 채팅
+        </button>
+        <div className={styles.sideLabel}>최근</div>
+        <nav className={styles.convList}>
+          {rows.length === 0 && <div className={styles.sideEmpty}>아직 대화가 없습니다</div>}
+          {rows.map((r) => (
+            <div
+              key={r.id}
+              className={[styles.convRow, r.id === activeId ? styles.convActive : ''].join(' ')}
+            >
+              <button type="button" className={styles.convBtn} onClick={() => select(r.id)}>
+                <span className={styles.convTitle}>{r.title}</span>
+                {r.status === 'AWAITING_APPROVAL' && (
+                  <span className={styles.dot} title="승인 대기" />
+                )}
+              </button>
+              <button
+                type="button"
+                className={styles.convDel}
+                aria-label={`${r.title} 삭제`}
+                onClick={() => void remove(r.id)}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
-          )}
+          ))}
+        </nav>
+      </aside>
 
-          <div className={styles.scroll} ref={scrollRef}>
-            {items.length === 0 ? (
-              <div className={styles.empty}>
-                <Bot size={36} className={styles.emptyIcon} aria-hidden />
-                <div className={styles.emptyTitle}>무엇을 도와드릴까요?</div>
-                <div className={styles.sub}>
-                  조회·통계는 바로 처리하고, 등록·수정·문자 발송은 실행 전에 확인을 받습니다.
-                  {tools.size > 0 &&
-                    ` 지금 권한으로 쓸 수 있는 기능 ${tools.size}개(조회 ${readCount} · 처리 ${tools.size - readCount}).`}
-                </div>
-                <div className={styles.suggestions}>
-                  {SUGGESTIONS.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={styles.suggestion}
-                      disabled={busy || notReady}
-                      onClick={() => void send(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
+      <section className={styles.main}>
+        {/* 좁은 화면 — 왼쪽 목록 대신 위에 새 채팅·최근 대화 고르기 */}
+        <div className={styles.mobileBar}>
+          <select
+            className={styles.mobileSelect}
+            value={activeId ?? ''}
+            onChange={(e) => select(e.target.value || null)}
+            aria-label="최근 대화"
+          >
+            <option value="">새 채팅</option>
+            {rows.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            aria-label="새 채팅"
+            onClick={() => select(null)}
+          >
+            <SquarePen size={18} />
+          </button>
+        </div>
+        {notReady && (
+          <div className={styles.banner} role="status">
+            <AlertTriangle size={16} aria-hidden />
+            <span>
+              AI 에이전트가 아직 연결되지 않았습니다. 서버에 <code>ANTHROPIC_API_KEY</code>를 넣고
+              다시 시작하면 사용할 수 있습니다.
+            </span>
+          </div>
+        )}
+
+        {empty ? (
+          <div className={styles.welcome}>
+            <h1 className={styles.greeting}>무엇을 도와드릴까요?</h1>
+            {composer}
+            <div className={styles.suggestions}>
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={styles.suggestion}
+                  disabled={busy || notReady}
+                  onClick={() => void send(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {conv && <div className={styles.topbar}>{conv.title}</div>}
+            <div className={styles.scroll} ref={scrollRef}>
               <div className={styles.thread}>
                 {items.map((it, i) =>
                   it.kind === 'user' ? (
-                    <div key={i} className={styles.userMsg}>
-                      {it.text}
+                    <div key={i} className={styles.userTurn}>
+                      {!!it.attachments?.length && (
+                        <div className={styles.userFiles}>
+                          {it.attachments.map((a, k) =>
+                            a.kind === 'image' && a.src ? (
+                              <img
+                                key={k}
+                                src={a.src}
+                                alt="첨부 이미지"
+                                className={styles.userImg}
+                              />
+                            ) : (
+                              <span key={k} className={styles.userFile}>
+                                <FileText size={14} /> {a.name}
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      )}
+                      {it.text && <div className={styles.userMsg}>{it.text}</div>}
                     </div>
                   ) : it.kind === 'assistant' ? (
                     <div key={i} className={styles.aiMsg}>
@@ -253,7 +484,8 @@ export default function AiAssistant() {
 
                 {busy && (
                   <div className={styles.working} role="status">
-                    <Spinner size="sm" /> AI가 처리하고 있습니다…
+                    <span className={styles.spark} aria-hidden />
+                    생각하는 중…
                   </div>
                 )}
 
@@ -282,40 +514,11 @@ export default function AiAssistant() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
-
-          <div className={styles.composer}>
-            <textarea
-              ref={inputRef}
-              className={styles.input}
-              value={draft}
-              rows={2}
-              placeholder={
-                busy
-                  ? 'AI가 처리하는 중입니다…'
-                  : awaiting
-                    ? '위 작업을 승인·거절하거나, 다른 요청을 입력하면 대기 중인 작업은 취소됩니다'
-                    : '예) 이번 주 미계약 고객에게 계약 안내 문자 보내줘'
-              }
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={onKey}
-              disabled={notReady}
-              aria-label="AI에게 보낼 메시지"
-            />
-            <Button
-              variant="primary"
-              size="md"
-              leftIcon={<Send size={15} />}
-              aria-label="보내기"
-              disabled={!draft.trim() || busy || notReady}
-              onClick={() => void send(draft)}
-            >
-              <span className={styles.sendLabel}>보내기</span>
-            </Button>
-          </div>
-        </section>
-      </div>
-    </>
+            </div>
+            {composer}
+          </>
+        )}
+      </section>
+    </div>
   );
 }

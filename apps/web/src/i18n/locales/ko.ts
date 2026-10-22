@@ -17,7 +17,7 @@ export default {
   },
   nav: {
     dashboard: '대시보드',
-    ai: 'AI 비서',
+    ai: 'AI 에이전트',
     calendar: '캘린더',
     field: '현장',
     leads: '접수',
