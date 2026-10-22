@@ -44,3 +44,6 @@ tmp/
 .claude/settings.local.json
 .vercel
 .env*.local
+
+# Claude Code 작업 트리(임시)
+.claude/worktrees/
