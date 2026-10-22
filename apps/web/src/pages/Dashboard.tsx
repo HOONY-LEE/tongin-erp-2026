@@ -262,7 +262,11 @@ export default function Dashboard() {
       <UnitPerformance byBranch={data?.byBranch ?? []} byRegion={data?.byRegion ?? []} />
 
       <PageCard title="지점별 상세" count={data?.byBranch.length ?? 0} plain>
-        <DataTable columns={branchCols} rows={(data?.byBranch ?? []) as unknown as Row[]} rowKey="orgUnitName" />
+        <DataTable
+          columns={branchCols}
+          rows={(data?.byBranch ?? []) as unknown as Row[]}
+          rowKey="orgUnitName"
+        />
       </PageCard>
     </div>
   );
