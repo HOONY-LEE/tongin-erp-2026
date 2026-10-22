@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  PRICING_METHOD_LABEL,
+  SERVICE_LINE_LABEL,
+  type PricingMethod,
+  type ServiceLine,
+} from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -15,13 +21,6 @@ import {
 } from '../components/ui';
 
 const won = (v: unknown) => (v != null ? `${Number(v).toLocaleString()}원` : '-');
-
-const PRICING: Record<string, string> = {
-  CBM: 'CBM 기반',
-  COST_PLUS: '원가적상식',
-  FLAT: '정액',
-  PYEONG: '평수',
-};
 
 interface AddonEntry {
   addonServiceId: string;
@@ -66,7 +65,7 @@ export default function ProductDetail() {
       setAllAddons(
         (addons as Array<{ id: string; code: string; name: string }>).map((a) => ({
           value: a.id,
-          label: `[${a.code}] ${a.name}`,
+          label: a.name,
         })),
       );
       touch();
@@ -142,13 +141,14 @@ export default function ProductDetail() {
         tags={
           <>
             <Badge variant="subtle" color="primary">
-              {product.serviceLine}
+              {SERVICE_LINE_LABEL[product.serviceLine as ServiceLine] ?? product.serviceLine}
             </Badge>
             <Badge variant="subtle">
-              {PRICING[product.pricingMethod] ?? product.pricingMethod}
+              {PRICING_METHOD_LABEL[product.pricingMethod as PricingMethod] ??
+                product.pricingMethod}
             </Badge>
             <Badge variant="subtle" color={product.isActive ? 'success' : 'neutral'}>
-              {product.isActive ? '활성' : '비활성'}
+              {product.isActive ? '사용' : '사용 안 함'}
             </Badge>
           </>
         }
@@ -208,7 +208,7 @@ export default function ProductDetail() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                {['코드', '옵션명', '단위', '옵션 기본가', '상품별 가격', ''].map((h) => (
+                {['옵션명', '단위', '옵션 기본가', '상품별 가격', ''].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -229,7 +229,6 @@ export default function ProductDetail() {
                   key={entry.addonServiceId}
                   style={{ borderBottom: '1px solid var(--color-border)' }}
                 >
-                  <td style={{ padding: '8px 12px' }}>{entry.addon.code}</td>
                   <td style={{ padding: '8px 12px' }}>{entry.addon.name}</td>
                   <td style={{ padding: '8px 12px' }}>
                     <Badge variant="subtle">{entry.addon.unit}</Badge>

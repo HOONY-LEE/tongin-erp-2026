@@ -59,7 +59,11 @@ export class CampaignService {
           recipient: cust.phonePrimary,
           message: c.message,
           status: res.ok ? 'SENT' : 'FAILED',
-          payload: { campaignId: c.id, customerId: cust.id },
+          payload: {
+            campaignId: c.id,
+            customerId: cust.id,
+            ...(res.reason ? { reason: res.reason } : {}),
+          },
         },
       });
     }

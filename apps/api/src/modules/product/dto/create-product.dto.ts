@@ -15,11 +15,8 @@ import {
   type ServiceLine,
 } from '@tongin/shared';
 
+/** 상품 코드는 서버가 발급한다(PRD-0001) — 입력받지 않는다 */
 export class CreateProductDto {
-  @IsString()
-  @MaxLength(50)
-  code!: string;
-
   @IsString()
   @MaxLength(200)
   name!: string;

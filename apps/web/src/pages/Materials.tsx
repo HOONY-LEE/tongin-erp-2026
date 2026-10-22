@@ -85,7 +85,6 @@ export default function Materials() {
   };
 
   const createFields: FormField[] = [
-    { name: 'code', label: t('material.code'), required: true, placeholder: 'BOX-S' },
     { name: 'name', label: t('material.name'), required: true, placeholder: '소형 박스' },
     { name: 'category', label: t('material.category'), placeholder: '박스/포장지/유니폼' },
     { name: 'unit', label: t('material.unit'), placeholder: 'EA / SET / ROLL / BOX' },
@@ -93,7 +92,6 @@ export default function Materials() {
   ];
 
   const columns: Column[] = [
-    { title: t('material.code'), dataIndex: 'code' },
     { title: t('material.name'), dataIndex: 'name' },
     { title: t('material.category'), render: (r) => String(r.category ?? '-') },
     { title: t('material.unit'), render: (r) => String(r.unit) },

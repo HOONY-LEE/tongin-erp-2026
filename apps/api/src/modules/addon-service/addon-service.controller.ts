@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { AddonServiceService } from './addon-service.service';
 import { CreateAddonServiceDto } from './dto/create-addon-service.dto';
@@ -20,8 +21,8 @@ export class AddonServiceController {
 
   @Get()
   @RequirePermissions('ADDON.READ')
-  findAll() {
-    return this.addonServiceService.findAll();
+  findAll(@Query('active') active?: string) {
+    return this.addonServiceService.findAll(active === '1' || active === 'true');
   }
 
   @Get(':id')

@@ -19,7 +19,7 @@ export interface FormField {
   name: string;
   label: string;
   required?: boolean;
-  type?: 'text' | 'number' | 'select' | 'address' | 'date' | 'tel';
+  type?: 'text' | 'number' | 'select' | 'address' | 'date' | 'tel' | 'boolean';
   /** disabled=true인 항목은 목록에 보이되 선택할 수 없다(권한 밖 선택지를 감추는 대신 흐리게). */
   options?: { value: string; label: string; disabled?: boolean }[];
   placeholder?: string;

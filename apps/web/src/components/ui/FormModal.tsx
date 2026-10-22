@@ -86,8 +86,12 @@ export function FormModal({
         continue;
       }
       const v = values[f.name];
-      if (v === undefined || v === '') continue;
-      payload[f.name] = f.type === 'number' ? Number(v) : v;
+      if (v === undefined || v === '') {
+        // 수정 폼에서 원래 있던 값을 지운 경우 — 지웠다는 걸 서버에 알린다(null)
+        if (!f.required && initialValues?.[f.name]) payload[f.name] = null;
+        continue;
+      }
+      payload[f.name] = f.type === 'number' ? Number(v) : f.type === 'boolean' ? v === 'true' : v;
     }
     setSaving(true);
     try {
@@ -196,11 +200,19 @@ function renderField(
   return (
     <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <FieldLabel label={f.label} required={f.required} />
-      {f.type === 'select' ? (
+      {f.type === 'select' || f.type === 'boolean' ? (
         <Select
           value={values[f.name] ?? ''}
           onValueChange={(v) => setField(f.name, v)}
-          options={f.options ?? []}
+          options={
+            f.options ??
+            (f.type === 'boolean'
+              ? [
+                  { value: 'true', label: '사용' },
+                  { value: 'false', label: '사용 안 함' },
+                ]
+              : [])
+          }
           placeholder={f.placeholder}
           disabled={f.disabled}
         />

@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { normalizeName } from '../../common/util/master-code';
 import { CreateCbmItemDto } from './dto/create-cbm-item.dto';
 import { UpdateCbmItemDto } from './dto/update-cbm-item.dto';
 
@@ -23,7 +24,9 @@ export class CbmItemService {
 
   async create(dto: CreateCbmItemDto) {
     try {
-      return await this.prisma.cbmItem.create({ data: dto });
+      return await this.prisma.cbmItem.create({
+        data: { ...dto, category: normalizeName(dto.category), name: normalizeName(dto.name) },
+      });
     } catch (e) {
       throw this.mapError(e, `${dto.category}/${dto.name}`);
     }
@@ -32,20 +35,34 @@ export class CbmItemService {
   async update(id: string, dto: UpdateCbmItemDto) {
     await this.findOne(id);
     try {
-      return await this.prisma.cbmItem.update({ where: { id }, data: dto });
+      return await this.prisma.cbmItem.update({
+        where: { id },
+        data: {
+          ...dto,
+          category: dto.category === undefined ? undefined : normalizeName(dto.category),
+          name: dto.name === undefined ? undefined : normalizeName(dto.name),
+        },
+      });
     } catch (e) {
       throw this.mapError(e, `${dto.category}/${dto.name}`);
     }
   }
 
+  /** 견적 물품에 쓰인 품목은 지우지 않는다 — 비활성으로 */
   async remove(id: string) {
     await this.findOne(id);
+    const used = await this.prisma.estimateLine.count({ where: { cbmItemId: id } });
+    if (used) {
+      throw new ConflictException(
+        `견적 물품 ${used}건에서 쓰는 품목이라 삭제할 수 없습니다. 더 쓰지 않으려면 '사용 안 함'으로 바꿔 주세요.`,
+      );
+    }
     return this.prisma.cbmItem.delete({ where: { id } });
   }
 
   private mapError(e: unknown, key: string): Error {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-      return new ConflictException(`이미 존재하는 품목입니다(중복 방지): ${key}`);
+      return new ConflictException(`같은 분류에 같은 이름의 품목이 이미 있습니다: ${key}`);
     }
     return e as Error;
   }

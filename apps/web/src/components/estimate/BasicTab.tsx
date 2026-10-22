@@ -15,6 +15,7 @@ interface ProductRow {
   id: string;
   name: string;
   serviceLine: string;
+  isActive?: boolean;
 }
 
 interface BasicForm {
@@ -76,8 +77,10 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
     () =>
       products
         .filter((p) => !data.serviceLine || p.serviceLine === data.serviceLine)
+        // '사용 안 함' 상품은 고를 수 없게 — 이미 이 견적에 걸린 상품은 그대로 보인다
+        .filter((p) => p.isActive !== false || p.id === data.productId)
         .map((p) => ({ value: p.id, label: p.name })),
-    [products, data.serviceLine],
+    [products, data.serviceLine, data.productId],
   );
 
   const set = <K extends keyof BasicForm>(k: K, v: BasicForm[K]) =>

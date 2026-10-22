@@ -14,8 +14,7 @@ const TYPE_COLOR: Record<string, 'primary' | 'info' | 'warning'> = {
 };
 
 const columns: Column[] = [
-  { title: '코드', dataIndex: 'code' },
-  { title: '거래처명', dataIndex: 'name' },
+  { title: '거래처명', dataIndex: 'name', flex: 1, minWidth: 160 },
   { title: '연락처', render: (r) => formatPhone(String(r.phone ?? '')) || '-' },
   {
     title: '유형',
@@ -29,7 +28,7 @@ const columns: Column[] = [
     title: '상태',
     render: (r: Row) => (
       <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-        {r.isActive ? '활성' : '비활성'}
+        {r.isActive ? '사용' : '사용 안 함'}
       </Badge>
     ),
   },
@@ -47,13 +46,23 @@ const fields: FormField[] = [
       { value: 'B2B_CLIENT', label: 'B2B고객' },
     ],
   },
-  { name: 'code', label: '코드', required: true, placeholder: 'P-001' },
   { name: 'name', label: '거래처명', required: true, placeholder: '예: 홈케어파트너스' },
   // 전속 작업 배정 알림톡 수신처
   { name: 'phone', label: '담당자 연락처', alwaysShow: true, type: 'tel' },
+  { name: 'isActive', label: '사용 여부', type: 'boolean' },
 ];
 
-/** 거래처 CRUD 목록. */
+/** 거래처 — 코드는 서버 발급(PTN-0001), 이름 중복 불가 */
 export default function Partners() {
-  return <CrudTable title="거래처" path="/partners" columns={columns} fields={fields} hideHeader />;
+  return (
+    <CrudTable
+      title="거래처"
+      path="/partners"
+      columns={columns}
+      fields={fields}
+      editable
+      deletable
+      hideHeader
+    />
+  );
 }

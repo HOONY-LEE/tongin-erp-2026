@@ -7,9 +7,22 @@ export type OrgUnitType = (typeof ORG_UNIT_TYPES)[number];
 
 export const SERVICE_LINES = ['MOVING', 'LIVING', 'CARE', 'B2B_MOVING', 'GENERAL'] as const;
 export type ServiceLine = (typeof SERVICE_LINES)[number];
+export const SERVICE_LINE_LABEL: Record<ServiceLine, string> = {
+  MOVING: '이사',
+  LIVING: '리빙',
+  CARE: '케어',
+  B2B_MOVING: '기업이전',
+  GENERAL: '일반',
+};
 
 export const PRICING_METHODS = ['CBM', 'COST_PLUS', 'FLAT', 'PYEONG'] as const;
 export type PricingMethod = (typeof PRICING_METHODS)[number];
+export const PRICING_METHOD_LABEL: Record<PricingMethod, string> = {
+  CBM: 'CBM(물량) 기준',
+  COST_PLUS: '원가적상식',
+  FLAT: '정액',
+  PYEONG: '평수 기준',
+};
 
 // 거래처 유형 / 가격조건 할인 유형 (FND-09 카탈로그)
 export const PARTNER_TYPES = ['AFFILIATE', 'OUTSOURCE', 'B2B_CLIENT'] as const;
@@ -212,95 +225,42 @@ export const ROOM_PRESETS: RoomPreset[] = [
 ];
 
 /**
- * 견적 옵션 정의 — 견적서 3단계(옵션선택)에서 고르는 항목.
- * 가격은 카탈로그에 두지 않고 견적마다 견적사원이 입력한다(현장 조건마다 달라서).
- *  - variants: 같은 서비스 안의 종류(입주청소 일반/프리미엄 등)
- *  - hasDate: 서비스 요청일을 받는다 / hasNote: 내용을 적는다
+ * 견적 옵션 — 견적서 3단계(옵션선택)에서 고르는 항목.
+ * 목록 원본은 상품관리 '옵션' 탭(addon_service)이다. 여기에는 화면 묶음과 표기 규칙만 둔다.
+ * 가격은 견적마다 견적사원이 입력한다(현장 조건마다 달라서). 카탈로그 가격은 참고 기본가.
  */
-export type EstimateOptionGroup = 'LADDER' | 'LIVING' | 'ASSEMBLY' | 'ETC';
-export interface EstimateOptionDef {
-  code: string;
-  group: EstimateOptionGroup;
+export const ESTIMATE_OPTION_GROUPS = ['LADDER', 'LIVING', 'ASSEMBLY', 'ETC'] as const;
+export type EstimateOptionGroup = (typeof ESTIMATE_OPTION_GROUPS)[number];
+export const ESTIMATE_OPTION_GROUP_LABEL: Record<EstimateOptionGroup, string> = {
+  LADDER: '사다리차 서비스',
+  LIVING: '생활 서비스',
+  ASSEMBLY: '분해 · 설치',
+  ETC: '기타',
+};
+export interface OptionVariant {
+  value: string;
   label: string;
-  variants?: { value: string; label: string }[];
-  hasDate?: boolean;
-  hasNote?: boolean;
 }
-/** 분해/설치는 물품마다 분해만·설치만·둘 다를 고른다 */
-export const ASSEMBLY_VARIANTS = [
-  { value: 'BOTH', label: '분해·설치' },
-  { value: 'DISASSEMBLE', label: '분해만' },
-  { value: 'INSTALL', label: '설치만' },
-];
-const asm = (code: string, label: string, hasNote = false): EstimateOptionDef => ({
-  code: `ASM_${code}`,
-  group: 'ASSEMBLY',
-  label,
-  variants: ASSEMBLY_VARIANTS,
-  hasNote,
-});
-export const ESTIMATE_OPTIONS: EstimateOptionDef[] = [
-  { code: 'LADDER_BEFORE', group: 'LADDER', label: '사다리차 서비스(전)' },
-  { code: 'LADDER_AFTER', group: 'LADDER', label: '사다리차 서비스(후)' },
-  {
-    code: 'MOVE_IN_CLEANING',
-    group: 'LIVING',
-    label: '입주청소서비스',
-    variants: [
-      { value: 'STANDARD', label: '일반' },
-      { value: 'PREMIUM', label: '프리미엄' },
-    ],
-    hasDate: true,
-  },
-  {
-    code: 'APPLIANCE_CLEANING',
-    group: 'LIVING',
-    label: '가전청소서비스',
-    variants: [
-      { value: 'AIRCON', label: '에어컨' },
-      { value: 'WASHER', label: '세탁기' },
-    ],
-    hasDate: true,
-  },
-  {
-    code: 'ORGANIZING',
-    group: 'LIVING',
-    label: '정리수납서비스',
-    variants: [
-      { value: 'STANDARD', label: '일반' },
-      { value: 'VIP', label: 'VIP' },
-    ],
-    hasDate: true,
-  },
-  { code: 'DEODORIZING', group: 'LIVING', label: '탈취살균(새집증후군)서비스', hasDate: true },
-  { code: 'PIPE_CARE', group: 'LIVING', label: '배관케어서비스', hasDate: true },
-  { code: 'MATTRESS_CARE', group: 'LIVING', label: '매트리스케어', hasDate: true },
-  { code: 'APRON', group: 'LIVING', label: '에이프런서비스', hasDate: true },
-  { code: 'MOVJE_DIRECTOR', group: 'LIVING', label: '무브제 디렉터 상담', hasDate: true },
-  { code: 'OTHER_SERVICE', group: 'LIVING', label: '기타서비스', hasDate: true, hasNote: true },
-  asm('WARDROBE_NORMAL', '일반 장롱'),
-  asm('WARDROBE_SLIDE', '슬라이드 장롱'),
-  asm('SYSTEM_HANGER', '시스템 행거'),
-  asm('DESK_SET', '책상/책장 세트'),
-  asm('WALL_TV', '벽걸이 TV'),
-  asm('AIRCON', '에어컨'),
-  asm('FRIDGE', '정수기/냉장고'),
-  asm('STONE_BED_SINGLE', '돌침대(싱글)'),
-  asm('STONE_BED_DOUBLE', '돌침대(더블)'),
-  asm('SAFE', '금고'),
-  asm('ETC', '기타', true),
-  { code: 'STORAGE', group: 'ETC', label: '보관비용', hasNote: true },
-];
-export const ESTIMATE_OPTION_BY_CODE: Record<string, EstimateOptionDef> = Object.fromEntries(
-  ESTIMATE_OPTIONS.map((o) => [o.code, o]),
-);
+/** 견적 화면에 내려주는 옵션 한 줄(카탈로그 행) */
+export interface EstimateOptionDef {
+  id: string;
+  code: string;
+  name: string;
+  groupCode: EstimateOptionGroup;
+  variants: OptionVariant[] | null;
+  hasDate: boolean;
+  hasNote: boolean;
+  price: string | number | null;
+  isActive: boolean;
+}
 /** 견적서·목록에 쓰는 옵션 표기 — "입주청소서비스(프리미엄)", "일반 장롱 분해·설치" */
-export function optionLabel(code: string, variant?: string | null): string {
-  const def = ESTIMATE_OPTION_BY_CODE[code];
-  if (!def) return code;
+export function optionLabel(
+  def: { name: string; groupCode: string; variants?: OptionVariant[] | null },
+  variant?: string | null,
+): string {
   const v = def.variants?.find((x) => x.value === variant)?.label;
-  if (!v) return def.label;
-  return def.group === 'ASSEMBLY' ? `${def.label} ${v}` : `${def.label}(${v})`;
+  if (!v) return def.name;
+  return def.groupCode === 'ASSEMBLY' ? `${def.name} ${v}` : `${def.name}(${v})`;
 }
 
 // EST: 작업조건(전/후) — 짐을 내리고 올리는 방법. 견적 단가·인원 산정의 근거가 된다.
@@ -510,6 +470,7 @@ export const PERMISSIONS = [
   'WORK_ORDER.READ',
   'WORK_ORDER.WRITE',
   'NOTIFICATION.READ',
+  'NOTIFICATION.SEND', // 고객에게 문자·알림톡 직접 발송(AI 비서의 문자 발송 포함)
   'MATERIAL.READ',
   'MATERIAL.WRITE',
   'SETTLEMENT.READ',
@@ -529,6 +490,7 @@ export const PERMISSIONS = [
   'HR.WRITE',
   'CALENDAR.READ',
   'CALENDAR.WRITE',
+  'AI.USE', // AI 비서 사용 — AI는 사용자 본인 권한 안에서만 도구를 실행한다
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';

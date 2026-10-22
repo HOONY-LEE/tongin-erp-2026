@@ -31,7 +31,6 @@ export default function Branches() {
 
   const columns: Column[] = [
     { title: '지점', dataIndex: 'name' },
-    { title: '코드', render: (r) => String(r.code ?? '-') },
     { title: '계약 건수', numeric: true, render: (r) => String(r.contractCount ?? 0) },
     {
       title: '매출(계약)',

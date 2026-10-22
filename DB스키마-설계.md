@@ -183,11 +183,16 @@ CREATE TABLE cbm_item (
 );
 
 -- C. 옵션/부가서비스: 애드온 (분해설치·사다리차·보관…)
-CREATE TABLE addon_service (
+CREATE TABLE addon_service (            -- 옵션 카탈로그 = 견적 3단계 옵션 목록의 원본
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code text UNIQUE NOT NULL, name text NOT NULL,
-  unit text NOT NULL,                   -- EA | 정액
-  price numeric(14,2),
+  code text UNIQUE NOT NULL,            -- 서버 발급 OPT-0001
+  name text NOT NULL,                   -- 중복 불가(서버 검사)
+  unit text NOT NULL,                   -- EA | FLAT
+  price numeric(14,2),                  -- 참고 기본가(견적 금액은 견적마다 입력)
+  group_code text NOT NULL DEFAULT 'ETC', -- LADDER | LIVING | ASSEMBLY | ETC (견적 화면 묶음)
+  variants jsonb,                       -- 종류 [{value,label}]
+  has_date boolean NOT NULL DEFAULT false, has_note boolean NOT NULL DEFAULT false,
+  sort_order int NOT NULL DEFAULT 0,
   is_active boolean NOT NULL DEFAULT true
 );
 
@@ -285,10 +290,10 @@ CREATE TABLE estimate_line (                   -- 물품 라인 — "물품별 �
 CREATE TABLE estimate_addon (                  -- 견적에 고른 옵션 — 이름·단가 스냅샷(카탈로그가 바뀌어도 불변)
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   estimate_id uuid NOT NULL REFERENCES estimate(id) ON DELETE CASCADE,
-  code         text,                           -- shared ESTIMATE_OPTIONS 코드(LADDER_BEFORE, MOVE_IN_CLEANING, ASM_WALL_TV…)
+  code         text,                           -- 고른 옵션의 카탈로그 코드 스냅샷(OPT-0003 …)
   variant      text,                           -- 종류(일반/프리미엄, 분해·설치/분해만/설치만 …)
   service_date date,                           -- 서비스 요청일
-  addon_service_id uuid REFERENCES addon_service(id), -- (예전 카탈로그 방식 — 새 화면은 쓰지 않음)
+  addon_service_id uuid REFERENCES addon_service(id), -- 옵션 카탈로그 행(상품관리 › 옵션). 예전 자유 입력 행은 NULL
   name text NOT NULL,                          -- 표기 스냅샷: "입주청소서비스(프리미엄)"
   qty numeric(8,2) DEFAULT 1, unit_price numeric(14,2), amount numeric(14,2),
   memo text, sort_order int DEFAULT 0
@@ -401,7 +406,24 @@ CREATE TABLE document (                         -- 동결 문서(서명계약 �
   storage_url text, hash text, frozen_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- AI 비서 (AIX-03, 설계노트 1-B 구현 ①)
+CREATE TABLE ai_conversation (                  -- 사용자별 대화. 원문은 Claude API 형식 그대로(append-only)
+  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  title text NOT NULL DEFAULT '새 대화',
+  messages jsonb NOT NULL DEFAULT '[]',         -- thinking 블록 포함, 중간 수정 금지
+  pending jsonb,                                 -- 승인 대기 도구 호출 묶음(쓰기·발송)
+  status text NOT NULL DEFAULT 'IDLE',           -- IDLE | RUNNING | AWAITING_APPROVAL | ERROR
+  last_error text, created_at timestamptz, updated_at timestamptz
+);
+CREATE TABLE ai_tool_call (                     -- AI 도구 실행 감사 기록(누가 무엇을 승인했나)
+  id uuid PRIMARY KEY, conversation_id uuid NOT NULL REFERENCES ai_conversation(id) ON DELETE CASCADE,
+  tool_use_id text NOT NULL, tool_name text NOT NULL, mode text NOT NULL,  -- READ | WRITE
+  input jsonb NOT NULL, status text NOT NULL,    -- DONE | ERROR | REJECTED
+  result jsonb, approved_by uuid, created_at timestamptz
+);
 ```
+> AI가 부른 ERP API는 사용자 토큰으로 실제 HTTP를 타므로 `audit_log`에도 똑같이 남는다. `ai_tool_call`은 "AI가 시도했고 사람이 승인/거절했다"는 맥락을 더한다.
 
 ---
 
@@ -423,7 +445,7 @@ org_unit ─┬─ employee ─ app_user ─ user_role ─ role ─ role_permiss
 customer ─ lead ─ estimate ─ contract ─ payment
                     │            └─ work_order ─ work_assignment
                     ├─ estimate_zone ─ estimate_line ─ cbm_item
-                    ├─ estimate_addon (옵션 정의=코드 상수, 가격은 견적마다)
+                    ├─ estimate_addon (옵션 카탈로그=addon_service, 가격은 견적마다)
                     ├─ estimate_applied_condition ─ price_condition ─ partner
                     └─ estimate_cost_line ─(material)→ product
 product / cbm_item / addon_service / price_condition  = 카탈로그 4엔티티

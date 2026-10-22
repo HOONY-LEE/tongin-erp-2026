@@ -8,7 +8,6 @@ import {
 import { Prisma } from '@prisma/client';
 import {
   ACCESS_LABEL,
-  ESTIMATE_OPTION_BY_CODE,
   HANDLING_LABEL,
   LEAD_STATUS_LABEL,
   optionLabel,
@@ -17,6 +16,7 @@ import {
   type AuthPrincipal,
   type EstimateMeta,
   type LeadStatus,
+  type OptionVariant,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
@@ -96,7 +96,32 @@ export class EstimateService {
       lead: lead && { ...lead, visitDate: day(lead.visitDate), moveDate: day(lead.moveDate) },
       serviceLine: product?.serviceLine ?? null,
       meta: await this.buildMeta(id),
+      optionCatalog: await this.optionCatalog(id),
     };
+  }
+
+  /**
+   * 3단계 옵션 목록 — 상품관리 '옵션' 탭의 카탈로그.
+   * '사용 안 함' 옵션은 빼되, 이 견적에 이미 담긴 옵션은 남겨 둔다(저장된 견적이 깨지지 않게).
+   */
+  private optionCatalog(estimateId: string) {
+    return this.prisma.addonService.findMany({
+      where: {
+        OR: [{ isActive: true }, { estimateAddons: { some: { estimateId } } }],
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        groupCode: true,
+        variants: true,
+        hasDate: true,
+        hasNote: true,
+        price: true,
+        isActive: true,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
   }
 
   private async buildMeta(id: string): Promise<EstimateMeta> {
@@ -528,11 +553,16 @@ export class EstimateService {
    */
   async saveOptions(estimateId: string, dto: SaveOptionsDto, principal?: AuthPrincipal) {
     await this.findOne(estimateId, principal);
+    const defs = await this.prisma.addonService.findMany({
+      where: { id: { in: dto.options.map((o) => o.addonServiceId) } },
+    });
+    const byId = new Map(defs.map((d) => [d.id, d]));
     for (const o of dto.options) {
-      const def = ESTIMATE_OPTION_BY_CODE[o.code];
-      if (!def) throw new BadRequestException(`알 수 없는 옵션입니다: ${o.code}`);
-      if (o.variant && !def.variants?.some((v) => v.value === o.variant)) {
-        throw new BadRequestException(`${def.label}의 종류가 올바르지 않습니다: ${o.variant}`);
+      const def = byId.get(o.addonServiceId);
+      if (!def) throw new BadRequestException(`알 수 없는 옵션입니다: ${o.addonServiceId}`);
+      const variants = (def.variants as OptionVariant[] | null) ?? null;
+      if (o.variant && !variants?.some((v) => v.value === o.variant)) {
+        throw new BadRequestException(`${def.name}의 종류가 올바르지 않습니다: ${o.variant}`);
       }
     }
     const note = (access: string | undefined, text: string | undefined) =>
@@ -553,18 +583,27 @@ export class EstimateService {
       await tx.estimateAddon.deleteMany({ where: { estimateId } });
       if (dto.options.length) {
         await tx.estimateAddon.createMany({
-          data: dto.options.map((o, i) => ({
-            estimateId,
-            code: o.code,
-            variant: o.variant ?? null,
-            serviceDate: o.serviceDate ? new Date(`${o.serviceDate.slice(0, 10)}T00:00:00Z`) : null,
-            name: optionLabel(o.code, o.variant),
-            qty: 1,
-            unitPrice: o.amount,
-            amount: o.amount,
-            memo: o.memo?.trim() || null,
-            sortOrder: i,
-          })),
+          data: dto.options.map((o, i) => {
+            const def = byId.get(o.addonServiceId)!;
+            return {
+              estimateId,
+              addonServiceId: def.id,
+              code: def.code,
+              variant: o.variant ?? null,
+              serviceDate: o.serviceDate
+                ? new Date(`${o.serviceDate.slice(0, 10)}T00:00:00Z`)
+                : null,
+              name: optionLabel(
+                { ...def, variants: def.variants as OptionVariant[] | null },
+                o.variant,
+              ),
+              qty: 1,
+              unitPrice: o.amount,
+              amount: o.amount,
+              memo: o.memo?.trim() || null,
+              sortOrder: i,
+            };
+          }),
         });
       }
     });

@@ -32,7 +32,7 @@ export default function Estimates() {
   const leads = useOptions('/leads', 'leadNo');
   const customers = useOptions('/customers', 'name');
   const orgs = useOptions('/org-units', 'name');
-  const products = useOptions('/products', 'name');
+  const products = useOptions('/products?active=1', 'name');
   const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {

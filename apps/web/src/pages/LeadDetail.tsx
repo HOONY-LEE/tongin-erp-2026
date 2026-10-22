@@ -136,6 +136,7 @@ interface ProductRow {
   id: string;
   name: string;
   serviceLine: string;
+  isActive?: boolean;
 }
 
 // 견적 생성 시 리드의 구조적 주소(우편번호·도로명·상세·시도/시군구·좌표)를 승계
@@ -378,6 +379,7 @@ export default function LeadDetail() {
   const estimateProducts = useMemo(
     () =>
       productRows
+        .filter((p) => p.isActive !== false)
         .filter((p) => !data?.serviceLine || p.serviceLine === data.serviceLine)
         .map((p) => ({ value: p.id, label: p.name })),
     [productRows, data?.serviceLine],

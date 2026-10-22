@@ -17,6 +17,7 @@ export default {
   },
   nav: {
     dashboard: 'Dashboard',
+    ai: 'AI Assistant',
     calendar: 'Calendar',
     field: 'Field',
     leads: 'Intake',

@@ -58,6 +58,9 @@ export class AuthSeederService implements OnModuleInit {
       'SERVICE_ORDER.WRITE',
       'SUPPORT.READ',
       'SUPPORT.WRITE',
+      // AI 비서로 자기 지점 고객 조회·후속 문자 발송
+      'AI.USE',
+      'NOTIFICATION.SEND',
       'CALENDAR.READ',
       'CALENDAR.WRITE',
       // 대시보드 — 로그인 후 첫 화면이다. 통계는 조직 스코프로 집계되므로

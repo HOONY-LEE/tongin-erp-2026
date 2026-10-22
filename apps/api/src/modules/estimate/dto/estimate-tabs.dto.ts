@@ -90,9 +90,8 @@ export class SaveItemsDto {
 }
 
 export class OptionInput {
-  @IsString()
-  @MaxLength(60)
-  code!: string; // shared ESTIMATE_OPTIONS 코드
+  @IsUUID()
+  addonServiceId!: string; // 상품관리 '옵션' 카탈로그 행
 
   @IsOptional()
   @IsString()
