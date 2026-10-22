@@ -24,6 +24,16 @@ interface PayConfirmRow {
   depositPaid: boolean;
   balancePaid: boolean;
   status: PayConfirmStatus;
+  leadId: string;
+  /** 고객에게 견적서를 보낸 시각 */
+  sentAt: Date | null;
+  /** 고객 전자서명 */
+  signed: boolean;
+  /** 계약금 입금 계좌(입금 대기 중인 것) */
+  depositAccount: string | null;
+  /** TOSS = 입금되면 자동 확인 | MANUAL = 고정 계좌(직접 확인) */
+  depositProvider: string | null;
+  depositPaidAt: Date | null;
 }
 
 /**
@@ -55,6 +65,7 @@ export class PaymentConfirmationService {
       select: {
         id: true,
         estimateNo: true,
+        leadId: true,
         totalAmount: true,
         customer: { select: { name: true } },
       },
@@ -70,13 +81,27 @@ export class PaymentConfirmationService {
         totalAmount: true,
         depositAmount: true,
         balanceAmount: true,
-        payments: { select: { kind: true, status: true } },
+        status: true,
+        sentAt: true,
+        payments: {
+          select: {
+            kind: true,
+            status: true,
+            virtualAccount: true,
+            pgProvider: true,
+            paidAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
     const byEstimate = new Map(contracts.map((c) => [c.estimateId, c]));
 
     return estimates.map((e) => {
       const c = byEstimate.get(e.id);
+      const depositPay =
+        c?.payments.find((p) => p.kind === 'DEPOSIT' && p.status === 'PAID') ??
+        c?.payments.find((p) => p.kind === 'DEPOSIT' && p.status === 'PENDING');
       const depositPaid = !!c?.payments.some((p) => p.kind === 'DEPOSIT' && p.status === 'PAID');
       const balancePaid = !!c?.payments.some((p) => p.kind === 'BALANCE' && p.status === 'PAID');
       const total = c
@@ -107,6 +132,12 @@ export class PaymentConfirmationService {
         depositPaid,
         balancePaid,
         status,
+        leadId: e.leadId,
+        sentAt: c?.sentAt ?? null,
+        signed: c?.status === 'SIGNED',
+        depositAccount: depositPay?.virtualAccount ?? null,
+        depositProvider: depositPay?.pgProvider ?? null,
+        depositPaidAt: depositPay?.status === 'PAID' ? depositPay.paidAt : null,
       };
     });
   }
@@ -154,11 +185,13 @@ export class PaymentConfirmationService {
   /** 해당 종류의 결제를 생성(없으면)하고 입금확인(PAID) 처리. */
   private async confirmPaymentOfKind(contractId: string, kind: 'DEPOSIT' | 'BALANCE') {
     const payments = await this.contractService.listPayments(contractId);
-    let payment = payments.find((p) => p.kind === kind);
-    if (payment?.status === 'PAID') return; // 이미 완료
+    const mine = payments.filter((p) => p.kind === kind);
+    if (mine.some((p) => p.status === 'PAID')) return; // 이미 완료
+    // 견적서 보내기로 발급해 둔 입금 대기 건이 있으면 그것을 확인 처리(취소된 건은 건너뜀)
+    let payment = mine.find((p) => p.status === 'PENDING');
     if (!payment) {
       payment = await this.contractService.createPayment(contractId, { kind });
     }
-    await this.contractService.confirmPayment(payment.id);
+    await this.contractService.markPaid(payment.id);
   }
 }

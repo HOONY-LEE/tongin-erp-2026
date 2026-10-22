@@ -9,6 +9,6 @@ import { LeadModule } from '../lead/lead.module';
   imports: [LeadModule], // 계약 생성 시 리드 CONTRACTED 전이
   controllers: [ContractController, PaymentController],
   providers: [ContractService, StubPaymentProvider],
-  exports: [ContractService], // 작업 모듈이 참조
+  exports: [ContractService, StubPaymentProvider], // 작업 모듈이 참조
 })
 export class ContractModule {}

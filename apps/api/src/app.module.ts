@@ -38,6 +38,7 @@ import { ServiceOrderModule } from './modules/service-order/service-order.module
 import { SupportModule } from './modules/support/support.module';
 import { ScopeModule } from './scope/scope.module';
 import { AiModule } from './ai/ai.module';
+import { EsignModule } from './modules/esign/esign.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { AiModule } from './ai/ai.module';
     PriceConditionModule,
     LeadModule,
     EstimateModule,
+    EsignModule,
     ContractModule,
     WorkOrderModule,
     FieldModule,

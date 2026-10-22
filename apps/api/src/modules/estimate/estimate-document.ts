@@ -59,6 +59,9 @@ export interface EstimateDocInput {
   estimateNo: string;
   contractNo: string | null;
   signedAt: Date | null;
+  /** 고객이 링크에서 그린 서명(PNG data URL) */
+  signatureImage?: string | null;
+  signerName?: string | null;
   meta: EstimateMeta;
   fromAddr: string | null;
   fromAddrDetail: string | null;
@@ -365,6 +368,7 @@ table{width:100%;border-collapse:collapse}
 .box{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:3px;border:1.5px solid #ef7b2b;color:#fff;font-size:11px}
 .box.on{background:#ef7b2b}
 .sign .line{display:flex;gap:12px;min-height:22mm;padding:8px 0;border-bottom:2px solid #111;font-size:13px}
+.sign .line .sig{height:20mm;max-width:55mm;object-fit:contain;margin-left:auto}
 .sign .line .who{flex:1;text-align:right;align-self:flex-end;color:#374151}
 .foot{position:absolute;left:9mm;right:9mm;bottom:9mm;display:flex;align-items:center;gap:18px;font-size:9px;color:#4b5563}
 .foot b{color:#111}
@@ -420,7 +424,7 @@ ${priceRows.map(([k, a]) => `<tr><th>${esc(k)}</th><td>${money(a)}</td></tr>`).j
 <table class="asm">${asmRows.map((r) => `<tr>${r}</tr>`).join('')}</table>
 <div class="sign">
 <div class="agree">이용약관 및 개인정보 수집/활용 동의 <span class="box${signed ? ' on' : ''}">${signed ? '✓' : ''}</span></div>
-<div class="line">고객서명<span class="who">${signed ? `${esc(m.customerName ?? '')} (전자서명 ${d.signedAt!.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })})` : ''}</span></div>
+<div class="line">고객서명${d.signatureImage && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(d.signatureImage) ? `<img class="sig" src="${d.signatureImage}" alt="서명">` : ''}<span class="who">${signed ? `${esc(d.signerName ?? m.customerName ?? '')} (전자서명 ${d.signedAt!.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })})` : ''}</span></div>
 </div>
 </div>
 ${footer(1)}

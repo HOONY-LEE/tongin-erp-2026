@@ -6,7 +6,8 @@ import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
-import LeadDetail from './pages/LeadDetail';
+import LeadWorkspace from './pages/LeadWorkspace';
+import PublicSign from './pages/PublicSign';
 import Estimates from './pages/Estimates';
 import EstimateDetail from './pages/EstimateDetail';
 import Contracts from './pages/Contracts';
@@ -77,7 +78,7 @@ function Shell() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/ai" element={<AiAssistant />} />
         <Route path="/leads" element={<Leads />} />
-        <Route path="/leads/:id" element={<LeadDetail />} />
+        <Route path="/leads/:id" element={<LeadWorkspace />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/estimates" element={<Estimates />} />
         <Route path="/estimates/:id" element={<EstimateDetail />} />
@@ -117,9 +118,18 @@ export default function App() {
     <ThemeProvider>
       <ToastProvider>
         <BrowserRouter>
-          <AuthProvider>
-            <Shell />
-          </AuthProvider>
+          <Routes>
+            {/* 고객이 문자로 받은 견적서·서명 링크 — 로그인 없이 연다 */}
+            <Route path="/s/:token" element={<PublicSign />} />
+            <Route
+              path="*"
+              element={
+                <AuthProvider>
+                  <Shell />
+                </AuthProvider>
+              }
+            />
+          </Routes>
         </BrowserRouter>
       </ToastProvider>
     </ThemeProvider>

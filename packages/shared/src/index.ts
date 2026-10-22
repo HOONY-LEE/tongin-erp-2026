@@ -259,6 +259,12 @@ export interface EstimateMeta {
   consultDate: string | null; // 상담일(방문견적일)
   contractDate: string | null; // 계약일
   workDate: string | null; // 작업일(이사일)
+  // 진행 — 견적서 보내기 → 고객 서명 → 계약금 입금 → 작업
+  sentAt: string | null; // 고객에게 견적서를 보낸 시각
+  signedAt: string | null; // 고객 전자서명 시각
+  depositPaidAt: string | null; // 계약금 입금 확인 시각
+  depositAccount: string | null; // 안내한 계약금 계좌
+  workOrderId: string | null;
 }
 
 // EST: 부가세 처리 — 상품/거래처에 따라 견적서에 포함으로 적기도 하고 별도로 적기도 한다.

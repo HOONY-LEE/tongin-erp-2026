@@ -152,7 +152,21 @@ export class EstimateService {
         product: { select: { name: true } },
         orgUnit: { select: { name: true } },
         estimator: { select: { name: true, phone: true } },
-        contract: { select: { id: true, contractNo: true, signedAt: true, createdAt: true } },
+        contract: {
+          select: {
+            id: true,
+            contractNo: true,
+            signedAt: true,
+            createdAt: true,
+            sentAt: true,
+            workOrder: { select: { id: true } },
+            payments: {
+              where: { kind: 'DEPOSIT', status: { in: ['PAID', 'PENDING'] } },
+              select: { status: true, paidAt: true, virtualAccount: true },
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
         lead: {
           select: {
             status: true,
@@ -188,10 +202,81 @@ export class EstimateService {
       orgUnitName: e.orgUnit?.name ?? null,
       receivedDate: kst(e.lead?.createdAt),
       consultDate: day(e.lead?.visitDate),
-      contractDate: kst(e.contract?.signedAt ?? e.contract?.createdAt),
+      // 계약은 견적서를 보낼 때 미리 만들어 두므로, 계약일은 고객이 서명한 날이다
+      contractDate: kst(e.contract?.signedAt),
       // 이사일은 접수에 잡힌 날을 우선하고, 없으면 실제 배정된 작업일을 쓴다
       workDate: day(e.lead?.moveDate) ?? day(e.lead?.workOrders[0]?.scheduledDate),
+      sentAt: e.contract?.sentAt?.toISOString() ?? null,
+      signedAt: e.contract?.signedAt?.toISOString() ?? null,
+      depositPaidAt:
+        e.contract?.payments.find((p) => p.status === 'PAID')?.paidAt?.toISOString() ?? null,
+      depositAccount:
+        (e.contract?.payments.find((p) => p.status === 'PAID') ?? e.contract?.payments[0])
+          ?.virtualAccount ?? null,
+      workOrderId: e.contract?.workOrder?.id ?? null,
     };
+  }
+
+  /**
+   * 접수 상세 = 견적서 화면. 접수를 열면 그 접수의 최근 견적을 돌려주고, 없으면 바로 만든다
+   * (고객·지점·담당자·주소는 접수에서 그대로, 상품은 같은 서비스라인의 첫 상품 — 기본정보에서 바꾼다).
+   */
+  async forLead(leadId: string, principal?: AuthPrincipal) {
+    const lead = await this.prisma.lead.findUnique({ where: { id: leadId } });
+    if (!lead) throw new NotFoundException(`접수를 찾을 수 없습니다: ${leadId}`);
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids !== null && !ids.includes(lead.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 접수만 볼 수 있습니다.');
+    }
+    const existing = await this.prisma.estimate.findFirst({
+      where: { leadId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (existing) return { estimateId: existing.id, created: false };
+    if (!lead.customerId) {
+      throw new BadRequestException(
+        '고객이 연결되지 않은 접수입니다 — 접수에 고객 연락처를 먼저 넣어 주세요.',
+      );
+    }
+    const product =
+      (await this.prisma.product.findFirst({
+        where: { isActive: true, ...(lead.serviceLine ? { serviceLine: lead.serviceLine } : {}) },
+        orderBy: [{ createdAt: 'asc' }],
+      })) ??
+      (await this.prisma.product.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'asc' },
+      }));
+    if (!product)
+      throw new BadRequestException(
+        '사용 중인 상품이 없습니다 — 상품관리에서 상품을 먼저 등록하세요.',
+      );
+    const created = await this.create(
+      {
+        leadId,
+        customerId: lead.customerId,
+        orgUnitId: lead.orgUnitId,
+        productId: product.id,
+        estimatorEmpId: lead.ownerEmpId ?? undefined,
+        fromZipcode: lead.fromZipcode ?? undefined,
+        fromAddr: lead.fromAddr ?? undefined,
+        fromAddrDetail: lead.fromAddrDetail ?? undefined,
+        fromSido: lead.fromSido ?? undefined,
+        fromSigungu: lead.fromSigungu ?? undefined,
+        fromLat: lead.fromLat ?? undefined,
+        fromLng: lead.fromLng ?? undefined,
+        toZipcode: lead.toZipcode ?? undefined,
+        toAddr: lead.toAddr ?? undefined,
+        toAddrDetail: lead.toAddrDetail ?? undefined,
+        toSido: lead.toSido ?? undefined,
+        toSigungu: lead.toSigungu ?? undefined,
+        toLat: lead.toLat ?? undefined,
+        toLng: lead.toLng ?? undefined,
+      } as CreateEstimateDto,
+      principal,
+    );
+    return { estimateId: created.id, created: true };
   }
 
   async create(dto: CreateEstimateDto, principal?: AuthPrincipal) {
@@ -759,7 +844,9 @@ export class EstimateService {
         zones: { orderBy: { sortOrder: 'asc' } },
         lines: true,
         addons: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
-        contract: { select: { contractNo: true, signedAt: true } },
+        contract: {
+          select: { contractNo: true, signedAt: true, signatureImage: true, signerName: true },
+        },
       },
     });
     if (!e) throw new NotFoundException(`견적을 찾을 수 없습니다: ${id}`);
@@ -788,6 +875,8 @@ export class EstimateService {
       ...e,
       contractNo: e.contract?.contractNo ?? null,
       signedAt: e.contract?.signedAt ?? null,
+      signatureImage: e.contract?.signatureImage ?? null,
+      signerName: e.contract?.signerName ?? null,
       meta,
       catalog: catalog.map((c) => ({
         ...c,
