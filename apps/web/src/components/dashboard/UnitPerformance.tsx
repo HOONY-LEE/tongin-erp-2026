@@ -7,6 +7,7 @@ import {
 } from '@tongin/shared';
 import { PageCard, SegmentedControl, Select } from '../ui';
 import { KOREA_MAP, projectLatLng } from './koreaMap';
+import { ColumnChart } from './ColumnChart';
 import styles from './dashboard.module.css';
 
 /** 막대는 상위 몇 지점까지 */
@@ -23,8 +24,6 @@ const short = (n: number, metric: StatsMetric) => {
   if (n >= 1e4) return `${Math.round(n / 1e4).toLocaleString()}만`;
   return n.toLocaleString();
 };
-const exact = (n: number, metric: StatsMetric) =>
-  metric === 'revenue' ? won(n) : `${n.toLocaleString()}건`;
 
 const regionCenter = new Map(KOREA_MAP.regions.map((r) => [r.sido, [r.cx, r.cy] as const]));
 
@@ -72,7 +71,6 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
         .sort((a, b) => b.r - a.r),
     [sorted, metric, maxV],
   );
-  const unplaced = sorted.filter((b) => b.lat == null && !b.sido);
 
   /**
    * 이름표 자리 — 수도권처럼 점이 몰리면 이름표가 겹치므로, 위에서부터 차례로 놓으며
@@ -141,36 +139,20 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
       {sorted.length === 0 ? (
         <div className={styles.empty}>데이터가 없습니다</div>
       ) : view === 'bar' ? (
-        <div className={styles.plot} onMouseLeave={() => setTip(null)}>
-          <div className={styles.columns} role="list" aria-label={title}>
-            {bars.map((b) => {
-              const v = b[metric];
-              return (
-                <div
-                  key={b.orgUnitId ?? b.orgUnitName}
-                  role="listitem"
-                  aria-label={`${b.orgUnitName} ${exact(v, metric)}`}
-                  className={styles.column}
-                  onMouseMove={(e) => showTip(e, b.orgUnitName, detail(b))}
-                >
-                  <div className={styles.colValue}>{short(v, metric)}</div>
-                  <div className={styles.colTrack}>
-                    <div
-                      className={styles.colBar}
-                      style={{ height: `${(v / maxV) * 100}%`, minHeight: v ? 3 : 0 }}
-                    />
-                  </div>
-                  <div className={styles.colLabel} title={b.orgUnitName}>
-                    {b.orgUnitName}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {tip && <TipBox tip={tip} />}
+        <div className={styles.plotBox}>
+          <ColumnChart
+            label={title}
+            items={bars.map((b) => ({
+              key: b.orgUnitId ?? b.orgUnitName,
+              label: b.orgUnitName,
+              value: b[metric],
+              valueLabel: short(b[metric], metric),
+              tip: detail(b),
+            }))}
+          />
         </div>
       ) : (
-        <div className={styles.plot} onMouseLeave={() => setTip(null)}>
+        <div className={[styles.plot, styles.plotBox].join(' ')} onMouseLeave={() => setTip(null)}>
           <svg
             viewBox={`0 0 ${KOREA_MAP.width} ${KOREA_MAP.height}`}
             className={styles.map}
@@ -226,20 +208,6 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
             })}
           </svg>
           {tip && <TipBox tip={tip} />}
-          <div className={styles.mapFoot}>
-            <span className={styles.legend}>
-              <svg width="44" height="26" aria-hidden>
-                <circle cx="8" cy="18" r="4" className={styles.dotFill} />
-                <circle cx="30" cy="13" r="11" className={styles.dotFill} />
-              </svg>
-              점이 클수록 많습니다 · 최대 {exact(sorted[0]?.[metric] ?? 0, metric)}
-            </span>
-            {unplaced.length > 0 && (
-              <span className={styles.legendNote}>
-                위치 없는 지점 {unplaced.length}곳은 지도에 없습니다(조직관리에서 주소 등록)
-              </span>
-            )}
-          </div>
         </div>
       )}
     </PageCard>
