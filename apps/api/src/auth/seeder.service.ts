@@ -175,7 +175,20 @@ export class AuthSeederService implements OnModuleInit {
   private async seedAdminUser(roleId: string): Promise<void> {
     const loginId = 'admin';
     const existing = await this.prisma.appUser.findUnique({ where: { loginId } });
-    if (existing) return;
+    if (existing) {
+      // 관리자 비밀번호를 잃었을 때의 복구 스위치 — ADMIN_PASSWORD_RESET=1 이면 부팅 때
+      // ADMIN_PASSWORD로 다시 정하고 계정을 다시 켠다. 복구 뒤에는 이 값을 지워야 한다.
+      if (process.env.ADMIN_PASSWORD_RESET === '1' && process.env.ADMIN_PASSWORD) {
+        await this.prisma.appUser.update({
+          where: { id: existing.id },
+          data: { passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD, 10), isActive: true },
+        });
+        this.logger.warn(
+          '관리자(admin) 비밀번호를 ADMIN_PASSWORD로 다시 정했습니다 — ADMIN_PASSWORD_RESET을 지우세요.',
+        );
+      }
+      return;
+    }
 
     const usedEnv = Boolean(process.env.ADMIN_PASSWORD);
     const password = process.env.ADMIN_PASSWORD ?? 'admin1234';
