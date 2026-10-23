@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ScopeService } from '../scope/scope.service';
 import { StubNotificationProvider } from '../notifications/notification.provider';
+import { BranchAnomalyService } from '../modules/stats/branch-anomaly.service';
 import { ToolError, type AiTool } from './ai-tool.types';
 import { AiFiles } from './ai-files.service';
 import { REPORT_LIMITS, buildReport, normalizeReport } from './report-file';
@@ -19,6 +20,7 @@ import { REPORT_LIMITS, buildReport, normalizeReport } from './report-file';
  * - search_customers: 이름·전화번호 일부로 고객 찾기
  * - send_sms: 고객에게 문자 발송(승인 필요). 번호는 AI가 적지 않고 고객 id로 DB에서 꺼낸다 —
  *   잘못 지어낸 번호나 다른 지점 고객에게 나가는 일을 막는다.
+ * - find_suspicious_branches: 견적은 냈는데 미계약으로 남겨 수수료를 피하는 의심 지점 찾기
  */
 
 const CONTRACTED_FROM = LEAD_STATUS.indexOf('CONTRACTED');
@@ -43,10 +45,21 @@ export class DomainTools {
     private readonly scope: ScopeService,
     private readonly provider: StubNotificationProvider,
     private readonly files: AiFiles,
-  ) {}
+  ) {
+    // AiModule을 건드리지 않으려고 직접 만든다(같은 Prisma·Scope 서비스를 쓴다)
+    this.anomaly = new BranchAnomalyService(prisma, scope);
+  }
+
+  private readonly anomaly: BranchAnomalyService;
 
   list(): AiTool[] {
-    return [this.searchLeads(), this.searchCustomers(), this.sendSms(), this.createReportFile()];
+    return [
+      this.searchLeads(),
+      this.searchCustomers(),
+      this.sendSms(),
+      this.createReportFile(),
+      this.findSuspiciousBranches(),
+    ];
   }
 
   /**
@@ -116,6 +129,93 @@ export class DomainTools {
           size: saved.size,
           rows: report.rows.length,
           note: '파일이 채팅 화면에 다운로드 카드로 표시됩니다. 링크를 따로 적지 마세요.',
+        };
+      },
+    };
+  }
+
+  private findSuspiciousBranches(): AiTool {
+    return {
+      name: 'find_suspicious_branches',
+      description:
+        '이상 지점 탐지(수수료 누락·매출 누락·계약 은폐 의심). 견적은 냈는데 전산에는 미계약·상담토스·견적완료로 남겨 두고 ' +
+        '본사 수수료를 안 내는 가맹점을 찾는다 — 미계약·토스 건은 많은데 계약 매출은 낮은 지점. ' +
+        '지점별로 견적→계약 전환율, 14일 넘게 멈춘 건, 이사일이 이미 지났는데 미계약인 건(가장 강한 신호), 접수당 매출을 ' +
+        '다른 지점 중앙값과 비교해 의심 점수(0~100)·등급(정상/주의/의심)·사유·누락 추정 매출·추정 미납 수수료·근거 접수번호를 준다. ' +
+        '"수수료 안 내려고 계약 숨기는 지점", "미계약이 이상하게 많은 지점", "매출 누락 의심 가맹점" 같은 질문에 쓴다. ' +
+        '기간은 접수일 기준 from~to(YYYY-MM-DD, 기본 최근 180일).',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          from: { type: 'string', format: 'date', description: '접수일 시작(기본 180일 전)' },
+          to: { type: 'string', format: 'date', description: '접수일 끝(기본 오늘)' },
+          minLeads: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 200,
+            description: '이보다 접수가 적은 지점은 표본이 작아 제외(기본 5)',
+          },
+          limit: { type: 'integer', minimum: 1, maximum: 50, description: '상위 몇 곳(기본 5)' },
+        },
+      },
+      mode: 'READ',
+      permissions: ['STATS.READ'],
+      deferred: false,
+      run: async (input, ctx) => {
+        for (const k of ['from', 'to'] as const) {
+          if (input[k] !== undefined && !isYmd(input[k])) {
+            throw new ToolError(`${k}는 YYYY-MM-DD 형식이어야 합니다.`);
+          }
+        }
+        const r = await this.anomaly.analyze(
+          {
+            from: input.from as string | undefined,
+            to: input.to as string | undefined,
+            minLeads: input.minLeads === undefined ? undefined : Number(input.minLeads) || 5,
+          },
+          ctx.principal,
+        );
+        const limit = Math.min(Math.max(Number(input.limit ?? 5) || 5, 1), 50);
+        const won = (v: number) => Math.round(v).toLocaleString();
+        return {
+          period: `${r.from} ~ ${r.to}`,
+          analyzedBranches: r.baseline.branchCount,
+          baselineSource:
+            r.baselineSource === 'PEERS' ? '비교 지점 중앙값' : '본사 기준값(비교 지점 부족)',
+          excludedSmallBranches: r.excludedSmallBranches,
+          baseline: {
+            견적계약전환율: `${Math.round(r.baseline.conversionRate * 100)}%`,
+            이사일지난미계약비율: `${Math.round(r.baseline.pastMoveOpenRate * 100)}%`,
+            멈춘건비율: `${Math.round(r.baseline.stalledRate * 100)}%`,
+            접수당매출: won(r.baseline.revenuePerLead),
+          },
+          flagged: r.branches.filter((b) => b.level !== 'NORMAL').length,
+          top: r.branches.slice(0, limit).map((b) => ({
+            branch: b.orgUnitName,
+            orgUnitId: b.orgUnitId,
+            score: b.score,
+            level: { NORMAL: '정상', WATCH: '주의', SUSPECT: '의심' }[b.level],
+            reasons: b.reasons,
+            metrics: {
+              접수: b.metrics.leadCount,
+              견적: b.metrics.quotedCount,
+              계약: b.metrics.contractCount,
+              전환율: `${Math.round(b.metrics.conversionRate * 100)}%`,
+              멈춘건: b.metrics.stalledCount,
+              이사일지난미계약: b.metrics.pastMoveOpenCount,
+              견적합: won(b.metrics.quotedAmount),
+              계약매출: won(b.metrics.revenue),
+              누락추정매출: won(b.metrics.missingRevenue),
+              추정미납수수료: won(b.metrics.commissionAtRisk),
+            },
+            evidence: b.evidence.map(
+              (e) =>
+                `${e.leadNo} ${e.customerName ?? ''} ${BranchAnomalyService.statusLabel(e.status)} ` +
+                `이사일 ${e.moveDate ?? '-'} 견적 ${won(e.estimateAmount)}`,
+            ),
+          })),
+          commissionNote: r.commissionNote,
+          method: r.method,
         };
       },
     };

@@ -40,6 +40,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { api } from '../lib/api';
 import { useAiRunning } from '../lib/aiActivity';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import styles from './AppLayout.module.css';
 
 const LANG_SHORT: Record<string, string> = { ko: '한', en: 'EN', zh: '中' };
@@ -434,7 +435,10 @@ export default function AppLayout() {
               .filter(Boolean)
               .join(' ')}
           >
-            <Outlet />
+            {/* 화면마다 따로 — 한 화면이 깨져도 메뉴로 다른 화면에 갈 수 있게, 이동하면 풀린다 */}
+            <ErrorBoundary key={pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

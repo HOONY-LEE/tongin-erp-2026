@@ -9,6 +9,7 @@ import {
   IsInt,
   IsObject,
   IsOptional,
+  ValidateIf,
   IsString,
   IsUUID,
   MaxLength,
@@ -84,10 +85,11 @@ export class CreateCampaignDto {
   @IsUUID('all', { each: true })
   customerIds?: string[];
 
-  /** 예약 발송 시각(비우면 즉시) */
+  /** 예약 발송 시각(비우면 즉시). 빈 값·null은 예약 해제 */
   @IsOptional()
+  @ValidateIf((_, v) => v !== '' && v !== null)
   @IsDateString()
-  scheduledAt?: string;
+  scheduledAt?: string | null;
 
   /** (예전 방식) 등급 일괄 대상 */
   @IsOptional()
@@ -112,4 +114,10 @@ export class AudienceQueryDto {
   @IsOptional() @IsInt() @Min(0) excludeRecentDays?: number;
   @IsOptional() @IsInt() @Min(1) page?: number;
   @IsOptional() @IsInt() @Min(1) pageSize?: number;
+  /** 이 고객들 안에서만(최종 명단 보기·검색) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20000)
+  @IsUUID('all', { each: true })
+  ids?: string[];
 }

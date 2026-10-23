@@ -443,6 +443,73 @@ export interface StatsByUnit {
   workCount: number;
   revenue: number;
 }
+// ── CRM-01b: 이상 지점 탐지 — 견적은 냈는데 전산상 미계약으로 남겨 수수료를 피하는 패턴 ──
+export const ANOMALY_LEVELS = ['NORMAL', 'WATCH', 'SUSPECT'] as const;
+export type AnomalyLevel = (typeof ANOMALY_LEVELS)[number];
+export const ANOMALY_LEVEL_LABEL: Record<AnomalyLevel, string> = {
+  NORMAL: '정상',
+  WATCH: '주의',
+  SUSPECT: '의심',
+};
+export interface BranchAnomalyMetrics {
+  leadCount: number; // 기간 내 접수(취소 포함)
+  quotedCount: number; // 견적까지 간 접수
+  contractCount: number; // SIGNED 계약이 있는 접수
+  /** 견적→계약 전환율(0~1) */
+  conversionRate: number;
+  /** 14일 넘게 상담토스·견적완료 등 계약 전 단계에 멈춘 접수 */
+  stalledCount: number;
+  stalledRate: number; // stalled / leadCount
+  /** 이사일이 이미 지났는데 아직 계약 전 단계인 접수 — 가장 강한 신호 */
+  pastMoveOpenCount: number;
+  pastMoveOpenRate: number; // pastMoveOpen / leadCount
+  quotedAmount: number; // 견적 금액 합(접수별 최신 견적)
+  revenue: number; // SIGNED 계약 총액
+  revenuePerLead: number;
+  /** 이사일이 지난 미계약 건의 견적 합 — 전산 밖에서 계약됐을 가능성이 큰 매출(상한 추정) */
+  missingRevenue: number;
+  commissionRate: number; // 적용한 수수료율(0~1)
+  /** 누락 추정 매출 × 수수료율 */
+  commissionAtRisk: number;
+}
+export interface BranchAnomalyEvidence {
+  leadNo: string;
+  status: LeadStatus;
+  customerName: string | null;
+  moveDate: string | null;
+  estimateAmount: number;
+}
+export interface BranchAnomaly {
+  orgUnitId: string;
+  orgUnitName: string;
+  sido: string | null;
+  score: number; // 0~100
+  level: AnomalyLevel;
+  reasons: string[];
+  metrics: BranchAnomalyMetrics;
+  evidence: BranchAnomalyEvidence[];
+}
+export interface BranchAnomalyReport {
+  from: string;
+  to: string;
+  minLeads: number;
+  /** 비교 기준(분석 대상 지점들의 중앙값) */
+  baseline: {
+    branchCount: number;
+    conversionRate: number;
+    stalledRate: number;
+    pastMoveOpenRate: number;
+    revenuePerLead: number;
+  };
+  /** PEERS=범위 안 지점 중앙값, DEFAULT=비교 지점이 3곳 미만이라 본사 기준값(접수당 매출 비교 생략) */
+  baselineSource: 'PEERS' | 'DEFAULT';
+  /** 접수가 minLeads 미만이라 오탐을 피하려고 뺀 지점 수 */
+  excludedSmallBranches: number;
+  commissionNote: string;
+  method: string;
+  branches: BranchAnomaly[];
+}
+
 export const STATS_METRICS = ['leadCount', 'contractCount', 'workCount', 'revenue'] as const;
 export type StatsMetric = (typeof STATS_METRICS)[number];
 export const STATS_METRIC_LABEL: Record<StatsMetric, string> = {
