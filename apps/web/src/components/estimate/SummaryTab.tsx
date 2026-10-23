@@ -39,13 +39,7 @@ function Line({ label, value, strong }: { label: ReactNode; value: string; stron
  * 4. 견적·계약서 — 옵션 가격을 모아 보고 이사비용·부가세·계약금·잔금을 정한다.
  * 총비용은 입력값으로 바로 미리 보여주고, 저장하면 서버가 같은 규칙으로 다시 계산한다.
  */
-export function SummaryTab({
-  data,
-  canEdit,
-  onSaved,
-  onDirtyChange,
-  actions,
-}: TabProps & { actions: ReactNode }) {
+export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason }: TabProps) {
   const toast = useToast();
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
   const [saving, setSaving] = useState(false);
@@ -298,11 +292,14 @@ export function SummaryTab({
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-        {actions}
-      </div>
-
-      <SaveBar dirty={dirty} saving={saving} canEdit={canEdit} onSave={save} onReset={reset} />
+      <SaveBar
+        lockedReason={lockedReason}
+        dirty={dirty}
+        saving={saving}
+        canEdit={canEdit}
+        onSave={save}
+        onReset={reset}
+      />
     </div>
   );
 }

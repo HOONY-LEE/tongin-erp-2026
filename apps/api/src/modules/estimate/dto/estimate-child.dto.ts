@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -91,11 +92,15 @@ export class CreateAddonDto {
   sortOrder?: number;
 }
 
+/** 금액 상한 — 99억 원(그 이상은 입력 실수로 본다. DB 자릿수 초과로 500이 나지 않게) */
+export const MAX_AMOUNT = 9_999_999_999;
+
 /** 견적 금액 확정 — 견적사원이 발송 전에 정하는 값들. */
 export class UpdateAmountsDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_AMOUNT)
   moveAmount?: number; // 이사비용(옵션 제외)
 
   @IsOptional()
@@ -105,16 +110,19 @@ export class UpdateAmountsDto {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_AMOUNT)
   vatAmount?: number; // vatMode=INCLUDED일 때 명시 금액
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_AMOUNT)
   depositAmount?: number; // 계약금
 
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_AMOUNT)
   balanceAmount?: number; // 잔금
 }
 

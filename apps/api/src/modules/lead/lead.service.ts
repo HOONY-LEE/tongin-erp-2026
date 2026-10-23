@@ -123,6 +123,21 @@ export class LeadService {
     if (ids !== null && !ids.includes(dto.orgUnitId)) {
       throw new ForbiddenException('소속 조직으로만 접수할 수 있습니다.');
     }
+    // 없는 지점이면 고객부터 만들다 FK 오류(500)가 나므로 먼저 확인한다
+    const org = await this.prisma.orgUnit.findUnique({
+      where: { id: dto.orgUnitId },
+      select: { id: true },
+    });
+    if (!org) throw new BadRequestException('담당 지점을 목록에서 다시 골라 주세요.');
+    if (dto.customerPhone?.trim()) {
+      const digits = dto.customerPhone.replace(/\D/g, '');
+      if (digits.length < 9 || digits.length > 11) {
+        throw new BadRequestException('연락처는 숫자 9~11자리로 입력해 주세요(예: 010-1234-5678).');
+      }
+    }
+    if (!dto.customerId && !dto.customerName?.trim()) {
+      throw new BadRequestException('고객명을 입력해 주세요.');
+    }
     // 신규 접수: 고객명 입력 시 고객 자동 생성·연결(드롭다운 선택은 customerId).
     // 같은 전화번호의 고객이 이미 있으면 새로 만들지 않고 그 고객에 잇는다(같은 사람이 두 번 생기면
     // 문자가 두 번 가고 이력이 갈라진다). 번호는 하이픈·공백을 빼고 비교한다.

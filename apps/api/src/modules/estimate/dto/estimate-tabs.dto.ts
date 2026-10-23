@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { MAX_AMOUNT } from './estimate-child.dto';
 import {
   ArrayMaxSize,
   IsArray,
@@ -9,8 +10,11 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
+  MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { ACCESS_METHODS, VOLUME_UNITS, type AccessMethod, type VolumeUnit } from '@tongin/shared';
@@ -28,12 +32,14 @@ export class SaveBasicDto extends MoveAddressDto {
   productId?: string;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== '' && v !== null)
   @IsDateString()
-  visitDate?: string; // 상담일(방문견적일)
+  visitDate?: string | null; // 상담일(방문견적일)
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== '' && v !== null)
   @IsDateString()
-  moveDate?: string; // 이사일
+  moveDate?: string | null; // 이사일
 }
 
 export class ItemLineInput {
@@ -54,12 +60,14 @@ export class ItemLineInput {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(9999)
   cbm?: number;
 
   /** 톤 견적일 때 무게 */
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(9999)
   ton?: number;
 
   /** 처리방법 코드(handling_method) — 서버가 있는 값인지 확인한다 */
@@ -80,6 +88,7 @@ export class ItemRoomInput {
   roomKey?: string; // 기본 방 틀 키. 직접 만든 방은 생략
 
   @IsString()
+  @MinLength(1, { message: '방 이름을 입력해 주세요' })
   @MaxLength(100)
   name!: string;
 
@@ -123,6 +132,7 @@ export class OptionInput {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(MAX_AMOUNT)
   amount!: number;
 
   @IsOptional()

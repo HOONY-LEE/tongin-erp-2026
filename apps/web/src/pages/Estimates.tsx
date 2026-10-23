@@ -2,24 +2,21 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
-import { useOptions } from '../lib/useOptions';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
-  FormModal,
   PageHeader,
   StatusBadge,
   useToast,
   type Column,
-  type FormField,
   type Row,
   type StatusMap,
 } from '../components/ui';
 
 const STATUS: StatusMap = {
   DRAFT: { label: '작성중', color: 'neutral' },
-  QUOTED: { label: '견적완료', color: 'success' },
+  QUOTED: { label: '발송됨', color: 'success' },
 };
 
 export default function Estimates() {
@@ -28,11 +25,6 @@ export default function Estimates() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const leads = useOptions('/leads', 'leadNo');
-  const customers = useOptions('/customers', 'name');
-  const orgs = useOptions('/org-units', 'name');
-  const products = useOptions('/products?active=1', 'name');
   const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
@@ -51,27 +43,6 @@ export default function Estimates() {
     void load();
   }, [load]);
 
-  const fields: FormField[] = [
-    { name: 'leadId', label: '리드', required: true, type: 'select', options: leads },
-    { name: 'customerId', label: '고객', required: true, type: 'select', options: customers },
-    { name: 'orgUnitId', label: '담당 지점', required: true, type: 'select', options: orgs },
-    { name: 'productId', label: '상품', required: true, type: 'select', options: products },
-  ];
-
-  const onCreate = async (values: Record<string, unknown>) => {
-    try {
-      const created = await api<{ id: string }>('/estimates', {
-        method: 'POST',
-        body: JSON.stringify(values),
-      });
-      toast({ type: 'success', title: t('common.created') });
-      navigate(`/estimates/${created.id}`);
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
-
   const columns: Column[] = [
     { title: '견적번호', dataIndex: 'estimateNo' },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
@@ -87,7 +58,10 @@ export default function Estimates() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => navigate(`/estimates/${r.id as string}`)}
+          // 견적은 접수 상세(= 견적서 화면)에서 본다
+          onClick={() =>
+            navigate(r.leadId ? `/leads/${String(r.leadId)}` : `/estimates/${String(r.id)}`)
+          }
         >
           {t('estimate.detail')}
         </Button>
@@ -98,22 +72,14 @@ export default function Estimates() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.estimates')} onRefresh={load} updatedAt={updatedAt} />
+      {/* 견적은 접수를 열면 자동으로 만들어진다 — 여기서 따로 만들지 않는다 */}
       <DataTable
         columns={columns}
         rows={rows}
         loading={loading}
-        toolbarActions={
-          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-            + {t('estimate.create')}
-          </Button>
+        onRowClick={(r) =>
+          navigate(r.leadId ? `/leads/${String(r.leadId)}` : `/estimates/${String(r.id)}`)
         }
-      />
-      <FormModal
-        open={open}
-        onOpenChange={setOpen}
-        title={t('estimate.create')}
-        fields={fields}
-        onSubmit={onCreate}
       />
     </div>
   );

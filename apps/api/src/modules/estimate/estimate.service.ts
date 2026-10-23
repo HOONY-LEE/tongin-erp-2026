@@ -612,7 +612,7 @@ export class EstimateService {
       toLng: dto.toLng,
     };
     // 날짜 전용 컬럼은 UTC 자정으로 넣어야 하루씩 밀리지 않는다('YYYY-MM-DD' → UTC 00:00)
-    const dateOnly = (v?: string) =>
+    const dateOnly = (v?: string | null) =>
       v === undefined ? undefined : v ? new Date(`${v.slice(0, 10)}T00:00:00Z`) : null;
     await this.prisma.$transaction([
       this.prisma.estimate.update({
@@ -774,6 +774,7 @@ export class EstimateService {
    */
   async saveOptions(estimateId: string, dto: SaveOptionsDto, principal?: AuthPrincipal) {
     await this.findOne(estimateId, principal);
+    await this.assertNotSigned(estimateId);
     const defs = await this.prisma.addonService.findMany({
       where: { id: { in: dto.options.map((o) => o.addonServiceId) } },
     });
@@ -877,7 +878,25 @@ export class EstimateService {
 
   /** 이사비용·부가세·계약금·잔금 확정. 총액은 항상 서버가 다시 계산한다. */
   async updateAmounts(estimateId: string, dto: UpdateAmountsDto, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
+    const cur = await this.findOne(estimateId, principal);
+    await this.assertNotSigned(estimateId);
+    // 계약금이 총비용보다 크면 잔금이 음수가 된다 — 저장 전에 같은 규칙으로 총비용을 미리 계산해 막는다
+    const addonTotal = Number(
+      (await this.prisma.estimateAddon.aggregate({ where: { estimateId }, _sum: { amount: true } }))
+        ._sum.amount ?? 0,
+    );
+    const vatMode = dto.vatMode ?? cur.vatMode;
+    const total =
+      Number(dto.moveAmount ?? cur.moveAmount ?? 0) +
+      addonTotal +
+      (vatMode === 'INCLUDED' ? Number(dto.vatAmount ?? cur.vatAmount ?? 0) : 0);
+    const deposit =
+      dto.depositAmount ?? (cur.depositAmount == null ? null : Number(cur.depositAmount));
+    if (deposit != null && deposit > total) {
+      throw new BadRequestException(
+        `계약금(${deposit.toLocaleString()}원)이 총비용(${total.toLocaleString()}원)보다 큽니다.`,
+      );
+    }
     await this.prisma.estimate.update({
       where: { id: estimateId },
       data: {
@@ -890,6 +909,22 @@ export class EstimateService {
       },
     });
     return this.recomputeAmounts(estimateId);
+  }
+
+  /**
+   * 고객이 전자서명한 견적은 금액·상품을 바꾸지 않는다 — 서명한 계약서와 달라지기 때문.
+   * 바꿔야 하면 계약을 취소하고 다시 보내야 한다.
+   */
+  private async assertNotSigned(estimateId: string) {
+    const c = await this.prisma.contract.findUnique({
+      where: { estimateId },
+      select: { status: true },
+    });
+    if (c?.status === 'SIGNED') {
+      throw new BadRequestException(
+        '고객이 이미 서명한 견적이라 금액·상품을 바꿀 수 없습니다(서명한 계약서와 달라집니다).',
+      );
+    }
   }
 
   /**

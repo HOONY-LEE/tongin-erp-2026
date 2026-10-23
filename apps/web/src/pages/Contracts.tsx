@@ -2,17 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
-import { useOptions } from '../lib/useOptions';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
-  FormModal,
   PageHeader,
   StatusBadge,
   useToast,
   type Column,
-  type FormField,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -31,8 +28,6 @@ export default function Contracts() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const estimates = useOptions('/estimates', 'estimateNo');
   const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
@@ -50,26 +45,6 @@ export default function Contracts() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const fields: FormField[] = [
-    { name: 'estimateId', label: '견적', required: true, type: 'select', options: estimates },
-    { name: 'totalAmount', label: '총 계약금액', required: true, type: 'number' },
-    { name: 'depositRatio', label: '계약금 비율(예: 0.1)', type: 'number', placeholder: '0.1' },
-  ];
-
-  const onCreate = async (values: Record<string, unknown>) => {
-    try {
-      const created = await api<{ id: string }>('/contracts', {
-        method: 'POST',
-        body: JSON.stringify(values),
-      });
-      toast({ type: 'success', title: t('common.created') });
-      navigate(`/contracts/${created.id}`);
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
 
   const columns: Column[] = [
     { title: '계약번호', dataIndex: 'contractNo' },
@@ -97,22 +72,12 @@ export default function Contracts() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.contracts')} onRefresh={load} updatedAt={updatedAt} />
+      {/* 계약은 접수 화면의 '고객에게 견적서 보내기'로 만들어진다 — 여기서 따로 만들지 않는다 */}
       <DataTable
         columns={columns}
         rows={rows}
         loading={loading}
-        toolbarActions={
-          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-            + {t('contract.create')}
-          </Button>
-        }
-      />
-      <FormModal
-        open={open}
-        onOpenChange={setOpen}
-        title={t('contract.create')}
-        fields={fields}
-        onSubmit={onCreate}
+        onRowClick={(r) => navigate(`/contracts/${String(r.id)}`)}
       />
     </div>
   );
