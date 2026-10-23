@@ -10,7 +10,7 @@ services:
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     region: singapore # 무료 플랜에서 한국과 가장 가까운 리전
-    plan: free # 15분 미사용 시 잠듦 — 실사용 전 starter($7/월)로 올릴 것
+    plan: starter # 항상 켜짐(0.5 CPU · 512MB, $7/월) — 동시 사용이 늘면 standard로
     healthCheckPath: /api/health
     envVars:
       # DATABASE_URL, ADMIN_PASSWORD 는 여기에 두지 않는다.
