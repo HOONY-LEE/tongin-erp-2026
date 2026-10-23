@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { StatsOverview } from '@tongin/shared';
 import { UnitPerformance } from '../components/dashboard/UnitPerformance';
 import { ColumnChart } from '../components/dashboard/ColumnChart';
+import { BranchAnomalyCard } from '../components/dashboard/BranchAnomalyCard';
 import dashStyles from '../components/dashboard/dashboard.module.css';
 import { Card, DataTable, PageCard, PageHeader, type Column, type Row } from '../components/ui';
 import { api } from '../lib/api';
@@ -61,12 +62,14 @@ interface BarItem {
 export default function Dashboard() {
   const { t } = useTranslation();
   const [data, setData] = useState<Overview | null>(null);
+  const [reload, setReload] = useState(0);
   const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(() => {
     return api<Overview>('/stats/overview')
       .then((d) => {
         setData(d);
+        setReload((n) => n + 1);
         touch();
       })
       .catch(() => setData(null));
@@ -183,6 +186,8 @@ export default function Dashboard() {
         </PageCard>
         <UnitPerformance byBranch={data?.byBranch ?? []} />
       </div>
+
+      <BranchAnomalyCard reload={reload} />
 
       <PageCard title="지점별 상세" count={data?.byBranch.length ?? 0} plain>
         <DataTable
