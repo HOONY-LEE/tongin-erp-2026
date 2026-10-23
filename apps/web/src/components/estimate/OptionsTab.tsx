@@ -81,7 +81,7 @@ const derive = (d: EstimateDetailData): OptionsForm => {
  * 3. 옵션선택 — 작업조건과, 상품 구성(가정이사 등)에 든 상품 + 구성 밖 추가 상품.
  * 상품·구성은 상품관리에서 관리한다(서버가 견적 상세와 함께 내려준다). 가격은 견적마다 적는다.
  */
-export function OptionsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
+export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason }: TabProps) {
   const toast = useToast();
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
   const [saving, setSaving] = useState(false);
@@ -360,6 +360,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) 
       )}
 
       <SaveBar
+        lockedReason={lockedReason}
         dirty={dirty}
         saving={saving}
         canEdit={canEdit}

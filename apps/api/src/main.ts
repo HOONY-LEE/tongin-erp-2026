@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { koreanValidationError } from './common/validation-message';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -10,7 +11,13 @@ async function bootstrap() {
   app.useBodyParser('json', { limit: '30mb' });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      // 화면에 그대로 띄울 수 있게 한국어로(기본은 영어 문장)
+      exceptionFactory: koreanValidationError,
+    }),
   );
   // 웹이 다른 도메인에 있을 때만 필요. 같은 도메인에서 /api 로 프록시하면 비워 두면 된다.
   const origins = (process.env.CORS_ORIGINS ?? '')

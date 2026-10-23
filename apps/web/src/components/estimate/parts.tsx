@@ -109,6 +109,7 @@ export function SaveBar({
   onSave,
   onReset,
   hint,
+  lockedReason,
 }: {
   dirty: boolean;
   saving: boolean;
@@ -116,11 +117,15 @@ export function SaveBar({
   onSave: () => void;
   onReset: () => void;
   hint?: ReactNode;
+  /** 권한은 있지만 지금은 고칠 수 없는 이유(예: 고객 서명 완료) */
+  lockedReason?: string;
 }) {
-  if (!canEdit) {
+  if (!canEdit || lockedReason) {
     return (
       <div className={styles.saveBar}>
-        <span className={styles.saveHint}>견적 작성 권한이 없어 볼 수만 있습니다.</span>
+        <span className={styles.saveHint}>
+          {lockedReason ?? '견적 작성 권한이 없어 볼 수만 있습니다.'}
+        </span>
       </div>
     );
   }

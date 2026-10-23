@@ -142,6 +142,22 @@ export class ContractService {
     ctx: IssueContext = {},
   ) {
     const c = await this.findOne(contractId, principal);
+    // 같은 종류(계약금/잔금) 결제가 입금 대기·완료로 이미 있으면 또 만들지 않는다(계좌 중복 안내 방지)
+    const dup = await this.prisma.payment.findFirst({
+      where: { contractId, kind: dto.kind, status: { in: ['PENDING', 'PAID'] } },
+      select: { status: true },
+    });
+    if (dup) {
+      throw new BadRequestException(
+        `${dto.kind === 'DEPOSIT' ? '계약금' : '잔금'} 결제가 이미 ${dup.status === 'PAID' ? '입금 완료' : '입금 대기'} 상태입니다.`,
+      );
+    }
+    if (dto.kind === 'BALANCE') {
+      const depositPaid = await this.prisma.payment.count({
+        where: { contractId, kind: 'DEPOSIT', status: 'PAID' },
+      });
+      if (!depositPaid) throw new BadRequestException('계약금 입금이 먼저 확인되어야 합니다.');
+    }
     const amount = dto.amount ?? Number(dto.kind === 'DEPOSIT' ? c.depositAmount : c.balanceAmount);
     const va = await this.payments.issueVirtualAccount(amount, {
       orderId: `${c.contractNo}-${dto.kind === 'DEPOSIT' ? 'D' : 'B'}-${Date.now().toString(36)}`,

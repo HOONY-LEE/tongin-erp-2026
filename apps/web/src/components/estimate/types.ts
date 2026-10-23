@@ -97,6 +97,8 @@ export interface TabProps {
   canEdit: boolean;
   onSaved: (next: EstimateDetailData) => void;
   onDirtyChange: (dirty: boolean) => void;
+  /** 지금 고칠 수 없는 이유(고객 서명 완료 등) — 저장 줄에 보여 준다 */
+  lockedReason?: string;
 }
 
 export const won = (v: unknown) =>

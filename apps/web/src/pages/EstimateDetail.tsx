@@ -191,13 +191,18 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           leftIcon={<Send size={14} />}
           onClick={() => setSendOpen(true)}
         >
-          {data.meta.sentAt ? '견적서 다시 보내기' : '고객에게 견적서 보내기'}
+          {data.meta.sentAt || data.meta.signedAt ? '견적서 다시 보내기' : '고객에게 견적서 보내기'}
         </Button>
       )}
     </>
   );
 
   const tabProps = { data, canEdit, onSaved };
+  // 고객이 서명한 견적은 금액·상품을 바꾸지 않는다(서명한 계약서와 달라지므로) — 서버도 막는다
+  const signedLock = data.meta.signedAt
+    ? '고객이 서명한 견적이라 금액·상품은 바꿀 수 없습니다.'
+    : undefined;
+  const priceProps = { ...tabProps, canEdit: canEdit && !signedLock, lockedReason: signedLock };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -250,7 +255,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         aria-labelledby="est-tab-options"
         hidden={tab !== 'options'}
       >
-        <OptionsTab {...tabProps} onDirtyChange={dirtyHandlers.options} />
+        <OptionsTab {...priceProps} onDirtyChange={dirtyHandlers.options} />
       </div>
       <div
         role="tabpanel"
@@ -258,7 +263,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         aria-labelledby="est-tab-summary"
         hidden={tab !== 'summary'}
       >
-        <SummaryTab {...tabProps} onDirtyChange={dirtyHandlers.summary} actions={flowActions} />
+        <SummaryTab {...priceProps} onDirtyChange={dirtyHandlers.summary} />
       </div>
 
       <SendEstimateModal

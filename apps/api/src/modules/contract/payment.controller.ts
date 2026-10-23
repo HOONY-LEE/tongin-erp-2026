@@ -10,6 +10,7 @@ export class PaymentController {
   @Post(':id/confirm')
   @RequirePermissions('PAYMENT.WRITE')
   confirm(@Param('id', ParseUUIDPipe) id: string) {
-    return this.contractService.confirmPayment(id);
+    // 계약금이면 접수도 '계약'으로 넘긴다(입금확인 화면·웹훅과 같은 처리)
+    return this.contractService.markPaid(id);
   }
 }

@@ -42,6 +42,7 @@ interface Contract {
   totalAmount: string | number;
   depositAmount: string | number;
   balanceAmount: string | number;
+  leadId?: string;
   payments: Payment[];
 }
 
@@ -81,8 +82,6 @@ export default function ContractDetail() {
     }
   };
 
-  const sign = () =>
-    act(() => api(`/contracts/${id}/sign`, { method: 'POST' }), t('contract.sign'));
   const requestPay = (kind: 'DEPOSIT' | 'BALANCE') =>
     act(
       () => api(`/contracts/${id}/payments`, { method: 'POST', body: JSON.stringify({ kind }) }),
@@ -113,6 +112,10 @@ export default function ContractDetail() {
     );
   }
 
+  const depositPaid = data.payments.some((p) => p.kind === 'DEPOSIT' && p.status === 'PAID');
+  const balanceOpen = data.payments.some(
+    (p) => p.kind === 'BALANCE' && (p.status === 'PENDING' || p.status === 'PAID'),
+  );
   const payColumns: Column[] = [
     { title: '구분', render: (r) => KIND[r.kind as string] ?? String(r.kind) },
     { title: '금액', numeric: true, render: (r) => won(r.amount) },
@@ -152,9 +155,11 @@ export default function ContractDetail() {
         }
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" size="sm" disabled={data.status !== 'DRAFT'} onClick={sign}>
-              {t('contract.sign')}
-            </Button>
+            {data.leadId && (
+              <Button variant="outline" size="sm" onClick={() => navigate(`/leads/${data.leadId}`)}>
+                접수 보기
+              </Button>
+            )}
             {data.status === 'SIGNED' && (
               <Button variant="primary" size="sm" onClick={() => setWoOpen(true)}>
                 {t('contract.toWorkOrder')}
@@ -168,14 +173,12 @@ export default function ContractDetail() {
         title={t('contract.payments')}
         count={data.payments.length}
         actions={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="outline" size="sm" onClick={() => requestPay('DEPOSIT')}>
-              + {t('contract.requestDeposit')}
-            </Button>
+          // 계약금 계좌는 견적서 보내기 때 발급된다 — 여기서는 계약금이 들어온 뒤 잔금만 요청한다
+          depositPaid && !balanceOpen ? (
             <Button variant="outline" size="sm" onClick={() => requestPay('BALANCE')}>
               + {t('contract.requestBalance')}
             </Button>
-          </div>
+          ) : undefined
         }
         plain
       >
@@ -188,7 +191,7 @@ export default function ContractDetail() {
         title={t('contract.toWorkOrder')}
         fields={
           [
-            { name: 'scheduledDate', label: t('work.scheduled'), placeholder: 'YYYY-MM-DD' },
+            { name: 'scheduledDate', label: t('work.scheduled'), type: 'date', required: true },
           ] as FormField[]
         }
         onSubmit={createWorkOrder}

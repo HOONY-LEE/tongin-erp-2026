@@ -115,8 +115,9 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         body: JSON.stringify({
           productId: form.productId,
           ...address,
-          visitDate: form.visitDate || undefined,
-          moveDate: form.moveDate || undefined,
+          // 비우면 날짜를 지운다('' → 서버에서 null)
+          visitDate: form.visitDate,
+          moveDate: form.moveDate,
         }),
       });
       accept(next);
