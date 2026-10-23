@@ -12,6 +12,7 @@ import {
   ValidateIf,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   Min,
   ValidateNested,
@@ -26,6 +27,31 @@ export class CampaignButtonInput {
   @IsString()
   @MaxLength(300)
   url!: string;
+}
+
+/** 휴대폰·일반전화(하이픈 있어도 없어도) — 010-1234-5678, 01012345678, 02-123-4567 */
+export const PHONE_PATTERN = /^0\d{1,2}-?\d{3,4}-?\d{4}$/;
+const PHONE_MESSAGE = '전화번호 형식이 아닙니다(예: 010-1234-5678).';
+
+/** 직접 입력한 받는 사람(대표님 등 시연 번호) */
+export class ExtraRecipientInput {
+  @IsString()
+  @MaxLength(30)
+  name!: string;
+
+  @IsString()
+  @Matches(PHONE_PATTERN, { message: PHONE_MESSAGE })
+  phone!: string;
+}
+
+/** 시연 번호 등록 */
+export class DemoNumberDto extends ExtraRecipientInput {}
+
+/** 받을 직원 찾기 */
+export class StaffQueryDto {
+  @IsOptional() @IsString() @MaxLength(50) keyword?: string;
+  @IsOptional() @IsInt() @Min(1) page?: number;
+  @IsOptional() @IsInt() @Min(1) pageSize?: number;
 }
 
 /** 캠페인 작성·수정 — 작성 중(DRAFT)일 때만 바꿀 수 있다 */
@@ -84,6 +110,21 @@ export class CreateCampaignDto {
   @ArrayMaxSize(20000)
   @IsUUID('all', { each: true })
   customerIds?: string[];
+
+  /** 받는 직원 — 재직 중·번호 있는 직원만, 이름·번호는 직원 원장에서 */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(2000)
+  @IsUUID('all', { each: true })
+  employeeIds?: string[];
+
+  /** 직접 입력한 받는 사람(시연 번호 등) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => ExtraRecipientInput)
+  extraRecipients?: ExtraRecipientInput[];
 
   /** 예약 발송 시각(비우면 즉시). 빈 값·null은 예약 해제 */
   @IsOptional()

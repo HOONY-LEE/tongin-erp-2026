@@ -11,7 +11,13 @@ import {
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
 import { CampaignService } from './campaign.service';
-import { AudienceQueryDto, CreateCampaignDto, UpdateCampaignDto } from './dto/create-campaign.dto';
+import {
+  AudienceQueryDto,
+  CreateCampaignDto,
+  DemoNumberDto,
+  StaffQueryDto,
+  UpdateCampaignDto,
+} from './dto/create-campaign.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
@@ -37,6 +43,33 @@ export class CampaignController {
   @RequirePermissions('MARKETING.READ')
   audienceIds(@CurrentUser() user: AuthPrincipal, @Body() q: AudienceQueryDto) {
     return this.campaignService.audienceIds(q, user);
+  }
+
+  /** 받을 직원 찾기(시연 발송용) */
+  @Post('audience/staff')
+  @RequirePermissions('MARKETING.READ')
+  staff(@CurrentUser() user: AuthPrincipal, @Body() q: StaffQueryDto) {
+    return this.campaignService.searchStaff(q, user);
+  }
+
+  /** 시연 번호(문자 허용 번호에 들어간다) */
+  @Get('demo-numbers')
+  @RequirePermissions('MARKETING.READ')
+  demoNumbers() {
+    return this.campaignService.demoNumbers();
+  }
+
+  @Post('demo-numbers')
+  @RequirePermissions('MARKETING.WRITE')
+  addDemoNumber(@Body() dto: DemoNumberDto) {
+    return this.campaignService.addDemoNumber(dto);
+  }
+
+  @Delete('demo-numbers/:phone')
+  @RequirePermissions('MARKETING.WRITE')
+  @HttpCode(204)
+  removeDemoNumber(@Param('phone') phone: string) {
+    return this.campaignService.removeDemoNumber(phone);
   }
 
   @Get(':id')

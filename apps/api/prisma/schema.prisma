@@ -72,6 +72,7 @@ model Employee {
 
   estimatorEstimates Estimate[]
   assignments        WorkAssignment[]
+  campaignRecipients CampaignRecipient[]
 
   @@map("employee")
 }
@@ -877,7 +878,11 @@ model CampaignRecipient {
   id         String    @id @default(uuid()) @db.Uuid
   campaignId String    @map("campaign_id") @db.Uuid
   campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  customerId String    @map("customer_id") @db.Uuid
+  /// 고객이면 고객 id. 직원·직접 입력(시연 번호)이면 비어 있다
+  customerId String?   @map("customer_id") @db.Uuid
+  /// 직원이면 직원 id(직원이 지워져도 발송 기록은 남는다)
+  employeeId String?   @map("employee_id") @db.Uuid
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   name       String
   phone      String
   status     String    @default("PENDING") // PENDING | SENT | FAILED
@@ -885,7 +890,9 @@ model CampaignRecipient {
   sentAt     DateTime? @map("sent_at") @db.Timestamptz(6)
 
   @@unique([campaignId, customerId])
+  @@unique([campaignId, employeeId])
   @@index([customerId])
+  @@index([employeeId])
   @@map("campaign_recipient")
 }
 

@@ -11,13 +11,47 @@ import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
-import { StubNotificationProvider } from '../../notifications/notification.provider';
-import { AudienceQueryDto, CreateCampaignDto, UpdateCampaignDto } from './dto/create-campaign.dto';
+import {
+  SMS_DEMO_NUMBERS_GROUP,
+  StubNotificationProvider,
+  invalidateSmsAllowlist,
+} from '../../notifications/notification.provider';
+import {
+  AudienceQueryDto,
+  CreateCampaignDto,
+  DemoNumberDto,
+  ExtraRecipientInput,
+  StaffQueryDto,
+  UpdateCampaignDto,
+} from './dto/create-campaign.dto';
 
 const NAME_TOKEN = '{고객명}';
 const DEFAULT_OPT_OUT = '무료수신거부 080-000-0000';
 /** 예약 캠페인을 확인하는 주기 */
 const SCHEDULE_TICK_MS = 30_000;
+/** 알림톡은 카카오 채널·템플릿 연동 전 — 저장·발송을 막는다 */
+export const ALIMTALK_NOT_READY = '아직 알림톡 연결이 안되었습니다.';
+
+const digitsOf = (s: string) => s.replace(/\D/g, '');
+/** 숫자만 → 010-1234-5678 꼴(저장·표시용) */
+const formatPhone = (raw: string) => {
+  const d = digitsOf(raw);
+  if (d.startsWith('02')) {
+    return d.length === 9
+      ? `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`
+      : `${d.slice(0, 2)}-${d.slice(2, 6)}-${d.slice(6)}`;
+  }
+  if (d.length === 11) return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
+  return d;
+};
+
+/** 받는 사람 바꾸기 — 안 넘긴 종류(undefined)는 그대로 둔다 */
+interface RecipientInput {
+  customerIds?: string[];
+  employeeIds?: string[];
+  extraRecipients?: ExtraRecipientInput[];
+}
 
 /**
  * MKT-01: 캠페인 — 고객을 조건으로 찾아 골라서(개별 선택) 문자·알림톡을 보낸다.
@@ -59,10 +93,16 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
   /** 상세 — 캠페인 + 받는 사람(건별 결과) */
   async detail(id: string) {
     const c = await this.findOne(id);
-    const recipients = await this.prisma.campaignRecipient.findMany({
+    const rows = await this.prisma.campaignRecipient.findMany({
       where: { campaignId: id },
       orderBy: { name: 'asc' },
+      include: { employee: { select: { orgUnit: { select: { name: true } } } } },
     });
+    const recipients = rows.map(({ employee, ...r }) => ({
+      ...r,
+      kind: r.customerId ? 'CUSTOMER' : r.employeeId ? 'EMPLOYEE' : 'EXTRA',
+      orgUnit: employee?.orgUnit.name ?? null,
+    }));
     return { ...c, recipients };
   }
 
@@ -154,11 +194,12 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
     if (q.excludeRecentDays && q.excludeRecentDays > 0) {
       const since = new Date(Date.now() - q.excludeRecentDays * 86_400_000);
       const recent = await this.prisma.campaignRecipient.findMany({
-        where: { status: 'SENT', sentAt: { gte: since } },
+        where: { status: 'SENT', sentAt: { gte: since }, customerId: { not: null } },
         select: { customerId: true },
         distinct: ['customerId'],
       });
-      if (recent.length) and.push({ id: { notIn: recent.map((r) => r.customerId) } });
+      const recentIds = recent.map((r) => r.customerId).filter((x): x is string => !!x);
+      if (recentIds.length) and.push({ id: { notIn: recentIds } });
     }
     return { AND: and };
   }
@@ -248,7 +289,7 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
         createdBy: principal.userId,
       },
     });
-    if (dto.customerIds) await this.setRecipients(c.id, dto.customerIds, principal);
+    await this.setRecipients(c.id, dto, principal);
     return this.detail(c.id);
   }
 
@@ -257,7 +298,7 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
     if (c.status !== 'DRAFT') throw new BadRequestException('작성 중인 캠페인만 고칠 수 있습니다.');
     this.validate({ ...c, ...dto } as CreateCampaignDto);
     await this.prisma.campaign.update({ where: { id }, data: this.fields(dto) });
-    if (dto.customerIds) await this.setRecipients(id, dto.customerIds, principal);
+    await this.setRecipients(id, dto, principal);
     return this.detail(id);
   }
 
@@ -312,20 +353,31 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
   }
 
   private validate(dto: CreateCampaignDto) {
+    if (dto.channel === 'ALIMTALK') throw new BadRequestException(ALIMTALK_NOT_READY);
     if (!dto.message?.trim()) throw new BadRequestException('본문을 입력하세요.');
-    if (dto.channel === 'ALIMTALK' && !dto.templateCode?.trim()) {
-      throw new BadRequestException('알림톡은 카카오에서 승인받은 템플릿 코드가 필요합니다.');
-    }
   }
 
-  /** 받는 사람을 이 목록으로 바꾼다 — 범위 안·번호 있는 고객만, 이름·번호는 원장에서 */
-  private async setRecipients(id: string, customerIds: string[], principal: AuthPrincipal) {
-    const ids = [...new Set(customerIds)];
+  /**
+   * 받는 사람을 이 목록으로 바꾼다 — 고객(범위 안·번호 있는 고객), 직원(재직·번호 있는 직원),
+   * 직접 입력(시연 번호). 이름·번호는 담을 때 원장에서 꺼내 남긴다. 직원·직접 입력은 같은 번호면 한 번만.
+   * 아무 종류도 넘기지 않으면 그대로 두고, 넘기지 않은 종류는 지금 담긴 그대로 둔다.
+   */
+  private async setRecipients(id: string, input: RecipientInput, principal: AuthPrincipal) {
+    const { customerIds, employeeIds, extraRecipients } = input;
+    if (!customerIds && !employeeIds && !extraRecipients) return;
+    const existing =
+      !customerIds || !employeeIds || !extraRecipients
+        ? await this.prisma.campaignRecipient.findMany({ where: { campaignId: id } })
+        : [];
     const scope = await this.scope.orgScopeIds(principal);
-    const customers = ids.length
+
+    const cIds = [
+      ...new Set(customerIds ?? existing.map((r) => r.customerId).filter((x): x is string => !!x)),
+    ];
+    const customers = cIds.length
       ? await this.prisma.customer.findMany({
           where: {
-            id: { in: ids },
+            id: { in: cIds },
             phonePrimary: { not: null },
             ...(scope === null
               ? {}
@@ -339,21 +391,156 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
           select: { id: true, name: true, phonePrimary: true },
         })
       : [];
+
+    const eIds = [
+      ...new Set(employeeIds ?? existing.map((r) => r.employeeId).filter((x): x is string => !!x)),
+    ];
+    const employees = eIds.length
+      ? await this.prisma.employee.findMany({
+          where: {
+            id: { in: eIds },
+            isActive: true,
+            phone: { not: null },
+            ...(scope === null ? {} : { orgUnitId: { in: scope } }),
+          },
+          select: { id: true, name: true, phone: true },
+        })
+      : [];
+
+    const extras =
+      extraRecipients ??
+      existing
+        .filter((r) => !r.customerId && !r.employeeId)
+        .map((r) => ({ name: r.name, phone: r.phone }));
+
+    // 고객은 고객마다 한 줄(시드의 가짜 번호는 겹칠 수 있다). 직원·직접 입력은 이미 담긴 번호면 뺀다
+    const seen = new Set(customers.map((c) => digitsOf(c.phonePrimary!)));
+    const data: Prisma.CampaignRecipientCreateManyInput[] = customers.map((c) => ({
+      campaignId: id,
+      customerId: c.id,
+      name: c.name,
+      phone: c.phonePrimary!,
+    }));
+    for (const e of employees) {
+      const d = digitsOf(e.phone!);
+      if (!d || seen.has(d)) continue;
+      seen.add(d);
+      data.push({ campaignId: id, employeeId: e.id, name: e.name, phone: e.phone! });
+    }
+    for (const x of extras) {
+      const d = digitsOf(x.phone);
+      if (!d || seen.has(d)) continue;
+      seen.add(d);
+      data.push({ campaignId: id, name: x.name.trim() || formatPhone(d), phone: formatPhone(d) });
+    }
+
     await this.prisma.$transaction([
       this.prisma.campaignRecipient.deleteMany({ where: { campaignId: id } }),
-      this.prisma.campaignRecipient.createMany({
-        data: customers.map((c) => ({
-          campaignId: id,
-          customerId: c.id,
-          name: c.name,
-          phone: c.phonePrimary!,
-        })),
-      }),
+      this.prisma.campaignRecipient.createMany({ data }),
       this.prisma.campaign.update({
         where: { id },
-        data: { recipientCount: customers.length },
+        data: { recipientCount: data.length },
       }),
     ]);
+  }
+
+  // ── 직원·시연 번호(시연 발송용 받는 사람) ──
+
+  /** 받을 직원 찾기 — 재직 중·번호 있는 직원. 전화번호는 하이픈과 상관없이 숫자로 비교 */
+  async searchStaff(q: StaffQueryDto, principal: AuthPrincipal) {
+    const and: Prisma.EmployeeWhereInput[] = [{ isActive: true }, { phone: { not: null } }];
+    const scope = await this.scope.orgScopeIds(principal);
+    if (scope !== null) and.push({ orgUnitId: { in: scope } });
+    const kw = q.keyword?.trim();
+    if (kw) {
+      const d = digitsOf(kw);
+      const byPhone =
+        d.length >= 3
+          ? (
+              await this.prisma.$queryRaw<{ id: string }[]>`
+                SELECT id FROM employee
+                WHERE regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE ${'%' + d + '%'}
+                LIMIT 2000`
+            ).map((r) => r.id)
+          : [];
+      and.push({
+        OR: [{ name: { contains: kw } }, ...(byPhone.length ? [{ id: { in: byPhone } }] : [])],
+      });
+    }
+    const where: Prisma.EmployeeWhereInput = { AND: and };
+    const pageSize = Math.min(q.pageSize ?? 20, 100);
+    const page = q.page ?? 1;
+    const [total, rows, allowed] = await Promise.all([
+      this.prisma.employee.count({ where }),
+      this.prisma.employee.findMany({
+        where,
+        orderBy: [{ orgUnit: { name: 'asc' } }, { name: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          orgUnit: { select: { name: true } },
+          appUsers: {
+            where: { isActive: true },
+            select: { userRoles: { select: { role: { select: { name: true } } } } },
+          },
+        },
+      }),
+      this.provider.allowedNumbers(),
+    ]);
+    return {
+      total,
+      page,
+      pageSize,
+      /** 지금 허용 번호로만 보내는 중인지(시연 안전장치) */
+      restricted: allowed !== null,
+      rows: rows.map((e) => ({
+        id: e.id,
+        name: e.name,
+        phone: e.phone,
+        orgUnit: e.orgUnit.name,
+        role:
+          [...new Set(e.appUsers.flatMap((u) => u.userRoles.map((r) => r.role.name)))].join(', ') ||
+          null,
+        /** 이 번호로 실제 문자가 나가는지 */
+        allowed: allowed === null || allowed.has(digitsOf(e.phone ?? '')),
+      })),
+    };
+  }
+
+  /** 시연 번호 목록(공통코드 SMS_DEMO_NUMBERS) — 문자 허용 번호에 들어간다 */
+  async demoNumbers() {
+    const rows = await this.prisma.commonCode.findMany({
+      where: { codeGroup: SMS_DEMO_NUMBERS_GROUP, isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { code: true, name: true },
+    });
+    return rows.map((r) => ({ code: r.code, name: r.name, phone: formatPhone(r.code) }));
+  }
+
+  /** 시연 번호 등록 — 이미 있는 번호면 이름만 바꾼다 */
+  async addDemoNumber(dto: DemoNumberDto) {
+    const code = digitsOf(dto.phone);
+    const name = dto.name.trim() || formatPhone(code);
+    await this.prisma.commonCode.upsert({
+      where: { codeGroup_code: { codeGroup: SMS_DEMO_NUMBERS_GROUP, code } },
+      create: { codeGroup: SMS_DEMO_NUMBERS_GROUP, code, name },
+      update: { name, isActive: true },
+    });
+    invalidateSmsAllowlist();
+    return { code, name, phone: formatPhone(code) };
+  }
+
+  /** 시연 번호 삭제 — 허용 번호에서도 빠진다 */
+  async removeDemoNumber(phone: string) {
+    const code = digitsOf(phone);
+    const del = await this.prisma.commonCode.deleteMany({
+      where: { codeGroup: SMS_DEMO_NUMBERS_GROUP, code },
+    });
+    if (!del.count) throw new NotFoundException('등록된 시연 번호가 아닙니다.');
+    invalidateSmsAllowlist();
   }
 
   // ── 발송 ──
@@ -366,17 +553,14 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
   async send(id: string, principal: AuthPrincipal) {
     const c = await this.findOne(id);
     if (c.status !== 'DRAFT') throw new BadRequestException('작성 중인 캠페인만 보낼 수 있습니다.');
+    if (c.channel === 'ALIMTALK') throw new BadRequestException(ALIMTALK_NOT_READY);
     let count = await this.prisma.campaignRecipient.count({ where: { campaignId: id } });
     if (!count && c.targetGrade) {
       const customers = await this.prisma.customer.findMany({
         where: { phonePrimary: { not: null }, grade: c.targetGrade },
         select: { id: true },
       });
-      await this.setRecipients(
-        id,
-        customers.map((x) => x.id),
-        principal,
-      );
+      await this.setRecipients(id, { customerIds: customers.map((x) => x.id) }, principal);
       count = await this.prisma.campaignRecipient.count({ where: { campaignId: id } });
     }
     if (!count) throw new BadRequestException('받는 사람이 없습니다.');
@@ -453,6 +637,7 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
             payload: {
               campaignId: c.id,
               customerId: r.customerId,
+              employeeId: r.employeeId,
               ...(res.reason ? { reason: res.reason } : {}),
             },
           },

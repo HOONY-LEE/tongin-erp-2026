@@ -272,6 +272,22 @@
   color: var(--ark-color-text-secondary);
   text-align: center;
 }
+/* 안내(알림톡 미연결 · 시연 발송 제한) */
+.notice {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--ark-color-info-500);
+  background: var(--ark-color-bg-subtle);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ark-color-text);
+}
+.noticeLg {
+  padding: 28px 20px;
+  text-align: center;
+  font-size: var(--ark-font-size-md);
+  font-weight: 600;
+}
 .cellAddr {
   max-width: 320px;
   overflow: hidden;
