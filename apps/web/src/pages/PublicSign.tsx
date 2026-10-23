@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useParams } from 'react-router-dom';
 import { Check, Copy, Download, Eraser } from 'lucide-react';
 import { Button, Checkbox, Input, Spinner } from '../components/ui';
+import { SERVICE_UNAVAILABLE } from '../lib/api';
 import styles from './publicSign.module.css';
 
 interface View {
@@ -37,10 +38,16 @@ const when = (iso: string | null) =>
 
 /** 공개 API — 로그인 토큰을 붙이지 않는다(고객 휴대폰에서 열리는 화면) */
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api/public/sign/${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api/public/sign/${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch {
+    throw new Error(SERVICE_UNAVAILABLE);
+  }
+  if (res.status >= 500) throw new Error(SERVICE_UNAVAILABLE);
   const body = (await res.json().catch(() => ({}))) as { message?: string | string[] };
   if (!res.ok) {
     const m = Array.isArray(body.message) ? body.message[0] : body.message;

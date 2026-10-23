@@ -2,6 +2,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 /**
  * 현장(폰·태블릿) 셸.
@@ -98,7 +99,9 @@ export default function FieldLayout() {
       </header>
 
       <main style={{ flex: 1, padding: 16, maxWidth: 720, width: '100%', margin: '0 auto' }}>
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );
