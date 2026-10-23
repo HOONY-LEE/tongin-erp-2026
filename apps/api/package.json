@@ -18,6 +18,7 @@
     "demo:seed:campaigns": "tsx prisma/seed-demo-campaigns.ts",
     "demo:seed:anomaly": "tsx prisma/seed-demo-anomaly.ts",
     "demo:seed:agents": "tsx prisma/seed-demo-agents.ts",
+    "demo:seed:once": "tsx prisma/seed-demo-once.ts",
     "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:cases && pnpm demo:seed:ops && pnpm demo:seed:regions && pnpm demo:seed:calendar && pnpm demo:seed:campaigns && pnpm demo:seed:anomaly && pnpm demo:seed:agents"
   },
   "dependencies": {
