@@ -1,5 +1,11 @@
 import type { EstimateMeta, EstimateOptionDef, MoveCatalog, VolumeUnit } from '@tongin/shared';
 
+/** 거리 할증 기준 — 무료 거리(km)·넘는 1km마다 금액(원) */
+export interface DistanceRule {
+  freeKm: number;
+  perKm: number;
+}
+
 /** GET /estimates/:id 응답(견적 상세 화면에서 쓰는 부분) */
 export interface EstimateZone {
   id: string;
@@ -63,6 +69,11 @@ export interface EstimateDetailData {
   toSigungu: string | null;
   toLat: number | null;
   toLng: number | null;
+  /** 출발지 → 도착지 거리(km) — 주소가 바뀌면 서버가 다시 잰다 */
+  distanceKm: string | number | null;
+  durationMin: number | null;
+  distanceSource: 'KAKAO' | 'STRAIGHT' | 'NONE' | null;
+  distanceRule: DistanceRule;
   fromPyeong: number | null;
   toPyeong: number | null;
   fromAccess: string;

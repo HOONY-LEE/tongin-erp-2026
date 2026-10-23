@@ -33,6 +33,7 @@ import {
 import { CreateCostLineDto } from './dto/cost-line.dto';
 import { SaveBasicDto, SaveItemsDto, SaveOptionsDto } from './dto/estimate-tabs.dto';
 import { renderEstimateDocument } from './estimate-document';
+import { GeoService } from '../geo/geo.service';
 
 @Injectable()
 export class EstimateService {
@@ -42,6 +43,7 @@ export class EstimateService {
     private readonly scope: ScopeService,
     private readonly leadService: LeadService,
     private readonly moveCatalog: MoveCatalogService,
+    private readonly geo: GeoService,
   ) {}
 
   async findAll(leadId?: string, principal?: AuthPrincipal) {
@@ -80,7 +82,12 @@ export class EstimateService {
    * 계약·작업까지 조인할 이유가 없어서.
    */
   async detail(id: string, principal?: AuthPrincipal) {
-    const estimate = await this.findOne(id, principal);
+    let estimate = await this.findOne(id, principal);
+    // 예전 견적(거리 계산 전) — 처음 열 때 한 번 잰다
+    if (!estimate.distanceSource && estimate.fromAddr && estimate.toAddr) {
+      await this.refreshDistance(id);
+      estimate = await this.findOne(id, principal);
+    }
     // 기본정보 탭에서 고치는 원본 값(접수의 상담일·이사일)과 상품 서비스라인 — 메타는 표시용 파생값이라 따로 준다
     const [lead, product] = await Promise.all([
       this.prisma.lead.findUnique({
@@ -98,6 +105,7 @@ export class EstimateService {
       lead: lead && { ...lead, visitDate: day(lead.visitDate), moveDate: day(lead.moveDate) },
       serviceLine: product?.serviceLine ?? null,
       meta: await this.buildMeta(id),
+      distanceRule: await this.distanceRule(),
       optionCatalog: await this.optionCatalog(id, estimate.productId),
       moveCatalog: await this.moveCatalog.forEstimate([
         ...new Set(estimate.lines.map((l) => l.handling)),
@@ -605,7 +613,90 @@ export class EstimateService {
         data: { ...address, visitDate: dateOnly(dto.visitDate), moveDate: dateOnly(dto.moveDate) },
       }),
     ]);
+    // 주소가 바뀌었을 수 있으니 거리를 다시 잰다
+    await this.refreshDistance(estimateId);
     return this.detail(estimateId, principal);
+  }
+
+  /**
+   * 출발지 → 도착지 거리를 재서 견적에 남긴다(거리 할증 근거).
+   * 좌표가 없으면 주소로 찾고, 끝내 못 찾으면 NONE으로 표시해 매번 다시 시도하지 않는다.
+   */
+  async refreshDistance(estimateId: string) {
+    const e = await this.prisma.estimate.findUnique({
+      where: { id: estimateId },
+      select: {
+        fromAddr: true,
+        fromLat: true,
+        fromLng: true,
+        toAddr: true,
+        toLat: true,
+        toLng: true,
+      },
+    });
+    if (!e) return;
+    if (!e.fromAddr || !e.toAddr) {
+      await this.prisma.estimate.update({
+        where: { id: estimateId },
+        data: { distanceKm: null, durationMin: null, distanceSource: null },
+      });
+      return;
+    }
+    const r = await this.geo.route(
+      { lat: e.fromLat, lng: e.fromLng, addr: e.fromAddr },
+      { lat: e.toLat, lng: e.toLng, addr: e.toAddr },
+    );
+    await this.prisma.estimate.update({
+      where: { id: estimateId },
+      data: r
+        ? {
+            distanceKm: r.distanceKm,
+            durationMin: r.durationMin,
+            distanceSource: r.source,
+          }
+        : { distanceKm: null, durationMin: null, distanceSource: 'NONE' },
+    });
+  }
+
+  /** 지도에 그릴 경로(출발·도착 좌표와 도로 경로) */
+  async route(estimateId: string, principal?: AuthPrincipal) {
+    const e = await this.findOne(estimateId, principal);
+    const r = await this.geo.route(
+      { lat: e.fromLat, lng: e.fromLng, addr: e.fromAddr },
+      { lat: e.toLat, lng: e.toLng, addr: e.toAddr },
+    );
+    if (!r) throw new BadRequestException('출발지·도착지 주소를 먼저 입력하세요.');
+    return {
+      ...r,
+      fromAddr: [e.fromAddr, e.fromAddrDetail].filter(Boolean).join(' '),
+      toAddr: [e.toAddr, e.toAddrDetail].filter(Boolean).join(' '),
+    };
+  }
+
+  /** 거리 할증 기준 — 공통코드 DISTANCE_SURCHARGE(FREE_KM·PER_KM). 없으면 30km 무료·km당 3,000원 */
+  async distanceRule() {
+    const rows = await this.prisma.commonCode.findMany({
+      where: { codeGroup: 'DISTANCE_SURCHARGE', isActive: true },
+    });
+    const num = (code: string, def: number) => {
+      const v = Number(rows.find((r) => r.code === code)?.name);
+      return Number.isFinite(v) && v >= 0 ? v : def;
+    };
+    return { freeKm: num('FREE_KM', 30), perKm: num('PER_KM', 3000) };
+  }
+
+  async saveDistanceRule(rule: { freeKm: number; perKm: number }) {
+    for (const [code, value, sortOrder] of [
+      ['FREE_KM', rule.freeKm, 10],
+      ['PER_KM', rule.perKm, 20],
+    ] as const) {
+      await this.prisma.commonCode.upsert({
+        where: { codeGroup_code: { codeGroup: 'DISTANCE_SURCHARGE', code } },
+        update: { name: String(value), isActive: true },
+        create: { codeGroup: 'DISTANCE_SURCHARGE', code, name: String(value), sortOrder },
+      });
+    }
+    return this.distanceRule();
   }
 
   /**

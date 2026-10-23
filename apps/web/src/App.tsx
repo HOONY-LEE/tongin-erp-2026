@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import LeadWorkspace from './pages/LeadWorkspace';
 import PublicSign from './pages/PublicSign';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Estimates from './pages/Estimates';
 import EstimateDetail from './pages/EstimateDetail';
 import Contracts from './pages/Contracts';
@@ -124,13 +125,22 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             {/* 고객이 문자로 받은 견적서·서명 링크 — 로그인 없이 연다 */}
-            <Route path="/s/:token" element={<PublicSign />} />
+            <Route
+              path="/s/:token"
+              element={
+                <ErrorBoundary fullPage>
+                  <PublicSign />
+                </ErrorBoundary>
+              }
+            />
             <Route
               path="*"
               element={
-                <AuthProvider>
-                  <Shell />
-                </AuthProvider>
+                <ErrorBoundary fullPage>
+                  <AuthProvider>
+                    <Shell />
+                  </AuthProvider>
+                </ErrorBoundary>
               }
             />
           </Routes>

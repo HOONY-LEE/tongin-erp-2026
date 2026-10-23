@@ -1,4 +1,5 @@
 import {
+  type OnModuleInit,
   BadRequestException,
   ConflictException,
   Injectable,
@@ -20,6 +21,7 @@ import { ApiCatalog } from './api-catalog';
 import { DomainTools } from './domain-tools';
 import { SYSTEM_PROMPT, contextBlock } from './prompt';
 import { ToolError, type AiTool, type ToolContext } from './ai-tool.types';
+import { AiFiles, type AiFileMeta } from './ai-files.service';
 
 const MODEL = process.env.AI_MODEL ?? 'claude-opus-5-5';
 /** 대화 제목 요약용 — 작고 싼 모델로 따로 한 번 부른다(본 답변을 늦추지 않게 비동기) */
@@ -33,8 +35,8 @@ const TITLE_SYSTEM = [
 const TITLE_MAX = 24;
 /** 사용자가 직접 정하는 제목 최대 길이(컨트롤러 검증과 같게) */
 export const TITLE_INPUT_MAX = 60;
-/** 한 번의 요청에서 모델↔도구를 오갈 수 있는 최대 횟수(무한 반복 방지) */
-const MAX_STEPS = 16;
+/** 한 번의 요청에서 모델↔도구를 오갈 수 있는 최대 횟수(무한 반복 방지) — 코드 실행의 pause_turn도 한 번으로 센다 */
+const MAX_STEPS = 24;
 /** 도구 결과가 이보다 길면 잘라서 모델에 넘긴다 — 조건을 좁혀 다시 조회하게 한다 */
 const MAX_RESULT_CHARS = 30_000;
 const BETAS = [
@@ -107,7 +109,7 @@ function attachmentBlock(a: Attachment): BetaContentBlockParam {
 }
 
 @Injectable()
-export class AiService {
+export class AiService implements OnModuleInit {
   private readonly logger = new Logger('AiService');
   private readonly client: Anthropic | null;
   /** 같은 대화에서 루프가 겹쳐 돌지 않게(더블 클릭 등) */
@@ -117,6 +119,7 @@ export class AiService {
     private readonly prisma: PrismaService,
     private readonly catalog: ApiCatalog,
     private readonly domain: DomainTools,
+    private readonly files: AiFiles,
   ) {
     const key = process.env.ANTHROPIC_API_KEY;
     // 워크스페이스에 묶이지 않은 키(sk-ant-usr-…)는 어느 워크스페이스로 쓸지 헤더로 알려야 한다
@@ -195,10 +198,13 @@ export class AiService {
 
   async view(id: string, userId: string) {
     const c = await this.load(id, userId);
-    const calls = await this.prisma.aiToolCall.findMany({
-      where: { conversationId: id },
-      select: { toolUseId: true, status: true },
-    });
+    const [calls, files] = await Promise.all([
+      this.prisma.aiToolCall.findMany({
+        where: { conversationId: id },
+        select: { toolUseId: true, status: true },
+      }),
+      this.files.list(id),
+    ]);
     return {
       id: c.id,
       title: c.title,
@@ -208,6 +214,7 @@ export class AiService {
       items: toItems(
         c.messages as unknown as Messages,
         new Map(calls.map((x) => [x.toolUseId, x.status])),
+        files,
       ),
       // 마지막 답이 제안한 이어서 할 일(1·2·3 버튼, 입력칸 미리보기) — 답이 끝난 상태에서만
       suggestions: c.status === 'IDLE' ? lastSuggestions(c.messages as unknown as Messages) : [],
@@ -261,7 +268,7 @@ export class AiService {
       throw new BadRequestException('메시지나 첨부가 있어야 합니다.');
     }
     const client = this.requireClient();
-    return this.exclusive(id, async () => {
+    return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const messages = c.messages as unknown as Messages;
       const pending = (c.pending as unknown as PendingCall[] | null) ?? [];
@@ -302,15 +309,14 @@ export class AiService {
       });
       // 제목 요약은 기다리지 않는다 — 본 답변과 나란히 돌고, 끝나면 제목만 바꾼다
       if (firstQuestion && text.trim()) void this.summarizeTitle(id, text.trim(), fallbackTitle);
-      await this.loop(client, id, messages, ctx);
-      return this.view(id, ctx.principal.userId);
+      return () => this.loop(client, id, messages, ctx);
     });
   }
 
   /** 승인 대기 중인 도구 호출을 승인·거절하고 루프를 이어 간다 */
   async decide(id: string, decisions: Decision[], ctx: ToolContext) {
     const client = this.requireClient();
-    return this.exclusive(id, async () => {
+    return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const pending = (c.pending as unknown as PendingCall[] | null) ?? [];
       if (!pending.length) throw new BadRequestException('승인 대기 중인 작업이 없습니다.');
@@ -353,22 +359,24 @@ export class AiService {
         where: { id },
         data: { messages: messages as object, pending: null as never, status: 'RUNNING' },
       });
-      await this.loop(client, id, messages, ctx);
-      return this.view(id, ctx.principal.userId);
+      return () => this.loop(client, id, messages, ctx);
     });
   }
 
   /** 오류로 멈춘 대화를 마지막 상태에서 다시 돌린다 */
   async retry(id: string, ctx: ToolContext) {
     const client = this.requireClient();
-    return this.exclusive(id, async () => {
+    return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const messages = c.messages as unknown as Messages;
       if (c.status !== 'ERROR' || messages.at(-1)?.role !== 'user') {
         throw new BadRequestException('다시 시도할 수 있는 상태가 아닙니다.');
       }
-      await this.loop(client, id, messages, ctx);
-      return this.view(id, ctx.principal.userId);
+      await this.prisma.aiConversation.update({
+        where: { id },
+        data: { status: 'RUNNING', lastError: null },
+      });
+      return () => this.loop(client, id, messages, ctx);
     });
   }
 
@@ -381,39 +389,68 @@ export class AiService {
     const tools = this.toolsFor(ctx.principal);
     const byName = new Map(tools.map((t) => [t.name, t]));
     const apiTools = toApiTools(tools);
+    // 코드 실행 컨테이너 — 같은 대화에서는 이어 써서 앞에서 만든 파일을 다시 쓸 수 있게
+    let container =
+      (
+        await this.prisma.aiConversation.findUnique({
+          where: { id },
+          select: { containerId: true },
+        })
+      )?.containerId ?? null;
+    const call = (containerId: string | null) =>
+      client.beta.messages.create({
+        model: MODEL,
+        max_tokens: 16000,
+        betas: BETAS,
+        fallbacks: 'default',
+        // 생각은 항상 켜져 있다(Opus 5.5). 도구 구성이 바뀐 대화도 오류 없이 이어지도록 drop_block
+        thinking: {
+          type: 'adaptive',
+          block_binding: { prefix_mismatch_behavior: 'drop_block' },
+        } as never,
+        output_config: { effort: 'medium' },
+        // 대화가 길어져도 앞부분(도구 정의·시스템·이전 턴)은 캐시에서 읽는다
+        cache_control: { type: 'ephemeral' },
+        system: SYSTEM_PROMPT,
+        tools: apiTools,
+        messages,
+        ...(containerId ? { container: containerId } : {}),
+      });
 
     for (let step = 0; step < MAX_STEPS; step++) {
       let res: Anthropic.Beta.Messages.BetaMessage;
       try {
-        res = await client.beta.messages.create({
-          model: MODEL,
-          max_tokens: 16000,
-          betas: BETAS,
-          fallbacks: 'default',
-          // 생각은 항상 켜져 있다(Opus 5.5). 도구 구성이 바뀐 대화도 오류 없이 이어지도록 drop_block
-          thinking: {
-            type: 'adaptive',
-            block_binding: { prefix_mismatch_behavior: 'drop_block' },
-          } as never,
-          output_config: { effort: 'medium' },
-          // 대화가 길어져도 앞부분(도구 정의·시스템·이전 턴)은 캐시에서 읽는다
-          cache_control: { type: 'ephemeral' },
-          system: SYSTEM_PROMPT,
-          tools: apiTools,
-          messages,
-        });
+        try {
+          res = await call(container);
+        } catch (e) {
+          // 컨테이너가 만료(30일)·삭제되면 새 컨테이너로 한 번 다시 — 이전 파일은 DB에 이미 받아 두었다
+          if (!container || !isContainerError(e)) throw e;
+          this.logger.warn(`대화 ${id} 코드 실행 컨테이너 만료 — 새로 시작: ${describeError(e)}`);
+          container = null;
+          await this.prisma.aiConversation.update({ where: { id }, data: { containerId: null } });
+          res = await call(null);
+        }
       } catch (e) {
         await this.fail(id, messages, describeError(e));
         return;
       }
 
       messages.push({ role: 'assistant', content: res.content as BetaContentBlock[] as never });
+      if (res.container?.id && res.container.id !== container) {
+        container = res.container.id;
+        await this.prisma.aiConversation.update({
+          where: { id },
+          data: { containerId: container },
+        });
+      }
+      // 코드 실행이 $OUTPUT_DIR에 남긴 파일을 받아 대화에 붙인다(채팅 화면 다운로드 카드)
+      if (this.client) await this.files.collectFromCodeExecution(this.client, id, res.content);
 
       if (res.stop_reason === 'refusal') {
         await this.save(id, messages, null, 'IDLE');
         return;
       }
-      // 서버 도구(tool search)가 길어져 잠시 멈춘 것 — 그대로 다시 보내면 이어서 한다
+      // 서버 도구(tool search·코드 실행)가 길어져 잠시 멈춘 것 — 그대로 다시 보내면 이어서 한다
       if (res.stop_reason === 'pause_turn') {
         await this.save(id, messages, null, 'RUNNING');
         continue;
@@ -483,7 +520,11 @@ export class AiService {
       );
     }
     try {
-      const out = await tool.run(call.input, ctx);
+      const out = await tool.run(call.input, {
+        ...ctx,
+        conversationId: id,
+        toolUseId: call.toolUseId,
+      });
       const text = clip(JSON.stringify(out ?? null));
       await this.logCall(id, call, 'DONE', clipJson(out), approvedBy);
       return toolResult(call.toolUseId, text, false);
@@ -545,14 +586,55 @@ export class AiService {
     return this.client;
   }
 
-  private async exclusive<T>(id: string, fn: () => Promise<T>): Promise<T> {
+  /**
+   * 요청은 준비(메시지 붙이기·상태 RUNNING 저장)까지만 기다리고, 모델 루프는 서버에서 계속 돈다.
+   * 그래서 화면을 떠나도(다른 메뉴로 이동·새로고침) 에이전트는 이어서 일하고, 화면은 상태를 다시 읽어 따라온다.
+   * 긴 루프가 프록시 응답 시간 제한에 걸리지 않는 것도 이 때문이다.
+   */
+  private async background(
+    id: string,
+    ctx: ToolContext,
+    prepare: () => Promise<() => Promise<void>>,
+  ) {
     if (this.running.has(id)) throw new ConflictException('AI가 이 대화를 처리하는 중입니다.');
     this.running.add(id);
+    let job: () => Promise<void>;
     try {
-      return await fn();
-    } finally {
+      job = await prepare();
+    } catch (e) {
       this.running.delete(id);
+      throw e;
     }
+    void job()
+      .catch(async (e) => {
+        // loop 안에서 못 잡은 예외(도구 실행 중 DB 오류 등) — 대화를 오류 상태로 남겨 다시 시도할 수 있게
+        this.logger.error(`대화 ${id} 백그라운드 실행 실패: ${describeError(e)}`);
+        await this.prisma.aiConversation
+          .update({ where: { id }, data: { status: 'ERROR', lastError: describeError(e) } })
+          .catch(() => undefined);
+      })
+      .finally(() => this.running.delete(id));
+    return this.view(id, ctx.principal.userId);
+  }
+
+  /** 이 서버에서 지금 돌고 있는 대화인가 — 재시작으로 끊긴 RUNNING과 구분 */
+  isRunning(id: string) {
+    return this.running.has(id);
+  }
+
+  /**
+   * 서버가 다시 뜰 때 — 이전 프로세스에서 돌던 대화는 끊겼으므로 오류로 돌려
+   * '다시 시도'로 이어 갈 수 있게 한다(영원히 진행 중으로 남지 않게).
+   */
+  async onModuleInit() {
+    const { count } = await this.prisma.aiConversation.updateMany({
+      where: { status: 'RUNNING' },
+      data: {
+        status: 'ERROR',
+        lastError: '서버가 다시 시작되어 처리가 중단되었습니다. 다시 시도해 주세요.',
+      },
+    });
+    if (count) this.logger.warn(`중단된 AI 대화 ${count}건을 오류 상태로 돌림`);
   }
 }
 
@@ -584,6 +666,8 @@ function toApiTools(tools: AiTool[]): BetaToolUnion[] {
     // 도구가 많아(ERP API 전부) 처음엔 이름만 숨겨 두고, 모델이 키워드로 찾아 쓰게 한다
     // BM25 검색은 한글 낱말을 못 찾는다(실측: "미수금" → 0건) — 정규식 검색은 부분 일치라 한글도 찾는다
     { type: 'tool_search_tool_regex_20251119', name: 'tool_search_tool_regex' },
+    // 코드 실행(Anthropic 샌드박스, ERP 접근 없음) — 계산·가공·차트·엑셀/PDF 등 도구에 없는 일을 직접 한다
+    { type: 'code_execution_20260521', name: 'code_execution' },
     ...tools.map(
       (t) =>
         ({
@@ -632,6 +716,14 @@ function clipJson(v: unknown): unknown {
   return s.length <= 8000 ? v : { truncated: true, preview: s.slice(0, 8000) };
 }
 
+/** 컨테이너 id가 만료·없음이라 생긴 오류인가(다른 400과 구분) */
+function isContainerError(e: unknown) {
+  return (
+    (e instanceof Anthropic.BadRequestError || e instanceof Anthropic.NotFoundError) &&
+    /container/i.test(e.message)
+  );
+}
+
 function describeError(e: unknown): string {
   if (e instanceof Anthropic.AuthenticationError)
     return 'Claude API 키가 올바르지 않습니다(ANTHROPIC_API_KEY 확인).';
@@ -648,7 +740,7 @@ function describeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/** 화면 표시용으로 대화 원문을 정리 — 사용자 글·AI 답변·도구 실행 기록 */
+/** 화면 표시용으로 대화 원문을 정리 — 사용자 글·AI 답변·도구 실행 기록·만든 파일 */
 type Item =
   | {
       kind: 'user';
@@ -665,7 +757,19 @@ type Item =
       status: string;
       result?: string;
       isError?: boolean;
-    };
+    }
+  | {
+      kind: 'code';
+      toolUseId: string;
+      /** bash(명령 실행) | file(파일 만들기·고치기·보기) */
+      tool: 'bash' | 'file';
+      /** 실행한 명령·코드 또는 파일 경로 */
+      title: string;
+      code: string;
+      status: 'RUNNING' | 'DONE' | 'ERROR';
+      output?: string;
+    }
+  | { kind: 'file'; id: string; name: string; mediaType: string; size: number };
 
 const NEXT_RE = /<next>([\s\S]*?)<\/next>/i;
 
@@ -691,14 +795,70 @@ function lastSuggestions(messages: Messages): string[] {
   return [];
 }
 
-function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
+const CODE_TOOLS = new Set(['bash_code_execution', 'text_editor_code_execution', 'code_execution']);
+const CODE_RESULTS = new Set([
+  'bash_code_execution_tool_result',
+  'text_editor_code_execution_tool_result',
+  'code_execution_tool_result',
+]);
+const clipOut = (s: string, n = 4000) => (s.length > n ? `${s.slice(0, n)}\n…(생략)` : s);
+
+/** 코드 실행 결과 블록 → 화면용 출력·성공 여부 */
+function codeOutput(content: Record<string, unknown> | undefined): {
+  output: string;
+  ok: boolean;
+} {
+  if (!content) return { output: '', ok: true };
+  const t = String(content.type ?? '');
+  if (t.endsWith('_error'))
+    return { output: `오류: ${String(content.error_code ?? t)}`, ok: false };
+  if ('return_code' in content) {
+    const out = [String(content.stdout ?? ''), String(content.stderr ?? '')]
+      .filter((x) => x.trim())
+      .join('\n');
+    return { output: out, ok: Number(content.return_code) === 0 };
+  }
+  // 파일 편집기 결과(view·create·str_replace)
+  if (typeof content.content === 'string') return { output: content.content, ok: true };
+  if (Array.isArray(content.lines)) return { output: content.lines.join('\n'), ok: true };
+  if ('is_file_update' in content) {
+    return {
+      output: content.is_file_update ? '파일을 고쳤습니다.' : '파일을 만들었습니다.',
+      ok: true,
+    };
+  }
+  return { output: '', ok: true };
+}
+
+function toItems(
+  messages: Messages,
+  callStatus: Map<string, string>,
+  files: AiFileMeta[] = [],
+): Item[] {
   const items: Item[] = [];
   const tools = new Map<string, Extract<Item, { kind: 'tool' }>>();
+  const codes = new Map<string, Extract<Item, { kind: 'code' }>>();
+  const filesByCall = new Map<string, AiFileMeta[]>();
+  for (const f of files) filesByCall.set(f.toolUseId, [...(filesByCall.get(f.toolUseId) ?? []), f]);
+  // 한 턴에서 만든 파일은 그 턴의 답 아래에 카드로 모아 보인다
+  let turnFiles: AiFileMeta[] = [];
+  const flushFiles = () => {
+    for (const f of turnFiles) items.push({ kind: 'file', ...pickFile(f) });
+    turnFiles = [];
+  };
+  const takeFiles = (toolUseId: string) => {
+    const fs = filesByCall.get(toolUseId);
+    if (fs) {
+      turnFiles.push(...fs);
+      filesByCall.delete(toolUseId);
+    }
+  };
   let pendingFiles: NonNullable<Extract<Item, { kind: 'user' }>['attachments']> = [];
   for (const m of messages) {
     const blocks = typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content;
     for (const b of blocks as Array<Record<string, unknown>>) {
       if (m.role === 'user' && b.type === 'text') {
+        flushFiles();
         // 매 메시지 앞에 붙인 <context>는 화면에서 숨긴다
         const text = String(b.text).replace(/^<context>[\s\S]*?<\/context>\s*/, '');
         items.push({
@@ -708,6 +868,7 @@ function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
         });
         pendingFiles = [];
       } else if (m.role === 'user' && (b.type === 'image' || b.type === 'document')) {
+        flushFiles();
         // 첨부 — 다음 글과 한 말풍선으로 묶는다
         const src = b.source as { type: string; media_type?: string; data?: string };
         pendingFiles.push(
@@ -731,8 +892,40 @@ function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
           t.isError = b.is_error === true;
           t.status = callStatus.get(t.toolUseId) ?? (t.isError ? 'ERROR' : 'DONE');
         }
+        takeFiles(String(b.tool_use_id));
       } else if (m.role === 'assistant' && b.type === 'text' && String(b.text).trim()) {
         items.push({ kind: 'assistant', text: stripNext(String(b.text)) });
+      } else if (
+        m.role === 'assistant' &&
+        b.type === 'server_tool_use' &&
+        CODE_TOOLS.has(String(b.name))
+      ) {
+        // 코드 실행 — bash는 command, 파일 편집기는 path(+file_text), 예전 파이썬 도구는 code
+        const input = (b.input ?? {}) as Record<string, unknown>;
+        const bash = b.name !== 'text_editor_code_execution';
+        const code = String(
+          input.command && bash ? input.command : (input.file_text ?? input.code ?? ''),
+        );
+        const c: Extract<Item, { kind: 'code' }> = {
+          kind: 'code',
+          toolUseId: String(b.id),
+          tool: bash ? 'bash' : 'file',
+          title: bash
+            ? (code.split('\n')[0] ?? '').slice(0, 120)
+            : `${String(input.command ?? '')} ${String(input.path ?? '')}`.trim(),
+          code: clipOut(code, 8000),
+          status: 'RUNNING',
+        };
+        codes.set(c.toolUseId, c);
+        items.push(c);
+      } else if (m.role === 'assistant' && CODE_RESULTS.has(String(b.type))) {
+        const c = codes.get(String(b.tool_use_id));
+        if (c) {
+          const { output, ok } = codeOutput(b.content as Record<string, unknown> | undefined);
+          c.output = clipOut(output);
+          c.status = ok ? 'DONE' : 'ERROR';
+        }
+        takeFiles(String(b.tool_use_id));
       } else if (m.role === 'assistant' && b.type === 'server_tool_use') {
         // bm25는 query, 정규식 검색은 pattern
         const input = (b.input ?? {}) as { query?: string; pattern?: string };
@@ -750,5 +943,13 @@ function toItems(messages: Messages, callStatus: Map<string, string>): Item[] {
       }
     }
   }
+  flushFiles();
+  // 원문에서 짝을 못 찾은 파일(만약을 위해)도 맨 끝에 보인다
+  for (const fs of filesByCall.values())
+    for (const f of fs) items.push({ kind: 'file', ...pickFile(f) });
   return items;
+}
+
+function pickFile(f: AiFileMeta) {
+  return { id: f.id, name: f.name, mediaType: f.mediaType, size: f.size };
 }
