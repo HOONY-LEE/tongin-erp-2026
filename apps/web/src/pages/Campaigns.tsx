@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CAMPAIGN_CHANNEL_LABEL, type CampaignChannel } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
+import { useAuth } from '../auth/AuthContext';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
@@ -31,6 +32,8 @@ export default function Campaigns() {
   const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
+  const { can } = useAuth();
+  const canWrite = can('MARKETING.WRITE');
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
@@ -50,6 +53,22 @@ export default function Campaigns() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const remove = async (r: Row) => {
+    if (
+      !window.confirm(
+        `'${String(r.name)}' 캠페인을 삭제할까요? 받는 사람 목록도 함께 지워지며 되돌릴 수 없습니다.`,
+      )
+    )
+      return;
+    try {
+      await api(`/campaigns/${String(r.id)}`, { method: 'DELETE' });
+      toast({ type: 'success', title: '캠페인을 삭제했습니다' });
+      await load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+    }
+  };
 
   const columns: Column[] = [
     { title: '캠페인', dataIndex: 'name', flex: 1, minWidth: 180 },
@@ -74,6 +93,26 @@ export default function Campaigns() {
       render: (r) => (r.status === 'SCHEDULED' ? `${dt(r.scheduledAt)} 예약` : dt(r.sentAt)),
     },
     { title: '작성', render: (r) => dt(r.createdAt) },
+    ...(canWrite
+      ? [
+          {
+            title: '',
+            width: 80,
+            render: (r: Row) =>
+              r.status === 'SENDING' ? null : (
+                // 행 클릭(상세로 이동)과 겹치지 않게
+                <div
+                  style={{ display: 'flex', justifyContent: 'flex-end' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button variant="ghost" size="sm" onClick={() => void remove(r)}>
+                    삭제
+                  </Button>
+                </div>
+              ),
+          },
+        ]
+      : []),
   ];
 
   return (

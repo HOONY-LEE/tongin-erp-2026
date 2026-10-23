@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -253,12 +254,27 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
     return this.detail(id);
   }
 
+  /**
+   * 삭제 — 받는 사람 목록도 같이 지운다(발송 이력인 notification 로그는 남긴다).
+   * 지금 보내는 중(SENDING)이면 막는다. 예약(SCHEDULED)은 지우면 예약도 함께 사라진다.
+   */
   async remove(id: string) {
     const c = await this.findOne(id);
-    if (c.status === 'SENDING' || c.status === 'SENT') {
-      throw new BadRequestException('보낸 캠페인은 지울 수 없습니다(발송 기록).');
+    if (c.status === 'SENDING' || this.dispatching.has(id)) {
+      throw new ConflictException(
+        '발송 중인 캠페인은 삭제할 수 없습니다. 발송이 끝난 뒤 삭제하세요.',
+      );
     }
-    await this.prisma.campaign.delete({ where: { id } });
+    // 확인과 삭제 사이에 예약 발송이 시작되면 되돌린다 — 상태 조건을 걸고 한 트랜잭션에서 지운다
+    await this.prisma.$transaction(async (tx) => {
+      await tx.campaignRecipient.deleteMany({ where: { campaignId: id } });
+      const del = await tx.campaign.deleteMany({ where: { id, status: { not: 'SENDING' } } });
+      if (!del.count) {
+        throw new ConflictException(
+          '발송 중인 캠페인은 삭제할 수 없습니다. 발송이 끝난 뒤 삭제하세요.',
+        );
+      }
+    });
   }
 
   private fields(dto: UpdateCampaignDto) {
@@ -383,8 +399,12 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
         select: { id: true },
       });
       for (const d of due) {
-        await this.prisma.campaign.update({ where: { id: d.id }, data: { status: 'SENDING' } });
-        void this.dispatch(d.id);
+        // 그 사이 삭제·취소된 캠페인은 건너뛴다(상태가 그대로 SCHEDULED일 때만 발송으로 넘긴다)
+        const claimed = await this.prisma.campaign.updateMany({
+          where: { id: d.id, status: 'SCHEDULED' },
+          data: { status: 'SENDING' },
+        });
+        if (claimed.count) void this.dispatch(d.id);
       }
     } catch (e) {
       this.logger.warn(`예약 확인 실패: ${e instanceof Error ? e.message : String(e)}`);
