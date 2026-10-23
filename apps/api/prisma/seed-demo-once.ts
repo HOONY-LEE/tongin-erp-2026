@@ -35,8 +35,16 @@ async function main() {
       console.log(`[demo-seed] 이미 ${VERSION} — 건너뜀`);
       return;
     }
-    console.log(`[demo-seed] ${cur?.name ?? '없음'} → ${VERSION} 데모 데이터 넣기 시작`);
-    for (const s of SCRIPTS) {
+    // 재시작(배포)으로 끊겨도 끝난 단계는 건너뛴다 — SYSTEM/DEMO_SEED_STEP = '<버전>:<끝난 단계 수>'
+    const stepWhere = { codeGroup_code: { codeGroup: 'SYSTEM', code: 'DEMO_SEED_STEP' } };
+    const step = await prisma.commonCode.findUnique({ where: stepWhere });
+    const [stepVer, stepDone] = (step?.name ?? '').split(':');
+    const start = stepVer === VERSION ? Number(stepDone) || 0 : 0;
+    console.log(
+      `[demo-seed] ${cur?.name ?? '없음'} → ${VERSION} 데모 데이터 넣기 ${start ? `이어서(${start + 1}단계부터)` : '시작'}`,
+    );
+    for (const [i, s] of SCRIPTS.entries()) {
+      if (i < start) continue;
       const t = Date.now();
       const r = spawnSync('npx', ['tsx', `prisma/${s}`], { stdio: 'inherit', env: process.env });
       if (r.status !== 0) {
@@ -45,6 +53,16 @@ async function main() {
         return;
       }
       console.log(`[demo-seed] ${s} 완료 (${Math.round((Date.now() - t) / 1000)}초)`);
+      await prisma.commonCode.upsert({
+        where: stepWhere,
+        update: { name: `${VERSION}:${i + 1}` },
+        create: {
+          codeGroup: 'SYSTEM',
+          code: 'DEMO_SEED_STEP',
+          name: `${VERSION}:${i + 1}`,
+          isActive: false,
+        },
+      });
     }
     await prisma.commonCode.upsert({
       where,

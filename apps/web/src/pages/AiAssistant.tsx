@@ -105,6 +105,8 @@ export default function AiAssistant() {
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [tools, setTools] = useState<Map<string, AiToolInfo>>(new Map());
   const [rows, setRows] = useState<ConversationRow[]>([]);
+  /** 대화 목록을 한 번이라도 받았나 — 받기 전엔 '없음' 대신 '불러오는 중' */
+  const [listLoaded, setListLoaded] = useState(false);
   const [conv, setConv] = useState<Conversation | null>(null);
   const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<Draft[]>([]);
@@ -129,7 +131,8 @@ export default function AiAssistant() {
         setRows(rs);
         reportAiRows(rs);
       })
-      .catch(() => setRows([]));
+      .catch(() => setRows([]))
+      .finally(() => setListLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -370,7 +373,9 @@ export default function AiAssistant() {
   const working = busy || conv?.status === 'RUNNING';
   const nextUp = !working && !echo ? (conv?.suggestions ?? []) : [];
   const notReady = status !== null && !status.configured;
-  const empty = items.length === 0;
+  /** 주소의 대화를 아직 받아 오는 중(새로고침·목록에서 고른 직후) */
+  const convLoading = !!activeId && conv?.id !== activeId && !echo;
+  const empty = items.length === 0 && !convLoading;
   const canSend = (!!draft.trim() || files.length > 0) && !working && !notReady;
 
   const composer = (
@@ -463,7 +468,13 @@ export default function AiAssistant() {
         </button>
         <div className={styles.sideLabel}>최근</div>
         <nav className={styles.convList}>
-          {rows.length === 0 && <div className={styles.sideEmpty}>아직 대화가 없습니다</div>}
+          {!listLoaded ? (
+            <div className={styles.sideEmpty} role="status">
+              <span className={styles.spark} aria-hidden /> 대화 목록을 불러오는 중…
+            </div>
+          ) : (
+            rows.length === 0 && <div className={styles.sideEmpty}>아직 대화가 없습니다</div>
+          )}
           {rows.map((r) => (
             <div
               key={r.id}
@@ -557,7 +568,14 @@ export default function AiAssistant() {
           </div>
         )}
 
-        {empty ? (
+        {convLoading ? (
+          <div className={styles.welcome} role="status">
+            <div className={styles.working}>
+              <span className={styles.spark} aria-hidden />
+              대화를 불러오는 중…
+            </div>
+          </div>
+        ) : empty ? (
           <>
             <div className={styles.welcome}>
               <h1 className={styles.greeting}>무엇을 도와드릴까요?</h1>

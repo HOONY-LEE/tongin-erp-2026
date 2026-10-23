@@ -25,9 +25,36 @@ export class AuthSeederService implements OnModuleInit {
     const role = await this.seedSuperAdminRole();
     await this.seedAdminUser(role.id);
     await this.seedDemoAdmin(role.id);
+    await this.linkAdminsToSystemEmployee();
     await this.seedOutsourceRole();
     await this.seedFieldRole();
     await this.seedFranchiseRoleAndUser();
+  }
+
+  /**
+   * 관리자 계정(admin·demo.admin)을 '시스템관리자' 직원에 잇는다 — 관리자가 접수할 때
+   * 담당자·접수 지점이 '시스템관리자'로 기본 선택되게. 조직은 그룹(HQ) 아래 SYS-ADMIN. 멱등.
+   */
+  private async linkAdminsToSystemEmployee(): Promise<void> {
+    const parent = await this.prisma.orgUnit.findFirst({
+      where: { parentId: null },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    const org = await this.prisma.orgUnit.upsert({
+      where: { code: 'SYS-ADMIN' },
+      update: {},
+      create: { code: 'SYS-ADMIN', name: '시스템관리자', type: 'COMPANY', parentId: parent?.id },
+    });
+    const emp = await this.prisma.employee.upsert({
+      where: { empNo: 'SYSADMIN' },
+      update: {},
+      create: { empNo: 'SYSADMIN', name: '시스템관리자', orgUnitId: org.id },
+    });
+    await this.prisma.appUser.updateMany({
+      where: { loginId: { in: ['admin', 'demo.admin'] }, employeeId: null },
+      data: { employeeId: emp.id },
+    });
   }
 
   /** APP-02: 가맹점 역할 + 데모 가맹점 사용자(첫 BRANCH 조직 스코프). 멱등. */

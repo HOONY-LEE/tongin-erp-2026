@@ -45,7 +45,7 @@ export class AuthService {
       include: {
         // 담당자 기본값을 이름으로 보여주려면 직원명이 필요하다(직원 목록 조회 권한이
         // 없는 역할도 자기 이름은 봐야 하므로 여기서 함께 실어 보낸다).
-        employee: { select: { name: true } },
+        employee: { select: { name: true, orgUnitId: true } },
         userRoles: {
           include: { role: { include: { rolePerms: { include: { permission: true } } } } },
         },
@@ -70,6 +70,7 @@ export class AuthService {
       principalType: user.principalType as PrincipalType,
       employeeId: user.employeeId,
       employeeName: user.employee?.name ?? null,
+      employeeOrgUnitId: user.employee?.orgUnitId ?? null,
       partnerId: user.partnerId,
       permissions,
       scopes,

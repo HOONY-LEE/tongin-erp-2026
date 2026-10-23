@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -69,7 +69,8 @@ interface NotiRow {
 
 export default function AppLayout() {
   const { t, i18n } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const outlet = useOutlet();
   const navigate = useNavigate();
   const { user, logout, can } = useAuth();
   const { resolved, setMode } = useTheme();
@@ -227,11 +228,23 @@ export default function AppLayout() {
     })
     .filter(Boolean) as EditorTab[];
 
+  /**
+   * 열어 둔 탭의 화면은 언마운트하지 않고 숨겨 둔다(브라우저 탭처럼) — 다시 누르면 다시 불러오지 않고 바로 보인다.
+   * 탭마다 마지막으로 보던 경로·화면을 기억하고, 탭을 누르면 그 경로로 돌아간다. 탭을 닫으면 버린다.
+   */
+  const views = useRef(new Map<string, { pathname: string; path: string; element: ReactNode }>());
+  views.current.set(activeHref, { pathname, path: pathname + search, element: outlet });
+  for (const k of [...views.current.keys()]) {
+    if (k !== activeHref && !openTabs.includes(k)) views.current.delete(k);
+  }
+  const goTab = (id: string) => navigate(views.current.get(id)?.path ?? id);
+
   const closeTab = (id: string) => {
     const next = openTabs.filter((t2) => t2 !== id);
     if (next.length === 0) return;
     setOpenTabs(next);
-    if (activeHref === id) navigate(next[next.length - 1]);
+    views.current.delete(id);
+    if (activeHref === id) goTab(next[next.length - 1]);
   };
   const addTab = () => {
     const closed = allItems.filter((i) => !openTabs.includes(i.to));
@@ -274,7 +287,7 @@ export default function AppLayout() {
           <EditorTabs
             tabs={editorTabs}
             activeId={activeHref}
-            onTabChange={(id) => navigate(id)}
+            onTabChange={goTab}
             onTabClose={closeTab}
             onTabAdd={addTab}
             size="sm"
@@ -439,9 +452,18 @@ export default function AppLayout() {
               .join(' ')}
           >
             {/* 화면마다 따로 — 한 화면이 깨져도 메뉴로 다른 화면에 갈 수 있게, 이동하면 풀린다 */}
-            <ErrorBoundary key={pathname}>
-              <Outlet />
-            </ErrorBoundary>
+            {[...views.current.entries()].map(([tab, v]) => {
+              const active = tab === activeHref;
+              return (
+                <div
+                  key={`${tab}|${v.pathname}`}
+                  style={{ display: active ? 'contents' : 'none' }}
+                  aria-hidden={!active || undefined}
+                >
+                  <ErrorBoundary>{active ? outlet : v.element}</ErrorBoundary>
+                </div>
+              );
+            })}
           </div>
         </main>
       </div>
