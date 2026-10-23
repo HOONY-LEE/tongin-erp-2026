@@ -622,6 +622,7 @@ export interface AuthPrincipal {
   principalType: PrincipalType;
   employeeId: string | null; // 직원 계정이면 연결된 직원(현장 배정 조회에 사용). 외부인·에이전트는 null
   employeeName: string | null; // 연결된 직원 이름(담당자 기본값 표시용). employeeId가 null이면 null
+  employeeOrgUnitId: string | null; // 연결된 직원의 소속 조직(접수 지점 기본값)
   partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
   scopes: { roleCode: string; dataScope: DataScope; orgScopeId: string | null }[];

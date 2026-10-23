@@ -229,7 +229,18 @@ export class EstimateService {
    * 접수 상세 = 견적서 화면. 접수를 열면 그 접수의 최근 견적을 돌려주고, 없으면 바로 만든다
    * (고객·지점·담당자·주소는 접수에서 그대로, 상품은 같은 서비스라인의 첫 상품 — 기본정보에서 바꾼다).
    */
+  /** 같은 접수를 동시에 두 번 열어도(화면 이중 호출 등) 견적이 두 개 생기지 않게 진행 중인 요청을 함께 쓴다 */
+  private readonly opening = new Map<string, Promise<{ estimateId: string; created: boolean }>>();
+
   async forLead(leadId: string, principal?: AuthPrincipal) {
+    const running = this.opening.get(leadId);
+    if (running) return running;
+    const job = this.openForLead(leadId, principal).finally(() => this.opening.delete(leadId));
+    this.opening.set(leadId, job);
+    return job;
+  }
+
+  private async openForLead(leadId: string, principal?: AuthPrincipal) {
     const lead = await this.prisma.lead.findUnique({ where: { id: leadId } });
     if (!lead) throw new NotFoundException(`접수를 찾을 수 없습니다: ${leadId}`);
     const ids = await this.scope.orgScopeIds(principal);

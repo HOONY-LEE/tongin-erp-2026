@@ -142,14 +142,20 @@ export default function Leads() {
   ];
   // ERP 화면에서 직원이 직접 등록하는 접수라 경로는 '시스템'이 기본이다.
   const createInitial: Record<string, string> = { serviceLine: 'MOVING', source: 'SYSTEM' };
-  if (ownOrgId) createInitial.orgUnitId = ownOrgId;
+  // 지점 소속이면 그 지점, 관리자처럼 지점 스코프가 없으면 연결된 직원의 조직(시스템관리자)
+  const defaultOrg = ownOrgId || user?.employeeOrgUnitId || '';
+  if (defaultOrg) createInitial.orgUnitId = defaultOrg;
   if (user?.employeeId) createInitial.ownerEmpId = user.employeeId;
 
   const onCreate = async (values: Record<string, unknown>) => {
     try {
-      await api('/leads', { method: 'POST', body: JSON.stringify(values) });
+      const created = await api<{ id: string }>('/leads', {
+        method: 'POST',
+        body: JSON.stringify(values),
+      });
       toast({ type: 'success', title: t('common.created') });
-      await load();
+      // 접수 상세(= 견적서 화면)로 바로 — 견적은 상세를 열 때 자동으로 만들어진다
+      navigate(`/leads/${created.id}`);
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
       throw e;
