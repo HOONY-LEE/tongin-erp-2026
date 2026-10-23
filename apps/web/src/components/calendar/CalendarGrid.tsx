@@ -25,6 +25,7 @@ import {
   buildEventMap,
   sortEvents,
   isMultiDay,
+  holidayName,
   layoutWeekSegments,
   type CalendarItem,
   type CalendarView,
@@ -38,6 +39,8 @@ const VIEW_OPTIONS = [
 ];
 
 const BORDER = '1px solid var(--ark-color-border)';
+/** 공휴일·일요일 빨강 */
+const HOLIDAY_COLOR = '#FF3B30';
 /** 일요일 빨강 · 토요일 파랑 · 평일 기본 */
 const weekendColor = (i: number) =>
   i === 0 ? '#FF3B30' : i === 6 ? '#007AFF' : 'var(--ark-color-text-secondary)';
@@ -572,6 +575,7 @@ function MonthView({
                 const key = dateKey(date);
                 const outside = date.getMonth() !== month;
                 const isToday = isSameDay(date, today);
+                const holiday = holidayName(date);
                 // 막대로 그린 여러 날 일정은 칸 목록에서 제외(중복 방지)
                 const list = sortEvents((eventMap.get(key) || []).filter((e) => !isMultiDay(e)));
                 return (
@@ -592,8 +596,35 @@ function MonthView({
                       minHeight: 0,
                     }}
                   >
-                    {/* 날짜 — 우측 정렬, 오늘만 원형 강조 */}
-                    <div style={{ textAlign: 'right', paddingRight: 2, marginBottom: 1 }}>
+                    {/* 날짜 — 우측 정렬, 오늘만 원형 강조. 공휴일은 빨간 날 + 이름 */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        gap: 4,
+                        paddingRight: 2,
+                        marginBottom: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      {holiday && (
+                        <span
+                          title={holiday}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: outside ? 'var(--ark-color-text-disabled)' : HOLIDAY_COLOR,
+                          }}
+                        >
+                          {holiday}
+                        </span>
+                      )}
                       <span
                         style={{
                           display: 'inline-flex',
@@ -609,7 +640,9 @@ function MonthView({
                             ? '#fff'
                             : outside
                               ? 'var(--ark-color-text-disabled)'
-                              : weekendColor(i),
+                              : holiday
+                                ? HOLIDAY_COLOR
+                                : weekendColor(i),
                         }}
                       >
                         {date.getDate()}
@@ -683,6 +716,7 @@ function WeekView({
         const key = dateKey(date);
         const isToday = isSameDay(date, today);
         const list = sortEvents(eventMap.get(key) || []);
+        const holiday = holidayName(date);
         return (
           <div
             key={i}
@@ -703,7 +737,10 @@ function WeekView({
                 background: 'var(--ark-color-bg-subtle)',
               }}
             >
-              <div style={{ fontSize: 12, color: weekendColor(i) }}>{WEEKDAYS[i]}</div>
+              <div style={{ fontSize: 12, color: holiday ? HOLIDAY_COLOR : weekendColor(i) }}>
+                {holiday ? `${holiday} · ` : ''}
+                {WEEKDAYS[i]}
+              </div>
               <span
                 style={{
                   display: 'inline-flex',
@@ -716,7 +753,7 @@ function WeekView({
                   fontSize: 15,
                   fontWeight: 600,
                   background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
-                  color: isToday ? '#fff' : 'var(--ark-color-text)',
+                  color: isToday ? '#fff' : holiday ? HOLIDAY_COLOR : 'var(--ark-color-text)',
                 }}
               >
                 {date.getDate()}
@@ -887,8 +924,8 @@ function MiniMonth({
                   background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
                   color: isToday
                     ? '#fff'
-                    : date.getDay() === 0
-                      ? '#FF3B30'
+                    : date.getDay() === 0 || holidayName(date)
+                      ? HOLIDAY_COLOR
                       : date.getDay() === 6
                         ? '#007AFF'
                         : 'var(--ark-color-text)',
