@@ -533,15 +533,6 @@ const EVENTS: {
     owner: 'sp.manager',
   },
   {
-    title: '추석 연휴 휴무',
-    offset: 14,
-    endOffset: 16,
-    color: '#FF3B30',
-    scope: 'ORG',
-    branch: 'BR-GN',
-    owner: 'gn.manager',
-  },
-  {
     title: '분기 안전교육',
     offset: 9,
     start: '13:00',
