@@ -582,7 +582,7 @@ type Stage = 'INTAKE' | 'QUOTED' | 'CONTRACTED' | 'WORKING' | 'DONE';
 const STAGE_LEAD_STATUS: Record<Stage, string> = {
   INTAKE: 'CONSULT_TOSS',
   QUOTED: 'QUOTED',
-  CONTRACTED: 'CONTRACTED',
+  CONTRACTED: 'WORK_TOSS', // 계약 후 작업일·배정까지 잡힌 예정 건
   WORKING: 'IN_PROGRESS',
   DONE: 'DONE',
 };
@@ -607,11 +607,14 @@ function stagesFor(b: BranchSpec): Stage[] {
   ];
 }
 
-/** 작업(예정)일 — 완료는 지난 두 달에 흩고, 작업중은 오늘 전후, 계약만 된 건은 앞으로 */
+/**
+ * 작업(예정)일 — 완료는 지난 석 달(8월~)에 흩고, 작업중은 오늘 전후,
+ * 계약된 건은 앞으로 두 달 반(12월 말까지) — 달력에 달마다 이사 일정이 보이게.
+ */
 function scheduleFor(stage: Stage, n: number): number {
-  if (stage === 'DONE') return -(3 + ((n * 11) % 58));
+  if (stage === 'DONE') return -(3 + ((n * 11) % 80));
   if (stage === 'WORKING') return (n % 4) - 1;
-  if (stage === 'CONTRACTED') return 6 + ((n * 5) % 24);
+  if (stage === 'CONTRACTED') return 6 + ((n * 5) % 66);
   return 8 + ((n * 3) % 20);
 }
 
@@ -712,10 +715,12 @@ async function main() {
       // 금액: 지점 평균 ±35% (결정적), 만원 단위
       const amount = Math.round((b.avg * (0.65 + ((n * 37) % 71) / 100)) / 10_000) * 10_000;
       const schedule = scheduleFor(stage, n);
-      const receivedAt = stage === 'INTAKE' ? day(-(ci % 6)) : day(schedule - 14);
+      // 이사일이 멀리 있어도 접수·방문견적·계약은 이미 지난 일이다(미래 접수일이 생기지 않게)
+      const receivedAt =
+        stage === 'INTAKE' ? day(-(ci % 6)) : day(Math.min(schedule - 14, -(12 + (n % 9))));
       const timeline = {
         createdAt: receivedAt,
-        visitDate: stage === 'INTAKE' ? undefined : day(schedule - 10),
+        visitDate: stage === 'INTAKE' ? undefined : day(Math.min(schedule - 10, -(6 + (n % 5)))),
       };
 
       const leadNo = `RG${seq}`;
@@ -811,7 +816,7 @@ async function main() {
       const contractNo = `CG${seq}`;
       const deposit = Math.round(amount * 0.1);
       const balance = amount - deposit;
-      const signedOn = day(schedule - 7);
+      const signedOn = day(Math.min(schedule - 7, -(1 + (n % 4))));
       const contract = await prisma.contract.upsert({
         where: { contractNo },
         update: {
@@ -862,7 +867,7 @@ async function main() {
           virtualAccount: n % 3 === 0 ? null : `가상은행 VG2${seq}`,
         },
       });
-      if (stage === 'CONTRACTED') continue;
+      // 계약된 건은 작업일이 잡혀 배정까지 된 상태(작업토스)로 — 달력의 예정 이사
 
       // 작업오더 + 배정(현장 직원·차량)
       const wo = await prisma.workOrder.upsert({
