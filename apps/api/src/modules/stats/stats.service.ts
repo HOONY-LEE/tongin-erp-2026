@@ -15,11 +15,10 @@ export class StatsService {
     private readonly scope: ScopeService,
   ) {}
 
-  /** CRM-01: 대시보드 통계 — 퍼널·KPI·지점별/시도별 실적. 소속 지점 범위로만 집계. */
-  async overview(principal?: AuthPrincipal): Promise<StatsOverview> {
-    const ids = await this.scope.orgScopeIds(principal);
+  /** 집계 원본 — ids가 null이면 전 조직 */
+  private async load(ids: string[] | null) {
     const org = ids === null ? {} : { orgUnitId: { in: ids } };
-    const [leads, signedContracts, paidAgg, workOrders] = await Promise.all([
+    const [leads, signedContracts, paidAgg, workOrders, units] = await Promise.all([
       this.prisma.lead.findMany({
         where: org,
         select: { status: true, fromSido: true, orgUnitId: true },
@@ -42,12 +41,25 @@ export class StatsService {
           lead: { select: { fromSido: true, orgUnitId: true } },
         },
       }),
+      // 지점은 실적이 없어도 지도·목록에 나온다
+      this.prisma.orgUnit.findMany({
+        where: { type: 'BRANCH', isActive: true, ...(ids === null ? {} : { id: { in: ids } }) },
+        select: { id: true, name: true, sido: true, lat: true, lng: true },
+      }),
     ]);
-    // 지점은 실적이 없어도 지도·목록에 나온다(범위 안 지점 전부)
-    const units = await this.prisma.orgUnit.findMany({
-      where: { type: 'BRANCH', isActive: true, ...(ids === null ? {} : { id: { in: ids } }) },
-      select: { id: true, name: true, sido: true, lat: true, lng: true },
-    });
+    return { leads, signedContracts, paidAgg, workOrders, units };
+  }
+
+  /**
+   * CRM-01: 대시보드 통계 — 퍼널·KPI는 소속 지점 범위로, 지점별/시도별 실적(지도·순위)은
+   * 지점장도 전국 현황을 비교해 볼 수 있게 전 지점으로 집계한다.
+   */
+  async overview(principal?: AuthPrincipal): Promise<StatsOverview> {
+    const ids = await this.scope.orgScopeIds(principal);
+    const mine = await this.load(ids);
+    const all = ids === null ? mine : await this.load(null);
+    const { leads, signedContracts, paidAgg, workOrders } = mine;
+    const units = all.units;
     const unitById = new Map(units.map((u) => [u.id, u]));
 
     const countByStatus = new Map<string, number>();
@@ -74,11 +86,11 @@ export class StatsService {
       f(a);
       m.set(key, a);
     };
-    for (const l of leads) {
+    for (const l of all.leads) {
       bump(branch, l.orgUnitId, (a) => a.leadCount++);
       bump(region, l.fromSido, (a) => a.leadCount++);
     }
-    for (const c of signedContracts) {
+    for (const c of all.signedContracts) {
       const amt = Number(c.totalAmount);
       const add = (a: Acc) => {
         a.contractCount++;
@@ -87,7 +99,7 @@ export class StatsService {
       bump(branch, c.lead?.orgUnitId, add);
       bump(region, c.lead?.fromSido, add);
     }
-    for (const w of workOrders) {
+    for (const w of all.workOrders) {
       bump(branch, w.lead?.orgUnitId, (a) => a.workCount++);
       bump(region, w.lead?.fromSido, (a) => a.workCount++);
     }

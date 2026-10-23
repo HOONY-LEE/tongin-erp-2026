@@ -24,6 +24,7 @@ export class AuthSeederService implements OnModuleInit {
     await this.seedPermissions();
     const role = await this.seedSuperAdminRole();
     await this.seedAdminUser(role.id);
+    await this.seedDemoAdmin(role.id);
     await this.seedOutsourceRole();
     await this.seedFieldRole();
     await this.seedFranchiseRoleAndUser();
@@ -170,6 +171,25 @@ export class AuthSeederService implements OnModuleInit {
       });
     }
     return role;
+  }
+
+  /**
+   * 시연용 관리자(demo.admin) — 로그인 화면 데모 계정 목록에서 바로 들어가는 전체 권한 계정.
+   * 진짜 admin 비밀번호(ADMIN_PASSWORD)는 알리지 않고 시연은 이 계정으로 한다.
+   * 실고객 운영으로 바꿀 때는 DEMO_SEED=off 로 만들지 않게 하고, 이미 있으면 계정관리에서 끈다.
+   */
+  private async seedDemoAdmin(roleId: string): Promise<void> {
+    if ((process.env.DEMO_SEED ?? '').toLowerCase() === 'off') return;
+    const loginId = 'demo.admin';
+    if (await this.prisma.appUser.findUnique({ where: { loginId } })) return;
+    const passwordHash = await bcrypt.hash(process.env.DEMO_ADMIN_PASSWORD ?? 'tongin1234', 10);
+    const user = await this.prisma.appUser.create({
+      data: { loginId, passwordHash, principalType: 'HUMAN' },
+    });
+    await this.prisma.userRole.create({
+      data: { userId: user.id, roleId, orgScopeId: null, dataScope: 'ALL' },
+    });
+    this.logger.warn('시연용 관리자 생성: loginId=demo.admin (DEMO_SEED=off면 만들지 않음)');
   }
 
   private async seedAdminUser(roleId: string): Promise<void> {
