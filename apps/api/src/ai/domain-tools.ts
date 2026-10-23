@@ -249,6 +249,7 @@ export class DomainTools {
       },
       mode: 'READ',
       permissions: ['LEAD.READ'],
+      group: 'AI 업무 도구',
       deferred: false,
       run: async (input, ctx) => {
         const where = await this.leadWhere(input, ctx.principal);
@@ -375,6 +376,7 @@ export class DomainTools {
       },
       mode: 'READ',
       permissions: ['CUSTOMER.READ'],
+      group: 'AI 업무 도구',
       deferred: true,
       run: async (input, ctx) => {
         const where = await this.customerScope(ctx.principal);
@@ -506,6 +508,7 @@ export class DomainTools {
       },
       mode: 'WRITE',
       permissions: ['NOTIFICATION.SEND'],
+      group: 'AI 업무 도구',
       deferred: false,
       summarize: (input) =>
         `문자 ${Array.isArray(input.customerIds) ? input.customerIds.length : 0}명 발송`,

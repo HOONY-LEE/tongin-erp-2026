@@ -19,6 +19,8 @@ export interface AiTool {
   description: string;
   inputSchema: JsonSchema;
   mode: ToolMode;
+  /** 도구 묶음(업무 이름) — 에이전트 빌더의 도구 탐색기에서 묶어 보여 준다 */
+  group?: string;
   /** 이 권한을 모두 가진 사용자에게만 도구가 보인다 */
   permissions: string[];
   /**

@@ -38,6 +38,7 @@ import { ServiceOrderModule } from './modules/service-order/service-order.module
 import { SupportModule } from './modules/support/support.module';
 import { ScopeModule } from './scope/scope.module';
 import { AiModule } from './ai/ai.module';
+import { AgentBuilderModule } from './agent-builder/agent-builder.module';
 import { EsignModule } from './modules/esign/esign.module';
 
 @Module({
@@ -81,6 +82,7 @@ import { EsignModule } from './modules/esign/esign.module';
     BranchModule,
     AccountModule,
     AiModule,
+    AgentBuilderModule,
   ],
   controllers: [AppController],
 })

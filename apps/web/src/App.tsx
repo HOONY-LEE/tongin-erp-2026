@@ -27,6 +27,8 @@ import MaterialOrders from './pages/MaterialOrders';
 import ServiceOrders from './pages/ServiceOrders';
 import Support from './pages/Support';
 import AiAssistant from './pages/AiAssistant';
+import AgentBlueprints from './pages/AgentBlueprints';
+import AgentBuilder from './pages/AgentBuilder';
 import CampaignEditor from './pages/CampaignEditor';
 import OrgUnits from './pages/OrgUnits';
 import ProductMgmt from './pages/ProductMgmt';
@@ -108,6 +110,8 @@ function Shell() {
         <Route path="/payments-confirm" element={<PaymentConfirm />} />
         <Route path="/branches" element={<Branches />} />
         <Route path="/accounts" element={<Accounts />} />
+        <Route path="/ai-agents" element={<AgentBlueprints />} />
+        <Route path="/ai-agents/:id" element={<AgentBuilder />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>

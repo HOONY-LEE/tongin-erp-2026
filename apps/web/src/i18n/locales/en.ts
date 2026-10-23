@@ -42,6 +42,7 @@ export default {
     orgMgmt: 'Organization',
     branches: 'Branches',
     accounts: 'Accounts',
+    aiAgents: 'AI Agents',
     employees: 'Employees',
   },
   navGroup: {

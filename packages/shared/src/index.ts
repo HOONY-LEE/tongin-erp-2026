@@ -587,6 +587,7 @@ export const PERMISSIONS = [
   'CALENDAR.READ',
   'CALENDAR.WRITE',
   'AI.USE', // AI 비서 사용 — AI는 사용자 본인 권한 안에서만 도구를 실행한다
+  'AI.MANAGE', // AI 에이전트 관리 — 에이전트 블루프린트 만들기·고치기·테스트 실행(도구는 실행자 본인 권한으로)
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 export const PERMISSION_WILDCARD = '*';
@@ -700,3 +701,5 @@ export interface PartnerReceivable {
   collected: number;
   outstanding: number;
 }
+
+export * from './agent-blueprint';
