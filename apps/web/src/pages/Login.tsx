@@ -18,9 +18,16 @@ interface DemoAccount {
   desc: string;
 }
 const DEMO_ACCOUNTS: DemoAccount[] = [
-  // 운영 admin 비밀번호는 ADMIN_PASSWORD로 따로 정하므로 개발에서만 보여 준다
+  // 시연용 관리자(전체 권한) — 서버 시작 때 seeder가 만든다. 진짜 admin 비밀번호는 따로 둔다
+  {
+    group: '관리자',
+    loginId: 'demo.admin',
+    password: DEMO_PASSWORD,
+    name: '관리자',
+    desc: '본사 · 전체 권한',
+  },
   ...(import.meta.env.DEV
-    ? [{ group: '관리자', loginId: 'admin', password: 'admin1234', name: '관리자', desc: 'admin' }]
+    ? [{ group: '관리자', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
     : []),
   {
     group: '지점장',
