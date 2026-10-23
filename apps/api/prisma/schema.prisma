@@ -1006,3 +1006,43 @@ model AiToolCall {
   @@index([conversationId])
   @@map("ai_tool_call")
 }
+
+/// AIX-04: AI 에이전트 블루프린트 — 노드(시작·AI 판단·도구·분기·반복·가드레일·승인·출력)를 선으로 이은 그래프
+model AgentBlueprint {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String
+  description String     @default("")
+  status      String     @default("DRAFT") // DRAFT(초안) | ACTIVE(사용중)
+  // { version, nodes:[{id,type,label,position,config}], edges:[{id,source,sourceHandle,target}] }
+  graph       Json       @default("{\"version\":1,\"nodes\":[],\"edges\":[]}")
+  // 마지막으로 그래프를 만들거나 고친 자연어 요청(없으면 직접 만든 것)
+  prompt      String?
+  createdBy   String?    @map("created_by") @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  runs        AgentRun[]
+
+  @@index([updatedAt])
+  @@map("agent_blueprint")
+}
+
+/// 블루프린트 테스트 실행 기록 — 노드별 단계 추적(trace)과 승인 대기 시 이어 갈 상태(state)
+model AgentRun {
+  id          String         @id @default(uuid()) @db.Uuid
+  blueprintId String         @map("blueprint_id") @db.Uuid
+  blueprint   AgentBlueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  input       Json           @default("{}")
+  dryRun      Boolean        @default(true) @map("dry_run")
+  status      String         @default("RUNNING") // RUNNING | DONE | ERROR | BLOCKED | AWAITING_APPROVAL | REJECTED
+  trace       Json           @default("[]")
+  // 승인 대기에서 이어 갈 때 필요한 실행 상태(변수·다음 노드·반복 스택)
+  state       Json?
+  output      Json?
+  error       String?
+  createdBy   String?        @map("created_by") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([blueprintId, createdAt])
+  @@map("agent_run")
+}

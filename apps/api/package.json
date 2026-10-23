@@ -16,7 +16,8 @@
     "demo:seed:regions": "tsx prisma/seed-demo-regions.ts",
     "demo:seed:calendar": "tsx prisma/seed-demo-calendar.ts",
     "demo:seed:campaigns": "tsx prisma/seed-demo-campaigns.ts",
-    "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:cases && pnpm demo:seed:ops && pnpm demo:seed:regions && pnpm demo:seed:calendar && pnpm demo:seed:campaigns"
+    "demo:seed:agents": "tsx prisma/seed-demo-agents.ts",
+    "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:cases && pnpm demo:seed:ops && pnpm demo:seed:regions && pnpm demo:seed:calendar && pnpm demo:seed:campaigns && pnpm demo:seed:agents"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

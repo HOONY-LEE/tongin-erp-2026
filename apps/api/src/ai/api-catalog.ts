@@ -130,7 +130,7 @@ const OVERRIDE: Record<string, string> = {
 };
 
 /** AI에게 열지 않는 라우트 — 로그인·OAuth 콜백·파일 내보내기·AI 자기 자신 */
-const EXCLUDED_CONTROLLERS = new Set(['auth', 'ai', '']);
+const EXCLUDED_CONTROLLERS = new Set(['auth', 'ai', 'agent-blueprints', 'agent-runs', '']);
 const EXCLUDED_ROUTES = new Set([
   'calendar.googleAuthUrl',
   'calendar.googleCallback',
@@ -292,6 +292,7 @@ export class ApiCatalog implements OnApplicationBootstrap {
         ...(required.length ? { required } : {}),
       },
       mode,
+      group: domain.split(' — ')[0],
       permissions: r.permissions,
       deferred: true,
       summarize: (input) => `${r.httpMethod} /${fillPath(path, input)}`,

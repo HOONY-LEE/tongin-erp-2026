@@ -23,6 +23,7 @@ import {
   Receipt,
   Award,
   Bot,
+  Workflow,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -150,6 +151,7 @@ export default function AppLayout() {
         },
         { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
         { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
+        { to: '/ai-agents', label: t('nav.aiAgents'), icon: Workflow, perm: 'AI.MANAGE' },
       ],
     },
     {

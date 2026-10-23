@@ -42,6 +42,7 @@ export default {
     orgMgmt: '组织管理',
     branches: '网点管理',
     accounts: '账户管理',
+    aiAgents: 'AI 智能体管理',
     employees: '员工',
   },
   navGroup: {
