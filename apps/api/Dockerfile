@@ -44,5 +44,6 @@ COPY --from=build /app/package.json ./
 
 WORKDIR /app/apps/api
 EXPOSE 3001
-# 배포마다 스키마를 맞춘 뒤 기동 — 마이그레이션 실패 시 기동하지 않는다(부분 적용 방지)
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# 배포마다 스키마를 맞춘 뒤 기동 — 마이그레이션 실패 시 기동하지 않는다(부분 적용 방지).
+# 데모 데이터는 서버를 띄운 뒤 뒤에서 '버전마다 한 번'만 넣는다(prisma/seed-demo-once.ts, DEMO_SEED=off로 끔)
+CMD ["sh", "-c", "npx prisma migrate deploy && (npx tsx prisma/seed-demo-once.ts &) && node dist/main.js"]
