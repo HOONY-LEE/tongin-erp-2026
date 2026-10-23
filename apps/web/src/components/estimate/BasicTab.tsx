@@ -7,6 +7,7 @@ import { Input, Select, useToast } from '../ui';
 import { AddressField } from '../ui/AddressField';
 import { ADDRESS_PARTS, addrKey } from '../ui/address';
 import { SaveBar } from './parts';
+import { DistanceCard } from './DistanceCard';
 import { useTabForm } from './useTabForm';
 import type { EstimateDetailData, TabProps } from './types';
 import styles from './estimate.module.css';
@@ -196,6 +197,16 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         label="후 주소"
         values={form.addr}
         setField={canEdit ? setAddr : () => undefined}
+      />
+
+      {/* 저장된 주소 기준 거리 — 주소를 바꾸면 저장할 때 다시 잰다 */}
+      <DistanceCard
+        data={data}
+        onRuleSaved={() =>
+          void api<EstimateDetailData>(`/estimates/${data.id}`)
+            .then(onSaved)
+            .catch(() => undefined)
+        }
       />
 
       <div className={styles.divider} />

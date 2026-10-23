@@ -159,3 +159,63 @@
   padding: 0;
   overflow: hidden;
 }
+
+/* AI 에이전트 진행 중 — 메뉴 아이콘 점 · 배지 · 탭 아이콘 회전 */
+.aiIcon {
+  position: relative;
+  display: inline-flex;
+}
+.aiPulse {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ark-color-primary-500);
+  box-shadow: 0 0 0 2px var(--ark-color-bg);
+  animation: aiPulse 1.2s ease-in-out infinite;
+}
+@keyframes aiPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.aiBadge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 14%, transparent);
+  color: var(--ark-color-primary-600);
+  font-size: 11px;
+  font-weight: 600;
+}
+.spin {
+  animation: aiSpin 0.9s linear infinite;
+  color: var(--ark-color-primary-500);
+}
+@keyframes aiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.aiChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--ark-color-primary-500) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 10%, transparent);
+  color: var(--ark-color-primary-600);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}

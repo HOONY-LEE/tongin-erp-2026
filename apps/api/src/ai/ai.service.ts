@@ -1,4 +1,5 @@
 import {
+  type OnModuleInit,
   BadRequestException,
   ConflictException,
   Injectable,
@@ -107,7 +108,7 @@ function attachmentBlock(a: Attachment): BetaContentBlockParam {
 }
 
 @Injectable()
-export class AiService {
+export class AiService implements OnModuleInit {
   private readonly logger = new Logger('AiService');
   private readonly client: Anthropic | null;
   /** 같은 대화에서 루프가 겹쳐 돌지 않게(더블 클릭 등) */
@@ -261,7 +262,7 @@ export class AiService {
       throw new BadRequestException('메시지나 첨부가 있어야 합니다.');
     }
     const client = this.requireClient();
-    return this.exclusive(id, async () => {
+    return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const messages = c.messages as unknown as Messages;
       const pending = (c.pending as unknown as PendingCall[] | null) ?? [];
@@ -302,15 +303,14 @@ export class AiService {
       });
       // 제목 요약은 기다리지 않는다 — 본 답변과 나란히 돌고, 끝나면 제목만 바꾼다
       if (firstQuestion && text.trim()) void this.summarizeTitle(id, text.trim(), fallbackTitle);
-      await this.loop(client, id, messages, ctx);
-      return this.view(id, ctx.principal.userId);
+      return () => this.loop(client, id, messages, ctx);
     });
   }
 
   /** 승인 대기 중인 도구 호출을 승인·거절하고 루프를 이어 간다 */
   async decide(id: string, decisions: Decision[], ctx: ToolContext) {
     const client = this.requireClient();
-    return this.exclusive(id, async () => {
+    return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const pending = (c.pending as unknown as PendingCall[] | null) ?? [];
       if (!pending.length) throw new BadRequestException('승인 대기 중인 작업이 없습니다.');
@@ -353,22 +353,24 @@ export class AiService {
         where: { id },
         data: { messages: messages as object, pending: null as never, status: 'RUNNING' },
       });
-      await this.loop(client, id, messages, ctx);
-      return this.view(id, ctx.principal.userId);
+      return () => this.loop(client, id, messages, ctx);
     });
   }
 
   /** 오류로 멈춘 대화를 마지막 상태에서 다시 돌린다 */
   async retry(id: string, ctx: ToolContext) {
     const client = this.requireClient();
-    return this.exclusive(id, async () => {
+    return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const messages = c.messages as unknown as Messages;
       if (c.status !== 'ERROR' || messages.at(-1)?.role !== 'user') {
         throw new BadRequestException('다시 시도할 수 있는 상태가 아닙니다.');
       }
-      await this.loop(client, id, messages, ctx);
-      return this.view(id, ctx.principal.userId);
+      await this.prisma.aiConversation.update({
+        where: { id },
+        data: { status: 'RUNNING', lastError: null },
+      });
+      return () => this.loop(client, id, messages, ctx);
     });
   }
 
@@ -545,14 +547,55 @@ export class AiService {
     return this.client;
   }
 
-  private async exclusive<T>(id: string, fn: () => Promise<T>): Promise<T> {
+  /**
+   * 요청은 준비(메시지 붙이기·상태 RUNNING 저장)까지만 기다리고, 모델 루프는 서버에서 계속 돈다.
+   * 그래서 화면을 떠나도(다른 메뉴로 이동·새로고침) 에이전트는 이어서 일하고, 화면은 상태를 다시 읽어 따라온다.
+   * 긴 루프가 프록시 응답 시간 제한에 걸리지 않는 것도 이 때문이다.
+   */
+  private async background(
+    id: string,
+    ctx: ToolContext,
+    prepare: () => Promise<() => Promise<void>>,
+  ) {
     if (this.running.has(id)) throw new ConflictException('AI가 이 대화를 처리하는 중입니다.');
     this.running.add(id);
+    let job: () => Promise<void>;
     try {
-      return await fn();
-    } finally {
+      job = await prepare();
+    } catch (e) {
       this.running.delete(id);
+      throw e;
     }
+    void job()
+      .catch(async (e) => {
+        // loop 안에서 못 잡은 예외(도구 실행 중 DB 오류 등) — 대화를 오류 상태로 남겨 다시 시도할 수 있게
+        this.logger.error(`대화 ${id} 백그라운드 실행 실패: ${describeError(e)}`);
+        await this.prisma.aiConversation
+          .update({ where: { id }, data: { status: 'ERROR', lastError: describeError(e) } })
+          .catch(() => undefined);
+      })
+      .finally(() => this.running.delete(id));
+    return this.view(id, ctx.principal.userId);
+  }
+
+  /** 이 서버에서 지금 돌고 있는 대화인가 — 재시작으로 끊긴 RUNNING과 구분 */
+  isRunning(id: string) {
+    return this.running.has(id);
+  }
+
+  /**
+   * 서버가 다시 뜰 때 — 이전 프로세스에서 돌던 대화는 끊겼으므로 오류로 돌려
+   * '다시 시도'로 이어 갈 수 있게 한다(영원히 진행 중으로 남지 않게).
+   */
+  async onModuleInit() {
+    const { count } = await this.prisma.aiConversation.updateMany({
+      where: { status: 'RUNNING' },
+      data: {
+        status: 'ERROR',
+        lastError: '서버가 다시 시작되어 처리가 중단되었습니다. 다시 시도해 주세요.',
+      },
+    });
+    if (count) this.logger.warn(`중단된 AI 대화 ${count}건을 오류 상태로 돌림`);
   }
 }
 
