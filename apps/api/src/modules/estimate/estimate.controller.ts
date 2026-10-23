@@ -13,6 +13,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { B2B_DOCUMENT_KINDS, type AuthPrincipal, type B2bDocumentKind } from '@tongin/shared';
+import { IsInt, Max, Min } from 'class-validator';
 import { EstimateService } from './estimate.service';
 import { EstimateB2bService } from './estimate-b2b.service';
 import { CreateEstimateDto } from './dto/create-estimate.dto';
@@ -29,6 +30,18 @@ import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
+class DistanceRuleDto {
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  freeKm!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  perKm!: number;
+}
+
 @Controller('estimates')
 export class EstimateController {
   constructor(
@@ -40,6 +53,26 @@ export class EstimateController {
   @RequirePermissions('ESTIMATE.READ')
   findAll(@CurrentUser() user: AuthPrincipal, @Query('leadId') leadId?: string) {
     return this.estimateService.findAll(leadId, user);
+  }
+
+  /** 거리 할증 기준(무료 거리·km당 금액) */
+  @Get('distance-rule')
+  @RequirePermissions('ESTIMATE.READ')
+  distanceRule() {
+    return this.estimateService.distanceRule();
+  }
+
+  @Put('distance-rule')
+  @RequirePermissions('COMMON_CODE.WRITE')
+  saveDistanceRule(@Body() dto: DistanceRuleDto) {
+    return this.estimateService.saveDistanceRule(dto);
+  }
+
+  /** 출발지 → 도착지 경로(지도 표시용) */
+  @Get(':id/route')
+  @RequirePermissions('ESTIMATE.READ')
+  route(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.estimateService.route(id, user);
   }
 
   @Get(':id')

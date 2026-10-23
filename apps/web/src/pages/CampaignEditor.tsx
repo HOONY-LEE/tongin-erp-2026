@@ -27,6 +27,7 @@ import {
   useToast,
 } from '../components/ui';
 import { CAMPAIGN_STATUS_MAP } from './Campaigns';
+import { PickedList } from '../components/campaign/PickedList';
 import styles from './campaign.module.css';
 
 const SIDO = [
@@ -244,6 +245,17 @@ export default function CampaignEditor() {
     if (!readOnly && (isNew || loaded)) void search(applied, page);
   }, [applied, page, search, readOnly, isNew, loaded]);
 
+  // 이름·전화번호는 입력하는 대로 바로 찾는다(다른 조건은 '검색' 버튼으로)
+  useEffect(() => {
+    const kw = filter.keyword ?? '';
+    if ((applied.keyword ?? '') === kw) return;
+    const t = setTimeout(() => {
+      setPage(1);
+      setApplied((a) => ({ ...a, keyword: kw || undefined }));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [filter.keyword, applied.keyword]);
+
   const runSearch = () => {
     setPage(1);
     setApplied({ ...filter });
@@ -263,6 +275,7 @@ export default function CampaignEditor() {
       else n.delete(r.id);
       return n;
     });
+  const pickedIds = useMemo(() => [...picked.keys()], [picked]);
   const pageRows = result?.rows ?? [];
   const pageAllOn = pageRows.length > 0 && pageRows.every((r) => picked.has(r.id));
   const togglePage = (on: boolean) =>
@@ -319,7 +332,7 @@ export default function CampaignEditor() {
     fallbackSms,
     filters: applied as Record<string, unknown>,
     customerIds: [...picked.keys()],
-    scheduledAt: when === 'LATER' && scheduledAt ? new Date(scheduledAt).toISOString() : '',
+    scheduledAt: when === 'LATER' && scheduledAt ? new Date(scheduledAt).toISOString() : null,
   });
 
   const check = () => {
@@ -933,6 +946,18 @@ export default function CampaignEditor() {
                 </div>
               </div>
             )}
+
+            {/* 담은 사람 — 보낼 최종 명단(이름·번호로 찾아 빼기) */}
+            <PickedList
+              ids={pickedIds}
+              onRemove={(cid) =>
+                setPicked((m) => {
+                  const n = new Map(m);
+                  n.delete(cid);
+                  return n;
+                })
+              }
+            />
           </section>
         </div>
 

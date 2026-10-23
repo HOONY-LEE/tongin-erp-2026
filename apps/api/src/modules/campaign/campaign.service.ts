@@ -91,15 +91,22 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
         OR: [{ ownerOrgId: { in: ids } }, { leads: { some: { orgUnitId: { in: ids } } } }],
       });
     }
+    if (q.ids) and.push({ id: { in: q.ids } });
     const kw = q.keyword?.trim();
     if (kw) {
+      // 전화번호는 하이픈 유무와 상관없이 숫자만 비교한다(저장은 010-1234-5678 꼴)
       const digits = kw.replace(/\D/g, '');
+      const byPhone =
+        digits.length >= 3
+          ? (
+              await this.prisma.$queryRaw<{ id: string }[]>`
+                SELECT id FROM customer
+                WHERE regexp_replace(coalesce(phone_primary, ''), '[^0-9]', '', 'g') LIKE ${'%' + digits + '%'}
+                LIMIT 5000`
+            ).map((r) => r.id)
+          : [];
       and.push({
-        OR: [
-          { name: { contains: kw } },
-          ...(digits.length >= 3 ? [{ phonePrimary: { contains: digits } }] : []),
-          ...(digits.length >= 3 ? [{ phonePrimary: { contains: kw } }] : []),
-        ],
+        OR: [{ name: { contains: kw } }, ...(byPhone.length ? [{ id: { in: byPhone } }] : [])],
       });
     }
     if (q.grades?.length) and.push({ grade: { in: q.grades } });

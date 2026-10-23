@@ -3,6 +3,7 @@ import { summarizeVolume, VOLUME_UNIT_LABEL } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { Button, SegmentedControl, useToast } from '../ui';
 import { SaveBar, UnitField } from './parts';
+import { DistanceCard, distanceSurcharge } from './DistanceCard';
 import { useTabForm } from './useTabForm';
 import { toNum, won, type EstimateDetailData, type TabProps } from './types';
 import styles from './estimate.module.css';
@@ -63,6 +64,10 @@ export function SummaryTab({
   const volumeDef = data.optionCatalog.find((d) => d.kind === 'VOLUME' && d.role !== null);
   const unitPrice = Number(volumeDef?.bundlePrice ?? 0);
   const suggested = Math.round(volume.total * unitPrice);
+  const distFee = distanceSurcharge(
+    data.distanceKm == null ? null : Number(data.distanceKm),
+    data.distanceRule,
+  );
   const optionTotal = data.addons.reduce((s, a) => s + Number(a.amount || 0), 0);
   const included = form.vatMode === 'INCLUDED';
   const total = toNum(form.moveAmount) + optionTotal + (included ? toNum(form.vatAmount) : 0);
@@ -162,6 +167,7 @@ export function SummaryTab({
         <h3 className={styles.panelTitle} style={{ marginBottom: 0 }}>
           견적 금액 <span className={styles.sub}>/Amount</span>
         </h3>
+        <DistanceCard data={data} compact />
         <div className={styles.row2}>
           <div className={styles.field}>
             <span className={styles.fieldLabel}>이사비용 (이사물량 · 옵션 제외)</span>
@@ -183,6 +189,16 @@ export function SummaryTab({
                   onClick={() => set('moveAmount', String(suggested))}
                 >
                   물량×단가
+                </Button>
+              )}
+              {canEdit && distFee > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  title={`거리 할증 ${won(distFee)}을 이사비용에 더합니다`}
+                  onClick={() => set('moveAmount', String(toNum(form.moveAmount) + distFee))}
+                >
+                  + 거리 할증
                 </Button>
               )}
             </div>
