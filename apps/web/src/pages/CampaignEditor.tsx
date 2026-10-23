@@ -13,6 +13,7 @@ import {
 } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useAuth } from '../auth/AuthContext';
 import {
   Button,
   Checkbox,
@@ -144,6 +145,7 @@ export default function CampaignEditor() {
   const isNew = !id || id === 'new';
   const navigate = useNavigate();
   const toast = useToast();
+  const { can } = useAuth();
   const orgs = useOptions('/org-units', 'name');
   const grades = useOptions('/customers/grades', 'name', 'code');
 
@@ -385,9 +387,14 @@ export default function CampaignEditor() {
   };
 
   const remove = async () => {
-    if (!loaded || !window.confirm('이 캠페인을 삭제할까요?')) return;
+    if (
+      !loaded ||
+      !window.confirm('이 캠페인을 삭제할까요? 받는 사람 목록도 함께 지워지며 되돌릴 수 없습니다.')
+    )
+      return;
     try {
       await api(`/campaigns/${loaded.id}`, { method: 'DELETE' });
+      toast({ type: 'success', title: '캠페인을 삭제했습니다' });
       navigate('/campaigns');
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
@@ -408,7 +415,7 @@ export default function CampaignEditor() {
       breadcrumbs={[{ label: '마케팅', onClick: () => navigate('/campaigns') }]}
       tags={loaded ? <StatusBadge value={loaded.status} map={CAMPAIGN_STATUS_MAP} /> : undefined}
       actions={
-        loaded && (loaded.status === 'DRAFT' || loaded.status === 'SCHEDULED') ? (
+        loaded && loaded.status !== 'SENDING' && can('MARKETING.WRITE') ? (
           <Button variant="ghost" size="sm" onClick={() => void remove()}>
             삭제
           </Button>
