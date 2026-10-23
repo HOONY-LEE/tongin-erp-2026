@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
+  Loader2,
   LayoutDashboard,
   Inbox,
   Banknote,
@@ -38,6 +39,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useTheme } from '../theme/ThemeProvider';
 import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { api } from '../lib/api';
+import { useAiRunning } from '../lib/aiActivity';
 import styles from './AppLayout.module.css';
 
 const LANG_SHORT: Record<string, string> = { ko: '한', en: 'EN', zh: '中' };
@@ -200,11 +202,23 @@ export default function AppLayout() {
     setOpenTabs((prev) => (prev.includes(activeHref) ? prev : [...prev, activeHref]));
   }, [activeHref]);
 
+  // AI 에이전트가 일하는 중이면 헤더 탭·메뉴에 진행 중 표시(다른 화면에 있어도)
+  const aiBusy = useAiRunning(can('AI.USE')).length > 0;
   const editorTabs: EditorTab[] = openTabs
     .map((href) => {
       const it = allItems.find((i) => i.to === href);
+      const busyAi = aiBusy && href === '/ai';
       return it
-        ? { id: href, label: it.label, icon: <it.icon size={14} />, closable: openTabs.length > 1 }
+        ? {
+            id: href,
+            label: busyAi ? `${it.label} · 진행 중` : it.label,
+            icon: busyAi ? (
+              <Loader2 size={14} className={styles.spin} aria-label="진행 중" />
+            ) : (
+              <it.icon size={14} />
+            ),
+            closable: openTabs.length > 1,
+          }
         : null;
     })
     .filter(Boolean) as EditorTab[];
@@ -285,6 +299,17 @@ export default function AppLayout() {
             <Globe size={15} />
             {LANG_SHORT[i18n.language] ?? i18n.language.toUpperCase()}
           </button>
+          {aiBusy && (
+            <button
+              type="button"
+              className={styles.aiChip}
+              onClick={() => navigate('/ai')}
+              title="AI 에이전트가 일하는 중입니다 — 눌러서 보기"
+            >
+              <Loader2 size={13} className={styles.spin} aria-hidden />
+              AI 진행 중
+            </button>
+          )}
           <ThemeToggle theme={resolved} size="sm" onChange={(th) => setMode(th)} />
           <NotificationBell
             count={unread}
@@ -370,12 +395,28 @@ export default function AppLayout() {
                 {g.items.map((it) => (
                   <SidebarItem
                     key={it.to}
-                    icon={<it.icon size={16} />}
+                    icon={
+                      it.to === '/ai' && aiBusy ? (
+                        <span className={styles.aiIcon}>
+                          <it.icon size={16} />
+                          <span className={styles.aiPulse} />
+                        </span>
+                      ) : (
+                        <it.icon size={16} />
+                      )
+                    }
                     active={isActive(it.to)}
-                    tooltip={collapsed ? it.label : undefined}
+                    tooltip={
+                      collapsed
+                        ? it.to === '/ai' && aiBusy
+                          ? `${it.label} · 진행 중`
+                          : it.label
+                        : undefined
+                    }
                     onClick={() => navigate(it.to)}
                   >
                     {it.label}
+                    {it.to === '/ai' && aiBusy && <span className={styles.aiBadge}>진행 중</span>}
                   </SidebarItem>
                 ))}
               </SidebarGroup>

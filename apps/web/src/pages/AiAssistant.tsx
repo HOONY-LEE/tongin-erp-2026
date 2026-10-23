@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
+import { pokeAiActivity, reportAiRows } from '../lib/aiActivity';
 import { Button, useToast } from '../components/ui';
 import { Markdown } from '../components/ai/Markdown';
 import { ApprovalCard, ToolRow } from '../components/ai/ChatParts';
@@ -123,7 +124,10 @@ export default function AiAssistant() {
 
   const loadList = useCallback(() => {
     api<ConversationRow[]>('/ai/conversations')
-      .then(setRows)
+      .then((rs) => {
+        setRows(rs);
+        reportAiRows(rs);
+      })
       .catch(() => setRows([]));
   }, []);
 
@@ -149,11 +153,32 @@ export default function AiAssistant() {
     // conv는 일부러 뺀다 — 주소의 대화 id가 바뀔 때만 다시 읽는다
   }, [activeId, setParams]);
 
+  // 에이전트가 일하는 동안 대화를 다시 읽어 진행(도구 실행·답변)을 따라간다
+  const convId = conv?.id;
+  const convRunning = conv?.status === 'RUNNING';
+  useEffect(() => {
+    if (!convId || !convRunning) return;
+    let alive = true;
+    const t = setInterval(() => {
+      api<Conversation>(`/ai/conversations/${convId}`)
+        .then((c) => {
+          if (!alive) return;
+          setConv((cur) => (cur && cur.id === c.id ? c : cur));
+          if (c.status !== 'RUNNING') loadList();
+        })
+        .catch(() => undefined);
+    }, 1500);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [convId, convRunning, loadList]);
+
   // 새 내용이 오면 맨 아래로
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [conv, echo, busy]);
+  }, [conv, echo, busy, conv?.status]);
 
   // 입력칸 — 한 줄에서 시작해 내용만큼 늘어난다
   useLayoutEffect(() => {
@@ -170,6 +195,10 @@ export default function AiAssistant() {
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
+  /**
+   * 요청은 서버가 일을 받아 두면 바로 돌아온다(상태 RUNNING) — 이후 진행은 아래 폴링이 따라간다.
+   * 그래서 다른 화면으로 가도 에이전트는 계속 일하고, 돌아오면 이어서 보인다.
+   */
   const run = async (fn: () => Promise<Conversation>) => {
     setBusy(true);
     try {
@@ -177,6 +206,7 @@ export default function AiAssistant() {
       setConv(next);
       if (next.id !== activeId) setParams({ c: next.id }, { replace: true });
       loadList();
+      pokeAiActivity();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : 'AI 요청에 실패했습니다' });
       // 서버에 남은 상태(오류·대기)를 다시 읽어 화면을 맞춘다
@@ -223,7 +253,7 @@ export default function AiAssistant() {
 
   const send = async (text: string) => {
     const t = text.trim();
-    if ((!t && !files.length) || busy) return;
+    if ((!t && !files.length) || working) return;
     const attachments = files;
     setDraft('');
     setFiles([]);
@@ -335,10 +365,12 @@ export default function AiAssistant() {
     [conv, echo],
   );
   const awaiting = conv?.status === 'AWAITING_APPROVAL' && conv.pending.length > 0;
-  const nextUp = !busy && !echo ? (conv?.suggestions ?? []) : [];
+  /** 요청을 보내는 중이거나, 서버에서 에이전트가 일하는 중 */
+  const working = busy || conv?.status === 'RUNNING';
+  const nextUp = !working && !echo ? (conv?.suggestions ?? []) : [];
   const notReady = status !== null && !status.configured;
   const empty = items.length === 0;
-  const canSend = (!!draft.trim() || files.length > 0) && !busy && !notReady;
+  const canSend = (!!draft.trim() || files.length > 0) && !working && !notReady;
 
   const composer = (
     <div className={styles.composerWrap}>
@@ -373,8 +405,8 @@ export default function AiAssistant() {
           value={draft}
           rows={1}
           placeholder={
-            busy
-              ? 'AI가 처리하는 중입니다…'
+            working
+              ? 'AI가 처리하는 중입니다… 다른 화면으로 가도 계속 진행됩니다'
               : awaiting
                 ? '위 작업을 승인·거절하거나, 새 요청을 입력하세요(대기 중인 작업은 취소됩니다)'
                 : nextUp.length
@@ -457,6 +489,9 @@ export default function AiAssistant() {
                     onDoubleClick={() => startEdit(r.id, r.title)}
                   >
                     <span className={styles.convTitle}>{r.title}</span>
+                    {r.status === 'RUNNING' && (
+                      <span className={styles.runDot} title="진행 중" aria-label="진행 중" />
+                    )}
                     {r.status === 'AWAITING_APPROVAL' && (
                       <span className={styles.dot} title="승인 대기" />
                     )}
@@ -522,23 +557,26 @@ export default function AiAssistant() {
         )}
 
         {empty ? (
-          <div className={styles.welcome}>
-            <h1 className={styles.greeting}>무엇을 도와드릴까요?</h1>
-            {composer}
-            <div className={styles.suggestions}>
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={styles.suggestion}
-                  disabled={busy || notReady}
-                  onClick={() => void send(s)}
-                >
-                  {s}
-                </button>
-              ))}
+          <>
+            <div className={styles.welcome}>
+              <h1 className={styles.greeting}>무엇을 도와드릴까요?</h1>
+              <div className={styles.suggestions}>
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={styles.suggestion}
+                    disabled={working || notReady}
+                    onClick={() => void send(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+            {/* 대화가 없어도 입력칸은 아래에 고정 — 대화가 시작돼도 같은 자리 */}
+            {composer}
+          </>
         ) : (
           <>
             {conv && (
@@ -584,7 +622,7 @@ export default function AiAssistant() {
                   ),
                 )}
 
-                {busy && (
+                {working && (
                   <div className={styles.working} role="status">
                     <span className={styles.spark} aria-hidden />
                     생각하는 중…
@@ -609,7 +647,7 @@ export default function AiAssistant() {
                   </div>
                 )}
 
-                {!busy && awaiting && conv && (
+                {!working && awaiting && conv && (
                   <ApprovalCard
                     key={conv.pending.map((p) => p.toolUseId).join()}
                     pending={conv.pending}
@@ -619,7 +657,7 @@ export default function AiAssistant() {
                   />
                 )}
 
-                {!busy && conv?.status === 'ERROR' && (
+                {!working && conv?.status === 'ERROR' && (
                   <div className={styles.errorBox} role="alert">
                     <AlertTriangle size={16} aria-hidden />
                     <span>{conv.lastError ?? '처리 중 오류가 났습니다.'}</span>
