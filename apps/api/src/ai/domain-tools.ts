@@ -11,6 +11,8 @@ import { ScopeService } from '../scope/scope.service';
 import { StubNotificationProvider } from '../notifications/notification.provider';
 import { BranchAnomalyService } from '../modules/stats/branch-anomaly.service';
 import { ToolError, type AiTool } from './ai-tool.types';
+import { AiFiles } from './ai-files.service';
+import { REPORT_LIMITS, buildReport, normalizeReport } from './report-file';
 
 /**
  * AI 전용 업무 도구 — API 카탈로그(라우트 그대로)로는 한 번에 못 하는 일을 묶었다.
@@ -42,6 +44,7 @@ export class DomainTools {
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
     private readonly provider: StubNotificationProvider,
+    private readonly files: AiFiles,
   ) {
     // AiModule을 건드리지 않으려고 직접 만든다(같은 Prisma·Scope 서비스를 쓴다)
     this.anomaly = new BranchAnomalyService(prisma, scope);
@@ -54,8 +57,81 @@ export class DomainTools {
       this.searchLeads(),
       this.searchCustomers(),
       this.sendSms(),
+      this.createReportFile(),
       this.findSuspiciousBranches(),
     ];
+  }
+
+  /**
+   * 표 하나를 엑셀·CSV·PDF 파일로 — ERP 데이터는 바꾸지 않고 파일만 만들므로 READ(승인 없음).
+   * 만든 파일은 대화에 붙어 채팅 화면에 다운로드 카드로 보인다.
+   */
+  private createReportFile(): AiTool {
+    return {
+      name: 'create_report_file',
+      description:
+        '표(열 이름 + 행) 하나를 내려받을 수 있는 파일로 만든다 — xlsx(엑셀), csv, pdf(한글 글꼴 포함, 표 보고서). ' +
+        '먼저 조회 도구로 데이터를 모은 뒤, 화면에 보일 값(한글 상태명·지점명 등)으로 정리해 rows에 넣는다. ' +
+        '숫자 열은 숫자(number)로 넣어야 엑셀에서 합계·정렬이 된다. 만든 파일은 채팅 화면에 다운로드 카드로 바로 보인다. ' +
+        `한도: 열 ${REPORT_LIMITS.columns}개, 행 ${REPORT_LIMITS.rows}개. 차트·여러 시트·특수 서식이 필요하면 코드 실행으로 만든다.`,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          format: { type: 'string', enum: ['xlsx', 'csv', 'pdf'] },
+          title: {
+            type: 'string',
+            maxLength: 80,
+            description: '보고서 제목 — 파일 이름으로도 쓴다(예: "10월 지점별 접수 현황")',
+          },
+          note: {
+            type: 'string',
+            maxLength: 500,
+            description: '제목 아래 한 줄 설명(조회 기준·기간 등, 선택)',
+          },
+          columns: {
+            type: 'array',
+            items: { type: 'string' },
+            minItems: 1,
+            maxItems: REPORT_LIMITS.columns,
+          },
+          rows: {
+            type: 'array',
+            maxItems: REPORT_LIMITS.rows,
+            items: { type: 'array', items: { type: ['string', 'number', 'boolean', 'null'] } },
+            description: '각 행은 columns 순서대로의 값 배열',
+          },
+          sheetName: { type: 'string', maxLength: 31, description: '엑셀 시트 이름(선택)' },
+        },
+        required: ['format', 'title', 'columns', 'rows'],
+      },
+      mode: 'READ',
+      permissions: [],
+      deferred: false,
+      summarize: (i) => `${String(i.title ?? '보고서')}.${String(i.format ?? '')}`,
+      run: async (input, ctx) => {
+        if (!ctx.conversationId || !ctx.toolUseId) throw new ToolError('대화 정보가 없습니다.');
+        let report;
+        try {
+          report = normalizeReport(input);
+        } catch (e) {
+          throw new ToolError(e instanceof Error ? e.message : String(e));
+        }
+        const file = await buildReport(report);
+        const saved = await this.files.save({
+          conversationId: ctx.conversationId,
+          toolUseId: ctx.toolUseId,
+          source: 'REPORT',
+          ...file,
+        });
+        return {
+          created: true,
+          fileName: saved.name,
+          size: saved.size,
+          rows: report.rows.length,
+          note: '파일이 채팅 화면에 다운로드 카드로 표시됩니다. 링크를 따로 적지 마세요.',
+        };
+      },
+    };
   }
 
   private findSuspiciousBranches(): AiTool {

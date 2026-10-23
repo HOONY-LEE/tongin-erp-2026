@@ -3,6 +3,7 @@ import { DiscoveryModule } from '@nestjs/core';
 import { StubNotificationProvider } from '../notifications/notification.provider';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
+import { AiFiles } from './ai-files.service';
 import { ApiCatalog } from './api-catalog';
 import { DomainTools } from './domain-tools';
 
@@ -10,6 +11,6 @@ import { DomainTools } from './domain-tools';
 @Module({
   imports: [DiscoveryModule],
   controllers: [AiController],
-  providers: [AiService, ApiCatalog, DomainTools, StubNotificationProvider],
+  providers: [AiService, AiFiles, ApiCatalog, DomainTools, StubNotificationProvider],
 })
 export class AiModule {}

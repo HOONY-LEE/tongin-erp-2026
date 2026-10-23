@@ -1,6 +1,22 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, CircleSlash, Clock, PenLine, Plus, Search, XCircle } from 'lucide-react';
-import { api } from '../../lib/api';
+import {
+  CheckCircle2,
+  CircleSlash,
+  Clock,
+  Download,
+  File as FileIcon,
+  FileCode2,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  PenLine,
+  Plus,
+  Search,
+  Terminal,
+  XCircle,
+} from 'lucide-react';
+import { api, downloadFile } from '../../lib/api';
 import { Button, Checkbox, Input } from '../ui';
 import {
   toolLabel,
@@ -14,6 +30,8 @@ import {
 import styles from './ai.module.css';
 
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>;
+type CodeItem = Extract<ChatItem, { kind: 'code' }>;
+type FileItem = Extract<ChatItem, { kind: 'file' }>;
 
 const STATUS_VIEW: Record<string, { label: string; icon: typeof Clock; cls: string }> = {
   PENDING: { label: '승인 대기', icon: Clock, cls: styles.stPending },
@@ -60,6 +78,107 @@ export function ToolRow({ item, tools }: { item: ToolItem; tools: Map<string, Ai
         )}
       </div>
     </details>
+  );
+}
+
+const CODE_STATUS: Record<CodeItem['status'], { label: string; icon: typeof Clock; cls: string }> =
+  {
+    RUNNING: { label: '실행 중', icon: Loader2, cls: styles.stPending },
+    DONE: { label: '완료', icon: CheckCircle2, cls: styles.stDone },
+    ERROR: { label: '실패', icon: XCircle, cls: styles.stError },
+  };
+
+/** 코드 실행 한 줄 — 눌러서 실행한 코드와 출력을 펼쳐 본다 */
+export function CodeRow({ item }: { item: CodeItem }) {
+  const st = CODE_STATUS[item.status] ?? CODE_STATUS.DONE;
+  const StIcon = st.icon;
+  const Icon = item.tool === 'bash' ? Terminal : FileCode2;
+  return (
+    <details className={styles.tool}>
+      <summary className={styles.toolHead}>
+        <Icon size={14} className={styles.toolIcon} aria-hidden />
+        <span className={styles.toolName}>
+          코드 실행
+          {item.title && <span className={styles.codeTitle}> · {item.title}</span>}
+        </span>
+        <span className={[styles.toolStatus, st.cls].join(' ')}>
+          <StIcon size={13} aria-hidden />
+          {st.label}
+        </span>
+      </summary>
+      <div className={styles.toolBody}>
+        <div className={styles.toolLabel}>{item.tool === 'bash' ? '명령·코드' : '파일 내용'}</div>
+        <pre className={styles.pre}>{item.code || '(내용 없음)'}</pre>
+        {item.output !== undefined && (
+          <>
+            <div className={styles.toolLabel}>출력</div>
+            <pre className={styles.pre}>{item.output || '(출력 없음)'}</pre>
+          </>
+        )}
+      </div>
+    </details>
+  );
+}
+
+const fileKind = (name: string, mediaType: string) => {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  if (['xlsx', 'xls', 'csv'].includes(ext) || mediaType.includes('spreadsheet'))
+    return { icon: FileSpreadsheet, label: ext === 'csv' ? 'CSV' : '엑셀', cls: styles.fileXls };
+  if (ext === 'pdf') return { icon: FileText, label: 'PDF', cls: styles.filePdf };
+  if (mediaType.startsWith('image/'))
+    return { icon: FileImage, label: '이미지', cls: styles.fileImg };
+  return { icon: FileIcon, label: ext.toUpperCase() || '파일', cls: '' };
+};
+
+const fmtSize = (n: number) =>
+  n >= 1048576
+    ? `${(n / 1048576).toFixed(1)}MB`
+    : n >= 1024
+      ? `${Math.round(n / 1024)}KB`
+      : `${n}B`;
+
+/** AI가 만든 파일 카드 — 종류 아이콘·이름·크기·다운로드 */
+export function FileCard({ item }: { item: FileItem }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const k = fileKind(item.name, item.mediaType);
+  const Icon = k.icon;
+  const download = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await downloadFile(`/ai/files/${item.id}`, item.name);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '다운로드에 실패했습니다');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={styles.fileCard}>
+      <span className={[styles.fileIcon, k.cls].join(' ')} aria-hidden>
+        <Icon size={20} />
+      </span>
+      <span className={styles.fileInfo}>
+        <span className={styles.fileName} title={item.name}>
+          {item.name}
+        </span>
+        <span className={styles.sub}>
+          {k.label} · {fmtSize(item.size)}
+          {error && <span className={styles.fileError}> · {error}</span>}
+        </span>
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        loading={busy}
+        leftIcon={<Download size={14} />}
+        onClick={() => void download()}
+        aria-label={`${item.name} 다운로드`}
+      >
+        다운로드
+      </Button>
+    </div>
   );
 }
 

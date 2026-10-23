@@ -37,6 +37,8 @@ COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/shared/package.json ./packages/shared/
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+# AI 보고서 PDF용 한글 글꼴(Pretendard, OFL) — dist/ai/report-file.js가 ../../assets/fonts에서 읽는다
+COPY --from=build /app/apps/api/assets ./apps/api/assets
 COPY --from=build /app/apps/api/package.json ./apps/api/
 COPY --from=build /app/package.json ./
 

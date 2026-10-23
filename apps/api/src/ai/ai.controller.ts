@@ -10,7 +10,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -28,6 +31,7 @@ import type { AuthPrincipal } from '@tongin/shared';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AiService, ATTACHMENT_TYPES, TITLE_INPUT_MAX } from './ai.service';
+import { AiFiles, contentDisposition } from './ai-files.service';
 
 /** 첨부 — 이미지(png·jpg·gif·webp), PDF, 텍스트(txt·csv·json·md). 내용은 base64 */
 class AttachmentInput {
@@ -94,7 +98,10 @@ class DecideDto {
 @Controller('ai')
 @RequirePermissions('AI.USE')
 export class AiController {
-  constructor(private readonly ai: AiService) {}
+  constructor(
+    private readonly ai: AiService,
+    private readonly files: AiFiles,
+  ) {}
 
   @Get('status')
   status() {
@@ -169,5 +176,23 @@ export class AiController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.ai.retry(id, { principal: user, authorization });
+  }
+
+  /** AI가 만든 파일 내려받기(엑셀·PDF·CSV·차트) — 내 대화의 파일만 */
+  @Get('files/:id')
+  async file(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const f = await this.files.get(id, user.userId);
+    res.set({
+      'Content-Type': f.mediaType,
+      'Content-Disposition': contentDisposition(f.name),
+      'Content-Length': String(f.bytes.length),
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return new StreamableFile(f.bytes);
   }
 }

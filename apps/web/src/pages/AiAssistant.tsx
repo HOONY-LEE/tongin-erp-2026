@@ -25,7 +25,7 @@ import { api, ApiError } from '../lib/api';
 import { pokeAiActivity, reportAiRows } from '../lib/aiActivity';
 import { Button, useToast } from '../components/ui';
 import { Markdown } from '../components/ai/Markdown';
-import { ApprovalCard, ToolRow } from '../components/ai/ChatParts';
+import { ApprovalCard, CodeRow, FileCard, ToolRow } from '../components/ai/ChatParts';
 import type {
   AiStatus,
   AiToolInfo,
@@ -617,6 +617,10 @@ export default function AiAssistant() {
                     <div key={i} className={styles.searchRow}>
                       <Search size={12} aria-hidden /> 기능 찾는 중 · “{it.query}”
                     </div>
+                  ) : it.kind === 'code' ? (
+                    <CodeRow key={i} item={it} />
+                  ) : it.kind === 'file' ? (
+                    <FileCard key={it.id} item={it} />
                   ) : (
                     <ToolRow key={i} item={it} tools={tools} />
                   ),
