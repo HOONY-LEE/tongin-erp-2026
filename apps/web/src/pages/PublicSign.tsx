@@ -219,8 +219,21 @@ export default function PublicSign() {
   if (!view) {
     return (
       <div className={styles.page}>
+        <header className={styles.top}>
+          <span className={styles.brand}>통인익스프레스</span>
+        </header>
         <div className={styles.center}>
-          {error ? <p className={styles.errorBig}>{error}</p> : <Spinner />}
+          {error ? (
+            <div className={styles.errorBig}>
+              <p>{error}</p>
+              <p className={styles.sub}>
+                문자로 받은 링크를 다시 확인하시거나, 고객센터
+                <a href="tel:1899-0123"> 1899-0123</a>으로 연락 주세요.
+              </p>
+            </div>
+          ) : (
+            <Spinner />
+          )}
         </div>
       </div>
     );

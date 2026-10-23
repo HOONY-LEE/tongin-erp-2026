@@ -5,7 +5,15 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError, openDocument } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useAuth } from '../auth/AuthContext';
-import { Badge, Button, PageHeader, Spinner, StatusBadge, useToast } from '../components/ui';
+import {
+  Badge,
+  Button,
+  FormModal,
+  PageHeader,
+  Spinner,
+  StatusBadge,
+  useToast,
+} from '../components/ui';
 import { SendEstimateModal } from '../components/estimate/SendEstimate';
 import { LEAD_STATUS } from '../lib/leadCodes';
 import { formatPhone } from '../lib/phone';
@@ -89,6 +97,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
   const [data, setData] = useState<EstimateDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [sendOpen, setSendOpen] = useState(false);
+  const [woOpen, setWoOpen] = useState(false);
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   const { updatedAt, touch } = useUpdatedAt();
 
@@ -174,6 +183,23 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
     }
   };
 
+  // 계약이 성립했으면(서명 또는 계약금 입금) 작업을 잡는다 — 접수 화면에서 바로
+  const contractReady = !!data.meta.signedAt || !!data.meta.depositPaidAt;
+  const createWorkOrder = async (values: Record<string, unknown>) => {
+    try {
+      const wo = await api<{ id: string }>('/work-orders', {
+        method: 'POST',
+        body: JSON.stringify({ contractId: data.meta.contractId, ...values }),
+      });
+      toast({ type: 'success', title: '작업을 만들었습니다' });
+      await load();
+      navigate(`/work-orders/${wo.id}`);
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
+      throw e;
+    }
+  };
+
   const flowActions = (
     <>
       {canEdit && !closed && data.lead && (
@@ -184,7 +210,35 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
       <Button variant="outline" size="sm" onClick={openDoc}>
         {t('estimate.document')}
       </Button>
-      {canEdit && !closed && (
+      {data.meta.contractId && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(`/contracts/${data.meta.contractId}`)}
+        >
+          계약 보기
+        </Button>
+      )}
+      {data.meta.workOrderId ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(`/work-orders/${data.meta.workOrderId}`)}
+        >
+          작업 보기
+        </Button>
+      ) : (
+        canEdit &&
+        !closed &&
+        contractReady &&
+        can('WORK_ORDER.WRITE') && (
+          <Button variant="primary" size="sm" onClick={() => setWoOpen(true)}>
+            작업 만들기
+          </Button>
+        )
+      )}
+      {/* 계약금까지 들어왔으면 다시 보낼 일이 없다 */}
+      {canEdit && !closed && !data.meta.depositPaidAt && (
         <Button
           variant="primary"
           size="sm"
@@ -266,6 +320,22 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         <SummaryTab {...priceProps} onDirtyChange={dirtyHandlers.summary} />
       </div>
 
+      <FormModal
+        open={woOpen}
+        onOpenChange={setWoOpen}
+        title="작업 만들기"
+        initialValues={data.lead?.moveDate ? { scheduledDate: data.lead.moveDate } : undefined}
+        fields={[
+          {
+            name: 'scheduledDate',
+            label: '작업일(이사일)',
+            type: 'date',
+            required: true,
+            alwaysShow: true,
+          },
+        ]}
+        onSubmit={createWorkOrder}
+      />
       <SendEstimateModal
         open={sendOpen}
         onClose={() => setSendOpen(false)}

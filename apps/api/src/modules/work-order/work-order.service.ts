@@ -75,8 +75,15 @@ export class WorkOrderService {
     if (ids !== null && !ids.includes(contract.orgUnitId)) {
       throw new ForbiddenException('소속 조직의 계약만 작업토스할 수 있습니다.');
     }
-    if (contract.status !== 'SIGNED')
-      throw new BadRequestException('서명완료(SIGNED)된 계약만 작업토스 가능합니다.');
+    // 고객 서명 또는 계약금 입금(= 계약 성립) 중 하나면 작업을 잡을 수 있다
+    if (contract.status !== 'SIGNED') {
+      const depositPaid = await this.prisma.payment.count({
+        where: { contractId: contract.id, kind: 'DEPOSIT', status: 'PAID' },
+      });
+      if (contract.status === 'CANCELED' || !depositPaid) {
+        throw new BadRequestException('고객 서명 또는 계약금 입금 후에 작업을 만들 수 있습니다.');
+      }
+    }
     const dup = await this.prisma.workOrder.findUnique({ where: { contractId: dto.contractId } });
     if (dup) throw new BadRequestException('이미 작업오더가 생성된 계약입니다.');
 
