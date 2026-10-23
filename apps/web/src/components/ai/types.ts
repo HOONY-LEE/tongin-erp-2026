@@ -33,7 +33,19 @@ export type ChatItem =
       status: ToolStatus;
       result?: string;
       isError?: boolean;
-    };
+    }
+  /** 코드 실행(Anthropic 샌드박스) — bash 명령 또는 파일 만들기·고치기 */
+  | {
+      kind: 'code';
+      toolUseId: string;
+      tool: 'bash' | 'file';
+      title: string;
+      code: string;
+      status: 'RUNNING' | 'DONE' | 'ERROR';
+      output?: string;
+    }
+  /** AI가 만든 파일 — 다운로드 카드 */
+  | { kind: 'file'; id: string; name: string; mediaType: string; size: number };
 
 export interface Recipient {
   customerId: string;
@@ -87,6 +99,7 @@ export function toolLabel(name: string, tools: Map<string, AiToolInfo>) {
     search_leads: '접수·고객 조회',
     search_customers: '고객 찾기',
     send_sms: '문자 발송',
+    create_report_file: '보고서 파일 만들기',
   };
   if (BUILTIN[name]) return BUILTIN[name];
   const d = tools.get(name)?.description;

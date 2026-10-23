@@ -8,6 +8,9 @@ export interface ToolContext {
   principal: AuthPrincipal;
   /** 사용자 요청의 Authorization 헤더 — API 도구가 같은 사용자로 ERP API를 부른다 */
   authorization: string;
+  /** 실행 중인 대화·도구 호출 — 파일을 만드는 도구가 결과 파일을 그 대화에 붙일 때 쓴다 */
+  conversationId?: string;
+  toolUseId?: string;
 }
 
 export interface AiTool {
