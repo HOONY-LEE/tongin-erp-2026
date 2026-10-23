@@ -46,7 +46,8 @@ export class NotificationListener {
         eventType: e.eventType,
         recipient,
         message,
-        status: res.ok ? 'SENT' : 'FAILED',
+        // 알림톡은 아직 발송사 연결 전(스텁) — 실제로 나가지 않은 건은 SENT가 아니라 SKIPPED로 남긴다
+        status: !res.ok ? 'FAILED' : res.delivered ? 'SENT' : 'SKIPPED',
         payload: e.payload as object,
       },
     });

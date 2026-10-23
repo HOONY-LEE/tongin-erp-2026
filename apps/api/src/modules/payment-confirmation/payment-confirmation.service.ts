@@ -155,15 +155,11 @@ export class PaymentConfirmationService {
       if (amount == null) {
         throw new BadRequestException('견적 총액이 없습니다. 총액을 입력해 주세요.');
       }
-      contract = await this.contractService.create({
-        estimateId,
-        totalAmount: amount,
-        depositRatio: 0.1,
-      });
+      // 계약금은 견적에 적은 금액(없으면 10%) — create가 견적 계약금을 먼저 쓴다
+      contract = await this.contractService.create({ estimateId, totalAmount: amount });
     }
-    if (contract.status === 'DRAFT') {
-      await this.contractService.sign(contract.id); // 계약금 입금 = 계약 성립
-    }
+    // 계약금 입금 = 계약 성립 — 접수는 '계약'으로 넘어간다(markPaid). 전자서명은 고객이 링크로 하므로
+    // 여기서 임의로 서명 처리하지 않는다(서명 없는 '서명 완료' 계약서가 생기지 않게).
     await this.confirmPaymentOfKind(contract.id, 'DEPOSIT');
     return { ok: true };
   }

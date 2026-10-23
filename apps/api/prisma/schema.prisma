@@ -733,7 +733,7 @@ model Notification {
   eventType String   @map("event_type")
   recipient String? // 수신자(고객 연락처 등)
   message   String
-  status    String   @default("SENT") // SENT | FAILED (스텁은 SENT)
+  status    String   @default("SENT") // SENT | FAILED | SKIPPED(발송사 미연결로 실제 발송 안 함)
   payload   Json?
   sentAt    DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
 
