@@ -123,6 +123,7 @@ model AppUser {
   calendarEvents     CalendarEvent[]
   googleCalendarLink GoogleCalendarLink?
   aiConversations    AiConversation[]
+  workPhotos         WorkPhoto[]
 
   @@map("app_user")
 }
@@ -709,8 +710,29 @@ model WorkOrder {
   billedCost    Decimal?         @map("billed_cost") @db.Decimal(14, 2) // 전속 청구비용(원가)=마진 추적
   createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   assignments   WorkAssignment[]
+  photos        WorkPhoto[]
 
   @@map("work_order")
+}
+
+/// 현장 작업 사진(작업 전·후, 파손·하자) — 데모 규모라 내용은 DB(bytea)에 둔다. 운영 전 R2/S3로 옮길 것
+model WorkPhoto {
+  id               String    @id @default(uuid()) @db.Uuid
+  workOrderId      String    @map("work_order_id") @db.Uuid
+  workOrder        WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  kind             String // BEFORE(작업 전) | AFTER(작업 후) | DAMAGE(파손·하자) | ETC(기타)
+  caption          String?
+  mediaType        String    @map("media_type")
+  size             Int
+  width            Int?
+  height           Int?
+  bytes            Bytes
+  uploadedByUserId String    @map("uploaded_by_user_id") @db.Uuid
+  uploadedBy       AppUser   @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([workOrderId, createdAt])
+  @@map("work_photo")
 }
 
 model WorkAssignment {

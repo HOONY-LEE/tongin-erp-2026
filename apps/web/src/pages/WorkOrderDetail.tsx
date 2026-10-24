@@ -17,6 +17,7 @@ import {
   type Row,
 } from '../components/ui';
 import { WORK_STATUS } from './WorkOrders';
+import { WorkPhotosCard } from '../components/photos/WorkPhotosCard';
 
 const RESOURCE: Record<string, string> = { CREW: '인력', VEHICLE: '차량' };
 
@@ -144,6 +145,8 @@ export default function WorkOrderDetail() {
       >
         <DataTable columns={columns} rows={data.assignments as unknown as Row[]} />
       </PageCard>
+
+      <WorkPhotosCard workOrderId={data.id} />
 
       <FormModal
         open={assignOpen}

@@ -240,6 +240,34 @@ export const ACCESS_LABEL: Record<AccessMethod, string> = {
   ETC: '기타',
 };
 
+// OPS: 현장 작업 사진 — 작업 전·후 상태와 파손·하자를 남겨 분쟁·클레임에 대비한다.
+export const WORK_PHOTO_KINDS = ['BEFORE', 'AFTER', 'DAMAGE', 'ETC'] as const;
+export type WorkPhotoKind = (typeof WORK_PHOTO_KINDS)[number];
+export const WORK_PHOTO_KIND_LABEL: Record<WorkPhotoKind, string> = {
+  BEFORE: '작업 전',
+  AFTER: '작업 후',
+  DAMAGE: '파손·하자',
+  ETC: '기타',
+};
+/** 사진 한 장 최대 크기(원본 바이트) — 화면에서 줄여 올리므로 보통 0.3~0.8MB */
+export const WORK_PHOTO_MAX_BYTES = 8 * 1024 * 1024;
+
+/** 사진 목록 한 줄(내용 빼고) — 이미지는 GET /work-photos/:id 로 따로 받는다 */
+export interface WorkPhotoMeta {
+  id: string;
+  workOrderId: string;
+  kind: WorkPhotoKind;
+  caption: string | null;
+  mediaType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  uploadedBy: string;
+  /** 내가 올린 사진인지 */
+  mine: boolean;
+  createdAt: string;
+}
+
 /**
  * 견적서 메타 — 견적 한 장에 필요한 머리 정보를 접수·계약·작업에서 모아 온 것.
  * 따로 저장하지 않고 조회할 때마다 원본에서 모은다(원본이 바뀌면 견적서도 따라가야 하므로).

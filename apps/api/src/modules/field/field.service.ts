@@ -79,6 +79,25 @@ export class FieldService {
     return ids === null ? {} : { orgUnitId: { in: ids } };
   }
 
+  /** 현장 범위(목록·상세와 같은 규칙) 안의 작업인지 */
+  async canAccess(id: string, principal: AuthPrincipal): Promise<boolean> {
+    const where = await this.whereFor(principal);
+    return (await this.prisma.workOrder.count({ where: { AND: [{ id }, where] } })) > 0;
+  }
+
+  /** 현장 범위 확인 — 없는 작업은 404, 남의 작업은 403(상세와 같은 응답) */
+  async assertAccess(id: string, principal: AuthPrincipal) {
+    const wo = await this.prisma.workOrder.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+    if (!wo) throw new NotFoundException(`작업오더를 찾을 수 없습니다: ${id}`);
+    if (!(await this.canAccess(id, principal))) {
+      throw new ForbiddenException('접근 권한이 없는 작업오더입니다.');
+    }
+    return wo;
+  }
+
   /** 전속업체엔 원가를 노출하지 않는다(OPS-04) — 현장 응답에는 애초에 금액을 넣지 않는다. */
   async list(principal: AuthPrincipal, from?: string, to?: string) {
     const where = await this.whereFor(principal);

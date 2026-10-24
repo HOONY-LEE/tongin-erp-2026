@@ -1,0 +1,170 @@
+/* 작업 사진 격자·크게 보기 — 현장(폰)과 관리자 화면 공용 */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--ark-color-gray-200);
+  border-radius: var(--ark-radius-md);
+  background: var(--ark-color-bg-muted);
+  cursor: pointer;
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.failText {
+  padding: 2px 8px;
+  border-radius: var(--ark-radius-full);
+  background: var(--ark-color-error-500);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.muted {
+  color: var(--ark-color-text-tertiary);
+}
+
+.empty {
+  padding: 20px 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ark-color-text-tertiary);
+}
+
+/* 종류 탭 — 폰 폭(343px)에 네 칸이 들어가게 좌우 여백을 줄인다 */
+div.kindTabs [class*='_segment_'] {
+  padding: 6px 2px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.kindLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ark-color-primary-600);
+}
+
+/* 크게 보기 */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+}
+
+.lbTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 16px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  font-size: 14px;
+}
+
+.lbStage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lbImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.lbBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--ark-radius-full);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+
+.lbBtn:disabled {
+  opacity: 0.5;
+}
+
+.lbPrev {
+  position: absolute;
+  left: 8px;
+}
+
+.lbNext {
+  position: absolute;
+  right: 8px;
+}
+
+.lbInfo {
+  padding: 10px 16px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+}
+
+.lbCaption {
+  margin-bottom: 4px;
+  font-size: 15px;
+  color: #fff;
+  word-break: break-word;
+}
