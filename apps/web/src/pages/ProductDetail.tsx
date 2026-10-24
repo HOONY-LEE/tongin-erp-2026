@@ -12,7 +12,15 @@ import {
 } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
-import { Badge, Button, PageCard, PageHeader, Select, Spinner, useToast } from '../components/ui';
+import {
+  Badge,
+  Button,
+  PageCard,
+  PageHeader,
+  Select,
+  useToast,
+  PageSkeleton,
+} from '../components/ui';
 import { UnitField } from '../components/estimate/parts';
 
 const won = (v: unknown) => (v != null && v !== '' ? `${Number(v).toLocaleString()}원` : '-');
@@ -144,8 +152,8 @@ export default function ProductDetail() {
 
   if (loading && !product) {
     return (
-      <div style={{ padding: 40, display: 'grid', placeItems: 'center' }}>
-        <Spinner size="lg" />
+      <div style={{ padding: 4 }}>
+        <PageSkeleton />
       </div>
     );
   }

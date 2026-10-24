@@ -1,0 +1,102 @@
+/* 스켈레톤 — 연한 바탕 위로 밝은 띠가 천천히 지나간다. 다크 모드는 토큰 색이 따라 바뀐다 */
+.box {
+  display: inline-block;
+  max-width: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--ark-color-bg-muted, #eef0f3) 0%,
+    color-mix(in srgb, var(--ark-color-bg-muted, #eef0f3) 55%, var(--ark-color-bg, #fff)) 50%,
+    var(--ark-color-bg-muted, #eef0f3) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .box {
+    animation: none;
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+/* 표 */
+.table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--ark-color-bg);
+}
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.thead,
+.tr {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 0 16px;
+}
+.thead {
+  height: 40px;
+  background: var(--ark-color-bg-subtle);
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.tr {
+  height: 48px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.tr:last-child {
+  border-bottom: none;
+}
+
+/* 상세 화면 */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px 24px;
+}

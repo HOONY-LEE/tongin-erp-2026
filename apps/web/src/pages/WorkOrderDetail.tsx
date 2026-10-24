@@ -10,11 +10,11 @@ import {
   FormModal,
   PageCard,
   PageHeader,
-  Spinner,
   StatusBadge,
   useToast,
   type Column,
   type Row,
+  PageSkeleton,
 } from '../components/ui';
 import { WORK_STATUS } from './WorkOrders';
 
@@ -82,8 +82,8 @@ export default function WorkOrderDetail() {
 
   if (loading || !data) {
     return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <Spinner />
+      <div style={{ padding: 4 }}>
+        <PageSkeleton />
       </div>
     );
   }

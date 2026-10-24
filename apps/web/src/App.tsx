@@ -1,4 +1,5 @@
-import { Spinner, ToastProvider } from '@sunghoon_lee/akron-ui';
+import { ToastProvider } from '@sunghoon_lee/akron-ui';
+import { PageSkeleton } from './components/ui';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AuthProvider, isFieldUser, useAuth } from './auth/AuthContext';
@@ -47,8 +48,8 @@ function Shell() {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-        <Spinner size="lg" />
+      <div style={{ minHeight: '100vh', padding: 24, boxSizing: 'border-box' }}>
+        <PageSkeleton cards={3} />
       </div>
     );
   }

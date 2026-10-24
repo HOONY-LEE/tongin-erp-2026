@@ -53,7 +53,7 @@ import {
 } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useTheme } from '../theme/ThemeProvider';
-import { Button, Modal, Spinner, useToast } from '../components/ui';
+import { Button, Modal, Spinner, useToast, PageSkeleton } from '../components/ui';
 import AgentNodeView, { type AgentFlowNode, type RunMark } from '../components/agent/AgentNodeView';
 import { Inspector } from '../components/agent/Inspector';
 import { DND_MIME, ToolExplorer } from '../components/agent/ToolExplorer';
@@ -656,8 +656,8 @@ function Editor() {
 
   if (loading || !meta) {
     return (
-      <div className={styles.page} style={{ display: 'grid', placeItems: 'center' }}>
-        <Spinner />
+      <div style={{ padding: 4 }}>
+        <PageSkeleton />
       </div>
     );
   }
