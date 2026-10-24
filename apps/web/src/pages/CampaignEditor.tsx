@@ -26,6 +26,7 @@ import {
   Spinner,
   StatusBadge,
   useToast,
+  PageSkeleton,
 } from '../components/ui';
 import { CAMPAIGN_STATUS_MAP } from './Campaigns';
 import { PickedList, type OtherRecipient } from '../components/campaign/PickedList';
@@ -486,8 +487,8 @@ export default function CampaignEditor() {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, display: 'grid', placeItems: 'center' }}>
-        <Spinner size="lg" />
+      <div style={{ padding: 4 }}>
+        <PageSkeleton />
       </div>
     );
   }

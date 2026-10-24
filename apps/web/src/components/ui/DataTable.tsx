@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react';
+import { TableSkeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
 import type { Column, Row } from './types';
@@ -39,6 +40,7 @@ export function DataTable({
   pageSize = DEFAULT_PAGE_SIZE,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wasLoading = useRef(false);
 
   const softiumColumns: ReactColumnDef<Row>[] = useMemo(() => {
     const mapped: ReactColumnDef<Row>[] = columns.map((c, i) => ({
@@ -80,6 +82,13 @@ export function DataTable({
     pageSize,
   });
 
+  // 처음 불러오기가 끝나기 전에는 '데이터가 없습니다' 대신 스켈레톤을 보인다.
+  // (loading을 넘기는 화면만 — 첫 렌더에선 아직 false일 수 있어 '한 번이라도 다 받았나'로 판단)
+  const loadedOnce = useRef(false);
+  if (loading === false && wasLoading.current) loadedOnce.current = true;
+  wasLoading.current = !!loading;
+  const showSkeleton = loading !== undefined && rows.length === 0 && !loadedOnce.current;
+
   // softium-ui Table에는 아직 로우 클릭 prop이 없어 DOM 위임으로 처리한다.
   // 로우 안 버튼/링크 클릭은 그 자체 동작만 수행하도록 무시.
   const handleClick = onRowClick
@@ -93,6 +102,10 @@ export function DataTable({
         if (row) onRowClick(row.data);
       }
     : undefined;
+
+  if (showSkeleton) {
+    return <TableSkeleton cols={Math.min(Math.max(columns.length, 3), 7)} />;
+  }
 
   return (
     <div

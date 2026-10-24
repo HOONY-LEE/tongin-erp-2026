@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import { Badge, Button, Spinner, useToast } from '../components/ui';
+import { Badge, Button, useToast, PageSkeleton } from '../components/ui';
 import {
   formatDay,
   HANDLING_LABEL,
@@ -71,8 +71,8 @@ export default function FieldWorkOrderDetail() {
 
   if (loading || !d) {
     return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <Spinner />
+      <div style={{ padding: 4 }}>
+        <PageSkeleton />
       </div>
     );
   }
