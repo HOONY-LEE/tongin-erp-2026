@@ -10,7 +10,7 @@ import {
   Button,
   FormModal,
   PageHeader,
-  Spinner,
+  PageSkeleton,
   StatusBadge,
   useToast,
 } from '../components/ui';
@@ -159,7 +159,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
   };
 
   if (!data) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>{loading ? <Spinner /> : null}</div>;
+    return loading ? <PageSkeleton /> : null;
   }
 
   const openDoc = () =>

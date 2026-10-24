@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, MapPin, RefreshCw, Users } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
-import { Badge, Spinner, useToast } from '../components/ui';
+import { Badge, useToast, PageSkeleton } from '../components/ui';
 import { SegmentedControl } from '../components/ui';
 import { formatDay, todayKey, WORK_STATUS, type FieldWorkOrder } from './fieldTypes';
 
@@ -92,8 +92,8 @@ export default function FieldWorkOrders() {
       />
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center' }}>
-          <Spinner />
+        <div style={{ padding: 16 }}>
+          <PageSkeleton cards={3} />
         </div>
       ) : groups.length === 0 ? (
         <div

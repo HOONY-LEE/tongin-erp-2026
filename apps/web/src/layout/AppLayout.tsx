@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
   Loader2,
+  Sparkles,
   LayoutDashboard,
   Inbox,
   Banknote,
@@ -129,7 +130,13 @@ export default function AppLayout() {
         },
         // 현장(/field)은 폰·태블릿 전용 화면이라 PC 메뉴에 두지 않는다.
         // 현장 작업팀 계정은 로그인하면 자동으로 그 화면으로 간다(App.tsx 분기).
-        // 리빙·케어는 따로 메뉴를 두지 않는다 — 접수에서 고객마다 상품(입주청소 등)으로 들어간다.
+        // 리빙·케어(입주청소·정리수납 등 이사 외 서비스) 주문 — 이사 접수와 별도로 돌아가는 일정이라 메뉴로 둔다
+        {
+          to: '/service-orders',
+          label: t('nav.serviceOrders'),
+          icon: Sparkles,
+          perm: 'SERVICE_ORDER.READ',
+        },
         { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
         { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
       ],

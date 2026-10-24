@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { Spinner } from '../components/ui';
+import { PageSkeleton } from '../components/ui';
 import EstimateDetail from './EstimateDetail';
 
 /**
@@ -30,8 +30,8 @@ export default function LeadWorkspace() {
   }
   if (!estimateId) {
     return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <Spinner />
+      <div style={{ padding: 4 }}>
+        <PageSkeleton />
       </div>
     );
   }

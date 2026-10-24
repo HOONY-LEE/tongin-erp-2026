@@ -5,7 +5,15 @@ import { UnitPerformance } from '../components/dashboard/UnitPerformance';
 import { ColumnChart } from '../components/dashboard/ColumnChart';
 import { BranchAnomalyCard } from '../components/dashboard/BranchAnomalyCard';
 import dashStyles from '../components/dashboard/dashboard.module.css';
-import { Card, DataTable, PageCard, PageHeader, type Column, type Row } from '../components/ui';
+import {
+  Card,
+  DataTable,
+  PageCard,
+  PageHeader,
+  Skeleton,
+  type Column,
+  type Row,
+} from '../components/ui';
 import { api } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 
@@ -62,6 +70,8 @@ interface BarItem {
 export default function Dashboard() {
   const { t } = useTranslation();
   const [data, setData] = useState<Overview | null>(null);
+  /** 첫 응답 전 — 숫자·차트 자리를 스켈레톤으로 */
+  const [loaded, setLoaded] = useState(false);
   const [reload, setReload] = useState(0);
   const { updatedAt, touch } = useUpdatedAt();
 
@@ -72,7 +82,8 @@ export default function Dashboard() {
         setReload((n) => n + 1);
         touch();
       })
-      .catch(() => setData(null));
+      .catch(() => setData(null))
+      .finally(() => setLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -162,7 +173,7 @@ export default function Dashboard() {
                 color: c.danger ? 'var(--ark-color-text-danger)' : undefined,
               }}
             >
-              {c.value}
+              {loaded ? c.value : <Skeleton width="70%" height={26} radius={6} />}
             </div>
           </Card>
         ))}
@@ -171,20 +182,32 @@ export default function Dashboard() {
       <div className={dashStyles.twoCol}>
         <PageCard title={t('dashboard.funnel')}>
           <div className={dashStyles.plotBox}>
-            <ColumnChart
-              label={t('dashboard.funnel')}
-              items={funnelItems.map((f) => ({
-                key: f.key,
-                label: f.label,
-                value: f.value,
-                valueLabel: String(f.value),
-                subLabel: leadTotal ? `${Math.round((f.value / leadTotal) * 100)}%` : undefined,
-                tip: [f.title ?? f.label],
-              }))}
-            />
+            {!loaded ? (
+              <Skeleton height="100%" radius={10} />
+            ) : (
+              <ColumnChart
+                label={t('dashboard.funnel')}
+                items={funnelItems.map((f) => ({
+                  key: f.key,
+                  label: f.label,
+                  value: f.value,
+                  valueLabel: String(f.value),
+                  subLabel: leadTotal ? `${Math.round((f.value / leadTotal) * 100)}%` : undefined,
+                  tip: [f.title ?? f.label],
+                }))}
+              />
+            )}
           </div>
         </PageCard>
-        <UnitPerformance byBranch={data?.byBranch ?? []} />
+        {loaded ? (
+          <UnitPerformance byBranch={data?.byBranch ?? []} />
+        ) : (
+          <PageCard title="지점별 실적">
+            <div className={dashStyles.plotBox}>
+              <Skeleton height="100%" radius={10} />
+            </div>
+          </PageCard>
+        )}
       </div>
 
       <BranchAnomalyCard reload={reload} />
@@ -194,6 +217,7 @@ export default function Dashboard() {
           columns={branchCols}
           rows={(data?.byBranch ?? []) as unknown as Row[]}
           rowKey="orgUnitName"
+          loading={!loaded}
         />
       </PageCard>
     </div>

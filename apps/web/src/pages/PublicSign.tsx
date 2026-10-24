@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Check, Copy, Download, Eraser } from 'lucide-react';
-import { Button, Checkbox, Input, Spinner } from '../components/ui';
+import { Button, Checkbox, Input, Skeleton } from '../components/ui';
 import { SERVICE_UNAVAILABLE } from '../lib/api';
 import styles from './publicSign.module.css';
 
@@ -232,7 +232,12 @@ export default function PublicSign() {
               </p>
             </div>
           ) : (
-            <Spinner />
+            <div style={{ width: '100%', maxWidth: 640, display: 'grid', gap: 12 }}>
+              <Skeleton width="60%" height={28} radius={8} />
+              <Skeleton height={120} radius={14} />
+              <Skeleton height={120} radius={14} />
+              <Skeleton height={320} radius={14} />
+            </div>
           )}
         </div>
       </div>

@@ -5,7 +5,7 @@ import { ACCESS_LABEL, HANDLING_LABEL, summarizeVolume, VOLUME_UNIT_LABEL } from
 const HANDLING_TEXT: Record<string, string> = HANDLING_LABEL;
 const ACCESS_TEXT: Record<string, string> = ACCESS_LABEL;
 import { api } from '../lib/api';
-import { Badge, DataTable, Spinner, type Column, type Row } from './ui';
+import { Badge, DataTable, type Column, type Row, SkeletonText } from './ui';
 
 interface Line {
   id: string;
@@ -111,8 +111,8 @@ export function EstimatePanel({ estimateId }: { estimateId: string }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'grid', placeItems: 'center', padding: 24 }}>
-        <Spinner />
+      <div style={{ padding: 16 }}>
+        <SkeletonText lines={4} />
       </div>
     );
   }

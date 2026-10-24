@@ -10,13 +10,13 @@ import {
   FormModal,
   PageCard,
   PageHeader,
-  Spinner,
   StatusBadge,
   useToast,
   type Column,
   type FormField,
   type Row,
   type StatusMap,
+  PageSkeleton,
 } from '../components/ui';
 import { CONTRACT_STATUS } from './Contracts';
 
@@ -106,8 +106,8 @@ export default function ContractDetail() {
 
   if (loading || !data) {
     return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <Spinner />
+      <div style={{ padding: 4 }}>
+        <PageSkeleton />
       </div>
     );
   }
