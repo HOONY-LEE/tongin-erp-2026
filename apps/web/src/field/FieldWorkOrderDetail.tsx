@@ -12,6 +12,7 @@ import {
   type FieldLine,
   type FieldWorkOrderDetail as Detail,
 } from './fieldTypes';
+import { FieldPhotos, type PhotoCounts } from './FieldPhotos';
 
 /** 작업지시서 — 현장에서 이 화면 하나로 일이 되게. */
 export default function FieldWorkOrderDetail() {
@@ -21,6 +22,7 @@ export default function FieldWorkOrderDetail() {
   const [d, setD] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [photoCounts, setPhotoCounts] = useState<PhotoCounts | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,12 +40,26 @@ export default function FieldWorkOrderDetail() {
   }, [load]);
 
   const act = async (kind: 'start' | 'complete') => {
+    // 작업 후 사진 없이 완료하려 하면 한 번 묻는다(막지는 않음)
+    if (
+      kind === 'complete' &&
+      photoCounts?.AFTER === 0 &&
+      !window.confirm('작업 후 사진이 없습니다. 사진 없이 완료할까요?')
+    )
+      return;
     setActing(true);
     try {
-      await api(`/field/work-orders/${id}/${kind}`, { method: 'POST' });
+      const res = await api<{ noAfterPhotos?: boolean }>(`/field/work-orders/${id}/${kind}`, {
+        method: 'POST',
+      });
       toast({
         type: 'success',
-        title: kind === 'start' ? '작업을 시작했습니다' : '작업을 완료했습니다',
+        title:
+          kind === 'start'
+            ? '작업을 시작했습니다'
+            : res?.noAfterPhotos
+              ? '작업을 완료했습니다 (작업 후 사진 없음)'
+              : '작업을 완료했습니다',
       });
       await load();
     } catch (e) {
@@ -173,6 +189,13 @@ export default function FieldWorkOrderDetail() {
           </div>
         </Card>
       )}
+
+      <FieldPhotos
+        workOrderId={d.id}
+        editable={d.status === 'ASSIGNED' || d.status === 'IN_PROGRESS'}
+        initialKind={d.status === 'DONE' ? 'AFTER' : 'BEFORE'}
+        onCounts={setPhotoCounts}
+      />
 
       <Card title={`품목 (${allLines.length}) · 총 ${d.totalCbm}CBM`}>
         {allLines.length === 0 ? (

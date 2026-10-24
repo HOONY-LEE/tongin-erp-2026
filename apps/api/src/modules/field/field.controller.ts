@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
 import { FieldService } from './field.service';
+import { WorkPhotoService } from './work-photo.service';
 import { WorkOrderService } from '../work-order/work-order.service';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -23,6 +24,7 @@ export class FieldController {
   constructor(
     private readonly field: FieldService,
     private readonly workOrders: WorkOrderService,
+    private readonly photos: WorkPhotoService,
   ) {}
 
   /** 내 작업 목록. from/to 없으면 전체(최근순 200건). */
@@ -50,10 +52,16 @@ export class FieldController {
     return this.humanize(this.workOrders.start(id, user), '시작');
   }
 
+  /**
+   * 완료는 막지 않되, 작업 후 사진이 없으면 noAfterPhotos=true를 함께 돌려준다(화면 안내용).
+   * 응답의 나머지는 기존과 같다(작업오더 그대로).
+   */
   @Post('work-orders/:id/complete')
   @RequirePermissions('WORK_ORDER.WRITE')
-  complete(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
-    return this.humanize(this.workOrders.complete(id, user), '완료');
+  async complete(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    const updated = await this.humanize(this.workOrders.complete(id, user), '완료');
+    const afterPhotos = await this.photos.countAfter(id);
+    return { ...updated, afterPhotoCount: afterPhotos, noAfterPhotos: afterPhotos === 0 };
   }
 
   /**
