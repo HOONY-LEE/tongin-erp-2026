@@ -147,16 +147,21 @@ export class DashboardService {
     ]);
     const roleName = new Map(roles.map((r) => [r.id, r.name]));
     const userName = new Map(users.map((u) => [u.id, u.employee?.name ?? u.loginId]));
-    return rows.map(({ assignments, layout, ...r }) => ({
-      ...r,
-      widgetCount: normalizeDashLayout(layout).items.length,
-      roles: assignments
-        .filter((a) => a.targetType === 'ROLE')
-        .map((a) => ({ id: a.targetId, name: roleName.get(a.targetId) ?? '-' })),
-      users: assignments
-        .filter((a) => a.targetType === 'USER')
-        .map((a) => ({ id: a.targetId, name: userName.get(a.targetId) ?? '-' })),
-    }));
+    return rows.map(({ assignments, layout, ...r }) => {
+      const items = normalizeDashLayout(layout).items;
+      return {
+        ...r,
+        widgetCount: items.length,
+        // 카드 미리보기용 — 자리·크기·보기 방식만
+        preview: items.map((i) => ({ x: i.x, y: i.y, w: i.w, h: i.h, viz: i.viz })),
+        roles: assignments
+          .filter((a) => a.targetType === 'ROLE')
+          .map((a) => ({ id: a.targetId, name: roleName.get(a.targetId) ?? '-' })),
+        users: assignments
+          .filter((a) => a.targetType === 'USER')
+          .map((a) => ({ id: a.targetId, name: userName.get(a.targetId) ?? '-' })),
+      };
+    });
   }
 
   async template(id: string) {

@@ -104,15 +104,30 @@ export function DashboardEditor({
   const { results, loading } = useDashData(items);
 
   // ── 캔버스 크기 ──
+  // 실제 대시보드는 이 편집 화면 전체 폭(= 대시보드 화면의 콘텐츠 폭)으로 보인다.
+  // 가운데 칸은 위젯 목록·설정 칸만큼 좁으니, 실제 폭으로 그린 뒤 비율을 줄여 그대로 보여 준다(WYSIWYG).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [cw, setCw] = useState(0);
+  const [cw, setCw] = useState(0); // 실제 대시보드 폭
+  const [aw, setAw] = useState(0); // 가운데 칸에 쓸 수 있는 폭
   useLayoutEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setCw(e.contentRect.width));
-    ro.observe(el);
+    const root = rootRef.current;
+    const box = scrollRef.current;
+    if (!root || !box) return;
+    const ro = new ResizeObserver(() => {
+      setCw(Math.floor(root.getBoundingClientRect().width));
+      setAw(Math.floor(box.clientWidth));
+    });
+    ro.observe(root);
+    ro.observe(box);
     return () => ro.disconnect();
   }, []);
+  // 화면 맞춤(줄여서 한눈에) ↔ 실제 크기(100%, 옆으로 스크롤)
+  const [fit, setFit] = useState(true);
+  const scale = fit && cw && aw ? Math.min(1, aw / cw) : 1;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
   const colW = Math.max(10, (cw - GAP * (DASH_COLS - 1)) / DASH_COLS);
   const px = (it: Pick<DashItem, 'x' | 'y' | 'w' | 'h'>) => ({
     left: it.x * (colW + GAP),
@@ -152,9 +167,19 @@ export function DashboardEditor({
   useEffect(() => {
     if (!drag) return;
     const move = (e: PointerEvent) =>
-      setDrag((d) => (d ? { ...d, dx: e.clientX - d.sx, dy: e.clientY - d.sy } : d));
+      setDrag((d) =>
+        d
+          ? {
+              ...d,
+              dx: (e.clientX - d.sx) / scaleRef.current,
+              dy: (e.clientY - d.sy) / scaleRef.current,
+            }
+          : d,
+      );
     const up = () => {
-      if (preview) set(preview);
+      // 누르기만 하고 거의 안 움직였으면(위젯 고르기) 배치는 그대로
+      const moved = Math.abs(drag.dx) > 3 || Math.abs(drag.dy) > 3;
+      if (moved && preview) set(preview);
       setDrag(null);
     };
     window.addEventListener('pointermove', move);
@@ -183,8 +208,8 @@ export function DashboardEditor({
   const cellAt = (e: DragEvent) => {
     const r = canvasRef.current!.getBoundingClientRect();
     return {
-      x: Math.floor((e.clientX - r.left) / (colW + GAP)),
-      y: Math.max(0, Math.floor((e.clientY - r.top) / (DASH_ROW_HEIGHT + GAP))),
+      x: Math.floor((e.clientX - r.left) / scale / (colW + GAP)),
+      y: Math.max(0, Math.floor((e.clientY - r.top) / scale / (DASH_ROW_HEIGHT + GAP))),
     };
   };
   const onDragOver = (e: DragEvent) => {
@@ -286,7 +311,7 @@ export function DashboardEditor({
   const rows = Math.max(8, view.reduce((m, i) => Math.max(m, i.y + i.h), 0) + 3);
 
   return (
-    <div className={styles.editor}>
+    <div ref={rootRef} className={styles.editor}>
       {/* 왼쪽: 위젯 목록 */}
       <aside className={styles.palette}>
         <div className={styles.paletteHead}>
@@ -358,95 +383,132 @@ export function DashboardEditor({
 
       {/* 가운데: 실제 화면 */}
       <div
+        ref={scrollRef}
         className={styles.canvasScroll}
         onPointerDown={(e) => e.target === e.currentTarget && setSelectedId(null)}
       >
-        <div
-          ref={canvasRef}
-          className={`${styles.canvas} ${drag || ghost ? styles.canvasActive : ''}`}
-          style={{
-            height: rows * (DASH_ROW_HEIGHT + GAP),
-            ['--col' as string]: `${colW + GAP}px`,
-            ['--row' as string]: `${DASH_ROW_HEIGHT + GAP}px`,
-          }}
-          onDragOver={onDragOver}
-          onDragLeave={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) setGhost(null);
-          }}
-          onDrop={onDrop}
-          onPointerDown={(e) => e.target === e.currentTarget && setSelectedId(null)}
-        >
-          {!items.length && !ghost && (
-            <div className={styles.canvasEmpty}>왼쪽에서 위젯을 끌어다 여기에 놓으세요</div>
+        <div className={styles.canvasInfo}>
+          <span>
+            실제 화면 폭 {cw.toLocaleString()}px
+            {scale < 0.995 ? ` · ${Math.round(scale * 100)}% 크기로 보는 중` : ' · 실제 크기'}
+          </span>
+          {cw > aw && (
+            <span className={styles.zoomToggle} role="group" aria-label="보기 크기">
+              <button
+                type="button"
+                aria-pressed={fit}
+                className={fit ? styles.zoomOn : undefined}
+                onClick={() => setFit(true)}
+              >
+                화면 맞춤
+              </button>
+              <button
+                type="button"
+                aria-pressed={!fit}
+                className={!fit ? styles.zoomOn : undefined}
+                onClick={() => setFit(false)}
+              >
+                실제 크기
+              </button>
+            </span>
           )}
-          {/* 놓일 자리 */}
-          {(ghost || drag) &&
-            (() => {
-              const target = view.find((i) => i.id === (ghost ? '__ghost__' : drag!.id));
-              return target ? <div className={styles.placeholder} style={px(target)} /> : null;
-            })()}
-          {/* 폭을 재기 전에는 그리지 않는다(좁은 폭에서 늘어나는 움직임이 보이지 않게) */}
-          {cw > 0 &&
-            view
-              .filter((i) => i.id !== '__ghost__')
-              .map((it) => {
-                const dragging = drag?.id === it.id;
-                const base = dragging ? drag!.orig : it;
-                const p = px(base);
-                const style = dragging
-                  ? drag!.mode === 'move'
-                    ? { ...p, left: p.left + drag!.dx, top: p.top + drag!.dy, zIndex: 20 }
-                    : {
-                        ...p,
-                        width: Math.max(colW * 2, p.width + drag!.dx),
-                        height: Math.max(DASH_ROW_HEIGHT * 2, p.height + drag!.dy),
-                        zIndex: 20,
-                      }
-                  : px(it);
-                return (
-                  <div
-                    key={it.id}
-                    data-id={it.id}
-                    className={`${styles.item} ${dragging ? styles.itemDragging : ''}`}
-                    style={style}
-                    onPointerDown={() => setSelectedId(it.id)}
-                  >
-                    <WidgetFrame
-                      item={it}
-                      result={results[it.id]}
-                      loading={loading.has(it.id)}
-                      selected={selectedId === it.id}
-                      dragHandleProps={{
-                        onPointerDown: (e) => startDrag(e, it, 'move'),
-                        style: { cursor: dragging ? 'grabbing' : 'grab' },
-                        title: '끌어서 옮기기',
-                      }}
-                      actions={
-                        <button
-                          type="button"
-                          className={styles.iconBtn}
-                          aria-label="빼기"
-                          title="빼기"
-                          onClick={() => remove(it.id)}
-                        >
-                          <X size={14} />
-                        </button>
-                      }
-                    />
+        </div>
+        <div
+          className={styles.canvasFrame}
+          style={{
+            width: cw * scale,
+            height: rows * (DASH_ROW_HEIGHT + GAP) * scale,
+          }}
+        >
+          <div
+            ref={canvasRef}
+            className={`${styles.canvas} ${drag || ghost ? styles.canvasActive : ''}`}
+            style={{
+              width: cw,
+              transform: scale < 0.995 ? `scale(${scale})` : undefined,
+              height: rows * (DASH_ROW_HEIGHT + GAP),
+              ['--col' as string]: `${colW + GAP}px`,
+              ['--row' as string]: `${DASH_ROW_HEIGHT + GAP}px`,
+            }}
+            onDragOver={onDragOver}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setGhost(null);
+            }}
+            onDrop={onDrop}
+            onPointerDown={(e) => e.target === e.currentTarget && setSelectedId(null)}
+          >
+            {!items.length && !ghost && (
+              <div className={styles.canvasEmpty}>왼쪽에서 위젯을 끌어다 여기에 놓으세요</div>
+            )}
+            {/* 놓일 자리 */}
+            {(ghost || drag) &&
+              (() => {
+                const target = view.find((i) => i.id === (ghost ? '__ghost__' : drag!.id));
+                return target ? <div className={styles.placeholder} style={px(target)} /> : null;
+              })()}
+            {/* 폭을 재기 전에는 그리지 않는다(좁은 폭에서 늘어나는 움직임이 보이지 않게) */}
+            {cw > 0 &&
+              view
+                .filter((i) => i.id !== '__ghost__')
+                .map((it) => {
+                  const dragging = drag?.id === it.id;
+                  const base = dragging ? drag!.orig : it;
+                  const p = px(base);
+                  const style = dragging
+                    ? drag!.mode === 'move'
+                      ? { ...p, left: p.left + drag!.dx, top: p.top + drag!.dy, zIndex: 20 }
+                      : {
+                          ...p,
+                          width: Math.max(colW * 2, p.width + drag!.dx),
+                          height: Math.max(DASH_ROW_HEIGHT * 2, p.height + drag!.dy),
+                          zIndex: 20,
+                        }
+                    : px(it);
+                  return (
                     <div
-                      className={styles.resize}
-                      onPointerDown={(e) => startDrag(e, it, 'resize')}
-                      title="끌어서 크기 바꾸기"
-                      aria-hidden
-                    />
-                  </div>
-                );
-              })}
+                      key={it.id}
+                      data-id={it.id}
+                      className={`${styles.item} ${dragging ? styles.itemDragging : ''}`}
+                      style={style}
+                      onPointerDown={() => setSelectedId(it.id)}
+                    >
+                      <WidgetFrame
+                        item={it}
+                        result={results[it.id]}
+                        loading={loading.has(it.id)}
+                        selected={selectedId === it.id}
+                        dragHandleProps={{
+                          onPointerDown: (e) => startDrag(e, it, 'move'),
+                          style: { cursor: dragging ? 'grabbing' : 'grab' },
+                          title: '끌어서 옮기기',
+                        }}
+                        actions={
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            aria-label="빼기"
+                            title="빼기"
+                            onClick={() => remove(it.id)}
+                          >
+                            <X size={14} />
+                          </button>
+                        }
+                      />
+                      <div
+                        className={styles.resize}
+                        onPointerDown={(e) => startDrag(e, it, 'resize')}
+                        title="끌어서 크기 바꾸기"
+                        aria-hidden
+                      />
+                    </div>
+                  );
+                })}
+          </div>
         </div>
       </div>
 
-      {/* 오른쪽: 고른 위젯 설정 */}
-      {selected && (
+      {/* 오른쪽: 고른 위젯 설정 — 늘 같은 자리(가운데 화면을 가리거나 좁히지 않게) */}
+      {selected ? (
         <Inspector
           key={selected.id}
           item={selected}
@@ -455,6 +517,15 @@ export function DashboardEditor({
           onDuplicate={() => duplicate(selected)}
           onClose={() => setSelectedId(null)}
         />
+      ) : (
+        <aside className={styles.inspector} aria-label="위젯 설정">
+          <div className={styles.paletteHead}>
+            <b>위젯 설정</b>
+          </div>
+          <div className={styles.inspectorEmpty}>
+            화면의 위젯을 누르면 제목·보기 방식·기간·크기를 여기서 바꿉니다.
+          </div>
+        </aside>
       )}
     </div>
   );

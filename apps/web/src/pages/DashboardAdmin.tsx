@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import { defaultDashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -7,13 +9,18 @@ import {
   Badge,
   Button,
   DataTable,
-  FormModal,
+  Input,
+  Modal,
   PageHeader,
+  SegmentedControl,
+  Select,
+  TableSkeleton,
   useToast,
   type Column,
-  type FormField,
   type Row,
 } from '../components/ui';
+import { LayoutThumb, type ThumbItem } from '../components/dashboard/builder/LayoutThumb';
+import styles from '../components/dashboard/builder/builder.module.css';
 
 export interface TemplateRow {
   id: string;
@@ -22,33 +29,72 @@ export interface TemplateRow {
   isDefault: boolean;
   allowPersonal: boolean;
   widgetCount: number;
+  preview: ThumbItem[];
   roles: { id: string; name: string }[];
   users: { id: string; name: string }[];
   updatedAt: string;
 }
 
+type View = 'card' | 'list';
+const VIEW_KEY = 'tongin_dash_admin_view';
+const readView = (): View => {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'card';
+  } catch {
+    return 'card';
+  }
+};
+
+/** 지정 대상 배지 */
+function Targets({ t }: { t: TemplateRow }) {
+  if (!t.roles.length && !t.users.length) {
+    return (
+      <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
+        {t.isDefault ? '지정 없는 모든 사람' : '지정 없음'}
+      </span>
+    );
+  }
+  return (
+    <>
+      {t.roles.map((x) => (
+        <Badge key={x.id} variant="subtle" color="info" size="sm">
+          {x.name}
+        </Badge>
+      ))}
+      {t.users.slice(0, 3).map((x) => (
+        <Badge key={x.id} variant="subtle" color="neutral" size="sm">
+          {x.name}
+        </Badge>
+      ))}
+      {t.users.length > 3 && (
+        <Badge variant="subtle" color="neutral" size="sm">
+          +{t.users.length - 3}명
+        </Badge>
+      )}
+    </>
+  );
+}
+
 /**
- * 대시보드 관리 — 템플릿을 만들고 권한 그룹·사용자에게 기본으로 지정한다.
- * 지정이 없는 사람에게는 '기본' 템플릿이, 그것도 없으면 권한에 맞춘 기본 구성이 보인다.
+ * 대시보드 관리 — 템플릿을 카드(기본)·목록으로 보고, 만들고, 권한 그룹·사용자에게 지정한다.
+ * 카드에는 실제 구성을 추상화한 그림이 보인다.
  */
 export default function DashboardAdmin() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { can } = useAuth();
-  const [rows, setRows] = useState<TemplateRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { can, user } = useAuth();
+  const [rows, setRows] = useState<TemplateRow[] | null>(null);
+  const [view, setView] = useState<View>(readView);
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       setRows(await api<TemplateRow[]>('/dashboards/templates'));
       touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
-    } finally {
-      setLoading(false);
+      setRows([]);
     }
   }, [toast, touch]);
 
@@ -56,27 +102,12 @@ export default function DashboardAdmin() {
     void load();
   }, [load]);
 
-  const onCreate = async (v: Record<string, unknown>) => {
+  const changeView = (v: View) => {
+    setView(v);
     try {
-      const from = rows.find((r) => r.id === v.copyFrom);
-      const layout = from
-        ? (await api<{ layout: unknown }>(`/dashboards/templates/${from.id}`)).layout
-        : v.start === 'blank'
-          ? { version: 1, items: [] }
-          : undefined;
-      const d = await api<{ id: string }>('/dashboards/templates', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: v.name,
-          description: v.description ?? '',
-          ...(layout ? { layout } : {}),
-          isDefault: rows.length === 0,
-        }),
-      });
-      navigate(`/dashboard-admin/${d.id}`);
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
-      throw e;
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // 저장이 막힌 브라우저 — 이번 화면에서만 바뀐다
     }
   };
 
@@ -94,30 +125,9 @@ export default function DashboardAdmin() {
     }
   };
 
-  const fields: FormField[] = useMemo(
-    () => [
-      { name: 'name', label: '이름', required: true, placeholder: '예: 지점장용 대시보드' },
-      { name: 'description', label: '설명', alwaysShow: true },
-      {
-        name: 'start',
-        label: '시작 구성',
-        type: 'select',
-        alwaysShow: true,
-        options: [
-          { value: 'default', label: '기본 구성으로 시작' },
-          { value: 'blank', label: '빈 화면에서 시작' },
-        ],
-      },
-      {
-        name: 'copyFrom',
-        label: '다른 템플릿 복사(고르면 시작 구성 대신)',
-        type: 'select',
-        alwaysShow: true,
-        options: rows.map((r) => ({ value: r.id, label: r.name })),
-      },
-    ],
-    [rows],
-  );
+  const canCreate = can('DASHBOARD.CREATE');
+  const canDelete = can('DASHBOARD.DELETE');
+  const canUpdate = can('DASHBOARD.UPDATE');
 
   const columns: Column[] = [
     {
@@ -125,49 +135,36 @@ export default function DashboardAdmin() {
       flex: 1,
       minWidth: 220,
       render: (r) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <b>{String(r.name)}</b>
-            {r.isDefault ? (
-              <Badge variant="subtle" color="primary" size="sm">
-                기본
-              </Badge>
-            ) : null}
-          </span>
-          {r.description ? (
-            <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
-              {String(r.description)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 64, height: 40, flexShrink: 0 }}>
+            <LayoutThumb items={(r as unknown as TemplateRow).preview} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <b>{String(r.name)}</b>
+              {r.isDefault ? (
+                <Badge variant="subtle" color="primary" size="sm">
+                  기본
+                </Badge>
+              ) : null}
             </span>
-          ) : null}
+            {r.description ? (
+              <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
+                {String(r.description)}
+              </span>
+            ) : null}
+          </div>
         </div>
       ),
     },
     {
       title: '지정 대상',
       flex: 1,
-      render: (r) => {
-        const t = r as unknown as TemplateRow;
-        if (!t.roles.length && !t.users.length)
-          return (
-            <span style={{ color: 'var(--ark-color-text-tertiary)' }}>
-              {t.isDefault ? '지정 없는 모든 사람' : '없음'}
-            </span>
-          );
-        return (
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {t.roles.map((x) => (
-              <Badge key={x.id} variant="subtle" color="info" size="sm">
-                {x.name}
-              </Badge>
-            ))}
-            {t.users.map((x) => (
-              <Badge key={x.id} variant="subtle" color="neutral" size="sm">
-                {x.name}
-              </Badge>
-            ))}
-          </div>
-        );
-      },
+      render: (r) => (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <Targets t={r as unknown as TemplateRow} />
+        </div>
+      ),
     },
     { title: '위젯', width: 70, render: (r) => `${Number(r.widgetCount)}개` },
     { title: '개인 수정', width: 90, render: (r) => (r.allowPersonal ? '허용' : '잠금') },
@@ -176,25 +173,32 @@ export default function DashboardAdmin() {
       width: 110,
       render: (r) => new Date(String(r.updatedAt)).toLocaleDateString('ko-KR'),
     },
-    ...(can('DASHBOARD.DELETE')
-      ? [
-          {
-            title: '',
-            width: 70,
-            render: (r: Row) => (
-              <span onClick={(e) => e.stopPropagation()}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void remove(r as unknown as TemplateRow)}
-                >
-                  삭제
-                </Button>
-              </span>
-            ),
-          },
-        ]
-      : []),
+    {
+      title: '',
+      width: 120,
+      render: (r: Row) => (
+        <span style={{ display: 'inline-flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+          {canUpdate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(`/dashboard-admin/${String(r.id)}/settings`)}
+            >
+              설정
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void remove(r as unknown as TemplateRow)}
+            >
+              삭제
+            </Button>
+          )}
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -204,28 +208,273 @@ export default function DashboardAdmin() {
         subtitle="대시보드 템플릿을 만들어 권한 그룹이나 사용자에게 기본으로 보여 줍니다. 사람마다 볼 수 없는 데이터의 위젯은 자동으로 빠집니다."
         onRefresh={load}
         updatedAt={updatedAt}
-      />
-      <DataTable
-        columns={columns}
-        rows={rows as unknown as Row[]}
-        loading={loading}
-        onRowClick={(r) => navigate(`/dashboard-admin/${String(r.id)}`)}
-        toolbarActions={
-          can('DASHBOARD.CREATE') ? (
-            <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-              + 새 템플릿
+        actions={
+          canCreate ? (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
+              onClick={() => setOpen(true)}
+            >
+              새 템플릿
             </Button>
           ) : undefined
         }
+        footer={
+          <SegmentedControl
+            value={view}
+            onChange={(v) => changeView(v as View)}
+            options={[
+              { value: 'card', label: '카드' },
+              { value: 'list', label: '목록' },
+            ]}
+          />
+        }
       />
-      <FormModal
-        open={open}
-        onOpenChange={setOpen}
-        title="새 대시보드 템플릿"
-        size="md"
-        fields={fields}
-        onSubmit={onCreate}
-      />
+
+      {rows === null ? (
+        <TableSkeleton rows={4} cols={4} />
+      ) : view === 'list' ? (
+        <DataTable
+          columns={columns}
+          rows={rows as unknown as Row[]}
+          onRowClick={(r) => navigate(`/dashboard-admin/${String(r.id)}`)}
+        />
+      ) : (
+        <div className={styles.cardGrid}>
+          {rows.map((t) => (
+            <article
+              key={t.id}
+              className={styles.tplCard}
+              onClick={() => navigate(`/dashboard-admin/${t.id}`)}
+              aria-label={t.name}
+            >
+              <div className={styles.tplPreview}>
+                <LayoutThumb items={t.preview} />
+              </div>
+              <div className={styles.tplBody}>
+                <span className={styles.tplName}>
+                  {t.name}
+                  {t.isDefault && (
+                    <Badge variant="subtle" color="primary" size="sm">
+                      기본
+                    </Badge>
+                  )}
+                  {!t.allowPersonal && (
+                    <Badge variant="subtle" color="neutral" size="sm">
+                      잠금
+                    </Badge>
+                  )}
+                </span>
+                <span className={styles.tplDesc}>{t.description || '설명 없음'}</span>
+                <div className={styles.tplTags}>
+                  <Targets t={t} />
+                </div>
+                <div className={styles.tplFoot} onClick={(e) => e.stopPropagation()}>
+                  위젯 {t.widgetCount}개 · {new Date(t.updatedAt).toLocaleDateString('ko-KR')}
+                  <span className={styles.spacer} />
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    title="위젯 편집"
+                    aria-label={`${t.name} 위젯 편집`}
+                    onClick={() => navigate(`/dashboard-admin/${t.id}`)}
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      title="이름·지정 설정"
+                      aria-label={`${t.name} 설정`}
+                      onClick={() => navigate(`/dashboard-admin/${t.id}/settings`)}
+                    >
+                      <Settings2 size={14} />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      title="삭제"
+                      aria-label={`${t.name} 삭제`}
+                      onClick={() => void remove(t)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+          {canCreate && (
+            <button type="button" className={styles.newCard} onClick={() => setOpen(true)}>
+              <Plus size={22} />새 템플릿 만들기
+            </button>
+          )}
+        </div>
+      )}
+
+      {open && (
+        <CreateModal
+          templates={rows ?? []}
+          permissions={user?.permissions ?? []}
+          isFirst={!rows?.length}
+          onClose={() => setOpen(false)}
+          onCreated={(id) => navigate(`/dashboard-admin/${id}`)}
+        />
+      )}
     </div>
+  );
+}
+
+type Start = 'blank' | 'default' | 'copy';
+
+/** 새 템플릿 — 이름 + 시작 구성(빈 화면 / 기본 구성 / 다른 템플릿 가져오기) */
+function CreateModal({
+  templates,
+  permissions,
+  isFirst,
+  onClose,
+  onCreated,
+}: {
+  templates: TemplateRow[];
+  permissions: string[];
+  isFirst: boolean;
+  onClose: () => void;
+  onCreated: (id: string) => void;
+}) {
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [start, setStart] = useState<Start>('default');
+  const [copyFrom, setCopyFrom] = useState<string>('');
+  const [busy, setBusy] = useState(false);
+  const defaultItems = useMemo(() => defaultDashLayout(permissions).items, [permissions]);
+  const picked = templates.find((t) => t.id === copyFrom);
+
+  const options: { key: Start; title: string; desc: string; items: ThumbItem[] }[] = [
+    { key: 'blank', title: '빈 화면에서 시작', desc: '위젯을 하나씩 직접 놓습니다', items: [] },
+    {
+      key: 'default',
+      title: '기본 구성',
+      desc: '자주 보는 지표로 미리 채웁니다',
+      items: defaultItems,
+    },
+    {
+      key: 'copy',
+      title: '다른 템플릿 가져오기',
+      desc: '있는 템플릿을 복사해 고칩니다',
+      items: picked?.preview ?? templates[0]?.preview ?? [],
+    },
+  ];
+
+  const create = async () => {
+    if (!name.trim()) {
+      toast({ type: 'warning', title: '이름을 입력해 주세요' });
+      return;
+    }
+    if (start === 'copy' && !copyFrom) {
+      toast({ type: 'warning', title: '가져올 템플릿을 골라 주세요' });
+      return;
+    }
+    setBusy(true);
+    try {
+      const layout =
+        start === 'copy'
+          ? (await api<{ layout: unknown }>(`/dashboards/templates/${copyFrom}`)).layout
+          : start === 'blank'
+            ? { version: 1, items: [] }
+            : undefined;
+      const d = await api<{ id: string }>('/dashboards/templates', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim(),
+          ...(layout ? { layout } : {}),
+          isDefault: isFirst,
+        }),
+      });
+      onCreated(d.id);
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="새 대시보드 템플릿"
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>
+            취소
+          </Button>
+          <Button variant="primary" loading={busy} onClick={() => void create()}>
+            만들고 위젯 놓기
+          </Button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className={styles.sizeRow} style={{ gap: 12 }}>
+          <Input
+            label="이름"
+            value={name}
+            maxLength={60}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="예: 지점장용 대시보드"
+          />
+          <Input
+            label="설명"
+            value={description}
+            maxLength={300}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="누가 무엇을 보는 대시보드인지"
+          />
+        </div>
+        <div className={styles.field}>
+          시작 구성
+          <div className={styles.startOpts} role="radiogroup" aria-label="시작 구성">
+            {options.map((o) => (
+              <button
+                key={o.key}
+                type="button"
+                role="radio"
+                aria-checked={start === o.key}
+                className={`${styles.startOpt} ${start === o.key ? styles.startOptOn : ''}`}
+                onClick={() => setStart(o.key)}
+                disabled={o.key === 'copy' && templates.length === 0}
+              >
+                <div className={styles.startOptThumb}>
+                  <LayoutThumb items={o.items} />
+                </div>
+                <b>{o.title}</b>
+                <span>
+                  {o.key === 'copy' && templates.length === 0 ? '아직 템플릿이 없습니다' : o.desc}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {start === 'copy' && (
+          <Select
+            label="가져올 템플릿"
+            value={copyFrom || undefined}
+            placeholder="템플릿 고르기"
+            onValueChange={setCopyFrom}
+            options={templates.map((t) => ({
+              value: t.id,
+              label: `${t.name} · 위젯 ${t.widgetCount}개`,
+            }))}
+          />
+        )}
+      </div>
+    </Modal>
   );
 }
