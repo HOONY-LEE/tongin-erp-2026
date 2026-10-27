@@ -1,0 +1,769 @@
+/* 대시보드 — 보기 격자 · 위젯 틀 · 편집기 */
+
+/* ── 위젯 틀 ── */
+.frame {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  overflow: hidden;
+}
+/* 고른 위젯 테두리 — 틀 안쪽에 겹쳐 그린다(바깥으로 삐져나가 가장자리에서 잘리지 않게, 내용에 가려지지 않게) */
+.selected {
+  position: relative;
+}
+.selected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border: 2px solid var(--ark-color-primary-500);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 10px 14px 4px;
+  user-select: none;
+}
+.title {
+  flex-shrink: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta {
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+  white-space: nowrap;
+}
+.spacer {
+  flex: 1;
+}
+/* 위젯 머리의 기간 표시 — 좁으면 제목보다 먼저 줄어든다 */
+.head .meta {
+  flex-shrink: 100;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.head .iconBtn {
+  width: 24px;
+  height: 24px;
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 14px 12px;
+}
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  font-size: 13px;
+  color: var(--ark-color-text-tertiary);
+  text-align: center;
+}
+.embed {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.embedBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px dashed var(--ark-color-border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--ark-color-bg-subtle);
+  user-select: none;
+}
+.embedBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ── 보기 격자 ── */
+.viewGrid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+}
+.cell {
+  min-width: 0;
+  min-height: 0;
+}
+@media (max-width: 900px) {
+  .viewGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* 좁은 화면: 숫자 카드는 두 개씩, 나머지는 한 줄 전체 */
+  .cell {
+    grid-column: span 2 !important;
+    grid-row: auto / span var(--h) !important;
+  }
+}
+.emptyBoard {
+  padding: 48px 16px;
+  border: 1px dashed var(--ark-color-border);
+  border-radius: 14px;
+  color: var(--ark-color-text-secondary);
+  text-align: center;
+}
+
+/* ── 편집기(전체 화면) — AppLayout과 같은 뼈대: 사이드바 240 · 상단 46 · 콘텐츠 여백 32/36/40 ── */
+.studio {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  padding-left: 240px;
+  background: var(--ark-color-bg, #f5f5f7);
+}
+.studioSide {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  border-right: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg-subtle, var(--ark-color-bg));
+}
+.studioSideHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 12px 0 8px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.studioBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 16px 0 20px;
+  border-bottom: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg);
+}
+.studioBar > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.studioBar > .crumbs {
+  flex-shrink: 1;
+  overflow: hidden;
+}
+@media (max-width: 1100px) {
+  .studioWidth {
+    display: none;
+  }
+}
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+  white-space: nowrap;
+}
+.crumbs button {
+  padding: 2px 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.crumbs button:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.crumbSep {
+  color: var(--ark-color-text-tertiary);
+}
+.crumbInput {
+  min-width: 120px;
+  max-width: 280px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-weight: 600;
+}
+.crumbInput:hover {
+  border-color: var(--ark-color-border);
+}
+.crumbInput:focus {
+  outline: none;
+  border-color: var(--ark-color-primary-500);
+}
+.studioMain {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* 스크롤바가 생기고 없어짐에 따라 폭이 흔들리지 않게 */
+  scrollbar-gutter: stable;
+}
+.studioInner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 36px 40px;
+}
+.studioHint {
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+/* 위젯 우클릭 설정 메뉴(화면 위에 뜸) */
+.ctxMenu {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  width: 264px;
+  max-height: min(560px, calc(100vh - 16px));
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  box-shadow:
+    0 10px 32px rgb(0 0 0 / 0.16),
+    0 2px 6px rgb(0 0 0 / 0.08);
+  overflow: hidden;
+}
+.ctxMenu .inspectorBody {
+  min-height: 0;
+  overflow-x: hidden;
+}
+.ctxMenu .meta {
+  white-space: normal;
+}
+.paletteHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 12px 4px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  color: var(--ark-color-text-tertiary);
+}
+.searchBox input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+}
+.paletteList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 12px;
+}
+.paletteGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+.paletteGroupTitle {
+  padding: 4px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ark-color-text-tertiary);
+}
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  cursor: grab;
+}
+.paletteItem:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.paletteItem:active {
+  cursor: grabbing;
+}
+.grip {
+  flex-shrink: 0;
+  color: var(--ark-color-text-tertiary);
+}
+.paletteText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.paletteName {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vizIcons {
+  display: flex;
+  gap: 4px;
+  color: var(--ark-color-text-tertiary);
+}
+.addBtn,
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.addBtn:hover,
+.iconBtn:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.iconBtnOn {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.paletteNote {
+  margin-top: 12px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+
+.zoomToggle {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-muted);
+}
+.zoomToggle button {
+  padding: 3px 10px;
+  white-space: nowrap;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.zoomToggle .zoomOn {
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+/* 실제 화면 크기를 줄여 담는 틀 */
+.canvasFrame {
+  position: relative;
+  border-radius: 4px;
+  outline: 1px dashed var(--ark-color-border);
+  outline-offset: 3px;
+}
+.canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  border-radius: 4px;
+  /* 격자 점 — 놓을 자리가 보이게 */
+  background-image: radial-gradient(circle, var(--ark-color-border) 1px, transparent 1.2px);
+  background-size: var(--col) var(--row);
+  background-position: -6px -6px;
+}
+.canvasActive {
+  background-color: color-mix(in srgb, var(--ark-color-primary-500) 3%, transparent);
+}
+.canvasEmpty {
+  position: absolute;
+  inset: 40px 0 auto;
+  text-align: center;
+  color: var(--ark-color-text-tertiary);
+  font-size: 14px;
+}
+.item {
+  position: absolute;
+  transition:
+    left 0.15s ease,
+    top 0.15s ease,
+    width 0.15s ease,
+    height 0.15s ease;
+}
+.itemDragging {
+  transition: none;
+  opacity: 0.92;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  border-radius: 8px;
+}
+.placeholder {
+  position: absolute;
+  border: 2px dashed var(--ark-color-primary-500);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 8%, transparent);
+  transition:
+    left 0.1s ease,
+    top 0.1s ease,
+    width 0.1s ease,
+    height 0.1s ease;
+}
+.resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  border-right: 2px solid var(--ark-color-text-tertiary);
+  border-bottom: 2px solid var(--ark-color-text-tertiary);
+  border-radius: 0 0 6px 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+/* 크기 손잡이는 올려 두거나 고른 위젯에만 */
+.item:hover .resize,
+.item:has(.selected) .resize {
+  opacity: 0.7;
+}
+.resize:hover {
+  opacity: 1 !important;
+}
+
+.inspectorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  overflow-y: auto;
+}
+.inspectorTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.input {
+  padding: 7px 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13.5px;
+}
+.input:focus {
+  outline: 2px solid color-mix(in srgb, var(--ark-color-primary-500) 40%, transparent);
+  border-color: var(--ark-color-primary-500);
+}
+textarea.input {
+  resize: vertical;
+}
+.vizGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.vizOpt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.vizOpt:hover {
+  border-color: var(--ark-color-primary-400, var(--ark-color-primary-500));
+}
+.vizOptOn {
+  border-color: var(--ark-color-primary-500);
+  background: color-mix(in srgb, var(--ark-color-primary-500) 8%, var(--ark-color-bg));
+  color: var(--ark-color-text);
+}
+.sizeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.sizeRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.inspectorActions {
+  display: flex;
+  gap: 6px;
+}
+.textBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.textBtn:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.danger {
+  color: var(--ark-color-error-600, #dc2626);
+}
+
+/* ── 템플릿 설정(2단계) ── */
+.settingsWrap {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .settingsWrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.settingsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+}
+.settingsPreview {
+  height: 150px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-subtle);
+}
+
+.checkList {
+  display: flex;
+  flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+}
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  color: var(--ark-color-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.checkRow:last-child {
+  border-bottom: none;
+}
+.checkRow:hover {
+  background: var(--ark-color-bg-subtle);
+}
+
+/* ── 구성 미리보기(추상 그림) ── */
+.thumb {
+  --thumb-ink: #2a78d6;
+  --thumb-soft: #b7d3f6;
+  --thumb-card: var(--ark-color-bg, #fff);
+  --thumb-line: var(--ark-color-border, #e5e5e5);
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+:global([data-theme='dark']) .thumb {
+  --thumb-ink: #3987e5;
+  --thumb-soft: #184f95;
+}
+
+/* ── 템플릿 카드 ── */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 16px;
+}
+.tplCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.tplCard:hover {
+  border-color: var(--ark-color-primary-400, var(--ark-color-primary-500));
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.07);
+}
+.tplPreview {
+  height: 170px;
+  padding: 14px 16px 0;
+  background: var(--ark-color-bg-subtle);
+  border-bottom: 1px solid var(--ark-color-border);
+  overflow: hidden;
+}
+.tplBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 14px;
+}
+.tplName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.tplDesc {
+  font-size: 12.5px;
+  color: var(--ark-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tplTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 22px;
+}
+.tplFoot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+.newCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 260px;
+  border: 1.5px dashed var(--ark-color-border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.newCard:hover {
+  border-color: var(--ark-color-primary-500);
+  color: var(--ark-color-primary-600, var(--ark-color-primary-500));
+}
+
+/* 새 템플릿 — 시작 구성 고르기 */
+.startOpts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .startOpts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.startOpt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1.5px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.startOpt:hover {
+  border-color: var(--ark-color-primary-400, var(--ark-color-primary-500));
+}
+.startOptOn {
+  border-color: var(--ark-color-primary-500);
+  background: color-mix(in srgb, var(--ark-color-primary-500) 6%, var(--ark-color-bg));
+}
+.startOptThumb {
+  height: 86px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+  overflow: hidden;
+}
+.startOpt b {
+  font-size: 13.5px;
+}
+.startOpt span {
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+}

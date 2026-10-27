@@ -6,6 +6,7 @@ import {
   Loader2,
   Sparkles,
   LayoutDashboard,
+  LayoutTemplate,
   Inbox,
   Banknote,
   LifeBuoy,
@@ -163,6 +164,12 @@ export default function AppLayout() {
         { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
         { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
         { to: '/agent-builder', label: t('nav.aiAgents'), icon: Workflow, perm: 'AI.MANAGE' },
+        {
+          to: '/dashboard-admin',
+          label: t('nav.dashboardAdmin'),
+          icon: LayoutTemplate,
+          perm: 'DASHBOARD.READ',
+        },
       ],
     },
     {

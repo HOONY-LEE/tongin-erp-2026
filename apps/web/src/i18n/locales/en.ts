@@ -43,6 +43,7 @@ export default {
     branches: 'Branches',
     accounts: 'Accounts & Access',
     aiAgents: 'Agent Builder',
+    dashboardAdmin: 'Dashboards',
     employees: 'Employees',
   },
   navGroup: {

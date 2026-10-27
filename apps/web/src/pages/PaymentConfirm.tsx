@@ -224,7 +224,7 @@ export default function PaymentConfirm() {
         onRefresh={load}
         updatedAt={updatedAt}
       />
-      <DataTable columns={columns} rows={rows} loading={loading} />
+      <DataTable columns={columns} rows={rows} rowKey="estimateId" loading={loading} />
     </div>
   );
 }

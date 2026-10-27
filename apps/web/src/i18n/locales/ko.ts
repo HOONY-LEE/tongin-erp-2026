@@ -43,6 +43,7 @@ export default {
     branches: '지점관리',
     accounts: '계정·권한',
     aiAgents: 'Agent Builder',
+    dashboardAdmin: '대시보드 관리',
     employees: '직원',
   },
   navGroup: {
