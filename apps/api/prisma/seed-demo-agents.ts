@@ -308,6 +308,8 @@ async function main() {
       status: b.status,
       graph: b.graph as object,
       prompt: b.prompt,
+      // 시연 에이전트는 모든 직원이 AI 에이전트 화면에서 불러 볼 수 있게 전체 공개
+      visibility: 'PUBLIC',
       createdBy: admin?.id ?? null,
     };
     await prisma.agentBlueprint.upsert({ where: { id }, update: data, create: { id, ...data } });

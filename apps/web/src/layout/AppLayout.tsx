@@ -162,7 +162,7 @@ export default function AppLayout() {
         },
         { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
         { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
-        { to: '/ai-agents', label: t('nav.aiAgents'), icon: Workflow, perm: 'AI.MANAGE' },
+        { to: '/agent-builder', label: t('nav.aiAgents'), icon: Workflow, perm: 'AI.MANAGE' },
       ],
     },
     {
@@ -197,7 +197,7 @@ export default function AppLayout() {
   const allItems = visibleGroups.flatMap((g) => g.items);
 
   /** 이 메뉴가 현재 경로를 담당하는가 — 자기 경로이거나, owns에 등록된 하위 화면이거나. */
-  // '/ai'가 '/ai-agents'까지 잡지 않게 — 같은 경로이거나 그 아래 경로만
+  // '/ai'가 '/ai-xxx' 같은 다른 경로까지 잡지 않게 — 같은 경로이거나 그 아래 경로만
   const under = (base: string) => pathname === base || pathname.startsWith(`${base}/`);
   const ownsPath = (i: NavItem) => under(i.to) || (i.owns ?? []).some((o) => under(o));
   const isActive = (to: string) => {

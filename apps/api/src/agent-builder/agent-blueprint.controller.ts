@@ -11,6 +11,8 @@ import {
   Post,
 } from '@nestjs/common';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsObject,
@@ -20,7 +22,12 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { normalizeAgentGraph, type AuthPrincipal } from '@tongin/shared';
+import {
+  AGENT_VISIBILITIES,
+  normalizeAgentGraph,
+  type AgentVisibility,
+  type AuthPrincipal,
+} from '@tongin/shared';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AgentBlueprintService } from './agent-blueprint.service';
@@ -51,6 +58,18 @@ class BlueprintDto {
   @IsString()
   @MaxLength(4000)
   prompt?: string;
+
+  /** 개인용 · 전체 공개 · 부분 공유 */
+  @IsOptional()
+  @IsIn(AGENT_VISIBILITIES)
+  visibility?: AgentVisibility;
+
+  /** 부분 공유 대상 직원 */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(500)
+  @IsUUID('all', { each: true })
+  shareEmployeeIds?: string[];
 }
 
 class GenerateDto {
@@ -135,7 +154,7 @@ export class AgentBlueprintController {
     const current = dto.graph
       ? normalizeAgentGraph(dto.graph)
       : dto.blueprintId
-        ? (await this.blueprints.get(dto.blueprintId)).graph
+        ? (await this.blueprints.get(dto.blueprintId, user)).graph
         : null;
     return this.generator.generate(
       dto.prompt.trim(),
@@ -144,40 +163,50 @@ export class AgentBlueprintController {
     );
   }
 
+  /** 부분 공유로 고를 수 있는 직원(로그인 계정이 있는 재직 직원) */
+  @Get('share-candidates')
+  shareCandidates() {
+    return this.blueprints.shareCandidates();
+  }
+
   @Get()
-  list() {
-    return this.blueprints.list();
+  list(@CurrentUser() user: AuthPrincipal) {
+    return this.blueprints.list(user);
   }
 
   @Post()
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: BlueprintDto) {
-    return this.blueprints.create(dto, user.userId);
+    return this.blueprints.create(dto, user);
   }
 
   @Get(':id')
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.blueprints.get(id);
+  get(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.blueprints.get(id, user);
   }
 
   @Patch(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: BlueprintDto) {
-    return this.blueprints.update(id, dto);
+  update(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: BlueprintDto,
+  ) {
+    return this.blueprints.update(id, dto, user);
   }
 
   @Post(':id/duplicate')
   duplicate(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
-    return this.blueprints.duplicate(id, user.userId);
+    return this.blueprints.duplicate(id, user);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.blueprints.remove(id);
+  remove(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.blueprints.remove(id, user);
   }
 
   @Get(':id/runs')
-  runs(@Param('id', ParseUUIDPipe) id: string) {
-    return this.blueprints.runs(id);
+  runs(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.blueprints.runs(id, user);
   }
 
   @Post(':id/run')
@@ -207,8 +236,8 @@ export class AgentRunController {
   constructor(private readonly runner: AgentRunnerService) {}
 
   @Get(':id')
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.runner.view(id);
+  get(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.runner.view(id, user);
   }
 
   @Post(':id/decision')
@@ -219,5 +248,72 @@ export class AgentRunController {
     @Body() dto: DecisionDto,
   ) {
     return this.runner.decide(id, dto.approve, { principal: user, authorization });
+  }
+}
+
+class CallDto {
+  @IsOptional()
+  @IsObject()
+  input?: Record<string, unknown>;
+
+  /** true면 쓰기 도구는 실행하지 않고 기록만(시험 실행) */
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
+}
+
+/**
+ * AI 에이전트 화면에서 만들어 둔 에이전트 부르기 — AI 비서를 쓸 수 있으면(AI.USE) 누구나.
+ * 사용중(ACTIVE)이고 내가 볼 수 있는(내 것·전체 공개·나에게 공유된) 에이전트만 부른다.
+ * 도구는 부르는 사람 본인 권한으로 실행되고, 데이터를 바꾸는 도구는 승인을 거친다.
+ */
+@Controller('agents')
+@RequirePermissions('AI.USE')
+export class AgentCallController {
+  constructor(
+    private readonly blueprints: AgentBlueprintService,
+    private readonly runner: AgentRunnerService,
+  ) {}
+
+  @Get()
+  callable(@CurrentUser() user: AuthPrincipal) {
+    return this.blueprints.callable(user);
+  }
+
+  @Get('runs/:runId')
+  view(@CurrentUser() user: AuthPrincipal, @Param('runId', ParseUUIDPipe) runId: string) {
+    return this.runner.view(runId, user);
+  }
+
+  @Post('runs/:runId/decision')
+  decide(
+    @CurrentUser() user: AuthPrincipal,
+    @Headers('authorization') authorization: string,
+    @Param('runId', ParseUUIDPipe) runId: string,
+    @Body() dto: DecisionDto,
+  ) {
+    return this.runner.decide(runId, dto.approve, { principal: user, authorization });
+  }
+
+  /** 이 에이전트를 내가 실행한 기록(최근 20개) */
+  @Get(':id/runs')
+  async runs(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    await this.blueprints.assertCallable(id, user);
+    return this.blueprints.myRuns(id, user);
+  }
+
+  @Post(':id/run')
+  async run(
+    @CurrentUser() user: AuthPrincipal,
+    @Headers('authorization') authorization: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CallDto,
+  ) {
+    await this.blueprints.assertCallable(id, user);
+    return this.runner.start(
+      id,
+      { input: dto.input ?? {}, dryRun: dto.dryRun ?? false, mockLlm: false },
+      { principal: user, authorization },
+    );
   }
 }

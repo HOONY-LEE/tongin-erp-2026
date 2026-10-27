@@ -30,6 +30,7 @@ import Support from './pages/Support';
 import AiAssistant from './pages/AiAssistant';
 import AgentBlueprints from './pages/AgentBlueprints';
 import AgentBuilder from './pages/AgentBuilder';
+import AgentCreate from './pages/AgentCreate';
 import CampaignEditor from './pages/CampaignEditor';
 import OrgUnits from './pages/OrgUnits';
 import ProductMgmt from './pages/ProductMgmt';
@@ -111,8 +112,11 @@ function Shell() {
         <Route path="/payments-confirm" element={<PaymentConfirm />} />
         <Route path="/branches" element={<Branches />} />
         <Route path="/accounts" element={<Accounts />} />
-        <Route path="/ai-agents" element={<AgentBlueprints />} />
-        <Route path="/ai-agents/:id" element={<AgentBuilder />} />
+        <Route path="/agent-builder" element={<AgentBlueprints />} />
+        <Route path="/agent-builder/new" element={<AgentCreate />} />
+        <Route path="/agent-builder/:id" element={<AgentBuilder />} />
+        {/* 예전 주소(AI 에이전트 관리) */}
+        <Route path="/ai-agents/*" element={<Navigate to="/agent-builder" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>

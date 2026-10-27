@@ -75,6 +75,7 @@ model Employee {
   estimatorEstimates Estimate[]
   assignments        WorkAssignment[]
   campaignRecipients CampaignRecipient[]
+  agentShares        AgentBlueprintShare[]
 
   @@map("employee")
 }
@@ -1096,13 +1097,29 @@ model AgentBlueprint {
   graph       Json       @default("{\"version\":1,\"nodes\":[],\"edges\":[]}")
   // 마지막으로 그래프를 만들거나 고친 자연어 요청(없으면 직접 만든 것)
   prompt      String?
+  // 공개 범위: PRIVATE(만든 사람만) | PUBLIC(전체 공개) | SHARED(고른 직원에게만)
+  visibility  String     @default("PRIVATE")
   createdBy   String?    @map("created_by") @db.Uuid
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
   runs        AgentRun[]
+  shares      AgentBlueprintShare[]
 
   @@index([updatedAt])
   @@map("agent_blueprint")
+}
+
+/// 부분 공유한 에이전트를 쓸 수 있는 직원
+model AgentBlueprintShare {
+  blueprintId String         @map("blueprint_id") @db.Uuid
+  blueprint   AgentBlueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  employeeId  String         @map("employee_id") @db.Uuid
+  employee    Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([blueprintId, employeeId])
+  @@index([employeeId])
+  @@map("agent_blueprint_share")
 }
 
 /// 블루프린트 테스트 실행 기록 — 노드별 단계 추적(trace)과 승인 대기 시 이어 갈 상태(state)

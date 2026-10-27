@@ -8,10 +8,11 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowUp,
+  Bot,
   FileText,
   Paperclip,
   Pencil,
@@ -26,6 +27,8 @@ import { pokeAiActivity, reportAiRows } from '../lib/aiActivity';
 import { Button, useToast } from '../components/ui';
 import { Markdown } from '../components/ai/Markdown';
 import { ApprovalCard, CodeRow, FileCard, ToolRow } from '../components/ai/ChatParts';
+import { AgentCallPanel, type CallableAgent } from '../components/ai/AgentCallPanel';
+import { useAuth } from '../auth/AuthContext';
 import type {
   AiStatus,
   AiToolInfo,
@@ -102,6 +105,11 @@ export default function AiAssistant() {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const activeId = params.get('c');
+  /** Agent Builder로 만든 에이전트를 부르는 중이면 그 id(대화 대신 실행 화면을 보여 준다) */
+  const agentId = params.get('agent');
+  const { can } = useAuth();
+  const [agents, setAgents] = useState<CallableAgent[] | null>(null);
+  const activeAgent = agents?.find((a) => a.id === agentId) ?? null;
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [tools, setTools] = useState<Map<string, AiToolInfo>>(new Map());
   const [rows, setRows] = useState<ConversationRow[]>([]);
@@ -191,6 +199,17 @@ export default function AiAssistant() {
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_PX)}px`;
   }, [draft]);
+
+  // 부를 수 있는 에이전트 — 사용중이고 내 것·전체 공개·나에게 공유된 것
+  useEffect(() => {
+    api<CallableAgent[]>('/agents')
+      .then(setAgents)
+      .catch(() => setAgents([]));
+  }, []);
+  const openAgent = (id: string) => {
+    setEcho(null);
+    setParams({ agent: id });
+  };
 
   const select = (id: string | null) => {
     setEcho(null);
@@ -466,6 +485,38 @@ export default function AiAssistant() {
         <button type="button" className={styles.newChat} onClick={() => select(null)}>
           <SquarePen size={16} /> 새 채팅
         </button>
+        <div className={styles.sideLabel}>
+          에이전트
+          {can('AI.MANAGE') && (
+            <Link className={styles.sideLink} to="/agent-builder/new">
+              + 만들기
+            </Link>
+          )}
+        </div>
+        <nav className={styles.agentList} aria-label="에이전트">
+          {agents === null ? (
+            <div className={styles.sideEmpty}>불러오는 중…</div>
+          ) : agents.length === 0 ? (
+            <div className={styles.sideEmpty}>쓸 수 있는 에이전트가 없습니다</div>
+          ) : (
+            agents.map((a) => (
+              <div
+                key={a.id}
+                className={[styles.convRow, a.id === agentId ? styles.convActive : ''].join(' ')}
+              >
+                <button
+                  type="button"
+                  className={styles.convBtn}
+                  onClick={() => openAgent(a.id)}
+                  title={a.description || a.name}
+                >
+                  <Bot size={14} className={styles.agentIcon} aria-hidden />
+                  <span className={styles.convTitle}>{a.name}</span>
+                </button>
+              </div>
+            ))
+          )}
+        </nav>
         <div className={styles.sideLabel}>최근</div>
         <nav className={styles.convList}>
           {!listLoaded ? (
@@ -538,16 +589,31 @@ export default function AiAssistant() {
         <div className={styles.mobileBar}>
           <select
             className={styles.mobileSelect}
-            value={activeId ?? ''}
-            onChange={(e) => select(e.target.value || null)}
-            aria-label="최근 대화"
+            value={agentId ? `agent:${agentId}` : (activeId ?? '')}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v.startsWith('agent:')) openAgent(v.slice(6));
+              else select(v || null);
+            }}
+            aria-label="최근 대화·에이전트"
           >
             <option value="">새 채팅</option>
-            {rows.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.title}
-              </option>
-            ))}
+            {!!agents?.length && (
+              <optgroup label="에이전트">
+                {agents.map((a) => (
+                  <option key={a.id} value={`agent:${a.id}`}>
+                    {a.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="최근 대화">
+              {rows.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.title}
+                </option>
+              ))}
+            </optgroup>
           </select>
           <button
             type="button"
@@ -568,7 +634,23 @@ export default function AiAssistant() {
           </div>
         )}
 
-        {convLoading ? (
+        {agentId ? (
+          activeAgent ? (
+            <AgentCallPanel agent={activeAgent} onClose={() => select(null)} />
+          ) : (
+            <div className={styles.welcome} role="status">
+              <div className={styles.working}>
+                {agents === null ? (
+                  <>
+                    <span className={styles.spark} aria-hidden /> 에이전트를 불러오는 중…
+                  </>
+                ) : (
+                  '이 에이전트를 쓸 수 없습니다 — 사용중이 아니거나 공유가 해제되었습니다.'
+                )}
+              </div>
+            </div>
+          )
+        ) : convLoading ? (
           <div className={styles.welcome} role="status">
             <div className={styles.working}>
               <span className={styles.spark} aria-hidden />
