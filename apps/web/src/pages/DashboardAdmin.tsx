@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import { defaultDashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
+import { openDashboardEditor, useDashEditorMessages } from '../lib/dashboardWindow';
 import { useAuth } from '../auth/AuthContext';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -101,6 +102,16 @@ export default function DashboardAdmin() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 위젯 배치는 새 창(전체 화면)에서 — 거기서 저장하면 목록을 새로 불러오고, '저장하고 다음'이면 설정으로
+  const editLayout = (id: string) => {
+    const path = `/dashboard-admin/${id}`;
+    if (!openDashboardEditor(path, id)) navigate(path);
+  };
+  useDashEditorMessages((m) => {
+    if (m.type === 'next') navigate(`/dashboard-admin/${m.id}/settings`);
+    if (m.type === 'next' || (m.type === 'saved' && m.scope === 'template')) void load();
+  });
 
   const changeView = (v: View) => {
     setView(v);
@@ -238,7 +249,7 @@ export default function DashboardAdmin() {
         <DataTable
           columns={columns}
           rows={rows as unknown as Row[]}
-          onRowClick={(r) => navigate(`/dashboard-admin/${String(r.id)}`)}
+          onRowClick={(r) => editLayout(String(r.id))}
         />
       ) : (
         <div className={styles.cardGrid}>
@@ -246,7 +257,7 @@ export default function DashboardAdmin() {
             <article
               key={t.id}
               className={styles.tplCard}
-              onClick={() => navigate(`/dashboard-admin/${t.id}`)}
+              onClick={() => editLayout(t.id)}
               aria-label={t.name}
             >
               <div className={styles.tplPreview}>
@@ -278,7 +289,7 @@ export default function DashboardAdmin() {
                     className={styles.iconBtn}
                     title="위젯 편집"
                     aria-label={`${t.name} 위젯 편집`}
-                    onClick={() => navigate(`/dashboard-admin/${t.id}`)}
+                    onClick={() => editLayout(t.id)}
                   >
                     <Pencil size={14} />
                   </button>
@@ -322,7 +333,7 @@ export default function DashboardAdmin() {
           permissions={user?.permissions ?? []}
           isFirst={!rows?.length}
           onClose={() => setOpen(false)}
-          onCreated={(id) => navigate(`/dashboard-admin/${id}`)}
+          onCreated={(id) => editLayout(id)}
         />
       )}
     </div>

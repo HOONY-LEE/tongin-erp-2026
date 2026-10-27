@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LayoutTemplate, Pencil, RotateCcw } from 'lucide-react';
 import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
+import { openDashboardEditor, useDashEditorMessages } from '../lib/dashboardWindow';
 import { useAuth } from '../auth/AuthContext';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
@@ -53,6 +54,11 @@ export default function Dashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 편집 창에서 저장하면 바로 반영
+  useDashEditorMessages((m) => {
+    if (m.type === 'saved' && m.scope === 'mine') void load();
+  });
 
   const reset = async () => {
     if (!window.confirm('내가 꾸민 대시보드를 지우고 기본으로 되돌릴까요?')) return;
@@ -106,7 +112,9 @@ export default function Dashboard() {
                   variant="outline"
                   size="sm"
                   leftIcon={<Pencil size={14} />}
-                  onClick={() => navigate('/dashboard/edit')}
+                  onClick={() =>
+                    openDashboardEditor('/dashboard/edit', 'mine') || navigate('/dashboard/edit')
+                  }
                 >
                   편집
                 </Button>

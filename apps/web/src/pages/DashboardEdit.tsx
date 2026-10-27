@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
+import { leaveDashboardEditor, postDashEditorMessage } from '../lib/dashboardWindow';
 import { useAuth } from '../auth/AuthContext';
 import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import styles from '../components/dashboard/builder/builder.module.css';
@@ -44,7 +45,8 @@ export default function DashboardEdit() {
       await api('/dashboards/me', { method: 'PUT', body: JSON.stringify({ layout }) });
       toast({ type: 'success', title: '내 대시보드를 저장했습니다' });
       setDirty(false);
-      navigate('/dashboard');
+      postDashEditorMessage({ type: 'saved', scope: 'mine' });
+      leaveDashboardEditor(() => navigate('/dashboard'));
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
     } finally {
@@ -53,7 +55,8 @@ export default function DashboardEdit() {
   };
 
   const leave = () =>
-    (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) && navigate('/dashboard');
+    (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) &&
+    leaveDashboardEditor(() => navigate('/dashboard'));
 
   if (!me || !layout) return <PageSkeleton cards={2} />;
   return (
