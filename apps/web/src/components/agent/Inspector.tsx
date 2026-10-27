@@ -9,6 +9,8 @@ import {
   GUARDRAIL_KINDS,
   GUARDRAIL_LABEL,
   TRIGGER_EVENTS,
+  TRIGGER_EVENT_FIELDS,
+  TRIGGER_EVENT_LABEL,
   TRIGGER_KINDS,
   TRIGGER_KIND_LABEL,
   type AgentIssue,
@@ -246,13 +248,14 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
           >
             {TRIGGER_EVENTS.map((e) => (
               <option key={e} value={e}>
-                {e}
+                {TRIGGER_EVENT_LABEL[e]} ({e})
               </option>
             ))}
           </select>
-          <small className={styles.warnNote}>
-            업무 이벤트로 자동 시작하는 기능은 아직 연결 전입니다. 지금은 직접 실행하거나 정해진
-            시간 실행을 써 주세요.
+          <small>
+            '사용중'으로 바꾸면 이 일이 생길 때마다 만든 사람 권한으로 자동 실행됩니다. 받는 값:{' '}
+            {'{{input.event.…}}'} —{' '}
+            {TRIGGER_EVENT_FIELDS[c.event as keyof typeof TRIGGER_EVENT_FIELDS] ?? 'id, type'}
           </small>
         </Label>
       )}

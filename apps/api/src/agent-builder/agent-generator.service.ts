@@ -10,6 +10,8 @@ import {
   GUARDRAIL_KINDS,
   GUARDRAIL_LABEL,
   TRIGGER_EVENTS,
+  TRIGGER_EVENT_FIELDS,
+  TRIGGER_EVENT_LABEL,
   TRIGGER_KINDS,
   autoLayout,
   defaultConfig,
@@ -190,7 +192,7 @@ const DESIGN_GUIDE = `당신은 통인익스프레스(이사·리빙케어 회�
 ## 확인할 것(이미 말했거나 상식으로 정할 수 있으면 묻지 않음)
 - 무엇을(대상 데이터·조건): 어떤 접수·고객·계약·작업을, 어떤 기간·지점·상태로
 - 무엇을 하나: 조회·요약·문자 발송·담당자 배정·파일 만들기 등
-- 언제 시작하나: 필요할 때 직접 실행 / AI 비서 대화에서 / 정해진 시간(예: 매주 월요일 9시). 업무가 생길 때(새 접수 등) 자동 시작은 아직 안 되므로 그런 요청이면 정해진 시간마다 새 건을 확인하는 방식으로 제안합니다.
+- 언제 시작하나: 필요할 때 직접 실행 / AI 비서 대화에서 / 정해진 시간(예: 매주 월요일 9시) / 업무가 생기면 바로(새 접수, 계약 서명, 입금 확인, 작업 완료, 새 CS 티켓 등)
 - 결과물: 화면 요약인지, 파일(엑셀·PDF)인지, 문자인지
 - 안전 장치: 데이터를 바꾸거나 문자를 보내면 사람 승인은 기본으로 넣는다(묻지 말고 알려만 준다). 발송 인원 한도 등은 필요할 때만 묻는다.
 
@@ -234,9 +236,11 @@ ${GUARDRAIL_KINDS.map((k) => `- ${k}: ${GUARDRAIL_LABEL[k]}`).join('\n')}
 값: maxSteps·maxLlmCalls·maxRecipients → value, allowTools·blockTools·recipientAllowlist → list, timeWindow → startHour·endHour(0~24)·weekdays(0=일~6=토). 안 쓰는 칸은 0 또는 [].
 
 ## 시작(trigger)
-kind: manual(수동) | chat(AI 비서 대화에서 호출) | schedule(cron "분 시 일 월 요일", 한국 시간) | event(업무 이벤트: ${TRIGGER_EVENTS.join(', ')}).
+kind: manual(수동) | chat(AI 비서 대화에서 호출) | schedule(cron "분 시 일 월 요일", 한국 시간) | event(업무 이벤트가 생기면 자동 시작).
+event 이름과 들어오는 값({{input.event.필드}}):
+${TRIGGER_EVENTS.map((e) => `- ${e}: ${TRIGGER_EVENT_LABEL[e]} — ${TRIGGER_EVENT_FIELDS[e]}`).join('\n')}
+이벤트로 시작하면 보통 input.event.id로 해당 건을 조회하는 도구 노드를 먼저 둡니다.
 필요한 입력값은 inputFields로 정의합니다(예: 기간, 지점 id).
-event 자동 시작은 아직 연결 전이라 쓰지 않습니다 — "새 접수가 오면" 같은 요청은 schedule(예: 30분마다)로 새 건을 확인하게 설계합니다.
 
 ## 설계 원칙
 - 도구는 아래 목록에 있는 이름만 그대로 씁니다. 지어내지 마세요. 필수 인자(*)는 반드시 채웁니다.

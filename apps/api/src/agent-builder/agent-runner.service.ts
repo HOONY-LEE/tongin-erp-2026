@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { AsyncLocalStorage } from 'async_hooks';
 import type Anthropic from '@anthropic-ai/sdk';
 import {
   AGENT_DEFAULT_MODEL,
@@ -38,6 +39,9 @@ import {
   supportsFallback,
   textOf,
 } from './agent-claude';
+
+/** 지금 돌고 있는 에이전트 실행 사슬(이벤트로 시작한 실행이 또 이벤트를 내는 경우) */
+export const agentRunContext = new AsyncLocalStorage<{ chain: string[] }>();
 
 /** 가드레일이 없어도 넘지 않는 한도(무한 실행 방지) */
 const HARD_MAX_STEPS = 300;
@@ -296,7 +300,13 @@ export class AgentRunnerService {
     });
   }
 
-  private async drive(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
+  /** 실행 중에 생긴 업무 이벤트가 같은 에이전트를 다시 깨우지 않게 실행 사슬을 기억한다 */
+  private drive(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
+    const chain = [...(agentRunContext.getStore()?.chain ?? []), ctx.blueprintId ?? runId];
+    return agentRunContext.run({ chain }, () => this.driveSteps(runId, state, trace, ctx));
+  }
+
+  private async driveSteps(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
     const byId = new Map(state.graph.nodes.map((n) => [n.id, n]));
     try {
       while (state.next || state.loops.length) {

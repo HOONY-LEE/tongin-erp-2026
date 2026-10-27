@@ -12,6 +12,7 @@ import {
 import {
   AGENT_MODELS,
   GUARDRAIL_LABEL,
+  TRIGGER_EVENT_LABEL,
   TRIGGER_KIND_LABEL,
   type AgentNode,
   type AgentNodeType,
@@ -74,7 +75,12 @@ export function nodeSummary(
   switch (node.type) {
     case 'trigger': {
       const c = node.config as TriggerConfig;
-      const extra = c.kind === 'schedule' ? c.cron : c.kind === 'event' ? c.event : '';
+      const extra =
+        c.kind === 'schedule'
+          ? c.cron
+          : c.kind === 'event'
+            ? (TRIGGER_EVENT_LABEL[c.event as keyof typeof TRIGGER_EVENT_LABEL] ?? c.event)
+            : '';
       return {
         lines: [
           `${TRIGGER_KIND_LABEL[c.kind]}${extra ? ` · ${extra}` : ''}`,
