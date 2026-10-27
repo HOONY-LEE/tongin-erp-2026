@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
 
 export class CreateEmployeeDto {
   @IsUUID()
@@ -18,10 +18,11 @@ export class CreateEmployeeDto {
   @MaxLength(30)
   phone?: string;
 
+  /** 직책·직급(권한과 별개) — 비우려면 null */
   @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  position?: string;
+  @ValidateIf((_, v) => v !== null)
+  @IsUUID()
+  positionId?: string | null;
 
   @IsOptional()
   @IsBoolean()

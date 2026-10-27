@@ -16,8 +16,16 @@ export interface Principal {
   employeeOrgUnitId?: string | null;
   /** 외부 전속/제휴 소속 (있으면 현장 화면으로 진입) */
   partnerId: string | null;
+  /** 직책·직급(표시용) */
+  positionName?: string | null;
   permissions: string[];
-  scopes: { roleCode: string; dataScope: 'OWN' | 'ORG' | 'ALL'; orgScopeId: string | null }[];
+  scopes: {
+    roleCode: string;
+    dataScope: 'OWN' | 'ORG' | 'ALL';
+    orgScopeId: string | null;
+    /** 이 권한 그룹은 현장앱으로 들어간다 */
+    fieldApp?: boolean;
+  }[];
 }
 
 /**
@@ -27,7 +35,10 @@ export interface Principal {
 export function isFieldUser(user: Principal | null): boolean {
   if (!user) return false;
   if (user.partnerId) return true;
-  return user.scopes.some((s) => FIELD_ROLES.includes(s.roleCode));
+  // 권한 그룹이 여럿이면 ERP 그룹이 하나라도 있을 때 ERP로 들어간다(현장 전용 그룹만 있을 때 현장앱)
+  const isField = (s: Principal['scopes'][number]) =>
+    s.fieldApp ?? FIELD_ROLES.includes(s.roleCode);
+  return user.scopes.length > 0 && user.scopes.every(isField);
 }
 
 interface AuthCtx {

@@ -22,13 +22,13 @@ export class WorkOrderController {
   }
 
   @Post()
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateWorkOrderDto) {
     return this.workOrderService.create(dto, user);
   }
 
   @Post(':id/assignments')
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.UPDATE')
   addAssignment(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -38,13 +38,13 @@ export class WorkOrderController {
   }
 
   @Post(':id/start')
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.UPDATE')
   start(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.workOrderService.start(id, user);
   }
 
   @Post(':id/complete')
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.UPDATE')
   complete(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.workOrderService.complete(id, user);
   }

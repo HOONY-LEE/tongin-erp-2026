@@ -23,7 +23,7 @@ export class PaymentConfirmationController {
   }
 
   @Post(':estimateId/deposit')
-  @RequirePermissions('PAYMENT.WRITE')
+  @RequirePermissions('PAYMENT.UPDATE')
   confirmDeposit(
     @CurrentUser() user: AuthPrincipal,
     @Param('estimateId', ParseUUIDPipe) estimateId: string,
@@ -33,7 +33,7 @@ export class PaymentConfirmationController {
   }
 
   @Post(':estimateId/balance')
-  @RequirePermissions('PAYMENT.WRITE')
+  @RequirePermissions('PAYMENT.UPDATE')
   confirmBalance(
     @CurrentUser() user: AuthPrincipal,
     @Param('estimateId', ParseUUIDPipe) estimateId: string,

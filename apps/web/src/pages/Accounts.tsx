@@ -1,175 +1,62 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { useOptions } from '../lib/useOptions';
+import { PageHeader, SegmentedControl } from '../components/ui';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
-import {
-  Badge,
-  Button,
-  DataTable,
-  FormModal,
-  PageHeader,
-  useToast,
-  type Column,
-  type FormField,
-  type Row,
-} from '../components/ui';
+import AccountList from './access/AccountList';
+import PermissionGroups from './access/PermissionGroups';
+import Positions from './access/Positions';
 
-interface RoleRow {
-  id: string;
-  code: string;
-  name: string;
-}
-interface AccountRole {
-  roleName: string;
-  dataScope: string;
-  orgScope: string | null;
-}
+type Tab = 'accounts' | 'groups' | 'positions';
 
-const SCOPE_LABEL: Record<string, string> = { OWN: '본인', ORG: '조직', ALL: '전체' };
-
+/**
+ * 계정·권한
+ * - 계정: 누가 어떤 권한 그룹을 어느 데이터 범위로 갖는지
+ * - 권한 그룹: 메뉴마다 조회·등록·수정·삭제·특수 권한 묶음
+ * - 직책: 회장·대표·이사·부장… (표시·인사용, 권한과 별개)
+ */
 export default function Accounts() {
-  const { user } = useAuth();
   const { t } = useTranslation();
-  const toast = useToast();
-  const [rows, setRows] = useState<Row[]>([]);
-  const [roles, setRoles] = useState<RoleRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const orgs = useOptions('/org-units', 'name');
+  const { can } = useAuth();
+  const [refreshKey, setRefreshKey] = useState(0);
   const { updatedAt, touch } = useUpdatedAt();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [accs, rls] = await Promise.all([
-        api<Row[]>('/accounts'),
-        api<RoleRow[]>('/accounts/roles'),
-      ]);
-      setRows(accs);
-      setRoles(rls);
-      touch();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const onCreate = async (values: Record<string, unknown>) => {
-    try {
-      await api('/accounts', { method: 'POST', body: JSON.stringify(values) });
-      toast({ type: 'success', title: t('common.created') });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
-
-  const toggleActive = async (r: Row) => {
-    try {
-      await api(`/accounts/${String(r.id)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ isActive: !r.isActive }),
-      });
-      toast({ type: 'success', title: r.isActive ? '비활성화되었습니다' : '활성화되었습니다' });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-    }
-  };
-
-  const fields: FormField[] = useMemo(
-    () => [
-      { name: 'loginId', label: '아이디', required: true, placeholder: 'user1' },
-      { name: 'password', label: '비밀번호(6자+)', required: true, placeholder: '••••••' },
-      {
-        name: 'roleId',
-        label: '역할',
-        required: true,
-        type: 'select',
-        options: roles.map((r) => ({ value: r.id, label: `${r.name} (${r.code})` })),
-      },
-      {
-        name: 'dataScope',
-        label: '데이터범위',
-        type: 'select',
-        options: [
-          { value: 'OWN', label: '본인' },
-          { value: 'ORG', label: '조직(+하위)' },
-          { value: 'ALL', label: '전체' },
-        ],
-      },
-      { name: 'orgScopeId', label: '적용 조직(범위=조직일 때)', type: 'select', options: orgs },
-    ],
-    [roles, orgs],
-  );
-
-  const columns: Column[] = [
-    { title: '아이디', dataIndex: 'loginId' },
-    { title: '직원', render: (r) => String(r.employeeName ?? '-') },
-    {
-      title: '역할/범위',
-      render: (r) => (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {(r.roles as AccountRole[]).map((role, i) => (
-            <Badge key={i} variant="subtle" color="info">
-              {role.roleName} · {SCOPE_LABEL[role.dataScope] ?? role.dataScope}
-              {role.orgScope ? `(${role.orgScope})` : ''}
-            </Badge>
-          ))}
-        </div>
-      ),
-    },
-    {
-      title: '상태',
-      render: (r) => (
-        <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-          {r.isActive ? '활성' : '비활성'}
-        </Badge>
-      ),
-    },
-    {
-      title: '관리',
-      render: (r) =>
-        // 본인 계정은 끌 수 없다(서버에서도 막는다) — 누르면 실패할 버튼은 아예 내주지 않는다
-        r.id === user?.userId ? (
-          <span style={{ fontSize: 13, color: 'var(--ark-color-text-tertiary)' }}>본인 계정</span>
-        ) : (
-          <Button variant="outline" size="sm" onClick={() => toggleActive(r)}>
-            {r.isActive ? '비활성화' : '활성화'}
-          </Button>
-        ),
-    },
+  const tabs: { key: Tab; label: string }[] = [
+    ...(can('USER.READ') ? [{ key: 'accounts' as const, label: '계정' }] : []),
+    ...(can('ROLE.READ')
+      ? [
+          { key: 'groups' as const, label: '권한 그룹' },
+          { key: 'positions' as const, label: '직책' },
+        ]
+      : []),
   ];
+  const [tab, setTab] = useState<Tab>(tabs[0]?.key ?? 'accounts');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader title={t('nav.accounts')} onRefresh={load} updatedAt={updatedAt} />
-      <DataTable
-        columns={columns}
-        rows={rows}
-        loading={loading}
-        toolbarActions={
-          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-            + 계정 생성
-          </Button>
+      <PageHeader
+        title={t('nav.accounts')}
+        onRefresh={() => {
+          setRefreshKey((k) => k + 1);
+          touch();
+        }}
+        updatedAt={updatedAt}
+        footer={
+          tabs.length > 1 ? (
+            <SegmentedControl
+              value={tab}
+              onChange={(v) => setTab(v as Tab)}
+              options={tabs.map((tb) => ({ value: tb.key, label: tb.label }))}
+            />
+          ) : undefined
         }
       />
-      <FormModal
-        open={open}
-        onOpenChange={setOpen}
-        title="계정 생성"
-        size="md"
-        fields={fields}
-        onSubmit={onCreate}
-      />
+      {tab === 'accounts' ? (
+        <AccountList key={`a-${refreshKey}`} />
+      ) : tab === 'groups' ? (
+        <PermissionGroups key={`g-${refreshKey}`} />
+      ) : (
+        <Positions key={`p-${refreshKey}`} />
+      )}
     </div>
   );
 }

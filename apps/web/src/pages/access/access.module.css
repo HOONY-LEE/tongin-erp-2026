@@ -1,0 +1,258 @@
+/* 계정·권한 화면 */
+.layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.panel {
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  overflow: hidden;
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.panelTitle {
+  font-weight: 600;
+  font-size: 15px;
+}
+.spacer {
+  flex: 1;
+}
+.sub {
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.muted {
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+
+/* 왼쪽 그룹 목록 */
+.groupList {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+}
+.groupItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.groupItem:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.groupItemActive {
+  background: color-mix(in srgb, var(--ark-color-primary-500) 10%, transparent);
+}
+.groupItemActive:hover {
+  background: color-mix(in srgb, var(--ark-color-primary-500) 14%, transparent);
+}
+.groupName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* 오른쪽 상세 */
+.detailHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.detailTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.detailTitle h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.notice {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+}
+
+/* 메뉴 × CRUD 표 */
+.matrixWrap {
+  overflow-x: auto;
+  padding: 0 16px 16px;
+}
+.matrix {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.matrix th,
+.matrix td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  text-align: center;
+  vertical-align: middle;
+}
+.matrix th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ark-color-text-secondary);
+  background: var(--ark-color-bg-subtle);
+  position: sticky;
+  top: 0;
+}
+.matrix th:first-child,
+.matrix td:first-child {
+  text-align: left;
+}
+.groupRow td {
+  background: var(--ark-color-bg-subtle);
+  font-weight: 600;
+  font-size: 13px;
+}
+.menuCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cellCenter {
+  display: inline-flex;
+  justify-content: center;
+}
+.none {
+  color: var(--ark-color-text-tertiary);
+}
+.specials {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.changed {
+  background: color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 8%, transparent);
+}
+
+/* 저장 바 */
+.saveBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg);
+}
+
+/* 변경 이력 */
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--ark-color-border);
+}
+.historyItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+/* 계정 권한 편집 */
+.assignList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.assignRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+@media (max-width: 640px) {
+  .assignRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.fieldLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--ark-font-size-sm);
+  font-weight: 500;
+}
+.hint {
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

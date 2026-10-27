@@ -13,7 +13,7 @@ export class BillingController {
 
   /** 작업오더 전속원가 입력 → 계약 마진 반환. */
   @Put('work-orders/:id/outsource-cost')
-  @RequirePermissions('BILLING.WRITE')
+  @RequirePermissions('BILLING.UPDATE')
   setOutsourceCost(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -47,19 +47,19 @@ export class BillingController {
   }
 
   @Post('invoices')
-  @RequirePermissions('BILLING.WRITE')
+  @RequirePermissions('BILLING.CREATE')
   createInvoice(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateInvoiceDto) {
     return this.service.createInvoice(dto, user);
   }
 
   @Post('invoices/:id/issue')
-  @RequirePermissions('BILLING.WRITE')
+  @RequirePermissions('BILLING.UPDATE')
   issueInvoice(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.issueInvoice(id, user);
   }
 
   @Post('invoices/:id/receipts')
-  @RequirePermissions('BILLING.WRITE')
+  @RequirePermissions('BILLING.UPDATE')
   addReceipt(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

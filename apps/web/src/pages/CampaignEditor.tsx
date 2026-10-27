@@ -499,7 +499,7 @@ export default function CampaignEditor() {
       breadcrumbs={[{ label: '마케팅', onClick: () => navigate('/campaigns') }]}
       tags={loaded ? <StatusBadge value={loaded.status} map={CAMPAIGN_STATUS_MAP} /> : undefined}
       actions={
-        loaded && loaded.status !== 'SENDING' && can('MARKETING.WRITE') ? (
+        loaded && loaded.status !== 'SENDING' && can('MARKETING.UPDATE') ? (
           <Button variant="ghost" size="sm" onClick={() => void remove()}>
             삭제
           </Button>

@@ -32,25 +32,25 @@ export class RoomTemplateController {
   }
 
   @Post()
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.CREATE')
   create(@Body() dto: CreateRoomTemplateDto) {
     return this.svc.createRoom(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRoomTemplateDto) {
     return this.svc.updateRoom(id, dto);
   }
 
   @Put(':id/items')
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.UPDATE')
   setItems(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetRoomItemsDto) {
     return this.svc.setRoomItems(id, dto.itemIds);
   }
 
   @Delete(':id')
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.svc.removeRoom(id);
@@ -69,19 +69,19 @@ export class HandlingMethodController {
   }
 
   @Post()
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.CREATE')
   create(@Body() dto: CreateHandlingMethodDto) {
     return this.svc.createHandling(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateHandlingMethodDto) {
     return this.svc.updateHandling(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.svc.removeHandling(id);

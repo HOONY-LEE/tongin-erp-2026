@@ -60,13 +60,13 @@ export class CampaignController {
   }
 
   @Post('demo-numbers')
-  @RequirePermissions('MARKETING.WRITE')
+  @RequirePermissions('MARKETING.UPDATE')
   addDemoNumber(@Body() dto: DemoNumberDto) {
     return this.campaignService.addDemoNumber(dto);
   }
 
   @Delete('demo-numbers/:phone')
-  @RequirePermissions('MARKETING.WRITE')
+  @RequirePermissions('MARKETING.UPDATE')
   @HttpCode(204)
   removeDemoNumber(@Param('phone') phone: string) {
     return this.campaignService.removeDemoNumber(phone);
@@ -85,13 +85,13 @@ export class CampaignController {
   }
 
   @Post()
-  @RequirePermissions('MARKETING.WRITE')
+  @RequirePermissions('MARKETING.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateCampaignDto) {
     return this.campaignService.create(dto, user);
   }
 
   @Patch(':id')
-  @RequirePermissions('MARKETING.WRITE')
+  @RequirePermissions('MARKETING.UPDATE')
   update(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -101,7 +101,7 @@ export class CampaignController {
   }
 
   @Delete(':id')
-  @RequirePermissions('MARKETING.WRITE')
+  @RequirePermissions('MARKETING.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.campaignService.remove(id);
@@ -109,13 +109,13 @@ export class CampaignController {
 
   /** 발송(예약 시각이 미래면 예약) */
   @Post(':id/send')
-  @RequirePermissions('MARKETING.WRITE')
+  @RequirePermissions('MARKETING.UPDATE')
   send(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.campaignService.send(id, user);
   }
 
   @Post(':id/cancel')
-  @RequirePermissions('MARKETING.WRITE')
+  @RequirePermissions('MARKETING.UPDATE')
   cancel(@Param('id', ParseUUIDPipe) id: string) {
     return this.campaignService.cancel(id);
   }

@@ -41,13 +41,13 @@ export class CustomerController {
   }
 
   @Post()
-  @RequirePermissions('CUSTOMER.WRITE')
+  @RequirePermissions('CUSTOMER.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateCustomerDto) {
     return this.customerService.create(dto, user);
   }
 
   @Patch(':id')
-  @RequirePermissions('CUSTOMER.WRITE')
+  @RequirePermissions('CUSTOMER.UPDATE')
   update(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -57,7 +57,7 @@ export class CustomerController {
   }
 
   @Delete(':id')
-  @RequirePermissions('CUSTOMER.WRITE')
+  @RequirePermissions('CUSTOMER.DELETE')
   @HttpCode(204)
   remove(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.customerService.remove(id, user);

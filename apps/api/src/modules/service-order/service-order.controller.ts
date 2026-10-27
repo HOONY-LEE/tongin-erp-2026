@@ -28,13 +28,13 @@ export class ServiceOrderController {
   }
 
   @Post()
-  @RequirePermissions('SERVICE_ORDER.WRITE')
+  @RequirePermissions('SERVICE_ORDER.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateServiceOrderDto) {
     return this.service.create(dto, user);
   }
 
   @Patch(':id')
-  @RequirePermissions('SERVICE_ORDER.WRITE')
+  @RequirePermissions('SERVICE_ORDER.UPDATE')
   update(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -44,7 +44,7 @@ export class ServiceOrderController {
   }
 
   @Post(':id/transition')
-  @RequirePermissions('SERVICE_ORDER.WRITE')
+  @RequirePermissions('SERVICE_ORDER.UPDATE')
   transition(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

@@ -43,14 +43,14 @@ export class EsignController {
 
   /** 고객에게 견적서 보내기 — 문자(견적서·서명 링크 + 계약금 계좌) */
   @Post(':id/send')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   send(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.esign.send(id, user);
   }
 
   /** 시연: 고객 계좌이체를 흉내 내 자동 입금확인 흐름을 태운다 */
   @Post(':id/simulate-deposit')
-  @RequirePermissions('PAYMENT.WRITE')
+  @RequirePermissions('PAYMENT.CREATE')
   simulate(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.esign.simulateDeposit(id, user);
   }

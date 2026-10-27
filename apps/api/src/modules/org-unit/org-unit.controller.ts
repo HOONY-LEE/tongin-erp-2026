@@ -31,19 +31,19 @@ export class OrgUnitController {
   }
 
   @Post()
-  @RequirePermissions('ORG_UNIT.WRITE')
+  @RequirePermissions('ORG_UNIT.CREATE')
   create(@Body() dto: CreateOrgUnitDto) {
     return this.orgUnitService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('ORG_UNIT.WRITE')
+  @RequirePermissions('ORG_UNIT.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateOrgUnitDto) {
     return this.orgUnitService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('ORG_UNIT.WRITE')
+  @RequirePermissions('ORG_UNIT.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.orgUnitService.remove(id);

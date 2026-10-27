@@ -44,13 +44,13 @@ export class CalendarController {
   }
 
   @Post('events')
-  @RequirePermissions('CALENDAR.WRITE')
+  @RequirePermissions('CALENDAR.CREATE')
   create(@Body() dto: CreateCalendarEventDto, @CurrentUser() user: AuthPrincipal) {
     return this.events.create(dto, user);
   }
 
   @Patch('events/:id')
-  @RequirePermissions('CALENDAR.WRITE')
+  @RequirePermissions('CALENDAR.UPDATE')
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateCalendarEventDto,
@@ -60,7 +60,7 @@ export class CalendarController {
   }
 
   @Delete('events/:id')
-  @RequirePermissions('CALENDAR.WRITE')
+  @RequirePermissions('CALENDAR.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthPrincipal) {
     return this.events.remove(id, user);
@@ -84,7 +84,7 @@ export class CalendarController {
 
   /** 구글 동의 화면 URL 발급(프론트에서 새 창으로 연다). */
   @Get('google/auth-url')
-  @RequirePermissions('CALENDAR.WRITE')
+  @RequirePermissions('CALENDAR.UPDATE')
   googleAuthUrl(@CurrentUser() user: AuthPrincipal) {
     return this.google.authUrl(user);
   }
@@ -110,7 +110,7 @@ export class CalendarController {
 
   /** 양방향 동기화 실행(가져오기 + 내보내기). */
   @Post('google/sync')
-  @RequirePermissions('CALENDAR.WRITE')
+  @RequirePermissions('CALENDAR.UPDATE')
   googleSync(
     @CurrentUser() user: AuthPrincipal,
     @Query('from') from?: string,
@@ -121,7 +121,7 @@ export class CalendarController {
 
   /** 연결 해제 — 구글에서 가져온 미러 일정도 함께 제거. */
   @Delete('google')
-  @RequirePermissions('CALENDAR.WRITE')
+  @RequirePermissions('CALENDAR.UPDATE')
   @HttpCode(204)
   googleDisconnect(@CurrentUser() user: AuthPrincipal) {
     return this.google.disconnect(user);

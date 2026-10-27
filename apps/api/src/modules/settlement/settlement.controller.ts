@@ -61,13 +61,13 @@ export class SettlementController {
   }
 
   @Post('commission-rules')
-  @RequirePermissions('SETTLEMENT.WRITE')
+  @RequirePermissions('SETTLEMENT.CREATE')
   createRule(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateCommissionRuleDto) {
     return this.commission.createRule(dto, user);
   }
 
   @Patch('commission-rules/:id')
-  @RequirePermissions('SETTLEMENT.WRITE')
+  @RequirePermissions('SETTLEMENT.UPDATE')
   updateRule(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -77,7 +77,7 @@ export class SettlementController {
   }
 
   @Delete('commission-rules/:id')
-  @RequirePermissions('SETTLEMENT.WRITE')
+  @RequirePermissions('SETTLEMENT.DELETE')
   @HttpCode(200)
   removeRule(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.commission.removeRule(id, user);

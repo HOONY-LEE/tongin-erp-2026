@@ -41,7 +41,7 @@ export default {
     partnerMgmt: '거래처관리',
     orgMgmt: '조직관리',
     branches: '지점관리',
-    accounts: '계정관리',
+    accounts: '계정·권한',
     aiAgents: 'AI 에이전트 관리',
     employees: '직원',
   },

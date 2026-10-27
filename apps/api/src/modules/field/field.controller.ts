@@ -43,11 +43,11 @@ export class FieldController {
 
   /**
    * 작업 시작·완료는 관리자 화면과 같은 상태머신을 쓴다(리드 전이까지 한 트랜잭션).
-   * 현장에서 쓰려면 WORK_ORDER.WRITE 권한이 있어야 한다 — 전속업체 기본 역할은 조회만이라
+   * 현장에서 쓰려면 WORK_ORDER.UPDATE 권한이 있어야 한다 — 전속업체 기본 역할은 조회만이라
    * 시작·완료를 맡기려면 해당 계정에 쓰기 권한을 부여해야 한다.
    */
   @Post('work-orders/:id/start')
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.UPDATE')
   start(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.humanize(this.workOrders.start(id, user), '시작');
   }
@@ -57,7 +57,7 @@ export class FieldController {
    * 응답의 나머지는 기존과 같다(작업오더 그대로).
    */
   @Post('work-orders/:id/complete')
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.UPDATE')
   async complete(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     const updated = await this.humanize(this.workOrders.complete(id, user), '완료');
     const afterPhotos = await this.photos.countAfter(id);

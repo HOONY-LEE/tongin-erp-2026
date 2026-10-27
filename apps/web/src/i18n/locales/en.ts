@@ -41,7 +41,7 @@ export default {
     partnerMgmt: 'Partners',
     orgMgmt: 'Organization',
     branches: 'Branches',
-    accounts: 'Accounts',
+    accounts: 'Accounts & Access',
     aiAgents: 'AI Agents',
     employees: 'Employees',
   },

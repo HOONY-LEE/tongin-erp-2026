@@ -16,6 +16,7 @@ export class EmployeeService {
   findAll(orgUnitId?: string) {
     return this.prisma.employee.findMany({
       where: orgUnitId ? { orgUnitId } : undefined,
+      include: { position: { select: { name: true, sortOrder: true } } },
       orderBy: { name: 'asc' },
     });
   }
@@ -52,7 +53,7 @@ export class EmployeeService {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       if (e.code === 'P2002') return new ConflictException(`이미 존재하는 사번입니다: ${empNo}`);
       if (e.code === 'P2003')
-        return new BadRequestException('존재하지 않는 조직단위(orgUnitId)입니다.');
+        return new BadRequestException('소속 지점이나 직책을 목록에서 다시 골라 주세요.');
     }
     return e as Error;
   }

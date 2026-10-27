@@ -66,7 +66,7 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
   const [products, setProducts] = useState<ProductRow[]>([]);
 
   // 고객 이름·연락처는 고객 원장이라 고객 수정 권한이 있어야 고칠 수 있다
-  const canEditCustomer = canEdit && can('CUSTOMER.WRITE');
+  const canEditCustomer = canEdit && can('CUSTOMER.UPDATE');
 
   useEffect(() => {
     api<ProductRow[]>('/products')

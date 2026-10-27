@@ -32,19 +32,19 @@ export class EmployeeController {
   }
 
   @Post()
-  @RequirePermissions('EMPLOYEE.WRITE')
+  @RequirePermissions('EMPLOYEE.CREATE')
   create(@Body() dto: CreateEmployeeDto) {
     return this.employeeService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('EMPLOYEE.WRITE')
+  @RequirePermissions('EMPLOYEE.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEmployeeDto) {
     return this.employeeService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('EMPLOYEE.WRITE')
+  @RequirePermissions('EMPLOYEE.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.employeeService.remove(id);

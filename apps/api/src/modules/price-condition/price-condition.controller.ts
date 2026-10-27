@@ -32,19 +32,19 @@ export class PriceConditionController {
   }
 
   @Post()
-  @RequirePermissions('PRICE_CONDITION.WRITE')
+  @RequirePermissions('PRICE_CONDITION.CREATE')
   create(@Body() dto: CreatePriceConditionDto) {
     return this.priceConditionService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('PRICE_CONDITION.WRITE')
+  @RequirePermissions('PRICE_CONDITION.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePriceConditionDto) {
     return this.priceConditionService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('PRICE_CONDITION.WRITE')
+  @RequirePermissions('PRICE_CONDITION.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.priceConditionService.remove(id);

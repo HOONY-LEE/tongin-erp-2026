@@ -32,19 +32,19 @@ export class PartnerController {
   }
 
   @Post()
-  @RequirePermissions('PARTNER.WRITE')
+  @RequirePermissions('PARTNER.CREATE')
   create(@Body() dto: CreatePartnerDto) {
     return this.partnerService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('PARTNER.WRITE')
+  @RequirePermissions('PARTNER.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePartnerDto) {
     return this.partnerService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('PARTNER.WRITE')
+  @RequirePermissions('PARTNER.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.partnerService.remove(id);
