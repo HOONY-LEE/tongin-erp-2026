@@ -29,6 +29,7 @@ import {
   type ToolConfig,
 } from '@tongin/shared';
 import { AgentBlueprintService } from './agent-blueprint.service';
+import type { ReferenceMeta } from './agent-reference.service';
 import {
   BUILDER_MODEL,
   FALLBACK_BETA,
@@ -156,6 +157,56 @@ function shape(s: unknown): string {
 }
 const CONFIG_SHAPES = AGENT_NODE_TYPES.map((t) => `- ${t}: ${shape(CONFIG_SCHEMA[t])}`).join('\n');
 
+export interface DesignMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+export interface DesignReply {
+  /** 직원에게 보여 줄 답(질문이나 정리) */
+  reply: string;
+  /** ask: 더 물어볼 것이 있음, ready: 만들 준비가 됨 */
+  status: 'ask' | 'ready';
+  /** 참고 양식 파일을 올려 달라고 하는 중인지 */
+  askForFile: boolean;
+  name: string;
+  description: string;
+  /** 설계할 내용 정리(ready일 때) — 그대로 generate에 넘긴다 */
+  spec: string;
+}
+
+const DESIGN_SCHEMA = obj({
+  reply: str,
+  status: enumOf(['ask', 'ready']),
+  askForFile: { type: 'boolean' },
+  name: str,
+  description: str,
+  spec: str,
+});
+
+const DESIGN_GUIDE = `당신은 통인익스프레스(이사·리빙케어 회사) ERP에서 직원과 대화하며 "AI 에이전트"를 함께 기획하는 담당입니다.
+직원이 하고 싶은 일을 말하면, 실제로 동작하는 에이전트를 만들 수 있을 만큼 정보가 모였는지 판단하고 부족하면 되묻습니다.
+
+## 확인할 것(이미 말했거나 상식으로 정할 수 있으면 묻지 않음)
+- 무엇을(대상 데이터·조건): 어떤 접수·고객·계약·작업을, 어떤 기간·지점·상태로
+- 무엇을 하나: 조회·요약·문자 발송·담당자 배정·파일 만들기 등
+- 언제 시작하나: 필요할 때 직접 실행 / AI 비서 대화에서 / 정해진 시간(예: 매주 월요일 9시). 업무가 생길 때(새 접수 등) 자동 시작은 아직 안 되므로 그런 요청이면 정해진 시간마다 새 건을 확인하는 방식으로 제안합니다.
+- 결과물: 화면 요약인지, 파일(엑셀·PDF)인지, 문자인지
+- 안전 장치: 데이터를 바꾸거나 문자를 보내면 사람 승인은 기본으로 넣는다(묻지 말고 알려만 준다). 발송 인원 한도 등은 필요할 때만 묻는다.
+
+## 보고서·문서 파일
+- 보고서·집계표·주간/월간 보고처럼 파일을 만드는 일이면, 실제로 쓰는 양식 파일(엑셀 .xlsx 또는 CSV)을 올려 달라고 요청하고 askForFile을 true로 합니다. 올리면 그 양식(서식·칸 위치) 그대로 채워 만든다고 설명합니다.
+- 양식이 없다고 하면 기본 표 형식(엑셀·CSV·PDF)으로 만든다고 하고 넘어갑니다.
+- 이미 올린 양식이 있으면 그 구조를 보고, 칸마다 무엇을 채울지 애매한 부분만 확인합니다.
+
+## 대화 방식
+- 한국어, 짧고 친절하게. 한 번에 질문은 1~3개, 번호 목록으로. 고를 수 있으면 예시 선택지를 붙입니다.
+- 이미 받은 답을 다시 묻지 않습니다. 직원이 "알아서 해 줘"라고 하면 합리적인 기본값으로 정하고 넘어갑니다.
+- 정보가 충분하면 status를 "ready"로 하고, reply에 만들 에이전트를 3~6줄 "- " 목록으로 정리한 뒤 "이대로 만들까요? 바꿀 점이 있으면 말씀해 주세요."로 끝냅니다.
+- status가 ready면 spec에 설계자가 그대로 보고 만들 수 있게 대상·조건·시작 방식·단계·결과물·승인/한도·참고 양식 id(있으면, 칸마다 채울 내용)를 빠짐없이 적습니다. ask일 때 spec은 지금까지 정리한 내용.
+- name은 짧은 한국어 이름(예: "주간 지점 실적 보고"), description은 한 줄 설명. 아직 모르면 빈 글자.
+- 도구 목록에 없는 일(외부 메일 발송, 다른 회사 시스템 조회 등)은 할 수 없다고 솔직히 말하고 대안을 제안합니다.`;
+
 /** 시스템 프롬프트 앞부분 — 바뀌지 않는다(캐시) */
 const GUIDE = `당신은 통인익스프레스(이사·리빙케어 회사) ERP의 "AI 에이전트 빌더"입니다.
 직원이 자연어로 설명한 일을 하는 에이전트를 노드와 실행선으로 이은 블루프린트(언리얼 블루프린트 방식)로 설계해 JSON으로 돌려줍니다.
@@ -185,6 +236,7 @@ ${GUARDRAIL_KINDS.map((k) => `- ${k}: ${GUARDRAIL_LABEL[k]}`).join('\n')}
 ## 시작(trigger)
 kind: manual(수동) | chat(AI 비서 대화에서 호출) | schedule(cron "분 시 일 월 요일", 한국 시간) | event(업무 이벤트: ${TRIGGER_EVENTS.join(', ')}).
 필요한 입력값은 inputFields로 정의합니다(예: 기간, 지점 id).
+event 자동 시작은 아직 연결 전이라 쓰지 않습니다 — "새 접수가 오면" 같은 요청은 schedule(예: 30분마다)로 새 건을 확인하게 설계합니다.
 
 ## 설계 원칙
 - 도구는 아래 목록에 있는 이름만 그대로 씁니다. 지어내지 마세요. 필수 인자(*)는 반드시 채웁니다.
@@ -192,6 +244,7 @@ kind: manual(수동) | chat(AI 비서 대화에서 호출) | schedule(cron "분 
 - 고객 문자(send_sms)는 customerIds(고객 id 배열)와 message가 필요합니다. 본문은 [통인익스프레스]로 시작하고 {고객명}을 쓰면 고객마다 이름이 들어갑니다.
 - "미계약"은 search_leads의 contracted=false입니다.
 - 조회 결과가 없을 때를 branch로 나눠 처리하고, 마지막에 output 노드로 무엇을 했는지 요약합니다.
+- 보고서·문서 파일을 만들어야 하면: 참고 양식이 있으면 create_file_from_template(templateId=양식 id, data={{앞 노드 결과}}, instructions=어느 칸에 무엇을), 없으면 create_report_file(xlsx·csv·pdf 표). 앞 노드에서 필요한 데이터를 먼저 조회하고, output 노드에 만든 파일 이름({{변수.fileName}})을 적습니다.
 - 노드 id는 짧은 영문 snake_case(예: find_leads). label은 짧은 한국어. 꼭 필요한 노드만 둡니다(보통 5~12개).
 - summary에는 무엇을 만들었는지(수정이면 무엇을 바꿨는지) 한국어 2~5줄 "- " 목록으로 적습니다.
 - 기존 블루프린트를 고치는 요청이면 바뀌지 않는 노드는 id·설정을 그대로 두고, 요청한 부분만 바꾼 전체 그래프를 돌려줍니다.`;
@@ -272,6 +325,7 @@ export class AgentGeneratorService {
     prompt: string,
     principal: AuthPrincipal,
     current: AgentGraph | null,
+    references: ReferenceMeta[] = [],
   ): Promise<GenerateResult> {
     const client = requireClaude(this.client);
     const tools = this.blueprints.toolInfos(principal);
@@ -283,9 +337,13 @@ export class AgentGeneratorService {
       .map((t) => `- ${t.name}: ${t.description}\n  스키마: ${JSON.stringify(t.inputSchema)}`)
       .join('\n');
 
+    const refText = references.length
+      ? `<reference_files>\n${references.map((r) => `- 양식 id: ${r.id}\n${r.summary}`).join('\n\n')}\n</reference_files>\n` +
+        '위 참고 양식 그대로 파일을 만들어야 하면 create_file_from_template 노드에 이 양식 id를 templateId로 넣습니다.\n\n'
+      : '';
     const userText = current
-      ? `<current_blueprint>\n${JSON.stringify(compactGraph(current))}\n</current_blueprint>\n\n<request>\n${prompt}\n</request>\n\n위 블루프린트를 요청대로 고친 전체 그래프를 돌려주세요.`
-      : `<request>\n${prompt}\n</request>\n\n이 일을 하는 에이전트 블루프린트를 새로 설계해 주세요.`;
+      ? `${refText}<current_blueprint>\n${JSON.stringify(compactGraph(current))}\n</current_blueprint>\n\n<request>\n${prompt}\n</request>\n\n위 블루프린트를 요청대로 고친 전체 그래프를 돌려주세요.`
+      : `${refText}<request>\n${prompt}\n</request>\n\n이 일을 하는 에이전트 블루프린트를 새로 설계해 주세요.`;
 
     let res: Anthropic.Beta.Messages.BetaMessage;
     try {
@@ -359,6 +417,56 @@ export class AgentGeneratorService {
         cacheReadTokens: res.usage.cache_read_input_tokens ?? 0,
       },
     };
+  }
+
+  /**
+   * 대화로 만들기 — 직원이 말한 내용에서 빠진 정보를 되묻고, 충분해지면 설계 명세(spec)를 정리한다.
+   * 보고서·문서를 만드는 일이면 실제로 쓰는 양식 파일을 올려 달라고 한다.
+   */
+  async designChat(
+    messages: DesignMessage[],
+    references: ReferenceMeta[],
+    principal: AuthPrincipal,
+  ): Promise<DesignReply> {
+    const client = requireClaude(this.client);
+    const tools = this.blueprints.toolInfos(principal);
+    const refText = references.length
+      ? references.map((r) => `- ${r.name} (id ${r.id})\n${r.summary}`).join('\n\n')
+      : '(아직 없음)';
+    let res: Anthropic.Beta.Messages.BetaMessage;
+    try {
+      res = await client.beta.messages
+        .stream({
+          model: BUILDER_MODEL,
+          max_tokens: 8000,
+          betas: [FALLBACK_BETA],
+          fallbacks: 'default',
+          output_config: {
+            effort: 'low',
+            format: { type: 'json_schema', schema: DESIGN_SCHEMA },
+          },
+          system: [
+            {
+              type: 'text',
+              text: `${DESIGN_GUIDE}\n\n## 에이전트가 쓸 수 있는 ERP 도구(${tools.length}개)\n${compactCatalog(tools)}`,
+              cache_control: { type: 'ephemeral' },
+            },
+            { type: 'text', text: `## 지금까지 올린 참고 양식\n${refText}` },
+          ],
+          messages: messages.map((m) => ({ role: m.role, content: m.text })),
+        })
+        .finalMessage();
+      assertComplete(res);
+    } catch (e) {
+      const msg = describeClaudeError(e);
+      this.logger.warn(`대화 설계 실패: ${msg}`);
+      throw new BadGatewayException(msg);
+    }
+    try {
+      return JSON.parse(textOf(res)) as DesignReply;
+    } catch {
+      throw new BadGatewayException('AI 응답을 읽지 못했습니다. 다시 보내 주세요.');
+    }
   }
 }
 

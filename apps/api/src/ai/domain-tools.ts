@@ -109,7 +109,8 @@ export class DomainTools {
       deferred: false,
       summarize: (i) => `${String(i.title ?? '보고서')}.${String(i.format ?? '')}`,
       run: async (input, ctx) => {
-        if (!ctx.conversationId || !ctx.toolUseId) throw new ToolError('대화 정보가 없습니다.');
+        if (!(ctx.conversationId || ctx.agentRunId) || !ctx.toolUseId)
+          throw new ToolError('파일을 붙일 대화·실행 정보가 없습니다.');
         let report;
         try {
           report = normalizeReport(input);
@@ -119,6 +120,7 @@ export class DomainTools {
         const file = await buildReport(report);
         const saved = await this.files.save({
           conversationId: ctx.conversationId,
+          agentRunId: ctx.agentRunId,
           toolUseId: ctx.toolUseId,
           source: 'REPORT',
           ...file,

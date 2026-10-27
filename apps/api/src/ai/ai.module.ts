@@ -13,6 +13,6 @@ import { DomainTools } from './domain-tools';
   controllers: [AiController],
   providers: [AiService, AiFiles, ApiCatalog, DomainTools, StubNotificationProvider],
   // 에이전트 빌더가 같은 도구 목록(권한 거른 것)을 쓴다
-  exports: [AiService],
+  exports: [AiService, AiFiles],
 })
 export class AiModule {}

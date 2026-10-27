@@ -138,7 +138,14 @@ const fmtSize = (n: number) =>
       : `${n}B`;
 
 /** AI가 만든 파일 카드 — 종류 아이콘·이름·크기·다운로드 */
-export function FileCard({ item }: { item: FileItem }) {
+export function FileCard({
+  item,
+  downloadPath,
+}: {
+  item: FileItem;
+  /** 내려받을 주소(기본: AI 비서 대화 파일) — 에이전트 실행 파일은 실행 쪽 주소 */
+  downloadPath?: string;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const k = fileKind(item.name, item.mediaType);
@@ -147,7 +154,7 @@ export function FileCard({ item }: { item: FileItem }) {
     setBusy(true);
     setError(null);
     try {
-      await downloadFile(`/ai/files/${item.id}`, item.name);
+      await downloadFile(downloadPath ?? `/ai/files/${item.id}`, item.name);
     } catch (e) {
       setError(e instanceof Error ? e.message : '다운로드에 실패했습니다');
     } finally {

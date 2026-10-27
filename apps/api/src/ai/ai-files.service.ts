@@ -44,7 +44,9 @@ export class AiFiles {
   constructor(private readonly prisma: PrismaService) {}
 
   async save(data: {
-    conversationId: string;
+    /** AI 비서 대화 또는 에이전트 실행 — 둘 중 하나 */
+    conversationId?: string;
+    agentRunId?: string;
     toolUseId: string;
     source: 'REPORT' | 'CODE';
     remoteFileId?: string;
@@ -72,13 +74,26 @@ export class AiFiles {
     });
   }
 
-  /** 내려받기 — 대화 주인만(다른 사람 파일은 없는 것처럼) */
-  async get(id: string, userId: string) {
+  /** 에이전트 실행이 만든 파일 */
+  listForRun(agentRunId: string): Promise<AiFileMeta[]> {
+    return this.prisma.aiFile.findMany({
+      where: { agentRunId },
+      select: { id: true, toolUseId: true, name: true, mediaType: true, size: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /** 내려받기 — 대화 주인·실행한 사람만(다른 사람 파일은 없는 것처럼) */
+  async get(id: string, userId: string, isAdmin = false) {
     const f = await this.prisma.aiFile.findUnique({
       where: { id },
-      include: { conversation: { select: { userId: true } } },
+      include: {
+        conversation: { select: { userId: true } },
+        agentRun: { select: { createdBy: true } },
+      },
     });
-    if (!f || f.conversation.userId !== userId) {
+    const owner = f?.conversation?.userId ?? f?.agentRun?.createdBy;
+    if (!f || (!isAdmin && owner !== userId)) {
       throw new NotFoundException('파일을 찾을 수 없습니다.');
     }
     return { name: f.name, mediaType: f.mediaType, bytes: Buffer.from(f.bytes) };

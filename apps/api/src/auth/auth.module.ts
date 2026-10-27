@@ -27,5 +27,7 @@ import { AuthSeederService } from './seeder.service';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
+  // 에이전트 예약 실행이 만든 사람 권한으로 돌 때 주체·토큰을 만든다
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

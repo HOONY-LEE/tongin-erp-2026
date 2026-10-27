@@ -11,6 +11,9 @@ export interface ToolContext {
   /** 실행 중인 대화·도구 호출 — 파일을 만드는 도구가 결과 파일을 그 대화에 붙일 때 쓴다 */
   conversationId?: string;
   toolUseId?: string;
+  /** 에이전트 실행 중이면 실행 id·블루프린트 id — 만든 파일은 실행에 붙는다 */
+  agentRunId?: string;
+  blueprintId?: string;
 }
 
 export interface AiTool {

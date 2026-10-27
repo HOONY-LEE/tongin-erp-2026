@@ -1052,21 +1052,25 @@ model AiConversation {
 
 /// AI가 만든 파일(엑셀·PDF·CSV·차트 등) — 채팅 화면에서 내려받는다. 데모 규모라 내용은 DB(bytea)에 둔다
 model AiFile {
-  id             String         @id @default(uuid()) @db.Uuid
-  conversationId String         @map("conversation_id") @db.Uuid
-  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  id             String          @id @default(uuid()) @db.Uuid
+  // AI 비서 대화에서 만든 파일이면 대화, 에이전트 실행에서 만든 파일이면 실행에 붙는다(둘 중 하나)
+  conversationId String?         @map("conversation_id") @db.Uuid
+  conversation   AiConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agentRunId     String?         @map("agent_run_id") @db.Uuid
+  agentRun       AgentRun?       @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
   // 이 파일을 만든 도구 호출(create_report_file의 tool_use id, 코드 실행의 server_tool_use id) — 화면에서 그 줄 아래에 붙인다
-  toolUseId      String         @map("tool_use_id")
+  toolUseId      String          @map("tool_use_id")
   source         String // REPORT(서버 보고서 도구) | CODE(코드 실행 샌드박스)
   // 코드 실행 결과 파일의 Anthropic Files API id — 같은 파일을 두 번 저장하지 않게
-  remoteFileId   String?        @unique @map("remote_file_id")
+  remoteFileId   String?         @unique @map("remote_file_id")
   name           String
-  mediaType      String         @map("media_type")
+  mediaType      String          @map("media_type")
   size           Int
   bytes          Bytes
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([conversationId])
+  @@index([agentRunId])
   @@map("ai_file")
 }
 
@@ -1105,6 +1109,7 @@ model AgentBlueprint {
   updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
   runs        AgentRun[]
   shares      AgentBlueprintShare[]
+  references  AgentReferenceFile[]
 
   @@index([updatedAt])
   @@map("agent_blueprint")
@@ -1140,8 +1145,29 @@ model AgentRun {
   createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  files AiFile[]
+
   @@index([blueprintId, createdAt])
   @@map("agent_run")
+}
+
+/// 에이전트를 만들 때 올린 참고 양식(예: 주간 보고 엑셀) — 에이전트가 이 형식 그대로 파일을 만든다
+model AgentReferenceFile {
+  id          String          @id @default(uuid()) @db.Uuid
+  // 대화로 만드는 중에는 아직 블루프린트가 없다 — 만들면 붙는다
+  blueprintId String?         @map("blueprint_id") @db.Uuid
+  blueprint   AgentBlueprint? @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  name        String
+  mediaType   String          @map("media_type")
+  size        Int
+  bytes       Bytes
+  // 서버가 읽어 낸 구조(시트·칸 위치·표 머리글) — AI가 양식을 이해하는 데 쓴다
+  structure   Json            @default("{}")
+  createdBy   String?         @map("created_by") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([blueprintId])
+  @@map("agent_reference_file")
 }
 
 // 대시보드 — 템플릿(관리자가 만들고 권한 그룹·사용자에게 지정) 또는 개인 대시보드(ownerUserId)
