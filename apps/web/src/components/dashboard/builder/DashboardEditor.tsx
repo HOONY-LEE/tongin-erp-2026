@@ -22,6 +22,7 @@ import {
   LineChart,
   List,
   Map as MapIcon,
+  MoreHorizontal,
   PieChart,
   Plus,
   Search,
@@ -65,6 +66,7 @@ const DND_MIME = 'application/x-tongin-widget';
 const SIDEBAR_W = 240;
 const SIDEBAR_COLLAPSED_W = 64;
 const CONTENT_PAD_X = 36 * 2;
+const MENU_W = 264; // 설정 메뉴 폭(builder.module.css .ctxMenu)
 
 export const VIZ_ICON: Record<DashViz, typeof BarChart3> = {
   card: Hash,
@@ -305,7 +307,10 @@ export function DashboardEditor({
   };
 
   // ── 우클릭 설정 메뉴 ──
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  // x·y: 펼칠 자리, above: 아래가 모자랄 때 이 높이 위쪽으로 펼친다(버튼을 가리지 않게)
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number; above: number } | null>(
+    null,
+  );
   const menuItem = menu ? (items.find((i) => i.id === menu.id) ?? null) : null;
 
   // 키보드: 고른 위젯을 화살표로 옮기기, Delete로 빼기
@@ -539,7 +544,7 @@ export function DashboardEditor({
                         onContextMenu={(e) => {
                           e.preventDefault();
                           setSelectedId(it.id);
-                          setMenu({ id: it.id, x: e.clientX, y: e.clientY });
+                          setMenu({ id: it.id, x: e.clientX, y: e.clientY, above: e.clientY });
                         }}
                       >
                         <WidgetFrame
@@ -553,15 +558,40 @@ export function DashboardEditor({
                             title: '끌어서 옮기기',
                           }}
                           actions={
-                            <button
-                              type="button"
-                              className={styles.iconBtn}
-                              aria-label="빼기"
-                              title="빼기"
-                              onClick={() => remove(it.id)}
-                            >
-                              <X size={14} />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                className={`${styles.iconBtn} ${menu?.id === it.id ? styles.iconBtnOn : ''}`}
+                                aria-label="위젯 설정"
+                                aria-haspopup="dialog"
+                                aria-expanded={menu?.id === it.id}
+                                title="위젯 설정"
+                                data-menu-trigger
+                                onClick={(e) => {
+                                  if (menu?.id === it.id) return setMenu(null);
+                                  const r = e.currentTarget.getBoundingClientRect();
+                                  setSelectedId(it.id);
+                                  // 버튼 오른쪽 끝에 맞춰 아래로 펼친다
+                                  setMenu({
+                                    id: it.id,
+                                    x: r.right - MENU_W,
+                                    y: r.bottom + 4,
+                                    above: r.top - 4,
+                                  });
+                                }}
+                              >
+                                <MoreHorizontal size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.iconBtn}
+                                aria-label="빼기"
+                                title="빼기"
+                                onClick={() => remove(it.id)}
+                              >
+                                <X size={14} />
+                              </button>
+                            </>
                           }
                         />
                         <div
@@ -608,7 +638,7 @@ function WidgetMenu({
   onDuplicate,
   onClose,
 }: {
-  at: { x: number; y: number };
+  at: { x: number; y: number; above: number };
   item: DashItem;
   onChange: (p: Partial<DashItem>) => void;
   onRemove: () => void;
@@ -623,14 +653,22 @@ function WidgetMenu({
     if (!el) return;
     const m = 8;
     const { width, height } = el.getBoundingClientRect();
+    const fitsBelow = at.y + height <= window.innerHeight - m;
+    const fitsAbove = at.above - height >= m;
     setPos({
       left: Math.max(m, Math.min(at.x, window.innerWidth - width - m)),
-      top: Math.max(m, Math.min(at.y, window.innerHeight - height - m)),
+      top:
+        fitsBelow || !fitsAbove
+          ? Math.max(m, Math.min(at.y, window.innerHeight - height - m))
+          : at.above - height,
     });
-  }, [at.x, at.y]);
+  }, [at.x, at.y, at.above]);
   useEffect(() => {
     const down = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      const t = e.target as HTMLElement;
+      // 점 3개 버튼은 스스로 열고 닫는다
+      if (ref.current?.contains(t) || t.closest?.('[data-menu-trigger]')) return;
+      onClose();
     };
     const scroll = (e: Event) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
