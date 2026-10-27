@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
 import { SegmentedControl } from '@sunghoon_lee/akron-ui';
 import {
@@ -9,6 +9,8 @@ import {
   GUARDRAIL_KINDS,
   GUARDRAIL_LABEL,
   TRIGGER_EVENTS,
+  TRIGGER_EVENT_FIELDS,
+  TRIGGER_EVENT_LABEL,
   TRIGGER_KINDS,
   TRIGGER_KIND_LABEL,
   type AgentIssue,
@@ -42,6 +44,15 @@ interface Props {
   onChange: (node: AgentNode) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  /** 이 에이전트의 참고 양식 — 양식으로 파일 만들기 노드에서 고른다 */
+  references?: ReferenceOpt[];
+  /** 참고 양식 올리기 — 올린 양식을 돌려준다 */
+  onUploadReference?: (file: File) => Promise<ReferenceOpt | null>;
+}
+
+export interface ReferenceOpt {
+  id: string;
+  name: string;
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -72,6 +83,8 @@ export function Inspector({
   onChange,
   onDelete,
   onDuplicate,
+  references,
+  onUploadReference,
 }: Props) {
   const set = <K extends keyof AgentNode>(k: K, v: AgentNode[K]) => onChange({ ...node, [k]: v });
   const cfg = <T,>() => node.config as T;
@@ -135,6 +148,8 @@ export function Inspector({
           vars={vars}
           tools={tools}
           toolMap={toolMap}
+          references={references ?? []}
+          onUploadReference={onUploadReference}
         />
       )}
       {node.type === 'branch' && <BranchFields c={cfg<BranchConfig>()} patch={patch} vars={vars} />}
@@ -218,6 +233,10 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
               </button>
             ))}
           </div>
+          <small>
+            '사용중'으로 바꾸면 이 시간마다 만든 사람 권한으로 자동 실행됩니다. 데이터를 바꾸는
+            단계는 실행 기록에서 승인해야 이어집니다.
+          </small>
         </Label>
       )}
       {c.kind === 'event' && (
@@ -229,10 +248,15 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
           >
             {TRIGGER_EVENTS.map((e) => (
               <option key={e} value={e}>
-                {e}
+                {TRIGGER_EVENT_LABEL[e]} ({e})
               </option>
             ))}
           </select>
+          <small>
+            '사용중'으로 바꾸면 이 일이 생길 때마다 만든 사람 권한으로 자동 실행됩니다. 받는 값:{' '}
+            {'{{input.event.…}}'} —{' '}
+            {TRIGGER_EVENT_FIELDS[c.event as keyof typeof TRIGGER_EVENT_FIELDS] ?? 'id, type'}
+          </small>
         </Label>
       )}
       {c.kind === 'chat' && (
@@ -467,14 +491,20 @@ function ToolFields({
   vars,
   tools,
   toolMap,
+  references,
+  onUploadReference,
 }: {
   c: ToolConfig;
   patch: Patch;
   vars: AgentVar[];
   tools: AgentToolInfo[];
   toolMap: Map<string, AgentToolInfo>;
+  references: ReferenceOpt[];
+  onUploadReference?: (file: File) => Promise<ReferenceOpt | null>;
 }) {
   const [picking, setPicking] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const info = toolMap.get(c.tool);
   const props = info?.inputSchema.properties ?? {};
   const req = new Set(info?.inputSchema.required ?? []);
@@ -546,21 +576,69 @@ function ToolFields({
                 .filter(Boolean)
                 .join(' ')}
             >
-              <TemplateInput
-                value={c.args[k] ?? ''}
-                onChange={(v) => setArg(k, v)}
-                vars={vars}
-                mono
-                multiline={!!s.properties}
-                rows={s.properties ? 5 : 1}
-                placeholder={
-                  s.properties
-                    ? '{ "필드": "값 또는 {{변수}}" }'
-                    : req.has(k)
-                      ? '필수'
-                      : '비우면 보내지 않음'
-                }
-              />
+              {c.tool === 'create_file_from_template' && k === 'templateId' ? (
+                <div className={styles.row}>
+                  <select
+                    className={styles.select}
+                    style={{ flex: 1, minWidth: 0 }}
+                    value={c.args[k] ?? ''}
+                    onChange={(e) => setArg(k, e.target.value)}
+                  >
+                    <option value="">양식 고르기</option>
+                    {references.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                    {c.args[k] && !references.some((r) => r.id === c.args[k]) && (
+                      <option value={c.args[k]}>(목록에 없는 양식)</option>
+                    )}
+                  </select>
+                  {onUploadReference && (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        disabled={uploading}
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        {uploading ? '올리는 중…' : '새 양식 올리기'}
+                      </button>
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        hidden
+                        accept=".xlsx,.csv"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!f) return;
+                          setUploading(true);
+                          const r = await onUploadReference(f);
+                          setUploading(false);
+                          if (r) setArg(k, r.id);
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              ) : (
+                <TemplateInput
+                  value={c.args[k] ?? ''}
+                  onChange={(v) => setArg(k, v)}
+                  vars={vars}
+                  mono
+                  multiline={!!s.properties}
+                  rows={s.properties ? 5 : 1}
+                  placeholder={
+                    s.properties
+                      ? '{ "필드": "값 또는 {{변수}}" }'
+                      : req.has(k)
+                        ? '필수'
+                        : '비우면 보내지 않음'
+                  }
+                />
+              )}
               {s.properties && (
                 <button
                   type="button"

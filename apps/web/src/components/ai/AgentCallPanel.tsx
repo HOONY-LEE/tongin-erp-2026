@@ -11,6 +11,7 @@ import { Badge, Button, useToast } from '../ui';
 import { VISIBILITY_ICON } from '../agent/SharePicker';
 import type { AgentRunView, TraceStep } from '../agent/RunPanel';
 import { Markdown } from './Markdown';
+import { FileCard } from './ChatParts';
 import styles from './agentCall.module.css';
 
 /** AI 에이전트 화면에서 부를 수 있는 에이전트(서버 /agents) */
@@ -265,6 +266,13 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
             ) : run.output != null ? (
               <pre className={styles.pre}>{show(run.output)}</pre>
             ) : null}
+            {run.files?.map((f) => (
+              <FileCard
+                key={f.id}
+                item={{ ...f, kind: 'file' }}
+                downloadPath={`/agents/files/${f.id}`}
+              />
+            ))}
 
             <details className={styles.steps}>
               <summary>진행 단계 {run.trace.length}개</summary>

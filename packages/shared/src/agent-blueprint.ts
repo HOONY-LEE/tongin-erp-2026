@@ -92,14 +92,56 @@ export const TRIGGER_EVENTS = [
   'lead.status_changed',
   'estimate.created',
   'estimate.quoted',
+  'estimate.sent',
   'contract.created',
   'contract.signed',
   'payment.confirmed',
   'work_order.created',
   'work_order.assigned',
+  'work_order.started',
+  'work_order.completed',
   'service_order.created',
   'support.created',
+  'invoice.issued',
 ] as const;
+export type TriggerEvent = (typeof TRIGGER_EVENTS)[number];
+
+export const TRIGGER_EVENT_LABEL: Record<TriggerEvent, string> = {
+  'lead.created': '새 접수가 들어오면',
+  'lead.status_changed': '접수 단계가 바뀌면',
+  'estimate.created': '견적이 만들어지면',
+  'estimate.quoted': '견적 금액이 확정되면',
+  'estimate.sent': '견적서를 고객에게 보내면',
+  'contract.created': '계약서가 만들어지면',
+  'contract.signed': '계약이 서명되면',
+  'payment.confirmed': '입금이 확인되면',
+  'work_order.created': '작업 지시가 만들어지면',
+  'work_order.assigned': '작업팀이 배정되면',
+  'work_order.started': '작업이 시작되면',
+  'work_order.completed': '작업이 끝나면',
+  'service_order.created': '리빙케어 주문이 들어오면',
+  'support.created': '새 CS 티켓이 들어오면',
+  'invoice.issued': '청구서가 발행되면',
+};
+
+/** 이벤트로 시작하면 {{input.event.…}}에 들어오는 값 — id는 해당 건(접수·견적·계약…)의 id */
+export const TRIGGER_EVENT_FIELDS: Record<TriggerEvent, string> = {
+  'lead.created': 'id(접수 id), leadNo, source, orgUnitId',
+  'lead.status_changed': 'id(접수 id), leadNo, from, to(새 단계)',
+  'estimate.created': 'id(견적 id), estimateNo, leadId',
+  'estimate.quoted': 'id(견적 id), estimateNo, totalCbm',
+  'estimate.sent': 'id(견적 id), estimateNo, contractNo',
+  'contract.created': 'id(계약 id), contractNo, total, deposit',
+  'contract.signed': 'id(계약 id), contractNo',
+  'payment.confirmed': 'id(입금 id), contractId, amount, kind',
+  'work_order.created': 'id(작업 id), workNo, contractId',
+  'work_order.assigned': 'id(작업 id), workNo',
+  'work_order.started': 'id(작업 id), workNo',
+  'work_order.completed': 'id(작업 id), workNo',
+  'service_order.created': 'id(주문 id), serviceLine',
+  'support.created': 'id(티켓 id), kind',
+  'invoice.issued': 'id(청구서 id), invoiceNo, partnerId, amount',
+};
 
 export const FIELD_TYPES = ['string', 'number', 'boolean', 'date', 'list', 'object'] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -380,6 +422,22 @@ export function producedVars(node: AgentNode): AgentVar[] {
       const cfg = node.config as TriggerConfig;
       return [
         { ...base, name: 'input', type: 'object', description: '시작 입력값 전체' },
+        ...(cfg.kind === 'event'
+          ? [
+              {
+                ...base,
+                name: 'input.event',
+                type: 'object',
+                description: `업무 이벤트 — ${TRIGGER_EVENT_FIELDS[cfg.event as TriggerEvent] ?? 'id, type'}`,
+              },
+              {
+                ...base,
+                name: 'input.event.id',
+                type: 'string',
+                description: '이벤트가 생긴 건의 id',
+              },
+            ]
+          : []),
         ...cfg.inputFields.map((f) => ({
           ...base,
           name: `input.${f.name}`,

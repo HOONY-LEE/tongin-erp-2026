@@ -64,13 +64,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     name: '서준호',
     desc: '부산점',
   },
-  {
-    group: '가맹점',
-    loginId: 'franchise',
-    password: 'franchise1234',
-    name: '가맹점',
-    desc: '분당서현점',
-  },
   { group: '현장', loginId: 'gn.field', password: DEMO_PASSWORD, name: '박민수', desc: '강남점' },
   { group: '현장', loginId: 'sp.field', password: DEMO_PASSWORD, name: '최동혁', desc: '송파점' },
   { group: '현장', loginId: 'is.field', password: DEMO_PASSWORD, name: '강현우', desc: '일산점' },

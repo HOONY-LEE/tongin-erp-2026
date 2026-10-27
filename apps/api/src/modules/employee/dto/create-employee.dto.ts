@@ -1,4 +1,12 @@
-import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateEmployeeDto {
   @IsUUID()
@@ -8,10 +16,17 @@ export class CreateEmployeeDto {
   @MaxLength(100)
   name!: string;
 
+  /** 사번 — 비우면 입사연도+일련번호로 자동(20260001) */
   @IsOptional()
   @IsString()
   @MaxLength(50)
   empNo?: string;
+
+  /** 입사일(YYYY-MM-DD) — 비우려면 null */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsDateString()
+  hireDate?: string | null;
 
   @IsOptional()
   @IsString()

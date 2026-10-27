@@ -1,236 +1,405 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, PencilRuler, Sparkles } from 'lucide-react';
-import type { AgentGraph, AgentVisibility } from '@tongin/shared';
+import { ArrowLeft, FileSpreadsheet, Paperclip, SendHorizontal, Sparkles, X } from 'lucide-react';
+import type { AgentGraph } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { Button, useToast } from '../components/ui';
-import { SharePicker } from '../components/agent/SharePicker';
 import styles from './agentBuilder.module.css';
 
 const EXAMPLES = [
+  '매주 월요일 아침에 지점별 지난주 실적을 우리 주간 보고 양식으로 만들어 줘',
   '이번 주 미계약 고객에게 재안내 문자를 보내는 에이전트. 보내기 전에 꼭 내가 승인하게 해 줘',
   '어제 들어온 접수 중 담당자가 없는 건을 찾아 지점별로 요약해 줘',
-  '미수금 상위 고객 10명을 찾아 담당자에게 확인 요청 문자를 보내는 에이전트(최대 10명)',
-  '새 CS 티켓이 들어오면 AI가 긴급도를 분류해서 긴급이면 담당자 배정 전에 승인을 받아',
+  '새 CS 티켓이 들어오면 긴급도를 분류해서 긴급이면 담당자 배정 전에 승인을 받아',
 ];
 
-interface GenerateResult {
+const GREETING =
+  '안녕하세요! 어떤 일을 하는 에이전트를 만들까요?\n' +
+  '하고 싶은 일을 편하게 말씀해 주시면, 만드는 데 필요한 내용(대상·조건·언제 실행할지·결과물)을 제가 여쭤보면서 함께 완성할게요.\n' +
+  '보고서처럼 파일을 만드는 일이라면 실제로 쓰시는 양식(엑셀·CSV)을 올려 주세요 — 그 양식 그대로 채워서 만들어 드려요.';
+
+interface RefFile {
+  id: string;
+  name: string;
+  size: number;
+}
+interface Msg {
+  role: 'user' | 'assistant';
+  text: string;
+  file?: RefFile;
+}
+interface DesignReply {
+  reply: string;
+  status: 'ask' | 'ready';
+  askForFile: boolean;
   name: string;
   description: string;
-  graph: AgentGraph;
+  spec: string;
 }
 
+const readBase64 = (f: File) =>
+  new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+    r.onerror = () => reject(new Error('파일을 읽지 못했습니다'));
+    r.readAsDataURL(f);
+  });
+
 /**
- * 새 에이전트 만들기(전용 화면) — 만드는 방법(자연어/직접) · 이름·설명 · 공개 범위(개인용/전체 공개/부분 공유).
- * 만들면 캔버스 편집 화면으로 간다.
+ * 새 에이전트 만들기 — AI와 대화하며 만든다. 빠진 정보는 AI가 되묻고, 보고서 일이면 양식 파일을 받는다.
+ * 정리가 끝나면 노드 블루프린트로 설계해 저장하고 편집 화면(노드로 세부 수정)으로 간다.
  */
 export default function AgentCreate() {
   const navigate = useNavigate();
   const toast = useToast();
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
-  const [mode, setMode] = useState<'nl' | 'blank'>('nl');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [visibility, setVisibility] = useState<AgentVisibility>('PRIVATE');
-  const [shareIds, setShareIds] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [refs, setRefs] = useState<RefFile[]>([]);
+  const [draft, setDraft] = useState('');
+  const [thinking, setThinking] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [last, setLast] = useState<DesignReply | null>(null);
+  const [building, setBuilding] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     api<{ aiConfigured: boolean }>('/agent-blueprints/status')
-      .then((st) => {
-        setAiConfigured(st.aiConfigured);
-        if (!st.aiConfigured) setMode('blank');
-      })
+      .then((st) => setAiConfigured(st.aiConfigured))
       .catch(() => setAiConfigured(false));
   }, []);
 
-  const canSubmit =
-    !busy &&
-    (mode === 'blank' || prompt.trim().length >= 2) &&
-    (visibility !== 'SHARED' || shareIds.length > 0);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [msgs, thinking, last]);
 
-  const create = async () => {
-    setBusy(true);
+  const ask = async (next: Msg[], files: RefFile[]) => {
+    setThinking(true);
     try {
-      let body: Record<string, unknown> = {
-        name: name.trim() || '새 에이전트',
-        description: description.trim(),
-      };
-      if (mode === 'nl') {
-        const g = await api<GenerateResult>('/agent-blueprints/generate', {
-          method: 'POST',
-          body: JSON.stringify({ prompt: prompt.trim() }),
-        });
-        body = {
-          name: name.trim() || g.name,
-          description: description.trim() || g.description,
-          graph: g.graph,
-          prompt: prompt.trim(),
-        };
-      }
-      const b = await api<{ id: string }>('/agent-blueprints', {
+      const r = await api<DesignReply>('/agent-blueprints/design-chat', {
         method: 'POST',
         body: JSON.stringify({
-          ...body,
-          visibility,
-          ...(visibility === 'SHARED' ? { shareEmployeeIds: shareIds } : {}),
+          // 파일 메시지는 AI에게 "양식을 올렸다"는 말로 전한다
+          messages: next.map((m) => ({ role: m.role, text: m.text })),
+          referenceFileIds: files.map((f) => f.id),
         }),
       });
-      toast({ type: 'success', title: '에이전트를 만들었습니다 — 캔버스에서 다듬어 보세요' });
-      navigate(`/agent-builder/${b.id}`, { replace: true });
+      setLast(r);
+      setMsgs((p) => [...p, { role: 'assistant', text: r.reply }]);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : 'AI가 답하지 못했습니다' });
     } finally {
-      setBusy(false);
+      setThinking(false);
+      inputRef.current?.focus();
     }
   };
 
+  const send = (text = draft) => {
+    const t = text.trim();
+    if (!t || thinking || building) return;
+    const next = [...msgs, { role: 'user' as const, text: t }];
+    setMsgs(next);
+    setDraft('');
+    void ask(next, refs);
+  };
+
+  const upload = async (f: File) => {
+    setUploading(true);
+    try {
+      const ref = await api<RefFile & { summary: string }>('/agent-blueprints/reference-files', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: f.name,
+          mediaType: f.type || 'application/octet-stream',
+          dataBase64: await readBase64(f),
+        }),
+      });
+      const files = [...refs, { id: ref.id, name: ref.name, size: ref.size }];
+      setRefs(files);
+      const typed = draft.trim();
+      const next = [
+        ...msgs,
+        {
+          role: 'user' as const,
+          text: `참고 양식 파일을 올렸어요: ${ref.name}${typed ? `\n${typed}` : ''}`,
+          file: { id: ref.id, name: ref.name, size: ref.size },
+        },
+      ];
+      setMsgs(next);
+      setDraft('');
+      void ask(next, files);
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  /** 정리된 내용으로 노드 블루프린트를 설계·저장하고 편집 화면으로 */
+  const build = async () => {
+    if (!last) return;
+    setBuilding(true);
+    try {
+      const spec =
+        last.spec.trim() ||
+        msgs
+          .filter((m) => m.role === 'user')
+          .map((m) => m.text)
+          .join('\n');
+      const g = await api<{ name: string; description: string; graph: AgentGraph }>(
+        '/agent-blueprints/generate',
+        {
+          method: 'POST',
+          body: JSON.stringify({ prompt: spec, referenceFileIds: refs.map((r) => r.id) }),
+        },
+      );
+      const b = await api<{ id: string }>('/agent-blueprints', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: last.name.trim() || g.name,
+          description: last.description.trim() || g.description,
+          graph: g.graph,
+          prompt: spec,
+          visibility: 'PRIVATE',
+          referenceFileIds: refs.map((r) => r.id),
+        }),
+      });
+      toast({
+        type: 'success',
+        title: '에이전트를 만들었습니다 — 노드에서 세부 내용을 다듬어 보세요',
+      });
+      navigate(`/agent-builder/${b.id}`, { replace: true });
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      setBuilding(false);
+    }
+  };
+
+  const startBlank = async () => {
+    try {
+      const b = await api<{ id: string }>('/agent-blueprints', {
+        method: 'POST',
+        body: JSON.stringify({ name: '새 에이전트', visibility: 'PRIVATE' }),
+      });
+      navigate(`/agent-builder/${b.id}`, { replace: true });
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+    }
+  };
+
+  const busy = thinking || uploading || building;
+  const ready = last?.status === 'ready' && !thinking;
+
   return (
-    <div className={styles.listPage}>
-      <div className={styles.createPage}>
-        <div className={styles.createHead}>
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => navigate('/agent-builder')}
-            title="목록으로"
-            aria-label="목록으로"
-          >
-            <ArrowLeft size={16} />
-          </button>
+    <div className={styles.chatPage}>
+      <div className={styles.chatHead}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => navigate('/agent-builder')}
+          title="목록으로"
+          aria-label="목록으로"
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <div style={{ minWidth: 0 }}>
+          <h1 className={styles.createTitle}>새 에이전트 만들기</h1>
+          <p className={styles.note}>
+            AI와 대화로 만들고, 만든 뒤에는 편집 화면에서 노드로 세부 내용을 고칠 수 있습니다.
+          </p>
+        </div>
+      </div>
+
+      {aiConfigured === false ? (
+        <div className={styles.createSection}>
+          <div className={styles.warnNote}>
+            서버에 ANTHROPIC_API_KEY가 없어 대화로 만들 수 없습니다. 빈 캔버스에서 노드를 직접 이어
+            만들 수는 있습니다.
+          </div>
           <div>
-            <h1 className={styles.createTitle}>새 에이전트 만들기</h1>
-            <p className={styles.note}>
-              ERP 도구를 실제로 호출하는 AI 에이전트를 만듭니다. 만든 뒤 캔버스에서 노드를 고치고,
-              '사용중'으로 바꾸면 AI 에이전트 화면에서 불러 쓸 수 있습니다.
-            </p>
+            <Button variant="outline" onClick={() => void startBlank()}>
+              빈 캔버스로 시작
+            </Button>
           </div>
         </div>
-
-        {/* 1. 만드는 방법 */}
-        <section className={styles.createSection}>
-          <h2 className={styles.sectionTitle}>
-            <span className={styles.stepNo}>1</span> 만드는 방법
-          </h2>
-          <div className={styles.modeCards}>
-            <button
-              type="button"
-              className={`${styles.modeCard} ${mode === 'nl' ? styles.modeCardOn : ''}`}
-              onClick={() => setMode('nl')}
-              disabled={aiConfigured === false}
-            >
-              <Sparkles size={18} />
-              <b>자연어로 만들기</b>
-              <span>하고 싶은 일을 말하면 Claude가 노드·분기·승인까지 설계합니다.</span>
-            </button>
-            <button
-              type="button"
-              className={`${styles.modeCard} ${mode === 'blank' ? styles.modeCardOn : ''}`}
-              onClick={() => setMode('blank')}
-            >
-              <PencilRuler size={18} />
-              <b>직접 만들기</b>
-              <span>빈 캔버스에서 시작·도구·분기·가드레일 노드를 직접 잇습니다.</span>
-            </button>
-          </div>
-          {aiConfigured === false && (
-            <div className={styles.warnNote}>
-              서버에 ANTHROPIC_API_KEY가 없어 자연어로 만들기는 쓸 수 없습니다. 직접 만들기는 그대로
-              됩니다.
+      ) : (
+        <>
+          <div className={styles.chatLog} aria-live="polite">
+            <div className={`${styles.bubbleRow}`}>
+              <span className={styles.botIcon}>
+                <Sparkles size={14} />
+              </span>
+              <div className={styles.bubbleBot}>{GREETING}</div>
             </div>
-          )}
-        </section>
-
-        {/* 2. 내용 */}
-        <section className={styles.createSection}>
-          <h2 className={styles.sectionTitle}>
-            <span className={styles.stepNo}>2</span> 무엇을 하는 에이전트인가요
-          </h2>
-          {mode === 'nl' && (
-            <>
-              <label className={styles.field}>
-                하고 싶은 일 *
-                <textarea
-                  className={styles.textarea}
-                  rows={5}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="대상·조건·하는 일·승인이나 한도 같은 규칙을 말해 주세요."
-                />
-              </label>
-              <div className={styles.examples}>
+            {msgs.length === 0 && (
+              <div className={styles.examples} style={{ paddingLeft: 36 }}>
                 {EXAMPLES.map((ex) => (
-                  <button
-                    key={ex}
-                    type="button"
-                    className={styles.chip}
-                    onClick={() => setPrompt(ex)}
-                  >
-                    {ex.length > 40 ? `${ex.slice(0, 39)}…` : ex}
+                  <button key={ex} type="button" className={styles.chip} onClick={() => send(ex)}>
+                    {ex}
                   </button>
                 ))}
               </div>
-            </>
-          )}
-          <div className={styles.twoCols}>
-            <label className={styles.field}>
-              이름 {mode === 'nl' && <span className={styles.note}>(비우면 AI가 지어 줍니다)</span>}
-              <input
-                className={styles.input}
-                value={name}
-                maxLength={100}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="예: 미계약 고객 재안내"
-              />
-            </label>
-            <label className={styles.field}>
-              설명 {mode === 'nl' && <span className={styles.note}>(비우면 AI가 씁니다)</span>}
-              <input
-                className={styles.input}
-                value={description}
-                maxLength={1000}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="AI 에이전트 화면에 보이는 한 줄 설명"
-              />
-            </label>
+            )}
+            {msgs.map((m, i) =>
+              m.role === 'user' ? (
+                <div key={i} className={`${styles.bubbleRow} ${styles.bubbleRowMe}`}>
+                  <div className={styles.bubbleMe}>
+                    {m.file ? (
+                      <span className={styles.fileChip}>
+                        <FileSpreadsheet size={14} /> {m.file.name}
+                      </span>
+                    ) : (
+                      m.text
+                    )}
+                    {m.file && m.text.includes('\n') && (
+                      <div style={{ marginTop: 6 }}>{m.text.split('\n').slice(1).join('\n')}</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div key={i} className={styles.bubbleRow}>
+                  <span className={styles.botIcon}>
+                    <Sparkles size={14} />
+                  </span>
+                  <div className={styles.bubbleBot}>{m.text}</div>
+                </div>
+              ),
+            )}
+            {thinking && (
+              <div className={styles.bubbleRow}>
+                <span className={styles.botIcon}>
+                  <Sparkles size={14} />
+                </span>
+                <div className={`${styles.bubbleBot} ${styles.typing}`}>
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+            {last?.askForFile && !thinking && !building && (
+              <div className={styles.askFile}>
+                <FileSpreadsheet size={16} />
+                <span>실제로 쓰는 양식 파일(엑셀 .xlsx · CSV)을 올려 주세요.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  loading={uploading}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  양식 올리기
+                </Button>
+              </div>
+            )}
+            {ready && (
+              <div className={styles.readyCard}>
+                <div className={styles.readyHead}>
+                  <b>{last.name || '새 에이전트'}</b>
+                  {last.description && <span className={styles.note}>{last.description}</span>}
+                </div>
+                {refs.length > 0 && (
+                  <div className={styles.examples}>
+                    {refs.map((r) => (
+                      <span key={r.id} className={styles.fileChip}>
+                        <FileSpreadsheet size={13} /> {r.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className={styles.readyActions}>
+                  <span className={styles.note}>
+                    {building
+                      ? 'AI가 노드·분기·승인을 설계하고 있어요(30초~1분)…'
+                      : '바꿀 점이 있으면 아래에 말씀해 주세요. 만든 뒤에도 노드에서 고칠 수 있어요.'}
+                  </span>
+                  <Button
+                    variant="primary"
+                    loading={building}
+                    leftIcon={<Sparkles size={14} />}
+                    onClick={() => void build()}
+                  >
+                    이대로 만들기
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div ref={endRef} />
           </div>
-        </section>
 
-        {/* 3. 공개 범위 */}
-        <section className={styles.createSection}>
-          <h2 className={styles.sectionTitle}>
-            <span className={styles.stepNo}>3</span> 누가 쓸 수 있나요
-          </h2>
-          <SharePicker
-            visibility={visibility}
-            shareIds={shareIds}
-            onChange={(v) => {
-              setVisibility(v.visibility);
-              setShareIds(v.shareIds);
-            }}
-          />
-          <div className={styles.note}>
-            공개 범위는 나중에 편집 화면의 '공유'에서 바꿀 수 있습니다. 고치기·지우기는 만든 사람만
-            할 수 있고, 다른 사람은 복제해서 씁니다.
+          <div className={styles.composer}>
+            {refs.length > 0 && (
+              <div className={styles.composerFiles}>
+                {refs.map((r) => (
+                  <span key={r.id} className={styles.fileChip}>
+                    <FileSpreadsheet size={13} /> {r.name}
+                    <button
+                      type="button"
+                      aria-label={`${r.name} 빼기`}
+                      onClick={() => setRefs((p) => p.filter((x) => x.id !== r.id))}
+                      disabled={busy}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className={styles.composerRow}>
+              <button
+                type="button"
+                className={styles.composerBtn}
+                onClick={() => fileRef.current?.click()}
+                disabled={busy || aiConfigured === null}
+                title="참고 양식 올리기(엑셀·CSV)"
+                aria-label="참고 양식 올리기"
+              >
+                <Paperclip size={16} />
+              </button>
+              <textarea
+                ref={inputRef}
+                className={styles.composerInput}
+                rows={1}
+                value={draft}
+                autoFocus
+                placeholder={
+                  msgs.length
+                    ? '답하거나 바꿀 점을 말씀해 주세요'
+                    : '어떤 일을 하는 에이전트인가요?'
+                }
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                disabled={building}
+              />
+              <button
+                type="button"
+                className={`${styles.composerBtn} ${styles.composerSend}`}
+                onClick={() => send()}
+                disabled={!draft.trim() || busy}
+                aria-label="보내기"
+              >
+                <SendHorizontal size={16} />
+              </button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) void upload(f);
+              }}
+            />
           </div>
-        </section>
-
-        <div className={styles.createFooter}>
-          <Button variant="ghost" disabled={busy} onClick={() => navigate('/agent-builder')}>
-            취소
-          </Button>
-          <Button
-            variant="primary"
-            loading={busy}
-            disabled={!canSubmit}
-            leftIcon={mode === 'nl' ? <Sparkles size={14} /> : undefined}
-            onClick={() => void create()}
-          >
-            {mode === 'nl' ? (busy ? '설계하는 중…' : '자연어로 만들기') : '빈 캔버스로 시작'}
-          </Button>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

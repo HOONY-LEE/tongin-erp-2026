@@ -17,6 +17,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import type { AiTool } from '../ai/ai-tool.types';
+import { AgentReferenceService } from './agent-reference.service';
 
 export interface BlueprintInput {
   name?: string;
@@ -27,6 +28,8 @@ export interface BlueprintInput {
   visibility?: AgentVisibility;
   /** 부분 공유 대상 직원 — 오면 통째로 바꾼다 */
   shareEmployeeIds?: string[];
+  /** 대화로 만들 때 올린 참고 양식 — 만든 블루프린트에 붙인다 */
+  referenceFileIds?: string[];
 }
 
 type BlueprintRow = {
@@ -52,11 +55,13 @@ export class AgentBlueprintService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ai: AiService,
+    private readonly references: AgentReferenceService,
   ) {}
 
   /** 이 사용자가 실제로 부를 수 있는 도구(ERP API 카탈로그 + 업무 도구) */
   toolsFor(principal: AuthPrincipal): AiTool[] {
-    return this.ai.toolsFor(principal);
+    // 에이전트에서만 쓰는 도구(참고 양식으로 파일 만들기)를 더한다
+    return [...this.ai.toolsFor(principal), this.references.tool()];
   }
 
   toolInfos(principal: AuthPrincipal): AgentToolInfo[] {
@@ -210,6 +215,7 @@ export class AgentBlueprintService {
         shares: { create: shareIds.map((employeeId) => ({ employeeId })) },
       },
     });
+    await this.references.attach(input.referenceFileIds ?? [], b.id, p);
     return this.get(b.id, p);
   }
 
@@ -249,7 +255,7 @@ export class AgentBlueprintService {
   /** 복제본은 늘 내 개인용 초안으로 시작한다 */
   async duplicate(id: string, p: AuthPrincipal) {
     const b = await this.get(id, p);
-    return this.create(
+    const copy = await this.create(
       {
         name: `${b.name} (복사본)`,
         description: b.description,
@@ -260,6 +266,16 @@ export class AgentBlueprintService {
       },
       p,
     );
+    // 참고 양식도 복사하고 노드가 가리키는 양식 id를 새 것으로 바꾼다
+    const map = await this.references.copyAll(id, copy.id, p);
+    if (!map.size) return copy;
+    let text = JSON.stringify(copy.graph);
+    for (const [from, to] of map) text = text.split(from).join(to);
+    await this.prisma.agentBlueprint.update({
+      where: { id: copy.id },
+      data: { graph: JSON.parse(text) as object },
+    });
+    return this.get(copy.id, p);
   }
 
   async remove(id: string, p: AuthPrincipal) {

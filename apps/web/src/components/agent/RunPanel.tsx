@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Play, X } from 'lucide-react';
 import { AGENT_RUN_STATUS_LABEL, type TriggerConfig } from '@tongin/shared';
 import { Badge, Button } from '../ui';
+import { FileCard } from '../ai/ChatParts';
 import styles from '../../pages/agentBuilder.module.css';
 
 export interface TraceStep {
@@ -27,6 +28,8 @@ export interface AgentRunView {
   error: string | null;
   trace: TraceStep[];
   pending: { kind: string; nodeId: string; message: string; args?: unknown } | null;
+  /** 실행이 만든 파일(보고서 등) */
+  files?: { id: string; toolUseId: string; name: string; mediaType: string; size: number }[];
   createdAt: string;
 }
 
@@ -227,6 +230,13 @@ export function RunPanel({
             {run.output !== null && run.output !== undefined && (
               <div className={styles.outputBox}>{show(run.output)}</div>
             )}
+            {run.files?.map((f) => (
+              <FileCard
+                key={f.id}
+                item={{ ...f, kind: 'file' }}
+                downloadPath={`/agent-runs/files/${f.id}`}
+              />
+            ))}
             <div>
               {run.trace.map((s) => (
                 <div

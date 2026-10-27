@@ -1041,3 +1041,248 @@
   background: color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 10%, var(--ark-color-bg));
   border-bottom: 1px solid var(--ark-color-border);
 }
+
+/* ── 새 에이전트 만들기 — 대화 ── */
+.chatPage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 36px 24px;
+}
+@media (max-width: 768px) {
+  .chatPage {
+    padding: 20px 16px 16px;
+  }
+}
+.chatHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.chatLog {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px 8px;
+}
+.bubbleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.bubbleRowMe {
+  justify-content: flex-end;
+}
+.botIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 12%, transparent);
+  color: var(--ark-color-primary-600);
+}
+.bubbleBot,
+.bubbleMe {
+  max-width: min(640px, 85%);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.bubbleBot {
+  background: var(--ark-color-bg-subtle);
+  border: 1px solid var(--ark-color-border);
+  border-top-left-radius: 4px;
+  color: var(--ark-color-text);
+}
+.bubbleMe {
+  background: var(--ark-color-primary-500);
+  color: #fff;
+  border-top-right-radius: 4px;
+}
+.bubbleMe .fileChip {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+.typing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 22px;
+}
+.typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ark-color-text-tertiary);
+  animation: typingDot 1.2s infinite ease-in-out;
+}
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes typingDot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.fileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  font-size: 12.5px;
+  color: var(--ark-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fileChip button {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--ark-color-text-tertiary);
+  cursor: pointer;
+}
+.askFile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 36px;
+  padding: 10px 12px;
+  border: 1px dashed var(--ark-color-primary-400);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 5%, transparent);
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+}
+.askFile > span {
+  flex: 1;
+  min-width: 0;
+}
+.readyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-left: 36px;
+  padding: 14px 16px;
+  border: 1px solid var(--ark-color-primary-400);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+}
+.readyHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.readyActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.composer:focus-within {
+  border-color: var(--ark-color-primary-500);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
+}
+.composerFiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px;
+}
+.composerRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.composerInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 34px;
+  max-height: 160px;
+  padding: 7px 4px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  field-sizing: content;
+}
+.composerInput:focus,
+.composerInput:focus-visible {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+.composerBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.composerBtn:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.composerBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.composerSend {
+  background: var(--ark-color-primary-500);
+  color: #fff;
+}
+.composerSend:hover:not(:disabled) {
+  background: var(--ark-color-primary-600);
+  color: #fff;
+}

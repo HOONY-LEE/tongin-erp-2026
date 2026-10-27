@@ -55,17 +55,19 @@ const PARTNERS = [
  * 직원 10명.
  * role: 지점장(가맹점 권한, 지점 전체 조회) / 견적(견적사원) / 현장(작업팀)
  */
+/** 사번 = 입사연도 4자리 + 그 해 일련번호 4자리(앱의 사번 자동 생성 규칙과 같다). 이 10명은 2019년 입사 */
+const HIRE_DATE = new Date('2019-03-04T00:00:00Z');
 const EMPLOYEES = [
-  { empNo: 'E1001', name: '김성호', branch: 'BR-GN', phone: '010-2201-1001', role: '지점장' },
-  { empNo: 'E1002', name: '이재훈', branch: 'BR-GN', phone: '010-2201-1002', role: '견적' },
-  { empNo: 'E1003', name: '박민수', branch: 'BR-GN', phone: '010-2201-1003', role: '현장' },
-  { empNo: 'E1004', name: '정우진', branch: 'BR-SP', phone: '010-2201-1004', role: '지점장' },
-  { empNo: 'E1005', name: '최동혁', branch: 'BR-SP', phone: '010-2201-1005', role: '현장' },
-  { empNo: 'E1006', name: '한지원', branch: 'BR-BD', phone: '010-2201-1006', role: '지점장' },
-  { empNo: 'E1007', name: '오세영', branch: 'BR-BD', phone: '010-2201-1007', role: '견적' },
-  { empNo: 'E1008', name: '윤태경', branch: 'BR-IS', phone: '010-2201-1008', role: '지점장' },
-  { empNo: 'E1009', name: '강현우', branch: 'BR-IS', phone: '010-2201-1009', role: '현장' },
-  { empNo: 'E1010', name: '서준호', branch: 'BR-BS', phone: '010-2201-1010', role: '지점장' },
+  { empNo: '20190001', name: '김성호', branch: 'BR-GN', phone: '010-2201-1001', role: '지점장' },
+  { empNo: '20190002', name: '이재훈', branch: 'BR-GN', phone: '010-2201-1002', role: '견적' },
+  { empNo: '20190003', name: '박민수', branch: 'BR-GN', phone: '010-2201-1003', role: '현장' },
+  { empNo: '20190004', name: '정우진', branch: 'BR-SP', phone: '010-2201-1004', role: '지점장' },
+  { empNo: '20190005', name: '최동혁', branch: 'BR-SP', phone: '010-2201-1005', role: '현장' },
+  { empNo: '20190006', name: '한지원', branch: 'BR-BD', phone: '010-2201-1006', role: '지점장' },
+  { empNo: '20190007', name: '오세영', branch: 'BR-BD', phone: '010-2201-1007', role: '견적' },
+  { empNo: '20190008', name: '윤태경', branch: 'BR-IS', phone: '010-2201-1008', role: '지점장' },
+  { empNo: '20190009', name: '강현우', branch: 'BR-IS', phone: '010-2201-1009', role: '현장' },
+  { empNo: '20190010', name: '서준호', branch: 'BR-BS', phone: '010-2201-1010', role: '지점장' },
 ];
 
 /** 계정을 만들 직원 — 전부에게 계정을 주지는 않는다(현실도 그렇다). */
@@ -74,15 +76,15 @@ const DEMO_POSITION: Record<string, string> = { 지점장: '지점장', 견적: 
 
 const ACCOUNTS: { empNo: string; loginId: string; role: string; dataScope: 'ORG' | 'OWN' }[] = [
   // 지점장: 소속 지점(+하위) 전체 조회
-  { empNo: 'E1001', loginId: 'gn.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
-  { empNo: 'E1004', loginId: 'sp.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
-  { empNo: 'E1006', loginId: 'bd.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
-  { empNo: 'E1008', loginId: 'is.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
-  { empNo: 'E1010', loginId: 'bs.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
+  { empNo: '20190001', loginId: 'gn.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
+  { empNo: '20190004', loginId: 'sp.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
+  { empNo: '20190006', loginId: 'bd.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
+  { empNo: '20190008', loginId: 'is.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
+  { empNo: '20190010', loginId: 'bs.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
   // 현장 작업팀: 본인 배정 작업만. 로그인하면 /field 로 들어간다
-  { empNo: 'E1003', loginId: 'gn.field', role: ROLE_FIELD, dataScope: 'OWN' },
-  { empNo: 'E1005', loginId: 'sp.field', role: ROLE_FIELD, dataScope: 'OWN' },
-  { empNo: 'E1009', loginId: 'is.field', role: ROLE_FIELD, dataScope: 'OWN' },
+  { empNo: '20190003', loginId: 'gn.field', role: ROLE_FIELD, dataScope: 'OWN' },
+  { empNo: '20190005', loginId: 'sp.field', role: ROLE_FIELD, dataScope: 'OWN' },
+  { empNo: '20190009', loginId: 'is.field', role: ROLE_FIELD, dataScope: 'OWN' },
 ];
 
 async function main() {
@@ -121,11 +123,16 @@ async function main() {
     });
     branchByCode.set(b.code, row.id);
   }
-  console.log(`조직: 그룹1 + 법인1 + 지점${BRANCHES.length}`);
+  console.log(`조직: 그룹1 + 법인1 + 본사1 + 지점${BRANCHES.length}`);
 
-  // ── 전속업체 ──
-  // 조직단위(PARTNER)와 거래처(Partner)를 함께 만든다.
-  // 조직단위는 스코프·계층용, 거래처는 작업 배정·정산용으로 쓰인다.
+  // ── 본사(본사·부서) — 관리자 직원이 속한다. 부팅 시더가 먼저 만들었으면 법인 아래로 옮긴다 ──
+  await prisma.orgUnit.upsert({
+    where: { code: 'HQ-OFFICE' },
+    update: { parentId: company.id },
+    create: { code: 'HQ-OFFICE', name: '본사', type: 'DEPT', parentId: company.id },
+  });
+
+  // ── 거래처(전속업체·기업고객) — 외부업체는 조직이 아니라 거래처로만 둔다(작업 배정·정산·외부 계정 범위) ──
   const partnerByCode = new Map<string, string>();
   for (const p of PARTNERS) {
     const row = await prisma.partner.upsert({
@@ -134,13 +141,6 @@ async function main() {
       create: { code: p.code, name: p.name, phone: p.phone, type: p.type },
     });
     partnerByCode.set(p.code, row.id);
-    if (p.type === 'OUTSOURCE') {
-      await prisma.orgUnit.upsert({
-        where: { code: `ORG-${p.code}` },
-        update: { name: p.name, parentId: group.id },
-        create: { code: `ORG-${p.code}`, name: p.name, type: 'PARTNER', parentId: group.id },
-      });
-    }
   }
   console.log(`거래처: ${PARTNERS.length}개 (전속 2, 기업고객 1)`);
 
@@ -158,8 +158,15 @@ async function main() {
     const positionId = positionIdByName.get(DEMO_POSITION[e.role] ?? '') ?? null;
     const row = await prisma.employee.upsert({
       where: { empNo: e.empNo },
-      update: { name: e.name, phone: e.phone, orgUnitId },
-      create: { empNo: e.empNo, name: e.name, phone: e.phone, orgUnitId, positionId },
+      update: { name: e.name, phone: e.phone, orgUnitId, hireDate: HIRE_DATE },
+      create: {
+        empNo: e.empNo,
+        name: e.name,
+        phone: e.phone,
+        orgUnitId,
+        positionId,
+        hireDate: HIRE_DATE,
+      },
     });
     if (!row.positionId && positionId) {
       await prisma.employee.update({ where: { id: row.id }, data: { positionId } });

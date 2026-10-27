@@ -27,6 +27,7 @@ export {
   Badge,
   Checkbox,
   Input,
+  PasswordInput,
   Select,
   Modal,
   Spinner,

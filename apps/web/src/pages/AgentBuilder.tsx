@@ -60,6 +60,7 @@ import AgentNodeView, { type AgentFlowNode, type RunMark } from '../components/a
 import { Inspector } from '../components/agent/Inspector';
 import { DND_MIME, ToolExplorer } from '../components/agent/ToolExplorer';
 import { RunPanel, type AgentRunView } from '../components/agent/RunPanel';
+import type { ReferenceOpt } from '../components/agent/Inspector';
 import { SharePicker, VISIBILITY_ICON, type ShareCandidate } from '../components/agent/SharePicker';
 import { NODE_COLOR, NODE_HEX, NODE_ICON, nodeSummary } from '../components/agent/meta';
 import styles from './agentBuilder.module.css';
@@ -155,6 +156,39 @@ function Editor() {
   const [measured, setMeasured] = useState<Record<string, { width: number; height: number }>>({});
   const [run, setRun] = useState<AgentRunView | null>(null);
   const [running, setRunning] = useState(false);
+  const [references, setReferences] = useState<ReferenceOpt[]>([]);
+
+  // 참고 양식(대화로 만들 때 올린 엑셀·CSV) — '양식으로 파일 만들기' 노드에서 고른다
+  useEffect(() => {
+    api<ReferenceOpt[]>(`/agent-blueprints/${id}/references`)
+      .then(setReferences)
+      .catch(() => setReferences([]));
+  }, [id]);
+  const uploadReference = async (file: File): Promise<ReferenceOpt | null> => {
+    try {
+      const dataBase64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+        r.onerror = () => reject(new Error('파일을 읽지 못했습니다'));
+        r.readAsDataURL(file);
+      });
+      const ref = await api<ReferenceOpt>('/agent-blueprints/reference-files', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: file.name,
+          mediaType: file.type || 'application/octet-stream',
+          dataBase64,
+          blueprintId: id,
+        }),
+      });
+      setReferences((p) => [...p, { id: ref.id, name: ref.name }]);
+      toast({ type: 'success', title: `양식을 올렸습니다 — ${ref.name}` });
+      return ref;
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+      return null;
+    }
+  };
 
   // ── 불러오기 ── (id가 바뀔 때만 — 토스트·라우터 함수는 ref로 잡아 다시 불러오지 않게)
   const deps = useRef({ navigate, rf, toast });
@@ -1027,6 +1061,8 @@ function Editor() {
               onChange={updateNode}
               onDelete={() => deleteNodes([selected.id])}
               onDuplicate={() => duplicateNode(selected)}
+              references={references}
+              onUploadReference={meta?.canEdit ? uploadReference : undefined}
             />
           ) : (
             <div className={styles.inspector}>

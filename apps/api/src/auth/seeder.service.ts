@@ -32,28 +32,45 @@ export class AuthSeederService implements OnModuleInit {
     await this.linkAdminsToSystemEmployee();
     await this.seedOutsourceRole();
     await this.seedFieldRole();
-    await this.seedFranchiseRoleAndUser();
+    await this.seedFranchiseRole();
   }
 
   /**
-   * 관리자 계정(admin·demo.admin)을 '시스템관리자' 직원에 잇는다 — 관리자가 접수할 때
-   * 담당자·접수 지점이 '시스템관리자'로 기본 선택되게. 조직은 그룹(HQ) 아래 SYS-ADMIN. 멱등.
+   * 관리자 계정(admin·demo.admin)을 본사 소속 '시스템관리자' 직원에 잇는다 — 계정은 모두 직원이다.
+   * 관리자가 접수할 때 담당자·접수 지점이 본사로 기본 선택된다.
+   * 본사(HQ-OFFICE, 본사·부서)는 법인(없으면 최상위 조직) 아래에 둔다. 멱등.
    */
   private async linkAdminsToSystemEmployee(): Promise<void> {
-    const parent = await this.prisma.orgUnit.findFirst({
-      where: { parentId: null },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
+    const parent =
+      (await this.prisma.orgUnit.findFirst({
+        where: { type: 'COMPANY' },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      })) ??
+      (await this.prisma.orgUnit.findFirst({
+        where: { parentId: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      }));
     const org = await this.prisma.orgUnit.upsert({
-      where: { code: 'SYS-ADMIN' },
+      where: { code: 'HQ-OFFICE' },
       update: {},
-      create: { code: 'SYS-ADMIN', name: '시스템관리자', type: 'COMPANY', parentId: parent?.id },
+      create: { code: 'HQ-OFFICE', name: '본사', type: 'DEPT', parentId: parent?.id },
+    });
+    const position = await this.prisma.position.upsert({
+      where: { name: '대표' },
+      update: {},
+      create: { name: '대표' },
     });
     const emp = await this.prisma.employee.upsert({
       where: { empNo: 'SYSADMIN' },
       update: {},
-      create: { empNo: 'SYSADMIN', name: '시스템관리자', orgUnitId: org.id },
+      create: {
+        empNo: 'SYSADMIN',
+        name: '시스템관리자',
+        orgUnitId: org.id,
+        positionId: position.id,
+      },
     });
     await this.prisma.appUser.updateMany({
       where: { loginId: { in: ['admin', 'demo.admin'] }, employeeId: null },
@@ -61,8 +78,8 @@ export class AuthSeederService implements OnModuleInit {
     });
   }
 
-  /** APP-02: 가맹점 역할 + 데모 가맹점 사용자(첫 BRANCH 조직 스코프). 멱등. */
-  private async seedFranchiseRoleAndUser(): Promise<void> {
+  /** APP-02: 가맹점(지점) 역할. 멱등. */
+  private async seedFranchiseRole(): Promise<void> {
     const description = '본인 소속 조직(+하위)의 접수·견적 작성, 계약·작업·발주 조회/발주';
     const existed = await this.prisma.role.findUnique({ where: { code: ROLE_FRANCHISE } });
     const role = await this.prisma.role.upsert({
@@ -108,26 +125,7 @@ export class AuthSeederService implements OnModuleInit {
     ];
     if (!existed) await this.grant(role.id, grant);
 
-    const existing = await this.prisma.appUser.findUnique({ where: { loginId: 'franchise' } });
-    if (existing) return;
-    const branch = await this.prisma.orgUnit.findFirst({
-      where: { type: 'BRANCH' },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!branch) {
-      this.logger.log('가맹점 데모 사용자 생략: BRANCH 조직이 아직 없습니다.');
-      return;
-    }
-    const passwordHash = await bcrypt.hash('franchise1234', 10);
-    const user = await this.prisma.appUser.create({
-      data: { loginId: 'franchise', passwordHash, principalType: 'HUMAN' },
-    });
-    await this.prisma.userRole.create({
-      data: { userId: user.id, roleId: role.id, orgScopeId: branch.id, dataScope: 'ORG' },
-    });
-    this.logger.warn(
-      `가맹점 데모 사용자 생성: loginId=franchise / password=franchise1234 (조직 스코프: ${branch.name})`,
-    );
+    // 지점 계정은 지점 직원(지점장) 계정으로 만든다 — 직원 없는 범용 계정은 두지 않는다(데모 시드 참고)
   }
 
   /** OPS-04: 외부 전속업체 제한 역할 — 작업오더 조회만(데이터범위는 app_user.partnerId로 제한). */

@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { AsyncLocalStorage } from 'async_hooks';
 import type Anthropic from '@anthropic-ai/sdk';
 import {
   AGENT_DEFAULT_MODEL,
@@ -38,6 +39,9 @@ import {
   supportsFallback,
   textOf,
 } from './agent-claude';
+
+/** 지금 돌고 있는 에이전트 실행 사슬(이벤트로 시작한 실행이 또 이벤트를 내는 경우) */
+export const agentRunContext = new AsyncLocalStorage<{ chain: string[] }>();
 
 /** 가드레일이 없어도 넘지 않는 한도(무한 실행 방지) */
 const HARD_MAX_STEPS = 300;
@@ -216,15 +220,18 @@ export class AgentRunnerService {
         createdBy: ctx.principal.userId,
       },
     });
-    return this.exclusive(run.id, () => this.drive(run.id, state, [], ctx));
+    const runCtx: ToolContext = { ...ctx, agentRunId: run.id, blueprintId };
+    return this.exclusive(run.id, () => this.drive(run.id, state, [], runCtx));
   }
 
   /** 승인 대기 중인 실행을 승인·거절하고 이어 간다 */
   async decide(runId: string, approve: boolean, ctx: ToolContext) {
+    ctx = { ...ctx, agentRunId: runId };
     return this.exclusive(runId, async () => {
       const run = await this.prisma.agentRun.findUnique({ where: { id: runId } });
       if (!run || !this.ownsRun(run, ctx.principal))
         throw new NotFoundException('실행 기록을 찾을 수 없습니다.');
+      ctx = { ...ctx, blueprintId: run.blueprintId };
       if (run.status !== 'AWAITING_APPROVAL' || !run.state)
         throw new BadRequestException('승인 대기 중인 실행이 아닙니다.');
       const state = run.state as unknown as RunState;
@@ -293,7 +300,13 @@ export class AgentRunnerService {
     });
   }
 
-  private async drive(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
+  /** 실행 중에 생긴 업무 이벤트가 같은 에이전트를 다시 깨우지 않게 실행 사슬을 기억한다 */
+  private drive(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
+    const chain = [...(agentRunContext.getStore()?.chain ?? []), ctx.blueprintId ?? runId];
+    return agentRunContext.run({ chain }, () => this.driveSteps(runId, state, trace, ctx));
+  }
+
+  private async driveSteps(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
     const byId = new Map(state.graph.nodes.map((n) => [n.id, n]));
     try {
       while (state.next || state.loops.length) {
@@ -706,7 +719,8 @@ export class AgentRunnerService {
     const cfg = node.config as ToolConfig;
     if (tool.mode === 'WRITE' && state.guards.strictApproval) state.approved = false;
     try {
-      const result = await tool.run(args, ctx);
+      // 파일을 만드는 도구는 결과 파일을 이 실행·노드에 붙인다
+      const result = await tool.run(args, { ...ctx, toolUseId: node.id });
       if (cfg.outputVar) state.vars[cfg.outputVar] = result;
       return {
         port: 'out',
@@ -841,6 +855,11 @@ export class AgentRunnerService {
       error: r.error,
       trace: r.trace,
       pending: r.status === 'AWAITING_APPROVAL' ? (st.pending ?? null) : null,
+      files: await this.prisma.aiFile.findMany({
+        where: { agentRunId: r.id },
+        select: { id: true, toolUseId: true, name: true, mediaType: true, size: true },
+        orderBy: { createdAt: 'asc' },
+      }),
       createdAt: r.createdAt,
     };
   }

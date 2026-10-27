@@ -9,7 +9,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -21,9 +25,11 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import {
   AGENT_VISIBILITIES,
+  PERMISSION_WILDCARD,
   normalizeAgentGraph,
   type AgentVisibility,
   type AuthPrincipal,
@@ -33,6 +39,22 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AgentBlueprintService } from './agent-blueprint.service';
 import { AgentGeneratorService } from './agent-generator.service';
 import { AgentRunnerService } from './agent-runner.service';
+import { AgentReferenceService } from './agent-reference.service';
+import { AiFiles, contentDisposition } from '../ai/ai-files.service';
+
+const isSuperAdmin = (p: AuthPrincipal) => p.permissions.includes(PERMISSION_WILDCARD);
+
+/** 파일 내려받기 응답(이름·형식·크기 머리글) */
+function sendFile(res: Response, f: { name: string; mediaType: string; bytes: Buffer }) {
+  res.set({
+    'Content-Type': f.mediaType,
+    'Content-Disposition': contentDisposition(f.name),
+    'Content-Length': String(f.bytes.length),
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  return new StreamableFile(f.bytes);
+}
 
 class BlueprintDto {
   @IsOptional()
@@ -70,6 +92,13 @@ class BlueprintDto {
   @ArrayMaxSize(500)
   @IsUUID('all', { each: true })
   shareEmployeeIds?: string[];
+
+  /** 대화로 만들 때 올린 참고 양식 */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('all', { each: true })
+  referenceFileIds?: string[];
 }
 
 class GenerateDto {
@@ -87,6 +116,57 @@ class GenerateDto {
   @IsOptional()
   @IsObject()
   graph?: Record<string, unknown>;
+
+  /** 참고 양식(대화로 만들 때 올린 것) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('all', { each: true })
+  referenceFileIds?: string[];
+}
+
+class DesignMessageDto {
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(8000)
+  text!: string;
+}
+
+class DesignChatDto {
+  @IsArray()
+  @ArrayMaxSize(60)
+  @ValidateNested({ each: true })
+  @Type(() => DesignMessageDto)
+  messages!: DesignMessageDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('all', { each: true })
+  referenceFileIds?: string[];
+}
+
+class UploadReferenceDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  name!: string;
+
+  @IsString()
+  @MaxLength(200)
+  mediaType!: string;
+
+  /** 파일 내용(base64) — 10MB까지 */
+  @IsString()
+  @MaxLength(14_000_000)
+  dataBase64!: string;
+  /** 편집 화면에서 올리면 이 에이전트에 바로 붙인다 */
+  @IsOptional()
+  @IsUUID()
+  blueprintId?: string;
 }
 
 class ValidateDto {
@@ -131,6 +211,7 @@ export class AgentBlueprintController {
     private readonly blueprints: AgentBlueprintService,
     private readonly generator: AgentGeneratorService,
     private readonly runner: AgentRunnerService,
+    private readonly references: AgentReferenceService,
   ) {}
 
   @Get('status')
@@ -156,11 +237,48 @@ export class AgentBlueprintController {
       : dto.blueprintId
         ? (await this.blueprints.get(dto.blueprintId, user)).graph
         : null;
+    const refs = [
+      ...(dto.blueprintId ? await this.references.listFor(dto.blueprintId) : []),
+      ...(await this.references.describe(dto.referenceFileIds ?? [], user)),
+    ];
     return this.generator.generate(
       dto.prompt.trim(),
       user,
       current && current.nodes.length ? current : null,
+      refs.filter((r, i) => refs.findIndex((x) => x.id === r.id) === i),
     );
+  }
+
+  /** 대화로 만들기 — AI가 빠진 정보를 되묻고, 충분하면 설계 명세를 정리한다 */
+  @Post('design-chat')
+  async designChat(@CurrentUser() user: AuthPrincipal, @Body() dto: DesignChatDto) {
+    const refs = await this.references.describe(dto.referenceFileIds ?? [], user);
+    return this.generator.designChat(dto.messages, refs, user);
+  }
+
+  /** 참고 양식 올리기(엑셀·CSV) — 구조를 읽어 돌려준다 */
+  @Post('reference-files')
+  async uploadReference(@CurrentUser() user: AuthPrincipal, @Body() dto: UploadReferenceDto) {
+    if (dto.blueprintId) await this.blueprints.assertEditable(dto.blueprintId, user);
+    const ref = await this.references.upload(dto, user);
+    if (dto.blueprintId) await this.references.attach([ref.id], dto.blueprintId, user);
+    return ref;
+  }
+
+  @Get('reference-files/:fileId')
+  async downloadReference(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('fileId', ParseUUIDPipe) fileId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return sendFile(res, await this.references.download(fileId, user));
+  }
+
+  /** 이 에이전트에 붙은 참고 양식 */
+  @Get(':id/references')
+  async listReferences(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    await this.blueprints.get(id, user);
+    return this.references.listFor(id);
   }
 
   /** 부분 공유로 고를 수 있는 직원(로그인 계정이 있는 재직 직원) */
@@ -233,7 +351,20 @@ export class AgentBlueprintController {
 @Controller('agent-runs')
 @RequirePermissions('AI.MANAGE')
 export class AgentRunController {
-  constructor(private readonly runner: AgentRunnerService) {}
+  constructor(
+    private readonly runner: AgentRunnerService,
+    private readonly files: AiFiles,
+  ) {}
+
+  /** 실행이 만든 파일 내려받기 — 실행한 사람만 */
+  @Get('files/:fileId')
+  async file(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('fileId', ParseUUIDPipe) fileId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return sendFile(res, await this.files.get(fileId, user.userId, isSuperAdmin(user)));
+  }
 
   @Get(':id')
   get(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
@@ -273,7 +404,18 @@ export class AgentCallController {
   constructor(
     private readonly blueprints: AgentBlueprintService,
     private readonly runner: AgentRunnerService,
+    private readonly files: AiFiles,
   ) {}
+
+  /** 실행이 만든 파일 내려받기 — 실행한 사람만 */
+  @Get('files/:fileId')
+  async file(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('fileId', ParseUUIDPipe) fileId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return sendFile(res, await this.files.get(fileId, user.userId));
+  }
 
   @Get()
   callable(@CurrentUser() user: AuthPrincipal) {
