@@ -32,19 +32,19 @@ export class CbmItemController {
   }
 
   @Post()
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.CREATE')
   create(@Body() dto: CreateCbmItemDto) {
     return this.cbmItemService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCbmItemDto) {
     return this.cbmItemService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('CBM_ITEM.WRITE')
+  @RequirePermissions('CBM_ITEM.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.cbmItemService.remove(id);

@@ -28,19 +28,19 @@ export class HrController {
   }
 
   @Post('policies')
-  @RequirePermissions('HR.WRITE')
+  @RequirePermissions('HR.CREATE')
   create(@Body() dto: CreatePolicyDto) {
     return this.hr.create(dto);
   }
 
   @Patch('policies/:id')
-  @RequirePermissions('HR.WRITE')
+  @RequirePermissions('HR.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePolicyDto) {
     return this.hr.update(id, dto);
   }
 
   @Delete('policies/:id')
-  @RequirePermissions('HR.WRITE')
+  @RequirePermissions('HR.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.hr.remove(id);

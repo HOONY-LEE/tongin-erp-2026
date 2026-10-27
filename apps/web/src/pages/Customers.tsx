@@ -206,7 +206,7 @@ export default function Customers() {
         fields={fields}
         editable
         headerActions={
-          can('COMMON_CODE.WRITE') ? (
+          can('COMMON_CODE.UPDATE') ? (
             <button
               type="button"
               aria-label="고객 등급 설정"

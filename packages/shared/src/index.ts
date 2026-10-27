@@ -557,67 +557,110 @@ export type PrincipalType = (typeof PRINCIPAL_TYPES)[number];
 export const DATA_SCOPES = ['OWN', 'ORG', 'ALL'] as const;
 export type DataScope = (typeof DATA_SCOPES)[number];
 
-// 권한 = 데이터(코드 하드코딩 금지, 개발원칙 §5). 기능 단위 코드: <도메인>.<액션>.
-// '*' = 전체 권한(슈퍼관리자). 새 기능 추가 시 여기 + 시드에 등록.
-export const PERMISSIONS = [
-  'ORG_UNIT.READ',
-  'ORG_UNIT.WRITE',
-  'USER.READ',
-  'USER.WRITE',
-  'ROLE.READ',
-  'ROLE.WRITE',
-  'COMMON_CODE.READ',
-  'COMMON_CODE.WRITE',
-  'EMPLOYEE.READ',
-  'EMPLOYEE.WRITE',
-  'CUSTOMER.READ',
-  'CUSTOMER.WRITE',
-  'PARTNER.READ',
-  'PARTNER.WRITE',
-  'PRODUCT.READ',
-  'PRODUCT.WRITE',
-  'CBM_ITEM.READ',
-  'CBM_ITEM.WRITE',
-  'ADDON.READ',
-  'ADDON.WRITE',
-  'PRICE_CONDITION.READ',
-  'PRICE_CONDITION.WRITE',
-  'AUDIT.READ',
-  'LEAD.READ',
-  'LEAD.WRITE',
-  'ESTIMATE.READ',
-  'ESTIMATE.WRITE',
-  'CONTRACT.READ',
-  'CONTRACT.WRITE',
-  'PAYMENT.READ',
-  'PAYMENT.WRITE',
-  'WORK_ORDER.READ',
-  'WORK_ORDER.WRITE',
-  'NOTIFICATION.READ',
-  'NOTIFICATION.SEND', // 고객에게 문자·알림톡 직접 발송(AI 비서의 문자 발송 포함)
-  'MATERIAL.READ',
-  'MATERIAL.WRITE',
-  'SETTLEMENT.READ',
-  'SETTLEMENT.WRITE',
-  'BILLING.READ',
-  'BILLING.WRITE',
-  'MATERIAL_ORDER.READ',
-  'MATERIAL_ORDER.WRITE',
-  'STATS.READ',
-  'SERVICE_ORDER.READ',
-  'SERVICE_ORDER.WRITE',
-  'SUPPORT.READ',
-  'SUPPORT.WRITE',
-  'MARKETING.READ',
-  'MARKETING.WRITE',
-  'HR.READ',
-  'HR.WRITE',
-  'CALENDAR.READ',
-  'CALENDAR.WRITE',
-  'AI.USE', // AI 비서 사용 — AI는 사용자 본인 권한 안에서만 도구를 실행한다
-  'AI.MANAGE', // AI 에이전트 관리 — 에이전트 블루프린트 만들기·고치기·테스트 실행(도구는 실행자 본인 권한으로)
-] as const;
-export type Permission = (typeof PERMISSIONS)[number];
+// 권한 = 데이터(코드 하드코딩 금지, 개발원칙 §5). 기능 단위 코드: <기능>.<액션>.
+// 액션은 조회·등록·수정·삭제(CRUD) 네 가지 + 기능별 특수 권한(문자 발송 등).
+// '*' = 전체 권한(슈퍼관리자). 새 기능은 PERMISSION_CATALOG에 한 줄 추가하면
+// 권한 그룹 화면·시드에 자동으로 나타난다.
+export const CRUD_ACTIONS = ['READ', 'CREATE', 'UPDATE', 'DELETE'] as const;
+export type CrudAction = (typeof CRUD_ACTIONS)[number];
+export const CRUD_ACTION_LABEL: Record<CrudAction, string> = {
+  READ: '조회',
+  CREATE: '등록',
+  UPDATE: '수정',
+  DELETE: '삭제',
+};
+
+export interface PermissionResource {
+  /** 권한 코드 앞부분(예: LEAD → LEAD.READ) */
+  key: string;
+  /** 권한 그룹 화면에 보이는 메뉴·기능 이름 */
+  label: string;
+  /** 메뉴 묶음(운영·관리·정산·시스템) */
+  group: string;
+  /** 이 기능에 쓰는 CRUD 액션 — 조회만 있는 기능도 있다 */
+  actions: readonly CrudAction[];
+  /** CRUD로 표현되지 않는 행동 */
+  specials?: readonly { action: string; label: string }[];
+  /** 화면에 덧붙일 설명 */
+  hint?: string;
+}
+
+const ALL_CRUD = CRUD_ACTIONS;
+export const PERMISSION_CATALOG: readonly PermissionResource[] = [
+  // 운영
+  { key: 'STATS', label: '대시보드·통계', group: '운영', actions: ['READ'] },
+  {
+    key: 'AI',
+    label: 'AI 비서',
+    group: '운영',
+    actions: [],
+    specials: [
+      { action: 'USE', label: 'AI 비서 사용' },
+      { action: 'MANAGE', label: '에이전트 빌더' },
+    ],
+    hint: 'AI는 사용자 본인 권한 안에서만 도구를 실행합니다',
+  },
+  { key: 'LEAD', label: '접수', group: '운영', actions: ALL_CRUD },
+  { key: 'ESTIMATE', label: '견적', group: '운영', actions: ALL_CRUD },
+  { key: 'CONTRACT', label: '계약', group: '운영', actions: ALL_CRUD },
+  { key: 'PAYMENT', label: '입금', group: '운영', actions: ALL_CRUD },
+  { key: 'WORK_ORDER', label: '작업', group: '운영', actions: ALL_CRUD },
+  { key: 'SERVICE_ORDER', label: '리빙·케어', group: '운영', actions: ALL_CRUD },
+  { key: 'SUPPORT', label: '고객지원', group: '운영', actions: ALL_CRUD },
+  { key: 'MARKETING', label: '캠페인', group: '운영', actions: ALL_CRUD },
+  {
+    key: 'NOTIFICATION',
+    label: '문자·알림톡',
+    group: '운영',
+    actions: ['READ'],
+    specials: [{ action: 'SEND', label: '고객에게 직접 발송' }],
+  },
+  { key: 'CALENDAR', label: '일정', group: '운영', actions: ALL_CRUD },
+  // 관리
+  { key: 'CUSTOMER', label: '고객', group: '관리', actions: ALL_CRUD },
+  { key: 'PRODUCT', label: '상품', group: '관리', actions: ALL_CRUD },
+  { key: 'CBM_ITEM', label: '이사물품·방 템플릿', group: '관리', actions: ALL_CRUD },
+  { key: 'ADDON', label: '부가서비스', group: '관리', actions: ALL_CRUD },
+  { key: 'PRICE_CONDITION', label: '가격조건', group: '관리', actions: ALL_CRUD },
+  { key: 'PARTNER', label: '거래처', group: '관리', actions: ALL_CRUD },
+  { key: 'ORG_UNIT', label: '조직·지점', group: '관리', actions: ALL_CRUD },
+  { key: 'EMPLOYEE', label: '직원', group: '관리', actions: ALL_CRUD },
+  { key: 'COMMON_CODE', label: '공통코드·설정', group: '관리', actions: ALL_CRUD },
+  // 정산
+  { key: 'SETTLEMENT', label: '정산', group: '정산', actions: ALL_CRUD },
+  { key: 'BILLING', label: '청구', group: '정산', actions: ALL_CRUD },
+  { key: 'HR', label: '인사·평가', group: '정산', actions: ALL_CRUD },
+  { key: 'MATERIAL', label: '자재', group: '정산', actions: ALL_CRUD },
+  { key: 'MATERIAL_ORDER', label: '자재 발주', group: '정산', actions: ALL_CRUD },
+  // 시스템
+  { key: 'USER', label: '계정', group: '시스템', actions: ALL_CRUD },
+  {
+    key: 'ROLE',
+    label: '권한 그룹·직책',
+    group: '시스템',
+    actions: ALL_CRUD,
+    hint: '자기가 가진 권한까지만 다른 그룹에 줄 수 있습니다',
+  },
+  { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
+];
+
+/** 카탈로그에서 펼친 전체 권한 코드 */
+export const PERMISSIONS: string[] = PERMISSION_CATALOG.flatMap((r) => [
+  ...r.actions.map((a) => `${r.key}.${a}`),
+  ...(r.specials ?? []).map((s) => `${r.key}.${s.action}`),
+]);
+export type Permission = string;
+
+/** 권한 코드 → 사람이 읽는 이름(예: LEAD.UPDATE → 접수 · 수정) */
+export function permissionLabel(code: string): string {
+  if (code === '*') return '전체 권한';
+  const [key, action] = code.split('.');
+  const r = PERMISSION_CATALOG.find((x) => x.key === key);
+  if (!r) return code;
+  const special = r.specials?.find((s) => s.action === action);
+  const label = special?.label ?? CRUD_ACTION_LABEL[action as CrudAction] ?? action;
+  return `${r.label} · ${label}`;
+}
 export const PERMISSION_WILDCARD = '*';
 
 // 기본 역할 코드 (시드)
@@ -653,7 +696,15 @@ export interface AuthPrincipal {
   employeeOrgUnitId: string | null; // 연결된 직원의 소속 조직(접수 지점 기본값)
   partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
-  scopes: { roleCode: string; dataScope: DataScope; orgScopeId: string | null }[];
+  scopes: {
+    roleCode: string;
+    dataScope: DataScope;
+    orgScopeId: string | null;
+    /** 이 권한 그룹은 로그인하면 현장앱(/field)으로 들어간다 */
+    fieldApp?: boolean;
+  }[];
+  /** 직책·직급(표시용 — 권한과는 별개) */
+  positionName?: string | null;
 }
 
 // ── SET-01: 입금/미수금 관리 (레거시 입금-고객입금관리/고객별미수금/월별금액 대체) ──

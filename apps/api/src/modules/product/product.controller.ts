@@ -45,19 +45,19 @@ export class ProductController {
 
   /** 상품 구성(필수·기본선택·선택 + 구성별 단가) 전체 저장 */
   @Put(':id/items')
-  @RequirePermissions('PRODUCT.WRITE')
+  @RequirePermissions('PRODUCT.UPDATE')
   setItems(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetBundleItemsDto) {
     return this.productService.setItems(id, dto.items);
   }
 
   @Post(':id/addons')
-  @RequirePermissions('PRODUCT.WRITE')
+  @RequirePermissions('PRODUCT.UPDATE')
   addAddon(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AddAddonDto) {
     return this.productService.addAddon(id, dto.addonServiceId, dto.priceOverride);
   }
 
   @Delete(':id/addons/:addonId')
-  @RequirePermissions('PRODUCT.WRITE')
+  @RequirePermissions('PRODUCT.UPDATE')
   @HttpCode(204)
   removeAddon(
     @Param('id', ParseUUIDPipe) id: string,
@@ -67,19 +67,19 @@ export class ProductController {
   }
 
   @Post()
-  @RequirePermissions('PRODUCT.WRITE')
+  @RequirePermissions('PRODUCT.CREATE')
   create(@Body() dto: CreateProductDto) {
     return this.productService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('PRODUCT.WRITE')
+  @RequirePermissions('PRODUCT.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProductDto) {
     return this.productService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('PRODUCT.WRITE')
+  @RequirePermissions('PRODUCT.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productService.remove(id);

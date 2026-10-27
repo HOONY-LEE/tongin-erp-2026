@@ -22,13 +22,13 @@ export class ContractController {
   }
 
   @Post()
-  @RequirePermissions('CONTRACT.WRITE')
+  @RequirePermissions('CONTRACT.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateContractDto) {
     return this.contractService.create(dto, user);
   }
 
   @Post(':id/sign')
-  @RequirePermissions('CONTRACT.WRITE')
+  @RequirePermissions('CONTRACT.UPDATE')
   sign(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.contractService.sign(id, user);
   }
@@ -40,7 +40,7 @@ export class ContractController {
   }
 
   @Post(':id/payments')
-  @RequirePermissions('PAYMENT.WRITE')
+  @RequirePermissions('PAYMENT.CREATE')
   createPayment(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

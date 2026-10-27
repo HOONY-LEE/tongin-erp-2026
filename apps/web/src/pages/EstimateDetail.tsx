@@ -112,7 +112,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
       { replace: true },
     );
 
-  const canEdit = can('ESTIMATE.WRITE');
+  const canEdit = can('ESTIMATE.UPDATE');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -231,7 +231,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         canEdit &&
         !closed &&
         contractReady &&
-        can('WORK_ORDER.WRITE') && (
+        can('WORK_ORDER.CREATE') && (
           <Button variant="primary" size="sm" onClick={() => setWoOpen(true)}>
             작업 만들기
           </Button>

@@ -66,7 +66,7 @@ export class WorkPhotoController {
 
   /** 올리기·지우기는 시작·완료와 같은 쓰기 권한(현장 작업팀 기본 역할에 포함) */
   @Post('field/work-orders/:id/photos')
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.UPDATE')
   upload(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -76,7 +76,7 @@ export class WorkPhotoController {
   }
 
   @Delete('field/work-orders/:id/photos/:photoId')
-  @RequirePermissions('WORK_ORDER.WRITE')
+  @RequirePermissions('WORK_ORDER.UPDATE')
   remove(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

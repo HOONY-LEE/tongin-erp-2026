@@ -69,6 +69,9 @@ const EMPLOYEES = [
 ];
 
 /** 계정을 만들 직원 — 전부에게 계정을 주지는 않는다(현실도 그렇다). */
+/** 데모 직원 업무 → 직책 */
+const DEMO_POSITION: Record<string, string> = { 지점장: '지점장', 견적: '과장', 현장: '현장팀장' };
+
 const ACCOUNTS: { empNo: string; loginId: string; role: string; dataScope: 'ORG' | 'OWN' }[] = [
   // 지점장: 소속 지점(+하위) 전체 조회
   { empNo: 'E1001', loginId: 'gn.manager', role: ROLE_FRANCHISE, dataScope: 'ORG' },
@@ -142,15 +145,25 @@ async function main() {
   console.log(`거래처: ${PARTNERS.length}개 (전속 2, 기업고객 1)`);
 
   // ── 직원 ──
+  // 직책은 업무로 정한다(지점장→지점장, 견적→과장, 현장→현장팀장). 관리자가 바꾼 직책은 덮어쓰지 않는다
+  const positionIdByName = new Map<string, string>();
+  for (const name of new Set(Object.values(DEMO_POSITION))) {
+    const pos = await prisma.position.upsert({ where: { name }, update: {}, create: { name } });
+    positionIdByName.set(name, pos.id);
+  }
   const empByNo = new Map<string, string>();
   for (const e of EMPLOYEES) {
     const orgUnitId = branchByCode.get(e.branch);
     if (!orgUnitId) continue;
+    const positionId = positionIdByName.get(DEMO_POSITION[e.role] ?? '') ?? null;
     const row = await prisma.employee.upsert({
       where: { empNo: e.empNo },
       update: { name: e.name, phone: e.phone, orgUnitId },
-      create: { empNo: e.empNo, name: e.name, phone: e.phone, orgUnitId },
+      create: { empNo: e.empNo, name: e.name, phone: e.phone, orgUnitId, positionId },
     });
+    if (!row.positionId && positionId) {
+      await prisma.employee.update({ where: { id: row.id }, data: { positionId } });
+    }
     empByNo.set(e.empNo, row.id);
   }
   console.log(`직원: ${EMPLOYEES.length}명`);

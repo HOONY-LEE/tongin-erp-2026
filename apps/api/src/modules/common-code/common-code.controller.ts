@@ -32,19 +32,19 @@ export class CommonCodeController {
   }
 
   @Post()
-  @RequirePermissions('COMMON_CODE.WRITE')
+  @RequirePermissions('COMMON_CODE.CREATE')
   create(@Body() dto: CreateCommonCodeDto) {
     return this.commonCodeService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('COMMON_CODE.WRITE')
+  @RequirePermissions('COMMON_CODE.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCommonCodeDto) {
     return this.commonCodeService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('COMMON_CODE.WRITE')
+  @RequirePermissions('COMMON_CODE.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.commonCodeService.remove(id);

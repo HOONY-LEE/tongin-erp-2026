@@ -40,13 +40,13 @@ export class SupportController {
   }
 
   @Post()
-  @RequirePermissions('SUPPORT.WRITE')
+  @RequirePermissions('SUPPORT.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateTicketDto) {
     return this.service.create(dto, user);
   }
 
   @Patch(':id')
-  @RequirePermissions('SUPPORT.WRITE')
+  @RequirePermissions('SUPPORT.UPDATE')
   update(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -56,7 +56,7 @@ export class SupportController {
   }
 
   @Post(':id/transition')
-  @RequirePermissions('SUPPORT.WRITE')
+  @RequirePermissions('SUPPORT.UPDATE')
   transition(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

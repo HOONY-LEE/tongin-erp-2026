@@ -63,7 +63,7 @@ export class EstimateController {
   }
 
   @Put('distance-rule')
-  @RequirePermissions('COMMON_CODE.WRITE')
+  @RequirePermissions('COMMON_CODE.UPDATE')
   saveDistanceRule(@Body() dto: DistanceRuleDto) {
     return this.estimateService.saveDistanceRule(dto);
   }
@@ -83,13 +83,13 @@ export class EstimateController {
   }
 
   @Post()
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateEstimateDto) {
     return this.estimateService.create(dto, user);
   }
 
   @Post(':id/zones')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   addZone(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -99,7 +99,7 @@ export class EstimateController {
   }
 
   @Post(':id/lines')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   addLine(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -109,7 +109,7 @@ export class EstimateController {
   }
 
   @Delete(':id/lines/:lineId')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   @HttpCode(200)
   removeLine(
     @CurrentUser() user: AuthPrincipal,
@@ -121,7 +121,7 @@ export class EstimateController {
 
   /** 견적 옵션(부가서비스) 담기 — 상품관리의 옵션 카탈로그에서 고르거나 자유 입력. */
   @Post(':id/addons')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   addAddon(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -131,7 +131,7 @@ export class EstimateController {
   }
 
   @Delete(':id/addons/:addonId')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   @HttpCode(200)
   removeAddon(
     @CurrentUser() user: AuthPrincipal,
@@ -145,7 +145,7 @@ export class EstimateController {
 
   /** 1. 기본정보(이사종류·주소·상담일·이사일). 주소·날짜는 접수에도 반영된다. */
   @Put(':id/basic')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   saveBasic(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -156,7 +156,7 @@ export class EstimateController {
 
   /** 2. 물품정보(방·물품 전체 교체). */
   @Put(':id/items')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   saveItems(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -167,7 +167,7 @@ export class EstimateController {
 
   /** 3. 옵션선택(작업조건 + 옵션 전체 교체). */
   @Put(':id/options')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   saveOptions(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -178,7 +178,7 @@ export class EstimateController {
 
   /** 작업조건(전/후 평수·사다리차/엘리베이터/계단/기타) 수정. */
   @Put(':id/conditions')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   updateConditions(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -189,7 +189,7 @@ export class EstimateController {
 
   /** 이사비용·부가세·계약금·잔금 확정(견적서 발송 전). 총액은 서버가 계산한다. */
   @Put(':id/amounts')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   updateAmounts(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -199,7 +199,7 @@ export class EstimateController {
   }
 
   @Post(':id/quote')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   quote(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.estimateService.quote(id, user);
   }
@@ -207,7 +207,7 @@ export class EstimateController {
   // ── EST-03: 재료비 라인 ↔ 자재·재고 ──
 
   @Post(':id/cost-lines')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   addCostLine(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -217,7 +217,7 @@ export class EstimateController {
   }
 
   @Delete(':id/cost-lines/:costLineId')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   @HttpCode(200)
   removeCostLine(
     @CurrentUser() user: AuthPrincipal,
@@ -229,7 +229,7 @@ export class EstimateController {
 
   /** 재료비 라인의 자재를 재고에서 일괄 차감(전표 OUT). */
   @Post(':id/deduct-materials')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   deductMaterials(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.estimateService.deductMaterials(id, user);
   }
@@ -257,7 +257,7 @@ export class EstimateController {
   }
 
   @Put(':id/cost-buildup')
-  @RequirePermissions('ESTIMATE.WRITE')
+  @RequirePermissions('ESTIMATE.UPDATE')
   setBuildup(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

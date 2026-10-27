@@ -53,7 +53,7 @@ export function StaffPicker({
 }) {
   const toast = useToast();
   const { can } = useAuth();
-  const canWrite = can('MARKETING.WRITE');
+  const canWrite = can('MARKETING.UPDATE');
   const [keyword, setKeyword] = useState('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);

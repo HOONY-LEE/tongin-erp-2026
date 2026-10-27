@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
+import { PERMISSION_WILDCARD, permissionLabel, type AuthPrincipal } from '@tongin/shared';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { REQUIRE_PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
 
@@ -30,7 +30,9 @@ export class PermissionsGuard implements CanActivate {
 
     const missing = required.filter((p) => !user.permissions.includes(p));
     if (missing.length > 0) {
-      throw new ForbiddenException(`권한이 부족합니다: ${missing.join(', ')}`);
+      throw new ForbiddenException(
+        `권한이 없습니다: ${missing.map(permissionLabel).join(', ')} — 관리자에게 권한 그룹을 요청하세요.`,
+      );
     }
     return true;
   }

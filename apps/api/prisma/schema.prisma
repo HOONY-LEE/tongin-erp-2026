@@ -64,6 +64,8 @@ model Employee {
   orgUnit    OrgUnit   @relation(fields: [orgUnitId], references: [id])
   empNo      String?   @unique @map("emp_no")
   name       String
+  positionId String?   @map("position_id") @db.Uuid // 직책·직급(표시·인사용, 권한을 주지 않는다)
+  position   Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
   phone      String?
   isActive   Boolean   @default(true) @map("is_active")
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -128,15 +130,36 @@ model AppUser {
   @@map("app_user")
 }
 
+// 권한 그룹(=역할). 메뉴×CRUD 권한 묶음 — 직책(Position)과는 별개 축이다.
 model Role {
   id          String           @id @default(uuid()) @db.Uuid
   code        String           @unique
   name        String
   description String?
+  isSystem    Boolean          @default(false) @map("is_system") // 시드 기본 그룹: 삭제 불가(권한은 고칠 수 있음)
+  fieldApp    Boolean          @default(false) @map("field_app") // 로그인 시 현장앱으로 진입
+  sortOrder   Int              @default(100) @map("sort_order")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   rolePerms   RolePermission[]
   userRoles   UserRole[]
+  positions   Position[]
 
   @@map("role")
+}
+
+// 직책·직급(회장·대표·이사·부장…) — 관리자가 자유롭게 정의. 권한은 주지 않고,
+// 계정을 만들 때 기본 권한 그룹을 추천하는 데만 쓴다(defaultRole).
+model Position {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String     @unique
+  sortOrder     Int        @default(100) @map("sort_order")
+  isActive      Boolean    @default(true) @map("is_active")
+  defaultRoleId String?    @map("default_role_id") @db.Uuid
+  defaultRole   Role?      @relation(fields: [defaultRoleId], references: [id], onDelete: SetNull)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  employees     Employee[]
+
+  @@map("position")
 }
 
 model Permission {

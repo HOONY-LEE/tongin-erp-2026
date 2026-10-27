@@ -46,13 +46,13 @@ export class LeadController {
   }
 
   @Post()
-  @RequirePermissions('LEAD.WRITE')
+  @RequirePermissions('LEAD.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateLeadDto) {
     return this.leadService.create(dto, user);
   }
 
   @Patch(':id')
-  @RequirePermissions('LEAD.WRITE')
+  @RequirePermissions('LEAD.UPDATE')
   update(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -62,7 +62,7 @@ export class LeadController {
   }
 
   @Post(':id/transition')
-  @RequirePermissions('LEAD.WRITE')
+  @RequirePermissions('LEAD.UPDATE')
   transition(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,
@@ -72,7 +72,7 @@ export class LeadController {
   }
 
   @Delete(':id')
-  @RequirePermissions('LEAD.WRITE')
+  @RequirePermissions('LEAD.DELETE')
   @HttpCode(204)
   remove(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.leadService.remove(id, user);

@@ -33,7 +33,7 @@ export default function Campaigns() {
   const toast = useToast();
   const navigate = useNavigate();
   const { can } = useAuth();
-  const canWrite = can('MARKETING.WRITE');
+  const canDelete = can('MARKETING.DELETE');
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
@@ -93,7 +93,7 @@ export default function Campaigns() {
       render: (r) => (r.status === 'SCHEDULED' ? `${dt(r.scheduledAt)} 예약` : dt(r.sentAt)),
     },
     { title: '작성', render: (r) => dt(r.createdAt) },
-    ...(canWrite
+    ...(canDelete
       ? [
           {
             title: '',

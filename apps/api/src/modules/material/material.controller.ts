@@ -33,26 +33,26 @@ export class MaterialController {
   }
 
   @Post()
-  @RequirePermissions('MATERIAL.WRITE')
+  @RequirePermissions('MATERIAL.CREATE')
   create(@Body() dto: CreateMaterialDto) {
     return this.materialService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('MATERIAL.WRITE')
+  @RequirePermissions('MATERIAL.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateMaterialDto) {
     return this.materialService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('MATERIAL.WRITE')
+  @RequirePermissions('MATERIAL.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.materialService.remove(id);
   }
 
   @Post(':id/movements')
-  @RequirePermissions('MATERIAL.WRITE')
+  @RequirePermissions('MATERIAL.UPDATE')
   createMovement(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateMovementDto) {
     return this.materialService.createMovement(id, dto);
   }

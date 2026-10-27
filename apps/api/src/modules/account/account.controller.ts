@@ -1,6 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import { AccountService } from './account.service';
-import { CreateAccountDto, UpdateAccountDto } from './dto/create-account.dto';
+import {
+  CreateAccountDto,
+  SetAccountEmployeeDto,
+  SetAccountRolesDto,
+  UpdateAccountDto,
+} from './dto/create-account.dto';
 import type { AuthPrincipal } from '@tongin/shared';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -22,13 +27,29 @@ export class AccountController {
   }
 
   @Post()
-  @RequirePermissions('USER.WRITE')
-  create(@Body() dto: CreateAccountDto) {
-    return this.accountService.create(dto);
+  @RequirePermissions('USER.CREATE')
+  create(@Body() dto: CreateAccountDto, @CurrentUser() user: AuthPrincipal) {
+    return this.accountService.create(dto, user);
+  }
+
+  @Put(':id/roles')
+  @RequirePermissions('USER.UPDATE')
+  setRoles(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetAccountRolesDto,
+  ) {
+    return this.accountService.setRoles(id, dto.roles, user);
+  }
+
+  @Put(':id/employee')
+  @RequirePermissions('USER.UPDATE')
+  setEmployee(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetAccountEmployeeDto) {
+    return this.accountService.setEmployee(id, dto.employeeId);
   }
 
   @Patch(':id')
-  @RequirePermissions('USER.WRITE')
+  @RequirePermissions('USER.UPDATE')
   update(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

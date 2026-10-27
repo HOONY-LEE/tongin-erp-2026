@@ -1,5 +1,19 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 import { DATA_SCOPES, type DataScope } from '@tongin/shared';
+import { RoleAssignmentDto } from '../../access/dto/access.dto';
 
 export class CreateAccountDto {
   @IsString()
@@ -11,8 +25,18 @@ export class CreateAccountDto {
   @MaxLength(100)
   password!: string;
 
+  /** 권한 그룹 여러 개 + 그룹별 데이터 범위 */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => RoleAssignmentDto)
+  roles?: RoleAssignmentDto[];
+
+  /** (예전 화면) 권한 그룹 하나 */
+  @IsOptional()
   @IsUUID()
-  roleId!: string;
+  roleId?: string;
 
   @IsOptional()
   @IsUUID()
@@ -29,5 +53,20 @@ export class CreateAccountDto {
 
 export class UpdateAccountDto {
   @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
+}
+
+export class SetAccountRolesDto {
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => RoleAssignmentDto)
+  roles!: RoleAssignmentDto[];
+}
+
+export class SetAccountEmployeeDto {
+  @ValidateIf((_, v) => v !== null)
+  @IsUUID()
+  employeeId!: string | null;
 }

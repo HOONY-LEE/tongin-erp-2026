@@ -32,19 +32,19 @@ export class AddonServiceController {
   }
 
   @Post()
-  @RequirePermissions('ADDON.WRITE')
+  @RequirePermissions('ADDON.CREATE')
   create(@Body() dto: CreateAddonServiceDto) {
     return this.addonServiceService.create(dto);
   }
 
   @Patch(':id')
-  @RequirePermissions('ADDON.WRITE')
+  @RequirePermissions('ADDON.UPDATE')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAddonServiceDto) {
     return this.addonServiceService.update(id, dto);
   }
 
   @Delete(':id')
-  @RequirePermissions('ADDON.WRITE')
+  @RequirePermissions('ADDON.DELETE')
   @HttpCode(204)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.addonServiceService.remove(id);

@@ -99,7 +99,7 @@ export function DistanceCard({
         >
           지도
         </Button>
-        {can('COMMON_CODE.WRITE') && (
+        {can('COMMON_CODE.UPDATE') && (
           <Button
             variant="ghost"
             size="sm"

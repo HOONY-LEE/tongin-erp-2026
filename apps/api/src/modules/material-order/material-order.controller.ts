@@ -26,26 +26,26 @@ export class MaterialOrderController {
   }
 
   @Post()
-  @RequirePermissions('MATERIAL_ORDER.WRITE')
+  @RequirePermissions('MATERIAL_ORDER.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateMaterialOrderDto) {
     return this.service.create(dto, user);
   }
 
   @Post(':id/approve')
-  @RequirePermissions('MATERIAL_ORDER.WRITE')
+  @RequirePermissions('MATERIAL_ORDER.UPDATE')
   approve(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.approve(id, user);
   }
 
   /** 출고: 승인 발주 자재를 본사 재고에서 OUT 차감. */
   @Post(':id/ship')
-  @RequirePermissions('MATERIAL_ORDER.WRITE')
+  @RequirePermissions('MATERIAL_ORDER.UPDATE')
   ship(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.ship(id, user);
   }
 
   @Post(':id/cancel')
-  @RequirePermissions('MATERIAL_ORDER.WRITE')
+  @RequirePermissions('MATERIAL_ORDER.UPDATE')
   @HttpCode(200)
   cancel(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.cancel(id, user);
