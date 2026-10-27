@@ -38,31 +38,145 @@
   width: 64px;
 }
 
-/* 중앙 — EditorTabs */
+/* 중앙 — 헤더 멀티탭(HeaderTabs) */
 .headerCenter {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: stretch;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
-.headerCenter > div[role='tablist'] {
+.headerTabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+.headerTabs > div[role='tablist'] {
   background: transparent !important;
   height: 100% !important;
+  min-width: 0;
+  max-width: 100%;
 }
-.headerCenter button[role='tab'] {
+/* 탭 목록 — 넘치면 탭이 줄어든다(글자는 말줄임) */
+.headerTabs > div[role='tablist'] > div {
+  min-width: 0;
+  overflow: hidden;
+}
+.headerTabs button[role='tab'] {
   height: 100% !important;
   border-radius: 0 !important;
   background: transparent !important;
   padding-left: 24px !important;
   padding-right: 24px !important;
   max-width: 260px;
+  min-width: 0;
+  flex: 0 1 auto !important;
+}
+.headerTabs button[role='tab'] > span:not([aria-hidden]) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 좁을 때 — 아이콘은 빠지고 여백도 줄인다 */
+.headerTabsCompact button[role='tab'] {
+  padding-left: 12px !important;
+  padding-right: 8px !important;
 }
 /* 탭 리스트 끝 + 추가 버튼 — 위아래 중앙 정렬 */
-.headerCenter > div[role='tablist'] > button,
-.headerCenter button:not([role='tab']) {
+.headerTabs > div[role='tablist'] > button,
+.headerTabs button:not([role='tab']) {
   align-self: center !important;
+  flex-shrink: 0;
+}
+
+/* … 더 보기 / + (넘칠 때) */
+.moreTabs {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 6px;
+  margin-left: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+}
+.moreTabs:hover,
+.moreTabsOn {
+  background: var(--ark-color-bg-subtle);
+  color: var(--ark-color-text);
+}
+.moreCount {
+  font-variant-numeric: tabular-nums;
+}
+.tabsMenu {
+  position: fixed;
+  z-index: 1000;
+  width: 220px;
+  max-height: min(420px, 70vh);
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.tabsMenuItem {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.tabsMenuItem:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.tabsMenuPick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  color: var(--ark-color-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.tabsMenuIcon {
+  display: inline-flex;
+  color: var(--ark-color-text-secondary);
+}
+.tabsMenuLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tabsMenuClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.tabsMenuClose:hover {
+  background: var(--ark-color-bg-muted, var(--ark-color-border));
+  color: var(--ark-color-text);
 }
 
 /* 우측 — 액션 */

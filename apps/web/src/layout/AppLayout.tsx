@@ -32,7 +32,6 @@ import {
   LayoutSidebar,
   SidebarGroup,
   SidebarItem,
-  EditorTabs,
   ThemeToggle,
   NotificationBell,
   type EditorTab,
@@ -45,6 +44,7 @@ import { api } from '../lib/api';
 import { useAiRunning } from '../lib/aiActivity';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import styles from './AppLayout.module.css';
+import { HeaderTabs } from './HeaderTabs';
 
 const LANG_SHORT: Record<string, string> = { ko: '한', en: 'EN', zh: '中' };
 
@@ -298,13 +298,13 @@ export default function AppLayout() {
       <header className={styles.topHeader}>
         <div className={styles.headerLeft} />
         <div className={styles.headerCenter}>
-          <EditorTabs
+          <HeaderTabs
             tabs={editorTabs}
             activeId={activeHref}
             onTabChange={goTab}
             onTabClose={closeTab}
             onTabAdd={addTab}
-            size="sm"
+            keepIconId={aiBusy ? '/ai' : undefined}
           />
         </div>
         <div className={styles.headerRight}>
