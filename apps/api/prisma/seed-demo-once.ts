@@ -9,8 +9,10 @@
  */
 import { spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
+import { ROLE_FRANCHISE } from '@tongin/shared';
+import { RESET_VERSION } from './demo-versions';
 
-const VERSION = '2026-10-23.1';
+const VERSION = '2026-10-27.1';
 const SCRIPTS = [
   'seed-demo.ts',
   'seed-demo-cases.ts',
@@ -28,6 +30,15 @@ const SCRIPTS = [
  */
 const ADDONS = ['seed-demo-dashboards.ts'];
 
+/** 서버 부팅 시더가 역할(가맹점 등)을 만들 때까지 기다린다 — 시드가 역할에 계정을 붙인다 */
+async function waitForRoles(prisma: PrismaClient) {
+  for (let i = 0; i < 90; i++) {
+    if (await prisma.role.findUnique({ where: { code: ROLE_FRANCHISE } })) return true;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return false;
+}
+
 async function main() {
   if ((process.env.DEMO_SEED ?? '').toLowerCase() === 'off') {
     console.log('[demo-seed] DEMO_SEED=off — 건너뜀');
@@ -35,6 +46,21 @@ async function main() {
   }
   const prisma = new PrismaClient();
   try {
+    if (!(await waitForRoles(prisma))) {
+      console.error('[demo-seed] 3분이 지나도 기본 역할이 없다 — 다음 시작 때 다시 시도');
+      return;
+    }
+    // 리셋(reset-demo-once.ts)이 끝났음을 남긴다 — 다음 재시작 때 다시 지우지 않게
+    await prisma.commonCode.upsert({
+      where: { codeGroup_code: { codeGroup: 'SYSTEM', code: 'DEMO_RESET_VERSION' } },
+      update: { name: RESET_VERSION },
+      create: {
+        codeGroup: 'SYSTEM',
+        code: 'DEMO_RESET_VERSION',
+        name: RESET_VERSION,
+        isActive: false,
+      },
+    });
     const where = { codeGroup_code: { codeGroup: 'SYSTEM', code: 'DEMO_SEED_VERSION' } };
     const cur = await prisma.commonCode.findUnique({ where });
     if (cur?.name === VERSION) {

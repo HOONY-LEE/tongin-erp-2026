@@ -14,8 +14,13 @@
  * 지점을 조직관리에서 주소 검색으로 다시 저장하면 카카오 지오코딩 좌표로 바뀐다.
  */
 import { PrismaClient, Prisma } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+import { ROLE_FRANCHISE } from '@tongin/shared';
 
 const prisma = new PrismaClient();
+
+/** 지역 지점 직원은 2020년 입사 */
+const HIRE_DATE = new Date('2020-03-02T00:00:00Z');
 
 /** 오늘 기준 상대일 → UTC 자정 Date (DATE 컬럼이 하루 밀리지 않게 — seed-demo-cases.ts와 같은 규칙) */
 function day(offset: number): Date {
@@ -638,6 +643,11 @@ async function main() {
   const itemByName = new Map(cbmRows.map((r) => [r.name, r]));
   const rooms = await prisma.roomTemplate.findMany({ orderBy: { sortOrder: 'asc' } });
 
+  const franchiseRole = await prisma.role.findUnique({ where: { code: ROLE_FRANCHISE } });
+  if (!franchiseRole)
+    console.warn('가맹점 역할이 없다 — 지점 계정은 건너뛴다(API를 한 번 띄운 뒤 다시)');
+  const passwordHash = await bcrypt.hash(process.env.DEMO_PASSWORD ?? 'tongin1234', 10);
+
   let leadTotal = 0;
   const stageCount: Record<string, number> = {};
   for (const [bi, b] of BRANCHES.entries()) {
@@ -665,7 +675,8 @@ async function main() {
     // ── 직원 2명: 지점장(…1)·현장(…3) — 사번 끝자리로 견적/현장 담당을 고르는 규칙과 맞춘다 ──
     const staff = [];
     for (const [ri, role] of (['지점장', '현장'] as const).entries()) {
-      const empNo = `E2${bno}${ri === 0 ? 1 : 3}`;
+      // 사번 = 입사연도(2020) + 일련번호 4자리 — 끝자리(1 지점장·3 현장)는 담당을 고르는 규칙과 맞춘다
+      const empNo = `20200${bno}${ri === 0 ? 1 : 3}`;
       // 직책: 지점장→지점장, 현장→현장팀장(관리자가 바꾼 직책은 덮어쓰지 않는다)
       const pos = await prisma.position.upsert({
         where: { name: role === '지점장' ? '지점장' : '현장팀장' },
@@ -674,9 +685,10 @@ async function main() {
       });
       const e = await prisma.employee.upsert({
         where: { empNo },
-        update: { orgUnitId: branch.id },
+        update: { orgUnitId: branch.id, hireDate: HIRE_DATE },
         create: {
           empNo,
+          hireDate: HIRE_DATE,
           name: personName(bi * 2 + ri + 40),
           phone: `010-23${bno}-00${ri + 1}${ri === 0 ? 1 : 3}`,
           orgUnitId: branch.id,
@@ -689,6 +701,29 @@ async function main() {
       staff.push({ ...e, role });
     }
     const [manager, crew] = staff;
+
+    // ── 지점 계정 = 지점장 직원 계정(소속 지점 범위). 아이디는 지점 코드에서(예: BR-MP → mp.manager) ──
+    if (franchiseRole) {
+      const loginId = `${b.code.replace(/^BR-/, '').toLowerCase()}.manager`;
+      const user = await prisma.appUser.upsert({
+        where: { loginId },
+        update: { employeeId: manager.id, isActive: true },
+        create: { loginId, passwordHash, employeeId: manager.id, principalType: 'HUMAN' },
+      });
+      const has = await prisma.userRole.findFirst({
+        where: { userId: user.id, roleId: franchiseRole.id },
+      });
+      if (!has) {
+        await prisma.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: franchiseRole.id,
+            orgScopeId: branch.id,
+            dataScope: 'ORG',
+          },
+        });
+      }
+    }
 
     // ── 거래 ──
     const stages = stagesFor(b);

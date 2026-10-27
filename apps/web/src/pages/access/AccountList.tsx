@@ -29,6 +29,8 @@ interface Account {
   loginId: string;
   isActive: boolean;
   employeeId: string | null;
+  /** 외부(전속업체) 계정이면 업체 이름 — 직원이 아니다 */
+  partnerName: string | null;
   employeeName: string | null;
   orgUnitId: string | null;
   positionId: string | null;
@@ -137,6 +139,11 @@ export default function AccountList() {
               ) : null}
             </span>
             {r.orgUnitName ? <span className={styles.muted}>{String(r.orgUnitName)}</span> : null}
+          </span>
+        ) : r.partnerName ? (
+          <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+            <span>{String(r.partnerName)}</span>
+            <span className={styles.muted}>외부 업체 계정</span>
           </span>
         ) : (
           <span className={styles.muted}>직원 정보 없음</span>
@@ -361,8 +368,10 @@ function AccountModal({
   const pwShort = password.length > 0 && password.length < 6;
   const pwMismatch = password2.length > 0 && password !== password2;
   const hadEmployee = !!account?.employeeId;
+  // 외부 업체 계정은 직원이 아니다 — 직원 정보 칸을 두지 않는다
+  const isPartner = !!account?.partnerName;
   // 예전 계정(직원 없음)은 이름을 비워 두면 직원 정보 없이 권한만 저장한다
-  const wantsProfile = isNew || hadEmployee || name.trim().length > 0;
+  const wantsProfile = !isPartner && (isNew || hadEmployee || name.trim().length > 0);
 
   const save = async () => {
     if (wantsProfile && (!name.trim() || !orgUnitId)) {
@@ -461,62 +470,69 @@ function AccountModal({
       }
     >
       <div className={styles.section} style={{ gap: 22 }}>
-        <div className={styles.section}>
-          <span className={styles.panelTitle}>직원 정보</span>
-          {!isNew && !hadEmployee && (
-            <span className={styles.hint}>
-              직원 정보가 없는 계정입니다. 이름과 소속을 넣고 저장하면 직원으로도 등록됩니다.
-            </span>
-          )}
-          <div className={styles.formGrid}>
-            <Input
-              label="이름 *"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="홍길동"
-            />
-            <Select
-              label="소속 *"
-              value={orgUnitId || undefined}
-              placeholder="소속 고르기"
-              onValueChange={(v) => {
-                setOrgUnitId(v);
-                suggest(positionId, v);
-              }}
-              options={orgs}
-            />
-            <Select
-              label="직책"
-              value={positionId}
-              onValueChange={(v) => {
-                setPositionId(v);
-                suggest(v, orgUnitId);
-              }}
-              options={positionOptions}
-            />
-            <Input
-              label="연락처"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="010-0000-0000"
-            />
-            <Input
-              label="입사일"
-              type="date"
-              value={hireDate}
-              onChange={(e) => setHireDate(e.target.value)}
-            />
-            <Input
-              label="사번"
-              value={account?.empNo ?? ''}
-              readOnly
-              disabled
-              placeholder={`자동 생성(예: ${(hireDate || today()).slice(0, 4)}0001)`}
-              helperText={isNew || !account?.empNo ? '입사연도 + 그 해 일련번호' : undefined}
-            />
+        {isPartner ? (
+          <div className={styles.notice} style={{ margin: 0 }}>
+            {account?.partnerName} 소속 외부 업체 계정입니다(직원 아님). 자기 업체에 배정된 작업만
+            봅니다.
           </div>
-        </div>
+        ) : (
+          <div className={styles.section}>
+            <span className={styles.panelTitle}>직원 정보</span>
+            {!isNew && !hadEmployee && (
+              <span className={styles.hint}>
+                직원 정보가 없는 계정입니다. 이름과 소속을 넣고 저장하면 직원으로도 등록됩니다.
+              </span>
+            )}
+            <div className={styles.formGrid}>
+              <Input
+                label="이름 *"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="홍길동"
+              />
+              <Select
+                label="소속 *"
+                value={orgUnitId || undefined}
+                placeholder="소속 고르기"
+                onValueChange={(v) => {
+                  setOrgUnitId(v);
+                  suggest(positionId, v);
+                }}
+                options={orgs}
+              />
+              <Select
+                label="직책"
+                value={positionId}
+                onValueChange={(v) => {
+                  setPositionId(v);
+                  suggest(v, orgUnitId);
+                }}
+                options={positionOptions}
+              />
+              <Input
+                label="연락처"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="010-0000-0000"
+              />
+              <Input
+                label="입사일"
+                type="date"
+                value={hireDate}
+                onChange={(e) => setHireDate(e.target.value)}
+              />
+              <Input
+                label="사번"
+                value={account?.empNo ?? ''}
+                readOnly
+                disabled
+                placeholder={`자동 생성(예: ${(hireDate || today()).slice(0, 4)}0001)`}
+                helperText={isNew || !account?.empNo ? '입사연도 + 그 해 일련번호' : undefined}
+              />
+            </div>
+          </div>
+        )}
 
         {isNew && (
           <div className={styles.section}>

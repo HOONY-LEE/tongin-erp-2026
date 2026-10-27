@@ -1,13 +1,9 @@
+import { ORG_UNIT_TYPE_LABEL } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 
-const TYPE_LABEL: Record<string, string> = {
-  GROUP: '그룹사',
-  COMPANY: '법인/브랜드',
-  BRANCH: '지점',
-  PARTNER: '외부업체',
-};
+const TYPE_LABEL: Record<string, string> = ORG_UNIT_TYPE_LABEL;
 
 const columns: Column[] = [
   { title: '이름', dataIndex: 'name', flex: 1, minWidth: 160 },

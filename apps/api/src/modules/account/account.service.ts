@@ -40,6 +40,7 @@ export class AccountService {
         isActive: true,
         isExternal: true,
         createdAt: true,
+        partner: { select: { name: true } },
         employee: {
           select: {
             id: true,
@@ -69,6 +70,7 @@ export class AccountService {
       loginId: u.loginId,
       isActive: u.isActive,
       employeeId: u.employee?.id ?? null,
+      partnerName: u.partner?.name ?? null,
       employeeName: u.employee?.name ?? null,
       orgUnitId: u.employee?.orgUnitId ?? null,
       positionId: u.employee?.position?.id ?? null,
