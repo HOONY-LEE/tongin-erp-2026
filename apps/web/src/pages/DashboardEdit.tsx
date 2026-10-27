@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
+import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
+import styles from '../components/dashboard/builder/builder.module.css';
 import { DashboardEditor } from '../components/dashboard/builder/DashboardEditor';
 import type { MyDashboard } from './Dashboard';
 
 /** 내 대시보드 꾸미기 — 저장하면 나에게만 적용된다(관리자 템플릿은 그대로) */
 export default function DashboardEdit() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const { user } = useAuth();
   const [me, setMe] = useState<MyDashboard | null>(null);
@@ -49,54 +52,67 @@ export default function DashboardEdit() {
     }
   };
 
+  const leave = () =>
+    (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) && navigate('/dashboard');
+
   if (!me || !layout) return <PageSkeleton cards={2} />;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title="내 대시보드 편집"
-        subtitle="왼쪽 위젯을 끌어다 놓고, 제목줄을 잡아 옮기고, 모서리로 크기를 바꾸세요. 저장하면 나에게만 적용됩니다."
-        actions={
-          <div style={{ display: 'flex', gap: 6 }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setLayout(me.baseLayout);
-                setDirty(true);
-              }}
-            >
-              기본 구성 불러오기
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?'))
-                  navigate('/dashboard');
-              }}
-            >
-              취소
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saving}
-              leftIcon={<Save size={14} />}
-              onClick={() => void save()}
-            >
-              저장
-            </Button>
-          </div>
-        }
-      />
-      <DashboardEditor
-        layout={layout}
-        permissions={user?.permissions ?? []}
-        onChange={(l) => {
-          setLayout(l);
-          setDirty(true);
-        }}
-      />
-    </div>
+    <DashboardEditor
+      layout={layout}
+      permissions={user?.permissions ?? []}
+      onChange={(l) => {
+        setLayout(l);
+        setDirty(true);
+      }}
+      onBack={leave}
+      crumbs={
+        <>
+          <button type="button" onClick={leave}>
+            {t('dashboard.title')}
+          </button>
+          <span className={styles.crumbSep}>/</span>
+          <b>내 대시보드 편집</b>
+          <span>{dirty ? ' · 저장 안 됨' : ' · 저장하면 나에게만 적용'}</span>
+        </>
+      }
+      actions={
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setLayout(me.baseLayout);
+              setDirty(true);
+            }}
+          >
+            기본 구성 불러오기
+          </Button>
+          <Button variant="outline" size="sm" onClick={leave}>
+            취소
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={saving}
+            leftIcon={<Save size={14} />}
+            onClick={() => void save()}
+          >
+            저장
+          </Button>
+        </>
+      }
+      heading={
+        <PageHeader
+          title={t('dashboard.title')}
+          // 실제 화면의 버튼 줄과 높이를 맞춘다(위젯이 같은 높이에서 시작하도록)
+          actions={<span style={{ display: 'block', height: 32 }} />}
+          tags={
+            <Badge variant="subtle" color="primary">
+              내가 꾸민 대시보드
+            </Badge>
+          }
+        />
+      }
+    />
   );
 }

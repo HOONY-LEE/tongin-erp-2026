@@ -7,7 +7,7 @@
   height: 100%;
   min-width: 0;
   border: 1px solid var(--ark-color-border);
-  border-radius: 14px;
+  border-radius: 8px;
   background: var(--ark-color-bg);
   overflow: hidden;
 }
@@ -58,7 +58,7 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  border-radius: 14px;
+  border-radius: 8px;
   overflow: hidden;
 }
 .embedBar {
@@ -68,7 +68,7 @@
   padding: 6px 10px;
   border: 1px dashed var(--ark-color-border);
   border-bottom: none;
-  border-radius: 14px 14px 0 0;
+  border-radius: 8px 8px 0 0;
   background: var(--ark-color-bg-subtle);
   user-select: none;
 }
@@ -106,30 +106,141 @@
   text-align: center;
 }
 
-/* ── 편집기 ── */
-.editor {
-  display: flex;
-  gap: 14px;
-  min-height: 0;
-  flex: 1;
-  align-items: stretch;
-}
-.palette,
-.inspector {
+/* ── 편집기(전체 화면) — AppLayout과 같은 뼈대: 사이드바 240 · 상단 46 · 콘텐츠 여백 32/36/40 ── */
+.studio {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  width: 224px;
-  max-height: calc(100vh - 180px);
-  position: sticky;
+  padding-left: 240px;
+  background: var(--ark-color-bg, #f5f5f7);
+}
+.studioSide {
+  position: fixed;
   top: 0;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 14px;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  border-right: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg-subtle, var(--ark-color-bg));
+}
+.studioSideHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 12px 0 8px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.studioBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 16px 0 20px;
+  border-bottom: 1px solid var(--ark-color-border);
   background: var(--ark-color-bg);
+}
+.studioBar > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.studioBar > .crumbs {
+  flex-shrink: 1;
   overflow: hidden;
 }
-.inspector {
-  width: 248px;
+@media (max-width: 1100px) {
+  .studioWidth {
+    display: none;
+  }
+}
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+  white-space: nowrap;
+}
+.crumbs button {
+  padding: 2px 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.crumbs button:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.crumbSep {
+  color: var(--ark-color-text-tertiary);
+}
+.crumbInput {
+  min-width: 120px;
+  max-width: 280px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-weight: 600;
+}
+.crumbInput:hover {
+  border-color: var(--ark-color-border);
+}
+.crumbInput:focus {
+  outline: none;
+  border-color: var(--ark-color-primary-500);
+}
+.studioMain {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* 스크롤바가 생기고 없어짐에 따라 폭이 흔들리지 않게 */
+  scrollbar-gutter: stable;
+}
+.studioInner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 36px 40px;
+}
+.studioHint {
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+/* 위젯 우클릭 설정 메뉴(화면 위에 뜸) */
+.ctxMenu {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  width: 264px;
+  max-height: min(560px, calc(100vh - 16px));
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  box-shadow:
+    0 10px 32px rgb(0 0 0 / 0.16),
+    0 2px 6px rgb(0 0 0 / 0.08);
+  overflow: hidden;
+}
+.ctxMenu .inspectorBody {
+  min-height: 0;
+  overflow-x: hidden;
+}
+.ctxMenu .meta {
+  white-space: normal;
 }
 .paletteHead {
   display: flex;
@@ -238,23 +349,6 @@
   color: var(--ark-color-text-tertiary);
 }
 
-.canvasScroll {
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  padding: 0 4px 8px;
-}
-.canvasInfo {
-  position: sticky;
-  left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--ark-color-text-tertiary);
-}
 .zoomToggle {
   display: inline-flex;
   padding: 2px;
@@ -263,6 +357,7 @@
 }
 .zoomToggle button {
   padding: 3px 10px;
+  white-space: nowrap;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -280,22 +375,16 @@
 .canvasFrame {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 4px;
   outline: 1px dashed var(--ark-color-border);
-  outline-offset: 4px;
-}
-.inspectorEmpty {
-  padding: 16px 14px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--ark-color-text-tertiary);
+  outline-offset: 3px;
 }
 .canvas {
   position: absolute;
   top: 0;
   left: 0;
   transform-origin: 0 0;
-  border-radius: 14px;
+  border-radius: 4px;
   /* 격자 점 — 놓을 자리가 보이게 */
   background-image: radial-gradient(circle, var(--ark-color-border) 1px, transparent 1.2px);
   background-size: var(--col) var(--row);
@@ -323,12 +412,12 @@
   transition: none;
   opacity: 0.92;
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
-  border-radius: 14px;
+  border-radius: 8px;
 }
 .placeholder {
   position: absolute;
   border: 2px dashed var(--ark-color-primary-500);
-  border-radius: 14px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--ark-color-primary-500) 8%, transparent);
   transition:
     left 0.1s ease,
@@ -345,7 +434,7 @@
   cursor: nwse-resize;
   border-right: 3px solid var(--ark-color-text-tertiary);
   border-bottom: 3px solid var(--ark-color-text-tertiary);
-  border-radius: 0 0 10px 0;
+  border-radius: 0 0 6px 0;
   opacity: 0.45;
 }
 .item:hover .resize {
@@ -449,22 +538,6 @@ textarea.input {
   color: var(--ark-color-error-600, #dc2626);
 }
 
-@media (max-width: 1100px) {
-  .editor {
-    flex-wrap: wrap;
-  }
-  .palette {
-    width: 100%;
-    max-height: 260px;
-    position: static;
-  }
-  .inspector {
-    width: 100%;
-    position: static;
-    max-height: none;
-  }
-}
-
 /* ── 템플릿 설정(2단계) ── */
 .settingsWrap {
   display: grid;
@@ -494,43 +567,6 @@ textarea.input {
   background: var(--ark-color-bg-subtle);
 }
 
-/* ── 편집 화면 머리 ── */
-.editPage {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.editHead {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.editTitle {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.nameInput {
-  min-width: 240px;
-  padding: 2px 6px;
-  margin-left: -6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ark-color-text);
-  font: inherit;
-  font-size: 22px;
-  font-weight: 700;
-}
-.nameInput:hover {
-  border-color: var(--ark-color-border);
-}
-.nameInput:focus {
-  outline: none;
-  border-color: var(--ark-color-primary-500);
-}
 .checkList {
   display: flex;
   flex-direction: column;

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Save } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowRight, Save } from 'lucide-react';
 import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
-import { Button, PageSkeleton, useToast } from '../components/ui';
+import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import { DashboardEditor } from '../components/dashboard/builder/DashboardEditor';
 import styles from '../components/dashboard/builder/builder.module.css';
 
@@ -15,12 +16,13 @@ interface Template {
 }
 
 /**
- * 대시보드 템플릿 — 1단계: 위젯과 실제 화면만(이름은 위에서 바로 고친다).
+ * 대시보드 템플릿 — 1단계: 위젯과 실제 화면만(전체 화면 편집, 이름은 상단 경로에서 바로 고친다).
  * 누구에게 보일지·기본 여부·개인 수정은 '저장하고 다음'에서(2단계 설정 화면).
  */
 export default function DashboardTemplateEdit() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const { user, can } = useAuth();
   const [tpl, setTpl] = useState<Template | null>(null);
@@ -55,39 +57,42 @@ export default function DashboardTemplateEdit() {
     }
   };
 
+  const leave = () =>
+    (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) && navigate('/dashboard-admin');
+
   if (!tpl) return <PageSkeleton cards={2} />;
   return (
-    <div className={styles.editPage}>
-      <div className={styles.editHead}>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={() =>
-            (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) &&
-            navigate('/dashboard-admin')
-          }
-          aria-label="목록으로"
-          title="목록으로"
-        >
-          <ArrowLeft size={16} />
-        </button>
-        <div className={styles.editTitle}>
+    <DashboardEditor
+      layout={tpl.layout}
+      permissions={user?.permissions ?? []}
+      onChange={(l) => {
+        setTpl({ ...tpl, layout: l });
+        setDirty(true);
+      }}
+      onBack={leave}
+      crumbs={
+        <>
+          <button type="button" onClick={leave}>
+            대시보드 관리
+          </button>
+          <span className={styles.crumbSep}>/</span>
           <input
-            className={styles.nameInput}
+            className={styles.crumbInput}
             value={tpl.name}
             maxLength={60}
             aria-label="템플릿 이름"
+            size={Math.max(8, tpl.name.length + 2)}
             onChange={(e) => {
               setTpl({ ...tpl, name: e.target.value });
               setDirty(true);
             }}
           />
-          <span className={styles.meta}>
-            1단계 위젯 배치 · 2단계 공개·지정 설정{dirty ? ' · 저장 안 됨' : ''}
-          </span>
-        </div>
-        <span className={styles.spacer} />
-        {editable && (
+          <span className={styles.crumbSep}>/</span>
+          <span>1단계 위젯 배치{dirty ? ' · 저장 안 됨' : ''}</span>
+        </>
+      }
+      actions={
+        editable && (
           <>
             <Button
               variant="outline"
@@ -108,16 +113,20 @@ export default function DashboardTemplateEdit() {
               저장하고 다음
             </Button>
           </>
-        )}
-      </div>
-      <DashboardEditor
-        layout={tpl.layout}
-        permissions={user?.permissions ?? []}
-        onChange={(l) => {
-          setTpl({ ...tpl, layout: l });
-          setDirty(true);
-        }}
-      />
-    </div>
+        )
+      }
+      heading={
+        <PageHeader
+          title={t('dashboard.title')}
+          // 실제 화면의 버튼 줄과 높이를 맞춘다(위젯이 같은 높이에서 시작하도록)
+          actions={<span style={{ display: 'block', height: 32 }} />}
+          tags={
+            <Badge variant="subtle" color="neutral">
+              {tpl.name}
+            </Badge>
+          }
+        />
+      }
+    />
   );
 }

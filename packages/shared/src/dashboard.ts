@@ -774,6 +774,55 @@ export function compactDashLayout(items: DashItem[], pinnedId?: string): DashIte
   return placed.sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
+const flowKey = (i: Pick<DashItem, 'x' | 'y'>) => i.y * DASH_COLS + i.x;
+
+/**
+ * 왼쪽 위부터 흐르듯 채우기 — 주어진 순서대로, 앞 위젯 자리 이후의 첫 빈칸(왼쪽→오른쪽, 위→아래)에 놓는다.
+ * 순서가 유지되고 왼쪽이 비지 않는다. 큰 그래프 옆에 작은 카드 두 개를 쌓는 배치도 그대로 된다.
+ */
+export function flowDashLayout(ordered: DashItem[]): DashItem[] {
+  const placed: DashItem[] = [];
+  let cursor = 0;
+  for (const src of ordered) {
+    const it = { ...src, w: Math.min(DASH_COLS, src.w) };
+    for (let k = cursor; ; k++) {
+      const x = k % DASH_COLS;
+      if (x + it.w > DASH_COLS) continue;
+      it.x = x;
+      it.y = Math.floor(k / DASH_COLS);
+      if (!placed.some((p) => overlaps(p, it))) break;
+    }
+    placed.push(it);
+    cursor = flowKey(it);
+  }
+  return placed;
+}
+
+/** 지금 배치의 순서(위→아래, 왼쪽→오른쪽) */
+export function dashFlowOrder(items: DashItem[]): DashItem[] {
+  return [...items].sort((a, b) => flowKey(a) - flowKey(b));
+}
+
+/**
+ * 위젯 하나를 (x, y) 칸 근처로 옮겨 다시 흐르게 한다 — 그 칸보다 뒤에 있던 위젯 앞으로 끼어든다.
+ * `item`이 목록에 없으면(새로 놓는 위젯) 끼워 넣는다. 크기를 바꾼 경우엔 `item`에 바뀐 크기를 담아 보낸다.
+ */
+export function placeDashItem(
+  items: DashItem[],
+  item: DashItem,
+  target: { x: number; y: number },
+): DashItem[] {
+  const before = items.find((i) => i.id === item.id);
+  const others = dashFlowOrder(items.filter((i) => i.id !== item.id));
+  const t = flowKey(target);
+  // 뒤로 옮길 땐 닿은 위젯의 뒤로(그 자리를 차지하도록), 앞으로 옮길 땐 앞으로
+  const forward = before && t > flowKey(before);
+  let at = others.findIndex((o) => (forward ? flowKey(o) > t : flowKey(o) >= t));
+  if (at < 0) at = others.length;
+  others.splice(at, 0, item);
+  return flowDashLayout(others);
+}
+
 /** 권한에 맞는 기본 대시보드 — 관리자가 정한 것이 없을 때 */
 export function defaultDashLayout(permissions: string[]): DashLayout {
   const want: { key: string; viz?: DashViz }[] = [

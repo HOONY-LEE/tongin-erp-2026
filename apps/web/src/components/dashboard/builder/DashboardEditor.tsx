@@ -6,8 +6,11 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
+  ArrowLeft,
   AreaChart,
   BarChart3,
   BarChartHorizontal,
@@ -41,9 +44,11 @@ import {
   DASH_WIDGETS,
   DASH_WIDGET_MAP,
   canUseWidget,
-  compactDashLayout,
+  dashFlowOrder,
+  flowDashLayout,
   makeDashItem,
   newDashItemId,
+  placeDashItem,
   type DashItem,
   type DashLayout,
   type DashMetric,
@@ -56,6 +61,10 @@ import styles from './builder.module.css';
 
 const GAP = 12;
 const DND_MIME = 'application/x-tongin-widget';
+// 실제 화면(AppLayout)과 같은 값 — 사이드바 폭, 콘텐츠 좌우 여백
+const SIDEBAR_W = 240;
+const SIDEBAR_COLLAPSED_W = 64;
+const CONTENT_PAD_X = 36 * 2;
 
 export const VIZ_ICON: Record<DashViz, typeof BarChart3> = {
   card: Hash,
@@ -85,47 +94,74 @@ type Drag = {
 } | null;
 
 /**
- * 대시보드 편집기(WYSIWYG) — 왼쪽 위젯 목록을 오른쪽 실제 화면에 끌어다 놓고,
- * 제목줄을 잡아 옮기고 오른쪽 아래 모서리로 크기를 바꾼다. 위젯을 누르면 오른쪽에서 보기 방식·기간을 고른다.
- * 겹치면 아래 위젯이 밀려 내려가고 빈 줄은 위로 당겨진다.
+ * 대시보드 편집기(WYSIWYG, 전체 화면) — 앱 사이드바 자리에 위젯 목록, 상단 바에 경로·보기 크기·저장 버튼,
+ * 콘텐츠 자리에는 실제 대시보드 화면과 같은 폭·같은 머리(heading)로 그린다.
+ * 왼쪽 위젯 목록을 오른쪽 실제 화면에 끌어다 놓고,
+ * 제목줄을 잡아 옮기고 오른쪽 아래 모서리로 크기를 바꾼다. 위젯을 우클릭하면 그 자리에 설정 메뉴가 뜬다.
+ * 위젯은 왼쪽 위부터 순서대로 흐르듯 채워진다(옮기면 순서가 바뀌고 빈칸 없이 다시 정렬).
  */
 export function DashboardEditor({
   layout,
   onChange,
   permissions,
+  crumbs,
+  actions,
+  heading,
+  onBack,
 }: {
   layout: DashLayout;
   onChange: (l: DashLayout) => void;
   /** 이 권한으로 쓸 수 있는 위젯만 목록에 보인다 */
   permissions: string[];
+  /** 상단 바 왼쪽 — 경로(브레드크럼) */
+  crumbs: ReactNode;
+  /** 상단 바 오른쪽 — 저장 등 */
+  actions: ReactNode;
+  /** 실제 대시보드 화면의 머리(제목줄) — 위젯이 놓이는 높이까지 같게 */
+  heading?: ReactNode;
+  onBack: () => void;
 }) {
   const items = layout.items;
   const set = useCallback((next: DashItem[]) => onChange({ version: 1, items: next }), [onChange]);
   const { results, loading } = useDashData(items);
 
   // ── 캔버스 크기 ──
-  // 실제 대시보드는 이 편집 화면 전체 폭(= 대시보드 화면의 콘텐츠 폭)으로 보인다.
-  // 가운데 칸은 위젯 목록·설정 칸만큼 좁으니, 실제 폭으로 그린 뒤 비율을 줄여 그대로 보여 준다(WYSIWYG).
-  const rootRef = useRef<HTMLDivElement>(null);
+  // 위젯 목록이 사이드바(240px) 자리를 그대로 쓰므로, 콘텐츠 칸 폭 = 실제 대시보드 콘텐츠 폭.
+  // 사이드바를 접어 쓰는 사람이면 실제 화면이 그만큼 넓다.
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [cw, setCw] = useState(0); // 실제 대시보드 폭
-  const [aw, setAw] = useState(0); // 가운데 칸에 쓸 수 있는 폭
+  const [aw, setAw] = useState(0); // 지금 쓸 수 있는 폭
+  const [ah, setAh] = useState(0); // 지금 보이는 높이
   useLayoutEffect(() => {
-    const root = rootRef.current;
     const box = scrollRef.current;
-    if (!root || !box) return;
-    const ro = new ResizeObserver(() => {
-      setCw(Math.floor(root.getBoundingClientRect().width));
-      setAw(Math.floor(box.clientWidth));
-    });
-    ro.observe(root);
+    if (!box) return;
+    let collapsed = false;
+    try {
+      collapsed = localStorage.getItem('tongin_sidebar_collapsed') === '1';
+    } catch {
+      /* 저장소를 못 쓰면 펼친 사이드바 기준 */
+    }
+    const extra = collapsed ? SIDEBAR_W - SIDEBAR_COLLAPSED_W : 0;
+    const measure = () => {
+      const w = Math.floor(box.clientWidth - CONTENT_PAD_X);
+      setAw(w);
+      setCw(w + extra);
+      setAh(box.clientHeight);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(box);
     return () => ro.disconnect();
   }, []);
-  // 화면 맞춤(줄여서 한눈에) ↔ 실제 크기(100%, 옆으로 스크롤)
-  const [fit, setFit] = useState(true);
-  const scale = fit && cw && aw ? Math.min(1, aw / cw) : 1;
+  // 실제 크기(100%) ↔ 화면 맞춤(전체 배치를 한 화면에)
+  const [fit, setFit] = useState(false);
+  const usedRows = Math.max(
+    1,
+    items.reduce((m, i) => Math.max(m, i.y + i.h), 0),
+  );
+  const fullH = usedRows * (DASH_ROW_HEIGHT + GAP);
+  const scale = fit && cw && aw ? Math.min(1, aw / cw, Math.max(0.2, (ah - 160) / fullH)) : 1;
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
   const colW = Math.max(10, (cw - GAP * (DASH_COLS - 1)) / DASH_COLS);
@@ -146,22 +182,17 @@ export function DashboardEditor({
     const { orig, dx, dy } = drag;
     const cx = colW + GAP;
     const cy = DASH_ROW_HEIGHT + GAP;
-    const moved: DashItem =
-      drag.mode === 'move'
-        ? {
-            ...orig,
-            x: Math.max(0, Math.min(DASH_COLS - orig.w, Math.round(orig.x + dx / cx))),
-            y: Math.max(0, Math.round(orig.y + dy / cy)),
-          }
-        : {
-            ...orig,
-            w: Math.max(2, Math.min(DASH_COLS - orig.x, Math.round(orig.w + dx / cx))),
-            h: Math.max(2, Math.min(12, Math.round(orig.h + dy / cy))),
-          };
-    return compactDashLayout(
-      items.map((i) => (i.id === orig.id ? moved : i)),
-      orig.id,
-    );
+    if (drag.mode === 'move')
+      return placeDashItem(items, orig, {
+        x: Math.max(0, Math.min(DASH_COLS - orig.w, Math.round(orig.x + dx / cx))),
+        y: Math.max(0, Math.round(orig.y + dy / cy)),
+      });
+    const resized = {
+      ...orig,
+      w: Math.max(2, Math.min(DASH_COLS - orig.x, Math.round(orig.w + dx / cx))),
+      h: Math.max(2, Math.min(12, Math.round(orig.h + dy / cy))),
+    };
+    return placeDashItem(items, resized, orig);
   }, [drag, items, colW]);
 
   useEffect(() => {
@@ -196,13 +227,14 @@ export function DashboardEditor({
     e.preventDefault();
     e.stopPropagation();
     setSelectedId(it.id);
+    setMenu(null);
     setDrag({ mode, id: it.id, sx: e.clientX, sy: e.clientY, dx: 0, dy: 0, orig: it });
   };
 
   // ── 목록에서 끌어다 놓기 ──
   const [ghost, setGhost] = useState<DashItem | null>(null);
   const dropPreview = useMemo(
-    () => (ghost ? compactDashLayout([...items, ghost], ghost.id) : null),
+    () => (ghost ? placeDashItem(items, ghost, ghost) : null),
     [ghost, items],
   );
   const cellAt = (e: DragEvent) => {
@@ -241,9 +273,8 @@ export function DashboardEditor({
   const addToBottom = (key: string) => {
     const def = DASH_WIDGET_MAP.get(key);
     if (!def) return;
-    const bottom = items.reduce((m, i) => Math.max(m, i.y + i.h), 0);
-    const it = makeDashItem(def, 0, bottom);
-    set(compactDashLayout([...items, it], it.id));
+    const it = makeDashItem(def);
+    set(flowDashLayout([...dashFlowOrder(items), it]));
     setSelectedId(it.id);
     requestAnimationFrame(() =>
       canvasRef.current
@@ -252,17 +283,30 @@ export function DashboardEditor({
     );
   };
 
-  const update = (id: string, patch: Partial<DashItem>) =>
-    set(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  const update = (id: string, patch: Partial<DashItem>) => {
+    const next = items.map((i) => (i.id === id ? { ...i, ...patch } : i));
+    // 크기가 바뀌면 뒤 위젯들을 다시 흘려 정렬
+    set(
+      patch.w !== undefined || patch.h !== undefined ? flowDashLayout(dashFlowOrder(next)) : next,
+    );
+  };
   const remove = (id: string) => {
-    set(compactDashLayout(items.filter((i) => i.id !== id)));
+    set(flowDashLayout(dashFlowOrder(items.filter((i) => i.id !== id))));
     setSelectedId(null);
+    setMenu(null);
   };
   const duplicate = (it: DashItem) => {
-    const copy = { ...it, id: newDashItemId(), y: it.y + it.h };
-    set(compactDashLayout([...items, copy], copy.id));
+    const order = dashFlowOrder(items);
+    const copy = { ...it, id: newDashItemId() };
+    order.splice(order.findIndex((i) => i.id === it.id) + 1, 0, copy);
+    set(flowDashLayout(order));
     setSelectedId(copy.id);
+    setMenu(null);
   };
+
+  // ── 우클릭 설정 메뉴 ──
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const menuItem = menu ? (items.find((i) => i.id === menu.id) ?? null) : null;
 
   // 키보드: 고른 위젯을 화살표로 옮기기, Delete로 빼기
   useEffect(() => {
@@ -273,23 +317,29 @@ export function DashboardEditor({
       const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[
         e.key
       ];
+      if (e.key === 'Escape') {
+        if (menu) setMenu(null);
+        else setSelectedId(null);
+        return;
+      }
+      if (menu) return;
       if (d) {
         e.preventDefault();
-        const moved = {
-          ...selected,
-          x: Math.max(0, Math.min(DASH_COLS - selected.w, selected.x + d[0])),
-          y: Math.max(0, selected.y + d[1]),
-        };
-        set(
-          compactDashLayout(
-            items.map((i) => (i.id === selected.id ? moved : i)),
-            selected.id,
-          ),
-        );
+        if (d[0]) {
+          // 좌우: 순서에서 앞·뒤 위젯과 자리 바꾸기
+          const order = dashFlowOrder(items);
+          const at = order.findIndex((i) => i.id === selected.id);
+          const to = at + d[0];
+          if (to < 0 || to >= order.length) return;
+          [order[at], order[to]] = [order[to], order[at]];
+          set(flowDashLayout(order));
+        } else {
+          set(placeDashItem(items, selected, { x: selected.x, y: Math.max(0, selected.y + d[1]) }));
+        }
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         remove(selected.id);
-      } else if (e.key === 'Escape') setSelectedId(null);
+      }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
@@ -308,13 +358,23 @@ export function DashboardEditor({
   const hidden = DASH_WIDGETS.length - usable.length;
 
   const view = dropPreview ?? preview ?? items;
-  const rows = Math.max(8, view.reduce((m, i) => Math.max(m, i.y + i.h), 0) + 3);
+  const used = view.reduce((m, i) => Math.max(m, i.y + i.h), 0);
+  const rows = Math.max(8, used + 3);
 
   return (
-    <div ref={rootRef} className={styles.editor}>
-      {/* 왼쪽: 위젯 목록 */}
-      <aside className={styles.palette}>
-        <div className={styles.paletteHead}>
+    <div className={styles.studio}>
+      {/* 사이드바 자리: 위젯 목록 */}
+      <aside className={styles.studioSide}>
+        <div className={styles.studioSideHead}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={onBack}
+            aria-label="나가기"
+            title="나가기"
+          >
+            <ArrowLeft size={16} />
+          </button>
           <b>위젯</b>
           <span className={styles.meta}>{usable.length}개</span>
         </div>
@@ -381,163 +441,174 @@ export function DashboardEditor({
         </div>
       </aside>
 
-      {/* 가운데: 실제 화면 */}
-      <div
+      {/* 상단 바: 경로 · 보기 크기 · 저장 */}
+      <header className={styles.studioBar}>
+        <div className={styles.crumbs}>{crumbs}</div>
+        <span className={styles.spacer} />
+        <span className={`${styles.meta} ${styles.studioWidth}`}>
+          실제 화면 폭 {cw.toLocaleString()}px
+          {scale < 0.995 ? ` · ${Math.round(scale * 100)}%` : ''}
+        </span>
+        <span className={styles.zoomToggle} role="group" aria-label="보기 크기">
+          <button
+            type="button"
+            aria-pressed={!fit}
+            className={!fit ? styles.zoomOn : undefined}
+            onClick={() => setFit(false)}
+          >
+            실제 크기
+          </button>
+          <button
+            type="button"
+            aria-pressed={fit}
+            className={fit ? styles.zoomOn : undefined}
+            onClick={() => setFit(true)}
+          >
+            화면 맞춤
+          </button>
+        </span>
+        {actions}
+      </header>
+
+      {/* 콘텐츠 자리: 실제 대시보드와 같은 여백·머리·폭 */}
+      <main
         ref={scrollRef}
-        className={styles.canvasScroll}
+        className={styles.studioMain}
         onPointerDown={(e) => e.target === e.currentTarget && setSelectedId(null)}
       >
-        <div className={styles.canvasInfo}>
-          <span>
-            실제 화면 폭 {cw.toLocaleString()}px
-            {scale < 0.995 ? ` · ${Math.round(scale * 100)}% 크기로 보는 중` : ' · 실제 크기'}
-          </span>
-          {cw > aw && (
-            <span className={styles.zoomToggle} role="group" aria-label="보기 크기">
-              <button
-                type="button"
-                aria-pressed={fit}
-                className={fit ? styles.zoomOn : undefined}
-                onClick={() => setFit(true)}
-              >
-                화면 맞춤
-              </button>
-              <button
-                type="button"
-                aria-pressed={!fit}
-                className={!fit ? styles.zoomOn : undefined}
-                onClick={() => setFit(false)}
-              >
-                실제 크기
-              </button>
-            </span>
+        <div className={styles.studioInner}>
+          {heading}
+          <div
+            className={styles.canvasFrame}
+            style={{
+              width: cw * scale,
+              height: rows * (DASH_ROW_HEIGHT + GAP) * scale,
+            }}
+          >
+            <div
+              ref={canvasRef}
+              className={`${styles.canvas} ${drag || ghost ? styles.canvasActive : ''}`}
+              style={{
+                width: cw,
+                transform: scale < 0.995 ? `scale(${scale})` : undefined,
+                height: rows * (DASH_ROW_HEIGHT + GAP),
+                ['--col' as string]: `${colW + GAP}px`,
+                ['--row' as string]: `${DASH_ROW_HEIGHT + GAP}px`,
+              }}
+              onDragOver={onDragOver}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) setGhost(null);
+              }}
+              onDrop={onDrop}
+              onPointerDown={(e) => e.target === e.currentTarget && setSelectedId(null)}
+            >
+              {!items.length && !ghost && (
+                <div className={styles.canvasEmpty}>왼쪽에서 위젯을 끌어다 여기에 놓으세요</div>
+              )}
+              {/* 놓일 자리 */}
+              {(ghost || drag) &&
+                (() => {
+                  const target = view.find((i) => i.id === (ghost ? '__ghost__' : drag!.id));
+                  return target ? <div className={styles.placeholder} style={px(target)} /> : null;
+                })()}
+              {/* 폭을 재기 전에는 그리지 않는다(좁은 폭에서 늘어나는 움직임이 보이지 않게) */}
+              {cw > 0 &&
+                view
+                  .filter((i) => i.id !== '__ghost__')
+                  .map((it) => {
+                    const dragging = drag?.id === it.id;
+                    const base = dragging ? drag!.orig : it;
+                    const p = px(base);
+                    const style = dragging
+                      ? drag!.mode === 'move'
+                        ? { ...p, left: p.left + drag!.dx, top: p.top + drag!.dy, zIndex: 20 }
+                        : {
+                            ...p,
+                            width: Math.max(colW * 2, p.width + drag!.dx),
+                            height: Math.max(DASH_ROW_HEIGHT * 2, p.height + drag!.dy),
+                            zIndex: 20,
+                          }
+                      : px(it);
+                    return (
+                      <div
+                        key={it.id}
+                        data-id={it.id}
+                        className={`${styles.item} ${dragging ? styles.itemDragging : ''}`}
+                        style={style}
+                        onPointerDown={() => setSelectedId(it.id)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setSelectedId(it.id);
+                          setMenu({ id: it.id, x: e.clientX, y: e.clientY });
+                        }}
+                      >
+                        <WidgetFrame
+                          item={it}
+                          result={results[it.id]}
+                          loading={loading.has(it.id)}
+                          selected={selectedId === it.id}
+                          dragHandleProps={{
+                            onPointerDown: (e) => startDrag(e, it, 'move'),
+                            style: { cursor: dragging ? 'grabbing' : 'grab' },
+                            title: '끌어서 옮기기',
+                          }}
+                          actions={
+                            <button
+                              type="button"
+                              className={styles.iconBtn}
+                              aria-label="빼기"
+                              title="빼기"
+                              onClick={() => remove(it.id)}
+                            >
+                              <X size={14} />
+                            </button>
+                          }
+                        />
+                        <div
+                          className={styles.resize}
+                          onPointerDown={(e) => startDrag(e, it, 'resize')}
+                          title="끌어서 크기 바꾸기"
+                          aria-hidden
+                        />
+                      </div>
+                    );
+                  })}
+            </div>
+          </div>
+          {items.length > 0 && (
+            <div className={styles.studioHint}>
+              위젯 제목줄을 끌어 순서를 바꾸고, 모서리로 크기를 바꾸고, 우클릭으로 설정합니다.
+            </div>
           )}
         </div>
-        <div
-          className={styles.canvasFrame}
-          style={{
-            width: cw * scale,
-            height: rows * (DASH_ROW_HEIGHT + GAP) * scale,
-          }}
-        >
-          <div
-            ref={canvasRef}
-            className={`${styles.canvas} ${drag || ghost ? styles.canvasActive : ''}`}
-            style={{
-              width: cw,
-              transform: scale < 0.995 ? `scale(${scale})` : undefined,
-              height: rows * (DASH_ROW_HEIGHT + GAP),
-              ['--col' as string]: `${colW + GAP}px`,
-              ['--row' as string]: `${DASH_ROW_HEIGHT + GAP}px`,
-            }}
-            onDragOver={onDragOver}
-            onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setGhost(null);
-            }}
-            onDrop={onDrop}
-            onPointerDown={(e) => e.target === e.currentTarget && setSelectedId(null)}
-          >
-            {!items.length && !ghost && (
-              <div className={styles.canvasEmpty}>왼쪽에서 위젯을 끌어다 여기에 놓으세요</div>
-            )}
-            {/* 놓일 자리 */}
-            {(ghost || drag) &&
-              (() => {
-                const target = view.find((i) => i.id === (ghost ? '__ghost__' : drag!.id));
-                return target ? <div className={styles.placeholder} style={px(target)} /> : null;
-              })()}
-            {/* 폭을 재기 전에는 그리지 않는다(좁은 폭에서 늘어나는 움직임이 보이지 않게) */}
-            {cw > 0 &&
-              view
-                .filter((i) => i.id !== '__ghost__')
-                .map((it) => {
-                  const dragging = drag?.id === it.id;
-                  const base = dragging ? drag!.orig : it;
-                  const p = px(base);
-                  const style = dragging
-                    ? drag!.mode === 'move'
-                      ? { ...p, left: p.left + drag!.dx, top: p.top + drag!.dy, zIndex: 20 }
-                      : {
-                          ...p,
-                          width: Math.max(colW * 2, p.width + drag!.dx),
-                          height: Math.max(DASH_ROW_HEIGHT * 2, p.height + drag!.dy),
-                          zIndex: 20,
-                        }
-                    : px(it);
-                  return (
-                    <div
-                      key={it.id}
-                      data-id={it.id}
-                      className={`${styles.item} ${dragging ? styles.itemDragging : ''}`}
-                      style={style}
-                      onPointerDown={() => setSelectedId(it.id)}
-                    >
-                      <WidgetFrame
-                        item={it}
-                        result={results[it.id]}
-                        loading={loading.has(it.id)}
-                        selected={selectedId === it.id}
-                        dragHandleProps={{
-                          onPointerDown: (e) => startDrag(e, it, 'move'),
-                          style: { cursor: dragging ? 'grabbing' : 'grab' },
-                          title: '끌어서 옮기기',
-                        }}
-                        actions={
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            aria-label="빼기"
-                            title="빼기"
-                            onClick={() => remove(it.id)}
-                          >
-                            <X size={14} />
-                          </button>
-                        }
-                      />
-                      <div
-                        className={styles.resize}
-                        onPointerDown={(e) => startDrag(e, it, 'resize')}
-                        title="끌어서 크기 바꾸기"
-                        aria-hidden
-                      />
-                    </div>
-                  );
-                })}
-          </div>
-        </div>
-      </div>
+      </main>
 
-      {/* 오른쪽: 고른 위젯 설정 — 늘 같은 자리(가운데 화면을 가리거나 좁히지 않게) */}
-      {selected ? (
-        <Inspector
-          key={selected.id}
-          item={selected}
-          onChange={(patch) => update(selected.id, patch)}
-          onRemove={() => remove(selected.id)}
-          onDuplicate={() => duplicate(selected)}
-          onClose={() => setSelectedId(null)}
+      {/* 우클릭한 자리에 뜨는 설정 메뉴 */}
+      {menu && menuItem && (
+        <WidgetMenu
+          key={menuItem.id}
+          at={menu}
+          item={menuItem}
+          onChange={(patch) => update(menuItem.id, patch)}
+          onRemove={() => remove(menuItem.id)}
+          onDuplicate={() => duplicate(menuItem)}
+          onClose={() => setMenu(null)}
         />
-      ) : (
-        <aside className={styles.inspector} aria-label="위젯 설정">
-          <div className={styles.paletteHead}>
-            <b>위젯 설정</b>
-          </div>
-          <div className={styles.inspectorEmpty}>
-            화면의 위젯을 누르면 제목·보기 방식·기간·크기를 여기서 바꿉니다.
-          </div>
-        </aside>
       )}
     </div>
   );
 }
 
-function Inspector({
+/** 위젯 우클릭 메뉴 — 누른 자리에 뜨고, 화면 밖으로 나가지 않게 자리를 맞춘다. 바깥을 누르거나 Esc로 닫는다. */
+function WidgetMenu({
+  at,
   item,
   onChange,
   onRemove,
   onDuplicate,
   onClose,
 }: {
+  at: { x: number; y: number };
   item: DashItem;
   onChange: (p: Partial<DashItem>) => void;
   onRemove: () => void;
@@ -545,8 +616,43 @@ function Inspector({
   onClose: () => void;
 }) {
   const def = DASH_WIDGET_MAP.get(item.widget)!;
-  return (
-    <aside className={styles.inspector} aria-label="위젯 설정">
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: at.x, top: at.y });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const m = 8;
+    const { width, height } = el.getBoundingClientRect();
+    setPos({
+      left: Math.max(m, Math.min(at.x, window.innerWidth - width - m)),
+      top: Math.max(m, Math.min(at.y, window.innerHeight - height - m)),
+    });
+  }, [at.x, at.y]);
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    };
+    const scroll = (e: Event) => {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    };
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('scroll', scroll, true);
+    window.addEventListener('resize', onClose);
+    return () => {
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('scroll', scroll, true);
+      window.removeEventListener('resize', onClose);
+    };
+  }, [onClose]);
+  return createPortal(
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="위젯 설정"
+      className={styles.ctxMenu}
+      style={pos}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className={styles.paletteHead}>
         <b>위젯 설정</b>
         <span className={styles.spacer} />
@@ -645,12 +751,10 @@ function Inspector({
                 className={styles.input}
                 type="number"
                 min={2}
-                max={DASH_COLS - item.x}
+                max={DASH_COLS}
                 value={item.w}
                 onChange={(e) =>
-                  onChange({
-                    w: Math.max(2, Math.min(DASH_COLS - item.x, Number(e.target.value) || 2)),
-                  })
+                  onChange({ w: Math.max(2, Math.min(DASH_COLS, Number(e.target.value) || 2)) })
                 }
               />
             </label>
@@ -680,8 +784,11 @@ function Inspector({
             <Trash2 size={14} /> 빼기
           </button>
         </div>
-        <span className={styles.meta}>화살표 키로 옮기고 Delete로 뺄 수 있습니다.</span>
+        <span className={styles.meta}>
+          위젯을 고른 뒤 화살표 키로 순서를 바꾸고 Delete로 뺄 수 있습니다.
+        </span>
       </div>
-    </aside>
+    </div>,
+    document.body,
   );
 }
