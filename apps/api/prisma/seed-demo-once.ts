@@ -22,6 +22,12 @@ const SCRIPTS = [
   'seed-demo-agents.ts',
 ];
 
+/**
+ * 나중에 더한 시드 — 버전을 올려 전체를 다시 돌리지 않고(시연 중 바꾼 데이터 보존) 각각 한 번만 돌린다.
+ * 끝나면 SYSTEM/DEMO_ADDON:<파일 이름>을 남긴다. 새로 더할 때는 여기에 한 줄만 추가한다.
+ */
+const ADDONS = ['seed-demo-dashboards.ts'];
+
 async function main() {
   if ((process.env.DEMO_SEED ?? '').toLowerCase() === 'off') {
     console.log('[demo-seed] DEMO_SEED=off — 건너뜀');
@@ -33,6 +39,7 @@ async function main() {
     const cur = await prisma.commonCode.findUnique({ where });
     if (cur?.name === VERSION) {
       console.log(`[demo-seed] 이미 ${VERSION} — 건너뜀`);
+      await runAddons(prisma);
       return;
     }
     // 재시작(배포)으로 끊겨도 끝난 단계는 건너뛴다 — SYSTEM/DEMO_SEED_STEP = '<버전>:<끝난 단계 수>'
@@ -70,8 +77,25 @@ async function main() {
       create: { codeGroup: 'SYSTEM', code: 'DEMO_SEED_VERSION', name: VERSION, isActive: false },
     });
     console.log(`[demo-seed] 완료 — 버전 ${VERSION} 기록`);
+    await runAddons(prisma);
   } finally {
     await prisma.$disconnect();
+  }
+}
+
+async function runAddons(prisma: PrismaClient) {
+  for (const s of ADDONS) {
+    const where = { codeGroup_code: { codeGroup: 'SYSTEM', code: `DEMO_ADDON:${s}` } };
+    if (await prisma.commonCode.findUnique({ where })) continue;
+    const r = spawnSync('npx', ['tsx', `prisma/${s}`], { stdio: 'inherit', env: process.env });
+    if (r.status !== 0) {
+      console.error(`[demo-seed] ${s} 실패(코드 ${r.status}) — 다음 시작 때 다시 시도`);
+      continue;
+    }
+    await prisma.commonCode.create({
+      data: { codeGroup: 'SYSTEM', code: `DEMO_ADDON:${s}`, name: 'done', isActive: false },
+    });
+    console.log(`[demo-seed] 추가 시드 ${s} 완료`);
   }
 }
 
