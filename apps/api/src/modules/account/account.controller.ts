@@ -1,6 +1,18 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { AccountService } from './account.service';
 import {
+  AccountEmployeeDto,
+  CheckLoginIdDto,
   CreateAccountDto,
   SetAccountEmployeeDto,
   SetAccountRolesDto,
@@ -26,6 +38,12 @@ export class AccountController {
     return this.accountService.roles();
   }
 
+  @Get('check-login-id')
+  @RequirePermissions('USER.CREATE')
+  checkLoginId(@Query() q: CheckLoginIdDto) {
+    return this.accountService.checkLoginId(q.loginId);
+  }
+
   @Post()
   @RequirePermissions('USER.CREATE')
   create(@Body() dto: CreateAccountDto, @CurrentUser() user: AuthPrincipal) {
@@ -46,6 +64,12 @@ export class AccountController {
   @RequirePermissions('USER.UPDATE')
   setEmployee(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetAccountEmployeeDto) {
     return this.accountService.setEmployee(id, dto.employeeId);
+  }
+
+  @Put(':id/profile')
+  @RequirePermissions('USER.UPDATE')
+  setProfile(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AccountEmployeeDto) {
+    return this.accountService.setProfile(id, dto);
   }
 
   @Patch(':id')

@@ -9,6 +9,7 @@ import {
   DataTable,
   Input,
   Modal,
+  PasswordInput,
   Select,
   useToast,
   type Column,
@@ -29,6 +30,10 @@ interface Account {
   isActive: boolean;
   employeeId: string | null;
   employeeName: string | null;
+  orgUnitId: string | null;
+  positionId: string | null;
+  phone: string | null;
+  empNo: string | null;
   orgUnitName: string | null;
   positionName: string | null;
   roles: AccountRole[];
@@ -39,15 +44,10 @@ interface RoleOpt {
   permissions: string[];
   isSuperAdmin: boolean;
 }
-interface Emp {
-  id: string;
-  name: string;
-  orgUnitId: string;
-  positionId: string | null;
-  position: { name: string } | null;
-}
 interface PositionOpt {
   id: string;
+  name: string;
+  isActive?: boolean;
   defaultRoleId: string | null;
 }
 interface Assign {
@@ -63,6 +63,7 @@ const SCOPE_OPTIONS = [
   { value: 'OWN', label: '본인 담당만' },
 ];
 const NONE = '__none__';
+const LOGIN_ID_PATTERN = /^[A-Za-z0-9._-]{3,50}$/;
 
 /**
  * 계정 — 누가 어떤 권한 그룹을, 어느 데이터 범위로 갖는지.
@@ -74,7 +75,6 @@ export default function AccountList() {
   const toast = useToast();
   const [rows, setRows] = useState<Account[]>([]);
   const [roles, setRoles] = useState<RoleOpt[]>([]);
-  const [emps, setEmps] = useState<Emp[]>([]);
   const [positions, setPositions] = useState<PositionOpt[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
@@ -103,9 +103,6 @@ export default function AccountList() {
     )
       .then(setRoles)
       .catch(() => setRoles([]));
-    api<Emp[]>('/employees')
-      .then(setEmps)
-      .catch(() => setEmps([]));
     api<PositionOpt[]>('/positions')
       .then(setPositions)
       .catch(() => setPositions([]));
@@ -141,7 +138,7 @@ export default function AccountList() {
             {r.orgUnitName ? <span className={styles.muted}>{String(r.orgUnitName)}</span> : null}
           </span>
         ) : (
-          <span className={styles.muted}>직원 연결 없음</span>
+          <span className={styles.muted}>직원 정보 없음</span>
         ),
     },
     {
@@ -178,7 +175,7 @@ export default function AccountList() {
         <span style={{ display: 'inline-flex', gap: 4 }}>
           {can('USER.UPDATE') && (
             <Button variant="outline" size="sm" onClick={() => setEditing(r as unknown as Account)}>
-              권한 편집
+              편집
             </Button>
           )}
           {
@@ -220,7 +217,6 @@ export default function AccountList() {
         <AccountModal
           account={editing === 'new' ? null : editing}
           roles={roles}
-          emps={emps}
           positions={positions}
           orgs={orgs}
           isWildcard={isWildcard}
@@ -236,10 +232,19 @@ export default function AccountList() {
   );
 }
 
+type IdCheck =
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'ok' }
+  | { state: 'bad'; reason: string };
+
+/**
+ * 계정 생성 = 직원 등록. 직원 정보(이름·소속·직책) + 로그인 정보 + 권한 그룹을 한 번에 정한다.
+ * 편집에서는 직원 정보와 권한 그룹을 고친다(연결된 직원이 없던 예전 계정은 저장할 때 직원이 만들어진다).
+ */
 function AccountModal({
   account,
   roles,
-  emps,
   positions,
   orgs,
   isWildcard,
@@ -249,7 +254,6 @@ function AccountModal({
 }: {
   account: Account | null;
   roles: RoleOpt[];
-  emps: Emp[];
   positions: PositionOpt[];
   orgs: { value: string; label: string }[];
   isWildcard: boolean;
@@ -259,9 +263,15 @@ function AccountModal({
 }) {
   const toast = useToast();
   const isNew = !account;
+  const [name, setName] = useState(account?.employeeName ?? '');
+  const [orgUnitId, setOrgUnitId] = useState(account?.orgUnitId ?? '');
+  const [positionId, setPositionId] = useState(account?.positionId ?? NONE);
+  const [phone, setPhone] = useState(account?.phone ?? '');
+  const [empNo, setEmpNo] = useState(account?.empNo ?? '');
   const [loginId, setLoginId] = useState('');
+  const [idCheck, setIdCheck] = useState<IdCheck>({ state: 'idle' });
   const [password, setPassword] = useState('');
-  const [employeeId, setEmployeeId] = useState<string>(account?.employeeId ?? NONE);
+  const [password2, setPassword2] = useState('');
   const [assigns, setAssigns] = useState<Assign[]>(
     account
       ? account.roles.map((r) => ({
@@ -271,7 +281,39 @@ function AccountModal({
         }))
       : [],
   );
+  // 직책으로 자동으로 넣은 권한 — 사용자가 손대지 않았으면 직책·소속을 바꿀 때 따라 바뀐다
+  const [autoAssign, setAutoAssign] = useState<Assign | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // 아이디 중복 확인 — 입력을 멈추면 바로 확인한다
+  useEffect(() => {
+    if (!isNew) return;
+    const id = loginId.trim();
+    if (!id) {
+      setIdCheck({ state: 'idle' });
+      return;
+    }
+    if (!LOGIN_ID_PATTERN.test(id)) {
+      setIdCheck({ state: 'bad', reason: '영문·숫자·. _ - 로 3~50자로 입력해 주세요' });
+      return;
+    }
+    setIdCheck({ state: 'checking' });
+    let alive = true;
+    const t = setTimeout(() => {
+      api<{ available: boolean; reason: string | null }>(
+        `/accounts/check-login-id?loginId=${encodeURIComponent(id)}`,
+      )
+        .then((r) => {
+          if (!alive) return;
+          setIdCheck(r.available ? { state: 'ok' } : { state: 'bad', reason: r.reason ?? '' });
+        })
+        .catch(() => alive && setIdCheck({ state: 'idle' }));
+    }, 350);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [loginId, isNew]);
 
   // 내게 없는 권한이 든 그룹은 주거나 뺄 수 없다(서버 규칙과 같게 미리 흐리게)
   const allowed = useCallback(
@@ -286,35 +328,67 @@ function AccountModal({
     () => roles.map((r) => ({ value: r.id, label: r.name, disabled: !allowed(r.id) })),
     [roles, allowed],
   );
-  const empOptions = useMemo(
+  const positionOptions = useMemo(
     () => [
-      { value: NONE, label: '연결 안 함' },
-      ...emps.map((e) => ({
-        value: e.id,
-        label: e.position ? `${e.name} · ${e.position.name}` : e.name,
-      })),
+      { value: NONE, label: '없음' },
+      ...positions
+        .filter((p) => p.isActive !== false || p.id === account?.positionId)
+        .map((p) => ({ value: p.id, label: p.name })),
     ],
-    [emps],
+    [positions, account?.positionId],
   );
 
-  // 직원을 고르면 그 직원 직책의 '추천 권한 그룹'을 소속 지점 범위로 미리 넣는다(새 계정, 비어 있을 때만)
-  const pickEmployee = (id: string) => {
-    setEmployeeId(id);
-    if (!isNew || assigns.length) return;
-    const emp = emps.find((e) => e.id === id);
-    const pos = positions.find((p) => p.id === emp?.positionId);
-    if (emp && pos?.defaultRoleId && allowed(pos.defaultRoleId)) {
-      setAssigns([{ roleId: pos.defaultRoleId, dataScope: 'ORG', orgScopeId: emp.orgUnitId }]);
-    }
+  // 새 계정: 직책의 '추천 권한 그룹'을 소속 범위로 미리 넣는다(비어 있거나 자동으로 넣은 그대로일 때만)
+  const suggest = (posId: string, orgId: string) => {
+    if (!isNew) return;
+    const untouched =
+      assigns.length === 0 ||
+      (assigns.length === 1 && autoAssign && sameAssign(assigns[0], autoAssign));
+    if (!untouched) return;
+    const pos = positions.find((p) => p.id === posId);
+    const next =
+      pos?.defaultRoleId && allowed(pos.defaultRoleId)
+        ? ({ roleId: pos.defaultRoleId, dataScope: 'ORG', orgScopeId: orgId || null } as Assign)
+        : null;
+    setAssigns(next ? [next] : []);
+    setAutoAssign(next);
   };
 
   const setRow = (i: number, patch: Partial<Assign>) =>
     setAssigns((prev) => prev.map((a, k) => (k === i ? { ...a, ...patch } : a)));
 
+  const pwShort = password.length > 0 && password.length < 6;
+  const pwMismatch = password2.length > 0 && password !== password2;
+  const hadEmployee = !!account?.employeeId;
+  // 예전 계정(직원 없음)은 이름을 비워 두면 직원 정보 없이 권한만 저장한다
+  const wantsProfile = isNew || hadEmployee || name.trim().length > 0;
+
   const save = async () => {
-    if (isNew && (!loginId.trim() || password.length < 6)) {
-      toast({ type: 'warning', title: '아이디와 비밀번호(6자 이상)를 입력해 주세요' });
+    if (wantsProfile && (!name.trim() || !orgUnitId)) {
+      toast({ type: 'warning', title: '직원 이름과 소속을 입력해 주세요' });
       return;
+    }
+    if (isNew) {
+      if (idCheck.state !== 'ok') {
+        toast({
+          type: 'warning',
+          title:
+            idCheck.state === 'bad'
+              ? idCheck.reason
+              : idCheck.state === 'checking'
+                ? '아이디를 확인하는 중입니다'
+                : '아이디를 입력해 주세요',
+        });
+        return;
+      }
+      if (password.length < 6) {
+        toast({ type: 'warning', title: '비밀번호를 6자 이상 입력해 주세요' });
+        return;
+      }
+      if (password !== password2) {
+        toast({ type: 'warning', title: '비밀번호 확인이 일치하지 않습니다' });
+        return;
+      }
     }
     if (assigns.some((a) => !a.roleId)) {
       toast({ type: 'warning', title: '권한 그룹을 골라 주세요' });
@@ -328,36 +402,37 @@ function AccountModal({
       toast({ type: 'warning', title: '권한 그룹을 하나 이상 넣어 주세요' });
       return;
     }
-    const roles = assigns.map((a) => ({
+    const roleBody = assigns.map((a) => ({
       ...a,
       orgScopeId: a.dataScope === 'ORG' ? a.orgScopeId : null,
     }));
-    const emp = employeeId === NONE ? null : employeeId;
+    const employee = {
+      name: name.trim(),
+      orgUnitId,
+      positionId: positionId === NONE ? null : positionId,
+      phone: phone.trim() || undefined,
+      empNo: empNo.trim() || undefined,
+    };
     setSaving(true);
     try {
       if (isNew) {
         await api('/accounts', {
           method: 'POST',
-          body: JSON.stringify({
-            loginId: loginId.trim(),
-            password,
-            employeeId: emp ?? undefined,
-            roles,
-          }),
+          body: JSON.stringify({ loginId: loginId.trim(), password, employee, roles: roleBody }),
         });
-        toast({ type: 'success', title: '계정을 만들었습니다' });
+        toast({ type: 'success', title: `${employee.name} 님 계정을 만들었습니다` });
       } else {
-        if (emp !== account.employeeId) {
-          await api(`/accounts/${account.id}/employee`, {
+        if (wantsProfile) {
+          await api(`/accounts/${account.id}/profile`, {
             method: 'PUT',
-            body: JSON.stringify({ employeeId: emp }),
+            body: JSON.stringify(employee),
           });
         }
         await api(`/accounts/${account.id}/roles`, {
           method: 'PUT',
-          body: JSON.stringify({ roles }),
+          body: JSON.stringify({ roles: roleBody }),
         });
-        toast({ type: 'success', title: '권한을 저장했습니다 — 다음 요청부터 바로 적용됩니다' });
+        toast({ type: 'success', title: '저장했습니다 — 권한은 다음 요청부터 바로 적용됩니다' });
       }
       await onSaved();
     } catch (e) {
@@ -371,7 +446,7 @@ function AccountModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? '계정 생성' : `권한 편집 — ${account.loginId}`}
+      title={isNew ? '계정 생성(직원 등록)' : `계정 편집 — ${account.loginId}`}
       size="lg"
       footer={
         <>
@@ -379,36 +454,106 @@ function AccountModal({
             취소
           </Button>
           <Button variant="primary" loading={saving} onClick={() => void save()}>
-            저장
+            {isNew ? '계정 만들기' : '저장'}
           </Button>
         </>
       }
     >
-      <div className={styles.section} style={{ gap: 18 }}>
-        <div className={styles.formGrid}>
-          {isNew && (
-            <>
+      <div className={styles.section} style={{ gap: 22 }}>
+        <div className={styles.section}>
+          <span className={styles.panelTitle}>직원 정보</span>
+          {!isNew && !hadEmployee && (
+            <span className={styles.hint}>
+              직원 정보가 없는 계정입니다. 이름과 소속을 넣고 저장하면 직원으로도 등록됩니다.
+            </span>
+          )}
+          <div className={styles.formGrid}>
+            <Input
+              label="이름 *"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="홍길동"
+            />
+            <Select
+              label="소속 *"
+              value={orgUnitId || undefined}
+              placeholder="소속 고르기"
+              onValueChange={(v) => {
+                setOrgUnitId(v);
+                suggest(positionId, v);
+              }}
+              options={orgs}
+            />
+            <Select
+              label="직책"
+              value={positionId}
+              onValueChange={(v) => {
+                setPositionId(v);
+                suggest(v, orgUnitId);
+              }}
+              options={positionOptions}
+            />
+            <Input
+              label="연락처"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="010-0000-0000"
+            />
+            <Input
+              label="사번"
+              value={empNo}
+              onChange={(e) => setEmpNo(e.target.value)}
+              placeholder="선택"
+            />
+          </div>
+        </div>
+
+        {isNew && (
+          <div className={styles.section}>
+            <span className={styles.panelTitle}>로그인 정보</span>
+            <div className={styles.formGrid}>
               <Input
-                label="아이디"
+                label="아이디 *"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                placeholder="user1"
+                placeholder="영문·숫자 3자 이상"
+                autoComplete="off"
+                errorMessage={idCheck.state === 'bad' ? idCheck.reason : undefined}
+                helperText={
+                  idCheck.state === 'ok'
+                    ? '✓ 사용할 수 있는 아이디입니다'
+                    : idCheck.state === 'checking'
+                      ? '확인하는 중…'
+                      : undefined
+                }
+                className={idCheck.state === 'ok' ? styles.okField : undefined}
               />
-              <Input
-                label="비밀번호(6자 이상)"
-                type="password"
+              <span />
+              <PasswordInput
+                label="비밀번호 *"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="6자 이상"
+                autoComplete="new-password"
+                showToggle
+                fullWidth
+                error={pwShort ? '6자 이상 입력해 주세요' : undefined}
               />
-            </>
-          )}
-          <Select
-            label="연결할 직원(직책·소속은 직원 정보를 따릅니다)"
-            value={employeeId}
-            onValueChange={pickEmployee}
-            options={empOptions}
-          />
-        </div>
+              <PasswordInput
+                label="비밀번호 확인 *"
+                value={password2}
+                onChange={(e) => setPassword2(e.target.value)}
+                placeholder="한 번 더 입력"
+                autoComplete="new-password"
+                showToggle
+                fullWidth
+                error={pwMismatch ? '비밀번호가 일치하지 않습니다' : undefined}
+                hint={password2.length > 0 && !pwMismatch ? '✓ 비밀번호가 일치합니다' : undefined}
+              />
+            </div>
+          </div>
+        )}
 
         <div className={styles.section}>
           <div className={styles.sectionHead}>
@@ -417,13 +562,17 @@ function AccountModal({
               variant="outline"
               size="sm"
               onClick={() =>
-                setAssigns((p) => [...p, { roleId: '', dataScope: 'ORG', orgScopeId: null }])
+                setAssigns((p) => [
+                  ...p,
+                  { roleId: '', dataScope: 'ORG', orgScopeId: orgUnitId || null },
+                ])
               }
             >
               <Plus size={14} /> 그룹 추가
             </Button>
           </div>
           <span className={styles.hint}>
+            {isNew ? '직책을 고르면 그 직책의 추천 권한 그룹이 소속 범위로 들어갑니다. ' : ''}
             그룹을 여러 개 주면 권한이 합쳐집니다. 데이터 범위는 그 그룹으로 볼 수 있는 데이터의
             범위입니다 — 전체 / 소속 조직(+하위 지점) / 본인 담당 건만.
           </span>
@@ -479,4 +628,8 @@ function AccountModal({
       </div>
     </Modal>
   );
+}
+
+function sameAssign(a: Assign, b: Assign) {
+  return a.roleId === b.roleId && a.dataScope === b.dataScope && a.orgScopeId === b.orgScopeId;
 }

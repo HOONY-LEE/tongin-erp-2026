@@ -256,3 +256,8 @@
   justify-content: space-between;
   gap: 8px;
 }
+/* 아이디 확인 통과 — 도움말을 초록으로 */
+.okField ~ *,
+.okField + * {
+  color: var(--ark-color-success, #16a34a);
+}
