@@ -8,6 +8,7 @@ import {
 import type Anthropic from '@anthropic-ai/sdk';
 import {
   AGENT_DEFAULT_MODEL,
+  PERMISSION_WILDCARD,
   evalExpr,
   normalizeAgentGraph,
   readPath,
@@ -16,6 +17,7 @@ import {
   type AgentGraph,
   type AgentNode,
   type ApprovalConfig,
+  type AuthPrincipal,
   type BranchConfig,
   type GuardrailConfig,
   type LlmConfig,
@@ -157,7 +159,8 @@ export class AgentRunnerService {
   ) {}
 
   async start(blueprintId: string, opts: RunOptions, ctx: ToolContext) {
-    const bp = await this.blueprints.get(blueprintId);
+    // 볼 수 있는 에이전트만 실행(개인용·부분 공유 검사) — 도구는 실행자 본인 권한으로 불린다
+    const bp = await this.blueprints.get(blueprintId, ctx.principal);
     const graph = opts.graph ? normalizeAgentGraph(opts.graph) : bp.graph;
     const issues = this.blueprints
       .validate(graph, ctx.principal)
@@ -220,7 +223,8 @@ export class AgentRunnerService {
   async decide(runId: string, approve: boolean, ctx: ToolContext) {
     return this.exclusive(runId, async () => {
       const run = await this.prisma.agentRun.findUnique({ where: { id: runId } });
-      if (!run) throw new NotFoundException('실행 기록을 찾을 수 없습니다.');
+      if (!run || !this.ownsRun(run, ctx.principal))
+        throw new NotFoundException('실행 기록을 찾을 수 없습니다.');
       if (run.status !== 'AWAITING_APPROVAL' || !run.state)
         throw new BadRequestException('승인 대기 중인 실행이 아닙니다.');
       const state = run.state as unknown as RunState;
@@ -817,9 +821,15 @@ export class AgentRunnerService {
     return this.view(runId);
   }
 
-  async view(runId: string) {
+  /** 실행 기록은 실행한 사람(과 슈퍼관리자)만 보고 승인한다 */
+  private ownsRun(r: { createdBy: string | null }, p: AuthPrincipal) {
+    return p.permissions.includes(PERMISSION_WILDCARD) || r.createdBy === p.userId;
+  }
+
+  async view(runId: string, principal?: AuthPrincipal) {
     const r = await this.prisma.agentRun.findUnique({ where: { id: runId } });
-    if (!r) throw new NotFoundException('실행 기록을 찾을 수 없습니다.');
+    if (!r || (principal && !this.ownsRun(r, principal)))
+      throw new NotFoundException('실행 기록을 찾을 수 없습니다.');
     const st = (r.state ?? {}) as Partial<RunState>;
     return {
       id: r.id,

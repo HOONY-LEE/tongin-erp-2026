@@ -37,10 +37,34 @@
   background: var(--ark-color-bg-muted);
 }
 .sideLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: 16px 12px 6px;
   font-size: 12px;
   font-weight: 600;
   color: var(--ark-color-text-tertiary);
+}
+.sideLink {
+  font-weight: 500;
+  color: var(--ark-color-primary-600, var(--ark-color-primary-500));
+  text-decoration: none;
+}
+.sideLink:hover {
+  text-decoration: underline;
+}
+/* 에이전트 목록 — 많아도 대화 목록 자리를 다 먹지 않게 */
+.agentList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 30%;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.agentIcon {
+  flex-shrink: 0;
+  color: var(--ark-color-primary-500);
 }
 .sideEmpty {
   padding: 6px 12px;

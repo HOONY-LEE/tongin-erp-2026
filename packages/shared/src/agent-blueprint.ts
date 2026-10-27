@@ -64,6 +64,20 @@ export const AGENT_MODELS = [
 ] as const;
 export const AGENT_DEFAULT_MODEL = 'claude-opus-5-5';
 
+/** 에이전트 공개 범위 — 개인용 / 전체 공개 / 부분 공유(고른 직원만) */
+export const AGENT_VISIBILITIES = ['PRIVATE', 'PUBLIC', 'SHARED'] as const;
+export type AgentVisibility = (typeof AGENT_VISIBILITIES)[number];
+export const AGENT_VISIBILITY_LABEL: Record<AgentVisibility, string> = {
+  PRIVATE: '개인용',
+  PUBLIC: '전체 공개',
+  SHARED: '부분 공유',
+};
+export const AGENT_VISIBILITY_HINT: Record<AgentVisibility, string> = {
+  PRIVATE: '나만 보고 실행할 수 있습니다',
+  PUBLIC: '모든 직원이 AI 에이전트 화면에서 실행할 수 있습니다',
+  SHARED: '고른 직원만 AI 에이전트 화면에서 실행할 수 있습니다',
+};
+
 export const TRIGGER_KINDS = ['manual', 'chat', 'schedule', 'event'] as const;
 export type TriggerKind = (typeof TRIGGER_KINDS)[number];
 export const TRIGGER_KIND_LABEL: Record<TriggerKind, string> = {

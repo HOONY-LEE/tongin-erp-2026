@@ -1,0 +1,250 @@
+/* AI 에이전트 화면 — 만들어 둔 에이전트 부르기 */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.headText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.headText h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.headText p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ark-color-text-secondary);
+}
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+.close {
+  display: inline-flex;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.close:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px 32px;
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+@media (max-width: 640px) {
+  .head,
+  .body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+}
+.cardTitle {
+  font-size: 15px;
+}
+.hint {
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.req {
+  color: var(--ark-color-primary-500);
+}
+.input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 14px;
+}
+.input:focus {
+  outline: 2px solid color-mix(in srgb, var(--ark-color-primary-500) 40%, transparent);
+  border-color: var(--ark-color-primary-500);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.runHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.approval {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 40%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 8%, var(--ark-color-bg));
+}
+.approval p {
+  margin: 0;
+  font-size: 14px;
+}
+.approvalTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ark-color-error-500, #ef4444) 8%, var(--ark-color-bg));
+  color: var(--ark-color-error-600, #dc2626);
+  font-size: 13px;
+}
+.output {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-subtle);
+  font-size: 14px;
+}
+.pre {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 260px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.steps summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.steps ol {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.steps li > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.steps li > button:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.stepLabel {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.stepMsg {
+  color: var(--ark-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.step_ok svg {
+  color: var(--ark-color-success-500, #16a34a);
+}
+.step_error svg,
+.step_blocked svg {
+  color: var(--ark-color-error-500, #ef4444);
+}
+.step_pending svg {
+  color: var(--ark-color-warning-500, #f59e0b);
+}
+.step_dry svg,
+.step_skipped svg {
+  color: var(--ark-color-text-tertiary);
+}
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.historyItem:hover,
+.historyOn {
+  background: var(--ark-color-bg-subtle);
+}

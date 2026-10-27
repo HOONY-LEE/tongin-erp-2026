@@ -42,7 +42,7 @@ export default {
     orgMgmt: '조직관리',
     branches: '지점관리',
     accounts: '계정·권한',
-    aiAgents: 'AI 에이전트 관리',
+    aiAgents: 'Agent Builder',
     employees: '직원',
   },
   navGroup: {

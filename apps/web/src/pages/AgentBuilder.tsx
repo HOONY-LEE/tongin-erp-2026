@@ -32,6 +32,7 @@ import {
   AGENT_NODE_DESC,
   AGENT_NODE_LABEL,
   AGENT_NODE_TYPES,
+  AGENT_VISIBILITY_LABEL,
   autoLayout,
   defaultConfig,
   newAgentId,
@@ -48,6 +49,7 @@ import {
   type AgentNode,
   type AgentNodeType,
   type AgentToolInfo,
+  type AgentVisibility,
   type ToolConfig,
   type TriggerConfig,
 } from '@tongin/shared';
@@ -58,6 +60,7 @@ import AgentNodeView, { type AgentFlowNode, type RunMark } from '../components/a
 import { Inspector } from '../components/agent/Inspector';
 import { DND_MIME, ToolExplorer } from '../components/agent/ToolExplorer';
 import { RunPanel, type AgentRunView } from '../components/agent/RunPanel';
+import { SharePicker, VISIBILITY_ICON, type ShareCandidate } from '../components/agent/SharePicker';
 import { NODE_COLOR, NODE_HEX, NODE_ICON, nodeSummary } from '../components/agent/meta';
 import styles from './agentBuilder.module.css';
 
@@ -69,6 +72,19 @@ interface Blueprint {
   graph: AgentGraph;
   prompt: string | null;
   updatedAt: string;
+  visibility: AgentVisibility;
+  shares: BlueprintShare[];
+  canEdit: boolean;
+  isMine: boolean;
+  createdByName: string | null;
+}
+
+/** 공유된 직원(서버 응답) */
+interface BlueprintShare {
+  employeeId: string;
+  name: string;
+  orgUnitName: string;
+  positionName: string | null;
 }
 
 interface GenerateResult {
@@ -133,6 +149,7 @@ function Editor() {
   const [nlLoading, setNlLoading] = useState(false);
   const [preview, setPreview] = useState<GenerateResult | null>(null);
   const [runOpen, setRunOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [leftOpen, setLeftOpen] = useState(true);
   // 제어 모드라 React Flow가 잰 노드 크기를 직접 들고 있어야 미니맵·맞춤 보기가 노드를 안다
   const [measured, setMeasured] = useState<Record<string, { width: number; height: number }>>({});
@@ -164,7 +181,7 @@ function Editor() {
         setNlOpen(!ng.nodes.length);
       } catch (e) {
         toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
-        navigate('/ai-agents');
+        navigate('/agent-builder');
       } finally {
         if (alive) setLoading(false);
       }
@@ -511,6 +528,10 @@ function Editor() {
   // ── 저장 ──
   const save = useCallback(async () => {
     if (!meta) return;
+    if (!meta.canEdit) {
+      toast({ type: 'warning', title: '만든 사람만 저장할 수 있습니다. 복제해서 고쳐 쓰세요.' });
+      return;
+    }
     setSaving(true);
     try {
       const b = await api<Blueprint>(`/agent-blueprints/${id}`, {
@@ -663,6 +684,7 @@ function Editor() {
   }
 
   const selected = graph.nodes.find((n) => n.id === selectedId) ?? null;
+  const VisIcon = VISIBILITY_ICON[meta.visibility] ?? VISIBILITY_ICON.PRIVATE;
   const trigger =
     (graph.nodes.find((n) => n.type === 'trigger')?.config as TriggerConfig | undefined) ?? null;
 
@@ -673,7 +695,7 @@ function Editor() {
         <button
           type="button"
           className={styles.iconBtn}
-          onClick={() => navigate('/ai-agents')}
+          onClick={() => navigate('/agent-builder')}
           title="목록으로"
         >
           <ArrowLeft size={14} />
@@ -687,10 +709,10 @@ function Editor() {
         <SegmentedControl
           size="sm"
           value={meta.status}
-          onChange={(v) => setMeta({ ...meta, status: v as 'DRAFT' | 'ACTIVE' })}
+          onChange={(v) => meta.canEdit && setMeta({ ...meta, status: v as 'DRAFT' | 'ACTIVE' })}
           options={[
-            { value: 'DRAFT', label: '초안' },
-            { value: 'ACTIVE', label: '사용중' },
+            { value: 'DRAFT', label: '초안', disabled: !meta.canEdit },
+            { value: 'ACTIVE', label: '사용중', disabled: !meta.canEdit },
           ]}
         />
         {dirty && <span className={styles.dirty}>저장 안 됨</span>}
@@ -796,16 +818,32 @@ function Editor() {
         >
           <Play size={14} /> 테스트 실행
         </button>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => setShareOpen(true)}
+          title="누가 쓸 수 있는지(공개 범위)"
+        >
+          <VisIcon size={14} /> {AGENT_VISIBILITY_LABEL[meta.visibility]}
+          {meta.visibility === 'SHARED' ? ` ${meta.shares.length}명` : ''}
+        </button>
         <Button
           variant="primary"
           size="sm"
           loading={saving}
+          disabled={!meta.canEdit}
           leftIcon={<Save size={13} />}
           onClick={() => void save()}
         >
           저장
         </Button>
       </div>
+      {!meta.canEdit && (
+        <div className={styles.readonlyBar}>
+          {meta.createdByName ?? '다른 사람'}님이 만든 에이전트라 보기·테스트만 할 수 있습니다. 고쳐
+          쓰려면 목록에서 <b>복제</b>하세요.
+        </div>
+      )}
 
       {/* ── 자연어 바 ── */}
       {nlOpen && (
@@ -1034,6 +1072,20 @@ function Editor() {
         </aside>
       </div>
 
+      {shareOpen && (
+        <ShareModal
+          id={id}
+          visibility={meta.visibility}
+          shares={meta.shares}
+          canEdit={meta.canEdit}
+          onClose={() => setShareOpen(false)}
+          onSaved={(b) => {
+            setMeta((m) => (m ? { ...m, visibility: b.visibility, shares: b.shares } : m));
+            setShareOpen(false);
+          }}
+        />
+      )}
+
       {/* ── 자연어 결과 미리보기 ── */}
       <Modal
         open={!!preview}
@@ -1116,5 +1168,84 @@ function Editor() {
         )}
       </Modal>
     </div>
+  );
+}
+
+/** 공개 범위·공유 대상 바꾸기 — 캔버스 저장과 따로 바로 저장한다 */
+function ShareModal({
+  id,
+  visibility,
+  shares,
+  canEdit,
+  onClose,
+  onSaved,
+}: {
+  id: string;
+  visibility: AgentVisibility;
+  shares: BlueprintShare[];
+  canEdit: boolean;
+  onClose: () => void;
+  onSaved: (b: { visibility: AgentVisibility; shares: BlueprintShare[] }) => void;
+}) {
+  const toast = useToast();
+  const [vis, setVis] = useState(visibility);
+  const [ids, setIds] = useState(shares.map((s) => s.employeeId));
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      const b = await api<Blueprint>(`/agent-blueprints/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          visibility: vis,
+          ...(vis === 'SHARED' ? { shareEmployeeIds: ids } : {}),
+        }),
+      });
+      toast({
+        type: 'success',
+        title: `공개 범위를 '${AGENT_VISIBILITY_LABEL[vis]}'(으)로 저장했습니다`,
+      });
+      onSaved({ visibility: b.visibility, shares: b.shares });
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="누가 쓸 수 있나요"
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            {canEdit ? '취소' : '닫기'}
+          </Button>
+          {canEdit && (
+            <Button
+              variant="primary"
+              loading={saving}
+              disabled={vis === 'SHARED' && ids.length === 0}
+              onClick={() => void save()}
+            >
+              저장
+            </Button>
+          )}
+        </>
+      }
+    >
+      <SharePicker
+        visibility={vis}
+        shareIds={ids}
+        disabled={!canEdit}
+        known={shares.map((s): ShareCandidate => ({ ...s, id: s.employeeId }))}
+        onChange={(v) => {
+          setVis(v.visibility);
+          setIds(v.shareIds);
+        }}
+      />
+    </Modal>
   );
 }
