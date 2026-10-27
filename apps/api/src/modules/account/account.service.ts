@@ -9,6 +9,8 @@ import { Prisma } from '@prisma/client';
 import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccessService } from '../access/access.service';
+import { nextEmpNo, withEmpNoRetry } from '../employee/emp-no';
+import { toDate } from '../employee/employee.service';
 import type { RoleAssignmentDto } from '../access/dto/access.dto';
 import { AccountEmployeeDto, CreateAccountDto, LOGIN_ID_PATTERN } from './dto/create-account.dto';
 
@@ -45,6 +47,7 @@ export class AccountService {
             orgUnitId: true,
             phone: true,
             empNo: true,
+            hireDate: true,
             orgUnit: { select: { name: true } },
             position: { select: { id: true, name: true, sortOrder: true } },
           },
@@ -71,6 +74,7 @@ export class AccountService {
       positionId: u.employee?.position?.id ?? null,
       phone: u.employee?.phone ?? null,
       empNo: u.employee?.empNo ?? null,
+      hireDate: u.employee?.hireDate?.toISOString().slice(0, 10) ?? null,
       orgUnitName: u.employee?.orgUnit.name ?? null,
       positionName: u.employee?.position?.name ?? null,
       positionOrder: u.employee?.position?.sortOrder ?? null,
@@ -118,20 +122,20 @@ export class AccountService {
       if (!emp) throw new BadRequestException('직원을 목록에서 다시 골라 주세요.');
     }
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const { user, createdEmployeeId } = await this.prisma
-      .$transaction(async (tx) => {
+    const { user, createdEmployeeId } = await withEmpNoRetry(() =>
+      this.prisma.$transaction(async (tx) => {
         const emp = dto.employee
-          ? await tx.employee.create({ data: this.employeeData(dto.employee) })
+          ? await tx.employee.create({ data: await this.newEmployeeData(tx, dto.employee) })
           : null;
         const employeeId = emp?.id ?? dto.employeeId ?? null;
         const user = await tx.appUser.create({
           data: { loginId, passwordHash, principalType: 'HUMAN', employeeId },
         });
         return { user, createdEmployeeId: emp?.id ?? null };
-      })
-      .catch((e) => {
-        throw this.mapError(e);
-      });
+      }),
+    ).catch((e) => {
+      throw this.mapError(e);
+    });
     try {
       await this.access.setUserRoles(user.id, roles, actor);
     } catch (e) {
@@ -151,12 +155,18 @@ export class AccountService {
     const data = this.employeeData(dto);
     try {
       if (user.employeeId) {
-        await this.prisma.employee.update({ where: { id: user.employeeId }, data });
-      } else {
-        await this.prisma.$transaction(async (tx) => {
-          const emp = await tx.employee.create({ data });
-          await tx.appUser.update({ where: { id }, data: { employeeId: emp.id } });
+        // 비워 둔 사번은 이미 매긴 번호를 그대로 둔다
+        await this.prisma.employee.update({
+          where: { id: user.employeeId },
+          data: { ...data, empNo: data.empNo ?? undefined },
         });
+      } else {
+        await withEmpNoRetry(() =>
+          this.prisma.$transaction(async (tx) => {
+            const emp = await tx.employee.create({ data: await this.newEmployeeData(tx, dto) });
+            await tx.appUser.update({ where: { id }, data: { employeeId: emp.id } });
+          }),
+        );
       }
     } catch (e) {
       throw this.mapError(e);
@@ -171,7 +181,14 @@ export class AccountService {
       positionId: dto.positionId ?? null,
       phone: dto.phone?.trim() || null,
       empNo: dto.empNo?.trim() || null,
+      hireDate: toDate(dto.hireDate),
     };
+  }
+
+  /** 새 직원 — 사번을 비웠으면 입사연도+일련번호로 매긴다 */
+  private async newEmployeeData(tx: Prisma.TransactionClient, dto: AccountEmployeeDto) {
+    const data = this.employeeData(dto);
+    return { ...data, empNo: data.empNo ?? (await nextEmpNo(tx, data.hireDate)) };
   }
 
   private mapError(e: unknown): Error {

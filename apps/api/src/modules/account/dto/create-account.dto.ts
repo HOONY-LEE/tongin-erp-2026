@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsIn,
   IsOptional,
   IsString,
@@ -40,10 +41,17 @@ export class AccountEmployeeDto {
   @MaxLength(30)
   phone?: string;
 
+  /** 사번 — 비우면 입사연도+일련번호로 자동 */
   @IsOptional()
   @IsString()
   @MaxLength(50)
   empNo?: string;
+
+  /** 입사일(YYYY-MM-DD) */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsDateString()
+  hireDate?: string | null;
 }
 
 export class CreateAccountDto {

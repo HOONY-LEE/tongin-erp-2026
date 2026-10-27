@@ -75,7 +75,8 @@ export default function Employees() {
       alwaysShow: true,
       options: positions,
     },
-    { name: 'empNo', label: '사번' },
+    { name: 'hireDate', label: '입사일', type: 'date', alwaysShow: true },
+    { name: 'empNo', label: '사번', placeholder: '비우면 자동 — 입사연도+일련번호(예: 20260001)' },
     { name: 'phone', label: '연락처', type: 'tel' },
   ];
 
@@ -86,6 +87,7 @@ export default function Employees() {
       render: (r) => (r.position as { name: string } | null)?.name ?? '-',
     },
     { title: '사번', render: (r) => String(r.empNo ?? '-') },
+    { title: '입사일', render: (r) => (r.hireDate ? String(r.hireDate).slice(0, 10) : '-') },
     { title: '연락처', render: (r) => String(r.phone ?? '-') },
     { title: '소속 지점', render: (r) => orgName.get(String(r.orgUnitId)) ?? '-' },
     { title: '상태', render: (r) => (r.isActive ? '재직' : '비활성') },
@@ -125,6 +127,7 @@ export default function Employees() {
                 name: String(editing.name),
                 positionId: String(editing.positionId ?? ''),
                 empNo: String(editing.empNo ?? ''),
+                hireDate: editing.hireDate ? String(editing.hireDate).slice(0, 10) : '',
                 phone: String(editing.phone ?? ''),
                 isActive: String(editing.isActive),
               }

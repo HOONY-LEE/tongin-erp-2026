@@ -62,11 +62,12 @@ model Employee {
   id         String    @id @default(uuid()) @db.Uuid
   orgUnitId  String    @map("org_unit_id") @db.Uuid
   orgUnit    OrgUnit   @relation(fields: [orgUnitId], references: [id])
-  empNo      String?   @unique @map("emp_no")
+  empNo      String?   @unique @map("emp_no") // 사번 — 비우면 입사연도 4자리+일련번호 4자리로 자동(20260001)
   name       String
   positionId String?   @map("position_id") @db.Uuid // 직책·직급(표시·인사용, 권한을 주지 않는다)
   position   Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
   phone      String?
+  hireDate   DateTime? @map("hire_date") @db.Date // 입사일 — 사번(입사연도+일련번호)의 기준
   isActive   Boolean   @default(true) @map("is_active")
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   appUsers   AppUser[]
@@ -1089,19 +1090,19 @@ model AiToolCall {
 
 /// AIX-04: AI 에이전트 블루프린트 — 노드(시작·AI 판단·도구·분기·반복·가드레일·승인·출력)를 선으로 이은 그래프
 model AgentBlueprint {
-  id          String     @id @default(uuid()) @db.Uuid
+  id          String                @id @default(uuid()) @db.Uuid
   name        String
-  description String     @default("")
-  status      String     @default("DRAFT") // DRAFT(초안) | ACTIVE(사용중)
+  description String                @default("")
+  status      String                @default("DRAFT") // DRAFT(초안) | ACTIVE(사용중)
   // { version, nodes:[{id,type,label,position,config}], edges:[{id,source,sourceHandle,target}] }
-  graph       Json       @default("{\"version\":1,\"nodes\":[],\"edges\":[]}")
+  graph       Json                  @default("{\"version\":1,\"nodes\":[],\"edges\":[]}")
   // 마지막으로 그래프를 만들거나 고친 자연어 요청(없으면 직접 만든 것)
   prompt      String?
   // 공개 범위: PRIVATE(만든 사람만) | PUBLIC(전체 공개) | SHARED(고른 직원에게만)
-  visibility  String     @default("PRIVATE")
-  createdBy   String?    @map("created_by") @db.Uuid
-  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  visibility  String                @default("PRIVATE")
+  createdBy   String?               @map("created_by") @db.Uuid
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
   runs        AgentRun[]
   shares      AgentBlueprintShare[]
 

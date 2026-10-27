@@ -34,6 +34,7 @@ interface Account {
   positionId: string | null;
   phone: string | null;
   empNo: string | null;
+  hireDate: string | null;
   orgUnitName: string | null;
   positionName: string | null;
   roles: AccountRole[];
@@ -267,7 +268,7 @@ function AccountModal({
   const [orgUnitId, setOrgUnitId] = useState(account?.orgUnitId ?? '');
   const [positionId, setPositionId] = useState(account?.positionId ?? NONE);
   const [phone, setPhone] = useState(account?.phone ?? '');
-  const [empNo, setEmpNo] = useState(account?.empNo ?? '');
+  const [hireDate, setHireDate] = useState(account ? (account.hireDate ?? '') : today());
   const [loginId, setLoginId] = useState('');
   const [idCheck, setIdCheck] = useState<IdCheck>({ state: 'idle' });
   const [password, setPassword] = useState('');
@@ -411,7 +412,7 @@ function AccountModal({
       orgUnitId,
       positionId: positionId === NONE ? null : positionId,
       phone: phone.trim() || undefined,
-      empNo: empNo.trim() || undefined,
+      hireDate: hireDate || null,
     };
     setSaving(true);
     try {
@@ -501,10 +502,18 @@ function AccountModal({
               placeholder="010-0000-0000"
             />
             <Input
+              label="입사일"
+              type="date"
+              value={hireDate}
+              onChange={(e) => setHireDate(e.target.value)}
+            />
+            <Input
               label="사번"
-              value={empNo}
-              onChange={(e) => setEmpNo(e.target.value)}
-              placeholder="선택"
+              value={account?.empNo ?? ''}
+              readOnly
+              disabled
+              placeholder={`자동 생성(예: ${(hireDate || today()).slice(0, 4)}0001)`}
+              helperText={isNew || !account?.empNo ? '입사연도 + 그 해 일련번호' : undefined}
             />
           </div>
         </div>
@@ -628,6 +637,11 @@ function AccountModal({
       </div>
     </Modal>
   );
+}
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function sameAssign(a: Assign, b: Assign) {
