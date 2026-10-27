@@ -666,6 +666,12 @@ async function main() {
     const staff = [];
     for (const [ri, role] of (['지점장', '현장'] as const).entries()) {
       const empNo = `E2${bno}${ri === 0 ? 1 : 3}`;
+      // 직책: 지점장→지점장, 현장→현장팀장(관리자가 바꾼 직책은 덮어쓰지 않는다)
+      const pos = await prisma.position.upsert({
+        where: { name: role === '지점장' ? '지점장' : '현장팀장' },
+        update: {},
+        create: { name: role === '지점장' ? '지점장' : '현장팀장' },
+      });
       const e = await prisma.employee.upsert({
         where: { empNo },
         update: { orgUnitId: branch.id },
@@ -674,8 +680,12 @@ async function main() {
           name: personName(bi * 2 + ri + 40),
           phone: `010-23${bno}-00${ri + 1}${ri === 0 ? 1 : 3}`,
           orgUnitId: branch.id,
+          positionId: pos.id,
         },
       });
+      if (!e.positionId) {
+        await prisma.employee.update({ where: { id: e.id }, data: { positionId: pos.id } });
+      }
       staff.push({ ...e, role });
     }
     const [manager, crew] = staff;
