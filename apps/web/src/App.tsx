@@ -6,6 +6,9 @@ import { AuthProvider, isFieldUser, useAuth } from './auth/AuthContext';
 import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import DashboardEdit from './pages/DashboardEdit';
+import DashboardAdmin from './pages/DashboardAdmin';
+import DashboardTemplateEdit from './pages/DashboardTemplateEdit';
 import Leads from './pages/Leads';
 import LeadWorkspace from './pages/LeadWorkspace';
 import PublicSign from './pages/PublicSign';
@@ -81,6 +84,9 @@ function Shell() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard/edit" element={<DashboardEdit />} />
+        <Route path="/dashboard-admin" element={<DashboardAdmin />} />
+        <Route path="/dashboard-admin/:id" element={<DashboardTemplateEdit />} />
         <Route path="/ai" element={<AiAssistant />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/leads/:id" element={<LeadWorkspace />} />

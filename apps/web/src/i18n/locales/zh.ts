@@ -43,6 +43,7 @@ export default {
     branches: '网点管理',
     accounts: '账户与权限',
     aiAgents: 'Agent Builder',
+    dashboardAdmin: '仪表板管理',
     employees: '员工',
   },
   navGroup: {

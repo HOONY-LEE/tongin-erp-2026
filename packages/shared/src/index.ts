@@ -641,6 +641,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     actions: ALL_CRUD,
     hint: '자기가 가진 권한까지만 다른 그룹에 줄 수 있습니다',
   },
+  {
+    key: 'DASHBOARD',
+    label: '대시보드 관리',
+    group: '시스템',
+    actions: ALL_CRUD,
+    hint: '대시보드 템플릿을 만들고 권한 그룹·사용자에게 기본으로 지정합니다',
+  },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
 ];
 
@@ -783,3 +790,4 @@ export interface PartnerReceivable {
 }
 
 export * from './agent-blueprint';
+export * from './dashboard';

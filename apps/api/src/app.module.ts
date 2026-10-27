@@ -34,6 +34,7 @@ import { PaymentConfirmationModule } from './modules/payment-confirmation/paymen
 import { BranchModule } from './modules/branch/branch.module';
 import { AccountModule } from './modules/account/account.module';
 import { AccessModule } from './modules/access/access.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { SupportModule } from './modules/support/support.module';
@@ -83,6 +84,7 @@ import { EsignModule } from './modules/esign/esign.module';
     BranchModule,
     AccountModule,
     AccessModule,
+    DashboardModule,
     AiModule,
     AgentBuilderModule,
   ],

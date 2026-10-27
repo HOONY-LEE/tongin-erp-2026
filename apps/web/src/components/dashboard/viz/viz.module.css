@@ -1,0 +1,342 @@
+/*
+ * 대시보드 시각화 — 색은 역할(토큰)로만 쓴다. 범주 색 8개는 검증된 기준 팔레트(라이트·다크 따로 고른 값),
+ * 연속값(히트맵·지도)은 파란색 한 가지의 밝기 단계.
+ */
+.vizRoot {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
+  --series-other: #b4b2a9;
+  --seq-0: #eef0f3;
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #6da7ec;
+  --seq-4: #3987e5;
+  --seq-5: #256abf;
+  --seq-6: #184f95;
+  --seq-7: #0d366b;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --muted: #898781;
+  --map-empty: #ecebe6;
+  --surface: var(--ark-color-bg, #fff);
+  --ink: var(--ark-color-text, #0b0b0b);
+  --ink-2: var(--ark-color-text-secondary, #52514e);
+  --up: #006300;
+  --down: #b42d2d;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+:global([data-theme='dark']) .vizRoot {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-other: #5f5e59;
+  --seq-0: #2a2a28;
+  --seq-1: #104281;
+  --seq-2: #184f95;
+  --seq-3: #1c5cab;
+  --seq-4: #256abf;
+  --seq-5: #3987e5;
+  --seq-6: #6da7ec;
+  --seq-7: #9ec5f4;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --muted: #898781;
+  --map-empty: #2a2a28;
+  --up: #0ca30c;
+  --down: #e66767;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.axisText {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.labelText {
+  fill: var(--ink-2);
+  font-size: 11.5px;
+}
+.valueText {
+  fill: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.gridLine {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.baseline {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+
+/* 숫자 카드 */
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+}
+.hero {
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.deltaUp {
+  color: var(--up);
+  font-weight: 600;
+}
+.deltaDown {
+  color: var(--down);
+  font-weight: 600;
+}
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 범례 */
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-y: auto;
+}
+.legendItem {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.legendItem b {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.legendItem span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.pieWrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 44%);
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+}
+.pieWrapNarrow {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+/* 툴팁 */
+.tip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-inverse, #1f1f1d);
+  color: var(--ark-color-text-inverse, #fff);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  transform: translate(-50%, calc(-100% - 10px));
+}
+:global([data-theme='dark']) .tip {
+  background: #f0efec;
+  color: #0b0b0b;
+}
+.tip b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 표·목록 */
+.tableWrap {
+  height: 100%;
+  overflow: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.table th {
+  position: sticky;
+  top: 0;
+  padding: 6px 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid var(--grid);
+  white-space: nowrap;
+}
+.table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--grid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.table td.num,
+.table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rowLink {
+  cursor: pointer;
+}
+.rowLink:hover td {
+  background: var(--ark-color-bg-subtle);
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border: none;
+  border-bottom: 1px solid var(--grid);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+button.listItem {
+  cursor: pointer;
+}
+button.listItem:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.listMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.listTitle {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.listSub {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.listSide {
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.text {
+  height: 100%;
+  overflow: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+/* 지도 */
+.mapWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+}
+.mapScale {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.mapScale i {
+  display: inline-block;
+  width: 16px;
+  height: 8px;
+}
+.region {
+  stroke: var(--surface);
+  stroke-width: 0.8;
+  transition: opacity 0.1s;
+}
+.region:hover {
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+.dot {
+  fill: var(--series-1);
+  fill-opacity: 0.75;
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.dot:hover {
+  fill-opacity: 1;
+}

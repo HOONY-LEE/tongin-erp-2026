@@ -1142,3 +1142,38 @@ model AgentRun {
   @@index([blueprintId, createdAt])
   @@map("agent_run")
 }
+
+// 대시보드 — 템플릿(관리자가 만들고 권한 그룹·사용자에게 지정) 또는 개인 대시보드(ownerUserId)
+model Dashboard {
+  id            String                @id @default(uuid()) @db.Uuid
+  name          String
+  description   String                @default("")
+  // { version: 1, items: [{ id, widget, viz, x, y, w, h, title?, period?, metric?, text? }] }
+  layout        Json                  @default("{\"version\":1,\"items\":[]}")
+  // 템플릿: 지정이 없는 사람에게 보여 줄 기본 대시보드
+  isDefault     Boolean               @default(false) @map("is_default")
+  // 템플릿: 받은 사람이 자기 대시보드로 고쳐 쓸 수 있나
+  allowPersonal Boolean               @default(true) @map("allow_personal")
+  // 개인 대시보드면 주인(템플릿이면 NULL)
+  ownerUserId   String?               @unique @map("owner_user_id") @db.Uuid
+  createdBy     String?               @map("created_by") @db.Uuid
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  assignments   DashboardAssignment[]
+
+  @@map("dashboard")
+}
+
+/// 템플릿을 누구에게 기본으로 보여 줄지 — 권한 그룹(ROLE) 또는 사용자(USER) 하나에 템플릿 하나
+model DashboardAssignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  dashboardId String    @map("dashboard_id") @db.Uuid
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  targetType  String    @map("target_type") // ROLE | USER
+  targetId    String    @map("target_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([targetType, targetId])
+  @@index([dashboardId])
+  @@map("dashboard_assignment")
+}
