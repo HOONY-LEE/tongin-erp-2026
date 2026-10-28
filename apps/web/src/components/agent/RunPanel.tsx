@@ -27,7 +27,15 @@ export interface AgentRunView {
   output: unknown;
   error: string | null;
   trace: TraceStep[];
-  pending: { kind: string; nodeId: string; message: string; args?: unknown } | null;
+  pending: {
+    kind: string;
+    nodeId: string;
+    message: string;
+    tool?: string;
+    args?: unknown;
+    /** 실제로 나갈 내용 미리보기(문자 받는 사람 목록 등) */
+    preview?: unknown;
+  } | null;
   /** 실행이 만든 파일(보고서 등) */
   files?: { id: string; toolUseId: string; name: string; mediaType: string; size: number }[];
   createdAt: string;
@@ -212,6 +220,9 @@ export function RunPanel({
                 <span>{run.pending.message}</span>
                 {run.pending.args !== undefined && (
                   <pre className={styles.pre}>{show(run.pending.args)}</pre>
+                )}
+                {run.pending.preview !== undefined && (
+                  <pre className={styles.pre}>{show(run.pending.preview)}</pre>
                 )}
                 <div className={styles.row}>
                   <Button

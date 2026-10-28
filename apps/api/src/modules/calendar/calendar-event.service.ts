@@ -114,7 +114,9 @@ export class CalendarEventService {
     if (scopeKind === 'ORG') {
       const orgShared: Prisma.CalendarEventWhereInput = { visibility: 'ORG' };
       if (query.orgUnitId) {
-        orgShared.orgUnitId = query.orgUnitId;
+        // 범위 밖 조직을 골라도 그 조직 일정은 보이지 않는다
+        orgShared.orgUnitId =
+          orgIds === null || orgIds.includes(query.orgUnitId) ? query.orgUnitId : { in: [] };
       } else if (orgIds !== null) {
         orgShared.orgUnitId = { in: orgIds };
       }
@@ -218,6 +220,7 @@ export class CalendarEventService {
       if (!orgUnitId) {
         throw new ForbiddenException('소속 조직이 없어 조직 일정을 만들 수 없습니다.');
       }
+      if (dto.orgUnitId) await this.assertOrgTarget(dto.orgUnitId, principal);
     }
 
     return this.prisma.calendarEvent.create({
@@ -246,6 +249,8 @@ export class CalendarEventService {
       orgUnitId = dto.orgUnitId ?? found.orgUnitId ?? (await this.myOrgUnitId(principal));
       if (!orgUnitId)
         throw new ForbiddenException('소속 조직이 없어 조직 일정으로 바꿀 수 없습니다.');
+      if (dto.orgUnitId && dto.orgUnitId !== found.orgUnitId)
+        await this.assertOrgTarget(dto.orgUnitId, principal);
     } else {
       orgUnitId = null;
     }
@@ -289,6 +294,14 @@ export class CalendarEventService {
       await this.google.pushEventDelete(principal.userId, found.googleEventId);
     }
     await this.prisma.calendarEvent.delete({ where: { id } });
+  }
+
+  /** 조직 일정은 내 데이터범위 안 조직(또는 내 소속 조직)에만 올릴 수 있다 — 남의 지점 캘린더에 쓰지 못하게 */
+  private async assertOrgTarget(orgUnitId: string, principal: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    if (ids === null || ids.includes(orgUnitId)) return;
+    if ((await this.myOrgUnitId(principal)) === orgUnitId) return;
+    throw new ForbiddenException('내 데이터범위 안의 조직에만 조직 일정을 올릴 수 있습니다.');
   }
 
   /** 본인이 만든 일정만 수정·삭제 가능. */

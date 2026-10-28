@@ -23,3 +23,7 @@ services:
         value: https://tongin-erp.vercel.app
       - key: NODE_ENV
         value: production
+      # 아직 시연용이라 리셋 버전이 바뀌면 DB를 처음부터 다시 만든다(prisma/reset-demo-once.ts).
+      # 실데이터를 넣기 전에 반드시 DEMO_RESET 을 off 로, DEMO_SEED 도 off 로 바꾼다.
+      - key: DEMO_RESET
+        value: 'on'

@@ -245,6 +245,9 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
                 {run.pending.args !== undefined && (
                   <pre className={styles.pre}>{show(run.pending.args)}</pre>
                 )}
+                {run.pending.preview !== undefined && (
+                  <pre className={styles.pre}>{show(run.pending.preview)}</pre>
+                )}
                 <div className={styles.actions}>
                   <Button variant="ghost" disabled={busy} onClick={() => void decide(false)}>
                     거절

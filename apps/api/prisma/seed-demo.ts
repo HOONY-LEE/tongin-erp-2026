@@ -312,7 +312,8 @@ async function main() {
     const before = await prisma.appUser.findUnique({ where: { loginId } });
     const user = await prisma.appUser.upsert({
       where: { loginId },
-      update: { employeeId: emp.id, isActive: p.active, passwordHash: hash },
+      // 비밀번호는 처음 만들 때만 — 다시 시드해도 사용자가 바꾼 비밀번호를 되돌리지 않는다
+      update: { employeeId: emp.id, isActive: p.active },
       create: {
         loginId,
         passwordHash: hash,
