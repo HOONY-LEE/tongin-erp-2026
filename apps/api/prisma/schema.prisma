@@ -1185,6 +1185,8 @@ model Dashboard {
   isDefault     Boolean               @default(false) @map("is_default")
   // 템플릿: 받은 사람이 자기 대시보드로 고쳐 쓸 수 있나
   allowPersonal Boolean               @default(true) @map("allow_personal")
+  // 차트 색 — 통인 테마색(tongin) 또는 애플 시스템 색(blue·green …). 개인 대시보드는 받은 템플릿 색을 따른다
+  color         String                @default("tongin")
   // 개인 대시보드면 주인(템플릿이면 NULL)
   ownerUserId   String?               @unique @map("owner_user_id") @db.Uuid
   createdBy     String?               @map("created_by") @db.Uuid

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  DASH_DEFAULT_COLOR,
   DASH_WIDGET_MAP,
   canUseWidget,
   defaultDashLayout,
@@ -20,6 +21,7 @@ export interface TemplateInput {
   layout?: unknown;
   isDefault?: boolean;
   allowPersonal?: boolean;
+  color?: string;
 }
 
 /** 볼 수 없는 위젯은 빼고 보여 준다(관리자가 지정한 템플릿에 권한 밖 위젯이 있어도) */
@@ -90,6 +92,8 @@ export class DashboardService {
       canCustomize,
       hasPersonal: !!personal,
       layout: visibleOnly(usePersonal ? normalizeDashLayout(personal.layout) : base, p),
+      /** 차트 색 — 받은 템플릿 색(개인 대시보드도 템플릿 색을 따른다) */
+      color: assigned?.template.color ?? DASH_DEFAULT_COLOR,
       /** '기본으로 되돌리기'를 눌렀을 때 보일 구성 */
       baseLayout: visibleOnly(base, p),
       updatedAt: usePersonal ? personal.updatedAt : (assigned?.template.updatedAt ?? null),
@@ -192,6 +196,7 @@ export class DashboardService {
           layout: layout as object,
           isDefault: input.isDefault ?? false,
           allowPersonal: input.allowPersonal ?? true,
+          color: input.color ?? DASH_DEFAULT_COLOR,
           createdBy: p.userId,
         },
       });
@@ -219,6 +224,7 @@ export class DashboardService {
             : {}),
           ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
           ...(input.allowPersonal !== undefined ? { allowPersonal: input.allowPersonal } : {}),
+          ...(input.color !== undefined ? { color: input.color } : {}),
         },
       });
     });

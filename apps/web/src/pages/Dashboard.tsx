@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import { DashboardView } from '../components/dashboard/builder/DashboardView';
+import { DashColorScope } from '../components/dashboard/DashColorScope';
 
 export interface MyDashboard {
   source: 'PERSONAL' | 'USER' | 'ROLE' | 'DEFAULT' | 'BUILTIN';
@@ -18,6 +19,8 @@ export interface MyDashboard {
   hasPersonal: boolean;
   layout: DashLayout;
   baseLayout: DashLayout;
+  /** 차트 색(템플릿 색) */
+  color?: string;
 }
 
 const SOURCE_LABEL: Record<MyDashboard['source'], string> = {
@@ -134,7 +137,9 @@ export default function Dashboard() {
         }
       />
       {me ? (
-        <DashboardView layout={me.layout} refreshKey={refreshKey} />
+        <DashColorScope color={me.color}>
+          <DashboardView layout={me.layout} refreshKey={refreshKey} />
+        </DashColorScope>
       ) : (
         <PageSkeleton cards={3} />
       )}

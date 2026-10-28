@@ -1,6 +1,7 @@
 import type { DashViz } from '@tongin/shared';
 import { DASH_COLS } from '@tongin/shared';
 import styles from './builder.module.css';
+import { DashColorScope } from '../DashColorScope';
 
 export interface ThumbItem {
   x: number;
@@ -235,7 +236,16 @@ function Glyph({ viz, x, y, w, h }: { viz: DashViz; x: number; y: number; w: num
 /**
  * 대시보드 구성을 추상화한 작은 그림 — 위젯 자리·크기는 실제와 같고, 안쪽은 보기 방식을 떠올리게 하는 모양.
  */
-export function LayoutThumb({ items, className }: { items: ThumbItem[]; className?: string }) {
+export function LayoutThumb({
+  items,
+  className,
+  color,
+}: {
+  items: ThumbItem[];
+  className?: string;
+  /** 템플릿 색 — 그림도 그 색으로 */
+  color?: string | null;
+}) {
   const rows = Math.max(
     6,
     items.reduce((m, i) => Math.max(m, i.y + i.h), 0),
@@ -243,39 +253,41 @@ export function LayoutThumb({ items, className }: { items: ThumbItem[]; classNam
   const W = DASH_COLS * U;
   const H = rows * U;
   return (
-    <svg
-      className={`${styles.thumb} ${className ?? ''}`}
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="xMidYMin slice"
-      aria-hidden
-    >
-      {items.length === 0 ? (
-        <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={7} fill="var(--thumb-soft)">
-          빈 화면
-        </text>
-      ) : (
-        items.map((it, i) => {
-          const x = it.x * U + GAP / 2;
-          const y = it.y * U + GAP / 2;
-          const w = it.w * U - GAP;
-          const h = it.h * U - GAP;
-          return (
-            <g key={i}>
-              <rect
-                x={x}
-                y={y}
-                width={w}
-                height={h}
-                rx={2}
-                fill="var(--thumb-card)"
-                stroke="var(--thumb-line)"
-                strokeWidth={0.5}
-              />
-              <Glyph viz={it.viz} x={x} y={y} w={w} h={h} />
-            </g>
-          );
-        })
-      )}
-    </svg>
+    <DashColorScope color={color}>
+      <svg
+        className={`${styles.thumb} ${className ?? ''}`}
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="xMidYMin slice"
+        aria-hidden
+      >
+        {items.length === 0 ? (
+          <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={7} fill="var(--thumb-soft)">
+            빈 화면
+          </text>
+        ) : (
+          items.map((it, i) => {
+            const x = it.x * U + GAP / 2;
+            const y = it.y * U + GAP / 2;
+            const w = it.w * U - GAP;
+            const h = it.h * U - GAP;
+            return (
+              <g key={i}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={h}
+                  rx={2}
+                  fill="var(--thumb-card)"
+                  stroke="var(--thumb-line)"
+                  strokeWidth={0.5}
+                />
+                <Glyph viz={it.viz} x={x} y={y} w={w} h={h} />
+              </g>
+            );
+          })
+        )}
+      </svg>
+    </DashColorScope>
   );
 }

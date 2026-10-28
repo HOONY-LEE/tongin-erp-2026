@@ -1,25 +1,25 @@
 /*
- * 대시보드 시각화 — 색은 역할(토큰)로만 쓴다. 범주 색 8개는 검증된 기준 팔레트(라이트·다크 따로 고른 값),
- * 연속값(히트맵·지도)은 파란색 한 가지의 밝기 단계.
+ * 대시보드 시각화 — 색은 역할(토큰)로만 쓴다. 범주 색 8개·연속값(히트맵·지도) 단계는
+ * 대시보드 색(--dash-*: 통인 테마색·애플 색, shared dashColorVars)을 따르고, 없으면 아래 기준 값.
  */
 .vizRoot {
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --series-4: #eda100;
-  --series-5: #e87ba4;
-  --series-6: #008300;
-  --series-7: #6250d6;
-  --series-8: #e34948;
+  --series-1: var(--dash-series-1, #2a78d6);
+  --series-2: var(--dash-series-2, #eb6834);
+  --series-3: var(--dash-series-3, #1baf7a);
+  --series-4: var(--dash-series-4, #eda100);
+  --series-5: var(--dash-series-5, #e87ba4);
+  --series-6: var(--dash-series-6, #008300);
+  --series-7: var(--dash-series-7, #6250d6);
+  --series-8: var(--dash-series-8, #e34948);
   --series-other: #b4b2a9;
   --seq-0: #eef0f3;
-  --seq-1: #cde2fb;
-  --seq-2: #9ec5f4;
-  --seq-3: #6da7ec;
-  --seq-4: #3987e5;
-  --seq-5: #256abf;
-  --seq-6: #184f95;
-  --seq-7: #0d366b;
+  --seq-1: var(--dash-seq-1, #cde2fb);
+  --seq-2: var(--dash-seq-2, #9ec5f4);
+  --seq-3: var(--dash-seq-3, #6da7ec);
+  --seq-4: var(--dash-seq-4, #3987e5);
+  --seq-5: var(--dash-seq-5, #256abf);
+  --seq-6: var(--dash-seq-6, #184f95);
+  --seq-7: var(--dash-seq-7, #0d366b);
   --grid: #e1e0d9;
   --axis: #c3c2b7;
   --muted: #898781;
@@ -37,23 +37,23 @@
   font-size: 12px;
 }
 :global([data-theme='dark']) .vizRoot {
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-7: #9085e9;
-  --series-8: #e66767;
+  --series-1: var(--dash-series-1, #3987e5);
+  --series-2: var(--dash-series-2, #d95926);
+  --series-3: var(--dash-series-3, #199e70);
+  --series-4: var(--dash-series-4, #c98500);
+  --series-5: var(--dash-series-5, #d55181);
+  --series-6: var(--dash-series-6, #008300);
+  --series-7: var(--dash-series-7, #9085e9);
+  --series-8: var(--dash-series-8, #e66767);
   --series-other: #5f5e59;
   --seq-0: #2a2a28;
-  --seq-1: #104281;
-  --seq-2: #184f95;
-  --seq-3: #1c5cab;
-  --seq-4: #256abf;
-  --seq-5: #3987e5;
-  --seq-6: #6da7ec;
-  --seq-7: #9ec5f4;
+  --seq-1: var(--dash-seq-1, #104281);
+  --seq-2: var(--dash-seq-2, #184f95);
+  --seq-3: var(--dash-seq-3, #1c5cab);
+  --seq-4: var(--dash-seq-4, #256abf);
+  --seq-5: var(--dash-seq-5, #3987e5);
+  --seq-6: var(--dash-seq-6, #6da7ec);
+  --seq-7: var(--dash-seq-7, #9ec5f4);
   --grid: #2c2c2a;
   --axis: #383835;
   --muted: #898781;

@@ -10,6 +10,7 @@ import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components
 import styles from '../components/dashboard/builder/builder.module.css';
 import { DashboardEditor } from '../components/dashboard/builder/DashboardEditor';
 import type { MyDashboard } from './Dashboard';
+import { DashColorScope } from '../components/dashboard/DashColorScope';
 
 /** 내 대시보드 꾸미기 — 저장하면 나에게만 적용된다(관리자 템플릿은 그대로) */
 export default function DashboardEdit() {
@@ -60,62 +61,64 @@ export default function DashboardEdit() {
 
   if (!me || !layout) return <PageSkeleton cards={2} />;
   return (
-    <DashboardEditor
-      layout={layout}
-      permissions={user?.permissions ?? []}
-      onChange={(l) => {
-        setLayout(l);
-        setDirty(true);
-      }}
-      onBack={leave}
-      crumbs={
-        <>
-          <button type="button" onClick={leave}>
-            {t('dashboard.title')}
-          </button>
-          <span className={styles.crumbSep}>/</span>
-          <b>내 대시보드 편집</b>
-          <span>{dirty ? ' · 저장 안 됨' : ' · 저장하면 나에게만 적용'}</span>
-        </>
-      }
-      actions={
-        <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setLayout(me.baseLayout);
-              setDirty(true);
-            }}
-          >
-            기본 구성 불러오기
-          </Button>
-          <Button variant="outline" size="sm" onClick={leave}>
-            취소
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            loading={saving}
-            leftIcon={<Save size={14} />}
-            onClick={() => void save()}
-          >
-            저장
-          </Button>
-        </>
-      }
-      heading={
-        <PageHeader
-          title={t('dashboard.title')}
-          // 실제 화면의 버튼 줄과 높이를 맞춘다(위젯이 같은 높이에서 시작하도록)
-          actions={<span style={{ display: 'block', height: 32 }} />}
-          tags={
-            <Badge variant="subtle" color="primary">
-              내가 꾸민 대시보드
-            </Badge>
-          }
-        />
-      }
-    />
+    <DashColorScope color={me?.color}>
+      <DashboardEditor
+        layout={layout}
+        permissions={user?.permissions ?? []}
+        onChange={(l) => {
+          setLayout(l);
+          setDirty(true);
+        }}
+        onBack={leave}
+        crumbs={
+          <>
+            <button type="button" onClick={leave}>
+              {t('dashboard.title')}
+            </button>
+            <span className={styles.crumbSep}>/</span>
+            <b>내 대시보드 편집</b>
+            <span>{dirty ? ' · 저장 안 됨' : ' · 저장하면 나에게만 적용'}</span>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setLayout(me.baseLayout);
+                setDirty(true);
+              }}
+            >
+              기본 구성 불러오기
+            </Button>
+            <Button variant="outline" size="sm" onClick={leave}>
+              취소
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={saving}
+              leftIcon={<Save size={14} />}
+              onClick={() => void save()}
+            >
+              저장
+            </Button>
+          </>
+        }
+        heading={
+          <PageHeader
+            title={t('dashboard.title')}
+            // 실제 화면의 버튼 줄과 높이를 맞춘다(위젯이 같은 높이에서 시작하도록)
+            actions={<span style={{ display: 'block', height: 32 }} />}
+            tags={
+              <Badge variant="subtle" color="primary">
+                내가 꾸민 대시보드
+              </Badge>
+            }
+          />
+        }
+      />
+    </DashColorScope>
   );
 }

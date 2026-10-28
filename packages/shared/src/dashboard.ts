@@ -902,3 +902,110 @@ export type DashData =
     };
 
 export type DashDataResult = { ok: true; data: DashData } | { ok: false; error: string };
+
+// ── 대시보드 색상 ─────────────────────────────────────────────
+/**
+ * 대시보드(템플릿) 색 — 기본은 통인 테마색, 바꿀 때는 애플 시스템 색 라인업에서 고른다.
+ * (애플 옐로·브라운은 흰 바탕에서 너무 밝거나 회색처럼 보여 차트 색으로는 뺐다)
+ * 고른 색이 첫 번째 계열색·연속값(히트맵·지도) 색이 되고, 나머지 계열색은 애플 색 순서로 이어진다.
+ * light는 애플 시스템 색 값. dark는 같은 색을 어두운 바탕에 맞게 살짝 낮춘 값(애플 다크 값은 차트 바탕에서
+ * 너무 밝아 색끼리 밝기가 들쭉날쭉해진다 — dataviz 팔레트 검사 기준).
+ */
+export const DASH_COLORS = [
+  { key: 'tongin', label: '통인', light: '#fc753c', dark: '#e16a38' },
+  { key: 'blue', label: '블루', light: '#007aff', dark: '#036fe4' },
+  { key: 'indigo', label: '인디고', light: '#5856d6', dark: '#514fc0' },
+  { key: 'purple', label: '퍼플', light: '#af52de', dark: '#9d4cc7' },
+  { key: 'pink', label: '핑크', light: '#ff2d55', dark: '#e42b4e' },
+  { key: 'red', label: '레드', light: '#ff3b30', dark: '#e4372e' },
+  { key: 'orange', label: '오렌지', light: '#ff9500', dark: '#d27d06' },
+  { key: 'green', label: '그린', light: '#34c759', dark: '#2fa54d' },
+  { key: 'mint', label: '민트', light: '#00c7be', dark: '#06a59e' },
+  { key: 'teal', label: '틸', light: '#30b0c7', dark: '#2e9eb3' },
+  { key: 'cyan', label: '시안', light: '#32ade6', dark: '#2e90be' },
+] as const;
+export type DashColorKey = (typeof DASH_COLORS)[number]['key'];
+export const DASH_COLOR_KEYS = DASH_COLORS.map((c) => c.key) as DashColorKey[];
+export const DASH_DEFAULT_COLOR: DashColorKey = 'tongin';
+
+/** 첫 색 다음에 이어질 계열색 순서 — 서로 잘 구분되는 색끼리 번갈아(색약 구분 검사 통과 순서) */
+const SERIES_ORDER: DashColorKey[] = [
+  'blue',
+  'orange',
+  'green',
+  'purple',
+  'pink',
+  'teal',
+  'indigo',
+  'red',
+  'mint',
+  'cyan',
+];
+/** 고른 색과 너무 비슷해 바로 뒤에 두면 헷갈리는 색 */
+const NEAR: Partial<Record<DashColorKey, DashColorKey[]>> = {
+  tongin: ['orange', 'red'],
+  orange: ['tongin'],
+  red: ['pink', 'tongin'],
+  pink: ['red'],
+  blue: ['cyan', 'indigo'],
+  cyan: ['blue', 'teal'],
+  teal: ['mint', 'cyan'],
+  mint: ['teal', 'green'],
+  indigo: ['blue', 'purple'],
+  purple: ['indigo', 'blue'],
+  green: ['mint'],
+};
+
+/** 나란히 두면 헷갈리는 짝(양방향) — 색약(적록)·밝기 기준 */
+const CONFUSED = new Set(
+  [
+    ['green', 'pink'],
+    ['green', 'red'],
+    ['green', 'tongin'],
+    ['cyan', 'mint'],
+    ['teal', 'mint'],
+    ['cyan', 'teal'],
+    ['blue', 'purple'],
+    ['blue', 'indigo'],
+    ['blue', 'cyan'],
+    ['red', 'pink'],
+    ['orange', 'tongin'],
+  ].flatMap(([a, b]) => [`${a}:${b}`, `${b}:${a}`]),
+);
+
+/**
+ * 대시보드 색 → 차트 CSS 변수(--dash-series-1~8, --dash-seq-1~7).
+ * 연속값은 고른 색 한 가지의 밝기 단계(밝은 바탕 → 진한 색).
+ */
+export function dashColorVars(
+  key: string | null | undefined,
+  dark: boolean,
+): Record<string, string> {
+  const pick = (k: DashColorKey) => {
+    const c = DASH_COLORS.find((x) => x.key === k) ?? DASH_COLORS[0];
+    return dark ? c.dark : c.light;
+  };
+  const main = (
+    DASH_COLOR_KEYS.includes(key as DashColorKey) ? key : DASH_DEFAULT_COLOR
+  ) as DashColorKey;
+  const skip = new Set<DashColorKey>([main, ...(NEAR[main] ?? [])]);
+  // 순서대로 고르되 바로 앞 색과 헷갈리는 짝(색약 기준)은 한 칸 미룬다
+  const keys: DashColorKey[] = [main];
+  const rest = SERIES_ORDER.filter((k) => !skip.has(k));
+  while (keys.length < 8 && rest.length) {
+    const prev = keys[keys.length - 1];
+    const i = rest.findIndex((k) => !CONFUSED.has(`${prev}:${k}`));
+    keys.push(rest.splice(i < 0 ? 0 : i, 1)[0]);
+  }
+  const series = keys.map(pick);
+  const accent = pick(main);
+  const base = dark ? '#1c1c1e' : '#ffffff';
+  const steps = [14, 28, 44, 60, 76, 100];
+  const vars: Record<string, string> = {};
+  series.forEach((c, i) => (vars[`--dash-series-${i + 1}`] = c));
+  steps.forEach(
+    (p, i) => (vars[`--dash-seq-${i + 1}`] = `color-mix(in srgb, ${accent} ${p}%, ${base})`),
+  );
+  vars['--dash-seq-7'] = `color-mix(in srgb, ${accent} 78%, ${dark ? '#ffffff' : '#000000'})`;
+  return vars;
+}
