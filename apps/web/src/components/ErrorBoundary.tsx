@@ -54,8 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <>
               <h2 className={styles.title}>화면을 여는 중 오류가 났습니다</h2>
               <p className={styles.desc}>
-                새로고침해도 같으면 아래 오류 번호와 함께 관리자(고객센터 1899-0123)에게 알려
-                주세요.
+                새로고침해도 같으면 아래 오류 번호와 함께 관리자(010-5259-6024)에게 알려 주세요.
                 <br />
                 <span className={styles.ref}>오류 번호 {ref}</span>
               </p>
