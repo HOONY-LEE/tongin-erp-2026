@@ -709,152 +709,155 @@ export default function CampaignEditor() {
           </li>
         ))}
       </ol>
-      <div className={styles.layout}>
+      <div className={step === 1 ? styles.layoutCompose : styles.layout}>
         <div className={styles.col}>
           {step === 1 ? (
-            <>
-              <section className={styles.panel}>
-                <h3 className={styles.panelTitle}>캠페인 기본 정보</h3>
-                <div className={styles.row2}>
+            // 캠페인 기본 정보 + 메시지 — 한 카드(경계선으로 나눔), 높이는 미리보기 카드와 같게
+            <section className={`${styles.panel} ${styles.composeCard}`}>
+              <h3 className={styles.panelTitle}>캠페인 기본 정보</h3>
+              <div className={styles.row2}>
+                <label className={styles.field}>
+                  <span className={styles.label}>
+                    캠페인 이름 <span className={styles.req}>*</span>
+                  </span>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="예: 11월 이사 예정 고객 사다리차 할인"
+                  />
+                </label>
+                <div className={styles.field}>
+                  <span className={styles.label}>캠페인 기간</span>
+                  <div className={styles.period}>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={periodStart}
+                      onChange={(e) => setPeriodStart(e.target.value)}
+                      aria-label="캠페인 시작일"
+                    />
+                    <span className={styles.sub}>~</span>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={periodEnd}
+                      min={periodStart || undefined}
+                      onChange={(e) => setPeriodEnd(e.target.value)}
+                      aria-label="캠페인 종료일"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.label}>
+                  채널 <span className={styles.req}>*</span>
+                </span>
+                <SegmentedControl
+                  className={styles.fitSeg}
+                  value={channel}
+                  onChange={(v) => pickChannel(v as UiChannel)}
+                  options={CHANNEL_OPTIONS}
+                />
+              </div>
+
+              <hr className={styles.divider} />
+
+              <h3 className={styles.panelTitle}>
+                메시지{' '}
+                {channel === 'SMS' && (
+                  <span className={styles.sub}>
+                    90바이트(한글 45자)를 넘으면 장문(LMS)으로 보냅니다
+                  </span>
+                )}
+              </h3>
+              {notReady && (
+                <div className={styles.warn} role="status">
+                  {notReady} 문구와 미리보기는 만들어 볼 수 있지만, 보내기는 연결 후에 열립니다.
+                </div>
+              )}
+
+              {/* 제목 · 무료수신거부(광고일 때만 켜짐, 자리는 늘 차지) · 광고성 체크 — 한 줄 */}
+              <div className={styles.titleRow}>
+                {channel !== 'INSTAGRAM' && (
                   <label className={styles.field}>
-                    <span className={styles.label}>캠페인 이름</span>
+                    <span className={styles.label}>
+                      {channel === 'SMS'
+                        ? '장문 제목 (LMS일 때)'
+                        : channel === 'ALIMTALK'
+                          ? '강조 제목'
+                          : '메일 제목'}
+                    </span>
                     <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="예: 11월 이사 예정 고객 사다리차 할인"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      maxLength={40}
+                      placeholder="예: [통인익스프레스] 가을 이사 할인"
                     />
                   </label>
-                  <div className={styles.field}>
-                    <span className={styles.label}>캠페인 기간</span>
-                    <div className={styles.period}>
-                      <input
-                        type="date"
-                        className={styles.dateInput}
-                        value={periodStart}
-                        onChange={(e) => setPeriodStart(e.target.value)}
-                        aria-label="캠페인 시작일"
-                      />
-                      <span className={styles.sub}>~</span>
-                      <input
-                        type="date"
-                        className={styles.dateInput}
-                        value={periodEnd}
-                        min={periodStart || undefined}
-                        onChange={(e) => setPeriodEnd(e.target.value)}
-                        aria-label="캠페인 종료일"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className={styles.field}>
-                  <span className={styles.label}>채널</span>
-                  <SegmentedControl
-                    value={channel}
-                    onChange={(v) => pickChannel(v as UiChannel)}
-                    options={CHANNEL_OPTIONS}
+                )}
+                <label className={styles.field}>
+                  <span className={styles.label}>무료수신거부 문구</span>
+                  <Input
+                    value={optOut}
+                    onChange={(e) => setOptOut(e.target.value)}
+                    placeholder={DEFAULT_OPT_OUT}
+                    disabled={!isAd}
+                    aria-label="수신거부 문구"
+                  />
+                </label>
+                <div className={styles.adCheck}>
+                  <Checkbox
+                    checked={isAd}
+                    onCheckedChange={(v) => setIsAd(v === true)}
+                    label="광고성 문자"
                   />
                 </div>
-              </section>
+              </div>
 
-              <section className={styles.panel}>
-                <h3 className={styles.panelTitle}>
-                  메시지{' '}
+              <div className={`${styles.field} ${styles.bodyField}`}>
+                <div className={styles.counter}>
+                  <span className={styles.label}>
+                    본문 <span className={styles.req}>*</span>
+                  </span>
+                  <span className={styles.inline}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Plus size={13} />}
+                      onClick={insertName}
+                    >
+                      고객명 넣기
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Plus size={13} />}
+                      onClick={() => setLinkOpen(true)}
+                    >
+                      링크 넣기
+                    </Button>
+                  </span>
+                </div>
+                <textarea
+                  ref={msgRef}
+                  className={`${styles.textarea} ${styles.bodyArea}`}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={`[통인익스프레스] ${NAME_TOKEN}님, 안녕하세요.`}
+                  aria-label="본문"
+                />
+                <div className={styles.counter}>
+                  <span>
+                    {NAME_TOKEN}는 받는 사람마다 이름으로 바뀝니다. 링크는 눌러서 열립니다.
+                  </span>
                   {channel === 'SMS' && (
-                    <span className={styles.sub}>
-                      90바이트(한글 45자)를 넘으면 장문(LMS)으로 보냅니다
-                    </span>
-                  )}
-                </h3>
-                {notReady && (
-                  <div className={styles.warn} role="status">
-                    {notReady} 문구와 미리보기는 만들어 볼 수 있지만, 보내기는 연결 후에 열립니다.
-                  </div>
-                )}
-
-                <div className={styles.titleRow}>
-                  {channel !== 'INSTAGRAM' && (
-                    <label className={styles.field}>
-                      <span className={styles.label}>
-                        {channel === 'SMS'
-                          ? '장문 제목 (LMS일 때)'
-                          : channel === 'ALIMTALK'
-                            ? '강조 제목'
-                            : '메일 제목'}
-                      </span>
-                      <Input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        maxLength={40}
-                        placeholder="예: [통인익스프레스] 가을 이사 할인"
-                      />
-                    </label>
-                  )}
-                  <div className={styles.adCheck}>
-                    <Checkbox
-                      checked={isAd}
-                      onCheckedChange={(v) => setIsAd(v === true)}
-                      label="광고성 문자"
-                    />
-                  </div>
-                </div>
-                {isAd && (
-                  <div className={styles.field}>
-                    <span className={styles.sub}>
-                      할인·이벤트 안내는 광고입니다 — 앞에 (광고), 끝에 무료수신거부 번호가
-                      붙습니다(정보통신망법).
-                    </span>
-                    <Input
-                      value={optOut}
-                      onChange={(e) => setOptOut(e.target.value)}
-                      placeholder={DEFAULT_OPT_OUT}
-                      aria-label="수신거부 문구"
-                    />
-                  </div>
-                )}
-
-                <div className={styles.field}>
-                  <div className={styles.counter}>
-                    <span className={styles.label}>본문</span>
-                    <span className={styles.inline}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        leftIcon={<Plus size={13} />}
-                        onClick={insertName}
-                      >
-                        고객명 넣기
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        leftIcon={<Plus size={13} />}
-                        onClick={() => setLinkOpen(true)}
-                      >
-                        링크 넣기
-                      </Button>
-                    </span>
-                  </div>
-                  <textarea
-                    ref={msgRef}
-                    className={styles.textarea}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder={`[통인익스프레스] ${NAME_TOKEN}님, 안녕하세요.`}
-                    aria-label="본문"
-                  />
-                  <div className={styles.counter}>
                     <span>
-                      {NAME_TOKEN}는 받는 사람마다 이름으로 바뀝니다. 링크는 눌러서 열립니다.
+                      {bytes} byte · <b>{isLms ? 'LMS(장문)' : 'SMS(단문)'}</b>
                     </span>
-                    {channel === 'SMS' && (
-                      <span>
-                        {bytes} byte · <b>{isLms ? 'LMS(장문)' : 'SMS(단문)'}</b>
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
-              </section>
-            </>
+              </div>
+            </section>
           ) : (
             <section className={styles.panel}>
               <h3 className={styles.panelTitle}>
