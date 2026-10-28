@@ -126,42 +126,37 @@ export class WorkOrderService {
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
       },
     });
-    // 배정된 직원에게 알림톡 — 현장은 앱 푸시 대신 알림톡으로 받는다
+    // 배정된 직원에게 알림톡 — 현장은 앱 푸시 대신 알림톡으로 받는다.
+    // 페이로드에 전화번호는 싣지 않는다(에이전트 입력으로 넘어감) — 알림 리스너가 employeeId로 조회
     if (dto.employeeId) {
-      const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
-      if (emp?.phone) {
-        await this.eventBus.record({
-          aggregateType: 'work_order',
-          aggregateId: workOrderId,
-          eventType: 'work_order.assigned',
-          payload: {
-            recipient: emp.phone,
-            workNo: wo.workNo,
-            scheduledDate: wo.scheduledDate ? wo.scheduledDate.toISOString().slice(0, 10) : null,
-            workOrderId,
-          },
-        });
-      }
+      await this.eventBus.record({
+        aggregateType: 'work_order',
+        aggregateId: workOrderId,
+        eventType: 'work_order.assigned',
+        payload: {
+          workNo: wo.workNo,
+          scheduledDate: wo.scheduledDate ? wo.scheduledDate.toISOString().slice(0, 10) : null,
+          workOrderId,
+          employeeId: dto.employeeId,
+        },
+      });
     }
     return created;
   }
 
-  /** 전속업체 담당자에게 작업 배정 알림톡. 연락처가 없으면 조용히 건너뛴다. */
+  /** 전속업체 담당자에게 작업 배정 알림톡. 연락처 조회·없으면 건너뛰기는 알림 리스너가 한다. */
   private async notifyOutsource(workOrderId: string, partnerId: string) {
-    const [wo, partner] = await Promise.all([
-      this.prisma.workOrder.findUnique({ where: { id: workOrderId } }),
-      this.prisma.partner.findUnique({ where: { id: partnerId } }),
-    ]);
-    if (!wo || !partner?.phone) return;
+    const wo = await this.prisma.workOrder.findUnique({ where: { id: workOrderId } });
+    if (!wo) return;
     await this.eventBus.record({
       aggregateType: 'work_order',
       aggregateId: workOrderId,
       eventType: 'work_order.assigned',
       payload: {
-        recipient: partner.phone,
         workNo: wo.workNo,
         scheduledDate: wo.scheduledDate ? wo.scheduledDate.toISOString().slice(0, 10) : null,
         workOrderId,
+        partnerId,
       },
     });
   }
