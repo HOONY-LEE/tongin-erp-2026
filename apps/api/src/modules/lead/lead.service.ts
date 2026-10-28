@@ -155,6 +155,12 @@ export class LeadService {
         },
       });
       customerId = customer.id;
+      await this.eventBus.record({
+        aggregateType: 'customer',
+        aggregateId: customer.id,
+        eventType: 'customer.created',
+        payload: { ownerOrgId: customer.ownerOrgId, via: 'lead' },
+      });
     }
     const data = {
       leadNo: this.genLeadNo(),
@@ -187,7 +193,12 @@ export class LeadService {
         aggregateType: 'lead',
         aggregateId: created.id,
         eventType: 'lead.created',
-        payload: { leadNo: created.leadNo, source: created.source, orgUnitId: created.orgUnitId },
+        payload: {
+          leadNo: created.leadNo,
+          source: created.source,
+          orgUnitId: created.orgUnitId,
+          customerId: created.customerId,
+        },
       });
       return created;
     } catch (e) {
@@ -208,9 +219,10 @@ export class LeadService {
   }
 
   async update(id: string, dto: UpdateLeadDto, principal?: AuthPrincipal) {
-    await this.findOne(id, principal);
+    const before = await this.findOne(id, principal);
+    let updated;
     try {
-      return await this.prisma.lead.update({
+      updated = await this.prisma.lead.update({
         where: { id },
         data: {
           customerId: dto.customerId,
@@ -240,6 +252,20 @@ export class LeadService {
     } catch (e) {
       throw this.mapError(e);
     }
+    // 담당자가 새로 정해지거나 바뀌면 배정 이벤트(담당자 안내·자동 배분 에이전트용)
+    if (updated.ownerEmpId && updated.ownerEmpId !== before.ownerEmpId) {
+      await this.eventBus.record({
+        aggregateType: 'lead',
+        aggregateId: updated.id,
+        eventType: 'lead.assigned',
+        payload: {
+          leadNo: updated.leadNo,
+          ownerEmpId: updated.ownerEmpId,
+          orgUnitId: updated.orgUnitId,
+        },
+      });
+    }
+    return updated;
   }
 
   /** 상태 전이(상태머신). 다른 모듈(계약·작업)에서도 호출. */
