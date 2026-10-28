@@ -14,6 +14,8 @@ import {
   type AuthPrincipal,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
+import { PrincipalCache } from '../../auth/principal-cache.service';
 import type {
   CreatePositionDto,
   CreateRoleDto,
@@ -34,11 +36,15 @@ const SUPER_ADMIN_WHERE = {
  *  - 권한 상승 막기: 슈퍼관리자가 아닌 관리자는 자기가 가진 권한까지만 그룹에 넣고 빼며,
  *    자기에게 없는 권한이 든 그룹은 남에게 주거나 빼앗지 못한다.
  *  - 마지막 슈퍼관리자는 그룹을 빼앗길 수 없다(아무도 관리 화면에 못 들어가게 되므로).
- *  - 바뀐 권한은 다음 요청부터 바로 적용된다(요청마다 DB에서 권한을 다시 읽는다).
+ *  - 바뀐 권한은 다음 요청부터 바로 적용된다(바꿀 때 주체 캐시(PrincipalCache)를 비운다).
  */
 @Injectable()
 export class AccessService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+    private readonly principals: PrincipalCache,
+  ) {}
 
   // ── 권한 그룹 ──
 
@@ -90,6 +96,7 @@ export class AccessService {
         sortOrder: dto.sortOrder,
       },
     });
+    this.principals.invalidateAll();
     return this.getRole(id);
   }
 
@@ -117,6 +124,7 @@ export class AccessService {
       );
     }
     await this.prisma.role.delete({ where: { id } });
+    this.principals.invalidateAll();
     return { id, deleted: true };
   }
 
@@ -179,10 +187,12 @@ export class AccessService {
       throw new ConflictException(`이미 있는 직책입니다: ${name}`);
     }
     if (dto.defaultRoleId) await this.findRole(dto.defaultRoleId);
-    return this.prisma.position.update({
+    const row = await this.prisma.position.update({
       where: { id },
       data: { name: name || undefined, defaultRoleId: dto.defaultRoleId, isActive: dto.isActive },
     });
+    this.principals.invalidateAll(); // 주체에 직책 이름이 실린다
+    return row;
   }
 
   /** 직책을 지우면 그 직책이던 직원은 '직책 없음'이 된다(직원 기록은 그대로). */
@@ -190,6 +200,7 @@ export class AccessService {
     const p = await this.prisma.position.findUnique({ where: { id } });
     if (!p) throw new NotFoundException('직책을 찾을 수 없습니다.');
     await this.prisma.position.delete({ where: { id } });
+    this.principals.invalidateAll();
     return { id, deleted: true };
   }
 
@@ -208,6 +219,7 @@ export class AccessService {
     const user = await this.prisma.appUser.findUnique({
       where: { id: userId },
       include: {
+        employee: { select: { orgUnitId: true } },
         userRoles: {
           include: { role: { include: { rolePerms: { include: { permission: true } } } } },
         },
@@ -249,15 +261,43 @@ export class AccessService {
       }
     }
 
-    // 권한 상승 막기 — 새로 주거나 빼는 그룹의 권한이 모두 내 권한 안이어야 한다
+    // 권한 상승 막기 — 새로 주거나 빼거나 범위를 바꾸는 그룹의 권한이 모두 내 권한 안이어야 한다
     const isWildcard = actor.permissions.includes(PERMISSION_WILDCARD);
-    const beforeIds = new Set(user.userRoles.map((ur) => ur.roleId));
-    const afterIds = new Set(next.map((a) => a.roleId));
+    // 그룹·데이터 범위·대상 조직이 모두 같아야 '그대로'인 줄로 본다(범위만 바꿔도 손댄 것)
+    const keyOf = (a: { roleId: string; dataScope: string; orgScopeId: string | null }) =>
+      `${a.roleId}:${a.dataScope}:${a.orgScopeId ?? ''}`;
+    const beforeKeys = new Set(user.userRoles.map(keyOf));
+    const afterKeys = new Set(next.map(keyOf));
+    const added = next.filter((a) => !beforeKeys.has(keyOf(a)));
+    const removed = user.userRoles.filter((ur) => !afterKeys.has(keyOf(ur)));
     if (!isWildcard) {
+      // 데이터 범위 상승 막기 — 내 데이터 범위 밖의 계정·조직은 건드릴 수 없다
+      const myOrgIds = await this.scope.orgScopeIds(actor); // null = 전체(ALL)
+      if (myOrgIds !== null) {
+        if (added.some((a) => a.dataScope === 'ALL')) {
+          throw new ForbiddenException(
+            '데이터 범위 "전체"는 나도 전체 범위를 가진 경우에만 줄 수 있습니다.',
+          );
+        }
+        const targetOrg = user.employee?.orgUnitId ?? null;
+        if (!targetOrg || !myOrgIds.includes(targetOrg)) {
+          throw new ForbiddenException('내 데이터 범위 밖 조직의 계정은 권한을 바꿀 수 없습니다.');
+        }
+        if (orgIds.some((id) => !myOrgIds.includes(id))) {
+          throw new ForbiddenException(
+            '내 데이터 범위 밖의 조직은 대상 조직으로 고를 수 없습니다.',
+          );
+        }
+      }
+
+      const touchedIds = new Set([
+        ...added.map((a) => a.roleId),
+        ...removed.map((ur) => ur.roleId),
+      ]);
       const touched = [
-        ...roles.filter((r) => !beforeIds.has(r.id)),
-        ...user.userRoles.map((ur) => ur.role).filter((r) => !afterIds.has(r.id)),
-      ];
+        ...roles.filter((r) => touchedIds.has(r.id)),
+        ...removed.map((ur) => ur.role).filter((r) => !roles.some((x) => x.id === r.id)),
+      ].filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i);
       for (const r of touched) {
         const lacking = r.rolePerms
           .map((rp) => rp.permission.code)
@@ -293,6 +333,7 @@ export class AccessService {
       this.prisma.userRole.deleteMany({ where: { userId } }),
       this.prisma.userRole.createMany({ data: next.map((a) => ({ userId, ...a })) }),
     ]);
+    this.principals.invalidateAll();
     return { id: userId, roles: next };
   }
 
@@ -384,5 +425,6 @@ export class AccessService {
         data: perms.map((p) => ({ roleId, permissionId: p.id })),
       }),
     ]);
+    this.principals.invalidateAll();
   }
 }

@@ -308,11 +308,11 @@ export default function Settlement() {
         }
         plain
       >
-        <DataTable columns={recvCols} rows={recv} />
+        <DataTable columns={recvCols} rows={recv} rowKey="customerId" />
       </PageCard>
 
       <PageCard title={t('settlement.monthlyInflow')} count={monthly.length} plain>
-        <DataTable columns={monthlyCols} rows={monthly} />
+        <DataTable columns={monthlyCols} rows={monthly} rowKey="month" />
       </PageCard>
 
       <PageCard
@@ -379,7 +379,7 @@ export default function Settlement() {
                 {t('settlement.commission')} {won(branch.commissionTotal)}
               </Badge>
             </div>
-            <DataTable columns={branchCols} rows={branch.lines} />
+            <DataTable columns={branchCols} rows={branch.lines} rowKey="contractId" />
           </>
         )}
       </PageCard>

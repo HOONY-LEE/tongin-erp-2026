@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -54,6 +55,13 @@ export class EstimateB2bService {
     const estimate = await this.prisma.estimate.findUnique({ where: { id: estimateId } });
     if (!estimate) throw new NotFoundException(`견적을 찾을 수 없습니다: ${estimateId}`);
     await this.assertScope(estimate.orgUnitId, principal);
+    // 고객이 서명한 계약의 견적은 잠근다(견적 본체 assertNotSigned와 같은 규칙) — 산출내역서가 서명 뒤 바뀌지 않게
+    const signed = await this.prisma.contract.count({ where: { estimateId, status: 'SIGNED' } });
+    if (signed) {
+      throw new ConflictException(
+        '고객이 이미 서명한 견적이라 바꿀 수 없습니다(서명한 계약서와 달라집니다). 바꾸려면 계약을 취소하고 다시 보내세요.',
+      );
+    }
 
     await this.prisma.estimateCostBuildup.upsert({
       where: { estimateId },

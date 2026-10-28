@@ -68,8 +68,10 @@ function readCachedMe(): Principal | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<Principal | null>(null);
-  const [loading, setLoading] = useState(true);
+  // 캐시된 로그인 정보가 있으면 /auth/me를 기다리지 않고 바로 화면을 그린다(콜드 스타트에도 즉시 열림).
+  // /auth/me는 뒤에서 확인하고, 401이면 아래 로그아웃 흐름이 로그인 화면으로 돌려보낸다.
+  const [user, setUser] = useState<Principal | null>(() => (getToken() ? readCachedMe() : null));
+  const [loading, setLoading] = useState(() => !!getToken() && !readCachedMe());
 
   const loadMe = async () => {
     try {
@@ -93,9 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (getToken()) {
-      // 캐시된 정보로 먼저 그려 두고, /auth/me 응답이 오면 갱신한다
-      const cached = readCachedMe();
-      if (cached) setUser(cached);
+      // 캐시된 정보로 이미 그려 두었다 — /auth/me 응답이 오면 갱신한다
       void loadMe();
     } else setLoading(false);
     const onUnauth = () => {

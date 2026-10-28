@@ -80,6 +80,13 @@ export class ServiceOrderService {
 
   async update(id: string, dto: UpdateServiceOrderDto, principal?: AuthPrincipal) {
     await this.findOne(id, principal);
+    // 담당 지점을 바꿀 때도 내 범위 안 조직으로만(남의 지점으로 넘기지 못하게)
+    if (dto.orgUnitId) {
+      const ids = await this.scope.orgScopeIds(principal);
+      if (ids !== null && !ids.includes(dto.orgUnitId)) {
+        throw new ForbiddenException('소속 조직으로만 옮길 수 있습니다.');
+      }
+    }
     return this.prisma.serviceOrder.update({
       where: { id },
       data: {

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { kstYmd } from '../../common/util/kst';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
@@ -117,8 +118,9 @@ export class ContractService {
       balanceAmount: Number(c.balanceAmount),
       frozenAt: new Date().toISOString(),
     };
-    const updated = await this.prisma.contract.update({
-      where: { id },
+    // DRAFT일 때만 바꾼다(원자적) — 동시에 두 번 서명해도 contract.signed는 한 번만 나간다
+    const { count } = await this.prisma.contract.updateMany({
+      where: { id, status: 'DRAFT' },
       data: {
         status: 'SIGNED',
         signedAt: new Date(),
@@ -126,6 +128,12 @@ export class ContractService {
         snapshot,
       },
     });
+    const updated = await this.prisma.contract.findUniqueOrThrow({ where: { id } });
+    if (count !== 1) {
+      // 그 사이 다른 요청이 먼저 서명했으면 그 결과를 그대로 돌려준다
+      if (updated.status === 'SIGNED') return updated;
+      throw new BadRequestException(`서명 불가 상태: ${updated.status}`);
+    }
     await this.eventBus.record({
       aggregateType: 'contract',
       aggregateId: id,
@@ -191,10 +199,13 @@ export class ContractService {
     const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } });
     if (!payment) throw new NotFoundException(`결제를 찾을 수 없습니다: ${paymentId}`);
     if (payment.status === 'PAID') return payment;
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
+    // 아직 PAID가 아닐 때만 바꾼다(원자적) — 웹훅과 수동 확인이 겹쳐도 payment.confirmed는 한 번만
+    const { count } = await this.prisma.payment.updateMany({
+      where: { id: paymentId, status: { not: 'PAID' } },
       data: { status: 'PAID', paidAt: new Date() },
     });
+    const updated = await this.prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
+    if (count !== 1) return updated;
     await this.eventBus.record({
       aggregateType: 'payment',
       aggregateId: paymentId,
@@ -211,8 +222,21 @@ export class ContractService {
   /**
    * 입금이 확인됐을 때(토스 웹훅·시연 시뮬레이션·수동 확인 공통) — 결제를 PAID로 바꾸고,
    * 계약금이면 접수를 '계약'으로 넘긴다(서명 전이라도 계약금이 들어오면 계약 성립으로 본다).
+   * principal을 주면(사람이 직접 확인) 그 사람의 조직 범위 안 계약의 결제인지 먼저 확인한다.
+   * 웹훅처럼 사람이 없는 호출은 principal 없이 부른다.
    */
-  async markPaid(paymentId: string) {
+  async markPaid(paymentId: string, principal?: AuthPrincipal) {
+    if (principal) {
+      const target = await this.prisma.payment.findUnique({
+        where: { id: paymentId },
+        select: { contract: { select: { orgUnitId: true } } },
+      });
+      if (!target) throw new NotFoundException(`결제를 찾을 수 없습니다: ${paymentId}`);
+      const ids = await this.scope.orgScopeIds(principal);
+      if (ids !== null && !ids.includes(target.contract.orgUnitId)) {
+        throw new ForbiddenException('소속 조직 계약의 결제만 입금 확인할 수 있습니다.');
+      }
+    }
     const payment = await this.confirmPayment(paymentId);
     if (payment.kind === 'DEPOSIT') {
       const c = await this.prisma.contract.findUnique({ where: { id: payment.contractId } });
@@ -240,9 +264,7 @@ export class ContractService {
   }
 
   private genNo(): string {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
     const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
     return `CT${ymd}${rand}`;
   }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { currentActorUserId } from './request-context';
 
 export interface DomainEventBundle {
   eventType: string;
@@ -26,20 +27,28 @@ export class EventBusService {
     aggregateId: string;
     eventType: string;
     payload: Record<string, unknown>;
+    /** 행위자 — 생략하면 지금 요청의 로그인 사용자(요청 밖이면 비움) */
+    actorUserId?: string;
   }) {
+    // 누가 일으킨 일인지 페이로드에 함께 남긴다(감사·에이전트 조건용). 값이 없으면 칸을 만들지 않는다.
+    const actorUserId = params.actorUserId ?? currentActorUserId();
+    const payload =
+      actorUserId && params.payload.actorUserId === undefined
+        ? { ...params.payload, actorUserId }
+        : params.payload;
     const event = await this.prisma.domainEvent.create({
       data: {
         aggregateType: params.aggregateType,
         aggregateId: params.aggregateId,
         eventType: params.eventType,
-        payload: params.payload as object,
+        payload: payload as object,
       },
     });
     const bundle: DomainEventBundle = {
       eventType: params.eventType,
       aggregateType: params.aggregateType,
       aggregateId: params.aggregateId,
-      payload: params.payload,
+      payload,
     };
     this.emitter.emit(params.eventType, bundle);
     return event;

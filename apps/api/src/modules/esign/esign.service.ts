@@ -9,6 +9,7 @@ import {
 import { randomBytes } from 'node:crypto';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { kstYmd } from '../../common/util/kst';
 import { ScopeService } from '../../scope/scope.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { StubNotificationProvider } from '../../notifications/notification.provider';
@@ -305,6 +306,11 @@ export class EsignService {
    * 실제 웹훅과 같은 처리(markPaid)를 타므로 화면 흐름이 운영과 같다.
    */
   async simulateDeposit(estimateId: string, principal?: AuthPrincipal) {
+    // 시연 모드에서만 — 운영(NODE_ENV=production)에서 시연 데이터를 끄면(DEMO_SEED=off) 돈 없이 입금 처리되는 길을 막는다
+    const demoOn = (process.env.DEMO_SEED ?? '').toLowerCase() !== 'off';
+    if (process.env.NODE_ENV === 'production' && !demoOn) {
+      throw new ForbiddenException('입금 시뮬레이션은 시연 모드에서만 쓸 수 있습니다.');
+    }
     if (this.payments.autoConfirm && !(process.env.TOSS_SECRET_KEY ?? '').startsWith('test_')) {
       throw new BadRequestException('운영 결제(토스 실키)에서는 시뮬레이션할 수 없습니다.');
     }
@@ -368,9 +374,7 @@ export class EsignService {
   }
 
   private genContractNo(): string {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
     const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
     return `CT${ymd}${rand}`;
   }

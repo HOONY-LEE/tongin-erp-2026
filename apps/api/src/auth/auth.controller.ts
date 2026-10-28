@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import type { AuthPrincipal, LoginResponse } from '@tongin/shared';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
+import { LoginThrottlerGuard } from './login-throttler.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -12,6 +13,8 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(200)
+  // 같은 IP·아이디로 1분에 10번 넘게 시도하면 429
+  @UseGuards(LoginThrottlerGuard)
   login(@Body() dto: LoginDto): Promise<LoginResponse> {
     return this.authService.login(dto);
   }

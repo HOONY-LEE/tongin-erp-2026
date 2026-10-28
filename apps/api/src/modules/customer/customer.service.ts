@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -18,6 +19,7 @@ export class CustomerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
+    private readonly eventBus: EventBusService,
   ) {}
 
   /**
@@ -79,11 +81,20 @@ export class CustomerService {
   async create(dto: CreateCustomerDto, principal?: AuthPrincipal) {
     await this.assertScope(dto.ownerOrgId ?? null, principal);
     await this.assertGrade(dto.grade);
+    let created;
     try {
-      return await this.prisma.customer.create({ data: dto });
+      created = await this.prisma.customer.create({ data: dto });
     } catch (e) {
       throw this.mapError(e);
     }
+    // 이름·연락처는 싣지 않는다(개인정보) — 필요하면 id로 조회
+    await this.eventBus.record({
+      aggregateType: 'customer',
+      aggregateId: created.id,
+      eventType: 'customer.created',
+      payload: { ownerOrgId: created.ownerOrgId, via: 'customer' },
+    });
+    return created;
   }
 
   async update(id: string, dto: UpdateCustomerDto, principal?: AuthPrincipal) {

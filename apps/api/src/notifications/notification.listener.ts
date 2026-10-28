@@ -38,7 +38,9 @@ export class NotificationListener {
     const tpl = TEMPLATES[e.eventType];
     if (!tpl) return;
     const message = tpl(e);
-    const recipient = (e.payload.recipient as string) ?? null;
+    const recipient = await this.resolveRecipient(e);
+    // 작업 배정은 받을 사람(현장 직원·전속업체) 연락처가 있을 때만 보낸다
+    if (e.eventType === 'work_order.assigned' && !recipient) return;
     const res = await this.provider.send('ALIMTALK', recipient, message);
     await this.prisma.notification.create({
       data: {
@@ -51,5 +53,23 @@ export class NotificationListener {
         payload: e.payload as object,
       },
     });
+  }
+
+  /**
+   * 받는 사람 연락처 — 이벤트 페이로드에는 전화번호를 싣지 않으므로(에이전트 입력으로 넘어감)
+   * 배정 대상 id(employeeId·partnerId)로 여기서 찾는다. 예전 형식(recipient)도 그대로 받는다.
+   */
+  private async resolveRecipient(e: DomainEventBundle): Promise<string | null> {
+    if (typeof e.payload.recipient === 'string') return e.payload.recipient;
+    if (e.eventType !== 'work_order.assigned') return null;
+    if (typeof e.payload.employeeId === 'string') {
+      const emp = await this.prisma.employee.findUnique({ where: { id: e.payload.employeeId } });
+      return emp?.phone ?? null;
+    }
+    if (typeof e.payload.partnerId === 'string') {
+      const partner = await this.prisma.partner.findUnique({ where: { id: e.payload.partnerId } });
+      return partner?.phone ?? null;
+    }
+    return null;
   }
 }

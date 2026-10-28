@@ -225,7 +225,7 @@ ${CONFIG_SHAPES}
 
 ## 데이터(변수)
 - 노드 결과는 outputVar 이름(영문 camelCase)으로 남고, 뒤 노드에서 {{변수.경로}}로 씁니다. 예: {{leads.total}}, {{leads.rows[0].customerName}}, {{leads.rows[*].customerId}}(목록에서 한 칸씩 뽑아 배열로).
-- 시작 입력은 {{input.필드}}, 시스템 변수: {{run.today}}, {{run.weekAgo}}, {{run.monthStart}}, {{run.now}}, {{user.name}}.
+- 시작 입력은 {{input.필드}}, 시스템 변수: {{run.today}}, {{run.tomorrow}}, {{run.in3days}}, {{run.in7days}}, {{run.weekAgo}}, {{run.monthStart}}, {{run.now}}, {{user.name}}.
 - 도구 인자 값(args[].value)은 글자입니다. 값 전체가 {{경로}} 하나면 원래 값(배열·객체)이 그대로 넘어가고, JSON 글자(예: false, 50, {"a":"{{x}}"})도 됩니다.
 - branch condition 모드의 expr은 조건식: 경로 비교(leads.total > 0), &&, ||, !, ==, !=, len(x), empty(x), contains(a,b). 중괄호 없이 씁니다.
 - branch classify 모드는 AI가 input 내용을 읽고 cases 중 하나(설명 description 기준)를 고릅니다. outputVar에 고른 id가 남습니다.

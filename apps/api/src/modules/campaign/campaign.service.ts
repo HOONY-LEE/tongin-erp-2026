@@ -80,19 +80,35 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
 
   // ── 조회 ──
 
-  findAll() {
-    return this.prisma.campaign.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
+  /**
+   * 캠페인에는 지점이 없다 — 데이터범위가 전체(ALL·슈퍼관리자)면 모든 캠페인을,
+   * 지점·본인 범위면 내가 만든 캠페인만 보고 다룬다. null = 제한 없음.
+   */
+  private async ownerWhere(principal: AuthPrincipal): Promise<{ createdBy: string } | null> {
+    const ids = await this.scope.orgScopeIds(principal);
+    return ids === null ? null : { createdBy: principal.userId };
   }
 
-  async findOne(id: string) {
-    const c = await this.prisma.campaign.findUnique({ where: { id } });
+  async findAll(principal: AuthPrincipal) {
+    const owner = await this.ownerWhere(principal);
+    return this.prisma.campaign.findMany({
+      where: owner ?? {},
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  /** principal을 주면 볼 수 있는 캠페인인지도 확인한다(남의 캠페인은 없는 것처럼) */
+  async findOne(id: string, principal?: AuthPrincipal) {
+    const owner = principal ? await this.ownerWhere(principal) : null;
+    const c = await this.prisma.campaign.findFirst({ where: { id, ...(owner ?? {}) } });
     if (!c) throw new NotFoundException(`캠페인을 찾을 수 없습니다: ${id}`);
     return c;
   }
 
   /** 상세 — 캠페인 + 받는 사람(건별 결과) */
-  async detail(id: string) {
-    const c = await this.findOne(id);
+  async detail(id: string, principal?: AuthPrincipal) {
+    const c = await this.findOne(id, principal);
     const rows = await this.prisma.campaignRecipient.findMany({
       where: { campaignId: id },
       orderBy: { name: 'asc' },
@@ -107,8 +123,8 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** 대상 수 미리보기 */
-  async previewCount(id: string) {
-    const c = await this.findOne(id);
+  async previewCount(id: string, principal: AuthPrincipal) {
+    const c = await this.findOne(id, principal);
     if (c.targetGrade && !c.recipientCount) {
       const count = await this.prisma.customer.count({
         where: { phonePrimary: { not: null }, grade: c.targetGrade },
@@ -294,7 +310,7 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
   }
 
   async update(id: string, dto: UpdateCampaignDto, principal: AuthPrincipal) {
-    const c = await this.findOne(id);
+    const c = await this.findOne(id, principal);
     if (c.status !== 'DRAFT') throw new BadRequestException('작성 중인 캠페인만 고칠 수 있습니다.');
     this.validate({ ...c, ...dto } as CreateCampaignDto);
     await this.prisma.campaign.update({ where: { id }, data: this.fields(dto) });
@@ -306,8 +322,8 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
    * 삭제 — 받는 사람 목록도 같이 지운다(발송 이력인 notification 로그는 남긴다).
    * 지금 보내는 중(SENDING)이면 막는다. 예약(SCHEDULED)은 지우면 예약도 함께 사라진다.
    */
-  async remove(id: string) {
-    const c = await this.findOne(id);
+  async remove(id: string, principal: AuthPrincipal) {
+    const c = await this.findOne(id, principal);
     if (c.status === 'SENDING' || this.dispatching.has(id)) {
       throw new ConflictException(
         '발송 중인 캠페인은 삭제할 수 없습니다. 발송이 끝난 뒤 삭제하세요.',
@@ -564,7 +580,7 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
    * 전체 고객에게 잘못 나가는 일을 막는다).
    */
   async send(id: string, principal: AuthPrincipal) {
-    const c = await this.findOne(id);
+    const c = await this.findOne(id, principal);
     if (c.status !== 'DRAFT') throw new BadRequestException('작성 중인 캠페인만 보낼 수 있습니다.');
     if (c.channel === 'ALIMTALK') throw new BadRequestException(ALIMTALK_NOT_READY);
     let count = await this.prisma.campaignRecipient.count({ where: { campaignId: id } });
@@ -588,8 +604,8 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** 예약 취소 — 다시 작성 중으로 */
-  async cancel(id: string) {
-    const c = await this.findOne(id);
+  async cancel(id: string, principal: AuthPrincipal) {
+    const c = await this.findOne(id, principal);
     if (c.status !== 'SCHEDULED')
       throw new BadRequestException('예약된 캠페인만 취소할 수 있습니다.');
     await this.prisma.campaign.update({ where: { id }, data: { status: 'DRAFT' } });

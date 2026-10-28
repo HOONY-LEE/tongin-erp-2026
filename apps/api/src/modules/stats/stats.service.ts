@@ -15,39 +15,60 @@ export class StatsService {
     private readonly scope: ScopeService,
   ) {}
 
-  /** 집계 원본 — ids가 null이면 전 조직 */
-  private async load(ids: string[] | null) {
-    const org = ids === null ? {} : { orgUnitId: { in: ids } };
-    const [leads, signedContracts, paidAgg, workOrders, units] = await Promise.all([
-      this.prisma.lead.findMany({
-        where: org,
-        select: { status: true, fromSido: true, orgUnitId: true },
+  /**
+   * 집계 원본 — 전 조직을 (조직·시도·상태)별로 묶은 건수·금액만 DB에서 받는다.
+   * 예전엔 lead·contract·workOrder 전체 행을 읽어 JS로 셌고, 조직 스코프 사용자는 이걸
+   * 두 번(내 범위 + 전체) 읽었다. 이제 한 번 묶어 읽고 내 범위는 메모리에서 거른다.
+   *  - 내 범위(퍼널·KPI): 행 자체의 orgUnitId 기준(예전 where 조건과 같다)
+   *  - 지점·시도별: 연결된 접수(lead)의 orgUnitId·fromSido 기준(예전과 같다)
+   */
+  private async load() {
+    const [leads, contracts, payments, workOrders, units] = await Promise.all([
+      this.prisma.lead.groupBy({
+        by: ['orgUnitId', 'fromSido', 'status'],
+        _count: { _all: true },
       }),
-      this.prisma.contract.findMany({
-        where: { status: 'SIGNED', ...org },
-        select: {
-          totalAmount: true,
-          lead: { select: { fromSido: true, orgUnitId: true } },
-        },
-      }),
-      this.prisma.payment.aggregate({
-        where: { status: 'PAID', ...(ids === null ? {} : { contract: org }) },
-        _sum: { amount: true },
-      }),
-      this.prisma.workOrder.findMany({
-        where: org,
-        select: {
-          status: true,
-          lead: { select: { fromSido: true, orgUnitId: true } },
-        },
-      }),
+      this.prisma.$queryRaw<
+        {
+          orgUnitId: string;
+          leadOrgUnitId: string;
+          fromSido: string | null;
+          count: number;
+          revenue: number;
+        }[]
+      >`
+        SELECT c.org_unit_id AS "orgUnitId", l.org_unit_id AS "leadOrgUnitId",
+               l.from_sido AS "fromSido", count(*)::int AS "count",
+               coalesce(sum(c.total_amount), 0)::float8 AS "revenue"
+        FROM contract c JOIN "lead" l ON l.id = c.lead_id
+        WHERE c.status = 'SIGNED'
+        GROUP BY 1, 2, 3`,
+      this.prisma.$queryRaw<{ orgUnitId: string; amount: number }[]>`
+        SELECT c.org_unit_id AS "orgUnitId", coalesce(sum(p.amount), 0)::float8 AS "amount"
+        FROM payment p JOIN contract c ON c.id = p.contract_id
+        WHERE p.status = 'PAID'
+        GROUP BY 1`,
+      this.prisma.$queryRaw<
+        {
+          orgUnitId: string;
+          status: string;
+          leadOrgUnitId: string;
+          fromSido: string | null;
+          count: number;
+        }[]
+      >`
+        SELECT w.org_unit_id AS "orgUnitId", w.status AS "status",
+               l.org_unit_id AS "leadOrgUnitId", l.from_sido AS "fromSido",
+               count(*)::int AS "count"
+        FROM work_order w JOIN "lead" l ON l.id = w.lead_id
+        GROUP BY 1, 2, 3, 4`,
       // 지점은 실적이 없어도 지도·목록에 나온다
       this.prisma.orgUnit.findMany({
-        where: { type: 'BRANCH', isActive: true, ...(ids === null ? {} : { id: { in: ids } }) },
+        where: { type: 'BRANCH', isActive: true },
         select: { id: true, name: true, sido: true, lat: true, lng: true },
       }),
     ]);
-    return { leads, signedContracts, paidAgg, workOrders, units };
+    return { leads, contracts, payments, workOrders, units };
   }
 
   /**
@@ -55,25 +76,39 @@ export class StatsService {
    * 지점장도 전국 현황을 비교해 볼 수 있게 전 지점으로 집계한다.
    */
   async overview(principal?: AuthPrincipal): Promise<StatsOverview> {
-    const ids = await this.scope.orgScopeIds(principal);
-    const mine = await this.load(ids);
-    const all = ids === null ? mine : await this.load(null);
-    const { leads, signedContracts, paidAgg, workOrders } = mine;
+    const [ids, all] = await Promise.all([this.scope.orgScopeIds(principal), this.load()]);
+    const allowed = ids === null ? null : new Set(ids);
+    const inScope = (orgUnitId: string | null) =>
+      allowed === null || (!!orgUnitId && allowed.has(orgUnitId));
     const units = all.units;
     const unitById = new Map(units.map((u) => [u.id, u]));
 
     const countByStatus = new Map<string, number>();
-    for (const l of leads) countByStatus.set(l.status, (countByStatus.get(l.status) ?? 0) + 1);
+    let leadTotal = 0;
+    for (const l of all.leads) {
+      if (!inScope(l.orgUnitId)) continue;
+      const n = l._count._all;
+      countByStatus.set(l.status, (countByStatus.get(l.status) ?? 0) + n);
+      leadTotal += n;
+    }
     const funnel = LEAD_STATUS.map((status) => ({
       status: status as LeadStatus,
       count: countByStatus.get(status) ?? 0,
     }));
 
-    const leadTotal = leads.length;
-    const contractCount = signedContracts.length;
-    const revenue = signedContracts.reduce((s, c) => s + Number(c.totalAmount), 0);
-    const collected = Number(paidAgg._sum.amount ?? 0);
-    const doneCount = workOrders.filter((w) => w.status === 'DONE').length;
+    let contractCount = 0;
+    let revenue = 0;
+    for (const c of all.contracts) {
+      if (!inScope(c.orgUnitId)) continue;
+      contractCount += c.count;
+      revenue += Number(c.revenue);
+    }
+    const collected = all.payments
+      .filter((p) => inScope(p.orgUnitId))
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+    const doneCount = all.workOrders
+      .filter((w) => w.status === 'DONE' && inScope(w.orgUnitId))
+      .reduce((sum, w) => sum + w.count, 0);
 
     // 지점·시도별로 같은 네 칸을 센다
     type Acc = { leadCount: number; contractCount: number; workCount: number; revenue: number };
@@ -87,21 +122,22 @@ export class StatsService {
       m.set(key, a);
     };
     for (const l of all.leads) {
-      bump(branch, l.orgUnitId, (a) => a.leadCount++);
-      bump(region, l.fromSido, (a) => a.leadCount++);
+      const n = l._count._all;
+      bump(branch, l.orgUnitId, (a) => (a.leadCount += n));
+      bump(region, l.fromSido, (a) => (a.leadCount += n));
     }
-    for (const c of all.signedContracts) {
-      const amt = Number(c.totalAmount);
+    for (const c of all.contracts) {
+      const amt = Number(c.revenue);
       const add = (a: Acc) => {
-        a.contractCount++;
+        a.contractCount += c.count;
         a.revenue += amt;
       };
-      bump(branch, c.lead?.orgUnitId, add);
-      bump(region, c.lead?.fromSido, add);
+      bump(branch, c.leadOrgUnitId, add);
+      bump(region, c.fromSido, add);
     }
     for (const w of all.workOrders) {
-      bump(branch, w.lead?.orgUnitId, (a) => a.workCount++);
-      bump(region, w.lead?.fromSido, (a) => a.workCount++);
+      bump(branch, w.leadOrgUnitId, (a) => (a.workCount += w.count));
+      bump(region, w.fromSido, (a) => (a.workCount += w.count));
     }
 
     return {

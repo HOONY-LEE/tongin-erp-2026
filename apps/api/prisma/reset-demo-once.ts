@@ -8,13 +8,19 @@
  *   2) 이어서 prisma migrate deploy → 서버 기동(권한·관리자) → seed-demo-once.ts(데모 데이터)
  *   seed-demo-once.ts가 시작할 때 DEMO_RESET_VERSION을 남겨 다음 재시작에는 지우지 않는다.
  * 테이블이 하나도 없는 새 DB면 지울 것이 없으므로 건너뛴다.
- * 실제 운영(실고객)으로 쓸 때는 환경변수 DEMO_SEED=off 로 끈다 — 그러면 절대 지우지 않는다.
+ * 지우기는 환경변수 DEMO_RESET=on 일 때만 한다(켜야 도는 방식) — 값이 없거나 다른 값이면 절대 지우지 않는다.
+ * 실제 운영(실고객)으로 쓸 때는 DEMO_RESET을 지우거나 off로, DEMO_SEED=off 로 둘 다 끈다.
  */
 import { PrismaClient } from '@prisma/client';
 
 import { RESET_VERSION } from './demo-versions';
 
 async function main() {
+  // 실수로 운영 DB를 지우지 않게 — 명시적으로 켰을 때만 돈다
+  if ((process.env.DEMO_RESET ?? '').toLowerCase() !== 'on') {
+    console.log('[demo-reset] DEMO_RESET=on 이 아님 — 건너뜀');
+    return;
+  }
   if ((process.env.DEMO_SEED ?? '').toLowerCase() === 'off') {
     console.log('[demo-reset] DEMO_SEED=off — 건너뜀');
     return;

@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { api, ApiError } from '../../lib/api';
 import { Modal, Spinner } from '../ui';
 import styles from './estimate.module.css';
+import { formatDuration } from './DistanceCard';
 
 interface Route {
   distanceKm: number;
@@ -24,9 +25,6 @@ const pin = (label: string, color: string) =>
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   });
-
-export const formatDuration = (min: number | null) =>
-  min == null ? null : min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`;
 
 /**
  * 이사 경로 지도 — 출발지와 도착지를 실제 도로 경로(카카오 길찾기)로 잇는다.

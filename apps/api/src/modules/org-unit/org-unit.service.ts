@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { createWithCode, normalizeName } from '../../common/util/master-code';
 import { EventBusService } from '../../events/event-bus.service';
+import { ScopeService } from '../../scope/scope.service';
 import { CreateOrgUnitDto } from './dto/create-org-unit.dto';
 import { UpdateOrgUnitDto } from './dto/update-org-unit.dto';
 
@@ -11,6 +12,7 @@ export class OrgUnitService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventBus: EventBusService,
+    private readonly scope: ScopeService,
   ) {}
 
   findAll() {
@@ -36,6 +38,7 @@ export class OrgUnitService {
         'ORG',
         (code) => this.prisma.orgUnit.create({ data: { ...dto, name, code } }),
       );
+      this.scope.invalidateOrgTree();
       // 도메인 이벤트 발행(outbox) — 이벤트 기반 토대 시연
       await this.eventBus.record({
         aggregateType: 'org_unit',
@@ -54,7 +57,9 @@ export class OrgUnitService {
     const name = dto.name === undefined ? undefined : normalizeName(dto.name);
     if (name !== undefined) await this.assertNameFree(name, id);
     try {
-      return await this.prisma.orgUnit.update({ where: { id }, data: { ...dto, name } });
+      const row = await this.prisma.orgUnit.update({ where: { id }, data: { ...dto, name } });
+      this.scope.invalidateOrgTree(); // 상위 조직이 바뀌면 하위 범위가 달라진다
+      return row;
     } catch (e) {
       throw this.mapError(e);
     }
@@ -63,7 +68,9 @@ export class OrgUnitService {
   async remove(id: string) {
     await this.findOne(id);
     try {
-      return await this.prisma.orgUnit.delete({ where: { id } });
+      const row = await this.prisma.orgUnit.delete({ where: { id } });
+      this.scope.invalidateOrgTree();
+      return row;
     } catch (e) {
       // 접수·작업·견적 등에서 참조 중 — 지우면 기록이 깨진다
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') {

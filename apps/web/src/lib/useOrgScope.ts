@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api } from './api';
+import { cachedApi } from './api';
 import { useAuth } from '../auth/AuthContext';
 
 interface OrgUnitRow {
@@ -21,9 +21,14 @@ export function useOrgScope() {
   const [rows, setRows] = useState<OrgUnitRow[]>([]);
 
   useEffect(() => {
-    api<OrgUnitRow[]>('/org-units')
-      .then(setRows)
-      .catch(() => setRows([]));
+    // 조직 목록은 거의 안 바뀐다 — 잠깐 캐시해서 화면·모달마다 다시 부르지 않는다
+    let alive = true;
+    cachedApi<OrgUnitRow[]>('/org-units')
+      .then((r) => alive && setRows(r))
+      .catch(() => alive && setRows([]));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const unrestricted =
