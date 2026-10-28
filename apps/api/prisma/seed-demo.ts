@@ -17,7 +17,7 @@ import { ROLE_FIELD, ROLE_FRANCHISE, ROLE_OUTSOURCE } from '@tongin/shared';
 const prisma = new PrismaClient();
 
 /** 데모 계정 공통 비밀번호. 운영에 데모를 넣을 일은 없지만, 넣더라도 바꿔 쓰라고 env 로 뺀다. */
-const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'tongin1234';
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'tongin1234!';
 
 // ── 조직 ──────────────────────────────────────────────
 // 그룹사 > 법인 > 지점. 설계노트의 4단계(그룹/법인/지점/외부업체) 구조를 따른다.

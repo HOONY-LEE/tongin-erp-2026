@@ -646,7 +646,7 @@ async function main() {
   const franchiseRole = await prisma.role.findUnique({ where: { code: ROLE_FRANCHISE } });
   if (!franchiseRole)
     console.warn('가맹점 역할이 없다 — 지점 계정은 건너뛴다(API를 한 번 띄운 뒤 다시)');
-  const passwordHash = await bcrypt.hash(process.env.DEMO_PASSWORD ?? 'tongin1234', 10);
+  const passwordHash = await bcrypt.hash(process.env.DEMO_PASSWORD ?? 'tongin1234!', 10);
 
   let leadTotal = 0;
   const stageCount: Record<string, number> = {};

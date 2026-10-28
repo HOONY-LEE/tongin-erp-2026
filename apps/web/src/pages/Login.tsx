@@ -8,8 +8,8 @@ import { LangSwitch, ThemeSwitch } from '../components/Switchers';
 import styles from './login.module.css';
 
 // apps/api/prisma/seed-demo.ts·seeder의 데모 계정과 짝을 맞춘 목록(시연용).
-// 비밀번호는 seed-demo.ts의 DEMO_PASSWORD 기본값('tongin1234'). env로 바꿔 시드했다면 이 목록도 맞춰야 한다.
-const DEMO_PASSWORD = 'tongin1234';
+// 비밀번호는 시드의 DEMO_PASSWORD 기본값('tongin1234!' — 모든 계정 공통). env로 바꿔 시드했다면 이 목록도 맞춰야 한다.
+const DEMO_PASSWORD = 'tongin1234!';
 interface DemoAccount {
   group: string;
   loginId: string;
@@ -21,24 +21,38 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   // 본사 — 실제 조직도(seed-demo-org.ts)
   {
     group: '본사',
-    loginId: 'gukjong.ko',
+    loginId: 'kookjong_ko',
     password: DEMO_PASSWORD,
     name: '고국종',
     desc: '대표이사 · 전체 권한',
   },
   {
     group: '본사',
-    loginId: 'misun.joo',
+    loginId: 'misun_joo',
     password: DEMO_PASSWORD,
     name: '주미선',
     desc: '홈플래너 부장 · 본사 직원',
   },
   {
     group: '본사',
-    loginId: 'miyoung.kim',
+    loginId: 'miyoung_kim',
     password: DEMO_PASSWORD,
     name: '김미영',
     desc: '고객관리부 과장 · 본사 직원',
+  },
+  {
+    group: '지점',
+    loginId: 'dongseok_shin',
+    password: DEMO_PASSWORD,
+    name: '신동석',
+    desc: '송파점 · 지점장',
+  },
+  {
+    group: '지점',
+    loginId: 'bongki_yoo',
+    password: DEMO_PASSWORD,
+    name: '유봉기',
+    desc: '분당구미 · 지점장',
   },
   ...(import.meta.env.DEV
     ? [{ group: '본사', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
