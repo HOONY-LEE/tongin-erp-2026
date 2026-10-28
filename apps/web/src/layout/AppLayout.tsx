@@ -21,6 +21,9 @@ import {
   Handshake,
   CalendarDays,
   Globe,
+  Monitor,
+  Moon,
+  Sun,
   LogOut,
   Calculator,
   Receipt,
@@ -32,21 +35,26 @@ import {
   LayoutSidebar,
   SidebarGroup,
   SidebarItem,
-  ThemeToggle,
   NotificationBell,
   type EditorTab,
   type NotificationBellItem,
 } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
-import { useTheme } from '../theme/ThemeProvider';
+import { useTheme, type ThemeMode } from '../theme/ThemeProvider';
 import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { api } from '../lib/api';
 import { useAiRunning } from '../lib/aiActivity';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import styles from './AppLayout.module.css';
 import { HeaderTabs } from './HeaderTabs';
+import { HeaderPicker } from './HeaderPicker';
 
 const LANG_SHORT: Record<string, string> = { ko: '한', en: 'EN', zh: '中' };
+const THEME_OPTIONS: { value: ThemeMode; icon: LucideIcon }[] = [
+  { value: 'system', icon: Monitor },
+  { value: 'light', icon: Sun },
+  { value: 'dark', icon: Moon },
+];
 
 type NavItem = {
   to: string;
@@ -75,7 +83,8 @@ export default function AppLayout() {
   const outlet = useOutlet();
   const navigate = useNavigate();
   const { user, logout, can } = useAuth();
-  const { resolved, setMode } = useTheme();
+  const { mode, setMode } = useTheme();
+  const ThemeIcon = THEME_OPTIONS.find((o) => o.value === mode)?.icon ?? Monitor;
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   const setCol = (v: boolean) => {
@@ -96,12 +105,6 @@ export default function AppLayout() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-
-  const cycleLang = () => {
-    const codes = SUPPORTED_LANGS.map((l) => l.code);
-    const idx = codes.indexOf(i18n.language as (typeof codes)[number]);
-    setLang(codes[(idx + 1) % codes.length]);
-  };
 
   const groups: NavGroup[] = [
     {
@@ -308,28 +311,18 @@ export default function AppLayout() {
           />
         </div>
         <div className={styles.headerRight}>
-          <button
-            type="button"
-            onClick={cycleLang}
+          <HeaderPicker
             title={t('lang.label')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              height: 28,
-              padding: '0 8px',
-              border: 'none',
-              borderRadius: 8,
-              background: 'transparent',
-              cursor: 'pointer',
-              color: 'var(--ark-color-text-secondary)',
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            <Globe size={15} />
-            {LANG_SHORT[i18n.language] ?? i18n.language.toUpperCase()}
-          </button>
+            value={i18n.language}
+            options={SUPPORTED_LANGS.map((l) => ({ value: l.code, label: l.label }))}
+            onChange={setLang}
+            trigger={
+              <>
+                <Globe size={15} />
+                {LANG_SHORT[i18n.language] ?? i18n.language.toUpperCase()}
+              </>
+            }
+          />
           {aiBusy && (
             <button
               type="button"
@@ -341,7 +334,17 @@ export default function AppLayout() {
               AI 진행 중
             </button>
           )}
-          <ThemeToggle theme={resolved} size="sm" onChange={(th) => setMode(th)} />
+          <HeaderPicker
+            title={t('theme.label')}
+            value={mode}
+            options={THEME_OPTIONS.map((o) => ({
+              value: o.value,
+              label: t(`theme.${o.value}`),
+              icon: <o.icon size={14} />,
+            }))}
+            onChange={(v) => setMode(v as ThemeMode)}
+            trigger={<ThemeIcon size={15} />}
+          />
           <NotificationBell
             count={unread}
             notifications={notis}
