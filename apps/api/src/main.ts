@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import compression from 'compression';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { koreanValidationError } from './common/validation-message';
@@ -10,6 +11,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // AI 에이전트 첨부(이미지·PDF를 base64로)가 기본 100KB를 넘는다
   app.useBodyParser('json', { limit: '30mb' });
+  // 응답 압축(gzip) — 목록 JSON이 3~5배 작아진다. 1KB 미만은 그대로 보낸다(compression 기본값)
+  app.use(compression());
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({

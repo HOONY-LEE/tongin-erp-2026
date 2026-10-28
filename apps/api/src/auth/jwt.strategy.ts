@@ -16,7 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthPrincipal> {
-    const principal = await this.authService.buildPrincipal(payload.sub);
+    const principal = await this.authService.principal(payload.sub);
     if (!principal) throw new UnauthorizedException('유효하지 않은 토큰 주체입니다.');
     return principal;
   }

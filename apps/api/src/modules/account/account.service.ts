@@ -8,6 +8,7 @@ import * as bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PrincipalCache } from '../../auth/principal-cache.service';
 import { AccessService } from '../access/access.service';
 import { nextEmpNo, withEmpNoRetry } from '../employee/emp-no';
 import { toDate } from '../employee/employee.service';
@@ -20,6 +21,7 @@ export class AccountService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: AccessService,
+    private readonly principals: PrincipalCache,
   ) {}
 
   /** 권한 그룹 목록(계정 생성·권한 부여 폼용). */
@@ -176,6 +178,7 @@ export class AccountService {
     } catch (e) {
       throw this.mapError(e);
     }
+    this.principals.invalidateUser(id);
     return { id };
   }
 
@@ -224,11 +227,13 @@ export class AccountService {
       const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
       if (!emp) throw new BadRequestException('직원을 목록에서 다시 골라 주세요.');
     }
-    return this.prisma.appUser.update({
+    const row = await this.prisma.appUser.update({
       where: { id },
       data: { employeeId },
       select: { id: true, loginId: true, employeeId: true },
     });
+    this.principals.invalidateUser(id);
+    return row;
   }
 
   /**
@@ -261,10 +266,12 @@ export class AccountService {
         }
       }
     }
-    return this.prisma.appUser.update({
+    const row = await this.prisma.appUser.update({
       where: { id },
       data: { isActive },
       select: { id: true, loginId: true, isActive: true },
     });
+    this.principals.invalidateUser(id); // 비활성화는 다음 요청부터 바로 막힌다
+    return row;
   }
 }

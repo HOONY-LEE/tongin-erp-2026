@@ -39,6 +39,7 @@ import { StatsModule } from './modules/stats/stats.module';
 import { ServiceOrderModule } from './modules/service-order/service-order.module';
 import { SupportModule } from './modules/support/support.module';
 import { ScopeModule } from './scope/scope.module';
+import { PrincipalCacheModule } from './auth/principal-cache.service';
 import { AiModule } from './ai/ai.module';
 import { AgentBuilderModule } from './agent-builder/agent-builder.module';
 import { EsignModule } from './modules/esign/esign.module';
@@ -50,6 +51,7 @@ import { EsignModule } from './modules/esign/esign.module';
     PrismaModule,
     EventsModule,
     ScopeModule,
+    PrincipalCacheModule,
     AuditModule,
     NotificationsModule,
     AuthModule,
