@@ -1,0 +1,14 @@
+/* 머리글 아래 한 줄 — 탭은 왼쪽 끝, 보기 전환(목록/조직도)은 오른쪽 끝 */
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.viewOpt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

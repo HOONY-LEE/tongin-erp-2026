@@ -27,6 +27,8 @@ interface Props {
   rowActions?: (row: Row, reload: () => Promise<void>) => ReactNode;
   /** 머리글 오른쪽에 둘 버튼(예: 설정) */
   headerActions?: ReactNode;
+  /** 서버가 준 목록 중 이 화면에 보일 행만 남긴다(예: 조직관리는 본사 조직만, 지점은 지점관리로) */
+  rowFilter?: (row: Row) => boolean;
 }
 
 /** 행 값을 폼 초기값(문자열)으로 — 주소 칸은 우편번호·주소·좌표 등 여러 키로 나뉜다 */
@@ -67,6 +69,7 @@ export default function CrudTable({
   deletable,
   rowActions,
   headerActions,
+  rowFilter,
 }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -80,13 +83,15 @@ export default function CrudTable({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await api<Row[]>(path));
+      const all = await api<Row[]>(path);
+      setRows(rowFilter ? all.filter(rowFilter) : all);
       setUpdatedAt(new Date());
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
       setLoading(false);
     }
+    // rowFilter는 렌더마다 새 함수일 수 있어 의존성에서 뺀다 — 같은 화면에선 기준이 바뀌지 않는다
   }, [path, toast, t]);
 
   useEffect(() => {

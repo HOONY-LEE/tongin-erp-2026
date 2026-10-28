@@ -5,6 +5,9 @@ interface BranchOverviewRow {
   orgUnitId: string;
   name: string;
   code: string;
+  isActive: boolean;
+  sido: string | null;
+  sigungu: string | null;
   contractCount: number; // 계약(서명) 건수
   revenue: number; // 계약 매출(서명 계약 총액 합)
   workActive: number; // 진행중 작업
@@ -12,16 +15,19 @@ interface BranchOverviewRow {
   employeeCount: number; // 재직 직원수
 }
 
-/** 지점관리 — 지점별 매출·작업·직원 현황 집계. */
+/**
+ * 지점관리 — 지점별 매출·작업·직원 현황 집계.
+ * 지점 등록·수정도 지점관리에서 하므로 '사용 안 함' 지점까지 돌려준다(빼면 다시 켤 길이 없다).
+ */
 @Injectable()
 export class BranchService {
   constructor(private readonly prisma: PrismaService) {}
 
   async overview(): Promise<BranchOverviewRow[]> {
     const branches = await this.prisma.orgUnit.findMany({
-      where: { type: 'BRANCH', isActive: true },
-      select: { id: true, name: true, code: true },
-      orderBy: { name: 'asc' },
+      where: { type: 'BRANCH' },
+      select: { id: true, name: true, code: true, isActive: true, sido: true, sigungu: true },
+      orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
     });
     if (branches.length === 0) return [];
     const ids = branches.map((b) => b.id);
@@ -63,6 +69,9 @@ export class BranchService {
         orgUnitId: b.id,
         name: b.name,
         code: b.code,
+        isActive: b.isActive,
+        sido: b.sido,
+        sigungu: b.sigungu,
         contractCount: c?._count._all ?? 0,
         revenue: c?._sum.totalAmount ? Number(c._sum.totalAmount) : 0,
         workActive: workActive.get(b.id) ?? 0,
