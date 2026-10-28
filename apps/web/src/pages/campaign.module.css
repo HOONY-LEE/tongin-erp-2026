@@ -2,7 +2,7 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 16px;
   align-items: start;
 }
@@ -293,4 +293,53 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 작성 단계 표시 — 1) 메시지 작성 2) 받는 사람·발송 */
+.steps {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stepItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 18px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.stepNo {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ark-color-bg-muted);
+  font-size: 12px;
+}
+.stepOn {
+  border-color: var(--ark-color-primary-500);
+  color: var(--ark-color-text);
+}
+.stepOn .stepNo {
+  background: var(--ark-color-primary-500);
+  color: #fff;
+}
+.stepDone .stepNo {
+  background: color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
+  color: var(--ark-color-primary-500);
+}
+.stepNav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
