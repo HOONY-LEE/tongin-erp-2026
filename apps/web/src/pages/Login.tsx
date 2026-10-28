@@ -18,16 +18,30 @@ interface DemoAccount {
   desc: string;
 }
 const DEMO_ACCOUNTS: DemoAccount[] = [
-  // 시연용 관리자(전체 권한) — 서버 시작 때 seeder가 만든다. 진짜 admin 비밀번호는 따로 둔다
+  // 본사 — 실제 조직도(seed-demo-org.ts)
   {
-    group: '관리자',
-    loginId: 'demo.admin',
+    group: '본사',
+    loginId: 'gukjong.ko',
     password: DEMO_PASSWORD,
-    name: '관리자',
-    desc: '본사 · 전체 권한',
+    name: '고국종',
+    desc: '대표이사 · 전체 권한',
+  },
+  {
+    group: '본사',
+    loginId: 'misun.joo',
+    password: DEMO_PASSWORD,
+    name: '주미선',
+    desc: '홈플래너 부장 · 본사 직원',
+  },
+  {
+    group: '본사',
+    loginId: 'miyoung.kim',
+    password: DEMO_PASSWORD,
+    name: '김미영',
+    desc: '고객관리부 과장 · 본사 직원',
   },
   ...(import.meta.env.DEV
-    ? [{ group: '관리자', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
+    ? [{ group: '본사', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
     : []),
   {
     group: '지점장',

@@ -1,5 +1,5 @@
 /**
- * 데모 데이터 시드 — 조직(지점)·직원·계정·전속업체.
+ * 데모 데이터 시드 — 조직(지점)·직원·계정·전속업체. 본사 부서·본사 직원은 seed-demo-org.ts(실제 조직도).
  *
  * 앱 부팅 시더(seeder.service.ts)와 분리한 이유: 그쪽은 권한·역할·관리자처럼
  * 어느 환경에나 있어야 하는 것만 만든다. 데모 데이터는 원할 때만 넣는다.
@@ -93,15 +93,15 @@ async function main() {
   // ── 조직 계층 ──
   const group = await prisma.orgUnit.upsert({
     where: { code: 'HQ' },
-    update: { name: '통인익스프레스' },
-    create: { code: 'HQ', name: '통인익스프레스', type: 'GROUP' },
+    update: { name: '통인그룹' },
+    create: { code: 'HQ', name: '통인그룹', type: 'GROUP' },
   });
   const company = await prisma.orgUnit.upsert({
     where: { code: 'CO-MOVING' },
-    update: { name: '통인익스프레스(이사)', parentId: group.id },
+    update: { name: '통인익스프레스', parentId: group.id },
     create: {
       code: 'CO-MOVING',
-      name: '통인익스프레스(이사)',
+      name: '통인익스프레스',
       type: 'COMPANY',
       parentId: group.id,
     },
@@ -123,14 +123,7 @@ async function main() {
     });
     branchByCode.set(b.code, row.id);
   }
-  console.log(`조직: 그룹1 + 법인1 + 본사1 + 지점${BRANCHES.length}`);
-
-  // ── 본사(본사·부서) — 관리자 직원이 속한다. 부팅 시더가 먼저 만들었으면 법인 아래로 옮긴다 ──
-  await prisma.orgUnit.upsert({
-    where: { code: 'HQ-OFFICE' },
-    update: { parentId: company.id },
-    create: { code: 'HQ-OFFICE', name: '본사', type: 'DEPT', parentId: company.id },
-  });
+  console.log(`조직: 그룹1 + 법인1 + 지점${BRANCHES.length}`);
 
   // ── 거래처(전속업체·기업고객) — 외부업체는 조직이 아니라 거래처로만 둔다(작업 배정·정산·외부 계정 범위) ──
   const partnerByCode = new Map<string, string>();
