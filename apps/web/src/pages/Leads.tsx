@@ -12,7 +12,7 @@ import {
   CopyText,
   DataTable,
   FormModal,
-  PageHeader,
+  ListPage,
   SegmentedControl,
   useToast,
   type Column,
@@ -227,24 +227,30 @@ export default function Leads() {
     rows.filter((r) => inStage(String(r.status), statuses)).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader title={t('nav.leads')} onRefresh={load} updatedAt={updatedAt} />
-
+    // 화면 높이에 맞춘다 — 기본 10행이면 페이지 스크롤 없이 풋터까지, 행을 늘리면 표 안에서 스크롤
+    <ListPage
+      fit
+      title={t('nav.leads')}
+      onRefresh={load}
+      updatedAt={updatedAt}
+      // 단계 세그먼트는 검색창 위 줄 — 다른 화면의 머리글 세그먼트(조직관리 탭 등)와 같은 크기
+      footer={
+        <SegmentedControl
+          value={stage}
+          onChange={setStage}
+          options={STAGES.map((s) => ({
+            value: s.key,
+            label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.statuses)}`,
+          }))}
+        />
+      }
+    >
       <DataTable
+        fit
         columns={columns}
         rows={filtered}
         loading={loading}
         onRowClick={(r) => navigate(`/leads/${r.id as string}`)}
-        filters={
-          <SegmentedControl
-            value={stage}
-            onChange={setStage}
-            options={STAGES.map((s) => ({
-              value: s.key,
-              label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.statuses)}`,
-            }))}
-          />
-        }
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             + {t('lead.register')}
@@ -263,6 +269,6 @@ export default function Leads() {
         initialValues={createInitial}
         onSubmit={onCreate}
       />
-    </div>
+    </ListPage>
   );
 }

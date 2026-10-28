@@ -209,6 +209,38 @@ a {
   min-width: 0;
 }
 
+/* ── 화면 높이 맞춤 목록(ListPage fit + DataTable fit) ──
+   콘텐츠 영역(.contentInner)이 flex:1·min-height:0 세로 흐름이라, 목록이 남은 높이만큼만 차지하게
+   이어 준다. 표는 내용 높이만큼만 쓰되(빈 공간으로 늘어나지 않음) 모자라면 줄어들고, 그때 표 본문
+   (.sft-table__scroll)만 스크롤된다 — 툴바·풋터(설정·페이지·N개씩 보기)는 항상 보인다. */
+.list-page.fit {
+  flex: 1;
+  min-height: 0;
+}
+.dt-fit,
+.dt-fit > .sft-table-root {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.dt-fit .sft-table {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  /* 아주 낮은 창에서도 표가 사라질 만큼 줄지는 않게 — 그 아래로는 페이지가 스크롤된다 */
+  min-height: 200px;
+}
+.dt-fit .sft-table__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.dt-fit .sft-toolbar,
+.dt-fit .sft-tfoot {
+  flex: none;
+}
+
 /* 툴바 세그먼트 탭(단계·범위 필터) — 검색창 높이(38px)에 맞춘다. 배치: [검색][세그먼트] ……… [내보내기][+ 등록] */
 .sft-toolbar [class*='_track_'] {
   height: 38px;

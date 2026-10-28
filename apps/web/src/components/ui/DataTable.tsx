@@ -21,6 +21,11 @@ interface Props {
   exportFileName?: string;
   /** 한 페이지 행 수. 0을 주면 페이지 없이 전체를 그린다(상세 화면의 짧은 목록 등). */
   pageSize?: number;
+  /**
+   * 화면 높이에 맞춘다(ListPage fit과 함께) — 기본 행 수(10)면 페이지 스크롤 없이 풋터까지 보이고,
+   * 행 수를 늘려 넘치면 표 본문만 스크롤된다(머리글·풋터는 그대로).
+   */
+  fit?: boolean;
 }
 
 /** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
@@ -28,6 +33,8 @@ const SKELETON_ROWS = 8;
 
 /** 목록 화면 기본 페이지 크기. 푸터의 선택지(10/20/50/100) 중 하나여야 셀렉트와 값이 맞는다. */
 const DEFAULT_PAGE_SIZE = 20;
+/** 화면 높이 맞춤(fit) 목록의 기본 — 900px 높이 화면에서 머리글·툴바·풋터와 함께 스크롤 없이 들어간다 */
+const FIT_PAGE_SIZE = 10;
 
 /** 컬럼 정의로 렌더하는 공통 테이블 — softium-ui Table(정렬·검색·컬럼설정 내장) 기반. */
 export function DataTable({
@@ -40,7 +47,8 @@ export function DataTable({
   filters,
   exportable,
   exportFileName,
-  pageSize = DEFAULT_PAGE_SIZE,
+  pageSize,
+  fit,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wasLoading = useRef(false);
@@ -107,7 +115,7 @@ export function DataTable({
     getRowId: (r) => String(r[rowKey]),
     // 넘기지 않으면 softium Table이 페이지네이션을 끄고(전체 렌더) 푸터의
     // "N개씩 보기" 선택기도 감춘다.
-    pageSize,
+    pageSize: pageSize ?? (fit ? FIT_PAGE_SIZE : DEFAULT_PAGE_SIZE),
   });
 
   // softium-ui Table에는 아직 로우 클릭 prop이 없어 DOM 위임으로 처리한다.
@@ -133,6 +141,7 @@ export function DataTable({
         onRowClick && !showSkeleton ? 'dt-row-clickable' : '',
         showSkeleton ? 'dt-loading' : '',
         multiline ? 'dt-multiline' : '',
+        fit ? 'dt-fit' : '',
       ]
         .filter(Boolean)
         .join(' ')}
