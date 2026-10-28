@@ -153,7 +153,7 @@ export default function EventModal({
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Input
-          label="제목"
+          label="제목 *"
           placeholder="일정 제목"
           value={title}
           autoFocus
@@ -205,7 +205,7 @@ export default function EventModal({
 
         {visibility === 'ORG' && (
           <Select
-            label="공유 조직"
+            label="공유 조직 *"
             value={orgUnitId}
             onValueChange={setOrgUnitId}
             options={orgOptions}

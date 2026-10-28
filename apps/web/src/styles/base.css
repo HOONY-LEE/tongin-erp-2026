@@ -161,7 +161,7 @@ a {
    옆 컨트롤들과 겹친다). */
 .dt-wrap .sft-toolbar__search-wrap {
   width: 100%;
-  max-width: 440px;
+  max-width: 520px;
 }
 
 /* 처음 불러오는 중 — 자리표시 행만, 건수는 감춘다 */
@@ -209,22 +209,18 @@ a {
   min-width: 0;
 }
 
-/* 필터를 검색창 왼쪽에(filtersFirst) — 오른쪽 칸을 풀어 툴바 한 줄에서 순서를 다시 잡는다:
-   [필터][검색 ……] ……… [내보내기][+ 등록] */
-.dt-filters-first .sft-toolbar__right {
-  display: contents;
+/* 툴바 세그먼트 탭(단계·범위 필터) — 검색창 높이(38px)에 맞춘다. 배치: [검색][세그먼트] ……… [내보내기][+ 등록] */
+.sft-toolbar [class*='_track_'] {
+  height: 38px;
+  box-sizing: border-box;
 }
-.dt-filters-first .dt-toolbar-filters {
-  order: -2;
-  margin-right: 0;
+.sft-toolbar [class*='_track_'] [class*='_segment_'] {
+  min-height: 30px;
+  height: 30px;
+  padding: 0 14px;
 }
-.dt-filters-first .sft-toolbar__left {
-  order: -1;
-  flex: 1 1 320px;
-  margin-right: auto;
-}
-.dt-filters-first .sft-toolbar__search-wrap {
-  max-width: 560px;
+.sft-toolbar [class*='_track_'] [class*='_indicator_'] {
+  height: 30px;
 }
 .dt-wrap .sft-toolbar__search,
 .dt-wrap .sft-export__trigger,

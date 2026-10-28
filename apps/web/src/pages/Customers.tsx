@@ -59,6 +59,9 @@ function GradeSettings({
       return n;
     });
 
+  // 등급 이름이 모두 채워져야 저장 버튼 활성
+  const canSubmit = rows.every((r) => !!r.name.trim());
+
   const save = async () => {
     if (rows.some((r) => !r.name.trim())) {
       toast({ type: 'warning', title: '등급 이름을 입력하세요' });
@@ -110,7 +113,12 @@ function GradeSettings({
           <Button variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button variant="primary" onClick={() => void save()} loading={saving}>
+          <Button
+            variant="primary"
+            onClick={() => void save()}
+            loading={saving}
+            disabled={!canSubmit || saving}
+          >
             저장
           </Button>
         </>

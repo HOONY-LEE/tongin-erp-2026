@@ -88,6 +88,9 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
     setForm((f) => ({ ...f, [k]: v }));
   const setAddr = (k: string, v: string) => setForm((f) => ({ ...f, addr: { ...f.addr, [k]: v } }));
 
+  // 고객명을 고칠 수 있으면 비워 둔 채 저장할 수 없다
+  const canSave = !canEditCustomer || !!form.customerName.trim();
+
   const save = async () => {
     setSaving(true);
     try {
@@ -145,7 +148,10 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
 
       <div className={styles.row2}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>고객명</span>
+          <span className={styles.fieldLabel}>
+            고객명
+            {canEditCustomer && <span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>}
+          </span>
           <Input
             value={form.customerName}
             onChange={(e) => set('customerName', e.target.value)}
@@ -245,6 +251,7 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         dirty={dirty}
         saving={saving}
         canEdit={canEdit}
+        canSave={canSave}
         onSave={save}
         onReset={reset}
         hint="주소·상담일·이사일은 접수에도 같이 반영됩니다."
