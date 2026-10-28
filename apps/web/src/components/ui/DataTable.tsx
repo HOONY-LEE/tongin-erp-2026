@@ -3,6 +3,7 @@ import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
 import type { Column, Row } from './types';
+import { ExportMenu, nodeText } from './tableExport';
 
 interface Props {
   columns: Column[];
@@ -56,6 +57,13 @@ export function DataTable({
       width: c.width,
       minWidth: c.minWidth,
       flex: c.flex,
+      // 내보내기 값 — 지정값 > 화면에 그린 글자 > 원본 필드 (원본만 읽으면 render로 그리는 칸이 비거나 코드로 나간다)
+      exportValue: (data: Row) => {
+        if (c.exportValue) return c.exportValue(data);
+        if (c.render) return nodeText(c.render(data)) || null;
+        const v = data[c.dataIndex ?? ''];
+        return v === null || v === undefined || v === '' ? null : (v as string | number);
+      },
       renderCell: ({ row }) =>
         row.data.__sk ? (
           <Skeleton width={36 + ((i * 23 + Number(row.data.__sk) * 11) % 64)} height={12} />
@@ -148,11 +156,11 @@ export function DataTable({
           // 검색창 옆까지 끌어와 "왼쪽=검색+필터 / 오른쪽=내보내기+액션" 배치를 만든다.
           <>
             {filters && <div className="dt-toolbar-filters">{filters}</div>}
+            {/* 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다) */}
+            {exportable && <ExportMenu table={table} fileName={exportFileName ?? 'table'} />}
             {toolbarActions}
           </>
         }
-        exportable={exportable}
-        exportFileName={exportFileName}
         disableVirtualization={multiline}
       />
     </div>
