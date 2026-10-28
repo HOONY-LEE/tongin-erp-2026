@@ -372,7 +372,7 @@
 /* ── 1단계(메시지 작성) — 스크롤 없이 한 화면에: 왼쪽 작성 카드 + 오른쪽 미리보기, 높이 같게 ── */
 .layoutCompose {
   display: grid;
-  grid-template-columns: minmax(0, 680px) auto;
+  grid-template-columns: minmax(0, 780px) auto;
   justify-content: start;
   align-items: stretch;
   gap: 16px;

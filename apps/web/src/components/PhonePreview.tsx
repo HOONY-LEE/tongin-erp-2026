@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import {
   Archive,
   BatteryFull,
@@ -65,6 +65,8 @@ interface Props {
   at?: Date;
   /** 좁은 자리(발송 단계)에 작게 */
   compact?: boolean;
+  /** 폭을 직접 정할 때(px) — 높이는 아이폰 비율로 따라온다 */
+  width?: number;
 }
 
 /** 고객 휴대폰(아이폰) 화면 그대로의 미리보기 — 채널마다 그 앱의 화면으로 */
@@ -74,6 +76,7 @@ export function PhonePreview(props: Props) {
   return (
     <div
       className={`${styles.frame} ${compact ? styles.compact : ''}`}
+      style={props.width ? ({ '--w': `${props.width}px` } as CSSProperties) : undefined}
       aria-label="휴대폰 미리보기"
     >
       <div className={`${styles.screen} ${styles[`screen${channel}`] ?? ''}`}>

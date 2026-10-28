@@ -1199,23 +1199,20 @@ export default function CampaignEditor() {
               </div>
             </div>
           )}
-          <div className={styles.panel}>
-            <h3 className={styles.panelTitle}>
-              미리보기 <span className={styles.sub}>{sampleName} 님 휴대폰</span>
-            </h3>
-            <PhonePreview
-              channel={channel}
-              sender="통인익스프레스"
-              senderNo={SENDER_NO}
-              lms={channel === 'SMS' && isLms}
-              title={title}
-              body={composed}
-              placeholder="본문을 입력하세요"
-              to={sampleName}
-              at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
-              compact={step === 2}
-            />
-          </div>
+          {/* 미리보기 — 테두리·제목 없이 휴대폰만(1단계는 작성 카드와 같은 높이) */}
+          <PhonePreview
+            channel={channel}
+            sender="통인익스프레스"
+            senderNo={SENDER_NO}
+            lms={channel === 'SMS' && isLms}
+            title={title}
+            body={composed}
+            placeholder="본문을 입력하세요"
+            to={sampleName}
+            at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
+            compact={step === 2}
+            width={step === 1 ? 286 : undefined}
+          />
         </div>
         {step === 1 && (
           <div className={`${styles.stepNav} ${styles.stepNavSpan}`}>
