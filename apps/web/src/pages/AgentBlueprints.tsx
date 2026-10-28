@@ -12,7 +12,7 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
-  PageHeader,
+  ListPage,
   SegmentedControl,
   StatusBadge,
   useToast,
@@ -71,14 +71,16 @@ export default function AgentBlueprints() {
     {
       title: '에이전트',
       dataIndex: 'name',
+      minWidth: 180,
+      render: (r) => <b className={styles.nameCell}>{String(r.name)}</b>,
+    },
+    // 설명은 이름 아래 둘째 줄 대신 자기 칸으로 — 한 칸에 한 줄
+    {
+      title: '설명',
+      dataIndex: 'description',
       flex: 1,
-      minWidth: 240,
-      render: (r) => (
-        <div className={styles.nameCell}>
-          <b>{String(r.name)}</b>
-          {r.description ? <span>{String(r.description)}</span> : null}
-        </div>
-      ),
+      minWidth: 200,
+      render: (r) => (r.description ? String(r.description) : '-'),
     },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS_MAP} /> },
     {
@@ -116,24 +118,23 @@ export default function AgentBlueprints() {
   ];
 
   return (
-    <div className={styles.listPage}>
-      <PageHeader
-        title={t('nav.aiAgents')}
-        subtitle="자연어로 말하거나 직접 노드를 이어, ERP 도구를 실제로 호출하는 AI 에이전트를 만듭니다. 사용중인 에이전트는 AI 에이전트 화면에서 불러 씁니다."
-        onRefresh={load}
-        updatedAt={updatedAt}
-        footer={
-          <SegmentedControl
-            value={filter}
-            onChange={(v) => setFilter(v as Filter)}
-            options={[
-              { value: 'all', label: `전체 ${rows.length}` },
-              { value: 'mine', label: `내 에이전트 ${rows.filter((r) => r.isMine).length}` },
-              { value: 'shared', label: `공유받은 ${rows.filter((r) => !r.isMine).length}` },
-            ]}
-          />
-        }
-      />
+    <ListPage
+      title={t('nav.aiAgents')}
+      subtitle="자연어로 말하거나 직접 노드를 이어, ERP 도구를 실제로 호출하는 AI 에이전트를 만듭니다. 사용중인 에이전트는 AI 에이전트 화면에서 불러 씁니다."
+      onRefresh={load}
+      updatedAt={updatedAt}
+      footer={
+        <SegmentedControl
+          value={filter}
+          onChange={(v) => setFilter(v as Filter)}
+          options={[
+            { value: 'all', label: `전체 ${rows.length}` },
+            { value: 'mine', label: `내 에이전트 ${rows.filter((r) => r.isMine).length}` },
+            { value: 'shared', label: `공유받은 ${rows.filter((r) => !r.isMine).length}` },
+          ]}
+        />
+      }
+    >
       <DataTable
         columns={columns}
         rows={shown}
@@ -145,6 +146,6 @@ export default function AgentBlueprints() {
           </Button>
         }
       />
-    </div>
+    </ListPage>
   );
 }

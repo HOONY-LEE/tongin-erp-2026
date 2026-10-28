@@ -7,7 +7,7 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
-  PageHeader,
+  ListPage,
   StatusBadge,
   useToast,
   type Column,
@@ -77,8 +77,7 @@ export default function Campaigns() {
   ];
 
   return (
-    <>
-      <PageHeader title={t('nav.campaigns')} onRefresh={load} updatedAt={updatedAt} />
+    <ListPage title={t('nav.campaigns')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
         columns={columns}
         rows={rows}
@@ -90,6 +89,6 @@ export default function Campaigns() {
           </Button>
         }
       />
-    </>
+    </ListPage>
   );
 }

@@ -13,6 +13,12 @@ export interface Column {
   minWidth?: number;
   /** 남는 가로 공간을 이 비율로 흡수(0/미지정 = 고정폭). */
   flex?: number;
+  /**
+   * 셀 안에 여러 줄을 정말로 쌓아야 할 때만(예: 줄 수가 정해지지 않은 산출 내역).
+   * 켜면 이 표의 행이 내용 높이만큼 늘어난다(고정 높이에 잘리지 않게) — 단순히 다른 필드를
+   * 둘째 줄에 붙이는 용도라면 컬럼을 하나 더 만드는 게 원칙(한 칸 = 한 줄 = 한 정보).
+   */
+  multiline?: boolean;
 }
 
 export interface FormField {

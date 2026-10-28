@@ -2,6 +2,7 @@
 export * from './types';
 export { PageCard } from './PageCard';
 export { PageHeader } from './PageHeader';
+export { ListPage } from './ListPage';
 export { SegmentedControl } from './SegmentedControl';
 export { DataTable } from './DataTable';
 export { Skeleton, SkeletonText, TableSkeleton, PageSkeleton } from './Skeleton';
