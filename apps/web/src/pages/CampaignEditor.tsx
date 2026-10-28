@@ -65,6 +65,26 @@ const PAGE_SIZE = 50;
 const ALL = '__ALL__';
 /** 알림톡은 카카오 채널·템플릿 연동 전 — 저장·발송을 막고 안내만 보인다(서버도 같은 문구로 막는다) */
 const ALIMTALK_NOT_READY = '아직 알림톡 연결이 안되었습니다.';
+/** 화면에서 고르는 채널 — 이메일·인스타그램은 아직 연결 전(미리보기만) */
+type UiChannel = CampaignChannel | 'EMAIL' | 'INSTAGRAM';
+const CHANNEL_OPTIONS: { value: UiChannel; label: string }[] = [
+  { value: 'SMS', label: '문자 (SMS·LMS)' },
+  { value: 'ALIMTALK', label: '카카오 알림톡' },
+  { value: 'EMAIL', label: '이메일' },
+  { value: 'INSTAGRAM', label: '인스타그램' },
+];
+/** 아직 연결 안 된 채널의 안내(null = 보낼 수 있음) */
+const NOT_CONNECTED: Record<UiChannel, string | null> = {
+  SMS: null,
+  ALIMTALK: ALIMTALK_NOT_READY,
+  EMAIL: '아직 이메일 발송이 연결되지 않았습니다.',
+  INSTAGRAM: '아직 인스타그램(DM) 연결이 안되었습니다.',
+};
+/** 문자 발신번호(고객 휴대폰에 보이는 번호) */
+const SENDER_NO = '1899-0123';
+/** 링크 — http(s)로 시작하지 않으면 https://를 붙인다 */
+const normalizeUrl = (u: string) =>
+  /^https?:\/\//i.test(u.trim()) ? u.trim() : `https://${u.trim()}`;
 type RecipientKind = 'CUSTOMER' | 'EMPLOYEE' | 'EXTRA';
 const KIND_LABEL: Record<RecipientKind, { label: string; color: 'neutral' | 'info' | 'primary' }> =
   {
@@ -83,6 +103,8 @@ interface CampaignData {
   channel: CampaignChannel;
   message: string;
   title: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
   isAd: boolean;
   optOutText: string | null;
   templateCode: string | null;
@@ -178,7 +200,11 @@ export default function CampaignEditor() {
 
   // ── 설정 ──
   const [name, setName] = useState('');
-  const [channel, setChannel] = useState<CampaignChannel>('SMS');
+  const [channel, setChannel] = useState<UiChannel>('SMS');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
   const [isAd, setIsAd] = useState(false);
@@ -211,6 +237,8 @@ export default function CampaignEditor() {
     setLoaded(c);
     setName(c.name);
     setChannel(c.channel);
+    setPeriodStart(c.periodStart?.slice(0, 10) ?? '');
+    setPeriodEnd(c.periodEnd?.slice(0, 10) ?? '');
     setMessage(c.message);
     setTitle(c.title ?? '');
     setIsAd(c.isAd);
@@ -378,13 +406,33 @@ export default function CampaignEditor() {
     setMessage((m) => m.slice(0, at) + NAME_TOKEN + m.slice(at));
     setTimeout(() => el?.focus(), 0);
   };
+  /** 링크 넣기 — 커서 자리에 주소를 넣는다(미리보기·휴대폰에서 밑줄 링크로 보인다) */
+  const insertLink = () => {
+    if (!linkUrl.trim()) return;
+    const url = normalizeUrl(linkUrl);
+    const el = msgRef.current;
+    const at = el ? el.selectionStart : message.length;
+    setMessage((m) => {
+      const before = m.slice(0, at);
+      const sep = before && !/\s$/.test(before) ? ' ' : '';
+      return `${before}${sep}${url} ${m.slice(at)}`;
+    });
+    setLinkUrl('');
+    setLinkOpen(false);
+    setTimeout(() => el?.focus(), 0);
+  };
+  const notReady = NOT_CONNECTED[channel];
+  const pickChannel = (v: UiChannel) => {
+    setChannel(v);
+    if (NOT_CONNECTED[v]) toast({ type: 'warning', title: NOT_CONNECTED[v]! });
+  };
   const sampleName = useMemo(
     () => [...picked.values()].find((v) => !!v) ?? others[0]?.name ?? '홍길동',
     [picked, others],
   );
   const composed = useMemo(() => {
     let t = message.split(NAME_TOKEN).join(sampleName);
-    if (isAd && channel === 'SMS') t = `(광고)${t}\n${optOut || DEFAULT_OPT_OUT}`;
+    if (isAd) t = `(광고)${t}\n${optOut || DEFAULT_OPT_OUT}`;
     return t;
   }, [message, sampleName, isAd, channel, optOut]);
   const bytes = smsBytes(composed);
@@ -392,7 +440,9 @@ export default function CampaignEditor() {
 
   const payload = () => ({
     name: name.trim(),
-    channel,
+    channel: channel as CampaignChannel,
+    periodStart: periodStart || null,
+    periodEnd: periodEnd || null,
     message,
     title: title.trim() || undefined,
     isAd,
@@ -411,20 +461,21 @@ export default function CampaignEditor() {
   const [step, setStep] = useState<1 | 2>(1);
   /** 1단계에서 넘어갈 때는 이름·본문만 본다(예약 시각은 2단계에서) */
   const goStep2 = () => {
-    const err =
-      channel === 'ALIMTALK'
-        ? ALIMTALK_NOT_READY
-        : !name.trim()
-          ? '캠페인 이름을 입력하세요.'
-          : !message.trim()
-            ? '본문을 입력하세요.'
-            : null;
+    const err = notReady
+      ? notReady
+      : !name.trim()
+        ? '캠페인 이름을 입력하세요.'
+        : !message.trim()
+          ? '본문을 입력하세요.'
+          : null;
     if (err) toast({ type: 'warning', title: err });
     else setStep(2);
   };
 
   const check = () => {
-    if (channel === 'ALIMTALK') return ALIMTALK_NOT_READY;
+    if (notReady) return notReady;
+    if (periodStart && periodEnd && periodEnd < periodStart)
+      return '캠페인 기간의 끝 날짜가 시작 날짜보다 빠릅니다.';
     if (!name.trim()) return '캠페인 이름을 입력하세요.';
     if (!message.trim()) return '본문을 입력하세요.';
     if (when === 'LATER' && !scheduledAt) return '예약 시각을 고르세요.';
@@ -623,13 +674,16 @@ export default function CampaignEditor() {
               )}
             </div>
             <PhonePreview
+              channel={channel}
               sender="통인익스프레스"
-              title={loaded.title ?? undefined}
+              senderNo={SENDER_NO}
+              lms={channel === 'SMS' && isLms}
+              title={title}
+              body={composed}
+              to={sampleName}
               at={loaded.scheduledAt ? new Date(loaded.scheduledAt) : undefined}
               compact
-            >
-              {loaded.message}
-            </PhonePreview>
+            />
           </div>
         </div>
       </div>
@@ -660,7 +714,7 @@ export default function CampaignEditor() {
           {step === 1 ? (
             <>
               <section className={styles.panel}>
-                <h3 className={styles.panelTitle}>기본</h3>
+                <h3 className={styles.panelTitle}>캠페인 기본 정보</h3>
                 <div className={styles.row2}>
                   <label className={styles.field}>
                     <span className={styles.label}>캠페인 이름</span>
@@ -671,41 +725,62 @@ export default function CampaignEditor() {
                     />
                   </label>
                   <div className={styles.field}>
-                    <span className={styles.label}>채널</span>
-                    <SegmentedControl
-                      value={channel}
-                      onChange={(v) => setChannel(v as CampaignChannel)}
-                      options={[
-                        { value: 'SMS', label: '문자 (SMS·LMS)' },
-                        { value: 'ALIMTALK', label: '카카오 알림톡' },
-                      ]}
-                    />
+                    <span className={styles.label}>캠페인 기간</span>
+                    <div className={styles.period}>
+                      <input
+                        type="date"
+                        className={styles.dateInput}
+                        value={periodStart}
+                        onChange={(e) => setPeriodStart(e.target.value)}
+                        aria-label="캠페인 시작일"
+                      />
+                      <span className={styles.sub}>~</span>
+                      <input
+                        type="date"
+                        className={styles.dateInput}
+                        value={periodEnd}
+                        min={periodStart || undefined}
+                        onChange={(e) => setPeriodEnd(e.target.value)}
+                        aria-label="캠페인 종료일"
+                      />
+                    </div>
                   </div>
                 </div>
+                <div className={styles.field}>
+                  <span className={styles.label}>채널</span>
+                  <SegmentedControl
+                    value={channel}
+                    onChange={(v) => pickChannel(v as UiChannel)}
+                    options={CHANNEL_OPTIONS}
+                  />
+                </div>
               </section>
-              {channel === 'ALIMTALK' && (
-                <section className={styles.panel}>
-                  <div className={[styles.notice, styles.noticeLg].join(' ')} role="status">
-                    {ALIMTALK_NOT_READY}
-                  </div>
-                  <span className={styles.sub} style={{ textAlign: 'center' }}>
-                    카카오 채널·템플릿 연동 후 열립니다. 지금은 문자(SMS·LMS)로 보내 주세요.
-                  </span>
-                </section>
-              )}
 
-              {channel === 'SMS' && (
-                <section className={styles.panel}>
-                  <h3 className={styles.panelTitle}>
-                    메시지{' '}
+              <section className={styles.panel}>
+                <h3 className={styles.panelTitle}>
+                  메시지{' '}
+                  {channel === 'SMS' && (
                     <span className={styles.sub}>
                       90바이트(한글 45자)를 넘으면 장문(LMS)으로 보냅니다
                     </span>
-                  </h3>
+                  )}
+                </h3>
+                {notReady && (
+                  <div className={styles.warn} role="status">
+                    {notReady} 문구와 미리보기는 만들어 볼 수 있지만, 보내기는 연결 후에 열립니다.
+                  </div>
+                )}
 
-                  {channel === 'SMS' && (
+                <div className={styles.titleRow}>
+                  {channel !== 'INSTAGRAM' && (
                     <label className={styles.field}>
-                      <span className={styles.label}>장문 제목 (LMS일 때)</span>
+                      <span className={styles.label}>
+                        {channel === 'SMS'
+                          ? '장문 제목 (LMS일 때)'
+                          : channel === 'ALIMTALK'
+                            ? '강조 제목'
+                            : '메일 제목'}
+                      </span>
                       <Input
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
@@ -714,10 +789,33 @@ export default function CampaignEditor() {
                       />
                     </label>
                   )}
-
+                  <div className={styles.adCheck}>
+                    <Checkbox
+                      checked={isAd}
+                      onCheckedChange={(v) => setIsAd(v === true)}
+                      label="광고성 문자"
+                    />
+                  </div>
+                </div>
+                {isAd && (
                   <div className={styles.field}>
-                    <div className={styles.counter}>
-                      <span className={styles.label}>본문</span>
+                    <span className={styles.sub}>
+                      할인·이벤트 안내는 광고입니다 — 앞에 (광고), 끝에 무료수신거부 번호가
+                      붙습니다(정보통신망법).
+                    </span>
+                    <Input
+                      value={optOut}
+                      onChange={(e) => setOptOut(e.target.value)}
+                      placeholder={DEFAULT_OPT_OUT}
+                      aria-label="수신거부 문구"
+                    />
+                  </div>
+                )}
+
+                <div className={styles.field}>
+                  <div className={styles.counter}>
+                    <span className={styles.label}>본문</span>
+                    <span className={styles.inline}>
                       <Button
                         variant="outline"
                         size="sm"
@@ -726,60 +824,36 @@ export default function CampaignEditor() {
                       >
                         고객명 넣기
                       </Button>
-                    </div>
-                    <textarea
-                      ref={msgRef}
-                      className={styles.textarea}
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder={`[통인익스프레스] ${NAME_TOKEN}님, 안녕하세요.`}
-                      aria-label="본문"
-                    />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<Plus size={13} />}
+                        onClick={() => setLinkOpen(true)}
+                      >
+                        링크 넣기
+                      </Button>
+                    </span>
+                  </div>
+                  <textarea
+                    ref={msgRef}
+                    className={styles.textarea}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder={`[통인익스프레스] ${NAME_TOKEN}님, 안녕하세요.`}
+                    aria-label="본문"
+                  />
+                  <div className={styles.counter}>
+                    <span>
+                      {NAME_TOKEN}는 받는 사람마다 이름으로 바뀝니다. 링크는 눌러서 열립니다.
+                    </span>
                     {channel === 'SMS' && (
-                      <div className={styles.counter}>
-                        <span>
-                          {NAME_TOKEN}는 받는 사람마다 이름으로 바뀝니다.
-                          {isAd ? ' (광고)·수신거부 문구는 자동으로 붙습니다.' : ''}
-                        </span>
-                        <span>
-                          {bytes} byte · <b>{isLms ? 'LMS(장문)' : 'SMS(단문)'}</b>
-                        </span>
-                      </div>
+                      <span>
+                        {bytes} byte · <b>{isLms ? 'LMS(장문)' : 'SMS(단문)'}</b>
+                      </span>
                     )}
                   </div>
-
-                  {channel === 'SMS' && (
-                    <div className={styles.field}>
-                      <Checkbox
-                        checked={isAd}
-                        onCheckedChange={(v) => setIsAd(v === true)}
-                        label="광고성 문자"
-                        description="할인·이벤트 안내는 광고입니다 — 앞에 (광고), 끝에 무료수신거부 번호가 필요합니다(정보통신망법)."
-                      />
-                      {isAd && (
-                        <Input
-                          value={optOut}
-                          onChange={(e) => setOptOut(e.target.value)}
-                          placeholder={DEFAULT_OPT_OUT}
-                          aria-label="수신거부 문구"
-                        />
-                      )}
-                    </div>
-                  )}
-                </section>
-              )}
-              <div className={styles.stepNav}>
-                <Button
-                  variant="outline"
-                  onClick={() => void save()}
-                  disabled={saving || channel === 'ALIMTALK'}
-                >
-                  임시저장
-                </Button>
-                <Button variant="primary" onClick={goStep2} disabled={channel === 'ALIMTALK'}>
-                  다음: 받는 사람·발송 →
-                </Button>
-              </div>
+                </div>
+              </section>
             </>
           ) : (
             <section className={styles.panel}>
@@ -1060,7 +1134,7 @@ export default function CampaignEditor() {
           {step === 2 && (
             <div className={styles.panel}>
               <h3 className={styles.panelTitle}>발송</h3>
-              {channel === 'ALIMTALK' && <div className={styles.warn}>{ALIMTALK_NOT_READY}</div>}
+              {notReady && <div className={styles.warn}>{notReady}</div>}
               <SegmentedControl
                 value={when}
                 onChange={(v) => setWhen(v as 'NOW' | 'LATER')}
@@ -1090,7 +1164,7 @@ export default function CampaignEditor() {
                       ? isLms
                         ? '문자 · 장문(LMS)'
                         : '문자 · 단문(SMS)'
-                      : '알림톡'}
+                      : CHANNEL_OPTIONS.find((o) => o.value === channel)?.label}
                   </span>
                 </div>
               </div>
@@ -1104,13 +1178,13 @@ export default function CampaignEditor() {
                 <Button
                   variant="outline"
                   onClick={() => void save()}
-                  disabled={saving || channel === 'ALIMTALK'}
+                  disabled={saving || !!notReady}
                 >
                   임시저장
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={saving || totalPicked === 0 || channel === 'ALIMTALK'}
+                  disabled={saving || totalPicked === 0 || !!notReady}
                   onClick={() => {
                     const err = check();
                     if (err) toast({ type: 'warning', title: err });
@@ -1122,23 +1196,65 @@ export default function CampaignEditor() {
               </div>
             </div>
           )}
-          {channel === 'SMS' && (
-            <div className={styles.panel}>
-              <h3 className={styles.panelTitle}>
-                미리보기 <span className={styles.sub}>{sampleName} 님 휴대폰</span>
-              </h3>
-              <PhonePreview
-                sender="통인익스프레스"
-                title={isLms ? title : undefined}
-                at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
-                compact={step === 2}
-              >
-                {composed || <span style={{ color: '#8e8e93' }}>본문을 입력하세요</span>}
-              </PhonePreview>
-            </div>
-          )}
+          <div className={styles.panel}>
+            <h3 className={styles.panelTitle}>
+              미리보기 <span className={styles.sub}>{sampleName} 님 휴대폰</span>
+            </h3>
+            <PhonePreview
+              channel={channel}
+              sender="통인익스프레스"
+              senderNo={SENDER_NO}
+              lms={channel === 'SMS' && isLms}
+              title={title}
+              body={composed}
+              placeholder="본문을 입력하세요"
+              to={sampleName}
+              at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
+              compact={step === 2}
+            />
+          </div>
         </div>
       </div>
+      {step === 1 && (
+        <div className={styles.stepNav}>
+          <Button variant="outline" onClick={() => void save()} disabled={saving || !!notReady}>
+            임시저장
+          </Button>
+          <Button variant="primary" onClick={goStep2} disabled={!!notReady}>
+            다음: 받는 사람·발송 →
+          </Button>
+        </div>
+      )}
+
+      <Modal
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
+        title="링크 넣기"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setLinkOpen(false)}>
+              취소
+            </Button>
+            <Button variant="primary" disabled={!linkUrl.trim()} onClick={insertLink}>
+              넣기
+            </Button>
+          </>
+        }
+      >
+        <label className={styles.field}>
+          <span className={styles.label}>주소</span>
+          <Input
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && insertLink()}
+            placeholder="예: tongin.co.kr/event"
+            autoFocus
+          />
+          <span className={styles.sub}>
+            본문의 커서 자리에 들어가고, 고객 휴대폰에서 밑줄 링크로 눌러 열립니다.
+          </span>
+        </label>
+      </Modal>
 
       <Modal
         open={confirm}
@@ -1162,7 +1278,7 @@ export default function CampaignEditor() {
           </div>
           <div>
             <span>채널</span>
-            <span>{CAMPAIGN_CHANNEL_LABEL[channel]}</span>
+            <span>{CAMPAIGN_CHANNEL_LABEL[channel as CampaignChannel]}</span>
           </div>
           <div>
             <span>받는 사람</span>

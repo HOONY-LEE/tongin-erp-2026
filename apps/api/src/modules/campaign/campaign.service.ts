@@ -329,6 +329,14 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
     return {
       name: dto.name?.trim(),
       channel: dto.channel,
+      periodStart:
+        dto.periodStart === undefined
+          ? undefined
+          : dto.periodStart
+            ? new Date(dto.periodStart)
+            : null,
+      periodEnd:
+        dto.periodEnd === undefined ? undefined : dto.periodEnd ? new Date(dto.periodEnd) : null,
       message: dto.message,
       title: dto.title === undefined ? undefined : dto.title.trim() || null,
       isAd: dto.isAd,
@@ -355,6 +363,11 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
   private validate(dto: CreateCampaignDto) {
     if (dto.channel === 'ALIMTALK') throw new BadRequestException(ALIMTALK_NOT_READY);
     if (!dto.message?.trim()) throw new BadRequestException('본문을 입력하세요.');
+    const start = dto.periodStart ? new Date(dto.periodStart).getTime() : null;
+    const end = dto.periodEnd ? new Date(dto.periodEnd).getTime() : null;
+    if (start !== null && end !== null && end < start) {
+      throw new BadRequestException('캠페인 기간의 끝 날짜가 시작 날짜보다 빠릅니다.');
+    }
   }
 
   /**

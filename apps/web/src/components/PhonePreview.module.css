@@ -1,11 +1,11 @@
-/* 아이폰 모양 미리보기 — 바깥 테두리(티타늄 베젤) + 화면(늘 밝은 문자 앱) */
+/* 아이폰 모양 미리보기 — 바깥 테두리(티타늄 베젤) + 화면(채널 앱 화면, 늘 밝은 모드) */
 .frame {
   --w: 292px;
   width: var(--w);
   aspect-ratio: 9 / 18.6;
   margin: 0 auto;
-  padding: 11px;
-  border-radius: 52px;
+  padding: 10px;
+  border-radius: 42px;
   background: linear-gradient(145deg, #3a3a3c, #1c1c1e 45%, #2c2c2e);
   box-shadow:
     0 0 0 2px #48484a,
@@ -13,8 +13,8 @@
 }
 .compact {
   --w: 236px;
-  padding: 9px;
-  border-radius: 44px;
+  padding: 8px;
+  border-radius: 36px;
 }
 .screen {
   position: relative;
@@ -22,14 +22,24 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  border-radius: 42px;
+  border-radius: 33px;
   background: #fff;
   color: #000;
   font-family:
     -apple-system, 'SF Pro Text', 'Apple SD Gothic Neo', 'Pretendard', system-ui, sans-serif;
+  font-size: 13px;
 }
 .compact .screen {
-  border-radius: 35px;
+  border-radius: 28px;
+  font-size: 11.5px;
+}
+.link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.placeholder {
+  color: #8e8e93;
 }
 
 /* 상태 표시줄 + 다이내믹 아일랜드 */
@@ -37,18 +47,23 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 12px 22px 4px;
+  padding: 11px 20px 4px;
   font-size: 13px;
   font-weight: 600;
 }
+.clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
 .island {
-  width: 86px;
+  width: 84px;
   height: 24px;
   border-radius: 14px;
   background: #000;
 }
 .compact .island {
-  width: 70px;
+  width: 68px;
   height: 20px;
 }
 .statusIcons {
@@ -57,149 +72,402 @@
   align-items: center;
   gap: 3px;
 }
-
-/* 대화 상대(발신자) */
-.nav {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  padding: 6px 12px 10px;
-  border-bottom: 0.5px solid #d1d1d6;
-  background: #f9f9f9;
-}
-.back {
-  position: absolute;
-  left: 8px;
-  top: 16px;
-  color: #007aff;
-}
-.contact {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #a5abb8, #858994);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-}
-.compact .avatar {
-  width: 30px;
-  height: 30px;
-  font-size: 13px;
-}
-.name {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  font-size: 11px;
-  color: #000;
-}
-
-/* 대화 */
 .thread {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-height: 0;
-  padding: 10px 12px;
-  overflow-y: auto;
-}
-.meta {
-  margin-bottom: 6px;
-  text-align: center;
-  font-size: 10.5px;
-  line-height: 1.4;
-  color: #8e8e93;
-}
-/* 받은 문자 — 왼쪽 회색 말풍선(꼬리 포함) */
-.bubble {
-  position: relative;
-  align-self: flex-start;
-  max-width: 82%;
   padding: 8px 12px;
-  border-radius: 18px;
-  background: #e9e9eb;
-  font-size: 13px;
-  line-height: 1.42;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.bubble::before,
-.bubble::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  height: 18px;
-}
-.bubble::before {
-  left: -6px;
-  width: 18px;
-  border-bottom-right-radius: 14px;
-  background: #e9e9eb;
-}
-.bubble::after {
-  left: -10px;
-  width: 10px;
-  border-bottom-right-radius: 9px;
-  background: #fff;
-}
-.compact .bubble {
-  font-size: 11.5px;
-}
-.subject {
-  display: block;
-  margin-bottom: 4px;
-}
-.from {
-  margin-left: 4px;
-  font-size: 10px;
-  color: #8e8e93;
-}
-
-/* 입력창 + 홈 인디케이터 */
-.composer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px 22px;
-}
-.plus {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #e9e9eb;
-  color: #8e8e93;
-}
-.input {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 30px;
-  padding: 0 10px 0 12px;
-  border: 1px solid #d1d1d6;
-  border-radius: 16px;
-  font-size: 12px;
-  color: #c7c7cc;
+  overflow-y: auto;
 }
 .home {
   position: absolute;
   left: 50%;
-  bottom: 7px;
+  bottom: 6px;
   width: 36%;
   height: 4px;
   border-radius: 3px;
   background: #000;
   transform: translateX(-50%);
+}
+
+/* ── 문자(아이폰 메시지 앱) ── */
+.smsNav {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 4px 12px 6px;
+}
+.smsBack {
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 5%);
+  color: #000;
+}
+.smsContact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.smsAvatar {
+  display: grid;
+  place-items: end center;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #a4a9b4, #868b96);
+  color: #fff;
+}
+.smsAvatar svg {
+  width: 34px;
+  height: 34px;
+  margin-bottom: -3px;
+}
+.compact .smsAvatar {
+  width: 36px;
+  height: 36px;
+}
+.compact .smsAvatar svg {
+  width: 27px;
+  height: 27px;
+}
+.smsNumber {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgb(0 0 0 / 5%);
+  font-size: 11px;
+  font-weight: 600;
+}
+.smsMeta {
+  margin: 2px 0 6px;
+  text-align: center;
+  font-size: 10.5px;
+  color: #8e8e93;
+}
+.smsBubble {
+  align-self: flex-start;
+  max-width: 88%;
+  padding: 9px 13px;
+  border-radius: 18px;
+  background: #e9e9eb;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.smsSubject {
+  display: block;
+}
+.smsComposer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 20px;
+}
+.smsPlus {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #e9e9eb;
+  color: #3a3a3c;
+}
+.smsInput {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px 0 13px;
+  border: 1px solid #d1d1d6;
+  border-radius: 17px;
+  font-size: 12px;
+  color: #a1a1a6;
+}
+
+/* ── 카카오톡 알림톡 ── */
+.screenALIMTALK {
+  background: #bacee0;
+}
+.kNav {
+  display: grid;
+  grid-template-columns: 24px 1fr 24px;
+  align-items: center;
+  padding: 6px 10px 8px;
+  text-align: center;
+  font-size: 13px;
+}
+.kNavIcons {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+.kThread {
+  padding-top: 10px;
+}
+.kRow {
+  display: flex;
+  gap: 6px;
+}
+.kAvatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  background: #fee500;
+  font-weight: 700;
+  font-size: 13px;
+}
+.kCol {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.kName {
+  font-size: 11px;
+  color: #4a4a4a;
+}
+.kTimeRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+.kCard {
+  width: 178px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+}
+.compact .kCard {
+  width: 150px;
+}
+.kHead {
+  padding: 8px 12px;
+  background: #fee500;
+  font-weight: 700;
+  font-size: 12px;
+}
+.kBody {
+  padding: 10px 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.kTitle {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1.1em;
+}
+.kButton {
+  margin: 0 10px 10px;
+  padding: 7px;
+  border-radius: 6px;
+  background: #f2f2f2;
+  text-align: center;
+  font-size: 12px;
+}
+.kTime {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  color: #556677;
+}
+.kComposer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 20px;
+  background: #fff;
+  color: #8a8a8a;
+}
+.kInput {
+  flex: 1;
+  height: 30px;
+  border-radius: 15px;
+  background: #f4f4f4;
+}
+
+/* ── 아이폰 메일 ── */
+.mNav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px 8px;
+  color: #007aff;
+  font-size: 13px;
+}
+.mBack,
+.mArrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.mThread {
+  gap: 10px;
+  padding: 6px 14px;
+}
+.mFrom {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 0.5px solid #d1d1d6;
+}
+.mAvatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #a4a9b4, #868b96);
+  color: #fff;
+  font-weight: 600;
+}
+.mFromText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.mFromText span,
+.mDate {
+  font-size: 10.5px;
+  color: #8e8e93;
+}
+.mSubject {
+  font-size: 1.15em;
+  line-height: 1.35;
+}
+.mBody {
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mToolbar {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 10px 22px;
+  border-top: 0.5px solid #d1d1d6;
+  color: #007aff;
+}
+
+/* ── 인스타그램 DM ── */
+.iNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 8px;
+  border-bottom: 0.5px solid #efefef;
+}
+.iAvatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #feda75, #fa7e1e, #d62976, #962fbf, #4f5bd5);
+}
+.iAvatar span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #262626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.iWho {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
+}
+.iWho span {
+  font-size: 10.5px;
+  color: #737373;
+}
+.iNavIcons {
+  display: inline-flex;
+  gap: 12px;
+}
+.iThread {
+  padding-top: 12px;
+}
+.iMeta {
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 10.5px;
+  color: #737373;
+}
+.iRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.iMini {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #262626;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+.iBubble {
+  max-width: 82%;
+  padding: 9px 13px;
+  border-radius: 20px;
+  background: #efefef;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.iComposer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 10px 20px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 20px;
+  background: #efefef;
+  color: #262626;
+}
+.iCam {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #3797f0;
+  color: #fff;
+}
+.iInput {
+  flex: 1;
+  font-size: 12px;
+  color: #737373;
 }
