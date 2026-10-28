@@ -23,9 +23,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  DASH_COLOR_KEYS,
   DASH_METRICS,
   DASH_PERIODS,
   type AuthPrincipal,
+  type DashColorKey,
   type DashMetric,
   type DashPeriod,
 } from '@tongin/shared';
@@ -61,6 +63,11 @@ class TemplateDto {
   @IsOptional()
   @IsBoolean()
   allowPersonal?: boolean;
+
+  /** 차트 색(통인 테마색 또는 애플 시스템 색) */
+  @IsOptional()
+  @IsIn(DASH_COLOR_KEYS)
+  color?: DashColorKey;
 }
 
 class AssignDto {

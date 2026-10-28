@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Search, Trash2 } from 'lucide-react';
+import { DASH_COLORS, dashColorVars } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
+import { useTheme } from '../theme/ThemeProvider';
 import { useAuth } from '../auth/AuthContext';
 import { Button, Checkbox, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import { LayoutThumb } from '../components/dashboard/builder/LayoutThumb';
@@ -14,6 +16,8 @@ interface Template {
   description: string;
   isDefault: boolean;
   allowPersonal: boolean;
+  /** 차트 색 — tongin(통인 테마색) 또는 애플 색 */
+  color: string;
   roleIds: string[];
   userIds: string[];
 }
@@ -38,6 +42,7 @@ export default function DashboardTemplateSettings() {
   const toast = useToast();
   const { can } = useAuth();
   const [tpl, setTpl] = useState<Template | null>(null);
+  const dark = useTheme().resolved === 'dark';
   const [targets, setTargets] = useState<Targets | null>(null);
   const [all, setAll] = useState<TemplateRow[]>([]);
   const [saving, setSaving] = useState(false);
@@ -93,6 +98,7 @@ export default function DashboardTemplateSettings() {
           description: tpl.description,
           isDefault: tpl.isDefault,
           allowPersonal: tpl.allowPersonal,
+          color: tpl.color,
         }),
       });
       await api(`/dashboards/templates/${id}/assignments`, {
@@ -127,6 +133,10 @@ export default function DashboardTemplateSettings() {
   };
 
   if (!tpl || !targets) return <PageSkeleton cards={2} />;
+  const colorLabel = DASH_COLORS.find((c) => c.key === tpl.color)?.label ?? '통인';
+  const seriesPreview = Object.entries(dashColorVars(tpl.color, dark))
+    .filter(([k]) => k.startsWith('--dash-series-'))
+    .map(([, v]) => v);
   const users = targets.users.filter((u) => {
     const k = q.trim();
     return (
@@ -197,6 +207,34 @@ export default function DashboardTemplateSettings() {
               onChange={(e) => patch({ description: e.target.value })}
             />
           </label>
+          <div className={styles.field}>
+            <span>
+              색상 <span className={styles.meta}>· {colorLabel}</span>
+            </span>
+            <div className={styles.swatches} role="radiogroup" aria-label="대시보드 색상">
+              {DASH_COLORS.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={tpl.color === c.key}
+                  aria-label={c.label}
+                  title={c.label}
+                  className={`${styles.swatch} ${tpl.color === c.key ? styles.swatchOn : ''}`}
+                  style={{ background: dark ? c.dark : c.light }}
+                  onClick={() => patch({ color: c.key })}
+                >
+                  {tpl.color === c.key && <Check size={13} strokeWidth={3} />}
+                </button>
+              ))}
+            </div>
+            {/* 차트에 실제로 쓰일 색 순서(첫 색 = 고른 색) */}
+            <div className={styles.seriesStrip} aria-hidden>
+              {seriesPreview.map((c, i) => (
+                <i key={i} style={{ background: c }} />
+              ))}
+            </div>
+          </div>
           <Checkbox
             checked={tpl.isDefault}
             onCheckedChange={(v) => patch({ isDefault: v === true })}

@@ -9,11 +9,13 @@ import { useAuth } from '../auth/AuthContext';
 import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import { DashboardEditor } from '../components/dashboard/builder/DashboardEditor';
 import styles from '../components/dashboard/builder/builder.module.css';
+import { DashColorScope } from '../components/dashboard/DashColorScope';
 
 interface Template {
   id: string;
   name: string;
   layout: DashLayout;
+  color?: string;
 }
 
 /**
@@ -99,95 +101,97 @@ export default function DashboardTemplateEdit() {
 
   if (!tpl) return <PageSkeleton cards={2} />;
   return (
-    <DashboardEditor
-      layout={tpl.layout}
-      permissions={user?.permissions ?? []}
-      onChange={(l) => {
-        setTpl({ ...tpl, layout: l });
-        setDirty(true);
-      }}
-      onBack={leave}
-      crumbs={
-        <>
-          <button type="button" onClick={leave}>
-            대시보드 관리
-          </button>
-          <span className={styles.crumbSep}>/</span>
-          <input
-            className={styles.crumbInput}
-            value={tpl.name}
-            maxLength={60}
-            aria-label="템플릿 이름"
-            size={Math.max(8, tpl.name.length + 2)}
-            onChange={(e) => {
-              setTpl({ ...tpl, name: e.target.value });
-              setDirty(true);
-            }}
-          />
-          <span className={styles.crumbSep}>/</span>
-          <span>1단계 위젯 배치{dirty ? ' · 저장 안 됨' : ''}</span>
-        </>
-      }
-      actions={
-        (editable || canDelete) && (
+    <DashColorScope color={tpl.color}>
+      <DashboardEditor
+        layout={tpl.layout}
+        permissions={user?.permissions ?? []}
+        onChange={(l) => {
+          setTpl({ ...tpl, layout: l });
+          setDirty(true);
+        }}
+        onBack={leave}
+        crumbs={
           <>
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<Trash2 size={14} />}
-                onClick={() => void remove()}
-              >
-                삭제
-              </Button>
-            )}
-            {editable && (
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<Settings2 size={14} />}
-                onClick={openSettings}
-              >
-                설정
-              </Button>
-            )}
-            {editable && (
-              <Button
-                variant="outline"
-                size="sm"
-                loading={saving}
-                leftIcon={<Save size={14} />}
-                onClick={() => void save(false)}
-              >
-                저장
-              </Button>
-            )}
-            {editable && (
-              <Button
-                variant="primary"
-                size="sm"
-                loading={saving}
-                rightIcon={<ArrowRight size={14} />}
-                onClick={() => void save(true)}
-              >
-                저장하고 다음
-              </Button>
-            )}
+            <button type="button" onClick={leave}>
+              대시보드 관리
+            </button>
+            <span className={styles.crumbSep}>/</span>
+            <input
+              className={styles.crumbInput}
+              value={tpl.name}
+              maxLength={60}
+              aria-label="템플릿 이름"
+              size={Math.max(8, tpl.name.length + 2)}
+              onChange={(e) => {
+                setTpl({ ...tpl, name: e.target.value });
+                setDirty(true);
+              }}
+            />
+            <span className={styles.crumbSep}>/</span>
+            <span>1단계 위젯 배치{dirty ? ' · 저장 안 됨' : ''}</span>
           </>
-        )
-      }
-      heading={
-        <PageHeader
-          title={t('dashboard.title')}
-          // 실제 화면의 버튼 줄과 높이를 맞춘다(위젯이 같은 높이에서 시작하도록)
-          actions={<span style={{ display: 'block', height: 32 }} />}
-          tags={
-            <Badge variant="subtle" color="neutral">
-              {tpl.name}
-            </Badge>
-          }
-        />
-      }
-    />
+        }
+        actions={
+          (editable || canDelete) && (
+            <>
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Trash2 size={14} />}
+                  onClick={() => void remove()}
+                >
+                  삭제
+                </Button>
+              )}
+              {editable && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Settings2 size={14} />}
+                  onClick={openSettings}
+                >
+                  설정
+                </Button>
+              )}
+              {editable && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  loading={saving}
+                  leftIcon={<Save size={14} />}
+                  onClick={() => void save(false)}
+                >
+                  저장
+                </Button>
+              )}
+              {editable && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={saving}
+                  rightIcon={<ArrowRight size={14} />}
+                  onClick={() => void save(true)}
+                >
+                  저장하고 다음
+                </Button>
+              )}
+            </>
+          )
+        }
+        heading={
+          <PageHeader
+            title={t('dashboard.title')}
+            // 실제 화면의 버튼 줄과 높이를 맞춘다(위젯이 같은 높이에서 시작하도록)
+            actions={<span style={{ display: 'block', height: 32 }} />}
+            tags={
+              <Badge variant="subtle" color="neutral">
+                {tpl.name}
+              </Badge>
+            }
+          />
+        }
+      />
+    </DashColorScope>
   );
 }
