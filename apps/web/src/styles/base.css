@@ -163,6 +163,29 @@ a {
   width: 100%;
   max-width: 440px;
 }
+
+/* 처음 불러오는 중 — 자리표시 행만, 건수는 감춘다 */
+.dt-loading .sft-tfoot__total {
+  visibility: hidden;
+}
+
+/* 필터를 검색창 왼쪽에(filtersFirst) — 오른쪽 칸을 풀어 툴바 한 줄에서 순서를 다시 잡는다:
+   [필터][검색 ……] ……… [내보내기][+ 등록] */
+.dt-filters-first .sft-toolbar__right {
+  display: contents;
+}
+.dt-filters-first .dt-toolbar-filters {
+  order: -2;
+  margin-right: 0;
+}
+.dt-filters-first .sft-toolbar__left {
+  order: -1;
+  flex: 1 1 320px;
+  margin-right: auto;
+}
+.dt-filters-first .sft-toolbar__search-wrap {
+  max-width: 560px;
+}
 .dt-wrap .sft-toolbar__search,
 .dt-wrap .sft-export__trigger,
 .dt-wrap .sft-toolbar__right button,

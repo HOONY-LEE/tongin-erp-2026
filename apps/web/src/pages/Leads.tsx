@@ -13,7 +13,7 @@ import {
   DataTable,
   FormModal,
   PageHeader,
-  Select,
+  SegmentedControl,
   useToast,
   type Column,
   type FormField,
@@ -235,17 +235,16 @@ export default function Leads() {
         rows={filtered}
         loading={loading}
         onRowClick={(r) => navigate(`/leads/${r.id as string}`)}
+        filtersFirst
         filters={
-          <div style={{ width: 170 }}>
-            <Select
-              value={stage}
-              onValueChange={setStage}
-              options={STAGES.map((s) => ({
-                value: s.key,
-                label: `${s.label} (${countFor(s.statuses)})`,
-              }))}
-            />
-          </div>
+          <SegmentedControl
+            value={stage}
+            onChange={setStage}
+            options={STAGES.map((s) => ({
+              value: s.key,
+              label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.statuses)}`,
+            }))}
+          />
         }
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
