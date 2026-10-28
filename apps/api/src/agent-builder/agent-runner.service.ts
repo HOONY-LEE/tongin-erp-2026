@@ -8,7 +8,6 @@ import {
 import { AsyncLocalStorage } from 'async_hooks';
 import type Anthropic from '@anthropic-ai/sdk';
 import {
-  AGENT_DEFAULT_MODEL,
   PERMISSION_WILDCARD,
   evalExpr,
   normalizeAgentGraph,
@@ -29,6 +28,7 @@ import {
 } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ToolError, type AiTool, type ToolContext } from '../ai/ai-tool.types';
+import { resolveModel } from '../ai/ai-models';
 import { AgentBlueprintService } from './agent-blueprint.service';
 import {
   FALLBACK_BETA,
@@ -620,7 +620,7 @@ export class AgentRunnerService {
         ]
           .filter(Boolean)
           .join('\n');
-        const res = await this.ask(cfg.model || AGENT_DEFAULT_MODEL, 'low', system, input, {
+        const res = await this.ask(resolveModel(cfg.model), 'low', system, input, {
           type: 'object',
           additionalProperties: false,
           required: ['label', 'reason'],

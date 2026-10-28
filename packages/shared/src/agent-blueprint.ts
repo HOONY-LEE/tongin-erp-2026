@@ -57,12 +57,40 @@ export const AGENT_RUN_STATUS_LABEL: Record<string, string> = {
 };
 
 /** AI 판단 노드에서 고를 수 있는 모델 */
-export const AGENT_MODELS = [
-  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5 (기본·가장 똑똑함)' },
-  { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5 (빠르고 균형)' },
-  { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 (가장 싸고 빠름)' },
+/**
+ * 고를 수 있는 Claude 모델 — AI 비서 대화와 에이전트 AI 단계가 같은 목록을 쓴다.
+ * enabled=false는 목록에만 보이고 고를 수 없다(지금은 비용 때문에 Opus를 닫아 둔다).
+ * 서버는 막힌 모델을 받으면 기본 모델(Sonnet)로 돌린다 — 서버 환경변수 AI_ALLOWED_MODELS로 열 수 있다.
+ * chat=false는 AI 비서 대화에는 내지 않는다(짧은 분류·요약용).
+ */
+export const AI_MODELS = [
+  {
+    id: 'claude-sonnet-5-5',
+    label: 'Claude Sonnet 5.5',
+    hint: '기본 · 빠르고 균형',
+    enabled: true,
+    chat: true,
+  },
+  {
+    id: 'claude-opus-5-5',
+    label: 'Claude Opus 5.5',
+    hint: '가장 똑똑함 · 준비 중',
+    enabled: false,
+    chat: true,
+  },
+  {
+    id: 'claude-haiku-5-5',
+    label: 'Claude Haiku 5.5',
+    hint: '가장 싸고 빠름',
+    enabled: true,
+    chat: false,
+  },
 ] as const;
-export const AGENT_DEFAULT_MODEL = 'claude-opus-5-5';
+export type AiModelId = (typeof AI_MODELS)[number]['id'];
+export const AI_DEFAULT_MODEL: AiModelId = 'claude-sonnet-5-5';
+/** 에이전트 AI 단계에서 고를 모델(같은 목록) */
+export const AGENT_MODELS = AI_MODELS;
+export const AGENT_DEFAULT_MODEL = AI_DEFAULT_MODEL;
 
 /** 에이전트 공개 범위 — 개인용 / 전체 공개 / 부분 공유(고른 직원만) */
 export const AGENT_VISIBILITIES = ['PRIVATE', 'PUBLIC', 'SHARED'] as const;

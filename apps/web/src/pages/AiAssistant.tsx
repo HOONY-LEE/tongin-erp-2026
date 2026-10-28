@@ -66,6 +66,8 @@ const MAX_FILES = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
 /** 첫 질문 뒤 요약 제목(서버가 따로 만든다)을 목록에 반영하려고 다시 읽는 시점 */
 const TITLE_REFRESH_MS = 2500;
+/** 고른 AI 모델을 기억하는 키 */
+const MODEL_KEY = 'tongin.aiModel';
 /** 대화 제목 최대 길이 — 서버 검증과 같게 */
 const TITLE_MAX = 60;
 /** 입력칸이 이 높이까지 늘어나고, 넘으면 안에서 스크롤 */
@@ -111,6 +113,22 @@ export default function AiAssistant() {
   const [agents, setAgents] = useState<CallableAgent[] | null>(null);
   const activeAgent = agents?.find((a) => a.id === agentId) ?? null;
   const [status, setStatus] = useState<AiStatus | null>(null);
+  /** 고른 모델 — 이 브라우저에 기억, 대화를 열면 그 대화의 모델로 맞춘다 */
+  const [model, setModel] = useState<string>(() => {
+    try {
+      return localStorage.getItem(MODEL_KEY) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const pickModel = (id: string) => {
+    setModel(id);
+    try {
+      localStorage.setItem(MODEL_KEY, id);
+    } catch {
+      /* 저장 못 해도 이번 화면에서는 쓴다 */
+    }
+  };
   const [tools, setTools] = useState<Map<string, AiToolInfo>>(new Map());
   const [rows, setRows] = useState<ConversationRow[]>([]);
   /** 대화 목록을 한 번이라도 받았나 — 받기 전엔 '없음' 대신 '불러오는 중' */
@@ -168,6 +186,10 @@ export default function AiAssistant() {
   // 에이전트가 일하는 동안 대화를 다시 읽어 진행(도구 실행·답변)을 따라간다
   const convId = conv?.id;
   const convRunning = conv?.status === 'RUNNING';
+  // 대화를 열면 그 대화가 쓰던 모델로 맞춘다(thinking은 모델에 묶여 있어 같은 모델로 이어 가는 게 좋다)
+  useEffect(() => {
+    if (conv?.model) setModel(conv.model);
+  }, [conv?.id, conv?.model]);
   useEffect(() => {
     if (!convId || !convRunning) return;
     let alive = true;
@@ -298,6 +320,7 @@ export default function AiAssistant() {
         body: JSON.stringify({
           text: t,
           attachments: attachments.map(({ name, mediaType, data }) => ({ name, mediaType, data })),
+          model: chatModel || undefined,
         }),
       });
     });
@@ -392,6 +415,11 @@ export default function AiAssistant() {
   const working = busy || conv?.status === 'RUNNING';
   const nextUp = !working && !echo ? (conv?.suggestions ?? []) : [];
   const notReady = status !== null && !status.configured;
+  const chatModels = (status?.models ?? []).filter((m) => m.chat);
+  /** 실제로 보낼 모델 — 열린 모델만(기억해 둔 값이 닫혔으면 서버 기본) */
+  const chatModel = chatModels.some((m) => m.id === model && m.enabled)
+    ? model
+    : (status?.model ?? '');
   /** 주소의 대화를 아직 받아 오는 중(새로고침·목록에서 고른 직후) */
   const convLoading = !!activeId && conv?.id !== activeId && !echo;
   const empty = items.length === 0 && !convLoading;
@@ -444,24 +472,43 @@ export default function AiAssistant() {
           aria-label="AI에게 보낼 메시지"
         />
         <div className={styles.composerBar}>
-          <button
-            type="button"
-            className={styles.iconBtn}
-            aria-label="파일 첨부"
-            title="파일 첨부 (이미지·PDF·텍스트)"
-            onClick={() => fileRef.current?.click()}
-            disabled={notReady || files.length >= MAX_FILES}
-          >
-            <Paperclip size={18} />
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={ACCEPT}
-            multiple
-            hidden
-            onChange={(e) => void pickFiles(e)}
-          />
+          <span className={styles.barLeft}>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              aria-label="파일 첨부"
+              title="파일 첨부 (이미지·PDF·텍스트)"
+              onClick={() => fileRef.current?.click()}
+              disabled={notReady || files.length >= MAX_FILES}
+            >
+              <Paperclip size={18} />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept={ACCEPT}
+              multiple
+              hidden
+              onChange={(e) => void pickFiles(e)}
+            />
+            {chatModels.length > 0 && (
+              <select
+                className={styles.modelSelect}
+                value={chatModel}
+                onChange={(e) => pickModel(e.target.value)}
+                aria-label="AI 모델"
+                title="AI 모델"
+                disabled={notReady}
+              >
+                {chatModels.map((m) => (
+                  <option key={m.id} value={m.id} disabled={!m.enabled}>
+                    {m.label}
+                    {m.enabled ? '' : ' (준비 중)'}
+                  </option>
+                ))}
+              </select>
+            )}
+          </span>
           <button
             type="button"
             className={styles.sendBtn}

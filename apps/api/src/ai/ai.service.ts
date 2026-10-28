@@ -22,8 +22,8 @@ import { DomainTools } from './domain-tools';
 import { SYSTEM_PROMPT, contextBlock } from './prompt';
 import { ToolError, type AiTool, type ToolContext } from './ai-tool.types';
 import { AiFiles, type AiFileMeta } from './ai-files.service';
+import { DEFAULT_AI_MODEL, modelOptions, resolveChatModel } from './ai-models';
 
-const MODEL = process.env.AI_MODEL ?? 'claude-opus-5-5';
 /** 대화 제목 요약용 — 작고 싼 모델로 따로 한 번 부른다(본 답변을 늦추지 않게 비동기) */
 const TITLE_MODEL = process.env.AI_TITLE_MODEL ?? 'claude-haiku-5-5';
 const TITLE_SYSTEM = [
@@ -133,7 +133,8 @@ export class AiService implements OnModuleInit {
   }
 
   status() {
-    return { configured: !!this.client, model: MODEL };
+    // models: 고를 수 있는 모델(닫힌 모델은 enabled=false로 보이기만)
+    return { configured: !!this.client, model: DEFAULT_AI_MODEL, models: modelOptions() };
   }
 
   /** 사용자 권한으로 쓸 수 있는 도구만. 업무 도구가 같은 이름의 API 도구보다 우선 */
@@ -208,6 +209,7 @@ export class AiService implements OnModuleInit {
     return {
       id: c.id,
       title: c.title,
+      model: resolveChatModel(c.model),
       status: c.status,
       lastError: c.lastError,
       updatedAt: c.updatedAt,
@@ -263,7 +265,13 @@ export class AiService implements OnModuleInit {
   // ── 대화 진행 ──
 
   /** 사용자 메시지를 붙이고 루프를 돌린다. 승인 대기 중이면 대기 건은 거절로 처리한 뒤 이어 간다 */
-  async send(id: string, text: string, ctx: ToolContext, attachments: Attachment[] = []) {
+  async send(
+    id: string,
+    text: string,
+    ctx: ToolContext,
+    attachments: Attachment[] = [],
+    model?: string,
+  ) {
     if (!text.trim() && !attachments.length) {
       throw new BadRequestException('메시지나 첨부가 있어야 합니다.');
     }
@@ -303,6 +311,8 @@ export class AiService implements OnModuleInit {
           messages: messages as object,
           pending: null as never,
           status: 'RUNNING',
+          // 고른 모델(닫힌 모델이면 기본 모델로) — 이후 승인·다시 시도도 이 모델로 이어 간다
+          ...(model ? { model: resolveChatModel(model) } : {}),
           // 요약 제목이 오기 전까지는 첫 질문 앞부분을 제목으로 둔다
           ...(firstQuestion ? { title: fallbackTitle } : {}),
         },
@@ -390,20 +400,20 @@ export class AiService implements OnModuleInit {
     const byName = new Map(tools.map((t) => [t.name, t]));
     const apiTools = toApiTools(tools);
     // 코드 실행 컨테이너 — 같은 대화에서는 이어 써서 앞에서 만든 파일을 다시 쓸 수 있게
-    let container =
-      (
-        await this.prisma.aiConversation.findUnique({
-          where: { id },
-          select: { containerId: true },
-        })
-      )?.containerId ?? null;
+    const conv = await this.prisma.aiConversation.findUnique({
+      where: { id },
+      select: { containerId: true, model: true },
+    });
+    let container = conv?.containerId ?? null;
+    // 대화에 정한 모델(없거나 닫힌 모델이면 기본 Sonnet)
+    const model = resolveChatModel(conv?.model);
     const call = (containerId: string | null) =>
       client.beta.messages.create({
-        model: MODEL,
+        model,
         max_tokens: 16000,
         betas: BETAS,
         fallbacks: 'default',
-        // 생각은 항상 켜져 있다(Opus 5.5). 도구 구성이 바뀐 대화도 오류 없이 이어지도록 drop_block
+        // 생각은 항상 켜져 있다(Sonnet·Opus 5.5). 도구 구성이 바뀐 대화도 오류 없이 이어지도록 drop_block
         thinking: {
           type: 'adaptive',
           block_binding: { prefix_mismatch_behavior: 'drop_block' },

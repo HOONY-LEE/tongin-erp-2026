@@ -1,13 +1,14 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import type { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages';
+import { DEFAULT_AI_MODEL } from '../ai/ai-models';
 
-/** 에이전트 빌더(자연어 생성)에 쓰는 모델 — AI 비서와 같게 */
-export const BUILDER_MODEL = process.env.AI_MODEL ?? 'claude-opus-5-5';
+/** 에이전트 빌더(자연어 생성)에 쓰는 모델 — AI 비서 기본 모델과 같게(Sonnet) */
+export const BUILDER_MODEL = DEFAULT_AI_MODEL;
 
 /** 안전 분류기가 거절하면 서버가 권장 대체 모델로 다시 돌린다(Opus·Sonnet만 지원) */
 export const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
-export const supportsFallback = (model: string) => !model.startsWith('claude-haiku');
+export { supportsFallback } from '../ai/ai-models';
 
 /** AI 비서(ai.service.ts)와 같은 방식으로 클라이언트를 만든다. 키가 없으면 null */
 export function createClaude(): Anthropic | null {

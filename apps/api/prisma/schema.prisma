@@ -1040,6 +1040,8 @@ model AiConversation {
   lastError   String?  @map("last_error") // ERROR일 때 이유(키 미설정·한도 초과 등) — 다시 시도하면 지운다
   // 코드 실행(Anthropic 샌드박스) 컨테이너 — 같은 대화에서는 이어 써서 만든 파일·작업 상태를 유지한다
   containerId String?  @map("container_id")
+  // 이 대화에 쓰는 Claude 모델 — 비우면 서버 기본(Sonnet). thinking 블록은 모델에 묶여 있어 대화마다 기억한다
+  model       String?
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

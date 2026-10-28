@@ -1,8 +1,20 @@
 /** API(/api/ai) 응답 모양 — apps/api/src/ai/ai.service.ts view()와 맞춘다 */
 
+export interface AiModelOption {
+  id: string;
+  label: string;
+  hint: string;
+  /** false면 목록에만 보이고 고를 수 없다(서버가 닫아 둔 모델) */
+  enabled: boolean;
+  /** AI 비서 대화에 쓰는 모델인지 */
+  chat: boolean;
+}
+
 export interface AiStatus {
   configured: boolean;
+  /** 서버 기본 모델 */
   model: string;
+  models?: AiModelOption[];
 }
 
 export interface AiToolInfo {
@@ -83,6 +95,8 @@ export interface PendingCall {
 export interface Conversation {
   id: string;
   title: string;
+  /** 이 대화에 쓰는 모델 */
+  model?: string;
   /** IDLE | RUNNING | AWAITING_APPROVAL | ERROR */
   status: string;
   lastError: string | null;
