@@ -2,7 +2,8 @@
  * 대시보드 템플릿 — 팀별 4가지 관점: 경영관리(기본)·가맹·홈플래너·마케팅.
  *
  * - 예전 시연용 템플릿(경영진·지점장·상담·영업·현장 운영)이 있으면 지우고 새로 넣는다(한 번만 도는 추가 시드)
- * - 같은 이름의 템플릿이 이미 있으면 건드리지 않는다(관리자가 고친 내용 보존)
+ * - 같은 이름의 템플릿이 이미 있으면 건드리지 않는다(관리자가 고친 내용 보존).
+ *   단, 경영관리 템플릿에 인사 위젯이 하나도 없으면 맨 아래에 인사 줄만 덧붙인다
  * - 지정: 그 부서 직원 계정(USER) + 권한 그룹(ROLE). 이미 다른 템플릿에 지정된 대상은 건드리지 않는다
  */
 import { PrismaClient } from '@prisma/client';
@@ -70,6 +71,19 @@ function pack(specs: Spec[]): { version: 1; items: DashItem[] } {
   return { version: 1, items: compactDashLayout(items) };
 }
 
+/** 경영관리 인사 줄 — y는 그 줄 맨 위 기준(새로 만들 때·덧붙일 때 아래로 민다) */
+const MGMT_HR: Spec[] = [
+  { widget: 'kpi.attendanceToday', viz: 'gauge', w: 4, h: 2, at: [0, 0] },
+  { widget: 'kpi.pendingApprovals', w: 4, h: 2, at: [4, 0] },
+  { widget: 'hr.headcount', w: 4, h: 2, at: [8, 0] },
+  { widget: 'hr.attendanceToday', viz: 'list', w: 4, h: 5, at: [0, 2] },
+  { widget: 'hr.onLeave', viz: 'list', w: 4, h: 5, at: [4, 2] },
+  { widget: 'hr.leaveUsage', viz: 'hbar', w: 4, h: 5, at: [8, 2] },
+];
+const HR_WIDGETS = new Set(MGMT_HR.map((s) => s.widget));
+const below = (specs: Spec[], y: number): Spec[] =>
+  specs.map((s) => ({ ...s, at: s.at ? [s.at[0], s.at[1] + y] : undefined }));
+
 const OLD_SEEDED = [
   '경영진 대시보드',
   '지점장 대시보드',
@@ -108,6 +122,7 @@ const TEMPLATES: {
       { widget: 'revenue.byServiceLine', viz: 'donut', w: 4, h: 6, period: '90d', at: [8, 6] },
       { widget: 'payment.topOutstanding', viz: 'table', w: 6, h: 5, at: [0, 12] },
       { widget: 'branch.anomaly', viz: 'list', w: 6, h: 5, at: [6, 12] },
+      ...below(MGMT_HR, 17),
     ],
   },
   {
@@ -188,6 +203,21 @@ async function main() {
   for (const t of TEMPLATES) {
     const exists = await prisma.dashboard.findFirst({ where: { name: t.name, ownerUserId: null } });
     if (exists) {
+      if (t.specs.some((x) => HR_WIDGETS.has(x.widget))) {
+        const cur = exists.layout as { version: 1; items: DashItem[] } | null;
+        const items = cur?.items ?? [];
+        if (!items.some((i) => HR_WIDGETS.has(i.widget))) {
+          const bottom = Math.max(0, ...items.map((i) => i.y + i.h));
+          // 인사 줄만 따로 배치한 뒤 기존 위젯 아래로 내린다
+          const hr = pack(MGMT_HR).items.map((i) => ({ ...i, y: i.y + bottom }));
+          await prisma.dashboard.update({
+            where: { id: exists.id },
+            data: { layout: { version: 1, items: [...items, ...hr] } as object },
+          });
+          console.log(`대시보드 '${t.name}' — 인사 위젯 ${hr.length}개 덧붙임`);
+          continue;
+        }
+      }
       console.log(`대시보드 '${t.name}' — 이미 있음(건너뜀)`);
       continue;
     }
