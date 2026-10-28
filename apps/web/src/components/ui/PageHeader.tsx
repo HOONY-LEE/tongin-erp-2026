@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ChevronLeft, RefreshCw } from 'lucide-react';
 import {
   PageHeader as AkronPageHeader,
   type PageHeaderProps as AkronPageHeaderProps,
@@ -24,7 +24,7 @@ function formatUpdatedAt(d: Date) {
  * 전 페이지 공통: 하단 구분선은 기본 제거, 새로고침 아이콘·마지막 업데이트 시각을 우측 끝에 표시.
  */
 export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function PageHeader(
-  { style, divider = false, actions, onRefresh, updatedAt, ...props },
+  { style, divider = false, actions, onRefresh, updatedAt, icon, breadcrumbs, ...props },
   ref,
 ) {
   const [refreshing, setRefreshing] = useState(false);
@@ -38,6 +38,33 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
       setRefreshing(false);
     }
   };
+
+  // 상세 화면 — 위쪽 경로(목록)로 돌아가는 '<' 버튼을 제목 왼쪽에 둔다(경로의 마지막 항목과 같은 동작)
+  const back = breadcrumbs?.length ? breadcrumbs[breadcrumbs.length - 1] : undefined;
+  const backButton = back?.onClick ? (
+    <button
+      type="button"
+      onClick={back.onClick}
+      aria-label={`${back.label}(으)로 돌아가기`}
+      title={`${back.label}(으)로`}
+      style={{
+        display: 'grid',
+        placeItems: 'center',
+        width: 32,
+        height: 32,
+        marginLeft: -6,
+        border: 'none',
+        borderRadius: 8,
+        background: 'transparent',
+        color: 'var(--ark-color-text)',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--ark-color-bg-muted)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+    >
+      <ChevronLeft size={22} />
+    </button>
+  ) : undefined;
 
   const refreshSlot = onRefresh ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -80,6 +107,8 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
       style={{ paddingTop: 0, paddingBottom: 0, ...style }}
       divider={divider}
       actions={refreshSlot}
+      breadcrumbs={breadcrumbs}
+      icon={icon ?? backButton}
       {...props}
     />
   );
