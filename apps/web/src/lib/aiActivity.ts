@@ -4,7 +4,8 @@ import { api, getToken } from './api';
 /**
  * AI 에이전트가 지금 일하는 중인 대화 — 앱 어디서든(헤더 탭·사이드바 메뉴·대화 목록) 같은 값을 본다.
  * 에이전트는 서버에서 계속 돌기 때문에, 다른 화면에 있어도 진행 중 표시가 남도록 가볍게 폴링한다
- * (진행 중이면 3초, 아니면 20초). AI 화면은 목록을 읽을 때마다 report()로 바로 알려 준다.
+ * (진행 중이면 3초, 아니면 60초). 탭이 가려져 있으면(document.hidden) 쉬고, 다시 보이면 바로 읽는다.
+ * AI 화면은 목록을 읽을 때마다 report()로 바로 알려 준다.
  */
 interface Row {
   id: string;
@@ -30,6 +31,8 @@ export function reportAiRows(rows: Row[]) {
 async function poll() {
   timer = null;
   if (!subscribers || !getToken()) return;
+  // 안 보이는 탭에서는 묻지 않는다 — visibilitychange에서 다시 시작한다
+  if (document.hidden) return;
   try {
     reportAiRows(await api<Row[]>('/ai/conversations'));
   } catch {
@@ -40,7 +43,14 @@ async function poll() {
 function schedule(delay?: number) {
   if (!subscribers) return;
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => void poll(), delay ?? (runningIds.length ? 3000 : 20000));
+  timer = setTimeout(() => void poll(), delay ?? (runningIds.length ? 3000 : 60000));
+}
+
+// 탭이 다시 보이면 바로 한 번 읽고 폴링을 이어간다
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) schedule(0);
+  });
 }
 
 /** 방금 일을 시켰다 — 바로 다시 읽어 표시를 켠다 */

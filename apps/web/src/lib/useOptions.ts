@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { api } from './api';
+import { cachedApi } from './api';
 
 /**
  * 목록 엔드포인트를 Select 옵션({value,label})으로 변환하는 훅.
  * filter는 옵션으로 변환하기 전 원본 행에 적용한다(예: 거래처 유형으로 걸러내기).
+ * 같은 주소는 잠깐(60초) 캐시해서, 여러 화면·모달이 열려도 다시 부르지 않는다(cachedApi).
  */
 export function useOptions(
   path: string,
@@ -16,15 +17,20 @@ export function useOptions(
   const filterRef = useRef(filter);
   filterRef.current = filter;
   useEffect(() => {
-    api<Record<string, unknown>[]>(path)
-      .then((rows) =>
+    let alive = true;
+    cachedApi<Record<string, unknown>[]>(path)
+      .then((rows) => {
+        if (!alive) return;
         setOpts(
           rows
             .filter((r) => filterRef.current?.(r) ?? true)
             .map((r) => ({ value: String(r[valueKey]), label: String(r[labelKey]) })),
-        ),
-      )
-      .catch(() => setOpts([]));
+        );
+      })
+      .catch(() => alive && setOpts([]));
+    return () => {
+      alive = false;
+    };
   }, [path, labelKey, valueKey]);
   return opts;
 }

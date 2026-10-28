@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from 'react';
 import { ToastProvider } from '@sunghoon_lee/akron-ui';
 import { PageSkeleton } from './components/ui';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -5,49 +6,55 @@ import { ThemeProvider } from './theme/ThemeProvider';
 import { AuthProvider, isFieldUser, useAuth } from './auth/AuthContext';
 import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import DashboardEdit from './pages/DashboardEdit';
-import DashboardAdmin from './pages/DashboardAdmin';
-import DashboardTemplateEdit from './pages/DashboardTemplateEdit';
-import DashboardTemplateSettings from './pages/DashboardTemplateSettings';
-import Leads from './pages/Leads';
-import LeadWorkspace from './pages/LeadWorkspace';
-import PublicSign from './pages/PublicSign';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import Estimates from './pages/Estimates';
-import EstimateDetail from './pages/EstimateDetail';
-import Contracts from './pages/Contracts';
-import ContractDetail from './pages/ContractDetail';
-import WorkOrders from './pages/WorkOrders';
-import WorkOrderDetail from './pages/WorkOrderDetail';
-import Customers from './pages/Customers';
-import Products from './pages/Products';
-import CbmItems from './pages/CbmItems';
-import Campaigns from './pages/Campaigns';
-import HrPolicies from './pages/HrPolicies';
-import Materials from './pages/Materials';
-import Settlement from './pages/Settlement';
-import Billing from './pages/Billing';
-import MaterialOrders from './pages/MaterialOrders';
-import ServiceOrders from './pages/ServiceOrders';
-import Support from './pages/Support';
-import AiAssistant from './pages/AiAssistant';
-import AgentBlueprints from './pages/AgentBlueprints';
-import AgentBuilder from './pages/AgentBuilder';
-import AgentCreate from './pages/AgentCreate';
-import CampaignEditor from './pages/CampaignEditor';
-import OrgUnits from './pages/OrgUnits';
-import ProductMgmt from './pages/ProductMgmt';
-import OrgMgmt from './pages/OrgMgmt';
-import PaymentConfirm from './pages/PaymentConfirm';
-import Branches from './pages/Branches';
-import Accounts from './pages/Accounts';
-import ProductDetail from './pages/ProductDetail';
-import PartnerMgmt from './pages/PartnerMgmt';
-import CalendarPage from './pages/Calendar';
-import FieldLayout from './field/FieldLayout';
-import FieldWorkOrders from './field/FieldWorkOrders';
-import FieldWorkOrderDetail from './field/FieldWorkOrderDetail';
+
+// 화면별로 따로 받는다(라우트 코드 분할) — 첫 화면은 로그인·레이아웃만 받고,
+// 무거운 화면(에이전트 빌더·지도·캠페인 편집기 등)은 열 때 받는다.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DashboardEdit = lazy(() => import('./pages/DashboardEdit'));
+const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
+const DashboardTemplateEdit = lazy(() => import('./pages/DashboardTemplateEdit'));
+const DashboardTemplateSettings = lazy(() => import('./pages/DashboardTemplateSettings'));
+const Leads = lazy(() => import('./pages/Leads'));
+const LeadWorkspace = lazy(() => import('./pages/LeadWorkspace'));
+const PublicSign = lazy(() => import('./pages/PublicSign'));
+const Estimates = lazy(() => import('./pages/Estimates'));
+const EstimateDetail = lazy(() => import('./pages/EstimateDetail'));
+const Contracts = lazy(() => import('./pages/Contracts'));
+const ContractDetail = lazy(() => import('./pages/ContractDetail'));
+const WorkOrders = lazy(() => import('./pages/WorkOrders'));
+const WorkOrderDetail = lazy(() => import('./pages/WorkOrderDetail'));
+const Customers = lazy(() => import('./pages/Customers'));
+const Products = lazy(() => import('./pages/Products'));
+const CbmItems = lazy(() => import('./pages/CbmItems'));
+const Campaigns = lazy(() => import('./pages/Campaigns'));
+const HrPolicies = lazy(() => import('./pages/HrPolicies'));
+const Materials = lazy(() => import('./pages/Materials'));
+const Settlement = lazy(() => import('./pages/Settlement'));
+const Billing = lazy(() => import('./pages/Billing'));
+const MaterialOrders = lazy(() => import('./pages/MaterialOrders'));
+const ServiceOrders = lazy(() => import('./pages/ServiceOrders'));
+const Support = lazy(() => import('./pages/Support'));
+const AiAssistant = lazy(() => import('./pages/AiAssistant'));
+const AgentBlueprints = lazy(() => import('./pages/AgentBlueprints'));
+const AgentBuilder = lazy(() => import('./pages/AgentBuilder'));
+const AgentCreate = lazy(() => import('./pages/AgentCreate'));
+const CampaignEditor = lazy(() => import('./pages/CampaignEditor'));
+const OrgUnits = lazy(() => import('./pages/OrgUnits'));
+const ProductMgmt = lazy(() => import('./pages/ProductMgmt'));
+const OrgMgmt = lazy(() => import('./pages/OrgMgmt'));
+const PaymentConfirm = lazy(() => import('./pages/PaymentConfirm'));
+const Branches = lazy(() => import('./pages/Branches'));
+const Accounts = lazy(() => import('./pages/Accounts'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const PartnerMgmt = lazy(() => import('./pages/PartnerMgmt'));
+const CalendarPage = lazy(() => import('./pages/Calendar'));
+const FieldLayout = lazy(() => import('./field/FieldLayout'));
+const FieldWorkOrders = lazy(() => import('./field/FieldWorkOrders'));
+const FieldWorkOrderDetail = lazy(() => import('./field/FieldWorkOrderDetail'));
+
+/** 화면 코드를 받는 동안 뼈대를 보여 준다. 화면(탭)마다 따로 감싸서, 탭 하나를 받는 동안 다른 탭은 그대로 둔다. */
+const page = (el: ReactNode) => <Suspense fallback={<PageSkeleton />}>{el}</Suspense>;
 
 function Shell() {
   const { user, loading } = useAuth();
@@ -66,9 +73,9 @@ function Shell() {
   if (isFieldUser(user)) {
     return (
       <Routes>
-        <Route path="/field" element={<FieldLayout />}>
-          <Route index element={<FieldWorkOrders />} />
-          <Route path="work-orders/:id" element={<FieldWorkOrderDetail />} />
+        <Route path="/field" element={page(<FieldLayout />)}>
+          <Route index element={page(<FieldWorkOrders />)} />
+          <Route path="work-orders/:id" element={page(<FieldWorkOrderDetail />)} />
         </Route>
         <Route path="*" element={<Navigate to="/field" replace />} />
       </Routes>
@@ -78,51 +85,51 @@ function Shell() {
   return (
     <Routes>
       {/* 관리자도 현장 화면을 열어볼 수 있다 */}
-      <Route path="/field" element={<FieldLayout />}>
-        <Route index element={<FieldWorkOrders />} />
-        <Route path="work-orders/:id" element={<FieldWorkOrderDetail />} />
+      <Route path="/field" element={page(<FieldLayout />)}>
+        <Route index element={page(<FieldWorkOrders />)} />
+        <Route path="work-orders/:id" element={page(<FieldWorkOrderDetail />)} />
       </Route>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard/edit" element={<DashboardEdit />} />
-        <Route path="/dashboard-admin" element={<DashboardAdmin />} />
-        <Route path="/dashboard-admin/:id" element={<DashboardTemplateEdit />} />
-        <Route path="/dashboard-admin/:id/settings" element={<DashboardTemplateSettings />} />
-        <Route path="/ai" element={<AiAssistant />} />
-        <Route path="/leads" element={<Leads />} />
-        <Route path="/leads/:id" element={<LeadWorkspace />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/estimates" element={<Estimates />} />
-        <Route path="/estimates/:id" element={<EstimateDetail />} />
-        <Route path="/contracts" element={<Contracts />} />
-        <Route path="/contracts/:id" element={<ContractDetail />} />
-        <Route path="/work-orders" element={<WorkOrders />} />
-        <Route path="/work-orders/:id" element={<WorkOrderDetail />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/products/:id" element={<ProductDetail />} />
-        <Route path="/cbm-items" element={<CbmItems />} />
-        <Route path="/materials" element={<Materials />} />
-        <Route path="/settlements" element={<Settlement />} />
-        <Route path="/billing" element={<Billing />} />
-        <Route path="/material-orders" element={<MaterialOrders />} />
-        <Route path="/service-orders" element={<ServiceOrders />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/campaigns" element={<Campaigns />} />
-        <Route path="/campaigns/:id" element={<CampaignEditor />} />
-        <Route path="/hr" element={<HrPolicies />} />
-        <Route path="/org-units" element={<OrgUnits />} />
+        <Route path="/dashboard" element={page(<Dashboard />)} />
+        <Route path="/dashboard/edit" element={page(<DashboardEdit />)} />
+        <Route path="/dashboard-admin" element={page(<DashboardAdmin />)} />
+        <Route path="/dashboard-admin/:id" element={page(<DashboardTemplateEdit />)} />
+        <Route path="/dashboard-admin/:id/settings" element={page(<DashboardTemplateSettings />)} />
+        <Route path="/ai" element={page(<AiAssistant />)} />
+        <Route path="/leads" element={page(<Leads />)} />
+        <Route path="/leads/:id" element={page(<LeadWorkspace />)} />
+        <Route path="/calendar" element={page(<CalendarPage />)} />
+        <Route path="/estimates" element={page(<Estimates />)} />
+        <Route path="/estimates/:id" element={page(<EstimateDetail />)} />
+        <Route path="/contracts" element={page(<Contracts />)} />
+        <Route path="/contracts/:id" element={page(<ContractDetail />)} />
+        <Route path="/work-orders" element={page(<WorkOrders />)} />
+        <Route path="/work-orders/:id" element={page(<WorkOrderDetail />)} />
+        <Route path="/customers" element={page(<Customers />)} />
+        <Route path="/products" element={page(<Products />)} />
+        <Route path="/products/:id" element={page(<ProductDetail />)} />
+        <Route path="/cbm-items" element={page(<CbmItems />)} />
+        <Route path="/materials" element={page(<Materials />)} />
+        <Route path="/settlements" element={page(<Settlement />)} />
+        <Route path="/billing" element={page(<Billing />)} />
+        <Route path="/material-orders" element={page(<MaterialOrders />)} />
+        <Route path="/service-orders" element={page(<ServiceOrders />)} />
+        <Route path="/support" element={page(<Support />)} />
+        <Route path="/campaigns" element={page(<Campaigns />)} />
+        <Route path="/campaigns/:id" element={page(<CampaignEditor />)} />
+        <Route path="/hr" element={page(<HrPolicies />)} />
+        <Route path="/org-units" element={page(<OrgUnits />)} />
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}
-        <Route path="/product-mgmt" element={<ProductMgmt />} />
-        <Route path="/partner-mgmt" element={<PartnerMgmt />} />
-        <Route path="/org-mgmt" element={<OrgMgmt />} />
-        <Route path="/payments-confirm" element={<PaymentConfirm />} />
-        <Route path="/branches" element={<Branches />} />
-        <Route path="/accounts" element={<Accounts />} />
-        <Route path="/agent-builder" element={<AgentBlueprints />} />
-        <Route path="/agent-builder/new" element={<AgentCreate />} />
-        <Route path="/agent-builder/:id" element={<AgentBuilder />} />
+        <Route path="/product-mgmt" element={page(<ProductMgmt />)} />
+        <Route path="/partner-mgmt" element={page(<PartnerMgmt />)} />
+        <Route path="/org-mgmt" element={page(<OrgMgmt />)} />
+        <Route path="/payments-confirm" element={page(<PaymentConfirm />)} />
+        <Route path="/branches" element={page(<Branches />)} />
+        <Route path="/accounts" element={page(<Accounts />)} />
+        <Route path="/agent-builder" element={page(<AgentBlueprints />)} />
+        <Route path="/agent-builder/new" element={page(<AgentCreate />)} />
+        <Route path="/agent-builder/:id" element={page(<AgentBuilder />)} />
         {/* 예전 주소(AI 에이전트 관리) */}
         <Route path="/ai-agents/*" element={<Navigate to="/agent-builder" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -140,11 +147,7 @@ export default function App() {
             {/* 고객이 문자로 받은 견적서·서명 링크 — 로그인 없이 연다 */}
             <Route
               path="/s/:token"
-              element={
-                <ErrorBoundary fullPage>
-                  <PublicSign />
-                </ErrorBoundary>
-              }
+              element={<ErrorBoundary fullPage>{page(<PublicSign />)}</ErrorBoundary>}
             />
             <Route
               path="*"
