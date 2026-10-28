@@ -45,6 +45,7 @@ const ProductMgmt = lazy(() => import('./pages/ProductMgmt'));
 const OrgMgmt = lazy(() => import('./pages/OrgMgmt'));
 const PaymentConfirm = lazy(() => import('./pages/PaymentConfirm'));
 const Branches = lazy(() => import('./pages/Branches'));
+const Approvals = lazy(() => import('./pages/Approvals'));
 const Accounts = lazy(() => import('./pages/Accounts'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const PartnerMgmt = lazy(() => import('./pages/PartnerMgmt'));
@@ -126,6 +127,7 @@ function Shell() {
         <Route path="/org-mgmt" element={page(<OrgMgmt />)} />
         <Route path="/payments-confirm" element={page(<PaymentConfirm />)} />
         <Route path="/branches" element={page(<Branches />)} />
+        <Route path="/approvals" element={page(<Approvals />)} />
         <Route path="/accounts" element={page(<Accounts />)} />
         <Route path="/agent-builder" element={page(<AgentBlueprints />)} />
         <Route path="/agent-builder/new" element={page(<AgentCreate />)} />

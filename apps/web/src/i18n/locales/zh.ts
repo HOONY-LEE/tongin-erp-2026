@@ -45,8 +45,12 @@ export default {
     aiAgents: 'Agent Builder',
     dashboardAdmin: '仪表板管理',
     employees: '员工',
+    approvals: '审批',
+    leave: '休假',
+    attendance: '考勤',
   },
   navGroup: {
+    hr: '人事',
     ops: '运营',
     admin: '管理',
     work: '工作区',

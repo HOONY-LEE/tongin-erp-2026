@@ -1,0 +1,130 @@
+/* ── 결재선 편집 ── */
+.lineEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+}
+.lineHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
+}
+.muted {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ark-color-text-tertiary);
+}
+.lineList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lineRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+}
+.lineName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lineActions {
+  display: inline-flex;
+  gap: 2px;
+}
+.lineActions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.lineActions button:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.lineActions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.lineAdd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.lineAddPicker {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+/* ── 문서 상세: 결재 진행 ── */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.timelineItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: start;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--ark-color-border);
+}
+.timelineItem:first-child {
+  border-top: none;
+}
+.timelineWho {
+  font-weight: 600;
+}
+.timelineMeta {
+  font-size: 13px;
+  color: var(--ark-color-text-tertiary);
+}
+.timelineComment {
+  grid-column: 2 / -1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.content {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.formCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}

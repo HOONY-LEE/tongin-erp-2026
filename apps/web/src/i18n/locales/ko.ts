@@ -45,8 +45,12 @@ export default {
     aiAgents: 'Agent Builder',
     dashboardAdmin: '대시보드 관리',
     employees: '직원',
+    approvals: '결재함',
+    leave: '휴가',
+    attendance: '근태',
   },
   navGroup: {
+    hr: '인사',
     ops: '운영',
     admin: '관리',
     work: '워크스페이스',

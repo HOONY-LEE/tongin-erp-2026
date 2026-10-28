@@ -28,6 +28,7 @@ export {
   Card,
   Badge,
   Checkbox,
+  Textarea,
   Input,
   PasswordInput,
   Select,

@@ -39,6 +39,12 @@ export class ApprovalController {
     return this.approvals.pendingCount(p);
   }
 
+  /** 결재자 고르기용 명부(재직 직원·조직) */
+  @Get('directory')
+  directory() {
+    return this.approvals.directory();
+  }
+
   /** 신청 화면의 기본 결재선 미리보기 */
   @Get('line-preview')
   preview(@CurrentUser() p: AuthPrincipal, @Query('docType') docType: string) {

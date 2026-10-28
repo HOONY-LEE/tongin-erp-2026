@@ -544,6 +544,37 @@ export class ApprovalService {
     return { count };
   }
 
+  /**
+   * 결재자 고르기용 명부 — 재직 직원(이름·직책·소속)과 조직. 직원 관리 권한이 없는 일반 직원도
+   * 결재선을 고칠 수 있어야 해서 로그인만으로 열어 둔다(연락처 같은 개인정보는 넣지 않는다).
+   */
+  async directory() {
+    const [people, orgs] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: { isActive: true },
+        select: {
+          ...personSelect,
+          orgUnitId: true,
+          position: { select: { name: true, sortOrder: true } },
+        },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.orgUnit.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, type: true, parentId: true },
+        orderBy: { code: 'asc' },
+      }),
+    ]);
+    return {
+      people: people.map((p) => ({
+        ...toPerson(p),
+        orgUnitId: p.orgUnitId,
+        positionOrder: p.position?.sortOrder ?? 9999,
+      })),
+      orgs,
+    };
+  }
+
   // ── 기본 결재선(템플릿) ──
 
   listTemplates() {

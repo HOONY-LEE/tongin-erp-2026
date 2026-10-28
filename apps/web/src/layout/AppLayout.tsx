@@ -30,6 +30,7 @@ import {
   Award,
   Bot,
   Workflow,
+  FileSignature,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -44,6 +45,7 @@ import { useTheme, type ThemeMode } from '../theme/ThemeProvider';
 import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { api } from '../lib/api';
 import { useAiRunning } from '../lib/aiActivity';
+import { usePendingApprovals } from '../lib/approvals';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import styles from './AppLayout.module.css';
 import { HeaderTabs } from './HeaderTabs';
@@ -64,6 +66,10 @@ type NavItem = {
   /** 자체 메뉴가 없는 하위 화면 경로 — 이 메뉴에 속한 것으로 보고 탭·선택표시를 유지한다.
    *  (예: 견적/계약/작업 상세는 접수 케이스의 문서라 '접수' 탭에 머물러야 한다) */
   owns?: string[];
+  /** 권한 대신 '직원과 연결된 계정'이면 보인다(결재·휴가·근태 같은 본인 업무) */
+  selfService?: boolean;
+  /** 메뉴 이름 옆 숫자 배지(0이면 안 보임) */
+  badge?: number;
 };
 /** defaultOpen=false면 처음엔 접어 둔다(그 그룹 화면에 있으면 펼친다) */
 type NavGroup = { label?: string; items: NavItem[]; defaultOpen?: boolean };
@@ -106,6 +112,9 @@ export default function AppLayout() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // 내 결재 차례 건수 — 결재함 메뉴 배지
+  const pendingApprovals = usePendingApprovals(!!user?.employeeId);
+
   const groups: NavGroup[] = [
     {
       label: t('navGroup.ops'),
@@ -143,6 +152,18 @@ export default function AppLayout() {
         },
         { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
         { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
+      ],
+    },
+    {
+      label: t('navGroup.hr'),
+      items: [
+        {
+          to: '/approvals',
+          label: t('nav.approvals'),
+          icon: FileSignature,
+          selfService: true,
+          badge: pendingApprovals,
+        },
       ],
     },
     {
@@ -202,7 +223,12 @@ export default function AppLayout() {
   ];
 
   const visibleGroups = groups
-    .map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || can(it.perm)) }))
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((it) =>
+        it.selfService ? !!user?.employeeId : !it.perm || can(it.perm),
+      ),
+    }))
     .filter((g) => g.items.length > 0);
   const allItems = visibleGroups.flatMap((g) => g.items);
 
@@ -452,6 +478,7 @@ export default function AppLayout() {
                   >
                     {it.label}
                     {it.to === '/ai' && aiBusy && <span className={styles.aiBadge}>진행 중</span>}
+                    {!!it.badge && <span className={styles.countBadge}>{it.badge}</span>}
                   </SidebarItem>
                 ))}
               </SidebarGroup>
