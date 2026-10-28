@@ -1056,22 +1056,7 @@ export default function CampaignEditor() {
 
         {/* 오른쪽 — 미리보기(아이폰 문자 화면) · 발송 */}
         <div className={styles.sticky}>
-          {channel === 'SMS' && (
-            <div className={styles.panel}>
-              <h3 className={styles.panelTitle}>
-                미리보기 <span className={styles.sub}>{sampleName} 님 휴대폰</span>
-              </h3>
-              <PhonePreview
-                sender="통인익스프레스"
-                title={isLms ? title : undefined}
-                at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
-                compact={step === 2}
-              >
-                {composed || <span style={{ color: '#8e8e93' }}>본문을 입력하세요</span>}
-              </PhonePreview>
-            </div>
-          )}
-
+          {/* 2단계에선 발송을 위에 — 보내기 버튼이 화면 밖으로 밀리지 않게 */}
           {step === 2 && (
             <div className={styles.panel}>
               <h3 className={styles.panelTitle}>발송</h3>
@@ -1135,6 +1120,21 @@ export default function CampaignEditor() {
                   {when === 'LATER' ? '예약하기' : '보내기'}
                 </Button>
               </div>
+            </div>
+          )}
+          {channel === 'SMS' && (
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>
+                미리보기 <span className={styles.sub}>{sampleName} 님 휴대폰</span>
+              </h3>
+              <PhonePreview
+                sender="통인익스프레스"
+                title={isLms ? title : undefined}
+                at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
+                compact={step === 2}
+              >
+                {composed || <span style={{ color: '#8e8e93' }}>본문을 입력하세요</span>}
+              </PhonePreview>
             </div>
           )}
         </div>
