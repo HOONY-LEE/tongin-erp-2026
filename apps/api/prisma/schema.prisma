@@ -77,6 +77,8 @@ model Employee {
   assignments        WorkAssignment[]
   campaignRecipients CampaignRecipient[]
   agentShares        AgentBlueprintShare[]
+  approvalDocs       ApprovalDoc[]
+  approvalSteps      ApprovalStep[]
 
   @@map("employee")
 }
@@ -1209,4 +1211,62 @@ model DashboardAssignment {
   @@unique([targetType, targetId])
   @@index([dashboardId])
   @@map("dashboard_assignment")
+}
+
+// ── 인사: 전자결재 ──
+
+/// 기본 결재선 — 문서 종류 × 조직(없으면 전사 기본). 신청자 조직부터 위로 올라가며 가장 가까운 것을 쓴다.
+/// steps: [{ kind: APPROVER|CC, resolver: DEPT_HEAD|ORG_HEAD|EMPLOYEE, orgUnitId?, employeeId? }]
+model ApprovalLineTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  docType   String   @map("doc_type") // LEAVE | ATTENDANCE_FIX | GENERAL
+  orgUnitId String?  @map("org_unit_id") @db.Uuid // NULL = 전사 기본
+  name      String
+  steps     Json     @default("[]")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([docType, orgUnitId])
+  @@map("approval_line_template")
+}
+
+/// 결재 문서 — 휴가·근태 정정·일반 품의. 업무 쪽 데이터는 payload(또는 그 모듈 테이블의 approvalDocId)로 잇는다.
+model ApprovalDoc {
+  id             String         @id @default(uuid()) @db.Uuid
+  docNo          String         @unique @map("doc_no") // AP-2026-0001
+  docType        String         @map("doc_type")
+  title          String
+  content        String?
+  payload        Json?
+  requesterEmpId String         @map("requester_emp_id") @db.Uuid
+  requester      Employee       @relation(fields: [requesterEmpId], references: [id])
+  orgUnitId      String         @map("org_unit_id") @db.Uuid // 상신 시점 신청자 소속(데이터 범위)
+  status         String         @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELED
+  currentSeq     Int?           @map("current_seq") // 지금 결재할 단계(끝나면 NULL)
+  submittedAt    DateTime       @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+  steps          ApprovalStep[]
+
+  @@index([requesterEmpId])
+  @@index([status])
+  @@map("approval_doc")
+}
+
+/// 결재 단계 — 상신 시점의 사람으로 고정(나중에 조직이 바뀌어도 문서는 그대로)
+model ApprovalStep {
+  id            String      @id @default(uuid()) @db.Uuid
+  docId         String      @map("doc_id") @db.Uuid
+  doc           ApprovalDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  seq           Int
+  kind          String // APPROVER | CC
+  approverEmpId String      @map("approver_emp_id") @db.Uuid
+  approver      Employee    @relation(fields: [approverEmpId], references: [id])
+  status        String      @default("WAITING") // WAITING | PENDING | APPROVED | REJECTED | SKIPPED (CC는 WAITING 그대로)
+  comment       String?
+  actedAt       DateTime?   @map("acted_at") @db.Timestamptz(6)
+
+  @@index([approverEmpId, status])
+  @@index([docId])
+  @@map("approval_step")
 }
