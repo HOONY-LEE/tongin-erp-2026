@@ -70,6 +70,10 @@ export async function toApiError(res: Response, path: string): Promise<ApiError>
     (res.status >= 500
       ? (['INTERNAL', FALLBACK[500][1]] as const)
       : (['VALIDATION', `요청을 처리하지 못했습니다(${res.status}).`] as const));
+  // 우리 서버는 오류에 늘 JSON(code·message)을 붙인다 — 5xx인데 본문이 없으면 서버까지 닿지 못한 것
+  // (개발 프록시·게이트웨이가 대신 응답: 서버 재시작·배포·콜드 스타트)
+  if (res.status >= 500 && !body?.code)
+    return new ApiError(res.status, SERVICE_UNAVAILABLE, 'NETWORK');
   const raw = body?.message;
   const message = (Array.isArray(raw) ? raw.join(', ') : raw) || fallbackMsg;
   return new ApiError(res.status, message, body?.code ?? fallbackCode, body?.ref);
