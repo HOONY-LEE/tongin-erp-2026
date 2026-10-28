@@ -369,16 +369,81 @@
   height: 36px;
 }
 
-/* ── 1단계(메시지 작성) — 스크롤 없이 한 화면에: 왼쪽 작성 카드 + 오른쪽 미리보기, 높이 같게 ── */
-.layoutCompose {
+/* ── 작성 화면(1·2단계 공통) — 왼쪽 작업 영역 + 오른쪽 휴대폰 미리보기.
+   두 단계가 같은 열 구성이라 왼쪽 폭이 같다. 너무 넓은 화면에선 전체 폭을 묶어 둔다 ── */
+.layoutEditor {
   display: grid;
-  grid-template-columns: minmax(0, 780px) auto;
-  justify-content: start;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 16px 24px;
+  max-width: 1200px;
 }
-.layoutCompose > .col {
+/* 2단계만 길어서 세로 스크롤바가 생기면 그만큼(약 15px) 왼쪽 폭이 줄어 두 단계 폭이 달라진다 —
+   이 화면에선 스크롤바 자리를 항상 비워 둬 1·2단계 폭을 똑같이 맞춘다 */
+:global(main):has(.layoutEditor) {
+  scrollbar-gutter: stable;
+}
+/* 1단계는 작성 카드를 휴대폰과 같은 높이로 */
+.layoutEditorStretch {
+  align-items: stretch;
+}
+.layoutEditorStretch > .col {
   height: 100%;
+}
+
+/* 받는 사람 — 검색창 + 작은 드롭다운 필터 한 줄(넘치면 줄바꿈) */
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 200px;
+  max-width: 280px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-tertiary);
+}
+.searchBox:focus-within {
+  border-color: var(--ark-color-info-500);
+  box-shadow: 0 0 0 2px var(--ark-color-info-500);
+}
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+}
+.filterSelect {
+  width: 140px;
+}
+.filterSelectWide {
+  width: 210px;
+}
+
+/* 발송 — 세그먼트 · 예약 시각 · 요약 한 줄 */
+.sendRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.sendSummary {
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.sendSummary b {
+  color: var(--ark-color-text);
 }
 .composeCard {
   flex: 1;
@@ -412,7 +477,7 @@
   color: var(--ark-color-error-500, #e5484d);
 }
 @media (max-width: 1100px) {
-  .layoutCompose {
+  .layoutEditor {
     grid-template-columns: minmax(0, 1fr);
   }
 }
