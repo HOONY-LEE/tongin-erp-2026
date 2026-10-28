@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
@@ -11,6 +12,7 @@ import {
   Input,
   PageCard,
   PageHeader,
+  RecordDetail,
   Select,
   StatusBadge,
   useToast,
@@ -45,6 +47,12 @@ interface Rule extends Row {
   calcType: 'RATE' | 'FIXED';
   rate?: number | null;
   fixedAmount?: number | null;
+  orgUnitId?: string | null;
+  serviceLine?: string | null;
+  source?: string | null;
+  priority?: number | null;
+  isActive?: boolean;
+  createdAt?: string | null;
 }
 interface BranchLine extends Row {
   contractNo: string;
@@ -71,6 +79,9 @@ export default function Settlement() {
   const [monthly, setMonthly] = useState<Monthly[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [ruleOpen, setRuleOpen] = useState(false);
+  // 규칙 목록을 처음 받기 전에는 상세가 '찾을 수 없음'으로 보이지 않게
+  const [rulesLoading, setRulesLoading] = useState(true);
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const [orgId, setOrgId] = useState('');
   const [year, setYear] = useState('2026');
@@ -97,6 +108,8 @@ export default function Settlement() {
       setRules(await api<Rule[]>('/settlements/commission-rules'));
     } catch (e) {
       fail(e);
+    } finally {
+      setRulesLoading(false);
     }
   }, [fail]);
 
@@ -127,9 +140,11 @@ export default function Settlement() {
   };
 
   const removeRule = async (id: string) => {
+    if (!window.confirm('이 수수료 규칙을 삭제할까요? 되돌릴 수 없습니다.')) return;
     try {
       await api(`/settlements/commission-rules/${id}`, { method: 'DELETE' });
       toast({ type: 'success', title: t('common.deleted') });
+      closeDetail();
       await loadRules();
     } catch (e) {
       fail(e);
@@ -179,14 +194,6 @@ export default function Settlement() {
       render: (r) =>
         r.calcType === 'RATE' ? `${(Number(r.rate) * 100).toFixed(2)}%` : `${won(r.fixedAmount)}원`,
     },
-    {
-      title: '',
-      render: (r) => (
-        <Button variant="ghost" size="sm" onClick={() => removeRule(r.id as string)}>
-          {t('common.delete')}
-        </Button>
-      ),
-    },
   ];
   const branchCols: Column[] = [
     { title: t('settlement.contractNo'), dataIndex: 'contractNo' },
@@ -224,6 +231,70 @@ export default function Settlement() {
     { name: 'priority', label: t('settlement.priority'), type: 'number', placeholder: '100' },
   ];
 
+  // 수수료 규칙 상세 — 행 끝에 두던 삭제 버튼을 머리글로 옮겼다
+  if (detailId) {
+    const d = rules.find((r) => r.id === detailId);
+    return (
+      <RecordDetail
+        loading={!d && rulesLoading}
+        title={d ? d.name : '찾을 수 없습니다'}
+        backLabel={t('settlement.commissionRules')}
+        onBack={closeDetail}
+        actions={
+          d ? (
+            <Button variant="ghost" size="sm" onClick={() => removeRule(d.id)}>
+              {t('common.delete')}
+            </Button>
+          ) : undefined
+        }
+        sections={
+          d
+            ? [
+                {
+                  title: t('settlement.commissionRules'),
+                  items: [
+                    { label: t('settlement.ruleName'), value: d.name },
+                    {
+                      label: t('settlement.calcType'),
+                      value: <StatusBadge value={d.calcType} map={CALC} />,
+                    },
+                    {
+                      label: t('settlement.value'),
+                      value:
+                        d.calcType === 'RATE'
+                          ? `${(Number(d.rate) * 100).toFixed(2)}%`
+                          : `${won(d.fixedAmount)}원`,
+                    },
+                    { label: t('settlement.priority'), value: d.priority ?? null },
+                    {
+                      label: t('settlement.org'),
+                      value: d.orgUnitId
+                        ? (orgs.find((o) => o.value === d.orgUnitId)?.label ?? d.orgUnitId)
+                        : '전체',
+                    },
+                    { label: '서비스라인', value: d.serviceLine ?? '전체' },
+                    { label: '출처', value: d.source ?? '전체' },
+                    {
+                      label: '사용',
+                      value: (
+                        <Badge
+                          variant="subtle"
+                          color={d.isActive === false ? 'neutral' : 'success'}
+                        >
+                          {d.isActive === false ? '미사용' : '사용'}
+                        </Badge>
+                      ),
+                    },
+                    { label: '등록일', value: d.createdAt?.slice(0, 10) },
+                  ],
+                },
+              ]
+            : []
+        }
+      />
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.settlement')} onRefresh={loadAll} updatedAt={updatedAt} />
@@ -254,7 +325,7 @@ export default function Settlement() {
         }
         plain
       >
-        <DataTable columns={ruleCols} rows={rules} />
+        <DataTable columns={ruleCols} rows={rules} onRowClick={(r) => openDetail(String(r.id))} />
       </PageCard>
 
       <PageCard title={t('settlement.branchSettlement')}>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Search } from 'lucide-react';
+import { ArrowLeft, Check, Search, Trash2 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
 import { Button, Checkbox, PageHeader, PageSkeleton, useToast } from '../components/ui';
@@ -43,6 +43,7 @@ export default function DashboardTemplateSettings() {
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState('');
   const editable = can('DASHBOARD.UPDATE');
+  const canDelete = can('DASHBOARD.DELETE');
 
   useEffect(() => {
     Promise.all([
@@ -107,6 +108,24 @@ export default function DashboardTemplateSettings() {
     }
   };
 
+  // 목록 행 끝에 있던 삭제 — 템플릿 상세(위젯 배치·이 설정 화면) 머리글로 옮겼다
+  const remove = async () => {
+    if (
+      !tpl ||
+      !window.confirm(
+        `'${tpl.name}' 템플릿을 지울까요? 지정된 사람들은 기본 대시보드를 보게 됩니다.`,
+      )
+    )
+      return;
+    try {
+      await api(`/dashboards/templates/${id}`, { method: 'DELETE' });
+      toast({ type: 'success', title: '지웠습니다' });
+      navigate('/dashboard-admin');
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+    }
+  };
+
   if (!tpl || !targets) return <PageSkeleton cards={2} />;
   const users = targets.users.filter((u) => {
     const k = q.trim();
@@ -123,6 +142,16 @@ export default function DashboardTemplateSettings() {
         subtitle="2단계: 누구에게 이 대시보드를 보여 줄지 정합니다. 볼 수 없는 데이터의 위젯은 사람마다 자동으로 빠집니다."
         actions={
           <div style={{ display: 'flex', gap: 6 }}>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<Trash2 size={14} />}
+                onClick={() => void remove()}
+              >
+                삭제
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

@@ -227,7 +227,6 @@ export default function RoomTemplates() {
         editable
         deletable
         hideHeader
-        extraActionWidth={84}
         rowActions={(row, reload) => (
           <Button variant="ghost" size="sm" onClick={() => setEditing({ row, reload })}>
             물품 구성

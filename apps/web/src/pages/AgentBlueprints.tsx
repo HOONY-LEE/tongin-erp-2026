@@ -34,7 +34,7 @@ const dt = (v: unknown) =>
   v ? new Date(String(v)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
 
 /**
- * AIX-04: Agent Builder — 블루프린트 목록(복제·삭제). 만들기는 /agent-builder/new, 편집은 /agent-builder/:id.
+ * AIX-04: Agent Builder — 블루프린트 목록(행을 누르면 편집 화면 — 복제·삭제는 그 머리글에). 만들기는 /agent-builder/new, 편집은 /agent-builder/:id.
  * 내가 만든 것 + 전체 공개 + 나에게 공유된 에이전트가 보인다. 고치기·지우기는 만든 사람만.
  */
 export default function AgentBlueprints() {
@@ -61,32 +61,6 @@ export default function AgentBlueprints() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const duplicate = async (r: Row) => {
-    try {
-      await api(`/agent-blueprints/${String(r.id)}/duplicate`, { method: 'POST' });
-      toast({ type: 'success', title: '복제했습니다 — 내 개인용 초안으로 만들었습니다' });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '복제하지 못했습니다' });
-    }
-  };
-
-  const remove = async (r: Row) => {
-    if (
-      !window.confirm(
-        `'${String(r.name)}' 에이전트를 삭제할까요? 테스트 실행 기록도 함께 지워집니다.`,
-      )
-    )
-      return;
-    try {
-      await api(`/agent-blueprints/${String(r.id)}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
-    }
-  };
 
   const shown = useMemo(
     () => rows.filter((r) => (filter === 'all' ? true : filter === 'mine' ? r.isMine : !r.isMine)),
@@ -139,22 +113,6 @@ export default function AgentBlueprints() {
     { title: '도구', numeric: true, render: (r) => `${Number(r.toolCount ?? 0)}개` },
     { title: '테스트', numeric: true, render: (r) => `${Number(r.runCount ?? 0)}회` },
     { title: '수정', dataIndex: 'updatedAt', render: (r) => dt(r.updatedAt) },
-    {
-      title: '',
-      width: 150,
-      render: (r) => (
-        <div className={styles.rowActions} onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="sm" onClick={() => void duplicate(r)}>
-            복제
-          </Button>
-          {Boolean(r.canEdit) && (
-            <Button variant="ghost" size="sm" onClick={() => void remove(r)}>
-              삭제
-            </Button>
-          )}
-        </div>
-      ),
-    },
   ];
 
   return (

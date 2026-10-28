@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
 import { useOptions } from '../../lib/useOptions';
+import { useDetailParam } from '../../lib/useDetailParam';
 import {
   Badge,
   Button,
@@ -10,6 +11,7 @@ import {
   Input,
   Modal,
   PasswordInput,
+  RecordDetail,
   Select,
   useToast,
   type Column,
@@ -37,6 +39,7 @@ interface Account {
   phone: string | null;
   empNo: string | null;
   hireDate: string | null;
+  employeeActive: boolean | null;
   orgUnitName: string | null;
   positionName: string | null;
   roles: AccountRole[];
@@ -81,6 +84,7 @@ export default function AccountList() {
   const [positions, setPositions] = useState<PositionOpt[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
   const orgs = useOptions('/org-units', 'name');
   const isWildcard = user?.permissions.includes('*') ?? false;
 
@@ -124,95 +128,163 @@ export default function AccountList() {
     }
   };
 
+  const roleText = (r: Account) => r.roles.map((role) => role.roleName).join(', ') || '권한 없음';
+  const scopeText = (r: Account) =>
+    r.roles
+      .map(
+        (role) =>
+          `${SCOPE_LABEL[role.dataScope] ?? role.dataScope}${role.orgScope ? `(${role.orgScope})` : ''}`,
+      )
+      .join(', ') || '-';
+  const statusText = (r: Account) =>
+    r.partnerName
+      ? '외부 업체'
+      : r.employeeActive === false
+        ? '퇴직'
+        : r.employeeName
+          ? '재직'
+          : '-';
+
+  // 정렬·검색이 되도록 화면에 보이는 값을 행에 펼쳐 둔다
+  const tableRows = rows.map((r) => ({
+    ...r,
+    name: r.employeeName ?? r.partnerName ?? '',
+    org: r.partnerName ? '외부 업체' : (r.orgUnitName ?? ''),
+    position: r.positionName ?? '',
+    roleNames: roleText(r),
+    scopes: scopeText(r),
+    status: statusText(r),
+    active: r.isActive ? '활성' : '비활성',
+  }));
+
   const columns: Column[] = [
-    { title: '아이디', dataIndex: 'loginId', width: 140 },
-    {
-      title: '직원 · 직책',
-      minWidth: 160,
-      render: (r) =>
-        r.employeeName ? (
-          <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
-            <span>
-              {String(r.employeeName)}
-              {r.positionName ? (
-                <span className={styles.muted}> · {String(r.positionName)}</span>
-              ) : null}
-            </span>
-            {r.orgUnitName ? <span className={styles.muted}>{String(r.orgUnitName)}</span> : null}
-          </span>
-        ) : r.partnerName ? (
-          <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
-            <span>{String(r.partnerName)}</span>
-            <span className={styles.muted}>외부 업체 계정</span>
-          </span>
-        ) : (
-          <span className={styles.muted}>직원 정보 없음</span>
-        ),
-    },
-    {
-      title: '권한 그룹 · 데이터 범위',
-      flex: 1,
-      render: (r) => (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {(r.roles as AccountRole[]).length === 0 ? (
-            <span className={styles.muted}>권한 없음</span>
-          ) : (
-            (r.roles as AccountRole[]).map((role, i) => (
-              <Badge key={i} variant="subtle" color="info">
-                {role.roleName} · {SCOPE_LABEL[role.dataScope] ?? role.dataScope}
-                {role.orgScope ? `(${role.orgScope})` : ''}
-              </Badge>
-            ))
-          )}
-        </div>
-      ),
-    },
+    { title: 'ID', dataIndex: 'loginId', width: 150 },
+    { title: '이름', dataIndex: 'name', width: 110 },
+    { title: '소속', dataIndex: 'org', minWidth: 120, flex: 1 },
+    { title: '직책', dataIndex: 'position', width: 90 },
+    { title: '권한 그룹', dataIndex: 'roleNames', minWidth: 120, flex: 1 },
+    { title: '데이터 범위', dataIndex: 'scopes', minWidth: 120, flex: 1 },
     {
       title: '상태',
-      width: 80,
+      dataIndex: 'status',
+      width: 90,
       render: (r) => (
-        <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-          {r.isActive ? '활성' : '비활성'}
+        <Badge variant="subtle" color={r.status === '퇴직' ? 'neutral' : 'info'}>
+          {String(r.status)}
         </Badge>
       ),
     },
     {
-      title: '관리',
-      width: 190,
+      title: '활성화 여부',
+      dataIndex: 'active',
+      width: 100,
       render: (r) => (
-        <span style={{ display: 'inline-flex', gap: 4 }}>
-          {can('USER.UPDATE') && (
-            <Button variant="outline" size="sm" onClick={() => setEditing(r as unknown as Account)}>
-              편집
-            </Button>
-          )}
-          {
-            // 본인 계정은 끌 수 없다(서버에서도 막는다)
-            r.id === user?.userId ? (
-              <span className={styles.muted} style={{ alignSelf: 'center' }}>
-                본인
-              </span>
-            ) : can('USER.UPDATE') ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void toggleActive(r as unknown as Account)}
-              >
-                {r.isActive ? '비활성화' : '활성화'}
-              </Button>
-            ) : null
-          }
-        </span>
+        <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
+          {String(r.active)}
+        </Badge>
       ),
     },
   ];
+
+  const detail = detailId ? rows.find((r) => r.id === detailId) : null;
+  const modal = editing && (
+    <AccountModal
+      account={editing === 'new' ? null : editing}
+      roles={roles}
+      positions={positions}
+      orgs={orgs}
+      isWildcard={isWildcard}
+      myPerms={user?.permissions ?? []}
+      onClose={() => setEditing(null)}
+      onSaved={async () => {
+        setEditing(null);
+        await load();
+      }}
+    />
+  );
+
+  if (detailId) {
+    return (
+      <>
+        <RecordDetail
+          loading={!detail && loading}
+          title={
+            detail
+              ? `${detail.employeeName ?? detail.partnerName ?? detail.loginId}`
+              : '계정을 찾을 수 없습니다'
+          }
+          backLabel="계정"
+          onBack={closeDetail}
+          actions={
+            detail && can('USER.UPDATE') ? (
+              <>
+                {detail.id !== user?.userId && (
+                  <Button variant="outline" size="sm" onClick={() => void toggleActive(detail)}>
+                    {detail.isActive ? '비활성화' : '활성화'}
+                  </Button>
+                )}
+                <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
+                  편집
+                </Button>
+              </>
+            ) : undefined
+          }
+          sections={
+            detail
+              ? [
+                  {
+                    title: detail.partnerName ? '외부 업체' : '직원 정보',
+                    items: detail.partnerName
+                      ? [{ label: '업체', value: detail.partnerName }]
+                      : [
+                          { label: '이름', value: detail.employeeName },
+                          { label: '사번', value: detail.empNo },
+                          { label: '소속', value: detail.orgUnitName },
+                          { label: '직책', value: detail.positionName },
+                          { label: '연락처', value: detail.phone },
+                          { label: '입사일', value: detail.hireDate },
+                          { label: '상태', value: statusText(detail) },
+                        ],
+                  },
+                  {
+                    title: '로그인',
+                    items: [
+                      { label: 'ID', value: detail.loginId },
+                      {
+                        label: '활성화 여부',
+                        value: (
+                          <Badge variant="subtle" color={detail.isActive ? 'success' : 'neutral'}>
+                            {detail.isActive ? '활성' : '비활성'}
+                          </Badge>
+                        ),
+                      },
+                    ],
+                  },
+                  {
+                    title: '권한',
+                    items: detail.roles.length
+                      ? detail.roles.map((role, i) => ({
+                          label: `${role.roleName}${detail.roles.length > 1 ? ` (${i + 1})` : ''}`,
+                          value: `${SCOPE_LABEL[role.dataScope] ?? role.dataScope}${role.orgScope ? ` · ${role.orgScope}` : ''}`,
+                        }))
+                      : [{ label: '권한 그룹', value: '권한 없음' }],
+                  },
+                ]
+              : []
+          }
+        />
+        {modal}
+      </>
+    );
+  }
 
   return (
     <>
       <DataTable
         columns={columns}
-        rows={rows as unknown as Row[]}
+        rows={tableRows as unknown as Row[]}
         loading={loading}
+        onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={
           can('USER.CREATE') ? (
             <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
@@ -221,21 +293,7 @@ export default function AccountList() {
           ) : undefined
         }
       />
-      {editing && (
-        <AccountModal
-          account={editing === 'new' ? null : editing}
-          roles={roles}
-          positions={positions}
-          orgs={orgs}
-          isWildcard={isWildcard}
-          myPerms={user?.permissions ?? []}
-          onClose={() => setEditing(null)}
-          onSaved={async () => {
-            setEditing(null);
-            await load();
-          }}
-        />
-      )}
+      {modal}
     </>
   );
 }

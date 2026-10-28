@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Save } from 'lucide-react';
+import { ArrowRight, Save, Settings2, Trash2 } from 'lucide-react';
 import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { leaveDashboardEditor, postDashEditorMessage } from '../lib/dashboardWindow';
@@ -30,6 +30,7 @@ export default function DashboardTemplateEdit() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const editable = can('DASHBOARD.UPDATE');
+  const canDelete = can('DASHBOARD.DELETE');
 
   useEffect(() => {
     api<Template>(`/dashboards/templates/${id}`)
@@ -68,6 +69,34 @@ export default function DashboardTemplateEdit() {
     (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) &&
     leaveDashboardEditor(() => navigate('/dashboard-admin'));
 
+  // 목록 행 끝에 있던 설정·삭제 — 행을 누르면 이 화면이 열리므로 여기 머리글에 둔다
+  const openSettings = () => {
+    if (dirty && !window.confirm('저장하지 않은 변경을 버리고 설정으로 갈까요?')) return;
+    // 편집 창이면 원래 창이 설정 단계로 넘어가고 이 창은 닫힌다
+    postDashEditorMessage({ type: 'next', id });
+    leaveDashboardEditor(() => navigate(`/dashboard-admin/${id}/settings`));
+  };
+
+  const remove = async () => {
+    if (
+      !tpl ||
+      !window.confirm(
+        `'${tpl.name}' 템플릿을 지울까요? 지정된 사람들은 기본 대시보드를 보게 됩니다.`,
+      )
+    )
+      return;
+    try {
+      await api(`/dashboards/templates/${id}`, { method: 'DELETE' });
+      toast({ type: 'success', title: '지웠습니다' });
+      setDirty(false);
+      // 원래 창의 목록을 새로 불러오게 알린다
+      postDashEditorMessage({ type: 'saved', scope: 'template', id });
+      leaveDashboardEditor(() => navigate('/dashboard-admin'));
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+    }
+  };
+
   if (!tpl) return <PageSkeleton cards={2} />;
   return (
     <DashboardEditor
@@ -100,26 +129,50 @@ export default function DashboardTemplateEdit() {
         </>
       }
       actions={
-        editable && (
+        (editable || canDelete) && (
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              loading={saving}
-              leftIcon={<Save size={14} />}
-              onClick={() => void save(false)}
-            >
-              저장
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saving}
-              rightIcon={<ArrowRight size={14} />}
-              onClick={() => void save(true)}
-            >
-              저장하고 다음
-            </Button>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<Trash2 size={14} />}
+                onClick={() => void remove()}
+              >
+                삭제
+              </Button>
+            )}
+            {editable && (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Settings2 size={14} />}
+                onClick={openSettings}
+              >
+                설정
+              </Button>
+            )}
+            {editable && (
+              <Button
+                variant="outline"
+                size="sm"
+                loading={saving}
+                leftIcon={<Save size={14} />}
+                onClick={() => void save(false)}
+              >
+                저장
+              </Button>
+            )}
+            {editable && (
+              <Button
+                variant="primary"
+                size="sm"
+                loading={saving}
+                rightIcon={<ArrowRight size={14} />}
+                onClick={() => void save(true)}
+              >
+                저장하고 다음
+              </Button>
+            )}
           </>
         )
       }

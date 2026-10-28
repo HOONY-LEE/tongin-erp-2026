@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useDetailParam } from '../lib/useDetailParam';
 import {
+  Badge,
   Button,
   DataTable,
   FormModal,
   PageCard,
+  RecordDetail,
   useToast,
   type Column,
   type FormField,
@@ -27,6 +30,7 @@ export default function Employees() {
   const [loading, setLoading] = useState(false);
   // null=닫힘, 'new'=등록, 행=수정
   const [editing, setEditing] = useState<Row | 'new' | null>(null);
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
   const orgs = useOptions('/org-units', 'name');
   const positions = useOptions('/positions', 'name', 'id', (r) => r.isActive !== false);
   const orgName = useMemo(() => new Map(orgs.map((o) => [o.value, o.label])), [orgs]);
@@ -91,16 +95,85 @@ export default function Employees() {
     { title: '연락처', render: (r) => String(r.phone ?? '-') },
     { title: '소속 지점', render: (r) => orgName.get(String(r.orgUnitId)) ?? '-' },
     { title: '상태', render: (r) => (r.isActive ? '재직' : '비활성') },
-    {
-      title: '',
-      width: 80,
-      render: (r) => (
-        <Button variant="outline" size="sm" onClick={() => setEditing(r)}>
-          수정
-        </Button>
-      ),
-    },
   ];
+
+  const modal = (
+    <FormModal
+      open={editing !== null}
+      onOpenChange={(o) => !o && setEditing(null)}
+      title={editing === 'new' ? '직원 등록' : '직원 수정'}
+      size="md"
+      fields={editing === 'new' ? fields : [...fields, ACTIVE_FIELD]}
+      initialValues={
+        editing && editing !== 'new'
+          ? {
+              orgUnitId: String(editing.orgUnitId),
+              name: String(editing.name),
+              positionId: String(editing.positionId ?? ''),
+              empNo: String(editing.empNo ?? ''),
+              hireDate: editing.hireDate ? String(editing.hireDate).slice(0, 10) : '',
+              phone: String(editing.phone ?? ''),
+              isActive: String(editing.isActive),
+            }
+          : undefined
+      }
+      onSubmit={onSubmit}
+    />
+  );
+
+  // 행을 누르면 상세 — 수정은 상세 머리글에서
+  if (detailId) {
+    const detail = rows.find((r) => String(r.id) === detailId);
+    return (
+      <>
+        <RecordDetail
+          loading={!detail && loading}
+          title={detail ? String(detail.name) : '직원을 찾을 수 없습니다'}
+          backLabel={t('nav.employees')}
+          onBack={closeDetail}
+          actions={
+            detail ? (
+              <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
+                수정
+              </Button>
+            ) : undefined
+          }
+          sections={
+            detail
+              ? [
+                  {
+                    title: '직원 정보',
+                    items: [
+                      { label: '직원명', value: String(detail.name) },
+                      {
+                        label: '직책',
+                        value: (detail.position as { name: string } | null)?.name,
+                      },
+                      { label: '사번', value: detail.empNo ? String(detail.empNo) : null },
+                      {
+                        label: '입사일',
+                        value: detail.hireDate ? String(detail.hireDate).slice(0, 10) : null,
+                      },
+                      { label: '연락처', value: detail.phone ? String(detail.phone) : null },
+                      { label: '소속 지점', value: orgName.get(String(detail.orgUnitId)) },
+                      {
+                        label: '상태',
+                        value: (
+                          <Badge variant="subtle" color={detail.isActive ? 'success' : 'neutral'}>
+                            {detail.isActive ? '재직' : '비활성'}
+                          </Badge>
+                        ),
+                      },
+                    ],
+                  },
+                ]
+              : []
+          }
+        />
+        {modal}
+      </>
+    );
+  }
 
   return (
     <PageCard
@@ -113,28 +186,13 @@ export default function Employees() {
       }
       plain
     >
-      <DataTable columns={columns} rows={rows} loading={loading} />
-      <FormModal
-        open={editing !== null}
-        onOpenChange={(o) => !o && setEditing(null)}
-        title={editing === 'new' ? '직원 등록' : '직원 수정'}
-        size="md"
-        fields={editing === 'new' ? fields : [...fields, ACTIVE_FIELD]}
-        initialValues={
-          editing && editing !== 'new'
-            ? {
-                orgUnitId: String(editing.orgUnitId),
-                name: String(editing.name),
-                positionId: String(editing.positionId ?? ''),
-                empNo: String(editing.empNo ?? ''),
-                hireDate: editing.hireDate ? String(editing.hireDate).slice(0, 10) : '',
-                phone: String(editing.phone ?? ''),
-                isActive: String(editing.isActive),
-              }
-            : undefined
-        }
-        onSubmit={onSubmit}
+      <DataTable
+        columns={columns}
+        rows={rows}
+        loading={loading}
+        onRowClick={(r) => openDetail(String(r.id))}
       />
+      {modal}
     </PageCard>
   );
 }

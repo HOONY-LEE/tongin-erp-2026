@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { PageHeader, SegmentedControl } from '../components/ui';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { useTabParam } from '../lib/useDetailParam';
 import AccountList from './access/AccountList';
 import PermissionGroups from './access/PermissionGroups';
 import Positions from './access/Positions';
@@ -29,27 +30,29 @@ export default function Accounts() {
         ]
       : []),
   ];
-  const [tab, setTab] = useState<Tab>(tabs[0]?.key ?? 'accounts');
+  const { tab, setTab, inDetail } = useTabParam<Tab>(tabs[0]?.key ?? 'accounts');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.accounts')}
-        onRefresh={() => {
-          setRefreshKey((k) => k + 1);
-          touch();
-        }}
-        updatedAt={updatedAt}
-        footer={
-          tabs.length > 1 ? (
-            <SegmentedControl
-              value={tab}
-              onChange={(v) => setTab(v as Tab)}
-              options={tabs.map((tb) => ({ value: tb.key, label: tb.label }))}
-            />
-          ) : undefined
-        }
-      />
+      {!inDetail && (
+        <PageHeader
+          title={t('nav.accounts')}
+          onRefresh={() => {
+            setRefreshKey((k) => k + 1);
+            touch();
+          }}
+          updatedAt={updatedAt}
+          footer={
+            tabs.length > 1 ? (
+              <SegmentedControl
+                value={tab}
+                onChange={(v) => setTab(v as Tab)}
+                options={tabs.map((tb) => ({ value: tb.key, label: tb.label }))}
+              />
+            ) : undefined
+          }
+        />
+      )}
       {tab === 'accounts' ? (
         <AccountList key={`a-${refreshKey}`} />
       ) : tab === 'groups' ? (

@@ -9,6 +9,7 @@ export { FormModal } from './FormModal';
 export { StatusBadge, type StatusMap } from './StatusBadge';
 export { AddressView } from './AddressView';
 export { CopyText } from './CopyText';
+export { RecordDetail, type DetailItem, type DetailSection } from './RecordDetail';
 
 // 자주 쓰는 akron 프리미티브 재노출
 export {

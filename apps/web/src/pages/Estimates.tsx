@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
-  Button,
   DataTable,
   PageHeader,
   StatusBadge,
@@ -52,21 +51,6 @@ export default function Estimates() {
       numeric: true,
       render: (r) => (r.totalAmount != null ? Number(r.totalAmount).toLocaleString() : '-'),
     },
-    {
-      title: '',
-      render: (r) => (
-        <Button
-          variant="outline"
-          size="sm"
-          // 견적은 접수 상세(= 견적서 화면)에서 본다
-          onClick={() =>
-            navigate(r.leadId ? `/leads/${String(r.leadId)}` : `/estimates/${String(r.id)}`)
-          }
-        >
-          {t('estimate.detail')}
-        </Button>
-      ),
-    },
   ];
 
   return (
@@ -77,6 +61,7 @@ export default function Estimates() {
         columns={columns}
         rows={rows}
         loading={loading}
+        // 견적은 접수 상세(= 견적서 화면)에서 본다
         onRowClick={(r) =>
           navigate(r.leadId ? `/leads/${String(r.leadId)}` : `/estimates/${String(r.id)}`)
         }

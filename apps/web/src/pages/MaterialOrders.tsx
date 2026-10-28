@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { useDetailParam } from '../lib/useDetailParam';
 import {
   Button,
   DataTable,
   Input,
   Modal,
   PageHeader,
+  RecordDetail,
   Select,
   StatusBadge,
   useToast,
@@ -56,6 +58,7 @@ export default function MaterialOrders() {
   const [note, setNote] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([{ materialId: '', qty: '1' }]);
   const { updatedAt, touch } = useUpdatedAt();
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const fail = useCallback(
     (e: unknown) =>
@@ -141,41 +144,20 @@ export default function MaterialOrders() {
       title: t('order.status'),
       render: (r) => <StatusBadge value={String(r.status)} map={ORDER_STATUS} />,
     },
-    {
-      title: '',
-      render: (r) => {
-        const o = r as Order;
-        return (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {o.status === 'REQUESTED' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  act(
-                    () => api(`/material-orders/${o.id}/approve`, { method: 'POST' }),
-                    t('order.approved'),
-                  )
-                }
-              >
-                {t('order.approve')}
-              </Button>
-            )}
-            {o.status === 'APPROVED' && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() =>
-                  act(
-                    () => api(`/material-orders/${o.id}/ship`, { method: 'POST' }),
-                    t('order.shipped'),
-                  )
-                }
-              >
-                {t('order.ship')}
-              </Button>
-            )}
-            {o.status !== 'SHIPPED' && o.status !== 'CANCELED' && (
+  ];
+
+  // 행을 누르면 상세 — 승인·출고·취소는 상세 머리글에서
+  if (detailId) {
+    const o = rows.find((r) => r.id === detailId);
+    return (
+      <RecordDetail
+        loading={!o && loading}
+        title={o ? o.orderNo : '발주를 찾을 수 없습니다'}
+        backLabel={t('nav.materialOrders')}
+        onBack={closeDetail}
+        actions={
+          o && o.status !== 'SHIPPED' && o.status !== 'CANCELED' ? (
+            <>
               <Button
                 variant="ghost"
                 size="sm"
@@ -188,12 +170,67 @@ export default function MaterialOrders() {
               >
                 {t('order.cancel')}
               </Button>
-            )}
-          </div>
-        );
-      },
-    },
-  ];
+              {o.status === 'REQUESTED' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    act(
+                      () => api(`/material-orders/${o.id}/approve`, { method: 'POST' }),
+                      t('order.approved'),
+                    )
+                  }
+                >
+                  {t('order.approve')}
+                </Button>
+              )}
+              {o.status === 'APPROVED' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() =>
+                    act(
+                      () => api(`/material-orders/${o.id}/ship`, { method: 'POST' }),
+                      t('order.shipped'),
+                    )
+                  }
+                >
+                  {t('order.ship')}
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
+        sections={
+          o
+            ? [
+                {
+                  title: '발주 정보',
+                  items: [
+                    { label: t('order.orderNo'), value: o.orderNo },
+                    { label: t('order.org'), value: o.orgUnit?.name },
+                    {
+                      label: t('order.status'),
+                      value: <StatusBadge value={o.status} map={ORDER_STATUS} />,
+                    },
+                    { label: t('order.note'), value: o.note, wide: true },
+                  ],
+                },
+                {
+                  title: t('order.items'),
+                  items: o.lines.length
+                    ? o.lines.map((l, i) => ({
+                        label: `${i + 1}. ${l.material?.name ?? '?'}`,
+                        value: `${l.qty}`,
+                      }))
+                    : [{ label: t('order.items'), value: null }],
+                },
+              ]
+            : []
+        }
+      />
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -202,6 +239,7 @@ export default function MaterialOrders() {
         columns={columns}
         rows={rows}
         loading={loading}
+        onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={
           <Button
             variant="primary"

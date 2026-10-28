@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { useDetailParam } from '../lib/useDetailParam';
 import {
   Badge,
   Button,
   DataTable,
   PageHeader,
+  RecordDetail,
   StatusBadge,
   useToast,
   type Column,
@@ -59,6 +61,8 @@ export default function PaymentConfirm() {
   const [rows, setRows] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  // 상세는 견적 단위(?detail=<estimateId>) — 목록 행 키와 같다
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,18 +110,7 @@ export default function PaymentConfirm() {
   const columns: Column[] = [
     {
       title: '고객',
-      render: (r) => (
-        <a
-          href={`/leads/${String(r.leadId)}`}
-          onClick={(e) => {
-            e.preventDefault();
-            navigate(`/leads/${String(r.leadId)}`);
-          }}
-          style={{ color: 'inherit', fontWeight: 600 }}
-        >
-          {String(r.customerName)}
-        </a>
-      ),
+      render: (r) => <span style={{ fontWeight: 600 }}>{String(r.customerName)}</span>,
     },
     {
       title: '견적/계약',
@@ -192,29 +185,107 @@ export default function PaymentConfirm() {
       ),
     },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
-    {
-      title: '입금확인',
-      render: (r) => (
-        <div style={{ display: 'flex', gap: 8 }}>
-          {!r.depositPaid && Boolean(r.depositAccount) && r.depositProvider !== 'TOSS' && (
-            <Button variant="outline" size="sm" onClick={() => simulate(r)}>
-              입금 시뮬레이션
-            </Button>
-          )}
-          {!r.depositPaid && (
-            <Button variant="primary" size="sm" onClick={() => confirm(r, 'deposit')}>
-              계약금 확인
-            </Button>
-          )}
-          {Boolean(r.depositPaid) && !r.balancePaid && (
-            <Button variant="outline" size="sm" onClick={() => confirm(r, 'balance')}>
-              잔금 확인
-            </Button>
-          )}
-        </div>
-      ),
-    },
   ];
+
+  // 입금 확인 상세 — 행 끝에 두던 입금 확인·시뮬레이션 버튼과 접수 링크를 머리글로 옮겼다
+  if (detailId) {
+    const d = rows.find((r) => r.estimateId === detailId);
+    const paidBadge = (paid: boolean, at?: string | null) =>
+      paid ? (
+        <Badge variant="subtle" color="success">
+          {at ? `${md(at)} 입금` : '완료'}
+        </Badge>
+      ) : (
+        <Badge variant="subtle" color="neutral">
+          대기
+        </Badge>
+      );
+    return (
+      <RecordDetail
+        loading={!d && loading}
+        title={d ? `${d.customerName} · ${d.estimateNo}` : '찾을 수 없습니다'}
+        backLabel={t('nav.paymentsConfirm')}
+        onBack={closeDetail}
+        actions={
+          d ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/leads/${d.leadId}`)}>
+                접수 보기
+              </Button>
+              {!d.depositPaid && Boolean(d.depositAccount) && d.depositProvider !== 'TOSS' && (
+                <Button variant="outline" size="sm" onClick={() => simulate(d)}>
+                  입금 시뮬레이션
+                </Button>
+              )}
+              {!d.depositPaid && (
+                <Button variant="primary" size="sm" onClick={() => confirm(d, 'deposit')}>
+                  계약금 확인
+                </Button>
+              )}
+              {d.depositPaid && !d.balancePaid && (
+                <Button variant="primary" size="sm" onClick={() => confirm(d, 'balance')}>
+                  잔금 확인
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
+        sections={
+          d
+            ? [
+                {
+                  title: '견적·계약',
+                  items: [
+                    { label: '고객', value: d.customerName },
+                    { label: '견적번호', value: d.estimateNo },
+                    { label: '계약번호', value: d.contractNo },
+                    { label: '상태', value: <StatusBadge value={d.status} map={STATUS} /> },
+                    { label: '견적서 발송', value: md(d.sentAt) },
+                    {
+                      label: '서명',
+                      value: (
+                        <Badge variant="subtle" color={d.signed ? 'success' : 'neutral'}>
+                          {d.signed ? '서명완료' : '서명대기'}
+                        </Badge>
+                      ),
+                    },
+                  ],
+                },
+                {
+                  title: '입금',
+                  items: [
+                    {
+                      label: '입금 계좌',
+                      value: d.depositAccount ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {d.depositAccount}
+                          {d.depositProvider === 'TOSS' && (
+                            <Badge variant="subtle" color="info">
+                              자동확인
+                            </Badge>
+                          )}
+                        </span>
+                      ) : null,
+                    },
+                    { label: '총액', value: d.totalAmount != null ? won(d.totalAmount) : null },
+                    {
+                      label: '계약금(10%)',
+                      value: d.depositAmount != null ? won(d.depositAmount) : null,
+                    },
+                    { label: '계약금 입금', value: paidBadge(d.depositPaid, d.depositPaidAt) },
+                    {
+                      label: '잔금',
+                      value: d.balanceAmount != null ? won(d.balanceAmount) : null,
+                    },
+                    { label: '잔금 입금', value: paidBadge(d.balancePaid) },
+                  ],
+                },
+              ]
+            : []
+        }
+      />
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -224,7 +295,13 @@ export default function PaymentConfirm() {
         onRefresh={load}
         updatedAt={updatedAt}
       />
-      <DataTable columns={columns} rows={rows} rowKey="estimateId" loading={loading} />
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey="estimateId"
+        loading={loading}
+        onRowClick={(r) => openDetail(String(r.estimateId))}
+      />
     </div>
   );
 }

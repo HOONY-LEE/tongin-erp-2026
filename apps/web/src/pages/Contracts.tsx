@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
-  Button,
   DataTable,
   PageHeader,
   StatusBadge,
@@ -55,18 +54,6 @@ export default function Contracts() {
     { title: t('contract.total'), numeric: true, render: (r) => won(r.totalAmount) },
     { title: t('contract.deposit'), numeric: true, render: (r) => won(r.depositAmount) },
     { title: t('contract.balance'), numeric: true, render: (r) => won(r.balanceAmount) },
-    {
-      title: '',
-      render: (r) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate(`/contracts/${r.id as string}`)}
-        >
-          {t('contract.detail')}
-        </Button>
-      ),
-    },
   ];
 
   return (

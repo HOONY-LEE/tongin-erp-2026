@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { useDetailParam } from '../lib/useDetailParam';
 import {
   Badge,
   Button,
   DataTable,
   FormModal,
   PageHeader,
+  RecordDetail,
   StatusBadge,
   useToast,
   type Column,
@@ -40,6 +42,7 @@ export default function Materials() {
   const [createOpen, setCreateOpen] = useState(false);
   const [moveRow, setMoveRow] = useState<MaterialRow | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,15 +109,93 @@ export default function Materials() {
       ),
     },
     { title: t('material.safetyStock'), numeric: true, render: (r) => String(r.safetyStock) },
-    {
-      title: '',
-      render: (r) => (
-        <Button variant="outline" size="sm" onClick={() => setMoveRow(r as MaterialRow)}>
-          {t('material.move')}
-        </Button>
-      ),
-    },
   ];
+
+  const moveModal = (
+    <FormModal
+      open={!!moveRow}
+      onOpenChange={(o) => !o && setMoveRow(null)}
+      title={`${t('material.move')} — ${moveRow?.name ?? ''} (${t('material.stock')} ${moveRow?.stock ?? 0})`}
+      fields={[
+        {
+          name: 'type',
+          label: t('material.moveType'),
+          required: true,
+          type: 'select',
+          options: [
+            { value: 'IN', label: t('material.in') },
+            { value: 'OUT', label: t('material.out') },
+            { value: 'ADJUST', label: t('material.adjust') },
+          ],
+        },
+        {
+          name: 'qty',
+          label: t('material.qty'),
+          required: true,
+          type: 'number',
+          placeholder: '1',
+        },
+        { name: 'reason', label: t('material.reason'), placeholder: '발주입고 / 작업출고 …' },
+      ]}
+      onSubmit={onMove}
+    />
+  );
+
+  // 행을 누르면 상세 — 입출고는 상세 머리글에서
+  if (detailId) {
+    const detail = rows.find((r) => r.id === detailId);
+    return (
+      <>
+        <RecordDetail
+          loading={!detail && loading}
+          title={detail ? detail.name : '자재를 찾을 수 없습니다'}
+          backLabel={t('nav.materials')}
+          onBack={closeDetail}
+          actions={
+            detail ? (
+              <Button variant="primary" size="sm" onClick={() => setMoveRow(detail)}>
+                {t('material.move')}
+              </Button>
+            ) : undefined
+          }
+          sections={
+            detail
+              ? [
+                  {
+                    title: '자재 정보',
+                    items: [
+                      { label: t('material.name'), value: detail.name },
+                      { label: '코드', value: detail.code },
+                      { label: t('material.category'), value: detail.category },
+                      { label: t('material.unit'), value: detail.unit },
+                    ],
+                  },
+                  {
+                    title: '재고',
+                    items: [
+                      {
+                        label: t('material.stock'),
+                        value: (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <b>{detail.stock}</b>
+                            <StatusBadge
+                              value={detail.lowStock ? 'LOW' : 'OK'}
+                              map={STOCK_STATUS}
+                            />
+                          </span>
+                        ),
+                      },
+                      { label: t('material.safetyStock'), value: String(detail.safetyStock) },
+                    ],
+                  },
+                ]
+              : []
+          }
+        />
+        {moveModal}
+      </>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -123,6 +204,7 @@ export default function Materials() {
         columns={columns}
         rows={rows}
         loading={loading}
+        onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             + {t('material.register')}
@@ -147,33 +229,7 @@ export default function Materials() {
         onSubmit={onCreate}
       />
 
-      <FormModal
-        open={!!moveRow}
-        onOpenChange={(o) => !o && setMoveRow(null)}
-        title={`${t('material.move')} — ${moveRow?.name ?? ''} (${t('material.stock')} ${moveRow?.stock ?? 0})`}
-        fields={[
-          {
-            name: 'type',
-            label: t('material.moveType'),
-            required: true,
-            type: 'select',
-            options: [
-              { value: 'IN', label: t('material.in') },
-              { value: 'OUT', label: t('material.out') },
-              { value: 'ADJUST', label: t('material.adjust') },
-            ],
-          },
-          {
-            name: 'qty',
-            label: t('material.qty'),
-            required: true,
-            type: 'number',
-            placeholder: '1',
-          },
-          { name: 'reason', label: t('material.reason'), placeholder: '발주입고 / 작업출고 …' },
-        ]}
-        onSubmit={onMove}
-      />
+      {moveModal}
     </div>
   );
 }

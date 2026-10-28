@@ -184,32 +184,6 @@ export default function DashboardAdmin() {
       width: 110,
       render: (r) => new Date(String(r.updatedAt)).toLocaleDateString('ko-KR'),
     },
-    {
-      title: '',
-      width: 120,
-      render: (r: Row) => (
-        <span style={{ display: 'inline-flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
-          {canUpdate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(`/dashboard-admin/${String(r.id)}/settings`)}
-            >
-              설정
-            </Button>
-          )}
-          {canDelete && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void remove(r as unknown as TemplateRow)}
-            >
-              삭제
-            </Button>
-          )}
-        </span>
-      ),
-    },
   ];
 
   return (
@@ -246,6 +220,7 @@ export default function DashboardAdmin() {
       {rows === null ? (
         <TableSkeleton rows={4} cols={4} />
       ) : view === 'list' ? (
+        // 목록은 보기만 — 행을 누르면 위젯 배치(상세), 설정·삭제는 그 머리글에
         <DataTable
           columns={columns}
           rows={rows as unknown as Row[]}
