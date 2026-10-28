@@ -84,11 +84,9 @@ function Shell() {
 
   return (
     <Routes>
-      {/* 관리자도 현장 화면을 열어볼 수 있다 */}
-      <Route path="/field" element={page(<FieldLayout />)}>
-        <Route index element={page(<FieldWorkOrders />)} />
-        <Route path="work-orders/:id" element={page(<FieldWorkOrderDetail />)} />
-      </Route>
+      {/* 현장 화면(/field)은 현장 작업팀·전속업체 계정 전용 — 관리자 쪽에선 당분간 감춘다.
+          예전에 바탕화면 앱(start_url=/field)으로 설치해 둔 관리자도 여기로 열리면
+          아래 catch-all이 대시보드로 보낸다. */}
       <Route element={<AppLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={page(<Dashboard />)} />
