@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import {
   CAMPAIGN_CHANNEL_LABEL,
   LEAD_STATUS,
@@ -37,6 +37,8 @@ import {
   type StaffPick,
 } from '../components/campaign/StaffPicker';
 import { PhonePreview } from '../components/PhonePreview';
+import { FilterMenu, FilterPopover } from '../components/campaign/FilterMenu';
+import fstyles from '../components/campaign/filterMenu.module.css';
 import styles from './campaign.module.css';
 
 const SIDO = [
@@ -150,35 +152,6 @@ const toLocalInput = (iso: string | null) => {
 const dt = (v: string | null) =>
   v ? new Date(v).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
-function Chips<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[];
-  value: T[];
-  onChange: (v: T[]) => void;
-}) {
-  return (
-    <div className={styles.chips}>
-      {options.map((o) => {
-        const on = value.includes(o.value);
-        return (
-          <button
-            key={o.value}
-            type="button"
-            aria-pressed={on}
-            className={[styles.chip, on ? styles.chipOn : ''].join(' ')}
-            onClick={() => onChange(on ? value.filter((x) => x !== o.value) : [...value, o.value])}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /**
  * 캠페인 작성 — 채널별 설정(문자: 광고 표기·장문 제목 / 알림톡: 템플릿·버튼·대체발송),
  * 발송 시점(즉시·예약), 받는 사람(주소·이사일·접수상태 등 조건으로 찾아 골라 담기).
@@ -248,8 +221,11 @@ export default function CampaignEditor() {
     setFallbackSms(c.fallbackSms);
     setWhen(c.scheduledAt ? 'LATER' : 'NOW');
     setScheduledAt(toLocalInput(c.scheduledAt));
-    setFilter(c.filters ?? {});
-    setApplied(c.filters ?? {});
+    // 예전 '주소 키워드' 조건은 화면에서 없앴다 — 보이지 않는 조건으로 남지 않게 버린다
+    const f = { ...(c.filters ?? {}) };
+    delete f.addressKeyword;
+    setFilter(f);
+    setApplied(f);
     setPicked(
       new Map(c.recipients.filter((r) => r.customerId).map((r) => [r.customerId!, r.name])),
     );
@@ -327,10 +303,27 @@ export default function CampaignEditor() {
     return () => clearTimeout(t);
   }, [filter.keyword, applied.keyword]);
 
-  const runSearch = () => {
+  /** 드롭다운 필터는 고르는 즉시 적용(검색 버튼 없음). 이름·전화번호는 입력을 잠깐 기다렸다 적용 */
+  const applyF = <K extends keyof CampaignAudienceFilter>(k: K, v: CampaignAudienceFilter[K]) => {
+    setFilter((f) => ({ ...f, [k]: v }));
+    setApplied((a) => ({ ...a, [k]: v }));
     setPage(1);
-    setApplied({ ...filter });
   };
+  const hasFilter = !!(
+    filter.sido?.length ||
+    filter.leadStatuses?.length ||
+    filter.grades?.length ||
+    filter.orgUnitId ||
+    filter.moveDateFrom ||
+    filter.moveDateTo ||
+    filter.receivedFrom ||
+    filter.receivedTo ||
+    filter.excludeRecentDays
+  );
+  const periodCount = [
+    filter.moveDateFrom || filter.moveDateTo,
+    filter.receivedFrom || filter.receivedTo,
+  ].filter(Boolean).length;
   const resetFilter = () => {
     setFilter({});
     setPage(1);
@@ -709,7 +702,7 @@ export default function CampaignEditor() {
           </li>
         ))}
       </ol>
-      <div className={step === 1 ? styles.layoutCompose : styles.layout}>
+      <div className={`${styles.layoutEditor} ${step === 1 ? styles.layoutEditorStretch : ''}`}>
         <div className={styles.col}>
           {step === 1 ? (
             // 캠페인 기본 정보 + 메시지 — 한 카드(경계선으로 나눔), 높이는 미리보기 카드와 같게
@@ -859,310 +852,279 @@ export default function CampaignEditor() {
               </div>
             </section>
           ) : (
-            <section className={styles.panel}>
-              <h3 className={styles.panelTitle}>
-                받는 사람{' '}
-                <span className={styles.sub}>
-                  조건으로 찾고, 골라 담으세요 · {totalPicked}명 담음
-                </span>
-              </h3>
+            <>
+              <section className={styles.panel}>
+                <h3 className={styles.panelTitle}>
+                  받는 사람 <span className={styles.sub}>{totalPicked}명 담음</span>
+                </h3>
 
-              <SegmentedControl
-                value={recipientTab}
-                onChange={(v) => setRecipientTab(v as 'CUSTOMER' | 'STAFF')}
-                options={[
-                  { value: 'CUSTOMER', label: `고객${picked.size ? ` (${picked.size})` : ''}` },
-                  {
-                    value: 'STAFF',
-                    label: `직원·시연 번호${others.length ? ` (${others.length})` : ''}`,
-                  },
-                ]}
-              />
-
-              {recipientTab === 'STAFF' && (
-                <StaffPicker
-                  pickedStaff={pickedStaff}
-                  onToggleStaff={toggleStaff}
-                  extras={extras}
-                  onToggleExtra={toggleExtra}
+                {/* 세그먼트는 영역 전체가 아니라 내용 폭만큼 */}
+                <SegmentedControl
+                  className={styles.fitSeg}
+                  value={recipientTab}
+                  onChange={(v) => setRecipientTab(v as 'CUSTOMER' | 'STAFF')}
+                  options={[
+                    { value: 'CUSTOMER', label: `고객${picked.size ? ` (${picked.size})` : ''}` },
+                    {
+                      value: 'STAFF',
+                      label: `직원·시연 번호${others.length ? ` (${others.length})` : ''}`,
+                    },
+                  ]}
                 />
-              )}
 
-              {recipientTab === 'CUSTOMER' && (
-                <>
-                  <div className={styles.row3}>
-                    <label className={styles.field}>
-                      <span className={styles.label}>이름·전화번호</span>
-                      <Input
-                        value={filter.keyword ?? ''}
-                        onChange={(e) => setF('keyword', e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-                        placeholder="일부만 입력해도 됩니다"
+                {recipientTab === 'STAFF' && (
+                  <StaffPicker
+                    pickedStaff={pickedStaff}
+                    onToggleStaff={toggleStaff}
+                    extras={extras}
+                    onToggleExtra={toggleExtra}
+                  />
+                )}
+
+                {recipientTab === 'CUSTOMER' && (
+                  <>
+                    {/* 이름·전화번호 검색 + 작은 드롭다운 필터들 — 고르는 즉시 목록이 바뀐다 */}
+                    <div className={styles.filterBar}>
+                      <label className={styles.searchBox}>
+                        <Search size={16} aria-hidden />
+                        <input
+                          className={styles.searchInput}
+                          value={filter.keyword ?? ''}
+                          onChange={(e) => setF('keyword', e.target.value)}
+                          placeholder="이름·전화번호 검색"
+                          aria-label="이름·전화번호 검색"
+                        />
+                      </label>
+                      <FilterMenu
+                        label="지역"
+                        columns={3}
+                        options={SIDO.map((v) => ({ value: v, label: v }))}
+                        value={filter.sido ?? []}
+                        onChange={(v) => applyF('sido', v.length ? v : undefined)}
                       />
-                    </label>
-                    <label className={styles.field}>
-                      <span className={styles.label}>주소 키워드</span>
-                      <Input
-                        value={filter.addressKeyword ?? ''}
-                        onChange={(e) => setF('addressKeyword', e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-                        placeholder="구·동·아파트명 (출발·도착지 포함)"
+                      <FilterMenu
+                        label="접수 상태"
+                        options={LEAD_STATUS.map((v) => ({
+                          value: v,
+                          label: LEAD_STATUS_LABEL[v],
+                        }))}
+                        value={(filter.leadStatuses ?? []) as LeadStatus[]}
+                        onChange={(v) => applyF('leadStatuses', v.length ? v : undefined)}
                       />
-                    </label>
-                    <div className={styles.field}>
-                      <span className={styles.label}>담당 지점</span>
-                      <Select
-                        value={filter.orgUnitId ?? ALL}
-                        onValueChange={(v) => setF('orgUnitId', v === ALL ? undefined : v)}
-                        options={[{ value: ALL, label: '전체' }, ...orgs]}
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.field}>
-                    <span className={styles.label}>지역 (고객 주소·출발지·도착지 중 하나라도)</span>
-                    <Chips
-                      options={SIDO.map((s) => ({ value: s, label: s }))}
-                      value={filter.sido ?? []}
-                      onChange={(v) => setF('sido', v)}
-                    />
-                  </div>
-
-                  <div className={styles.row2}>
-                    <div className={styles.field}>
-                      <span className={styles.label}>이사일</span>
-                      <div className={styles.inline}>
-                        <input
-                          type="date"
-                          className={styles.dateInput}
-                          value={filter.moveDateFrom ?? ''}
-                          onChange={(e) => setF('moveDateFrom', e.target.value || undefined)}
-                          aria-label="이사일 시작"
-                        />
-                        ~
-                        <input
-                          type="date"
-                          className={styles.dateInput}
-                          value={filter.moveDateTo ?? ''}
-                          onChange={(e) => setF('moveDateTo', e.target.value || undefined)}
-                          aria-label="이사일 끝"
-                        />
-                      </div>
-                    </div>
-                    <div className={styles.field}>
-                      <span className={styles.label}>접수일</span>
-                      <div className={styles.inline}>
-                        <input
-                          type="date"
-                          className={styles.dateInput}
-                          value={filter.receivedFrom ?? ''}
-                          onChange={(e) => setF('receivedFrom', e.target.value || undefined)}
-                          aria-label="접수일 시작"
-                        />
-                        ~
-                        <input
-                          type="date"
-                          className={styles.dateInput}
-                          value={filter.receivedTo ?? ''}
-                          onChange={(e) => setF('receivedTo', e.target.value || undefined)}
-                          aria-label="접수일 끝"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.field}>
-                    <span className={styles.label}>
-                      접수 진행상태 (이사일·접수일과 같은 접수 기준)
-                    </span>
-                    <Chips
-                      options={LEAD_STATUS.map((s) => ({
-                        value: s,
-                        label: LEAD_STATUS_LABEL[s],
-                      }))}
-                      value={(filter.leadStatuses ?? []) as LeadStatus[]}
-                      onChange={(v) => setF('leadStatuses', v)}
-                    />
-                  </div>
-
-                  <div className={styles.row2}>
-                    <div className={styles.field}>
-                      <span className={styles.label}>고객 등급</span>
-                      <Chips
+                      <FilterMenu
+                        label="고객 등급"
                         options={grades}
                         value={filter.grades ?? []}
-                        onChange={(v) => setF('grades', v)}
+                        onChange={(v) => applyF('grades', v.length ? v : undefined)}
                       />
-                    </div>
-                    <div className={styles.field}>
-                      <span className={styles.label}>최근 캠페인 받은 고객 제외</span>
-                      <Select
-                        value={String(filter.excludeRecentDays ?? 0)}
-                        onValueChange={(v) => setF('excludeRecentDays', Number(v) || undefined)}
-                        options={[
-                          { value: '0', label: '제외 안 함' },
-                          { value: '7', label: '최근 7일' },
-                          { value: '14', label: '최근 14일' },
-                          { value: '30', label: '최근 30일' },
-                        ]}
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.inline}>
-                    <Button variant="primary" size="sm" onClick={runSearch} loading={searching}>
-                      검색
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={resetFilter}>
-                      조건 초기화
-                    </Button>
-                    <span style={{ flex: 1 }} />
-                    {result && result.total > 0 && (
-                      <Button variant="outline" size="sm" onClick={() => void pickAllResults()}>
-                        검색 결과 전체 담기 ({result.total}명)
-                      </Button>
-                    )}
-                    {picked.size > 0 && (
-                      <Button variant="ghost" size="sm" onClick={() => setPicked(new Map())}>
-                        담은 고객 모두 비우기
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className={styles.tableWrap}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: 36 }}>
-                            <Checkbox
-                              checked={pageAllOn}
-                              onCheckedChange={(v) => togglePage(v === true)}
-                              aria-label="이 페이지 전체 선택"
+                      <FilterPopover
+                        label="기간"
+                        summary={periodCount ? String(periodCount) : undefined}
+                        active={periodCount > 0}
+                        width={280}
+                      >
+                        <div className={fstyles.dateRow}>
+                          이사일
+                          <div>
+                            <input
+                              type="date"
+                              className={fstyles.date}
+                              value={filter.moveDateFrom ?? ''}
+                              onChange={(e) => applyF('moveDateFrom', e.target.value || undefined)}
+                              aria-label="이사일 시작"
                             />
-                          </th>
-                          <th>이름</th>
-                          <th>연락처</th>
-                          <th>주소</th>
-                          <th>최근 접수</th>
-                          <th>이사일</th>
-                          <th>지점</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pageRows.map((r) => {
-                          const on = picked.has(r.id);
-                          return (
-                            <tr key={r.id} className={on ? styles.rowOn : ''}>
-                              <td>
-                                <Checkbox
-                                  checked={on}
-                                  onCheckedChange={(v) => togglePick(r, v === true)}
-                                  aria-label={`${r.name} 선택`}
-                                />
-                              </td>
-                              <td>{r.name}</td>
-                              <td>{r.phone}</td>
-                              <td className={styles.addr} title={r.addr ?? ''}>
-                                {r.addr ?? '-'}
-                              </td>
-                              <td>
-                                {r.lead
-                                  ? `${LEAD_STATUS_LABEL[r.lead.status as LeadStatus] ?? r.lead.status} · ${r.lead.receivedAt}`
-                                  : '-'}
-                              </td>
-                              <td>{r.lead?.moveDate ?? '-'}</td>
-                              <td>{r.orgUnit ?? '-'}</td>
-                            </tr>
-                          );
-                        })}
-                        {!pageRows.length && (
-                          <tr>
-                            <td colSpan={7} style={{ textAlign: 'center', padding: 24 }}>
-                              {searching ? '찾는 중…' : '조건에 맞는 고객이 없습니다.'}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  {result && result.total > PAGE_SIZE && (
-                    <div className={styles.pager}>
-                      <span>
-                        {result.total}명 중 {(page - 1) * PAGE_SIZE + 1}–
-                        {Math.min(page * PAGE_SIZE, result.total)}
-                      </span>
-                      <div className={styles.inline}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={page <= 1}
-                          onClick={() => setPage((p) => p - 1)}
-                        >
-                          이전
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={page * PAGE_SIZE >= result.total}
-                          onClick={() => setPage((p) => p + 1)}
-                        >
-                          다음
-                        </Button>
+                            ~
+                            <input
+                              type="date"
+                              className={fstyles.date}
+                              value={filter.moveDateTo ?? ''}
+                              onChange={(e) => applyF('moveDateTo', e.target.value || undefined)}
+                              aria-label="이사일 끝"
+                            />
+                          </div>
+                        </div>
+                        <div className={fstyles.dateRow}>
+                          접수일
+                          <div>
+                            <input
+                              type="date"
+                              className={fstyles.date}
+                              value={filter.receivedFrom ?? ''}
+                              onChange={(e) => applyF('receivedFrom', e.target.value || undefined)}
+                              aria-label="접수일 시작"
+                            />
+                            ~
+                            <input
+                              type="date"
+                              className={fstyles.date}
+                              value={filter.receivedTo ?? ''}
+                              onChange={(e) => applyF('receivedTo', e.target.value || undefined)}
+                              aria-label="접수일 끝"
+                            />
+                          </div>
+                        </div>
+                      </FilterPopover>
+                      <div className={styles.filterSelect}>
+                        <Select
+                          value={filter.orgUnitId ?? ALL}
+                          onValueChange={(v) => applyF('orgUnitId', v === ALL ? undefined : v)}
+                          options={[{ value: ALL, label: '전체 지점' }, ...orgs]}
+                          aria-label="담당 지점"
+                        />
                       </div>
+                      <div className={styles.filterSelectWide}>
+                        <Select
+                          value={String(filter.excludeRecentDays ?? 0)}
+                          onValueChange={(v) => applyF('excludeRecentDays', Number(v) || undefined)}
+                          options={[
+                            { value: '0', label: '최근 수신자 포함' },
+                            { value: '7', label: '최근 7일 받은 고객 제외' },
+                            { value: '14', label: '최근 14일 받은 고객 제외' },
+                            { value: '30', label: '최근 30일 받은 고객 제외' },
+                          ]}
+                          aria-label="최근 캠페인 받은 고객 제외"
+                        />
+                      </div>
+                      {hasFilter && (
+                        <Button variant="ghost" size="sm" onClick={resetFilter}>
+                          초기화
+                        </Button>
+                      )}
                     </div>
+
+                    <div className={styles.inline}>
+                      <span className={styles.sub}>
+                        {searching
+                          ? '찾는 중…'
+                          : result
+                            ? `${result.total.toLocaleString()}명`
+                            : ''}
+                      </span>
+                      <span style={{ flex: 1 }} />
+                      {result && result.total > 0 && (
+                        <Button variant="outline" size="sm" onClick={() => void pickAllResults()}>
+                          검색 결과 전체 담기 ({result.total.toLocaleString()}명)
+                        </Button>
+                      )}
+                      {picked.size > 0 && (
+                        <Button variant="ghost" size="sm" onClick={() => setPicked(new Map())}>
+                          담은 고객 비우기
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className={styles.tableWrap}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 36 }}>
+                              <Checkbox
+                                checked={pageAllOn}
+                                onCheckedChange={(v) => togglePage(v === true)}
+                                aria-label="이 페이지 전체 선택"
+                              />
+                            </th>
+                            <th>이름</th>
+                            <th>연락처</th>
+                            <th>주소</th>
+                            <th>최근 접수</th>
+                            <th>이사일</th>
+                            <th>지점</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pageRows.map((r) => {
+                            const on = picked.has(r.id);
+                            return (
+                              <tr key={r.id} className={on ? styles.rowOn : ''}>
+                                <td>
+                                  <Checkbox
+                                    checked={on}
+                                    onCheckedChange={(v) => togglePick(r, v === true)}
+                                    aria-label={`${r.name} 선택`}
+                                  />
+                                </td>
+                                <td>{r.name}</td>
+                                <td>{r.phone}</td>
+                                <td className={styles.addr} title={r.addr ?? ''}>
+                                  {r.addr ?? '-'}
+                                </td>
+                                <td>
+                                  {r.lead
+                                    ? `${LEAD_STATUS_LABEL[r.lead.status as LeadStatus] ?? r.lead.status} · ${r.lead.receivedAt}`
+                                    : '-'}
+                                </td>
+                                <td>{r.lead?.moveDate ?? '-'}</td>
+                                <td>{r.orgUnit ?? '-'}</td>
+                              </tr>
+                            );
+                          })}
+                          {!pageRows.length && (
+                            <tr>
+                              <td colSpan={7} style={{ textAlign: 'center', padding: 24 }}>
+                                {searching ? '찾는 중…' : '조건에 맞는 고객이 없습니다.'}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                    {result && result.total > PAGE_SIZE && (
+                      <div className={styles.pager}>
+                        <span>
+                          {result.total}명 중 {(page - 1) * PAGE_SIZE + 1}–
+                          {Math.min(page * PAGE_SIZE, result.total)}
+                        </span>
+                        <div className={styles.inline}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page <= 1}
+                            onClick={() => setPage((p) => p - 1)}
+                          >
+                            이전
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page * PAGE_SIZE >= result.total}
+                            onClick={() => setPage((p) => p + 1)}
+                          >
+                            다음
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+
+              {/* 발송 — 받는 사람 아래 맨 끝. 최종 명단은 보내기를 누르면 확인 창에서 한 번 더 보여 준다 */}
+              <section className={styles.panel}>
+                <h3 className={styles.panelTitle}>발송</h3>
+                {notReady && <div className={styles.warn}>{notReady}</div>}
+                <div className={styles.sendRow}>
+                  <SegmentedControl
+                    className={styles.fitSeg}
+                    value={when}
+                    onChange={(v) => setWhen(v as 'NOW' | 'LATER')}
+                    options={[
+                      { value: 'NOW', label: '바로 보내기' },
+                      { value: 'LATER', label: '예약 발송' },
+                    ]}
+                  />
+                  {when === 'LATER' && (
+                    <input
+                      type="datetime-local"
+                      className={styles.dateInput}
+                      value={scheduledAt}
+                      onChange={(e) => setScheduledAt(e.target.value)}
+                      aria-label="예약 시각"
+                    />
                   )}
-                </>
-              )}
-
-              {/* 담은 사람 — 보낼 최종 명단(이름·번호로 찾아 빼기) */}
-              <PickedList
-                ids={pickedIds}
-                onRemove={(cid) =>
-                  setPicked((m) => {
-                    const n = new Map(m);
-                    n.delete(cid);
-                    return n;
-                  })
-                }
-                others={others}
-                onRemoveOther={removeOther}
-              />
-            </section>
-          )}
-        </div>
-
-        {/* 오른쪽 — 미리보기(아이폰 문자 화면) · 발송 */}
-        <div className={styles.sticky}>
-          {/* 2단계에선 발송을 위에 — 보내기 버튼이 화면 밖으로 밀리지 않게 */}
-          {step === 2 && (
-            <div className={styles.panel}>
-              <h3 className={styles.panelTitle}>발송</h3>
-              {notReady && <div className={styles.warn}>{notReady}</div>}
-              <SegmentedControl
-                value={when}
-                onChange={(v) => setWhen(v as 'NOW' | 'LATER')}
-                options={[
-                  { value: 'NOW', label: '바로 보내기' },
-                  { value: 'LATER', label: '예약 발송' },
-                ]}
-              />
-              {when === 'LATER' && (
-                <input
-                  type="datetime-local"
-                  className={styles.dateInput}
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  aria-label="예약 시각"
-                />
-              )}
-              <div className={styles.summary}>
-                <div>
-                  <span>받는 사람</span>
-                  <b>{totalPicked}명</b>
-                </div>
-                <div>
-                  <span>유형</span>
-                  <span>
+                  <span className={styles.sendSummary}>
+                    받는 사람 <b>{totalPicked.toLocaleString()}명</b>
+                    {' · '}
                     {channel === 'SMS'
                       ? isLms
                         ? '문자 · 장문(LMS)'
@@ -1170,36 +1132,39 @@ export default function CampaignEditor() {
                       : CHANNEL_OPTIONS.find((o) => o.value === channel)?.label}
                   </span>
                 </div>
-              </div>
-              {channel === 'SMS' && isLms && !title && (
-                <div className={styles.warn}>장문이라 제목을 넣는 게 좋습니다.</div>
-              )}
-              <div className={styles.inline}>
-                <Button variant="ghost" onClick={() => setStep(1)}>
-                  ← 메시지 수정
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => void save()}
-                  disabled={saving || !!notReady}
-                >
-                  임시저장
-                </Button>
-                <Button
-                  variant="primary"
-                  disabled={saving || totalPicked === 0 || !!notReady}
-                  onClick={() => {
-                    const err = check();
-                    if (err) toast({ type: 'warning', title: err });
-                    else setConfirm(true);
-                  }}
-                >
-                  {when === 'LATER' ? '예약하기' : '보내기'}
-                </Button>
-              </div>
-            </div>
+                {channel === 'SMS' && isLms && !title && (
+                  <div className={styles.warn}>장문이라 제목을 넣는 게 좋습니다.</div>
+                )}
+                <div className={styles.stepNav}>
+                  <Button variant="ghost" onClick={() => setStep(1)}>
+                    ← 메시지 수정
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void save()}
+                    disabled={saving || !!notReady}
+                  >
+                    임시저장
+                  </Button>
+                  <Button
+                    variant="primary"
+                    disabled={saving || totalPicked === 0 || !!notReady}
+                    onClick={() => {
+                      const err = check();
+                      if (err) toast({ type: 'warning', title: err });
+                      else setConfirm(true);
+                    }}
+                  >
+                    {when === 'LATER' ? '예약하기' : '보내기'}
+                  </Button>
+                </div>
+              </section>
+            </>
           )}
-          {/* 미리보기 — 테두리·제목 없이 휴대폰만(1단계는 작성 카드와 같은 높이) */}
+        </div>
+
+        {/* 오른쪽 — 미리보기(아이폰 문자 화면). 두 단계 모두 같은 폭이라 왼쪽 영역 폭도 같다 */}
+        <div className={styles.sticky}>
           <PhonePreview
             channel={channel}
             sender="통인익스프레스"
@@ -1210,8 +1175,7 @@ export default function CampaignEditor() {
             placeholder="본문을 입력하세요"
             to={sampleName}
             at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
-            compact={step === 2}
-            width={step === 1 ? 286 : undefined}
+            width={286}
           />
         </div>
         {step === 1 && (
@@ -1259,14 +1223,20 @@ export default function CampaignEditor() {
       <Modal
         open={confirm}
         onOpenChange={setConfirm}
+        size="lg"
         title={when === 'LATER' ? '예약할까요?' : '지금 보낼까요?'}
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirm(false)}>
               취소
             </Button>
-            <Button variant="primary" loading={saving} onClick={() => void send()}>
-              {when === 'LATER' ? '예약하기' : '보내기'}
+            <Button
+              variant="primary"
+              loading={saving}
+              disabled={totalPicked === 0}
+              onClick={() => void send()}
+            >
+              {when === 'LATER' ? '예약하기' : '보내기'} ({totalPicked.toLocaleString()}명)
             </Button>
           </>
         }
@@ -1292,6 +1262,19 @@ export default function CampaignEditor() {
             보낸 뒤에는 되돌릴 수 없습니다. 번호가 없는 고객은 빠지고, 같은 번호는 한 번만 보냅니다.
           </div>
         </div>
+        {/* 최종 발송 명단 — 여기서 이름·번호로 찾아 뺄 수 있다 */}
+        <PickedList
+          ids={pickedIds}
+          onRemove={(cid) =>
+            setPicked((m) => {
+              const n = new Map(m);
+              n.delete(cid);
+              return n;
+            })
+          }
+          others={others}
+          onRemoveOther={removeOther}
+        />
       </Modal>
     </div>
   );

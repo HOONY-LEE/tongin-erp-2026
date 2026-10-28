@@ -1,0 +1,106 @@
+/* 드롭다운 필터 버튼 — 검색창(38px)과 같은 높이의 작은 알약 모양 */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: var(--ark-font-size-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.trigger:hover {
+  border-color: var(--ark-color-gray-400);
+}
+.trigger:focus-visible,
+.trigger[data-state='open'] {
+  outline: none;
+  border-color: var(--ark-color-info-500);
+  box-shadow: 0 0 0 2px var(--ark-color-info-500);
+}
+/* 고른 조건이 있으면 강조 */
+.on {
+  border-color: var(--ark-color-info-500);
+  color: var(--ark-color-info-600, var(--ark-color-info-500));
+}
+.count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ark-color-info-500);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* akron Popover는 다크 테마에서도 밝은 회색 배경이라 글자가 안 보인다 — 테마 토큰으로 덮는다 */
+.panel {
+  background: var(--ark-color-bg) !important;
+  color: var(--ark-color-text) !important;
+  border: 1px solid var(--ark-color-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.list {
+  display: grid;
+  gap: 2px 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: var(--ark-font-size-sm);
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.clear {
+  margin-top: 8px;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.clear:hover {
+  color: var(--ark-color-text-primary);
+}
+
+/* 기간 필터 안의 날짜 칸 */
+.dateRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.dateRow > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.date {
+  flex: 1;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+}
