@@ -625,8 +625,9 @@ textarea.input {
 
 /* ── 구성 미리보기(추상 그림) ── */
 .thumb {
-  --thumb-ink: #2a78d6;
-  --thumb-soft: #b7d3f6;
+  /* 템플릿 색(DashColorScope의 --dash-*)을 따른다 — 없으면 통인 테마색 */
+  --thumb-ink: var(--dash-series-1, #fc753c);
+  --thumb-soft: var(--dash-seq-2, #fed5c2);
   --thumb-card: var(--ark-color-bg, #fff);
   --thumb-line: var(--ark-color-border, #e5e5e5);
   display: block;

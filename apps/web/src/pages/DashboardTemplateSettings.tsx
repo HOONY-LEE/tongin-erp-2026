@@ -187,7 +187,7 @@ export default function DashboardTemplateSettings() {
       <div className={styles.settingsWrap}>
         <section className={styles.settingsCard}>
           <div className={styles.settingsPreview}>
-            <LayoutThumb items={preview} />
+            <LayoutThumb items={preview} color={tpl.color} />
           </div>
           <label className={styles.field}>
             이름

@@ -29,6 +29,8 @@ export interface TemplateRow {
   description: string;
   isDefault: boolean;
   allowPersonal: boolean;
+  /** 차트 색(통인·애플 색) */
+  color?: string;
   widgetCount: number;
   preview: ThumbItem[];
   roles: { id: string; name: string }[];
@@ -148,7 +150,10 @@ export default function DashboardAdmin() {
       render: (r) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 64, height: 40, flexShrink: 0 }}>
-            <LayoutThumb items={(r as unknown as TemplateRow).preview} />
+            <LayoutThumb
+              items={(r as unknown as TemplateRow).preview}
+              color={(r as unknown as TemplateRow).color}
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
             <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -236,7 +241,7 @@ export default function DashboardAdmin() {
               aria-label={t.name}
             >
               <div className={styles.tplPreview}>
-                <LayoutThumb items={t.preview} />
+                <LayoutThumb items={t.preview} color={t.color} />
               </div>
               <div className={styles.tplBody}>
                 <span className={styles.tplName}>
