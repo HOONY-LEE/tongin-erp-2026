@@ -171,3 +171,103 @@ export const LEAVE_STATUS_LABEL: Record<string, string> = {
   REJECTED: '반려',
   CANCELED: '취소',
 };
+
+// ── 근태 ──
+
+/** 근무시간 설정(공통코드 HR_SETTING) — 화면·판정이 같이 쓴다 */
+export interface WorkSettings {
+  /** 출근 기준 'HH:MM' */
+  workStart: string;
+  /** 퇴근 기준 'HH:MM' */
+  workEnd: string;
+  /** 반차 기준 'HH:MM' — 오전 반차면 이 시각까지 출근, 오후 반차면 이 시각 이후 퇴근 */
+  halfSplit: string;
+  /** 지각 유예(분) — 출근 기준 + 유예까지는 정상 */
+  lateGraceMin: number;
+  /**
+   * 근태 집계 시작일 'YYYY-MM-DD' — 이보다 앞선 날은 '기록 전'(ERP로 근태를 쓰기 전이라 결근으로 세지 않는다).
+   * 비우면 시스템의 첫 근태 기록 날짜
+   */
+  trackFrom: string;
+}
+export const DEFAULT_WORK_SETTINGS: WorkSettings = {
+  workStart: '09:00',
+  workEnd: '18:00',
+  halfSplit: '14:00',
+  lateGraceMin: 0,
+  trackFrom: '',
+};
+
+export const ATTENDANCE_STATUSES = [
+  'NORMAL',
+  'LATE',
+  'EARLY',
+  'LATE_EARLY',
+  'ABSENT',
+  'LEAVE',
+  'HOLIDAY',
+  'WORKING',
+  'NO_OUT',
+  'BEFORE',
+  'UPCOMING',
+  'NOT_TRACKED',
+] as const;
+export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
+export const ATTENDANCE_STATUS_LABEL: Record<AttendanceStatus, string> = {
+  NORMAL: '정상',
+  LATE: '지각',
+  EARLY: '조퇴',
+  LATE_EARLY: '지각·조퇴',
+  ABSENT: '결근',
+  LEAVE: '휴가',
+  HOLIDAY: '휴일',
+  WORKING: '근무 중',
+  NO_OUT: '퇴근 기록 없음',
+  BEFORE: '출근 전',
+  UPCOMING: '-',
+  NOT_TRACKED: '기록 전',
+};
+
+const toMin = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+/**
+ * 하루 근태 판정 — 기록(출근·퇴근 'HH:MM', 한국 시각)·휴가·근무시간 설정으로 상태를 정한다.
+ * leave: 그날 승인된 휴가 — FULL(종일) | AM(오전 반차) | PM(오후 반차) | null
+ * today/now: 오늘 날짜·지금 'HH:MM'(한국 시각) — 오늘은 아직 끝나지 않아 결근·미퇴근을 바로 매기지 않는다
+ */
+export function judgeAttendance(input: {
+  date: string;
+  clockIn: string | null;
+  clockOut: string | null;
+  leave: 'FULL' | 'AM' | 'PM' | null;
+  today: string;
+  now: string;
+  settings?: WorkSettings;
+}): AttendanceStatus {
+  const s = input.settings ?? DEFAULT_WORK_SETTINGS;
+  const { date, clockIn, clockOut, leave, today, now } = input;
+  if (date > today) return leave === 'FULL' ? 'LEAVE' : 'UPCOMING';
+  if (leave === 'FULL') return 'LEAVE';
+  if (!isWorkday(date)) return 'HOLIDAY';
+  // ERP로 근태를 쓰기 전 — 기록이 없어도 결근으로 세지 않는다
+  if (s.trackFrom && date < s.trackFrom && !clockIn && !clockOut) return 'NOT_TRACKED';
+  const start = leave === 'AM' ? s.halfSplit : s.workStart;
+  const end = leave === 'PM' ? s.halfSplit : s.workEnd;
+  if (!clockIn) {
+    if (date === today && toMin(now) < toMin(start) + s.lateGraceMin) return 'BEFORE';
+    return 'ABSENT';
+  }
+  const late = toMin(clockIn) > toMin(start) + s.lateGraceMin;
+  if (!clockOut) {
+    if (date === today) return late ? 'LATE' : 'WORKING';
+    return late ? 'LATE' : 'NO_OUT';
+  }
+  const early = toMin(clockOut) < toMin(end);
+  if (late && early) return 'LATE_EARLY';
+  if (late) return 'LATE';
+  if (early) return 'EARLY';
+  return 'NORMAL';
+}

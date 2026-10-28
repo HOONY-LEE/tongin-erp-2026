@@ -648,6 +648,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     actions: ['READ', 'UPDATE'],
     hint: '조회 = 전 직원 연차 현황, 수정 = 연차 조정·휴가 종류. 내 휴가 신청은 권한 없이 됩니다',
   },
+  {
+    key: 'ATTENDANCE',
+    label: '근태',
+    group: '인사',
+    actions: ['READ', 'UPDATE'],
+    specials: [{ action: 'IMPORT', label: '근태 엑셀 업로드' }],
+    hint: '조회 = 전 직원 근태, 수정 = 기록 고치기·근무시간 설정. 출퇴근·내 근태·정정 신청은 권한 없이 됩니다',
+  },
   // 정산
   { key: 'SETTLEMENT', label: '정산', group: '정산', actions: ALL_CRUD },
   { key: 'BILLING', label: '청구', group: '정산', actions: ALL_CRUD },

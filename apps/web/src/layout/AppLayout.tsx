@@ -32,6 +32,7 @@ import {
   Workflow,
   FileSignature,
   Plane,
+  CalendarClock,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -47,6 +48,7 @@ import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { api } from '../lib/api';
 import { useAiRunning } from '../lib/aiActivity';
 import { usePendingApprovals } from '../lib/approvals';
+import { ClockButton } from '../components/attendance/ClockButton';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import styles from './AppLayout.module.css';
 import { HeaderTabs } from './HeaderTabs';
@@ -167,6 +169,13 @@ export default function AppLayout() {
         },
         // 직원 연결 계정이면 누구나(내 휴가), 직원 연결이 없어도 전 직원 현황 권한이 있으면
         { to: '/leave', label: t('nav.leave'), icon: Plane, selfService: true, perm: 'LEAVE.READ' },
+        {
+          to: '/attendance',
+          label: t('nav.attendance'),
+          icon: CalendarClock,
+          selfService: true,
+          perm: 'ATTENDANCE.READ',
+        },
       ],
     },
     {
@@ -343,6 +352,8 @@ export default function AppLayout() {
           />
         </div>
         <div className={styles.headerRight}>
+          {/* 출퇴근 — 직원과 연결된 계정만 */}
+          {user?.employeeId && <ClockButton />}
           <HeaderPicker
             title={t('lang.label')}
             value={i18n.language}

@@ -81,6 +81,7 @@ model Employee {
   approvalSteps      ApprovalStep[]
   leaveRequests      LeaveRequest[]
   leaveAdjustments   LeaveAdjustment[]
+  attendanceRecords  AttendanceRecord[]
 
   @@map("employee")
 }
@@ -1324,4 +1325,24 @@ model LeaveRequest {
   @@index([employeeId, startDate])
   @@index([status, startDate])
   @@map("leave_request")
+}
+
+// ── 인사: 근태 ──
+
+/// 하루 출퇴근 기록 — 직원·날짜당 한 줄. 상태(지각·조퇴·결근·휴가)는 저장하지 않고 조회 때 판정한다
+model AttendanceRecord {
+  id         String    @id @default(uuid()) @db.Uuid
+  employeeId String    @map("employee_id") @db.Uuid
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  workDate   DateTime  @map("work_date") @db.Date // 한국 날짜
+  clockIn    DateTime? @map("clock_in") @db.Timestamptz(6)
+  clockOut   DateTime? @map("clock_out") @db.Timestamptz(6)
+  source     String    @default("WEB") // WEB(출퇴근 버튼) | IMPORT(엑셀 업로드) | FIX(정정·관리자 수정)
+  note       String?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([employeeId, workDate])
+  @@index([workDate])
+  @@map("attendance_record")
 }

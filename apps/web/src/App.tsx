@@ -47,6 +47,7 @@ const PaymentConfirm = lazy(() => import('./pages/PaymentConfirm'));
 const Branches = lazy(() => import('./pages/Branches'));
 const Approvals = lazy(() => import('./pages/Approvals'));
 const Leave = lazy(() => import('./pages/Leave'));
+const Attendance = lazy(() => import('./pages/Attendance'));
 const Accounts = lazy(() => import('./pages/Accounts'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const PartnerMgmt = lazy(() => import('./pages/PartnerMgmt'));
@@ -130,6 +131,7 @@ function Shell() {
         <Route path="/branches" element={page(<Branches />)} />
         <Route path="/approvals" element={page(<Approvals />)} />
         <Route path="/leave" element={page(<Leave />)} />
+        <Route path="/attendance" element={page(<Attendance />)} />
         <Route path="/accounts" element={page(<Accounts />)} />
         <Route path="/agent-builder" element={page(<AgentBlueprints />)} />
         <Route path="/agent-builder/new" element={page(<AgentCreate />)} />
