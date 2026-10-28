@@ -216,6 +216,13 @@ export class AuthSeederService implements OnModuleInit {
     }
 
     const usedEnv = Boolean(process.env.ADMIN_PASSWORD);
+    // 운영에서 누구나 아는 기본 비밀번호로 관리자를 만들지 않는다
+    if (!usedEnv && process.env.NODE_ENV === 'production') {
+      this.logger.warn(
+        '초기 관리자(admin)를 만들지 않았습니다 — 운영 환경에서는 ADMIN_PASSWORD를 설정한 뒤 다시 시작하세요.',
+      );
+      return;
+    }
     const password = process.env.ADMIN_PASSWORD ?? 'admin1234';
     const passwordHash = await bcrypt.hash(password, 10);
 

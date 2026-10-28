@@ -6,13 +6,17 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PrincipalCache } from '../../auth/principal-cache.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { nextEmpNo, withEmpNoRetry } from './emp-no';
 
 @Injectable()
 export class EmployeeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly principals: PrincipalCache,
+  ) {}
 
   findAll(orgUnitId?: string) {
     return this.prisma.employee.findMany({
@@ -48,7 +52,7 @@ export class EmployeeService {
   async update(id: string, dto: UpdateEmployeeDto) {
     await this.findOne(id);
     try {
-      return await this.prisma.employee.update({
+      const row = await this.prisma.employee.update({
         where: { id },
         data: {
           ...dto,
@@ -56,6 +60,8 @@ export class EmployeeService {
           hireDate: dto.hireDate === undefined ? undefined : toDate(dto.hireDate),
         },
       });
+      this.principals.invalidateAll(); // 계정 주체에 직원 이름·소속·직책이 실린다
+      return row;
     } catch (e) {
       throw this.mapError(e, dto.empNo);
     }
@@ -63,7 +69,9 @@ export class EmployeeService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.employee.delete({ where: { id } });
+    const row = await this.prisma.employee.delete({ where: { id } });
+    this.principals.invalidateAll();
+    return row;
   }
 
   private mapError(e: unknown, empNo?: string): Error {

@@ -46,32 +46,35 @@ function visibleOnly(layout: DashLayout, p: AuthPrincipal): DashLayout {
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** 나에게 지정된 템플릿 */
+  /**
+   * 나에게 지정된 템플릿 — 우선순위(개인 지정 → 권한 그룹 순서 → 기본)는 그대로,
+   * 조회는 한 번에 같이 보낸다(DB 왕복 4회 순차 → 1회). 그룹 지정은 그룹 수만큼이라 통째로 읽는다.
+   */
   private async assignedTemplate(p: AuthPrincipal) {
-    const byUser = await this.prisma.dashboardAssignment.findUnique({
-      where: { targetType_targetId: { targetType: 'USER', targetId: p.userId } },
-      include: { dashboard: true },
-    });
-    if (byUser) return { template: byUser.dashboard, via: 'USER' as const };
-    const roles = await this.prisma.userRole.findMany({
-      where: { userId: p.userId },
-      select: { roleId: true, role: { select: { sortOrder: true } } },
-      orderBy: { role: { sortOrder: 'asc' } },
-    });
-    if (roles.length) {
-      const byRole = await this.prisma.dashboardAssignment.findMany({
-        where: { targetType: 'ROLE', targetId: { in: roles.map((r) => r.roleId) } },
+    const [byUser, roles, byRole, def] = await Promise.all([
+      this.prisma.dashboardAssignment.findUnique({
+        where: { targetType_targetId: { targetType: 'USER', targetId: p.userId } },
         include: { dashboard: true },
-      });
-      for (const r of roles) {
-        const hit = byRole.find((a) => a.targetId === r.roleId);
-        if (hit) return { template: hit.dashboard, via: 'ROLE' as const };
-      }
+      }),
+      this.prisma.userRole.findMany({
+        where: { userId: p.userId },
+        select: { roleId: true, role: { select: { sortOrder: true } } },
+        orderBy: { role: { sortOrder: 'asc' } },
+      }),
+      this.prisma.dashboardAssignment.findMany({
+        where: { targetType: 'ROLE' },
+        include: { dashboard: true },
+      }),
+      this.prisma.dashboard.findFirst({
+        where: { isDefault: true, ownerUserId: null },
+        orderBy: { updatedAt: 'desc' },
+      }),
+    ]);
+    if (byUser) return { template: byUser.dashboard, via: 'USER' as const };
+    for (const r of roles) {
+      const hit = byRole.find((a) => a.targetId === r.roleId);
+      if (hit) return { template: hit.dashboard, via: 'ROLE' as const };
     }
-    const def = await this.prisma.dashboard.findFirst({
-      where: { isDefault: true, ownerUserId: null },
-      orderBy: { updatedAt: 'desc' },
-    });
     return def ? { template: def, via: 'DEFAULT' as const } : null;
   }
 

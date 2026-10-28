@@ -14,6 +14,7 @@ import {
   type AuthPrincipal,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PrincipalCache } from '../../auth/principal-cache.service';
 import type {
   CreatePositionDto,
   CreateRoleDto,
@@ -34,11 +35,14 @@ const SUPER_ADMIN_WHERE = {
  *  - 권한 상승 막기: 슈퍼관리자가 아닌 관리자는 자기가 가진 권한까지만 그룹에 넣고 빼며,
  *    자기에게 없는 권한이 든 그룹은 남에게 주거나 빼앗지 못한다.
  *  - 마지막 슈퍼관리자는 그룹을 빼앗길 수 없다(아무도 관리 화면에 못 들어가게 되므로).
- *  - 바뀐 권한은 다음 요청부터 바로 적용된다(요청마다 DB에서 권한을 다시 읽는다).
+ *  - 바뀐 권한은 다음 요청부터 바로 적용된다(바꿀 때 주체 캐시(PrincipalCache)를 비운다).
  */
 @Injectable()
 export class AccessService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly principals: PrincipalCache,
+  ) {}
 
   // ── 권한 그룹 ──
 
@@ -90,6 +94,7 @@ export class AccessService {
         sortOrder: dto.sortOrder,
       },
     });
+    this.principals.invalidateAll();
     return this.getRole(id);
   }
 
@@ -117,6 +122,7 @@ export class AccessService {
       );
     }
     await this.prisma.role.delete({ where: { id } });
+    this.principals.invalidateAll();
     return { id, deleted: true };
   }
 
@@ -179,10 +185,12 @@ export class AccessService {
       throw new ConflictException(`이미 있는 직책입니다: ${name}`);
     }
     if (dto.defaultRoleId) await this.findRole(dto.defaultRoleId);
-    return this.prisma.position.update({
+    const row = await this.prisma.position.update({
       where: { id },
       data: { name: name || undefined, defaultRoleId: dto.defaultRoleId, isActive: dto.isActive },
     });
+    this.principals.invalidateAll(); // 주체에 직책 이름이 실린다
+    return row;
   }
 
   /** 직책을 지우면 그 직책이던 직원은 '직책 없음'이 된다(직원 기록은 그대로). */
@@ -190,6 +198,7 @@ export class AccessService {
     const p = await this.prisma.position.findUnique({ where: { id } });
     if (!p) throw new NotFoundException('직책을 찾을 수 없습니다.');
     await this.prisma.position.delete({ where: { id } });
+    this.principals.invalidateAll();
     return { id, deleted: true };
   }
 
@@ -293,6 +302,7 @@ export class AccessService {
       this.prisma.userRole.deleteMany({ where: { userId } }),
       this.prisma.userRole.createMany({ data: next.map((a) => ({ userId, ...a })) }),
     ]);
+    this.principals.invalidateAll();
     return { id: userId, roles: next };
   }
 
@@ -384,5 +394,6 @@ export class AccessService {
         data: perms.map((p) => ({ roleId, permissionId: p.id })),
       }),
     ]);
+    this.principals.invalidateAll();
   }
 }

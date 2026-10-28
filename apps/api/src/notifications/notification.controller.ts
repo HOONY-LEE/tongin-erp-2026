@@ -8,11 +8,13 @@ export class NotificationController {
 
   @Get()
   @RequirePermissions('NOTIFICATION.READ')
-  findAll(@Query('eventType') eventType?: string) {
+  findAll(@Query('eventType') eventType?: string, @Query('take') take?: string) {
+    // 머리글 알림 목록은 20건만 쓴다 — 기본 20, 최대 100
+    const n = Number.parseInt(take ?? '', 10);
     return this.prisma.notification.findMany({
       where: eventType ? { eventType } : undefined,
       orderBy: { sentAt: 'desc' },
-      take: 100,
+      take: Number.isFinite(n) ? Math.min(Math.max(n, 1), 100) : 20,
     });
   }
 }

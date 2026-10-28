@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthController } from './auth.controller';
 import { AuthService, TOKEN_TTL_SECONDS } from './auth.service';
 import { JWT_SECRET } from './jwt.constants';
 import { JwtStrategy } from './jwt.strategy';
+import { LOGIN_THROTTLE, LOGIN_THROTTLE_MESSAGE } from './login-throttler.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { AuthSeederService } from './seeder.service';
@@ -17,6 +19,8 @@ import { AuthSeederService } from './seeder.service';
       secret: JWT_SECRET,
       signOptions: { expiresIn: TOKEN_TTL_SECONDS },
     }),
+    // 로그인 시도 제한 저장소(메모리). 가드는 로그인 라우트에만 붙인다(LoginThrottlerGuard)
+    ThrottlerModule.forRoot({ throttlers: [LOGIN_THROTTLE], errorMessage: LOGIN_THROTTLE_MESSAGE }),
   ],
   controllers: [AuthController],
   providers: [

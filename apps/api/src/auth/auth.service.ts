@@ -10,6 +10,7 @@ import {
 } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { PrincipalCache } from './principal-cache.service';
 
 export interface JwtPayload {
   sub: string; // app_user.id
@@ -23,6 +24,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly cache: PrincipalCache,
   ) {}
 
   async login(dto: LoginDto): Promise<LoginResponse> {
@@ -38,7 +40,15 @@ export class AuthService {
     return { accessToken, tokenType: 'Bearer', expiresIn: TOKEN_TTL_SECONDS };
   }
 
-  /** 주체의 권한·스코프를 집계해 AuthPrincipal 생성 (JwtStrategy·/auth/me 공용). */
+  /**
+   * 요청 인증용 주체 — 60초 캐시(PrincipalCache). 권한·계정이 바뀌면 해당 서비스가 캐시를 비운다.
+   * DB가 멀어 요청마다 buildPrincipal(쿼리 5~7회)을 다시 돌리면 그것만으로 1초 넘게 든다.
+   */
+  principal(userId: string): Promise<AuthPrincipal | null> {
+    return this.cache.get(userId, () => this.buildPrincipal(userId));
+  }
+
+  /** 주체의 권한·스코프를 집계해 AuthPrincipal 생성 (JwtStrategy·/auth/me 공용). 캐시 없이 DB에서 읽는다. */
   async buildPrincipal(userId: string): Promise<AuthPrincipal | null> {
     const user = await this.prisma.appUser.findUnique({
       where: { id: userId },
