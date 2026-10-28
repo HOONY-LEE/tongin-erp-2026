@@ -14,6 +14,7 @@ import {
   type LeadStatus,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { kstYmd } from '../../common/util/kst';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -309,9 +310,7 @@ export class LeadService {
   }
 
   private genLeadNo(): string {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
     const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
     return `R${ymd}${rand}`;
   }

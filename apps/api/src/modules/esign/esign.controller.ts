@@ -50,7 +50,7 @@ export class EsignController {
 
   /** 시연: 고객 계좌이체를 흉내 내 자동 입금확인 흐름을 태운다 */
   @Post(':id/simulate-deposit')
-  @RequirePermissions('PAYMENT.CREATE')
+  @RequirePermissions('PAYMENT.UPDATE') // 입금 확인과 같은 권한(결제를 PAID로 바꾸므로)
   simulate(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.esign.simulateDeposit(id, user);
   }

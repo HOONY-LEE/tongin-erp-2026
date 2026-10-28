@@ -1,4 +1,9 @@
-import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
 /**
@@ -119,6 +124,13 @@ export class StubPaymentProvider {
   /** 회사 고정 계좌 — DEPOSIT_ACCOUNT="국민 123456-01-234567" */
   private manualAccount(orderId: string): IssuedAccount {
     const fixed = (process.env.DEPOSIT_ACCOUNT ?? '').trim();
+    // 계좌가 없을 때 '시연은행' 가짜 계좌를 지어내는 건 시연 모드(DEMO_SEED가 off가 아닐 때)에서만.
+    // 실제 운영(DEMO_SEED=off)에서 고객에게 없는 계좌를 안내하면 돈이 엉뚱한 데로 가거나 입금이 막히므로 멈춘다.
+    if (!fixed && (process.env.DEMO_SEED ?? '').toLowerCase() === 'off') {
+      throw new ServiceUnavailableException(
+        '입금 계좌가 설정되지 않았습니다. 관리자에게 DEPOSIT_ACCOUNT(예: "국민 123456-01-234567") 설정을 요청하세요.',
+      );
+    }
     const [bank, ...rest] = fixed.split(/\s+/);
     return {
       provider: 'MANUAL',

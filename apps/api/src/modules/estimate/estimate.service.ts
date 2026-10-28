@@ -18,6 +18,7 @@ import {
   type VolumeUnit,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { kstYmd } from '../../common/util/kst';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
@@ -350,14 +351,24 @@ export class EstimateService {
   }
 
   async addZone(estimateId: string, dto: CreateZoneDto, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
+    await this.findWritable(estimateId, principal);
     return this.prisma.estimateZone.create({
       data: { estimateId, name: dto.name, sortOrder: dto.sortOrder ?? 0 },
     });
   }
 
   async addLine(estimateId: string, dto: CreateLineDto, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
+    await this.findWritable(estimateId, principal);
+    // 방(zone)은 이 견적의 방이어야 한다 — 남의 견적 방에 물품이 섞이지 않게
+    if (dto.zoneId) {
+      const zone = await this.prisma.estimateZone.findUnique({
+        where: { id: dto.zoneId },
+        select: { estimateId: true },
+      });
+      if (!zone || zone.estimateId !== estimateId) {
+        throw new BadRequestException('이 견적에 없는 방(zoneId)입니다.');
+      }
+    }
     const qty = dto.qty ?? 1;
     let itemName = dto.itemName;
     let lineCbm = dto.cbm ?? 0;
@@ -391,7 +402,15 @@ export class EstimateService {
   }
 
   async removeLine(estimateId: string, lineId: string, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
+    await this.findWritable(estimateId, principal);
+    // 주소의 견적에 딸린 물품만 지운다(다른 견적의 물품 id를 넣어 지우는 일 막기)
+    const line = await this.prisma.estimateLine.findUnique({
+      where: { id: lineId },
+      select: { estimateId: true },
+    });
+    if (!line || line.estimateId !== estimateId) {
+      throw new NotFoundException(`견적 물품을 찾을 수 없습니다: ${lineId}`);
+    }
     await this.prisma.estimateLine.delete({ where: { id: lineId } });
     await this.recomputeTotalCbm(estimateId);
     return { deleted: true };
@@ -399,7 +418,7 @@ export class EstimateService {
 
   /** 견적 확정 → 리드 QUOTED 전이 + 이벤트 */
   async quote(estimateId: string, principal?: AuthPrincipal) {
-    const estimate = await this.findOne(estimateId, principal);
+    const estimate = await this.findWritable(estimateId, principal);
     // 견적 확정과 리드 전이는 한 트랜잭션 — 전이가 막히면 견적 상태만 바뀌는 일이 없도록
     const { updated, transition } = await this.prisma.$transaction(async (tx) => {
       const row = await tx.estimate.update({
@@ -500,10 +519,16 @@ export class EstimateService {
             refId: estimateId,
           },
         });
-        await tx.estimateCostLine.update({
-          where: { id: l.id },
+        // 트랜잭션 안에서 DRAFT인지 다시 확인하며 바꾼다 — 두 번 눌러 동시에 들어와도 한 번만 차감
+        const marked = await tx.estimateCostLine.updateMany({
+          where: { id: l.id, status: 'DRAFT' },
           data: { status: 'DEDUCTED', deductedAt, stockMovementId: movement.id },
         });
+        if (marked.count === 0) {
+          throw new ConflictException(
+            '이미 재고 차감된 재료비 라인이 있습니다. 새로고침 후 확인하세요.',
+          );
+        }
         result.push({ materialId: l.materialId, qtyDelta: -l.qty });
       }
       return result;
@@ -535,7 +560,7 @@ export class EstimateService {
    * 나중에 카탈로그가 바뀌어도 발송한 견적 금액이 흔들리지 않게 한다.
    */
   async addAddon(estimateId: string, dto: CreateAddonDto, principal?: AuthPrincipal) {
-    const estimate = await this.findOne(estimateId, principal);
+    const estimate = await this.findWritable(estimateId, principal);
 
     let name = dto.name?.trim();
     let unitPrice = dto.unitPrice;
@@ -573,7 +598,7 @@ export class EstimateService {
 
   /** 견적 옵션 삭제. */
   async removeAddon(estimateId: string, addonId: string, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
+    await this.findWritable(estimateId, principal);
     const addon = await this.prisma.estimateAddon.findUnique({ where: { id: addonId } });
     if (!addon || addon.estimateId !== estimateId) {
       throw new NotFoundException(`견적 옵션을 찾을 수 없습니다: ${addonId}`);
@@ -590,7 +615,7 @@ export class EstimateService {
    * 현장 작업지시서는 접수의 주소를 읽으므로, 견적에서만 고치면 현장에 옛 주소가 간다.
    */
   async saveBasic(estimateId: string, dto: SaveBasicDto, principal?: AuthPrincipal) {
-    const estimate = await this.findOne(estimateId, principal);
+    const estimate = await this.findWritable(estimateId, principal);
     if (dto.productId) {
       const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
       if (!product) throw new BadRequestException('존재하지 않는 상품(productId)입니다.');
@@ -715,7 +740,7 @@ export class EstimateService {
    * 기본 틀의 빈 행은 저장하지 않는다. 직접 만든 방은 비어 있어도 남긴다(나중에 채우도록).
    */
   async saveItems(estimateId: string, dto: SaveItemsDto, principal?: AuthPrincipal) {
-    const current = await this.findOne(estimateId, principal);
+    const current = await this.findWritable(estimateId, principal);
     const unit = dto.volumeUnit ?? (current.volumeUnit as VolumeUnit);
     // 화면은 체크한 물품만 보낸다 — 기본 부피가 없는 물품도 '넣었다'는 사실은 남긴다
     const rooms = dto.rooms
@@ -773,8 +798,7 @@ export class EstimateService {
    * 옵션 이름은 정의에서 만들어 스냅샷으로 남긴다(정의가 바뀌어도 발송한 견적서는 그대로).
    */
   async saveOptions(estimateId: string, dto: SaveOptionsDto, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
-    await this.assertNotSigned(estimateId);
+    await this.findWritable(estimateId, principal);
     const defs = await this.prisma.addonService.findMany({
       where: { id: { in: dto.options.map((o) => o.addonServiceId) } },
     });
@@ -860,7 +884,7 @@ export class EstimateService {
 
   /** 작업조건(전/후 평수·작업방식) 수정. 기타가 아니면 남아 있던 메모를 지운다. */
   async updateConditions(estimateId: string, dto: UpdateConditionsDto, principal?: AuthPrincipal) {
-    await this.findOne(estimateId, principal);
+    await this.findWritable(estimateId, principal);
     const note = (access: string | undefined, text: string | undefined) =>
       access === undefined ? text : access === 'ETC' ? (text?.trim() ?? null) : null;
     return this.prisma.estimate.update({
@@ -878,8 +902,7 @@ export class EstimateService {
 
   /** 이사비용·부가세·계약금·잔금 확정. 총액은 항상 서버가 다시 계산한다. */
   async updateAmounts(estimateId: string, dto: UpdateAmountsDto, principal?: AuthPrincipal) {
-    const cur = await this.findOne(estimateId, principal);
-    await this.assertNotSigned(estimateId);
+    const cur = await this.findWritable(estimateId, principal);
     // 계약금이 총비용보다 크면 잔금이 음수가 된다 — 저장 전에 같은 규칙으로 총비용을 미리 계산해 막는다
     const addonTotal = Number(
       (await this.prisma.estimateAddon.aggregate({ where: { estimateId }, _sum: { amount: true } }))
@@ -911,9 +934,16 @@ export class EstimateService {
     return this.recomputeAmounts(estimateId);
   }
 
+  /** 고쳐도 되는 견적만 꺼낸다 — 조직 범위 확인 + 서명된 계약 잠금. 견적을 바꾸는 곳은 모두 이걸 쓴다. */
+  private async findWritable(estimateId: string, principal?: AuthPrincipal) {
+    const estimate = await this.findOne(estimateId, principal);
+    await this.assertNotSigned(estimateId);
+    return estimate;
+  }
+
   /**
-   * 고객이 전자서명한 견적은 금액·상품을 바꾸지 않는다 — 서명한 계약서와 달라지기 때문.
-   * 바꿔야 하면 계약을 취소하고 다시 보내야 한다.
+   * 고객이 전자서명한 견적은 내용(금액·상품·물품·주소·작업조건)을 바꾸지 않는다 —
+   * 고객이 보는 계약서 화면이 서명 뒤에 달라지기 때문. 바꿔야 하면 계약을 취소하고 다시 보내야 한다.
    */
   private async assertNotSigned(estimateId: string) {
     const c = await this.prisma.contract.findUnique({
@@ -921,8 +951,8 @@ export class EstimateService {
       select: { status: true },
     });
     if (c?.status === 'SIGNED') {
-      throw new BadRequestException(
-        '고객이 이미 서명한 견적이라 금액·상품을 바꿀 수 없습니다(서명한 계약서와 달라집니다).',
+      throw new ConflictException(
+        '고객이 이미 서명한 견적이라 바꿀 수 없습니다(서명한 계약서와 달라집니다). 바꾸려면 계약을 취소하고 다시 보내세요.',
       );
     }
   }
@@ -1030,9 +1060,7 @@ export class EstimateService {
   }
 
   private genNo(): string {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
     const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
     return `EST${ymd}${rand}`;
   }

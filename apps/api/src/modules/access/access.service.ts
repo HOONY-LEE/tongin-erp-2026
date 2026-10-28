@@ -14,6 +14,7 @@ import {
   type AuthPrincipal,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 import type {
   CreatePositionDto,
   CreateRoleDto,
@@ -38,7 +39,10 @@ const SUPER_ADMIN_WHERE = {
  */
 @Injectable()
 export class AccessService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+  ) {}
 
   // ── 권한 그룹 ──
 
@@ -208,6 +212,7 @@ export class AccessService {
     const user = await this.prisma.appUser.findUnique({
       where: { id: userId },
       include: {
+        employee: { select: { orgUnitId: true } },
         userRoles: {
           include: { role: { include: { rolePerms: { include: { permission: true } } } } },
         },
@@ -249,15 +254,43 @@ export class AccessService {
       }
     }
 
-    // 권한 상승 막기 — 새로 주거나 빼는 그룹의 권한이 모두 내 권한 안이어야 한다
+    // 권한 상승 막기 — 새로 주거나 빼거나 범위를 바꾸는 그룹의 권한이 모두 내 권한 안이어야 한다
     const isWildcard = actor.permissions.includes(PERMISSION_WILDCARD);
-    const beforeIds = new Set(user.userRoles.map((ur) => ur.roleId));
-    const afterIds = new Set(next.map((a) => a.roleId));
+    // 그룹·데이터 범위·대상 조직이 모두 같아야 '그대로'인 줄로 본다(범위만 바꿔도 손댄 것)
+    const keyOf = (a: { roleId: string; dataScope: string; orgScopeId: string | null }) =>
+      `${a.roleId}:${a.dataScope}:${a.orgScopeId ?? ''}`;
+    const beforeKeys = new Set(user.userRoles.map(keyOf));
+    const afterKeys = new Set(next.map(keyOf));
+    const added = next.filter((a) => !beforeKeys.has(keyOf(a)));
+    const removed = user.userRoles.filter((ur) => !afterKeys.has(keyOf(ur)));
     if (!isWildcard) {
+      // 데이터 범위 상승 막기 — 내 데이터 범위 밖의 계정·조직은 건드릴 수 없다
+      const myOrgIds = await this.scope.orgScopeIds(actor); // null = 전체(ALL)
+      if (myOrgIds !== null) {
+        if (added.some((a) => a.dataScope === 'ALL')) {
+          throw new ForbiddenException(
+            '데이터 범위 "전체"는 나도 전체 범위를 가진 경우에만 줄 수 있습니다.',
+          );
+        }
+        const targetOrg = user.employee?.orgUnitId ?? null;
+        if (!targetOrg || !myOrgIds.includes(targetOrg)) {
+          throw new ForbiddenException('내 데이터 범위 밖 조직의 계정은 권한을 바꿀 수 없습니다.');
+        }
+        if (orgIds.some((id) => !myOrgIds.includes(id))) {
+          throw new ForbiddenException(
+            '내 데이터 범위 밖의 조직은 대상 조직으로 고를 수 없습니다.',
+          );
+        }
+      }
+
+      const touchedIds = new Set([
+        ...added.map((a) => a.roleId),
+        ...removed.map((ur) => ur.roleId),
+      ]);
       const touched = [
-        ...roles.filter((r) => !beforeIds.has(r.id)),
-        ...user.userRoles.map((ur) => ur.role).filter((r) => !afterIds.has(r.id)),
-      ];
+        ...roles.filter((r) => touchedIds.has(r.id)),
+        ...removed.map((ur) => ur.role).filter((r) => !roles.some((x) => x.id === r.id)),
+      ].filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i);
       for (const r of touched) {
         const lacking = r.rolePerms
           .map((rp) => rp.permission.code)
