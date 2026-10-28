@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { koreanValidationError } from './common/validation-message';
+import { AllExceptionsFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -19,6 +20,8 @@ async function bootstrap() {
       exceptionFactory: koreanValidationError,
     }),
   );
+  // 오류 응답 모양 통일 + 상황별 한국어 안내(권한·없는 기능·외부 연동·DB …)
+  app.useGlobalFilters(new AllExceptionsFilter());
   // 웹이 다른 도메인에 있을 때만 필요. 같은 도메인에서 /api 로 프록시하면 비워 두면 된다.
   const origins = (process.env.CORS_ORIGINS ?? '')
     .split(',')

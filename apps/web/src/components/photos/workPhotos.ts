@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ApiError, getToken, SERVICE_UNAVAILABLE, setToken } from '../../lib/api';
+import { ApiError, getToken, setToken, toApiError } from '../../lib/api';
 
 /**
  * 작업 사진 공통 — 이미지 받기(blob URL 캐시)와 올리기 전 줄이기.
@@ -36,14 +36,9 @@ async function fetchPhoto(id: string): Promise<string> {
   if (res.status === 401) {
     setToken(null);
     window.dispatchEvent(new Event('tongin:unauthorized'));
-    throw new ApiError(401, '인증이 필요합니다.');
+    throw new ApiError(401, '로그인이 만료되었습니다. 다시 로그인해 주세요.', 'UNAUTHORIZED');
   }
-  if (!res.ok) {
-    throw new ApiError(
-      res.status,
-      res.status >= 500 ? SERVICE_UNAVAILABLE : '사진을 불러오지 못했습니다',
-    );
-  }
+  if (!res.ok) throw await toApiError(res, `/work-photos/${id}`);
   return URL.createObjectURL(await res.blob());
 }
 
