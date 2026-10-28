@@ -110,6 +110,7 @@ export function SaveBar({
   onReset,
   hint,
   lockedReason,
+  canSave = true,
 }: {
   dirty: boolean;
   saving: boolean;
@@ -119,6 +120,8 @@ export function SaveBar({
   hint?: ReactNode;
   /** 권한은 있지만 지금은 고칠 수 없는 이유(예: 고객 서명 완료) */
   lockedReason?: string;
+  /** 필수 항목이 다 채워졌는지 — false면 저장 버튼을 막는다 */
+  canSave?: boolean;
 }) {
   if (!canEdit || lockedReason) {
     return (
@@ -137,7 +140,7 @@ export function SaveBar({
           되돌리기
         </Button>
       )}
-      <Button variant="primary" onClick={onSave} disabled={!dirty || saving}>
+      <Button variant="primary" onClick={onSave} disabled={!dirty || !canSave || saving}>
         {saving ? '저장 중…' : '저장'}
       </Button>
     </div>

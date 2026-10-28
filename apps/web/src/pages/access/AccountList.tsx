@@ -431,6 +431,16 @@ function AccountModal({
   // 예전 계정(직원 없음)은 이름을 비워 두면 직원 정보 없이 권한만 저장한다
   const wantsProfile = !isPartner && (isNew || hadEmployee || name.trim().length > 0);
 
+  // 필수 항목(이름·소속, 새 계정은 아이디·비밀번호, 권한 그룹)이 다 채워져야 저장 버튼 활성
+  const canSubmit =
+    (!wantsProfile || (!!name.trim() && !!orgUnitId)) &&
+    (!isNew ||
+      (idCheck.state === 'ok' &&
+        password.length >= 6 &&
+        password === password2 &&
+        assigns.length > 0)) &&
+    assigns.every((a) => !!a.roleId && (a.dataScope !== 'ORG' || !!a.orgScopeId));
+
   const save = async () => {
     if (wantsProfile && (!name.trim() || !orgUnitId)) {
       toast({ type: 'warning', title: '직원 이름과 소속을 입력해 주세요' });
@@ -521,7 +531,12 @@ function AccountModal({
           <Button variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button variant="primary" loading={saving} onClick={() => void save()}>
+          <Button
+            variant="primary"
+            loading={saving}
+            disabled={!canSubmit || saving}
+            onClick={() => void save()}
+          >
             {isNew ? '계정 만들기' : '저장'}
           </Button>
         </>
@@ -670,7 +685,7 @@ function AccountModal({
                 return (
                   <div key={i} className={styles.assignRow}>
                     <Select
-                      label={i === 0 ? '권한 그룹' : undefined}
+                      label={i === 0 ? '권한 그룹 *' : undefined}
                       value={a.roleId || undefined}
                       placeholder="그룹 고르기"
                       onValueChange={(v) => setRow(i, { roleId: v })}

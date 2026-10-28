@@ -190,6 +190,9 @@ export default function PublicSign() {
 
   const docSrc = `/api/public/sign/${encodeURIComponent(token)}/document?v=${docVer}`;
 
+  // 서명·이름·동의가 모두 있어야 서명하기 버튼 활성
+  const canSubmit = !!signature && !!name.trim() && agree;
+
   const submit = async () => {
     if (!signature) return setError('서명을 그려 주세요');
     if (!name.trim()) return setError('서명하시는 분의 이름을 적어 주세요');
@@ -331,7 +334,9 @@ export default function PublicSign() {
           <section className={styles.card}>
             <h2>전자서명</h2>
             <label className={styles.field}>
-              <span>서명하시는 분</span>
+              <span>
+                서명하시는 분<span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>
+              </span>
               <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
             </label>
             <SignaturePad onChange={setSignature} />
@@ -341,7 +346,13 @@ export default function PublicSign() {
               label="이용약관 및 개인정보 수집/활용에 동의합니다"
             />
             {error && <p className={styles.error}>{error}</p>}
-            <Button variant="primary" size="lg" loading={busy} onClick={() => void submit()}>
+            <Button
+              variant="primary"
+              size="lg"
+              loading={busy}
+              disabled={!canSubmit || busy}
+              onClick={() => void submit()}
+            >
               위 내용으로 계약하고 서명하기
             </Button>
           </section>

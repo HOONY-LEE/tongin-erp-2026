@@ -244,6 +244,9 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
   const removeRoom = (roomUid: string) =>
     setRooms((rooms) => rooms.filter((r) => r.uid !== roomUid));
 
+  // 직접 추가한(켠) 물품은 이름이 있어야 저장 버튼 활성
+  const canSave = !form.rooms.some((r) => r.rows.some((row) => row.on && !row.itemName.trim()));
+
   const save = async () => {
     const unnamed = form.rooms.some((r) => r.rows.some((row) => row.on && !row.itemName.trim()));
     if (unnamed) {
@@ -470,6 +473,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         dirty={dirty}
         saving={saving}
         canEdit={canEdit}
+        canSave={canSave}
         onSave={save}
         onReset={reset}
         hint="체크한 물품만 저장됩니다. 체크하면 물품의 기본 부피·무게가 채워지고, 고쳐 쓸 수 있습니다."

@@ -98,6 +98,9 @@ export default function MaterialOrders() {
     }
   };
 
+  // 필수 항목(요청 지점·품목 한 줄 이상)이 채워져야 저장 버튼 활성
+  const canSubmit = !!orgId && lines.some((l) => l.materialId && Number(l.qty) > 0);
+
   const submit = async () => {
     if (!orgId) {
       toast({ type: 'warning', title: t('order.pickOrg') });
@@ -267,7 +270,7 @@ export default function MaterialOrders() {
             <Button variant="ghost" onClick={() => setOpen(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" onClick={submit} disabled={saving}>
+            <Button variant="primary" onClick={submit} disabled={!canSubmit || saving}>
               {t('common.save')}
             </Button>
           </>
@@ -275,7 +278,7 @@ export default function MaterialOrders() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Select
-            label={t('order.org')}
+            label={`${t('order.org')} *`}
             value={orgId}
             onValueChange={setOrgId}
             options={orgs}
@@ -284,6 +287,7 @@ export default function MaterialOrders() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <span style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>
               {t('order.lines')}
+              <span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>
             </span>
             {lines.map((l, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
