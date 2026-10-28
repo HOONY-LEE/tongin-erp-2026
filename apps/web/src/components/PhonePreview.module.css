@@ -9,7 +9,7 @@
   background: linear-gradient(145deg, #3a3a3c, #1c1c1e 45%, #2c2c2e);
   box-shadow:
     0 0 0 2px #48484a,
-    0 18px 40px rgb(0 0 0 / 22%);
+    0 4px 10px rgb(0 0 0 / 8%);
 }
 .compact {
   --w: 220px;

@@ -375,7 +375,7 @@
   grid-template-columns: minmax(0, 780px) auto;
   justify-content: start;
   align-items: stretch;
-  gap: 16px;
+  gap: 16px 24px;
 }
 .layoutCompose > .col {
   height: 100%;
