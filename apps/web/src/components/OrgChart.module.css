@@ -1,0 +1,242 @@
+/* 위→아래 조직도. 연결선은 ul/li 의 ::before/::after 로 그린다(표준 CSS 트리 기법).
+   --gap 은 부모 상자 아래~가로선~자식 상자 위까지의 세로 간격. */
+.scroll {
+  overflow-x: auto;
+  padding: 8px 0 16px;
+}
+
+/* 좁으면 가운데, 넓으면 왼쪽부터 시작해 가로 스크롤 — justify-content:center 로 하면
+   넘칠 때 왼쪽이 잘려 스크롤로도 못 본다 */
+.tree {
+  --gap: 20px;
+  --line: var(--ark-color-border-strong);
+  width: max-content;
+  margin: 0 auto;
+}
+
+.tree ul {
+  position: relative;
+  display: flex;
+  margin: 0;
+  padding: var(--gap) 0 0;
+  list-style: none;
+}
+.tree > ul {
+  padding-top: 0;
+}
+
+.tree li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--gap) 8px 0;
+}
+
+/* 형제들을 잇는 가로선(왼쪽 반 + 오른쪽 반) + 내 상자로 내려오는 세로선 */
+.tree li::before,
+.tree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: var(--gap);
+  border-top: 1px solid var(--line);
+}
+.tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1px solid var(--line);
+}
+.tree li:only-child::before,
+.tree li:only-child::after {
+  display: none;
+}
+.tree li:only-child {
+  padding-top: 0;
+}
+.tree li:first-child::before,
+.tree li:last-child::after {
+  border: 0 none;
+}
+.tree li:last-child::before {
+  border-right: 1px solid var(--line);
+  border-radius: 0 6px 0 0;
+}
+.tree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+/* 부모 상자에서 가로선까지 내려오는 세로선 */
+.tree ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: var(--gap);
+  border-left: 1px solid var(--line);
+}
+/* 루트가 여럿이면 맨 위 줄엔 연결선이 없다 */
+.tree > ul > li::before,
+.tree > ul > li::after {
+  display: none;
+}
+.tree > ul > li {
+  padding-top: 0;
+}
+
+/* 하위 조직이 없는 부서 묶음 — 부모에서 세로선 하나만 내려오고, 안에서는 3열로 감싼다 */
+.groupWrap {
+  position: relative;
+  padding-top: var(--gap);
+}
+.groupWrap::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: var(--gap);
+  border-left: 1px solid var(--line);
+}
+.group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(148px, auto));
+  align-items: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: var(--ark-radius-md, 8px);
+}
+.group .card {
+  max-width: none;
+}
+
+/* ── 상자 ── */
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 148px;
+  max-width: 200px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: var(--ark-radius-md, 8px);
+  background: var(--ark-color-bg);
+  text-align: center;
+  overflow: hidden;
+}
+/* 위계를 상단 띠 색으로 — 그룹·법인은 테마색, 부서는 회색 */
+.card[data-type='GROUP'],
+.card[data-type='COMPANY'] {
+  border-top: 3px solid var(--ark-color-primary-500);
+}
+.card[data-type='DEPT'] {
+  border-top: 3px solid var(--ark-color-gray-400);
+}
+.inactive {
+  opacity: 0.55;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+button.head {
+  cursor: pointer;
+}
+button.head:hover {
+  background: var(--ark-color-bg-subtle);
+}
+button.head:focus-visible {
+  outline: 2px solid var(--ark-color-info-500);
+  outline-offset: -2px;
+}
+
+.type {
+  font-size: var(--ark-font-size-xs);
+  color: var(--ark-color-text-tertiary);
+}
+.name {
+  font-weight: 600;
+  word-break: keep-all;
+}
+.count {
+  font-size: var(--ark-font-size-xs);
+  color: var(--ark-color-text-secondary);
+}
+
+/* ── 직원 목록(직원 탭) ── */
+.members {
+  padding: 4px 0;
+  border-top: 1px solid var(--ark-color-border);
+  text-align: left;
+}
+.member {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--ark-font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+.member:disabled {
+  cursor: default;
+}
+.member:not(:disabled):hover {
+  background: var(--ark-color-bg-subtle);
+}
+.member:focus-visible {
+  outline: 2px solid var(--ark-color-info-500);
+  outline-offset: -2px;
+}
+.memberName {
+  white-space: nowrap;
+}
+.memberPos {
+  color: var(--ark-color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* 접어 둔 지점 묶음 — 누르면 지점관리로 */
+.branches {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border: none;
+  border-top: 1px dashed var(--ark-color-border);
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: var(--ark-font-size-xs);
+  cursor: pointer;
+}
+.branches:disabled {
+  cursor: default;
+}
+.branches:not(:disabled):hover {
+  color: var(--ark-color-text-primary);
+  background: var(--ark-color-bg-subtle);
+}
+
+.empty {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--ark-color-text-tertiary);
+}

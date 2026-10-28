@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
+import { isHqUnit, useOrgUnits } from '../lib/orgUnits';
+import { OrgChart, type OrgChartEmployee } from '../components/OrgChart';
 import {
   Badge,
   Button,
@@ -23,28 +26,67 @@ const ACTIVE_FIELD: FormField = {
   alwaysShow: true,
 };
 
-export default function Employees() {
+interface Props {
+  /** 'chart'면 본사 조직도 위에 직원을 나열한다(본사 범위에서만) */
+  view?: 'list' | 'chart';
+  /**
+   * 주면 그 지점의 직원만 — 지점관리 > 지점 상세의 '소속 직원'.
+   * 없으면 본사 직원(지점이 아닌 조직 소속)만 — 조직관리 > 직원.
+   */
+  branch?: { id: string; name: string };
+}
+
+/** 직원 목록·등록·상세. 본사 직원은 조직관리에서, 지점 직원은 지점관리 > 지점 상세에서 다룬다. */
+export default function Employees({ view = 'list', branch }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   // null=닫힘, 'new'=등록, 행=수정
   const [editing, setEditing] = useState<Row | 'new' | null>(null);
-  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
-  const orgs = useOptions('/org-units', 'name');
+  // 지점 상세 안에서는 ?detail= 이 지점 자리라, 직원 상세는 ?emp= 로 연다
+  const {
+    id: detailId,
+    open: openDetail,
+    close: closeDetail,
+  } = useDetailParam(branch ? 'emp' : 'detail');
+  const { units } = useOrgUnits();
   const positions = useOptions('/positions', 'name', 'id', (r) => r.isActive !== false);
-  const orgName = useMemo(() => new Map(orgs.map((o) => [o.value, o.label])), [orgs]);
+  const orgName = useMemo(() => new Map(units.map((u) => [u.id, u.name])), [units]);
+  // 소속 선택지 — 본사 화면은 본사 조직, 지점 화면은 지점(다른 지점으로 옮길 수 있게)
+  const orgs = useMemo(
+    () =>
+      units
+        .filter((u) => (branch ? u.type === 'BRANCH' : isHqUnit(u)))
+        .filter((u) => u.isActive || u.id === branch?.id)
+        .map((u) => ({ value: u.id, label: u.name })),
+    [units, branch],
+  );
+  const orgLabel = branch ? '소속 지점' : '소속 조직';
+
+  // 본사 화면이면 지점 소속 직원을 뺀다(조직 목록을 받기 전엔 판단할 수 없어 기다린다)
+  const shown = useMemo(() => {
+    if (branch) return rows;
+    if (units.length === 0) return [];
+    const hqIds = new Set(units.filter(isHqUnit).map((u) => u.id));
+    return rows.filter((r) => hqIds.has(String(r.orgUnitId)));
+  }, [rows, units, branch]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await api<Row[]>('/employees'));
+      setRows(
+        await api<Row[]>(
+          branch ? `/employees?orgUnitId=${encodeURIComponent(branch.id)}` : '/employees',
+        ),
+      );
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
       setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, branch]);
 
   useEffect(() => {
     void load();
@@ -70,7 +112,7 @@ export default function Employees() {
   };
 
   const fields: FormField[] = [
-    { name: 'orgUnitId', label: '소속 지점', required: true, type: 'select', options: orgs },
+    { name: 'orgUnitId', label: orgLabel, required: true, type: 'select', options: orgs },
     { name: 'name', label: '직원명', required: true },
     {
       name: 'positionId',
@@ -93,7 +135,10 @@ export default function Employees() {
     { title: '사번', render: (r) => String(r.empNo ?? '-') },
     { title: '입사일', render: (r) => (r.hireDate ? String(r.hireDate).slice(0, 10) : '-') },
     { title: '연락처', render: (r) => String(r.phone ?? '-') },
-    { title: '소속 지점', render: (r) => orgName.get(String(r.orgUnitId)) ?? '-' },
+    // 지점 상세 안에선 모두 같은 지점이라 칸을 뺀다
+    ...(branch
+      ? []
+      : [{ title: orgLabel, render: (r: Row) => orgName.get(String(r.orgUnitId)) ?? '-' }]),
     { title: '상태', render: (r) => (r.isActive ? '재직' : '비활성') },
   ];
 
@@ -105,17 +150,21 @@ export default function Employees() {
       size="md"
       fields={editing === 'new' ? fields : [...fields, ACTIVE_FIELD]}
       initialValues={
-        editing && editing !== 'new'
-          ? {
-              orgUnitId: String(editing.orgUnitId),
-              name: String(editing.name),
-              positionId: String(editing.positionId ?? ''),
-              empNo: String(editing.empNo ?? ''),
-              hireDate: editing.hireDate ? String(editing.hireDate).slice(0, 10) : '',
-              phone: String(editing.phone ?? ''),
-              isActive: String(editing.isActive),
-            }
-          : undefined
+        editing === 'new'
+          ? branch
+            ? { orgUnitId: branch.id }
+            : undefined
+          : editing
+            ? {
+                orgUnitId: String(editing.orgUnitId),
+                name: String(editing.name),
+                positionId: String(editing.positionId ?? ''),
+                empNo: String(editing.empNo ?? ''),
+                hireDate: editing.hireDate ? String(editing.hireDate).slice(0, 10) : '',
+                phone: String(editing.phone ?? ''),
+                isActive: String(editing.isActive),
+              }
+            : undefined
       }
       onSubmit={onSubmit}
     />
@@ -129,7 +178,7 @@ export default function Employees() {
         <RecordDetail
           loading={!detail && loading}
           title={detail ? String(detail.name) : '직원을 찾을 수 없습니다'}
-          backLabel={t('nav.employees')}
+          backLabel={branch ? branch.name : t('nav.employees')}
           onBack={closeDetail}
           actions={
             detail ? (
@@ -155,7 +204,7 @@ export default function Employees() {
                         value: detail.hireDate ? String(detail.hireDate).slice(0, 10) : null,
                       },
                       { label: '연락처', value: detail.phone ? String(detail.phone) : null },
-                      { label: '소속 지점', value: orgName.get(String(detail.orgUnitId)) },
+                      { label: orgLabel, value: orgName.get(String(detail.orgUnitId)) },
                       {
                         label: '상태',
                         value: (
@@ -175,24 +224,47 @@ export default function Employees() {
     );
   }
 
+  const addButton = (
+    <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
+      + 직원 등록
+    </Button>
+  );
+
+  // 지점 상세 안에선 '소속 직원 (N)' 제목이 달린 카드로 — 상세 화면의 한 구획이라
+  if (branch) {
+    return (
+      <PageCard title="소속 직원" count={shown.length} actions={addButton}>
+        <DataTable
+          columns={columns}
+          rows={shown}
+          loading={loading}
+          onRowClick={(r) => openDetail(String(r.id))}
+        />
+        {modal}
+      </PageCard>
+    );
+  }
+
+  // 조직관리 > 직원 — 조직 탭과 같은 모양: 제목 줄 없이 검색창 옆에 등록 버튼
   return (
-    <PageCard
-      title={t('nav.employees')}
-      count={rows.length}
-      actions={
-        <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-          + 직원 등록
-        </Button>
-      }
-      plain
-    >
-      <DataTable
-        columns={columns}
-        rows={rows}
-        loading={loading}
-        onRowClick={(r) => openDetail(String(r.id))}
-      />
+    <>
+      {view === 'chart' ? (
+        <OrgChart
+          units={units}
+          employees={shown as unknown as OrgChartEmployee[]}
+          onEmployeeClick={openDetail}
+          onBranchesClick={() => navigate('/branches')}
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          rows={shown}
+          loading={loading || units.length === 0}
+          onRowClick={(r) => openDetail(String(r.id))}
+          toolbarActions={addButton}
+        />
+      )}
       {modal}
-    </PageCard>
+    </>
   );
 }
