@@ -7,7 +7,12 @@ import { AI_DEFAULT_MODEL, AI_MODELS } from '@tongin/shared';
  * Opus는 목록에만 있고 닫혀 있어, 골라도(예전 블루프린트에 저장돼 있어도) Sonnet으로 돈다.
  */
 const allowed = new Set(
-  (process.env.AI_ALLOWED_MODELS ?? AI_MODELS.filter((m) => m.enabled).map((m) => m.id).join(','))
+  (
+    process.env.AI_ALLOWED_MODELS ??
+    AI_MODELS.filter((m) => m.enabled)
+      .map((m) => m.id)
+      .join(',')
+  )
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
