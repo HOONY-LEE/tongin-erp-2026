@@ -5,7 +5,8 @@
  * 쓰기(작업 시작·완료)는 큐잉하지 않는다 — 완료 여부가 정산·고객 알림으로
  * 이어지므로, 실제로 서버에 반영됐는지 확실하지 않은 상태를 만들지 않는다.
  */
-const SHELL = 'tongin-field-shell-v3';
+// manifest·index.html도 이 캐시에 들어가 cache-first로 나간다 — 둘을 바꾸면 버전을 올려야 옛 것이 지워진다
+const SHELL = 'tongin-field-shell-v4';
 const DATA = 'tongin-field-data-v3';
 
 // 앱 껍데기 — 오프라인에서도 화면 자체는 뜨도록
