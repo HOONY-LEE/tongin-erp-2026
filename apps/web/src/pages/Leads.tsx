@@ -235,7 +235,6 @@ export default function Leads() {
         rows={filtered}
         loading={loading}
         onRowClick={(r) => navigate(`/leads/${r.id as string}`)}
-        filtersFirst
         filters={
           <SegmentedControl
             value={stage}

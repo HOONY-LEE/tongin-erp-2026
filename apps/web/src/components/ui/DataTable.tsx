@@ -21,8 +21,6 @@ interface Props {
   exportFileName?: string;
   /** 한 페이지 행 수. 0을 주면 페이지 없이 전체를 그린다(상세 화면의 짧은 목록 등). */
   pageSize?: number;
-  /** 필터를 검색창 왼쪽에 둔다(단계 탭처럼 목록을 크게 나누는 필터) — 검색창도 조금 넓어진다 */
-  filtersFirst?: boolean;
 }
 
 /** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
@@ -43,7 +41,6 @@ export function DataTable({
   exportable,
   exportFileName,
   pageSize = DEFAULT_PAGE_SIZE,
-  filtersFirst,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wasLoading = useRef(false);
@@ -128,7 +125,6 @@ export function DataTable({
         'dt-wrap',
         onRowClick && !showSkeleton ? 'dt-row-clickable' : '',
         showSkeleton ? 'dt-loading' : '',
-        filtersFirst ? 'dt-filters-first' : '',
       ]
         .filter(Boolean)
         .join(' ')}
