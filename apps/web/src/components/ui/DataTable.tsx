@@ -44,6 +44,8 @@ export function DataTable({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wasLoading = useRef(false);
+  // 여러 줄 셀이 있는 표 — 행 높이를 내용에 맞춰 늘린다(고정 행 높이 전제의 가상 스크롤은 끈다)
+  const multiline = columns.some((c) => c.multiline);
 
   const softiumColumns: ReactColumnDef<Row>[] = useMemo(() => {
     const mapped: ReactColumnDef<Row>[] = columns.map((c, i) => ({
@@ -57,6 +59,11 @@ export function DataTable({
       renderCell: ({ row }) =>
         row.data.__sk ? (
           <Skeleton width={36 + ((i * 23 + Number(row.data.__sk) * 11) % 64)} height={12} />
+        ) : c.multiline ? (
+          // 여러 줄 셀 — 줄마다 한 줄 말줄임, 행은 내용 높이만큼 늘어난다(base.css .dt-multiline)
+          <div className="dt-cell-multiline">
+            {c.render ? c.render(row.data) : String(row.data[c.dataIndex ?? ''] ?? '')}
+          </div>
         ) : c.render ? (
           c.render(row.data)
         ) : (
@@ -125,6 +132,7 @@ export function DataTable({
         'dt-wrap',
         onRowClick && !showSkeleton ? 'dt-row-clickable' : '',
         showSkeleton ? 'dt-loading' : '',
+        multiline ? 'dt-multiline' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -145,6 +153,7 @@ export function DataTable({
         }
         exportable={exportable}
         exportFileName={exportFileName}
+        disableVirtualization={multiline}
       />
     </div>
   );

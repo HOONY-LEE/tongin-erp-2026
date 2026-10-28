@@ -169,6 +169,46 @@ a {
   visibility: hidden;
 }
 
+/* ── 표 셀 = 한 줄 ──
+   softium 셀(.sft-td)은 행 높이(--sft-table-row-height)에 고정돼 있어, 셀 안에 두 줄을 쌓으면
+   위아래가 잘리거나 빽빽해 보인다. 원칙은 한 칸에 한 줄(넘치면 말줄임) — 페이지가 셀 안에
+   flex 컨테이너를 넣어도 글자가 줄바꿈되지 않게 내용 영역 전체에 nowrap을 건다. */
+.dt-wrap .sft-tbody .sft-td__content {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 여러 줄이 꼭 필요한 컬럼(Column.multiline)이 있는 표 — 셀 높이를 풀어 행이 내용만큼 늘어난다.
+   행(.sft-tr)은 align-items:stretch라 같은 행의 다른 칸도 함께 늘어나고 가운데 정렬은 유지된다.
+   최소 높이는 기존 행 높이 그대로라 한 줄짜리 행은 변하지 않는다. */
+.dt-multiline .sft-tbody .sft-td {
+  height: auto;
+  min-height: var(--sft-table-row-height);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.dt-cell-multiline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.4;
+}
+.dt-cell-multiline > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 목록 화면 공통 배치(ListPage) — 제목(PageHeader)과 표 툴바 사이 16px ── */
+.list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 /* 툴바 세그먼트 탭(단계·범위 필터) — 검색창 높이(38px)에 맞춘다. 배치: [검색][세그먼트] ……… [내보내기][+ 등록] */
 .sft-toolbar [class*='_track_'] {
   height: 38px;

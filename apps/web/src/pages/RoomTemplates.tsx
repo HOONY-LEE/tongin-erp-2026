@@ -16,16 +16,13 @@ const columns: Column[] = [
     title: '방',
     dataIndex: 'name',
     minWidth: 140,
-    render: (r: Row) => (
-      <span>
-        {String(r.name)}
-        {r.nameEng ? (
-          <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--ark-color-text-secondary)' }}>
-            {String(r.nameEng)}
-          </span>
-        ) : null}
-      </span>
-    ),
+  },
+  // 영문명은 이름 옆에 작게 붙이던 것을 자기 칸으로 — 한 칸에 한 정보
+  {
+    title: '영문명',
+    dataIndex: 'nameEng',
+    minWidth: 120,
+    render: (r: Row) => (r.nameEng ? String(r.nameEng) : '-'),
   },
   {
     title: '자주 들어가는 물품',

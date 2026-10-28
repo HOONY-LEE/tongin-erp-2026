@@ -165,19 +165,18 @@ export default function HrPolicies() {
     { title: '대상', dataIndex: 'targetName' },
     {
       title: '산출 내역',
-      render: (r) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {(r.lines as PayoutLine[]).map((l, i) => (
-            <span key={i} style={{ fontSize: 12, color: 'var(--ark-color-text-secondary)' }}>
-              {l.policyName}: {METRIC[l.metric]}{' '}
-              {AMOUNT_METRIC.includes(l.metric) ? won(l.base) : `${l.base}건`} →{' '}
-              <b style={{ color: l.amount < 0 ? 'var(--ark-color-error-600)' : 'inherit' }}>
-                {won(l.amount)}
-              </b>
-            </span>
-          ))}
-        </div>
-      ),
+      // 정책 수만큼 줄이 쌓인다 — 행이 늘어나게(잘리지 않게). 줄 쌓기·줄마다 말줄임은 DataTable이 맡는다
+      multiline: true,
+      render: (r) =>
+        (r.lines as PayoutLine[]).map((l, i) => (
+          <span key={i} style={{ fontSize: 12, color: 'var(--ark-color-text-secondary)' }}>
+            {l.policyName}: {METRIC[l.metric]}{' '}
+            {AMOUNT_METRIC.includes(l.metric) ? won(l.base) : `${l.base}건`} →{' '}
+            <b style={{ color: l.amount < 0 ? 'var(--ark-color-error-600)' : 'inherit' }}>
+              {won(l.amount)}
+            </b>
+          </span>
+        )),
     },
     { title: '수당', numeric: true, render: (r) => won(r.incentive) },
     { title: '패널티', numeric: true, render: (r) => won(r.penalty) },
