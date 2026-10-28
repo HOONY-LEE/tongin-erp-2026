@@ -36,6 +36,7 @@ import {
   type ExtraPick,
   type StaffPick,
 } from '../components/campaign/StaffPicker';
+import { PhonePreview } from '../components/PhonePreview';
 import styles from './campaign.module.css';
 
 const SIDO = [
@@ -64,6 +65,26 @@ const PAGE_SIZE = 50;
 const ALL = '__ALL__';
 /** 알림톡은 카카오 채널·템플릿 연동 전 — 저장·발송을 막고 안내만 보인다(서버도 같은 문구로 막는다) */
 const ALIMTALK_NOT_READY = '아직 알림톡 연결이 안되었습니다.';
+/** 화면에서 고르는 채널 — 이메일·인스타그램은 아직 연결 전(미리보기만) */
+type UiChannel = CampaignChannel | 'EMAIL' | 'INSTAGRAM';
+const CHANNEL_OPTIONS: { value: UiChannel; label: string }[] = [
+  { value: 'SMS', label: '문자 (SMS·LMS)' },
+  { value: 'ALIMTALK', label: '카카오 알림톡' },
+  { value: 'EMAIL', label: '이메일' },
+  { value: 'INSTAGRAM', label: '인스타그램' },
+];
+/** 아직 연결 안 된 채널의 안내(null = 보낼 수 있음) */
+const NOT_CONNECTED: Record<UiChannel, string | null> = {
+  SMS: null,
+  ALIMTALK: ALIMTALK_NOT_READY,
+  EMAIL: '아직 이메일 발송이 연결되지 않았습니다.',
+  INSTAGRAM: '아직 인스타그램(DM) 연결이 안되었습니다.',
+};
+/** 문자 발신번호(고객 휴대폰에 보이는 번호) */
+const SENDER_NO = '1899-0123';
+/** 링크 — http(s)로 시작하지 않으면 https://를 붙인다 */
+const normalizeUrl = (u: string) =>
+  /^https?:\/\//i.test(u.trim()) ? u.trim() : `https://${u.trim()}`;
 type RecipientKind = 'CUSTOMER' | 'EMPLOYEE' | 'EXTRA';
 const KIND_LABEL: Record<RecipientKind, { label: string; color: 'neutral' | 'info' | 'primary' }> =
   {
@@ -82,6 +103,8 @@ interface CampaignData {
   channel: CampaignChannel;
   message: string;
   title: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
   isAd: boolean;
   optOutText: string | null;
   templateCode: string | null;
@@ -177,7 +200,11 @@ export default function CampaignEditor() {
 
   // ── 설정 ──
   const [name, setName] = useState('');
-  const [channel, setChannel] = useState<CampaignChannel>('SMS');
+  const [channel, setChannel] = useState<UiChannel>('SMS');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
   const [isAd, setIsAd] = useState(false);
@@ -210,6 +237,8 @@ export default function CampaignEditor() {
     setLoaded(c);
     setName(c.name);
     setChannel(c.channel);
+    setPeriodStart(c.periodStart?.slice(0, 10) ?? '');
+    setPeriodEnd(c.periodEnd?.slice(0, 10) ?? '');
     setMessage(c.message);
     setTitle(c.title ?? '');
     setIsAd(c.isAd);
@@ -377,13 +406,33 @@ export default function CampaignEditor() {
     setMessage((m) => m.slice(0, at) + NAME_TOKEN + m.slice(at));
     setTimeout(() => el?.focus(), 0);
   };
+  /** 링크 넣기 — 커서 자리에 주소를 넣는다(미리보기·휴대폰에서 밑줄 링크로 보인다) */
+  const insertLink = () => {
+    if (!linkUrl.trim()) return;
+    const url = normalizeUrl(linkUrl);
+    const el = msgRef.current;
+    const at = el ? el.selectionStart : message.length;
+    setMessage((m) => {
+      const before = m.slice(0, at);
+      const sep = before && !/\s$/.test(before) ? ' ' : '';
+      return `${before}${sep}${url} ${m.slice(at)}`;
+    });
+    setLinkUrl('');
+    setLinkOpen(false);
+    setTimeout(() => el?.focus(), 0);
+  };
+  const notReady = NOT_CONNECTED[channel];
+  const pickChannel = (v: UiChannel) => {
+    setChannel(v);
+    if (NOT_CONNECTED[v]) toast({ type: 'warning', title: NOT_CONNECTED[v]! });
+  };
   const sampleName = useMemo(
     () => [...picked.values()].find((v) => !!v) ?? others[0]?.name ?? '홍길동',
     [picked, others],
   );
   const composed = useMemo(() => {
     let t = message.split(NAME_TOKEN).join(sampleName);
-    if (isAd && channel === 'SMS') t = `(광고)${t}\n${optOut || DEFAULT_OPT_OUT}`;
+    if (isAd) t = `(광고)${t}\n${optOut || DEFAULT_OPT_OUT}`;
     return t;
   }, [message, sampleName, isAd, channel, optOut]);
   const bytes = smsBytes(composed);
@@ -391,7 +440,9 @@ export default function CampaignEditor() {
 
   const payload = () => ({
     name: name.trim(),
-    channel,
+    channel: channel as CampaignChannel,
+    periodStart: periodStart || null,
+    periodEnd: periodEnd || null,
     message,
     title: title.trim() || undefined,
     isAd,
@@ -406,8 +457,25 @@ export default function CampaignEditor() {
     scheduledAt: when === 'LATER' && scheduledAt ? new Date(scheduledAt).toISOString() : null,
   });
 
+  /** 작성 단계 — 1) 메시지 작성 2) 받는 사람·발송 */
+  const [step, setStep] = useState<1 | 2>(1);
+  /** 1단계에서 넘어갈 때는 이름·본문만 본다(예약 시각은 2단계에서) */
+  const goStep2 = () => {
+    const err = notReady
+      ? notReady
+      : !name.trim()
+        ? '캠페인 이름을 입력하세요.'
+        : !message.trim()
+          ? '본문을 입력하세요.'
+          : null;
+    if (err) toast({ type: 'warning', title: err });
+    else setStep(2);
+  };
+
   const check = () => {
-    if (channel === 'ALIMTALK') return ALIMTALK_NOT_READY;
+    if (notReady) return notReady;
+    if (periodStart && periodEnd && periodEnd < periodStart)
+      return '캠페인 기간의 끝 날짜가 시작 날짜보다 빠릅니다.';
     if (!name.trim()) return '캠페인 이름을 입력하세요.';
     if (!message.trim()) return '본문을 입력하세요.';
     if (when === 'LATER' && !scheduledAt) return '예약 시각을 고르세요.';
@@ -605,72 +673,120 @@ export default function CampaignEditor() {
                 </Button>
               )}
             </div>
-            <div className={styles.phone}>
-              <div className={styles.bubble}>{loaded.message}</div>
-            </div>
+            <PhonePreview
+              channel={channel}
+              sender="통인익스프레스"
+              senderNo={SENDER_NO}
+              lms={channel === 'SMS' && isLms}
+              title={title}
+              body={composed}
+              to={sampleName}
+              at={loaded.scheduledAt ? new Date(loaded.scheduledAt) : undefined}
+              compact
+            />
           </div>
         </div>
       </div>
     );
   }
 
-  // ── 작성 화면 ──
+  // ── 작성 화면 — 1) 메시지 작성(기본·메시지) 2) 받는 사람·발송 ──
   return (
     <div className={styles.col}>
       {header}
-      <div className={styles.layout}>
+      <ol className={styles.steps}>
+        {(['메시지 작성', '받는 사람 · 발송'] as const).map((label, i) => (
+          <li key={label}>
+            <button
+              type="button"
+              className={`${styles.stepItem} ${step === i + 1 ? styles.stepOn : ''} ${step > i + 1 ? styles.stepDone : ''}`}
+              onClick={() => (i === 0 ? setStep(1) : goStep2())}
+              aria-current={step === i + 1 ? 'step' : undefined}
+            >
+              <span className={styles.stepNo}>{i + 1}</span>
+              {label}
+            </button>
+          </li>
+        ))}
+      </ol>
+      <div className={step === 1 ? styles.layoutCompose : styles.layout}>
         <div className={styles.col}>
-          {/* 1. 기본 */}
-          <section className={styles.panel}>
-            <h3 className={styles.panelTitle}>1. 기본</h3>
-            <div className={styles.row2}>
-              <label className={styles.field}>
-                <span className={styles.label}>캠페인 이름</span>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="예: 11월 이사 예정 고객 사다리차 할인"
-                />
-              </label>
+          {step === 1 ? (
+            // 캠페인 기본 정보 + 메시지 — 한 카드(경계선으로 나눔), 높이는 미리보기 카드와 같게
+            <section className={`${styles.panel} ${styles.composeCard}`}>
+              <h3 className={styles.panelTitle}>캠페인 기본 정보</h3>
+              <div className={styles.row2}>
+                <label className={styles.field}>
+                  <span className={styles.label}>
+                    캠페인 이름 <span className={styles.req}>*</span>
+                  </span>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="예: 11월 이사 예정 고객 사다리차 할인"
+                  />
+                </label>
+                <div className={styles.field}>
+                  <span className={styles.label}>캠페인 기간</span>
+                  <div className={styles.period}>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={periodStart}
+                      onChange={(e) => setPeriodStart(e.target.value)}
+                      aria-label="캠페인 시작일"
+                    />
+                    <span className={styles.sub}>~</span>
+                    <input
+                      type="date"
+                      className={styles.dateInput}
+                      value={periodEnd}
+                      min={periodStart || undefined}
+                      onChange={(e) => setPeriodEnd(e.target.value)}
+                      aria-label="캠페인 종료일"
+                    />
+                  </div>
+                </div>
+              </div>
               <div className={styles.field}>
-                <span className={styles.label}>채널</span>
+                <span className={styles.label}>
+                  채널 <span className={styles.req}>*</span>
+                </span>
                 <SegmentedControl
+                  className={styles.fitSeg}
                   value={channel}
-                  onChange={(v) => setChannel(v as CampaignChannel)}
-                  options={[
-                    { value: 'SMS', label: '문자 (SMS·LMS)' },
-                    { value: 'ALIMTALK', label: '카카오 알림톡' },
-                  ]}
+                  onChange={(v) => pickChannel(v as UiChannel)}
+                  options={CHANNEL_OPTIONS}
                 />
               </div>
-            </div>
-          </section>
 
-          {channel === 'ALIMTALK' && (
-            <section className={styles.panel}>
-              <div className={[styles.notice, styles.noticeLg].join(' ')} role="status">
-                {ALIMTALK_NOT_READY}
-              </div>
-              <span className={styles.sub} style={{ textAlign: 'center' }}>
-                카카오 채널·템플릿 연동 후 열립니다. 지금은 문자(SMS·LMS)로 보내 주세요.
-              </span>
-            </section>
-          )}
+              <hr className={styles.divider} />
 
-          {channel === 'SMS' && (
-            <>
-              {/* 2. 메시지 */}
-              <section className={styles.panel}>
-                <h3 className={styles.panelTitle}>
-                  2. 메시지{' '}
+              <h3 className={styles.panelTitle}>
+                메시지{' '}
+                {channel === 'SMS' && (
                   <span className={styles.sub}>
                     90바이트(한글 45자)를 넘으면 장문(LMS)으로 보냅니다
                   </span>
-                </h3>
+                )}
+              </h3>
+              {notReady && (
+                <div className={styles.warn} role="status">
+                  {notReady} 문구와 미리보기는 만들어 볼 수 있지만, 보내기는 연결 후에 열립니다.
+                </div>
+              )}
 
-                {channel === 'SMS' && (
+              {/* 제목 · 무료수신거부(광고일 때만 켜짐, 자리는 늘 차지) · 광고성 체크 — 한 줄 */}
+              <div className={styles.titleRow}>
+                {channel !== 'INSTAGRAM' && (
                   <label className={styles.field}>
-                    <span className={styles.label}>장문 제목 (LMS일 때)</span>
+                    <span className={styles.label}>
+                      {channel === 'SMS'
+                        ? '장문 제목 (LMS일 때)'
+                        : channel === 'ALIMTALK'
+                          ? '강조 제목'
+                          : '메일 제목'}
+                    </span>
                     <Input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -679,10 +795,31 @@ export default function CampaignEditor() {
                     />
                   </label>
                 )}
+                <label className={styles.field}>
+                  <span className={styles.label}>무료수신거부 문구</span>
+                  <Input
+                    value={optOut}
+                    onChange={(e) => setOptOut(e.target.value)}
+                    placeholder={DEFAULT_OPT_OUT}
+                    disabled={!isAd}
+                    aria-label="수신거부 문구"
+                  />
+                </label>
+                <div className={styles.adCheck}>
+                  <Checkbox
+                    checked={isAd}
+                    onCheckedChange={(v) => setIsAd(v === true)}
+                    label="광고성 문자"
+                  />
+                </div>
+              </div>
 
-                <div className={styles.field}>
-                  <div className={styles.counter}>
-                    <span className={styles.label}>본문</span>
+              <div className={`${styles.field} ${styles.bodyField}`}>
+                <div className={styles.counter}>
+                  <span className={styles.label}>
+                    본문 <span className={styles.req}>*</span>
+                  </span>
+                  <span className={styles.inline}>
                     <Button
                       variant="outline"
                       size="sm"
@@ -691,400 +828,433 @@ export default function CampaignEditor() {
                     >
                       고객명 넣기
                     </Button>
-                  </div>
-                  <textarea
-                    ref={msgRef}
-                    className={styles.textarea}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder={`[통인익스프레스] ${NAME_TOKEN}님, 안녕하세요.`}
-                    aria-label="본문"
-                  />
-                  {channel === 'SMS' && (
-                    <div className={styles.counter}>
-                      <span>
-                        {NAME_TOKEN}는 받는 사람마다 이름으로 바뀝니다.
-                        {isAd ? ' (광고)·수신거부 문구는 자동으로 붙습니다.' : ''}
-                      </span>
-                      <span>
-                        {bytes} byte · <b>{isLms ? 'LMS(장문)' : 'SMS(단문)'}</b>
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {channel === 'SMS' && (
-                  <div className={styles.field}>
-                    <Checkbox
-                      checked={isAd}
-                      onCheckedChange={(v) => setIsAd(v === true)}
-                      label="광고성 문자"
-                      description="할인·이벤트 안내는 광고입니다 — 앞에 (광고), 끝에 무료수신거부 번호가 필요합니다(정보통신망법)."
-                    />
-                    {isAd && (
-                      <Input
-                        value={optOut}
-                        onChange={(e) => setOptOut(e.target.value)}
-                        placeholder={DEFAULT_OPT_OUT}
-                        aria-label="수신거부 문구"
-                      />
-                    )}
-                  </div>
-                )}
-              </section>
-
-              {/* 3. 받는 사람 */}
-              <section className={styles.panel}>
-                <h3 className={styles.panelTitle}>
-                  3. 받는 사람{' '}
-                  <span className={styles.sub}>
-                    조건으로 찾고, 골라 담으세요 · {totalPicked}명 담음
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Plus size={13} />}
+                      onClick={() => setLinkOpen(true)}
+                    >
+                      링크 넣기
+                    </Button>
                   </span>
-                </h3>
-
-                <SegmentedControl
-                  value={recipientTab}
-                  onChange={(v) => setRecipientTab(v as 'CUSTOMER' | 'STAFF')}
-                  options={[
-                    { value: 'CUSTOMER', label: `고객${picked.size ? ` (${picked.size})` : ''}` },
-                    {
-                      value: 'STAFF',
-                      label: `직원·시연 번호${others.length ? ` (${others.length})` : ''}`,
-                    },
-                  ]}
+                </div>
+                <textarea
+                  ref={msgRef}
+                  className={`${styles.textarea} ${styles.bodyArea}`}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={`[통인익스프레스] ${NAME_TOKEN}님, 안녕하세요.`}
+                  aria-label="본문"
                 />
-
-                {recipientTab === 'STAFF' && (
-                  <StaffPicker
-                    pickedStaff={pickedStaff}
-                    onToggleStaff={toggleStaff}
-                    extras={extras}
-                    onToggleExtra={toggleExtra}
-                  />
-                )}
-
-                {recipientTab === 'CUSTOMER' && (
-                  <>
-                    <div className={styles.row3}>
-                      <label className={styles.field}>
-                        <span className={styles.label}>이름·전화번호</span>
-                        <Input
-                          value={filter.keyword ?? ''}
-                          onChange={(e) => setF('keyword', e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-                          placeholder="일부만 입력해도 됩니다"
-                        />
-                      </label>
-                      <label className={styles.field}>
-                        <span className={styles.label}>주소 키워드</span>
-                        <Input
-                          value={filter.addressKeyword ?? ''}
-                          onChange={(e) => setF('addressKeyword', e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-                          placeholder="구·동·아파트명 (출발·도착지 포함)"
-                        />
-                      </label>
-                      <div className={styles.field}>
-                        <span className={styles.label}>담당 지점</span>
-                        <Select
-                          value={filter.orgUnitId ?? ALL}
-                          onValueChange={(v) => setF('orgUnitId', v === ALL ? undefined : v)}
-                          options={[{ value: ALL, label: '전체' }, ...orgs]}
-                        />
-                      </div>
-                    </div>
-
-                    <div className={styles.field}>
-                      <span className={styles.label}>
-                        지역 (고객 주소·출발지·도착지 중 하나라도)
-                      </span>
-                      <Chips
-                        options={SIDO.map((s) => ({ value: s, label: s }))}
-                        value={filter.sido ?? []}
-                        onChange={(v) => setF('sido', v)}
-                      />
-                    </div>
-
-                    <div className={styles.row2}>
-                      <div className={styles.field}>
-                        <span className={styles.label}>이사일</span>
-                        <div className={styles.inline}>
-                          <input
-                            type="date"
-                            className={styles.dateInput}
-                            value={filter.moveDateFrom ?? ''}
-                            onChange={(e) => setF('moveDateFrom', e.target.value || undefined)}
-                            aria-label="이사일 시작"
-                          />
-                          ~
-                          <input
-                            type="date"
-                            className={styles.dateInput}
-                            value={filter.moveDateTo ?? ''}
-                            onChange={(e) => setF('moveDateTo', e.target.value || undefined)}
-                            aria-label="이사일 끝"
-                          />
-                        </div>
-                      </div>
-                      <div className={styles.field}>
-                        <span className={styles.label}>접수일</span>
-                        <div className={styles.inline}>
-                          <input
-                            type="date"
-                            className={styles.dateInput}
-                            value={filter.receivedFrom ?? ''}
-                            onChange={(e) => setF('receivedFrom', e.target.value || undefined)}
-                            aria-label="접수일 시작"
-                          />
-                          ~
-                          <input
-                            type="date"
-                            className={styles.dateInput}
-                            value={filter.receivedTo ?? ''}
-                            onChange={(e) => setF('receivedTo', e.target.value || undefined)}
-                            aria-label="접수일 끝"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={styles.field}>
-                      <span className={styles.label}>
-                        접수 진행상태 (이사일·접수일과 같은 접수 기준)
-                      </span>
-                      <Chips
-                        options={LEAD_STATUS.map((s) => ({
-                          value: s,
-                          label: LEAD_STATUS_LABEL[s],
-                        }))}
-                        value={(filter.leadStatuses ?? []) as LeadStatus[]}
-                        onChange={(v) => setF('leadStatuses', v)}
-                      />
-                    </div>
-
-                    <div className={styles.row2}>
-                      <div className={styles.field}>
-                        <span className={styles.label}>고객 등급</span>
-                        <Chips
-                          options={grades}
-                          value={filter.grades ?? []}
-                          onChange={(v) => setF('grades', v)}
-                        />
-                      </div>
-                      <div className={styles.field}>
-                        <span className={styles.label}>최근 캠페인 받은 고객 제외</span>
-                        <Select
-                          value={String(filter.excludeRecentDays ?? 0)}
-                          onValueChange={(v) => setF('excludeRecentDays', Number(v) || undefined)}
-                          options={[
-                            { value: '0', label: '제외 안 함' },
-                            { value: '7', label: '최근 7일' },
-                            { value: '14', label: '최근 14일' },
-                            { value: '30', label: '최근 30일' },
-                          ]}
-                        />
-                      </div>
-                    </div>
-
-                    <div className={styles.inline}>
-                      <Button variant="primary" size="sm" onClick={runSearch} loading={searching}>
-                        검색
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={resetFilter}>
-                        조건 초기화
-                      </Button>
-                      <span style={{ flex: 1 }} />
-                      {result && result.total > 0 && (
-                        <Button variant="outline" size="sm" onClick={() => void pickAllResults()}>
-                          검색 결과 전체 담기 ({result.total}명)
-                        </Button>
-                      )}
-                      {picked.size > 0 && (
-                        <Button variant="ghost" size="sm" onClick={() => setPicked(new Map())}>
-                          담은 고객 모두 비우기
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className={styles.tableWrap}>
-                      <table className={styles.table}>
-                        <thead>
-                          <tr>
-                            <th style={{ width: 36 }}>
-                              <Checkbox
-                                checked={pageAllOn}
-                                onCheckedChange={(v) => togglePage(v === true)}
-                                aria-label="이 페이지 전체 선택"
-                              />
-                            </th>
-                            <th>이름</th>
-                            <th>연락처</th>
-                            <th>주소</th>
-                            <th>최근 접수</th>
-                            <th>이사일</th>
-                            <th>지점</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pageRows.map((r) => {
-                            const on = picked.has(r.id);
-                            return (
-                              <tr key={r.id} className={on ? styles.rowOn : ''}>
-                                <td>
-                                  <Checkbox
-                                    checked={on}
-                                    onCheckedChange={(v) => togglePick(r, v === true)}
-                                    aria-label={`${r.name} 선택`}
-                                  />
-                                </td>
-                                <td>{r.name}</td>
-                                <td>{r.phone}</td>
-                                <td className={styles.addr} title={r.addr ?? ''}>
-                                  {r.addr ?? '-'}
-                                </td>
-                                <td>
-                                  {r.lead
-                                    ? `${LEAD_STATUS_LABEL[r.lead.status as LeadStatus] ?? r.lead.status} · ${r.lead.receivedAt}`
-                                    : '-'}
-                                </td>
-                                <td>{r.lead?.moveDate ?? '-'}</td>
-                                <td>{r.orgUnit ?? '-'}</td>
-                              </tr>
-                            );
-                          })}
-                          {!pageRows.length && (
-                            <tr>
-                              <td colSpan={7} style={{ textAlign: 'center', padding: 24 }}>
-                                {searching ? '찾는 중…' : '조건에 맞는 고객이 없습니다.'}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    {result && result.total > PAGE_SIZE && (
-                      <div className={styles.pager}>
-                        <span>
-                          {result.total}명 중 {(page - 1) * PAGE_SIZE + 1}–
-                          {Math.min(page * PAGE_SIZE, result.total)}
-                        </span>
-                        <div className={styles.inline}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page <= 1}
-                            onClick={() => setPage((p) => p - 1)}
-                          >
-                            이전
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page * PAGE_SIZE >= result.total}
-                            onClick={() => setPage((p) => p + 1)}
-                          >
-                            다음
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* 담은 사람 — 보낼 최종 명단(이름·번호로 찾아 빼기) */}
-                <PickedList
-                  ids={pickedIds}
-                  onRemove={(cid) =>
-                    setPicked((m) => {
-                      const n = new Map(m);
-                      n.delete(cid);
-                      return n;
-                    })
-                  }
-                  others={others}
-                  onRemoveOther={removeOther}
-                />
-              </section>
-            </>
-          )}
-        </div>
-
-        {/* 오른쪽 — 미리보기 · 발송 */}
-        <div className={styles.sticky}>
-          {channel === 'SMS' && (
-            <div className={styles.panel}>
-              <h3 className={styles.panelTitle}>
-                미리보기 <span className={styles.sub}>{sampleName} 님에게</span>
-              </h3>
-              <div className={styles.phone}>
-                <div className={styles.bubble}>
-                  {title && isLms && (
-                    <div style={{ fontWeight: 700, marginBottom: 6 }}>{title}</div>
+                <div className={styles.counter}>
+                  <span>
+                    {NAME_TOKEN}는 받는 사람마다 이름으로 바뀝니다. 링크는 눌러서 열립니다.
+                  </span>
+                  {channel === 'SMS' && (
+                    <span>
+                      {bytes} byte · <b>{isLms ? 'LMS(장문)' : 'SMS(단문)'}</b>
+                    </span>
                   )}
-                  {composed || <span className={styles.sub}>본문을 입력하세요</span>}
                 </div>
               </div>
+            </section>
+          ) : (
+            <section className={styles.panel}>
+              <h3 className={styles.panelTitle}>
+                받는 사람{' '}
+                <span className={styles.sub}>
+                  조건으로 찾고, 골라 담으세요 · {totalPicked}명 담음
+                </span>
+              </h3>
+
+              <SegmentedControl
+                value={recipientTab}
+                onChange={(v) => setRecipientTab(v as 'CUSTOMER' | 'STAFF')}
+                options={[
+                  { value: 'CUSTOMER', label: `고객${picked.size ? ` (${picked.size})` : ''}` },
+                  {
+                    value: 'STAFF',
+                    label: `직원·시연 번호${others.length ? ` (${others.length})` : ''}`,
+                  },
+                ]}
+              />
+
+              {recipientTab === 'STAFF' && (
+                <StaffPicker
+                  pickedStaff={pickedStaff}
+                  onToggleStaff={toggleStaff}
+                  extras={extras}
+                  onToggleExtra={toggleExtra}
+                />
+              )}
+
+              {recipientTab === 'CUSTOMER' && (
+                <>
+                  <div className={styles.row3}>
+                    <label className={styles.field}>
+                      <span className={styles.label}>이름·전화번호</span>
+                      <Input
+                        value={filter.keyword ?? ''}
+                        onChange={(e) => setF('keyword', e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+                        placeholder="일부만 입력해도 됩니다"
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span className={styles.label}>주소 키워드</span>
+                      <Input
+                        value={filter.addressKeyword ?? ''}
+                        onChange={(e) => setF('addressKeyword', e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+                        placeholder="구·동·아파트명 (출발·도착지 포함)"
+                      />
+                    </label>
+                    <div className={styles.field}>
+                      <span className={styles.label}>담당 지점</span>
+                      <Select
+                        value={filter.orgUnitId ?? ALL}
+                        onValueChange={(v) => setF('orgUnitId', v === ALL ? undefined : v)}
+                        options={[{ value: ALL, label: '전체' }, ...orgs]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.field}>
+                    <span className={styles.label}>지역 (고객 주소·출발지·도착지 중 하나라도)</span>
+                    <Chips
+                      options={SIDO.map((s) => ({ value: s, label: s }))}
+                      value={filter.sido ?? []}
+                      onChange={(v) => setF('sido', v)}
+                    />
+                  </div>
+
+                  <div className={styles.row2}>
+                    <div className={styles.field}>
+                      <span className={styles.label}>이사일</span>
+                      <div className={styles.inline}>
+                        <input
+                          type="date"
+                          className={styles.dateInput}
+                          value={filter.moveDateFrom ?? ''}
+                          onChange={(e) => setF('moveDateFrom', e.target.value || undefined)}
+                          aria-label="이사일 시작"
+                        />
+                        ~
+                        <input
+                          type="date"
+                          className={styles.dateInput}
+                          value={filter.moveDateTo ?? ''}
+                          onChange={(e) => setF('moveDateTo', e.target.value || undefined)}
+                          aria-label="이사일 끝"
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.field}>
+                      <span className={styles.label}>접수일</span>
+                      <div className={styles.inline}>
+                        <input
+                          type="date"
+                          className={styles.dateInput}
+                          value={filter.receivedFrom ?? ''}
+                          onChange={(e) => setF('receivedFrom', e.target.value || undefined)}
+                          aria-label="접수일 시작"
+                        />
+                        ~
+                        <input
+                          type="date"
+                          className={styles.dateInput}
+                          value={filter.receivedTo ?? ''}
+                          onChange={(e) => setF('receivedTo', e.target.value || undefined)}
+                          aria-label="접수일 끝"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.field}>
+                    <span className={styles.label}>
+                      접수 진행상태 (이사일·접수일과 같은 접수 기준)
+                    </span>
+                    <Chips
+                      options={LEAD_STATUS.map((s) => ({
+                        value: s,
+                        label: LEAD_STATUS_LABEL[s],
+                      }))}
+                      value={(filter.leadStatuses ?? []) as LeadStatus[]}
+                      onChange={(v) => setF('leadStatuses', v)}
+                    />
+                  </div>
+
+                  <div className={styles.row2}>
+                    <div className={styles.field}>
+                      <span className={styles.label}>고객 등급</span>
+                      <Chips
+                        options={grades}
+                        value={filter.grades ?? []}
+                        onChange={(v) => setF('grades', v)}
+                      />
+                    </div>
+                    <div className={styles.field}>
+                      <span className={styles.label}>최근 캠페인 받은 고객 제외</span>
+                      <Select
+                        value={String(filter.excludeRecentDays ?? 0)}
+                        onValueChange={(v) => setF('excludeRecentDays', Number(v) || undefined)}
+                        options={[
+                          { value: '0', label: '제외 안 함' },
+                          { value: '7', label: '최근 7일' },
+                          { value: '14', label: '최근 14일' },
+                          { value: '30', label: '최근 30일' },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.inline}>
+                    <Button variant="primary" size="sm" onClick={runSearch} loading={searching}>
+                      검색
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={resetFilter}>
+                      조건 초기화
+                    </Button>
+                    <span style={{ flex: 1 }} />
+                    {result && result.total > 0 && (
+                      <Button variant="outline" size="sm" onClick={() => void pickAllResults()}>
+                        검색 결과 전체 담기 ({result.total}명)
+                      </Button>
+                    )}
+                    {picked.size > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setPicked(new Map())}>
+                        담은 고객 모두 비우기
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: 36 }}>
+                            <Checkbox
+                              checked={pageAllOn}
+                              onCheckedChange={(v) => togglePage(v === true)}
+                              aria-label="이 페이지 전체 선택"
+                            />
+                          </th>
+                          <th>이름</th>
+                          <th>연락처</th>
+                          <th>주소</th>
+                          <th>최근 접수</th>
+                          <th>이사일</th>
+                          <th>지점</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageRows.map((r) => {
+                          const on = picked.has(r.id);
+                          return (
+                            <tr key={r.id} className={on ? styles.rowOn : ''}>
+                              <td>
+                                <Checkbox
+                                  checked={on}
+                                  onCheckedChange={(v) => togglePick(r, v === true)}
+                                  aria-label={`${r.name} 선택`}
+                                />
+                              </td>
+                              <td>{r.name}</td>
+                              <td>{r.phone}</td>
+                              <td className={styles.addr} title={r.addr ?? ''}>
+                                {r.addr ?? '-'}
+                              </td>
+                              <td>
+                                {r.lead
+                                  ? `${LEAD_STATUS_LABEL[r.lead.status as LeadStatus] ?? r.lead.status} · ${r.lead.receivedAt}`
+                                  : '-'}
+                              </td>
+                              <td>{r.lead?.moveDate ?? '-'}</td>
+                              <td>{r.orgUnit ?? '-'}</td>
+                            </tr>
+                          );
+                        })}
+                        {!pageRows.length && (
+                          <tr>
+                            <td colSpan={7} style={{ textAlign: 'center', padding: 24 }}>
+                              {searching ? '찾는 중…' : '조건에 맞는 고객이 없습니다.'}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {result && result.total > PAGE_SIZE && (
+                    <div className={styles.pager}>
+                      <span>
+                        {result.total}명 중 {(page - 1) * PAGE_SIZE + 1}–
+                        {Math.min(page * PAGE_SIZE, result.total)}
+                      </span>
+                      <div className={styles.inline}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page <= 1}
+                          onClick={() => setPage((p) => p - 1)}
+                        >
+                          이전
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page * PAGE_SIZE >= result.total}
+                          onClick={() => setPage((p) => p + 1)}
+                        >
+                          다음
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 담은 사람 — 보낼 최종 명단(이름·번호로 찾아 빼기) */}
+              <PickedList
+                ids={pickedIds}
+                onRemove={(cid) =>
+                  setPicked((m) => {
+                    const n = new Map(m);
+                    n.delete(cid);
+                    return n;
+                  })
+                }
+                others={others}
+                onRemoveOther={removeOther}
+              />
+            </section>
+          )}
+        </div>
+
+        {/* 오른쪽 — 미리보기(아이폰 문자 화면) · 발송 */}
+        <div className={styles.sticky}>
+          {/* 2단계에선 발송을 위에 — 보내기 버튼이 화면 밖으로 밀리지 않게 */}
+          {step === 2 && (
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>발송</h3>
+              {notReady && <div className={styles.warn}>{notReady}</div>}
+              <SegmentedControl
+                value={when}
+                onChange={(v) => setWhen(v as 'NOW' | 'LATER')}
+                options={[
+                  { value: 'NOW', label: '바로 보내기' },
+                  { value: 'LATER', label: '예약 발송' },
+                ]}
+              />
+              {when === 'LATER' && (
+                <input
+                  type="datetime-local"
+                  className={styles.dateInput}
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  aria-label="예약 시각"
+                />
+              )}
+              <div className={styles.summary}>
+                <div>
+                  <span>받는 사람</span>
+                  <b>{totalPicked}명</b>
+                </div>
+                <div>
+                  <span>유형</span>
+                  <span>
+                    {channel === 'SMS'
+                      ? isLms
+                        ? '문자 · 장문(LMS)'
+                        : '문자 · 단문(SMS)'
+                      : CHANNEL_OPTIONS.find((o) => o.value === channel)?.label}
+                  </span>
+                </div>
+              </div>
+              {channel === 'SMS' && isLms && !title && (
+                <div className={styles.warn}>장문이라 제목을 넣는 게 좋습니다.</div>
+              )}
+              <div className={styles.inline}>
+                <Button variant="ghost" onClick={() => setStep(1)}>
+                  ← 메시지 수정
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => void save()}
+                  disabled={saving || !!notReady}
+                >
+                  임시저장
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={saving || totalPicked === 0 || !!notReady}
+                  onClick={() => {
+                    const err = check();
+                    if (err) toast({ type: 'warning', title: err });
+                    else setConfirm(true);
+                  }}
+                >
+                  {when === 'LATER' ? '예약하기' : '보내기'}
+                </Button>
+              </div>
             </div>
           )}
-
-          <div className={styles.panel}>
-            <h3 className={styles.panelTitle}>4. 발송</h3>
-            {channel === 'ALIMTALK' && <div className={styles.warn}>{ALIMTALK_NOT_READY}</div>}
-            <SegmentedControl
-              value={when}
-              onChange={(v) => setWhen(v as 'NOW' | 'LATER')}
-              options={[
-                { value: 'NOW', label: '바로 보내기' },
-                { value: 'LATER', label: '예약 발송' },
-              ]}
-            />
-            {when === 'LATER' && (
-              <input
-                type="datetime-local"
-                className={styles.dateInput}
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-                aria-label="예약 시각"
-              />
-            )}
-            <div className={styles.summary}>
-              <div>
-                <span>받는 사람</span>
-                <b>{totalPicked}명</b>
-              </div>
-              <div>
-                <span>유형</span>
-                <span>
-                  {channel === 'SMS' ? (isLms ? '문자 · 장문(LMS)' : '문자 · 단문(SMS)') : '알림톡'}
-                </span>
-              </div>
-            </div>
-            {channel === 'SMS' && isLms && !title && (
-              <div className={styles.warn}>장문이라 제목을 넣는 게 좋습니다.</div>
-            )}
-            <div className={styles.inline}>
-              <Button
-                variant="outline"
-                onClick={() => void save()}
-                disabled={saving || channel === 'ALIMTALK'}
-              >
-                임시저장
-              </Button>
-              <Button
-                variant="primary"
-                disabled={saving || totalPicked === 0 || channel === 'ALIMTALK'}
-                onClick={() => {
-                  const err = check();
-                  if (err) toast({ type: 'warning', title: err });
-                  else setConfirm(true);
-                }}
-              >
-                {when === 'LATER' ? '예약하기' : '보내기'}
-              </Button>
-            </div>
-          </div>
+          {/* 미리보기 — 테두리·제목 없이 휴대폰만(1단계는 작성 카드와 같은 높이) */}
+          <PhonePreview
+            channel={channel}
+            sender="통인익스프레스"
+            senderNo={SENDER_NO}
+            lms={channel === 'SMS' && isLms}
+            title={title}
+            body={composed}
+            placeholder="본문을 입력하세요"
+            to={sampleName}
+            at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
+            compact={step === 2}
+            width={step === 1 ? 286 : undefined}
+          />
         </div>
+        {step === 1 && (
+          <div className={`${styles.stepNav} ${styles.stepNavSpan}`}>
+            <Button variant="outline" onClick={() => void save()} disabled={saving || !!notReady}>
+              임시저장
+            </Button>
+            <Button variant="primary" onClick={goStep2} disabled={!!notReady}>
+              다음: 받는 사람·발송 →
+            </Button>
+          </div>
+        )}
       </div>
+
+      <Modal
+        open={linkOpen}
+        onOpenChange={setLinkOpen}
+        title="링크 넣기"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setLinkOpen(false)}>
+              취소
+            </Button>
+            <Button variant="primary" disabled={!linkUrl.trim()} onClick={insertLink}>
+              넣기
+            </Button>
+          </>
+        }
+      >
+        <label className={styles.field}>
+          <span className={styles.label}>주소</span>
+          <Input
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && insertLink()}
+            placeholder="예: tongin.co.kr/event"
+            autoFocus
+          />
+          <span className={styles.sub}>
+            본문의 커서 자리에 들어가고, 고객 휴대폰에서 밑줄 링크로 눌러 열립니다.
+          </span>
+        </label>
+      </Modal>
 
       <Modal
         open={confirm}
@@ -1108,7 +1278,7 @@ export default function CampaignEditor() {
           </div>
           <div>
             <span>채널</span>
-            <span>{CAMPAIGN_CHANNEL_LABEL[channel]}</span>
+            <span>{CAMPAIGN_CHANNEL_LABEL[channel as CampaignChannel]}</span>
           </div>
           <div>
             <span>받는 사람</span>

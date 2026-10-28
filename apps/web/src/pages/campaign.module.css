@@ -2,7 +2,7 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 16px;
   align-items: start;
 }
@@ -293,4 +293,130 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 작성 단계 표시 — 1) 메시지 작성 2) 받는 사람·발송 */
+.steps {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stepItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 18px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.stepNo {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ark-color-bg-muted);
+  font-size: 12px;
+}
+.stepOn {
+  border-color: var(--ark-color-primary-500);
+  color: var(--ark-color-text);
+}
+.stepOn .stepNo {
+  background: var(--ark-color-primary-500);
+  color: #fff;
+}
+.stepDone .stepNo {
+  background: color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
+  color: var(--ark-color-primary-500);
+}
+.stepNav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 캠페인 기간(시작 ~ 끝) */
+.period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.period .dateInput {
+  flex: 1;
+}
+/* 장문 제목 + 광고성 체크 — 한 줄에 나란히 */
+.titleRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.titleRow > .field {
+  flex: 1;
+}
+.adCheck {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 36px;
+}
+
+/* ── 1단계(메시지 작성) — 스크롤 없이 한 화면에: 왼쪽 작성 카드 + 오른쪽 미리보기, 높이 같게 ── */
+.layoutCompose {
+  display: grid;
+  grid-template-columns: minmax(0, 780px) auto;
+  justify-content: start;
+  align-items: stretch;
+  gap: 16px 24px;
+}
+.layoutCompose > .col {
+  height: 100%;
+}
+.composeCard {
+  flex: 1;
+  gap: 12px;
+}
+.divider {
+  width: 100%;
+  margin: 2px 0;
+  border: none;
+  border-top: 1px solid var(--ark-color-border);
+}
+/* 본문 칸이 카드의 남는 높이를 다 쓴다 */
+.bodyField {
+  flex: 1;
+  min-height: 0;
+}
+.bodyArea {
+  flex: 1;
+  min-height: 120px;
+  resize: none;
+}
+/* 채널 탭 — 가진 만큼만 */
+.fitSeg {
+  align-self: flex-start;
+  width: auto !important;
+  max-width: 100%;
+}
+/* 필수 */
+.req {
+  margin-left: 2px;
+  color: var(--ark-color-error-500, #e5484d);
+}
+@media (max-width: 1100px) {
+  .layoutCompose {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* 1단계 아래 버튼 — 두 카드 폭의 오른쪽 끝에 맞춘다 */
+.stepNavSpan {
+  grid-column: 1 / -1;
 }

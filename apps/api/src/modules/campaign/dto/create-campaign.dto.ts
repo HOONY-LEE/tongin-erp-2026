@@ -64,6 +64,17 @@ export class CreateCampaignDto {
   @IsIn(CAMPAIGN_CHANNELS)
   channel?: CampaignChannel;
 
+  /** 캠페인 기간(YYYY-MM-DD) — 빈 값·null은 기간 없음 */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== '' && v !== null)
+  @IsDateString()
+  periodStart?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== '' && v !== null)
+  @IsDateString()
+  periodEnd?: string | null;
+
   @IsString()
   @MaxLength(2000)
   message!: string;
