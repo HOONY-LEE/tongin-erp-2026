@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type Anthropic from '@anthropic-ai/sdk';
-import { AGENT_DEFAULT_MODEL, PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
+import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
+import { DEFAULT_AI_MODEL } from '../ai/ai-models';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiFiles } from '../ai/ai-files.service';
 import { ToolError, type AiTool } from '../ai/ai-tool.types';
@@ -252,7 +253,7 @@ export class AgentReferenceService {
     try {
       const res = await client.beta.messages
         .stream({
-          model: AGENT_DEFAULT_MODEL,
+          model: DEFAULT_AI_MODEL,
           max_tokens: 32000,
           betas: [FALLBACK_BETA],
           fallbacks: 'default',

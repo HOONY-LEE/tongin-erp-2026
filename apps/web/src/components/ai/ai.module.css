@@ -44,7 +44,7 @@
   border: none;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text);
   text-align: left;
   cursor: pointer;
@@ -102,7 +102,7 @@
   gap: 8px;
   padding: 12px 16px;
   background: color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 12%, transparent);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .banner code,
@@ -110,7 +110,7 @@
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--ark-color-bg-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .scroll {
@@ -167,7 +167,7 @@
 }
 .mdTable {
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 .mdTable th,
 .mdTable td {
@@ -186,14 +186,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ark-color-text-tertiary);
 }
 .tool {
   border: 1px solid var(--ark-color-border);
   border-radius: 10px;
   background: var(--ark-color-bg);
-  font-size: 13px;
+  font-size: 14px;
 }
 .toolHead {
   display: flex;
@@ -228,7 +228,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .stDone {
   color: var(--ark-color-success-600, #16a34a);
@@ -247,7 +247,7 @@
 }
 .toolLabel {
   margin: 8px 0 4px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ark-color-text-secondary);
 }
@@ -258,7 +258,7 @@
   padding: 10px;
   border-radius: 8px;
   background: var(--ark-color-bg-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -268,7 +268,7 @@
 .codeTitle {
   font-weight: 400;
   font-family: var(--ark-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ark-color-text-tertiary);
 }
 
@@ -314,7 +314,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 .fileError {
@@ -325,7 +325,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text-secondary);
 }
 
@@ -347,7 +347,7 @@
 }
 .approvalSub {
   margin-top: -6px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text-secondary);
 }
 .approvalItem {
@@ -396,7 +396,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: 14px;
 }
 .recipients li {
   display: flex;
@@ -439,7 +439,7 @@
   border-radius: 6px;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text);
   text-align: left;
   cursor: pointer;
@@ -465,7 +465,7 @@
   padding: 12px 14px;
   border-radius: 10px;
   background: color-mix(in srgb, var(--ark-color-error-500, #ef4444) 8%, transparent);
-  font-size: 13px;
+  font-size: 14px;
 }
 .errorBox span {
   flex: 1;
@@ -486,7 +486,7 @@
   color: var(--ark-color-primary-500);
 }
 .emptyTitle {
-  font-size: var(--ark-font-size-lg, 18px);
+  font-size: 19px;
   font-weight: 700;
 }
 .suggestions {
@@ -502,7 +502,7 @@
   border-radius: 10px;
   background: var(--ark-color-bg);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text);
   text-align: left;
   line-height: 1.45;
@@ -544,7 +544,7 @@
 }
 
 .sub {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text-secondary);
 }
 

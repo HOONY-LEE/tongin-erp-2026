@@ -21,18 +21,18 @@
 }
 .headText h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
 }
 .headText p {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--ark-color-text-secondary);
 }
 .meta {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ark-color-text-tertiary);
 }
 .close {
@@ -77,17 +77,17 @@
   background: var(--ark-color-bg);
 }
 .cardTitle {
-  font-size: 15px;
+  font-size: 16px;
 }
 .hint {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ark-color-text-secondary);
 }
 .field {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text-secondary);
 }
 .req {
@@ -101,7 +101,7 @@
   background: var(--ark-color-bg);
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
 }
 .input:focus {
   outline: 2px solid color-mix(in srgb, var(--ark-color-primary-500) 40%, transparent);
@@ -111,7 +111,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text-secondary);
 }
 .actions {
@@ -135,7 +135,7 @@
 }
 .approval p {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
 }
 .approvalTitle {
   display: flex;
@@ -151,13 +151,13 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--ark-color-error-500, #ef4444) 8%, var(--ark-color-bg));
   color: var(--ark-color-error-600, #dc2626);
-  font-size: 13px;
+  font-size: 14px;
 }
 .output {
   padding: 12px 14px;
   border-radius: 10px;
   background: var(--ark-color-bg-subtle);
-  font-size: 14px;
+  font-size: 15px;
 }
 .pre {
   margin: 0;
@@ -166,13 +166,13 @@
   overflow: auto;
   border-radius: 8px;
   background: var(--ark-color-bg-subtle);
-  font-size: 12px;
+  font-size: 13px;
   white-space: pre-wrap;
   word-break: break-all;
 }
 .steps summary {
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ark-color-text-secondary);
 }
 .steps ol {
@@ -194,7 +194,7 @@
   background: transparent;
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
 }
@@ -240,7 +240,7 @@
   background: transparent;
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   text-align: left;
 }

@@ -58,6 +58,12 @@ class SendMessageDto {
   @ValidateNested({ each: true })
   @Type(() => AttachmentInput)
   attachments?: AttachmentInput[];
+
+  /** 이 대화에 쓸 Claude 모델 — 닫힌 모델·모르는 값은 서버가 기본 모델(Sonnet)로 바꾼다 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  model?: string;
 }
 
 /** 대화 제목 바꾸기 — 1~60자 */
@@ -156,7 +162,13 @@ export class AiController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendMessageDto,
   ) {
-    return this.ai.send(id, dto.text, { principal: user, authorization }, dto.attachments ?? []);
+    return this.ai.send(
+      id,
+      dto.text,
+      { principal: user, authorization },
+      dto.attachments ?? [],
+      dto.model,
+    );
   }
 
   @Post('conversations/:id/decisions')

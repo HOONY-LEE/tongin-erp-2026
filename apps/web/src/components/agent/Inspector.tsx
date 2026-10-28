@@ -339,14 +339,22 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
 }
 
 function ModelSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const cur = AGENT_MODELS.find((m) => m.id === value);
   return (
-    <select className={styles.select} value={value} onChange={(e) => onChange(e.target.value)}>
-      {AGENT_MODELS.map((m) => (
-        <option key={m.id} value={m.id}>
-          {m.label}
-        </option>
-      ))}
-    </select>
+    <>
+      <select className={styles.select} value={value} onChange={(e) => onChange(e.target.value)}>
+        {AGENT_MODELS.map((m) => (
+          <option key={m.id} value={m.id} disabled={!m.enabled}>
+            {m.label} — {m.hint}
+          </option>
+        ))}
+      </select>
+      {cur && !cur.enabled && (
+        <span className={styles.hint}>
+          {cur.label}은(는) 아직 닫혀 있어 실행할 때는 {AGENT_MODELS[0].label}로 돕니다.
+        </span>
+      )}
+    </>
   );
 }
 
