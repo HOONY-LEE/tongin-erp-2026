@@ -12,15 +12,11 @@ import { PrismaClient } from '@prisma/client';
 import { ROLE_FRANCHISE } from '@tongin/shared';
 import { RESET_VERSION } from './demo-versions';
 
-const VERSION = '2026-10-27.1';
+const VERSION = '2026-10-28.real-org';
 const SCRIPTS = [
   'seed-demo.ts',
-  'seed-demo-cases.ts',
-  'seed-demo-ops.ts',
-  'seed-demo-regions.ts',
-  'seed-demo-calendar.ts',
-  'seed-demo-campaigns.ts',
-  'seed-demo-anomaly.ts',
+  'seed-demo-catalog.ts',
+  'seed-demo-leads.ts',
   'seed-demo-agents.ts',
 ];
 

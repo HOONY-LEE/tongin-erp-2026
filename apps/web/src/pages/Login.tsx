@@ -7,9 +7,9 @@ import { ApiError } from '../lib/api';
 import { LangSwitch, ThemeSwitch } from '../components/Switchers';
 import styles from './login.module.css';
 
-// apps/api/prisma/seed-demo.ts·seeder의 데모 계정과 짝을 맞춘 목록(시연용).
-// 비밀번호는 seed-demo.ts의 DEMO_PASSWORD 기본값('tongin1234'). env로 바꿔 시드했다면 이 목록도 맞춰야 한다.
-const DEMO_PASSWORD = 'tongin1234';
+// apps/api/prisma/seed-demo.ts가 만드는 실제 계정 중 몇 개(시연용 바로 로그인).
+// 비밀번호는 시드의 DEMO_PASSWORD 기본값('tongin1234!' — 모든 계정 공통). env로 바꿔 시드했다면 이 목록도 맞춰야 한다.
+const DEMO_PASSWORD = 'tongin1234!';
 interface DemoAccount {
   group: string;
   loginId: string;
@@ -18,68 +18,66 @@ interface DemoAccount {
   desc: string;
 }
 const DEMO_ACCOUNTS: DemoAccount[] = [
-  // 시연용 관리자(전체 권한) — 서버 시작 때 seeder가 만든다. 진짜 admin 비밀번호는 따로 둔다
+  // 본사 — 실제 조직도(prisma/seed-demo.ts)
   {
-    group: '관리자',
-    loginId: 'demo.admin',
+    group: '본사',
+    loginId: 'kookjong_ko',
     password: DEMO_PASSWORD,
-    name: '관리자',
-    desc: '본사 · 전체 권한',
+    name: '고국종',
+    desc: '대표이사 · 전체 권한',
+  },
+  {
+    group: '본사',
+    loginId: 'misun_joo',
+    password: DEMO_PASSWORD,
+    name: '주미선',
+    desc: '홈플래너 부장',
+  },
+  {
+    group: '본사',
+    loginId: 'miyoung_kim',
+    password: DEMO_PASSWORD,
+    name: '김미영',
+    desc: '고객관리부 과장',
   },
   ...(import.meta.env.DEV
-    ? [{ group: '관리자', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
+    ? [{ group: '본사', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
     : []),
+  // 지점장 — 기존 전산 계정 목록(prisma/data/legacy-accounts.ts)
   {
     group: '지점장',
-    loginId: 'gn.manager',
+    loginId: 'dongseok_shin',
     password: DEMO_PASSWORD,
-    name: '김성호',
-    desc: '강남점',
-  },
-  {
-    group: '지점장',
-    loginId: 'sp.manager',
-    password: DEMO_PASSWORD,
-    name: '정우진',
+    name: '신동석',
     desc: '송파점',
   },
   {
     group: '지점장',
-    loginId: 'bd.manager',
+    loginId: 'inseok_choi',
     password: DEMO_PASSWORD,
-    name: '한지원',
-    desc: '분당점',
+    name: '최인석',
+    desc: 'VIP점',
   },
   {
     group: '지점장',
-    loginId: 'is.manager',
+    loginId: 'keunsung_choi',
     password: DEMO_PASSWORD,
-    name: '윤태경',
-    desc: '일산점',
+    name: '최근성',
+    desc: '강남1호점',
   },
   {
     group: '지점장',
-    loginId: 'bs.manager',
+    loginId: 'dongchul_kim',
     password: DEMO_PASSWORD,
-    name: '서준호',
-    desc: '부산점',
-  },
-  { group: '현장', loginId: 'gn.field', password: DEMO_PASSWORD, name: '박민수', desc: '강남점' },
-  { group: '현장', loginId: 'sp.field', password: DEMO_PASSWORD, name: '최동혁', desc: '송파점' },
-  { group: '현장', loginId: 'is.field', password: DEMO_PASSWORD, name: '강현우', desc: '일산점' },
-  {
-    group: '전속업체',
-    loginId: 'hanil.partner',
-    password: DEMO_PASSWORD,
-    name: '한일운수',
-    desc: '전속업체',
+    name: '김동철',
+    desc: '해운대점',
   },
   {
-    group: '전속업체',
-    loginId: 'daeyang.partner',
+    group: '지점장',
+    loginId: 'bongki_yoo',
     password: DEMO_PASSWORD,
-    name: '대양물류',
-    desc: '전속업체',
+    name: '유봉기',
+    desc: '분당구미',
   },
 ];
 const DEMO_GROUPS = [...new Set(DEMO_ACCOUNTS.map((a) => a.group))];

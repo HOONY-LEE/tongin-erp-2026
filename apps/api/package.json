@@ -11,16 +11,12 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "demo:seed": "tsx prisma/seed-demo.ts",
-    "demo:seed:cases": "tsx prisma/seed-demo-cases.ts",
-    "demo:seed:ops": "tsx prisma/seed-demo-ops.ts",
-    "demo:seed:regions": "tsx prisma/seed-demo-regions.ts",
-    "demo:seed:calendar": "tsx prisma/seed-demo-calendar.ts",
-    "demo:seed:campaigns": "tsx prisma/seed-demo-campaigns.ts",
-    "demo:seed:anomaly": "tsx prisma/seed-demo-anomaly.ts",
+    "demo:seed:catalog": "tsx prisma/seed-demo-catalog.ts",
+    "demo:seed:leads": "tsx prisma/seed-demo-leads.ts",
     "demo:seed:agents": "tsx prisma/seed-demo-agents.ts",
     "demo:seed:dashboards": "tsx prisma/seed-demo-dashboards.ts",
     "demo:seed:once": "tsx prisma/seed-demo-once.ts",
-    "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:cases && pnpm demo:seed:ops && pnpm demo:seed:regions && pnpm demo:seed:calendar && pnpm demo:seed:campaigns && pnpm demo:seed:anomaly && pnpm demo:seed:agents && pnpm demo:seed:dashboards"
+    "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:catalog && pnpm demo:seed:leads && pnpm demo:seed:agents && pnpm demo:seed:dashboards"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
