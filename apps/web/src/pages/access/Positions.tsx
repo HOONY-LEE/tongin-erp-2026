@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
+import { useDetailParam } from '../../lib/useDetailParam';
 import {
   Badge,
   Button,
   DataTable,
   FormModal,
+  RecordDetail,
   useToast,
   type Column,
   type FormField,
@@ -35,6 +37,7 @@ export default function Positions() {
   const [roles, setRoles] = useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<PositionRow | 'new' | null>(null);
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
   const canCreate = can('ROLE.CREATE');
   const canUpdate = can('ROLE.UPDATE');
   const canDelete = can('ROLE.DELETE');
@@ -112,6 +115,7 @@ export default function Positions() {
     try {
       await api(`/positions/${p.id}`, { method: 'DELETE' });
       toast({ type: 'success', title: '지웠습니다' });
+      closeDetail();
       await load();
     } catch (e) {
       fail(e, '지우지 못했습니다');
@@ -196,37 +200,94 @@ export default function Positions() {
         </Badge>
       ),
     },
-    ...(canUpdate || canDelete
-      ? [
-          {
-            title: '',
-            width: 130,
-            render: (r: Row) => (
-              <span style={{ display: 'inline-flex', gap: 4 }}>
-                {canUpdate && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEditing(r as unknown as PositionRow)}
-                  >
-                    고치기
-                  </Button>
-                )}
+  ];
+
+  const modal = (
+    <FormModal
+      open={editing !== null}
+      onOpenChange={(o) => !o && setEditing(null)}
+      title={editing === 'new' ? '직책 추가' : '직책 고치기'}
+      size="md"
+      fields={fields}
+      initialValues={
+        editing && editing !== 'new'
+          ? {
+              name: editing.name,
+              defaultRoleId: editing.defaultRoleId ?? '',
+              isActive: String(editing.isActive),
+            }
+          : undefined
+      }
+      onSubmit={onSubmit}
+    />
+  );
+
+  // 행을 누르면 상세 — 고치기·삭제는 상세 머리글에서
+  if (detailId) {
+    const detail = rows.find((r) => r.id === detailId);
+    return (
+      <>
+        <RecordDetail
+          loading={!detail && loading}
+          title={detail ? detail.name : '직책을 찾을 수 없습니다'}
+          backLabel="직책"
+          onBack={closeDetail}
+          actions={
+            detail && (canUpdate || canDelete) ? (
+              <>
                 {canDelete && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void remove(r as unknown as PositionRow)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => void remove(detail)}>
                     삭제
                   </Button>
                 )}
-              </span>
-            ),
-          },
-        ]
-      : []),
-  ];
+                {canUpdate && (
+                  <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
+                    고치기
+                  </Button>
+                )}
+              </>
+            ) : undefined
+          }
+          sections={
+            detail
+              ? [
+                  {
+                    title: '직책 정보',
+                    items: [
+                      { label: '직책', value: detail.name },
+                      {
+                        label: '순서',
+                        value: `${rows.findIndex((x) => x.id === detail.id) + 1}번째`,
+                      },
+                      {
+                        label: '추천 권한 그룹',
+                        value: detail.defaultRoleName ? (
+                          <Badge variant="subtle" color="info">
+                            {detail.defaultRoleName}
+                          </Badge>
+                        ) : (
+                          <span className={styles.muted}>없음</span>
+                        ),
+                      },
+                      { label: '직원 수', value: `${detail.employeeCount}명` },
+                      {
+                        label: '상태',
+                        value: (
+                          <Badge variant="subtle" color={detail.isActive ? 'success' : 'neutral'}>
+                            {detail.isActive ? '사용' : '안 씀'}
+                          </Badge>
+                        ),
+                      },
+                    ],
+                  },
+                ]
+              : []
+          }
+        />
+        {modal}
+      </>
+    );
+  }
 
   return (
     <div className={styles.section}>
@@ -238,6 +299,7 @@ export default function Positions() {
         columns={columns}
         rows={rows as unknown as Row[]}
         loading={loading}
+        onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
@@ -246,23 +308,7 @@ export default function Positions() {
           ) : undefined
         }
       />
-      <FormModal
-        open={editing !== null}
-        onOpenChange={(o) => !o && setEditing(null)}
-        title={editing === 'new' ? '직책 추가' : '직책 고치기'}
-        size="md"
-        fields={fields}
-        initialValues={
-          editing && editing !== 'new'
-            ? {
-                name: editing.name,
-                defaultRoleId: editing.defaultRoleId ?? '',
-                isActive: String(editing.isActive),
-              }
-            : undefined
-        }
-        onSubmit={onSubmit}
-      />
+      {modal}
     </div>
   );
 }

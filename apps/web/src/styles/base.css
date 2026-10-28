@@ -78,6 +78,51 @@ a {
 .dt-row-clickable .sft-tbody > [role='row'] {
   cursor: pointer;
 }
+.dt-row-clickable .sft-tbody > [role='row']:hover {
+  background: var(--ark-color-bg-subtle);
+}
+
+/* ── 공통 상세 화면(RecordDetail) — 목록 행을 누르면 열린다 ── */
+.rd-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.rd-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.rd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+.rd-item {
+  min-width: 0;
+}
+.rd-wide {
+  grid-column: 1 / -1;
+}
+.rd-item dt {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--ark-color-text-tertiary);
+}
+.rd-item dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ark-color-text);
+  overflow-wrap: anywhere;
+}
+.rd-empty {
+  color: var(--ark-color-text-tertiary);
+}
 
 /* ── DataTable 툴바 배치 통일 ──
    softium Table 툴바는 [left: 검색] [right: 내보내기·액션] 두 칸뿐이라 필터를 넣을 왼쪽

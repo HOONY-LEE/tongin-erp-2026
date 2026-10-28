@@ -88,18 +88,6 @@ export default function WorkOrders() {
     { title: '작업번호', dataIndex: 'workNo' },
     { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={WORK_STATUS} /> },
     { title: t('work.scheduled'), render: (r) => String(r.scheduledDate ?? '-').slice(0, 10) },
-    {
-      title: '',
-      render: (r) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate(`/work-orders/${r.id as string}`)}
-        >
-          {t('work.detail')}
-        </Button>
-      ),
-    },
   ];
 
   return (
@@ -109,6 +97,7 @@ export default function WorkOrders() {
         columns={columns}
         rows={rows}
         loading={loading}
+        onRowClick={(r) => navigate(`/work-orders/${String(r.id)}`)}
         toolbarActions={
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="outline" size="sm" onClick={exportIcs}>

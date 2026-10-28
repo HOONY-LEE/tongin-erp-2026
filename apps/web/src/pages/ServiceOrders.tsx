@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FormModal,
   PageHeader,
+  RecordDetail,
   StatusBadge,
   useToast,
   type Column,
@@ -38,6 +40,10 @@ interface ServiceOrder extends Row {
   scheduledDate?: string | null;
   amount?: string | number | null;
   status: string;
+  orgUnitId?: string | null;
+  address?: string | null;
+  note?: string | null;
+  createdAt?: string | null;
 }
 
 export default function ServiceOrders() {
@@ -51,12 +57,14 @@ export default function ServiceOrders() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const nameOf = useMemo(() => {
     const p = new Map(products.map((o) => [o.value, o.label]));
     const c = new Map(customers.map((o) => [o.value, o.label]));
-    return { product: p, customer: c };
-  }, [products, customers]);
+    const g = new Map(orgs.map((o) => [o.value, o.label]));
+    return { product: p, customer: c, org: g };
+  }, [products, customers, orgs]);
 
   const fail = useCallback(
     (e: unknown) =>
@@ -121,43 +129,6 @@ export default function ServiceOrders() {
       title: t('service.status'),
       render: (r) => <StatusBadge value={String(r.status)} map={SVC_STATUS} />,
     },
-    {
-      title: '',
-      render: (r) => {
-        const o = r as ServiceOrder;
-        return (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {o.status === 'REQUESTED' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => transition(o.id, 'SCHEDULED', t('service.scheduledMsg'))}
-              >
-                {t('service.schedule')}
-              </Button>
-            )}
-            {o.status === 'SCHEDULED' && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => transition(o.id, 'DONE', t('service.doneMsg'))}
-              >
-                {t('service.complete')}
-              </Button>
-            )}
-            {o.status !== 'DONE' && o.status !== 'CANCELED' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => transition(o.id, 'CANCELED', t('service.canceledMsg'))}
-              >
-                {t('service.cancel')}
-              </Button>
-            )}
-          </div>
-        );
-      },
-    },
   ];
 
   const fields: FormField[] = [
@@ -180,6 +151,83 @@ export default function ServiceOrders() {
     { name: 'note', label: t('service.note') },
   ];
 
+  // 행 끝에 두던 상태 변경 버튼 — 상세 머리글로 옮겼다
+  const actionsOf = (o: ServiceOrder) => (
+    <>
+      {o.status !== 'DONE' && o.status !== 'CANCELED' && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => transition(o.id, 'CANCELED', t('service.canceledMsg'))}
+        >
+          {t('service.cancel')}
+        </Button>
+      )}
+      {o.status === 'REQUESTED' && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => transition(o.id, 'SCHEDULED', t('service.scheduledMsg'))}
+        >
+          {t('service.schedule')}
+        </Button>
+      )}
+      {o.status === 'SCHEDULED' && (
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => transition(o.id, 'DONE', t('service.doneMsg'))}
+        >
+          {t('service.complete')}
+        </Button>
+      )}
+    </>
+  );
+
+  if (detailId) {
+    const d = rows.find((r) => r.id === detailId);
+    return (
+      <RecordDetail
+        loading={!d && loading}
+        title={d ? d.orderNo : '찾을 수 없습니다'}
+        backLabel={t('nav.serviceOrders')}
+        onBack={closeDetail}
+        actions={d ? actionsOf(d) : undefined}
+        sections={
+          d
+            ? [
+                {
+                  title: '서비스 주문',
+                  items: [
+                    { label: t('service.orderNo'), value: d.orderNo },
+                    {
+                      label: t('service.line'),
+                      value: <StatusBadge value={d.serviceLine} map={SVC_LINE} />,
+                    },
+                    {
+                      label: t('service.status'),
+                      value: <StatusBadge value={d.status} map={SVC_STATUS} />,
+                    },
+                    { label: t('service.org'), value: nameOf.org.get(String(d.orgUnitId)) },
+                    { label: t('service.product'), value: nameOf.product.get(String(d.productId)) },
+                    {
+                      label: t('service.customer'),
+                      value: nameOf.customer.get(String(d.customerId)),
+                    },
+                    { label: t('service.scheduled'), value: d.scheduledDate?.slice(0, 10) },
+                    { label: t('service.amount'), value: d.amount != null ? won(d.amount) : null },
+                    { label: '등록일', value: d.createdAt?.slice(0, 10) },
+                    { label: t('service.address'), value: d.address, wide: true },
+                    { label: t('service.note'), value: d.note, wide: true },
+                  ],
+                },
+              ]
+            : []
+        }
+      />
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.serviceOrders')} onRefresh={load} updatedAt={updatedAt} />
@@ -187,6 +235,7 @@ export default function ServiceOrders() {
         columns={columns}
         rows={rows}
         loading={loading}
+        onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
             + {t('service.register')}

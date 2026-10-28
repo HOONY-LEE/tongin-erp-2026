@@ -51,11 +51,6 @@
   white-space: nowrap;
   max-width: 420px;
 }
-.rowActions {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-end;
-}
 .createBody {
   display: flex;
   flex-direction: column;

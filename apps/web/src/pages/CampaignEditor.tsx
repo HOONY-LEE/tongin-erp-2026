@@ -499,7 +499,8 @@ export default function CampaignEditor() {
       breadcrumbs={[{ label: '마케팅', onClick: () => navigate('/campaigns') }]}
       tags={loaded ? <StatusBadge value={loaded.status} map={CAMPAIGN_STATUS_MAP} /> : undefined}
       actions={
-        loaded && loaded.status !== 'SENDING' && can('MARKETING.UPDATE') ? (
+        // 목록 행 끝에 있던 삭제 — 발송 중이 아닌 기존 캠페인만, 삭제 권한(MARKETING.DELETE)
+        loaded && loaded.status !== 'SENDING' && can('MARKETING.DELETE') ? (
           <Button variant="ghost" size="sm" onClick={() => void remove()}>
             삭제
           </Button>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader, SegmentedControl } from '../components/ui';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { useTabParam } from '../lib/useDetailParam';
 import Products from './Products';
 import CbmItems from './CbmItems';
 import Addons from './Addons';
@@ -18,7 +19,7 @@ type Tab = 'product' | 'addon' | 'cbm' | 'room' | 'handling';
  */
 export default function ProductMgmt() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<Tab>('product');
+  const { tab, setTab, inDetail } = useTabParam<Tab>('product');
   const [refreshKey, setRefreshKey] = useState(0);
   const { updatedAt, touch } = useUpdatedAt();
   const tabs: { key: Tab; label: string }[] = [
@@ -30,21 +31,23 @@ export default function ProductMgmt() {
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('nav.productMgmt')}
-        onRefresh={() => {
-          setRefreshKey((k) => k + 1);
-          touch();
-        }}
-        updatedAt={updatedAt}
-        footer={
-          <SegmentedControl
-            value={tab}
-            onChange={(v) => setTab(v as Tab)}
-            options={tabs.map((tb) => ({ value: tb.key, label: tb.label }))}
-          />
-        }
-      />
+      {!inDetail && (
+        <PageHeader
+          title={t('nav.productMgmt')}
+          onRefresh={() => {
+            setRefreshKey((k) => k + 1);
+            touch();
+          }}
+          updatedAt={updatedAt}
+          footer={
+            <SegmentedControl
+              value={tab}
+              onChange={(v) => setTab(v as Tab)}
+              options={tabs.map((tb) => ({ value: tb.key, label: tb.label }))}
+            />
+          }
+        />
+      )}
       {tab === 'product' ? (
         <Products key={`product-${refreshKey}`} />
       ) : tab === 'addon' ? (

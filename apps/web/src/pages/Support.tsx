@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
+import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FormModal,
   PageHeader,
+  RecordDetail,
   StatusBadge,
   useToast,
   type Column,
@@ -41,6 +43,11 @@ interface Ticket extends Row {
   customerId?: string | null;
   priority: string;
   status: string;
+  orgUnitId?: string | null;
+  channel?: string | null;
+  content?: string | null;
+  resolution?: string | null;
+  createdAt?: string | null;
 }
 
 // 상태별 다음 액션 (간단 워크플로우)
@@ -60,6 +67,7 @@ export default function Support() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const customerName = useMemo(
     () => new Map(customers.map((o) => [o.value, o.label])),
@@ -125,32 +133,6 @@ export default function Support() {
       title: t('support.status'),
       render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
     },
-    {
-      title: '',
-      render: (r) => {
-        const ti = r as Ticket;
-        const nexts = NEXT[ti.status] ?? [];
-        return (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {nexts.map((n) => (
-              <Button
-                key={n.to}
-                variant="outline"
-                size="sm"
-                onClick={() => transition(ti.id, n.to)}
-              >
-                {t(n.labelKey)}
-              </Button>
-            ))}
-            {ti.status !== 'CLOSED' && ti.status !== 'CANCELED' && (
-              <Button variant="ghost" size="sm" onClick={() => transition(ti.id, 'CANCELED')}>
-                {t('support.cancel')}
-              </Button>
-            )}
-          </div>
-        );
-      },
-    },
   ];
 
   const fields: FormField[] = [
@@ -191,6 +173,78 @@ export default function Support() {
     { name: 'content', label: t('support.content') },
   ];
 
+  if (detailId) {
+    const d = rows.find((r) => r.id === detailId);
+    const channelOpts = fields.find((f) => f.name === 'channel')?.options ?? [];
+    const orgName = (id?: string | null) => orgs.find((o) => o.value === id)?.label;
+    return (
+      <RecordDetail
+        loading={!d && loading}
+        title={d ? `${d.ticketNo} ${d.subject}` : '찾을 수 없습니다'}
+        backLabel={t('nav.support')}
+        onBack={closeDetail}
+        actions={
+          d ? (
+            // 행 끝에 두던 처리 단계 버튼 — 상세 머리글로 옮겼다
+            <>
+              {d.status !== 'CLOSED' && d.status !== 'CANCELED' && (
+                <Button variant="ghost" size="sm" onClick={() => transition(d.id, 'CANCELED')}>
+                  {t('support.cancel')}
+                </Button>
+              )}
+              {(NEXT[d.status] ?? []).map((n) => (
+                <Button
+                  key={n.to}
+                  variant="primary"
+                  size="sm"
+                  onClick={() => transition(d.id, n.to)}
+                >
+                  {t(n.labelKey)}
+                </Button>
+              ))}
+            </>
+          ) : undefined
+        }
+        sections={
+          d
+            ? [
+                {
+                  title: '접수 정보',
+                  items: [
+                    { label: t('support.ticketNo'), value: d.ticketNo },
+                    { label: t('support.kind'), value: <StatusBadge value={d.kind} map={KIND} /> },
+                    {
+                      label: t('support.status'),
+                      value: <StatusBadge value={d.status} map={STATUS} />,
+                    },
+                    {
+                      label: t('support.priority'),
+                      value: <StatusBadge value={d.priority} map={PRIORITY} />,
+                    },
+                    { label: t('support.customer'), value: customerName.get(String(d.customerId)) },
+                    { label: t('support.org'), value: orgName(d.orgUnitId) },
+                    {
+                      label: t('support.channel'),
+                      value: channelOpts.find((o) => o.value === d.channel)?.label ?? d.channel,
+                    },
+                    { label: '접수일', value: d.createdAt?.slice(0, 10) },
+                  ],
+                },
+                {
+                  title: '내용',
+                  items: [
+                    { label: t('support.subject'), value: d.subject, wide: true },
+                    { label: t('support.content'), value: d.content, wide: true },
+                    { label: '처리 결과', value: d.resolution, wide: true },
+                  ],
+                },
+              ]
+            : []
+        }
+      />
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.support')} onRefresh={load} updatedAt={updatedAt} />
@@ -198,6 +252,7 @@ export default function Support() {
         columns={columns}
         rows={rows}
         loading={loading}
+        onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
             + {t('support.register')}

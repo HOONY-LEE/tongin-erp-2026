@@ -17,13 +17,6 @@
   background: var(--ark-color-bg);
   overflow: hidden;
 }
-.panelHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--ark-color-border);
-}
 .panelTitle {
   font-weight: 600;
   font-size: 15px;
@@ -41,35 +34,6 @@
 }
 
 /* 왼쪽 그룹 목록 */
-.groupList {
-  display: flex;
-  flex-direction: column;
-  padding: 6px;
-  gap: 2px;
-}
-.groupItem {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ark-color-text);
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-}
-.groupItem:hover {
-  background: var(--ark-color-bg-subtle);
-}
-.groupItemActive {
-  background: color-mix(in srgb, var(--ark-color-primary-500) 10%, transparent);
-}
-.groupItemActive:hover {
-  background: color-mix(in srgb, var(--ark-color-primary-500) 14%, transparent);
-}
 .groupName {
   display: flex;
   align-items: center;

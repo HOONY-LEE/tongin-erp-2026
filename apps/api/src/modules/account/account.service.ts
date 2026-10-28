@@ -49,6 +49,7 @@ export class AccountService {
             phone: true,
             empNo: true,
             hireDate: true,
+            isActive: true,
             orgUnit: { select: { name: true } },
             position: { select: { id: true, name: true, sortOrder: true } },
           },
@@ -77,6 +78,8 @@ export class AccountService {
       phone: u.employee?.phone ?? null,
       empNo: u.employee?.empNo ?? null,
       hireDate: u.employee?.hireDate?.toISOString().slice(0, 10) ?? null,
+      /** 재직 여부(직원) — 계정 활성 여부(isActive)와 따로다. 외부 계정이면 null */
+      employeeActive: u.employee?.isActive ?? null,
       orgUnitName: u.employee?.orgUnit.name ?? null,
       positionName: u.employee?.position?.name ?? null,
       positionOrder: u.employee?.position?.sortOrder ?? null,

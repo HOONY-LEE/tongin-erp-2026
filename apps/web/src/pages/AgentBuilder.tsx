@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css';
 import {
   ArrowLeft,
   CircleAlert,
+  Copy,
   LayoutGrid,
   PanelLeft,
   Play,
@@ -25,6 +26,7 @@ import {
   Save,
   Sparkles,
   Spline,
+  Trash2,
   Undo2,
 } from 'lucide-react';
 import { SegmentedControl } from '@sunghoon_lee/akron-ui';
@@ -595,6 +597,36 @@ function Editor() {
     }
   }, [meta, id, graph, errorCount, toast]);
 
+  // ── 복제·삭제(목록 행 끝에 있던 동작) ── 복제는 저장된 내용 기준, 누구나 / 삭제는 만든 사람만
+  const duplicate = async () => {
+    if (dirty && !window.confirm('저장하지 않은 변경은 복사본에 들어가지 않습니다. 복제할까요?'))
+      return;
+    try {
+      const copy = await api<{ id: string }>(`/agent-blueprints/${id}/duplicate`, {
+        method: 'POST',
+      });
+      toast({ type: 'success', title: '복제했습니다 — 내 개인용 초안으로 만들었습니다' });
+      navigate(`/agent-builder/${copy.id}`);
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '복제하지 못했습니다' });
+    }
+  };
+
+  const remove = async () => {
+    if (!meta?.canEdit) return;
+    if (
+      !window.confirm(`'${meta.name}' 에이전트를 삭제할까요? 테스트 실행 기록도 함께 지워집니다.`)
+    )
+      return;
+    try {
+      await api(`/agent-blueprints/${id}`, { method: 'DELETE' });
+      toast({ type: 'success', title: '삭제했습니다' });
+      navigate('/agent-builder');
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+    }
+  };
+
   // 단축키 — 되돌리기·다시하기·저장
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -861,6 +893,24 @@ function Editor() {
           <VisIcon size={14} /> {AGENT_VISIBILITY_LABEL[meta.visibility]}
           {meta.visibility === 'SHARED' ? ` ${meta.shares.length}명` : ''}
         </button>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={() => void duplicate()}
+          title="내 개인용 초안으로 복사"
+        >
+          <Copy size={14} /> 복제
+        </button>
+        {meta.canEdit && (
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={() => void remove()}
+            title="에이전트 삭제"
+          >
+            <Trash2 size={14} /> 삭제
+          </button>
+        )}
         <Button
           variant="primary"
           size="sm"
@@ -875,7 +925,7 @@ function Editor() {
       {!meta.canEdit && (
         <div className={styles.readonlyBar}>
           {meta.createdByName ?? '다른 사람'}님이 만든 에이전트라 보기·테스트만 할 수 있습니다. 고쳐
-          쓰려면 목록에서 <b>복제</b>하세요.
+          쓰려면 위의 <b>복제</b>를 누르세요.
         </div>
       )}
 
