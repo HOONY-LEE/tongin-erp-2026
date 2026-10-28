@@ -59,7 +59,7 @@ export function DataTable({
       flex: c.flex,
       renderCell: ({ row }) =>
         row.data.__sk ? (
-          <Skeleton width={`${45 + ((i * 23 + Number(row.data.__sk)) % 45)}%`} height={12} />
+          <Skeleton width={36 + ((i * 23 + Number(row.data.__sk) * 11) % 64)} height={12} />
         ) : c.render ? (
           c.render(row.data)
         ) : (
