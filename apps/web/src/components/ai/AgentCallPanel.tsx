@@ -83,6 +83,9 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
   const fail = (e: unknown, fallback: string) =>
     toast({ type: 'error', title: e instanceof ApiError ? e.message : fallback });
 
+  // 필수 입력값이 모두 채워져야 실행 버튼 활성
+  const canSubmit = agent.inputFields.every((f) => !f.required || !!values[f.name]?.trim());
+
   const start = async () => {
     const input: Record<string, unknown> = {};
     for (const f of agent.inputFields) {
@@ -212,7 +215,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
               loading={busy && !run}
               leftIcon={<Play size={14} />}
               onClick={() => void start()}
-              disabled={busy}
+              disabled={!canSubmit || busy}
             >
               {busy && !run ? '실행하는 중…' : '실행'}
             </Button>

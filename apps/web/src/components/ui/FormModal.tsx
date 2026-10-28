@@ -62,14 +62,19 @@ export function FormModal({
 
   const setField = (n: string, v: string) => setValues((s) => ({ ...s, [n]: v }));
 
+  // 필수 항목이 비었는지 — 문자열은 공백만 있어도 빈 값, 주소는 우편번호·기본주소까지
+  // (예/아니오 필드는 '사용/사용 안 함' 선택형이라 둘 중 하나를 고르면 채운 것으로 본다)
+  const isMissing = (f: FormField) =>
+    f.type === 'address'
+      ? !values[addrKey(f.addrPrefix ?? '', 'zipcode')]?.trim() ||
+        !values[addrKey(f.addrPrefix ?? '', 'addr')]?.trim()
+      : !values[f.name]?.trim();
+  // 필수 항목이 모두 채워져야 저장 버튼 활성
+  const canSubmit = fields.every((f) => !f.required || !isMissing(f));
+
   const submit = async () => {
     for (const f of fields) {
-      const missing =
-        f.type === 'address'
-          ? !values[addrKey(f.addrPrefix ?? '', 'zipcode')] ||
-            !values[addrKey(f.addrPrefix ?? '', 'addr')]
-          : !values[f.name];
-      if (f.required && missing) {
+      if (f.required && isMissing(f)) {
         toast({ type: 'warning', title: `${f.label} — ${t('common.required')}` });
         return;
       }
@@ -118,7 +123,7 @@ export function FormModal({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" onClick={submit} disabled={saving}>
+          <Button variant="primary" onClick={submit} disabled={!canSubmit || saving}>
             {t('common.save')}
           </Button>
         </>

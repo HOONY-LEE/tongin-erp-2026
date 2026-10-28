@@ -159,6 +159,7 @@ export default function DashboardTemplateEdit() {
                   variant="outline"
                   size="sm"
                   loading={saving}
+                  disabled={!tpl.name.trim() || saving}
                   leftIcon={<Save size={14} />}
                   onClick={() => void save(false)}
                 >
@@ -170,6 +171,7 @@ export default function DashboardTemplateEdit() {
                   variant="primary"
                   size="sm"
                   loading={saving}
+                  disabled={!tpl.name.trim() || saving}
                   rightIcon={<ArrowRight size={14} />}
                   onClick={() => void save(true)}
                 >

@@ -90,6 +90,11 @@ export function RunPanel({
   const [mockLlm, setMockLlm] = useState(!aiConfigured);
   const [open, setOpen] = useState<number | null>(null);
 
+  // 필수 입력값이 모두 채워져야 실행 버튼 활성
+  const canSubmit = (trigger?.inputFields ?? []).every(
+    (f) => !f.required || !!values[f.name]?.trim(),
+  );
+
   const start = () => {
     const input: Record<string, unknown> = {};
     for (const f of trigger?.inputFields ?? []) {
@@ -169,6 +174,7 @@ export function RunPanel({
           loading={running}
           leftIcon={<Play size={13} />}
           onClick={start}
+          disabled={!canSubmit || running}
         >
           {dryRun ? '시험 실행' : '실제 실행'}
         </Button>

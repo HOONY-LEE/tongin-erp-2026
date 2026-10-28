@@ -340,7 +340,7 @@ export default function Settlement() {
         >
           <div style={{ minWidth: 200 }}>
             <Select
-              label={t('settlement.org')}
+              label={`${t('settlement.org')} *`}
               value={orgId}
               onValueChange={setOrgId}
               options={orgs}
@@ -361,7 +361,7 @@ export default function Settlement() {
             onChange={(e) => setMonth(e.target.value)}
             style={{ width: 80 }}
           />
-          <Button variant="primary" onClick={runBranch}>
+          <Button variant="primary" onClick={runBranch} disabled={!orgId}>
             {t('settlement.run')}
           </Button>
         </div>
