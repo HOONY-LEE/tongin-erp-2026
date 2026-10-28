@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { TableSkeleton } from './Skeleton';
+import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
 import type { Column, Row } from './types';
@@ -21,7 +21,12 @@ interface Props {
   exportFileName?: string;
   /** 한 페이지 행 수. 0을 주면 페이지 없이 전체를 그린다(상세 화면의 짧은 목록 등). */
   pageSize?: number;
+  /** 필터를 검색창 왼쪽에 둔다(단계 탭처럼 목록을 크게 나누는 필터) — 검색창도 조금 넓어진다 */
+  filtersFirst?: boolean;
 }
+
+/** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
+const SKELETON_ROWS = 8;
 
 /** 목록 화면 기본 페이지 크기. 푸터의 선택지(10/20/50/100) 중 하나여야 셀렉트와 값이 맞는다. */
 const DEFAULT_PAGE_SIZE = 20;
@@ -38,6 +43,7 @@ export function DataTable({
   exportable,
   exportFileName,
   pageSize = DEFAULT_PAGE_SIZE,
+  filtersFirst,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wasLoading = useRef(false);
@@ -52,7 +58,13 @@ export function DataTable({
       minWidth: c.minWidth,
       flex: c.flex,
       renderCell: ({ row }) =>
-        c.render ? c.render(row.data) : String(row.data[c.dataIndex ?? ''] ?? ''),
+        row.data.__sk ? (
+          <Skeleton width={`${45 + ((i * 23 + Number(row.data.__sk)) % 45)}%`} height={12} />
+        ) : c.render ? (
+          c.render(row.data)
+        ) : (
+          String(row.data[c.dataIndex ?? ''] ?? '')
+        ),
     }));
     // 컬럼 폭 합이 컨테이너보다 좁으면(softium Table은 넘칠 때만 줄여주고 남을 때 안 늘려줌)
     // 오른쪽에 남는 여백이 생긴다. 실제 컬럼들을 억지로 늘리는 대신, 보이지 않는 여백 컬럼 하나를
@@ -73,21 +85,26 @@ export function DataTable({
     return mapped;
   }, [columns]);
 
+  // 처음 불러오기가 끝나기 전에는 '데이터가 없습니다' 대신 표 안에 자리표시 행을 깐다
+  // (검색창·내보내기·등록 버튼 같은 툴바는 그대로 보인다).
+  // (loading을 넘기는 화면만 — 첫 렌더에선 아직 false일 수 있어 '한 번이라도 다 받았나'로 판단)
+  const loadedOnce = useRef(false);
+  if (loading === false && wasLoading.current) loadedOnce.current = true;
+  wasLoading.current = !!loading;
+  const showSkeleton = loading !== undefined && rows.length === 0 && !loadedOnce.current;
+  const skeletonRows = useMemo<Row[]>(
+    () => Array.from({ length: SKELETON_ROWS }, (_, i) => ({ [rowKey]: `__sk${i}`, __sk: i + 1 })),
+    [rowKey],
+  );
+
   const table = useTable<Row>({
-    data: rows,
+    data: showSkeleton ? skeletonRows : rows,
     columns: softiumColumns,
     getRowId: (r) => String(r[rowKey]),
     // 넘기지 않으면 softium Table이 페이지네이션을 끄고(전체 렌더) 푸터의
     // "N개씩 보기" 선택기도 감춘다.
     pageSize,
   });
-
-  // 처음 불러오기가 끝나기 전에는 '데이터가 없습니다' 대신 스켈레톤을 보인다.
-  // (loading을 넘기는 화면만 — 첫 렌더에선 아직 false일 수 있어 '한 번이라도 다 받았나'로 판단)
-  const loadedOnce = useRef(false);
-  if (loading === false && wasLoading.current) loadedOnce.current = true;
-  wasLoading.current = !!loading;
-  const showSkeleton = loading !== undefined && rows.length === 0 && !loadedOnce.current;
 
   // softium-ui Table에는 아직 로우 클릭 prop이 없어 DOM 위임으로 처리한다.
   // 로우 안 버튼/링크 클릭은 그 자체 동작만 수행하도록 무시.
@@ -99,19 +116,23 @@ export function DataTable({
         if (!rowEl?.parentElement) return;
         const index = Array.prototype.indexOf.call(rowEl.parentElement.children, rowEl);
         const row = table.getRows()[index];
-        if (row) onRowClick(row.data);
+        if (row && !row.data.__sk) onRowClick(row.data);
       }
     : undefined;
-
-  if (showSkeleton) {
-    return <TableSkeleton cols={Math.min(Math.max(columns.length, 3), 7)} />;
-  }
 
   return (
     <div
       ref={containerRef}
       onClick={handleClick}
-      className={`dt-wrap${onRowClick ? ' dt-row-clickable' : ''}`}
+      className={[
+        'dt-wrap',
+        onRowClick && !showSkeleton ? 'dt-row-clickable' : '',
+        showSkeleton ? 'dt-loading' : '',
+        filtersFirst ? 'dt-filters-first' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-busy={showSkeleton || undefined}
     >
       <Table
         table={table}
