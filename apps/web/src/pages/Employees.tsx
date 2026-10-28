@@ -6,13 +6,13 @@ import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
 import { isHqUnit, useOrgUnits } from '../lib/orgUnits';
 import { OrgChart, type OrgChartEmployee } from '../components/OrgChart';
+import { EmployeeHrDetail, type HrRecord } from '../components/employee/EmployeeHrDetail';
+import { EMPLOYMENT_TYPES, EMPLOYMENT_TYPE_LABEL } from '@tongin/shared';
 import {
-  Badge,
   Button,
   DataTable,
   FormModal,
   PageCard,
-  RecordDetail,
   useToast,
   type Column,
   type FormField,
@@ -43,8 +43,10 @@ export default function Employees({ view = 'list', branch }: Props) {
   const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
-  // null=닫힘, 'new'=등록, 행=수정
+  // null=닫힘, 'new'=등록, 행=수정(상세의 인사기록 카드에서 열면 인사 칸까지 채워진다)
   const [editing, setEditing] = useState<Row | 'new' | null>(null);
+  // 수정 창에서 저장하면 상세(인사기록 카드)를 다시 읽게
+  const [detailReload, setDetailReload] = useState(0);
   // 지점 상세 안에서는 ?detail= 이 지점 자리라, 직원 상세는 ?emp= 로 연다
   const {
     id: detailId,
@@ -92,7 +94,12 @@ export default function Employees({ view = 'list', branch }: Props) {
     void load();
   }, [load]);
 
-  const onSubmit = async (values: Record<string, unknown>) => {
+  const onSubmit = async (input: Record<string, unknown>) => {
+    // 주소 칸은 시·도·좌표까지 보내는데 직원에는 우편번호·주소·상세만 둔다(서버가 모르는 칸은 거부)
+    const values = Object.fromEntries(
+      Object.entries(input).filter(([k]) => !['sido', 'sigungu', 'lat', 'lng'].includes(k)),
+    );
+    if (values.employmentType === '') delete values.employmentType;
     try {
       if (editing && editing !== 'new') {
         await api(`/employees/${String(editing.id)}`, {
@@ -105,6 +112,7 @@ export default function Employees({ view = 'list', branch }: Props) {
         toast({ type: 'success', title: t('common.created') });
       }
       await load();
+      setDetailReload((k) => k + 1);
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
       throw e;
@@ -124,6 +132,21 @@ export default function Employees({ view = 'list', branch }: Props) {
     { name: 'hireDate', label: '입사일', type: 'date', alwaysShow: true },
     { name: 'empNo', label: '사번', placeholder: '비우면 자동 — 입사연도+일련번호(예: 20260001)' },
     { name: 'phone', label: '연락처', type: 'tel' },
+    // ── 인사기록 ──
+    {
+      name: 'employmentType',
+      label: '고용 형태',
+      type: 'select',
+      options: EMPLOYMENT_TYPES.map((v) => ({ value: v, label: EMPLOYMENT_TYPE_LABEL[v] })),
+      pairWithNext: true,
+    },
+    { name: 'birthDate', label: '생년월일', type: 'date' },
+    { name: 'email', label: '이메일' },
+    { name: 'address', label: '주소', type: 'address' },
+    { name: 'emergencyName', label: '비상 연락처 이름', pairWithNext: true },
+    { name: 'emergencyRelation', label: '관계' },
+    { name: 'emergencyPhone', label: '비상 연락처 번호', type: 'tel' },
+    { name: 'memo', label: '메모' },
   ];
 
   const columns: Column[] = [
@@ -155,69 +178,43 @@ export default function Employees({ view = 'list', branch }: Props) {
             ? { orgUnitId: branch.id }
             : undefined
           : editing
-            ? {
-                orgUnitId: String(editing.orgUnitId),
-                name: String(editing.name),
-                positionId: String(editing.positionId ?? ''),
-                empNo: String(editing.empNo ?? ''),
-                hireDate: editing.hireDate ? String(editing.hireDate).slice(0, 10) : '',
-                phone: String(editing.phone ?? ''),
-                isActive: String(editing.isActive),
-              }
+            ? Object.fromEntries(
+                Object.entries({
+                  orgUnitId: editing.orgUnitId,
+                  name: editing.name,
+                  positionId: editing.positionId,
+                  empNo: editing.empNo,
+                  hireDate: editing.hireDate ? String(editing.hireDate).slice(0, 10) : '',
+                  phone: editing.phone,
+                  isActive: editing.isActive,
+                  employmentType: editing.employmentType,
+                  birthDate: editing.birthDate ? String(editing.birthDate).slice(0, 10) : '',
+                  email: editing.email,
+                  zipcode: editing.zipcode,
+                  addr: editing.addr,
+                  addrDetail: editing.addrDetail,
+                  emergencyName: editing.emergencyName,
+                  emergencyRelation: editing.emergencyRelation,
+                  emergencyPhone: editing.emergencyPhone,
+                  memo: editing.memo,
+                }).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v)]),
+              )
             : undefined
       }
       onSubmit={onSubmit}
     />
   );
 
-  // 행을 누르면 상세 — 수정은 상세 머리글에서
+  // 행을 누르면 상세(인사기록 카드) — 수정·퇴사 처리는 상세 머리글에서
   if (detailId) {
-    const detail = rows.find((r) => String(r.id) === detailId);
     return (
       <>
-        <RecordDetail
-          loading={!detail && loading}
-          title={detail ? String(detail.name) : '직원을 찾을 수 없습니다'}
+        <EmployeeHrDetail
+          id={detailId}
           backLabel={branch ? branch.name : t('nav.employees')}
           onBack={closeDetail}
-          actions={
-            detail ? (
-              <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
-                수정
-              </Button>
-            ) : undefined
-          }
-          sections={
-            detail
-              ? [
-                  {
-                    title: '직원 정보',
-                    items: [
-                      { label: '직원명', value: String(detail.name) },
-                      {
-                        label: '직책',
-                        value: (detail.position as { name: string } | null)?.name,
-                      },
-                      { label: '사번', value: detail.empNo ? String(detail.empNo) : null },
-                      {
-                        label: '입사일',
-                        value: detail.hireDate ? String(detail.hireDate).slice(0, 10) : null,
-                      },
-                      { label: '연락처', value: detail.phone ? String(detail.phone) : null },
-                      { label: orgLabel, value: orgName.get(String(detail.orgUnitId)) },
-                      {
-                        label: '상태',
-                        value: (
-                          <Badge variant="subtle" color={detail.isActive ? 'success' : 'neutral'}>
-                            {detail.isActive ? '재직' : '비활성'}
-                          </Badge>
-                        ),
-                      },
-                    ],
-                  },
-                ]
-              : []
-          }
+          onEdit={(rec: HrRecord) => setEditing(rec as unknown as Row)}
+          reloadKey={detailReload}
         />
         {modal}
       </>

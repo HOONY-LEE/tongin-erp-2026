@@ -1,0 +1,61 @@
+.muted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ark-color-text-tertiary);
+}
+
+/* 발령 이력 */
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.history li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.histDate {
+  min-width: 88px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ark-color-text-secondary);
+}
+
+/* 입·퇴사 체크리스트 — 두 칸 */
+.checkCols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.checkItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.checkItem:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.done {
+  color: var(--ark-color-text-tertiary);
+  text-decoration: line-through;
+}

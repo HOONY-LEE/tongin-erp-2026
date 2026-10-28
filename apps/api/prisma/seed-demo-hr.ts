@@ -88,10 +88,41 @@ async function fillHireDates() {
   console.log(`입사일 보정(본사, 비어 있던 직원) ${n}명`);
 }
 
+/** 입·퇴사 체크리스트 기본 항목 — 그 종류 항목이 하나도 없을 때만 넣는다(관리자가 고친 목록 보존) */
+const CHECKLIST: Record<'ONBOARD' | 'OFFBOARD', string[]> = {
+  ONBOARD: [
+    '근로계약서 작성·보관',
+    '4대보험 취득 신고',
+    'ERP 계정 발급·권한 그룹 지정',
+    '비품 지급(PC·명함·출입카드)',
+    '보안서약서·개인정보 동의서',
+  ],
+  OFFBOARD: [
+    '사직서 수령',
+    '4대보험 상실 신고',
+    'ERP 계정 비활성 확인',
+    '비품 회수(PC·출입카드)',
+    '퇴직금·연차수당 정산',
+  ],
+};
+
+async function seedChecklistTemplates() {
+  let made = 0;
+  for (const kind of ['ONBOARD', 'OFFBOARD'] as const) {
+    if (await prisma.hrChecklistTemplate.count({ where: { kind } })) continue;
+    await prisma.hrChecklistTemplate.createMany({
+      data: CHECKLIST[kind].map((title, i) => ({ kind, title, sortOrder: (i + 1) * 10 })),
+    });
+    made += CHECKLIST[kind].length;
+  }
+  console.log(`입·퇴사 체크리스트 기본 항목 ${made}개 새로 만듦`);
+}
+
 async function main() {
   await seedLeaveTypes();
   await seedLines();
   await fillHireDates();
+  await seedChecklistTemplates();
 }
 
 main()

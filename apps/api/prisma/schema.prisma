@@ -69,6 +69,19 @@ model Employee {
   phone      String?
   hireDate   DateTime? @map("hire_date") @db.Date // 입사일 — 사번(입사연도+일련번호)의 기준
   isActive   Boolean   @default(true) @map("is_active")
+  // ── 인사기록 ──
+  birthDate         DateTime? @map("birth_date") @db.Date
+  email             String?
+  zipcode           String?
+  addr              String?
+  addrDetail        String?   @map("addr_detail")
+  employmentType    String    @default("REGULAR") @map("employment_type") // REGULAR | CONTRACT | PART_TIME | INTERN
+  resignDate        DateTime? @map("resign_date") @db.Date
+  resignReason      String?   @map("resign_reason")
+  emergencyName     String?   @map("emergency_name")
+  emergencyPhone    String?   @map("emergency_phone")
+  emergencyRelation String?   @map("emergency_relation")
+  memo              String?
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   appUsers   AppUser[]
   ownedLeads Lead[]
@@ -82,6 +95,8 @@ model Employee {
   leaveRequests      LeaveRequest[]
   leaveAdjustments   LeaveAdjustment[]
   attendanceRecords  AttendanceRecord[]
+  checklistItems     EmployeeChecklistItem[]
+  histories          EmployeeHistory[]
 
   @@map("employee")
 }
@@ -1345,4 +1360,53 @@ model AttendanceRecord {
   @@unique([employeeId, workDate])
   @@index([workDate])
   @@map("attendance_record")
+}
+
+// ── 인사: 인사기록 ──
+
+/// 입·퇴사 체크리스트 기본 항목 — 직원 등록(입사)·퇴사 처리 때 그 직원 체크리스트로 복사된다
+model HrChecklistTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  kind      String // ONBOARD | OFFBOARD
+  title     String
+  sortOrder Int      @default(100) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("hr_checklist_template")
+}
+
+/// 직원별 입·퇴사 체크리스트 — 항목 제목은 복사해 둔다(기본 항목을 고쳐도 지난 기록은 그대로)
+model EmployeeChecklistItem {
+  id           String    @id @default(uuid()) @db.Uuid
+  employeeId   String    @map("employee_id") @db.Uuid
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  kind         String // ONBOARD | OFFBOARD
+  title        String
+  sortOrder    Int       @default(100) @map("sort_order")
+  doneAt       DateTime? @map("done_at") @db.Timestamptz(6)
+  doneByUserId String?   @map("done_by_user_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([employeeId, kind])
+  @@map("employee_checklist_item")
+}
+
+/// 인사발령 이력 — 입사·소속 이동·직책 변경·퇴사. 직원 수정 때 서버가 자동으로 남긴다
+model EmployeeHistory {
+  id              String   @id @default(uuid()) @db.Uuid
+  employeeId      String   @map("employee_id") @db.Uuid
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  kind            String // JOIN | TRANSFER | POSITION | RESIGN | REHIRE
+  fromOrgId       String?  @map("from_org_id") @db.Uuid
+  toOrgId         String?  @map("to_org_id") @db.Uuid
+  fromPositionId  String?  @map("from_position_id") @db.Uuid
+  toPositionId    String?  @map("to_position_id") @db.Uuid
+  effectiveDate   DateTime @map("effective_date") @db.Date
+  note            String?
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([employeeId, effectiveDate])
+  @@map("employee_history")
 }

@@ -271,3 +271,29 @@ export function judgeAttendance(input: {
   if (early) return 'EARLY';
   return 'NORMAL';
 }
+
+// ── 인사기록 ──
+
+export const EMPLOYMENT_TYPES = ['REGULAR', 'CONTRACT', 'PART_TIME', 'INTERN'] as const;
+export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
+export const EMPLOYMENT_TYPE_LABEL: Record<EmploymentType, string> = {
+  REGULAR: '정규직',
+  CONTRACT: '계약직',
+  PART_TIME: '파트타임',
+  INTERN: '인턴',
+};
+
+export const CHECKLIST_KINDS = ['ONBOARD', 'OFFBOARD'] as const;
+export type ChecklistKind = (typeof CHECKLIST_KINDS)[number];
+export const CHECKLIST_KIND_LABEL: Record<ChecklistKind, string> = {
+  ONBOARD: '입사',
+  OFFBOARD: '퇴사',
+};
+
+export const EMPLOYEE_HISTORY_LABEL: Record<string, string> = {
+  JOIN: '입사',
+  TRANSFER: '소속 이동',
+  POSITION: '직책 변경',
+  RESIGN: '퇴사',
+  REHIRE: '재입사',
+};
