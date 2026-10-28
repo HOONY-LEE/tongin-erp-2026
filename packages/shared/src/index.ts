@@ -641,6 +641,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     specials: [{ action: 'MANAGE', label: '결재선 설정' }],
     hint: '조회 = 모든 결재 문서 열람. 내 문서·내 결재 차례는 권한 없이 볼 수 있습니다',
   },
+  {
+    key: 'LEAVE',
+    label: '휴가',
+    group: '인사',
+    actions: ['READ', 'UPDATE'],
+    hint: '조회 = 전 직원 연차 현황, 수정 = 연차 조정·휴가 종류. 내 휴가 신청은 권한 없이 됩니다',
+  },
   // 정산
   { key: 'SETTLEMENT', label: '정산', group: '정산', actions: ALL_CRUD },
   { key: 'BILLING', label: '청구', group: '정산', actions: ALL_CRUD },

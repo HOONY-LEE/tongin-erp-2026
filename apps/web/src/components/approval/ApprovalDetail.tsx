@@ -13,6 +13,40 @@ import styles from './approval.module.css';
 const dt = (v: string | null) =>
   v ? new Date(v).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) : null;
 
+/** 업무 문서의 기본 본문 — 휴가·근태 정정은 payload를 표로, 그 외는 내용(content) */
+function defaultBody(doc: ApprovalDocView): ReactNode {
+  const p = (doc.payload ?? {}) as Record<string, unknown>;
+  const rows: [string, ReactNode][] = [];
+  if (doc.docType === 'LEAVE') {
+    rows.push(['휴가 종류', String(p.leaveType ?? '-')]);
+    rows.push([
+      '기간',
+      p.startDate === p.endDate
+        ? String(p.startDate)
+        : `${String(p.startDate)} ~ ${String(p.endDate)}`,
+    ]);
+    rows.push(['일수', `${String(p.days)}일${p.deducts === false ? ' (연차 차감 없음)' : ''}`]);
+  } else if (doc.docType === 'ATTENDANCE_FIX') {
+    rows.push(['날짜', String(p.workDate ?? '-')]);
+    rows.push(['출근', String(p.clockIn ?? '-')]);
+    rows.push(['퇴근', String(p.clockOut ?? '-')]);
+  }
+  if (!rows.length) return doc.content ? <p className={styles.content}>{doc.content}</p> : null;
+  return (
+    <>
+      <dl className="rd-grid">
+        {rows.map(([k, v]) => (
+          <div key={k} className="rd-item">
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {doc.content && <p className={styles.content}>사유: {doc.content}</p>}
+    </>
+  );
+}
+
 /**
  * 결재 문서 상세 — 문서 정보, (업무별) 본문, 결재 진행 타임라인.
  * 내 결재 차례면 승인·반려, 내가 올린 문서면(결재 시작 전) 회수.
@@ -152,12 +186,15 @@ export function ApprovalDetail({
       >
         {doc && (
           <>
-            {(renderBody?.(doc) ?? doc.content) && (
-              <section className="rd-card">
-                <h3 className="rd-title">내용</h3>
-                {renderBody?.(doc) ?? <p className={styles.content}>{doc.content}</p>}
-              </section>
-            )}
+            {(() => {
+              const body = renderBody?.(doc) ?? defaultBody(doc);
+              return body ? (
+                <section className="rd-card">
+                  <h3 className="rd-title">내용</h3>
+                  {body}
+                </section>
+              ) : null;
+            })()}
             <section className="rd-card">
               <h3 className="rd-title">결재 진행</h3>
               <ol className={styles.timeline}>

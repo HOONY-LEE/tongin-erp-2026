@@ -1,0 +1,386 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  type OnModuleInit,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import {
+  PERMISSION_WILDCARD,
+  countWorkdays,
+  isWorkday,
+  leaveEntitlement,
+  type ApprovalLineEntry,
+  type AuthPrincipal,
+} from '@tongin/shared';
+import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
+import { ApprovalService } from '../approval/approval.service';
+
+const ymd = (d: Date | string) =>
+  typeof d === 'string' ? d.slice(0, 10) : d.toISOString().slice(0, 10);
+const todayYmd = () => {
+  // 한국 날짜 기준 오늘(서버가 UTC여도)
+  const now = new Date(Date.now() + 9 * 3600_000);
+  return now.toISOString().slice(0, 10);
+};
+const dateOnly = (s: string) => new Date(`${s.slice(0, 10)}T00:00:00Z`);
+
+export interface LeaveBalance {
+  employeeId: string;
+  hireDate: string | null;
+  periodStart: string;
+  periodEnd: string;
+  /** 입사일 기준 발생(입사일이 없으면 0) */
+  granted: number;
+  /** 조정 합(±) */
+  adjusted: number;
+  /** 승인된 차감 휴가 */
+  used: number;
+  /** 결재 중인 차감 휴가 */
+  pending: number;
+  /** 남은 연차(결재 중은 빼지 않은 값) */
+  remaining: number;
+  firstYear: boolean;
+  years: number;
+}
+
+@Injectable()
+export class LeaveService implements OnModuleInit {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+    private readonly approvals: ApprovalService,
+  ) {}
+
+  /** 결재가 끝나면 휴가 신청 상태를 같은 트랜잭션에서 맞춘다 */
+  onModuleInit() {
+    const setStatus =
+      (status: string) => async (tx: Prisma.TransactionClient, doc: { payload: unknown }) => {
+        const id = (doc.payload as { leaveRequestId?: string } | null)?.leaveRequestId;
+        if (id) await tx.leaveRequest.updateMany({ where: { id }, data: { status } });
+      };
+    this.approvals.registerHandler('LEAVE', {
+      onApproved: setStatus('APPROVED'),
+      onRejected: setStatus('REJECTED'),
+      onCanceled: setStatus('CANCELED'),
+    });
+  }
+
+  // ── 휴가 종류 ──
+
+  types(all = false) {
+    return this.prisma.leaveType.findMany({
+      where: all ? {} : { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  createType(input: {
+    code: string;
+    name: string;
+    unitDays: number;
+    deducts: boolean;
+    paid: boolean;
+    sortOrder?: number;
+  }) {
+    return this.prisma.leaveType.create({ data: input });
+  }
+
+  updateType(
+    id: string,
+    input: Partial<{
+      name: string;
+      unitDays: number;
+      deducts: boolean;
+      paid: boolean;
+      sortOrder: number;
+      isActive: boolean;
+    }>,
+  ) {
+    return this.prisma.leaveType.update({ where: { id }, data: input });
+  }
+
+  // ── 잔여 연차 ──
+
+  /** 직원 여럿의 잔여 연차를 한 번에(목록 화면) */
+  private async balances(
+    employeeIds: string[],
+    asOf = todayYmd(),
+  ): Promise<Map<string, LeaveBalance>> {
+    if (employeeIds.length === 0) return new Map();
+    const [emps, requests, adjustments] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: { id: { in: employeeIds } },
+        select: { id: true, hireDate: true },
+      }),
+      this.prisma.leaveRequest.findMany({
+        where: {
+          employeeId: { in: employeeIds },
+          status: { in: ['APPROVED', 'PENDING'] },
+          leaveType: { deducts: true },
+        },
+        select: { employeeId: true, startDate: true, days: true, status: true },
+      }),
+      this.prisma.leaveAdjustment.findMany({
+        where: { employeeId: { in: employeeIds } },
+        select: { employeeId: true, effectiveDate: true, days: true },
+      }),
+    ]);
+    const out = new Map<string, LeaveBalance>();
+    for (const e of emps) {
+      const hire = e.hireDate ? ymd(e.hireDate) : null;
+      // 입사일이 없으면 올해(1/1~12/31)를 기간으로 보고 조정분만 센다
+      const ent = hire ? leaveEntitlement(hire, asOf) : null;
+      const periodStart = ent?.periodStart ?? `${asOf.slice(0, 4)}-01-01`;
+      const periodEnd = ent?.periodEnd ?? `${asOf.slice(0, 4)}-12-31`;
+      const inPeriod = (d: Date) => {
+        const s = ymd(d);
+        return s >= periodStart && s <= periodEnd;
+      };
+      let used = 0;
+      let pending = 0;
+      for (const r of requests) {
+        if (r.employeeId !== e.id || !inPeriod(r.startDate)) continue;
+        if (r.status === 'APPROVED') used += Number(r.days);
+        else pending += Number(r.days);
+      }
+      const adjusted = adjustments
+        .filter((a) => a.employeeId === e.id && inPeriod(a.effectiveDate))
+        .reduce((s, a) => s + Number(a.days), 0);
+      const granted = ent?.days ?? 0;
+      out.set(e.id, {
+        employeeId: e.id,
+        hireDate: hire,
+        periodStart,
+        periodEnd,
+        granted,
+        adjusted,
+        used,
+        pending,
+        remaining: granted + adjusted - used,
+        firstYear: ent?.firstYear ?? false,
+        years: ent?.years ?? 0,
+      });
+    }
+    return out;
+  }
+
+  async balance(employeeId: string): Promise<LeaveBalance> {
+    const b = (await this.balances([employeeId])).get(employeeId);
+    if (!b) throw new NotFoundException('직원을 찾을 수 없습니다.');
+    return b;
+  }
+
+  // ── 조회 ──
+
+  private requireEmployee(p: AuthPrincipal) {
+    if (!p.employeeId) throw new ForbiddenException('직원과 연결된 계정만 휴가를 쓸 수 있습니다.');
+    return p.employeeId;
+  }
+
+  private canManage(p: AuthPrincipal, action: 'READ' | 'UPDATE') {
+    return p.permissions.includes(PERMISSION_WILDCARD) || p.permissions.includes(`LEAVE.${action}`);
+  }
+
+  /** 다른 직원 것을 볼 수 있는지 — 본인이거나 LEAVE.READ + 데이터 범위 */
+  private async assertCanSee(
+    p: AuthPrincipal,
+    employeeId: string,
+    action: 'READ' | 'UPDATE' = 'READ',
+  ) {
+    if (action === 'READ' && p.employeeId === employeeId) return;
+    if (!this.canManage(p, action))
+      throw new ForbiddenException('이 직원의 휴가를 볼 권한이 없습니다.');
+    const ids = await this.scope.orgScopeIds(p);
+    if (ids === null) return;
+    const emp = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { orgUnitId: true },
+    });
+    if (!emp || !ids.includes(emp.orgUnitId))
+      throw new ForbiddenException('이 직원의 휴가를 볼 권한이 없습니다.');
+  }
+
+  private requestsOf(employeeId: string) {
+    return this.prisma.leaveRequest.findMany({
+      where: { employeeId },
+      include: { leaveType: { select: { name: true, code: true, deducts: true } } },
+      orderBy: { startDate: 'desc' },
+      take: 200,
+    });
+  }
+
+  /** 한 직원의 휴가 — 잔여·신청 내역·조정 내역 */
+  async employeeLeave(p: AuthPrincipal, employeeId: string) {
+    await this.assertCanSee(p, employeeId);
+    const [balance, requests, adjustments] = await Promise.all([
+      this.balance(employeeId),
+      this.requestsOf(employeeId),
+      this.prisma.leaveAdjustment.findMany({
+        where: { employeeId },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return { balance, requests, adjustments };
+  }
+
+  myLeave(p: AuthPrincipal) {
+    return this.employeeLeave(p, this.requireEmployee(p));
+  }
+
+  /** 전 직원 연차 현황(LEAVE.READ, 데이터 범위 안) */
+  async summary(p: AuthPrincipal, hqOnly: boolean) {
+    if (!this.canManage(p, 'READ'))
+      throw new ForbiddenException('전 직원 휴가를 볼 권한이 없습니다.');
+    const ids = await this.scope.orgScopeIds(p);
+    const emps = await this.prisma.employee.findMany({
+      where: {
+        isActive: true,
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+        ...(hqOnly ? { orgUnit: { type: { not: 'BRANCH' } } } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        hireDate: true,
+        position: { select: { name: true, sortOrder: true } },
+        orgUnit: { select: { name: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+    const b = await this.balances(emps.map((e) => e.id));
+    return emps.map((e) => ({
+      id: e.id,
+      name: e.name,
+      positionName: e.position?.name ?? null,
+      orgUnitName: e.orgUnit?.name ?? null,
+      ...b.get(e.id)!,
+    }));
+  }
+
+  // ── 신청 ──
+
+  async request(
+    p: AuthPrincipal,
+    input: {
+      leaveTypeId: string;
+      startDate: string;
+      endDate?: string;
+      reason?: string;
+      line?: ApprovalLineEntry[];
+    },
+  ) {
+    const empId = this.requireEmployee(p);
+    const type = await this.prisma.leaveType.findUnique({ where: { id: input.leaveTypeId } });
+    if (!type?.isActive) throw new BadRequestException('쓸 수 없는 휴가 종류입니다.');
+    const half = Number(type.unitDays) < 1;
+    const start = input.startDate.slice(0, 10);
+    const end = half ? start : (input.endDate ?? start).slice(0, 10);
+    if (end < start) throw new BadRequestException('끝 날짜가 시작 날짜보다 빠릅니다.');
+    if (half && !isWorkday(start))
+      throw new BadRequestException('반차는 근무일에만 쓸 수 있습니다.');
+    const days = half ? Number(type.unitDays) : countWorkdays(start, end);
+    if (days <= 0) throw new BadRequestException('고른 기간에 근무일이 없습니다(주말·공휴일).');
+
+    // 같은 날짜에 이미 신청(결재 중·승인)한 휴가가 있으면 막는다
+    const overlap = await this.prisma.leaveRequest.findFirst({
+      where: {
+        employeeId: empId,
+        status: { in: ['PENDING', 'APPROVED'] },
+        startDate: { lte: dateOnly(end) },
+        endDate: { gte: dateOnly(start) },
+      },
+      include: { leaveType: { select: { name: true } } },
+    });
+    if (overlap)
+      throw new BadRequestException(
+        `이미 신청한 휴가(${overlap.leaveType.name} ${ymd(overlap.startDate)}~${ymd(overlap.endDate)})와 날짜가 겹칩니다.`,
+      );
+
+    if (type.deducts) {
+      const bal = await this.balance(empId);
+      const available = bal.remaining - bal.pending;
+      if (days > available)
+        throw new BadRequestException(
+          `남은 연차가 부족합니다 — 쓸 수 있는 연차 ${available}일(결재 중 ${bal.pending}일 제외), 신청 ${days}일.`,
+        );
+    }
+
+    const emp = await this.prisma.employee.findUniqueOrThrow({
+      where: { id: empId },
+      select: { name: true },
+    });
+    const period = start === end ? start : `${start} ~ ${end}`;
+    return this.prisma.$transaction(async (tx) => {
+      const req = await tx.leaveRequest.create({
+        data: {
+          employeeId: empId,
+          leaveTypeId: type.id,
+          startDate: dateOnly(start),
+          endDate: dateOnly(end),
+          days,
+          reason: input.reason?.trim() || null,
+        },
+      });
+      const doc = await this.approvals.submit(tx, {
+        docType: 'LEAVE',
+        title: `${emp.name} ${type.name} (${period}, ${days}일)`,
+        content: input.reason?.trim() || null,
+        payload: {
+          leaveRequestId: req.id,
+          leaveType: type.name,
+          startDate: start,
+          endDate: end,
+          days,
+          deducts: type.deducts,
+        },
+        requesterEmpId: empId,
+        line: input.line ?? null,
+      });
+      return tx.leaveRequest.update({ where: { id: req.id }, data: { approvalDocId: doc.id } });
+    });
+  }
+
+  // ── 조정 ──
+
+  async adjust(
+    p: AuthPrincipal,
+    input: { employeeId: string; days: number; reason: string; effectiveDate?: string },
+  ) {
+    await this.assertCanSee(p, input.employeeId, 'UPDATE');
+    if (!input.days) throw new BadRequestException('조정 일수를 넣어 주세요(+/-).');
+    return this.prisma.leaveAdjustment.create({
+      data: {
+        employeeId: input.employeeId,
+        days: input.days,
+        reason: input.reason.trim(),
+        effectiveDate: dateOnly(input.effectiveDate ?? todayYmd()),
+        createdByUserId: p.userId,
+      },
+    });
+  }
+
+  // ── 캘린더·대시보드용 ──
+
+  /** 기간 안의 승인된 휴가(조직 범위 안) */
+  approvedBetween(from: string, to: string, orgIds: string[] | null) {
+    return this.prisma.leaveRequest.findMany({
+      where: {
+        status: 'APPROVED',
+        startDate: { lte: dateOnly(to) },
+        endDate: { gte: dateOnly(from) },
+        ...(orgIds === null ? {} : { employee: { orgUnitId: { in: orgIds } } }),
+      },
+      include: {
+        leaveType: { select: { name: true } },
+        employee: { select: { name: true, orgUnitId: true, orgUnit: { select: { name: true } } } },
+      },
+      orderBy: { startDate: 'asc' },
+    });
+  }
+}
+
+export const leaveYmd = ymd;
+export { todayYmd };

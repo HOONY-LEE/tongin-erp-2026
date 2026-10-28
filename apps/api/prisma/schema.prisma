@@ -79,6 +79,8 @@ model Employee {
   agentShares        AgentBlueprintShare[]
   approvalDocs       ApprovalDoc[]
   approvalSteps      ApprovalStep[]
+  leaveRequests      LeaveRequest[]
+  leaveAdjustments   LeaveAdjustment[]
 
   @@map("employee")
 }
@@ -1269,4 +1271,57 @@ model ApprovalStep {
   @@index([approverEmpId, status])
   @@index([docId])
   @@map("approval_step")
+}
+
+// ── 인사: 휴가 ──
+
+/// 휴가 종류 — 연차·반차(0.5일)·병가·경조 등. deducts=연차에서 빠지는지
+model LeaveType {
+  id        String         @id @default(uuid()) @db.Uuid
+  code      String         @unique
+  name      String
+  unitDays  Decimal        @default(1) @map("unit_days") @db.Decimal(3, 1) // 1 = 하루 단위(기간), 0.5 = 반차(하루만)
+  deducts   Boolean        @default(true) // 연차에서 차감
+  paid      Boolean        @default(true) // 유급
+  sortOrder Int            @default(100) @map("sort_order")
+  isActive  Boolean        @default(true) @map("is_active")
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  requests  LeaveRequest[]
+
+  @@map("leave_type")
+}
+
+/// 연차 조정(±) — 결근 차감·이월·포상 등. effectiveDate가 속한 연차 기간에 더해진다
+model LeaveAdjustment {
+  id              String   @id @default(uuid()) @db.Uuid
+  employeeId      String   @map("employee_id") @db.Uuid
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  days            Decimal  @db.Decimal(5, 1)
+  reason          String
+  effectiveDate   DateTime @map("effective_date") @db.Date
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([employeeId])
+  @@map("leave_adjustment")
+}
+
+/// 휴가 신청 — 결재(approval_doc, LEAVE)와 1:1. 승인돼야 연차에서 빠진다
+model LeaveRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  employeeId    String    @map("employee_id") @db.Uuid
+  employee      Employee  @relation(fields: [employeeId], references: [id])
+  leaveTypeId   String    @map("leave_type_id") @db.Uuid
+  leaveType     LeaveType @relation(fields: [leaveTypeId], references: [id])
+  startDate     DateTime  @map("start_date") @db.Date
+  endDate       DateTime  @map("end_date") @db.Date
+  days          Decimal   @db.Decimal(5, 1) // 근무일 기준(주말·공휴일 제외), 반차 0.5
+  reason        String?
+  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELED
+  approvalDocId String?   @unique @map("approval_doc_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([employeeId, startDate])
+  @@index([status, startDate])
+  @@map("leave_request")
 }

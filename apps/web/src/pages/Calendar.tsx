@@ -39,7 +39,12 @@ export default function CalendarPage() {
   const [view, setView] = useState<CalendarView>('month');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   /** 표시할 캘린더(내 일정·조직 일정·작업 일정) — 기본 전체 선택 */
-  const [selectedSources, setSelectedSources] = useState<string[]>(['MINE', 'ORG', 'WORK']);
+  const [selectedSources, setSelectedSources] = useState<string[]>([
+    'MINE',
+    'ORG',
+    'WORK',
+    'LEAVE',
+  ]);
   const [search, setSearch] = useState('');
   const [events, setEvents] = useState<CalendarItem[]>([]);
   const [orgUnits, setOrgUnits] = useState<OrgUnitRow[]>([]);
@@ -304,6 +309,7 @@ export default function CalendarPage() {
     { key: 'MINE', label: '내 일정', color: '#AF52DE' },
     { key: 'ORG', label: '조직 일정', color: '#34C759' },
     { key: 'WORK', label: '작업 일정', color: '#007AFF' },
+    { key: 'LEAVE', label: '휴가', color: '#8B5CF6' },
   ];
 
   const toggleSource = (key: string) =>
@@ -315,7 +321,14 @@ export default function CalendarPage() {
   const visibleEvents = useMemo(() => {
     const q = search.trim().toLowerCase();
     return events.filter((e) => {
-      const kind = e.source === 'WORK_ORDER' ? 'WORK' : e.visibility === 'ORG' ? 'ORG' : 'MINE';
+      const kind =
+        e.source === 'WORK_ORDER'
+          ? 'WORK'
+          : e.source === 'LEAVE'
+            ? 'LEAVE'
+            : e.visibility === 'ORG'
+              ? 'ORG'
+              : 'MINE';
       if (!selectedSources.includes(kind)) return false;
       if (q && !e.title.toLowerCase().includes(q)) return false;
       return true;
@@ -384,7 +397,12 @@ export default function CalendarPage() {
         onSave={handleSave}
         onDelete={handleDelete}
         onClose={() => setModalOpen(false)}
-        onOpenRef={(e) => e.refId && navigate(`/work-orders/${e.refId}`)}
+        onOpenRef={(e) =>
+          e.refId &&
+          navigate(
+            e.source === 'LEAVE' ? `/approvals?detail=${e.refId}` : `/work-orders/${e.refId}`,
+          )
+        }
       />
     </div>
   );

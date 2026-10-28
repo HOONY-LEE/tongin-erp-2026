@@ -31,6 +31,7 @@ import {
   Bot,
   Workflow,
   FileSignature,
+  Plane,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -164,6 +165,8 @@ export default function AppLayout() {
           selfService: true,
           badge: pendingApprovals,
         },
+        // 직원 연결 계정이면 누구나(내 휴가), 직원 연결이 없어도 전 직원 현황 권한이 있으면
+        { to: '/leave', label: t('nav.leave'), icon: Plane, selfService: true, perm: 'LEAVE.READ' },
       ],
     },
     {
@@ -226,7 +229,9 @@ export default function AppLayout() {
     .map((g) => ({
       ...g,
       items: g.items.filter((it) =>
-        it.selfService ? !!user?.employeeId : !it.perm || can(it.perm),
+        it.selfService
+          ? !!user?.employeeId || (!!it.perm && can(it.perm))
+          : !it.perm || can(it.perm),
       ),
     }))
     .filter((g) => g.items.length > 0);

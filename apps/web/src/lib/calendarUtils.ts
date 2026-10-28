@@ -1,3 +1,5 @@
+import { KR_HOLIDAYS } from '@tongin/shared';
+
 // 캘린더 날짜/포맷 유틸 — calendar-app 레퍼런스 구현과 동일한 규칙(일요일 시작, 6주 매트릭스).
 
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -135,7 +137,7 @@ export const EVENT_COLORS: Record<string, { dot: string; bg: string; text: strin
 /** 서버가 내려주는 캘린더 항목(자체 일정 + 작업오더 통합). */
 export interface CalendarItem {
   id: string;
-  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER';
+  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'LEAVE';
   title: string;
   /** 시작 날짜 YYYY-MM-DD */
   date: string;
@@ -265,34 +267,8 @@ export function sortEvents(list: CalendarItem[]): CalendarItem[] {
   });
 }
 
-/**
- * 법정 공휴일(관공서의 공휴일에 관한 규정) — 달력에 빨간 날로 표시한다.
- * 설·추석은 일요일과 겹칠 때만, 국경일·어린이날·부처님오신날·성탄절은 토·일과 겹칠 때 대체공휴일.
- * (2026 추석 9/24~26은 일요일과 안 겹쳐 대체공휴일 없음) — 해가 바뀌면 다음 해를 덧붙인다.
- */
-export const KR_HOLIDAYS: Record<string, string> = {
-  '2026-01-01': '신정',
-  '2026-02-16': '설날 연휴',
-  '2026-02-17': '설날',
-  '2026-02-18': '설날 연휴',
-  '2026-03-01': '삼일절',
-  '2026-03-02': '대체공휴일',
-  '2026-05-05': '어린이날',
-  '2026-05-24': '부처님오신날',
-  '2026-05-25': '대체공휴일',
-  '2026-06-03': '지방선거',
-  '2026-06-06': '현충일',
-  '2026-08-15': '광복절',
-  '2026-08-17': '대체공휴일',
-  '2026-09-24': '추석 연휴',
-  '2026-09-25': '추석',
-  '2026-09-26': '추석 연휴',
-  '2026-10-03': '개천절',
-  '2026-10-05': '대체공휴일',
-  '2026-10-09': '한글날',
-  '2026-12-25': '성탄절',
-  '2027-01-01': '신정',
-};
+// 법정 공휴일 표는 휴가 일수·근태 판정에도 쓰여 API와 함께 쓰는 공용 패키지로 옮겼다
+export { KR_HOLIDAYS };
 
 /** 공휴일 이름(아니면 null) */
 export function holidayName(date: Date): string | null {
