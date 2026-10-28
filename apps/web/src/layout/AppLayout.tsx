@@ -275,7 +275,8 @@ export default function AppLayout() {
   const loadNotis = useCallback(async () => {
     if (!can('NOTIFICATION.READ')) return;
     try {
-      const rows = await api<NotiRow[]>('/notifications');
+      // 벨에는 최근 20건만 보인다 — 서버에서도 20건만 받는다
+      const rows = await api<NotiRow[]>('/notifications?take=20');
       setNotis(
         rows.slice(0, 20).map((n) => ({
           id: n.id,

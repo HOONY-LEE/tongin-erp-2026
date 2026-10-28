@@ -22,6 +22,8 @@ export function useDashData(items: DashItem[], refreshKey = 0) {
   );
   const key = want.map((it) => `${it.id}:${sig(it)}`).join(',');
   const lastRefresh = useRef(refreshKey);
+  // 처음 열 때는 바로 묻고, 그 뒤 편집 중 연달아 바뀔 때만 잠깐 모아서 묻는다
+  const fetchedOnce = useRef(false);
 
   useEffect(() => {
     if (lastRefresh.current !== refreshKey) {
@@ -44,6 +46,8 @@ export function useDashData(items: DashItem[], refreshKey = 0) {
     // 같은 위젯·옵션은 한 번만 묻는다
     const uniq = new Map(missing.map((it) => [sig(it), it]));
     setLoading(new Set(missing.map((it) => it.id)));
+    const delay = fetchedOnce.current ? 150 : 0;
+    fetchedOnce.current = true;
     const t = setTimeout(() => {
       api<Record<string, DashDataResult>>('/dashboards/data', {
         method: 'POST',
@@ -72,7 +76,7 @@ export function useDashData(items: DashItem[], refreshKey = 0) {
           }
         })
         .finally(() => alive && setLoading(new Set()));
-    }, 150);
+    }, delay);
     return () => {
       alive = false;
       clearTimeout(t);

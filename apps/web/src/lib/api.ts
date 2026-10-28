@@ -1,8 +1,39 @@
 const TOKEN_KEY = 'tongin_token';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (t: string | null) =>
-  t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY);
+export const setToken = (t: string | null) => {
+  // 사람이 바뀌면 볼 수 있는 목록도 달라진다 — 선택지 캐시를 비운다
+  getCache.clear();
+  if (t) localStorage.setItem(TOKEN_KEY, t);
+  else localStorage.removeItem(TOKEN_KEY);
+};
+
+// ── 선택지용 GET 캐시 ──
+// 조직·거래처·직원 같은 선택지 목록은 화면마다 다시 부를 필요가 없다.
+// 같은 주소는 60초 동안 한 번만 묻고(동시에 여러 화면이 열려도 요청 하나), 그 자원을 바꾸는 요청
+// (POST·PATCH·PUT·DELETE)이 성공하면 같은 자원(첫 경로 조각, 예: /org-units) 캐시를 바로 버린다.
+const GET_CACHE_TTL = 60_000;
+const getCache = new Map<string, { at: number; promise: Promise<unknown> }>();
+/** '/org-units/abc?x=1' → '/org-units' */
+const resourceOf = (path: string) => '/' + (path.split('?')[0].split('/')[1] ?? '');
+
+/** 짧게 캐시하는 GET — 선택지(Select 옵션) 목록용. 실패한 응답은 캐시하지 않는다. */
+export function cachedApi<T = unknown>(path: string): Promise<T> {
+  const hit = getCache.get(path);
+  if (hit && Date.now() - hit.at < GET_CACHE_TTL) return hit.promise as Promise<T>;
+  const promise = api<T>(path);
+  getCache.set(path, { at: Date.now(), promise });
+  promise.catch(() => {
+    if (getCache.get(path)?.promise === promise) getCache.delete(path);
+  });
+  return promise;
+}
+
+/** 자원이 바뀌었다 — 그 자원의 선택지 캐시를 버린다 */
+function invalidateCache(path: string) {
+  const res = resourceOf(path);
+  for (const key of getCache.keys()) if (resourceOf(key) === res) getCache.delete(key);
+}
 
 /** 서버 오류 코드(apps/api/src/common/http-exception.filter.ts) + 화면에서만 생기는 경우 */
 export type ApiErrorCode =
@@ -108,6 +139,7 @@ export async function api<T = unknown>(path: string, opts: RequestInit = {}): Pr
     throw new ApiError(401, '로그인이 만료되었습니다. 다시 로그인해 주세요.', 'UNAUTHORIZED');
   }
   if (!res.ok) throw await toApiError(res, path);
+  if ((opts.method ?? 'GET').toUpperCase() !== 'GET') invalidateCache(path);
   if (res.status === 204) return undefined as T;
   try {
     return (await res.json()) as T;

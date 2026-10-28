@@ -1,11 +1,16 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Map as MapIcon, Settings } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
 import { Button, Input, Modal, useToast } from '../ui';
-import { RouteMapModal, formatDuration } from './RouteMap';
 import type { DistanceRule, EstimateDetailData } from './types';
 import styles from './estimate.module.css';
+
+// 지도(leaflet)는 무겁다 — '지도' 버튼을 처음 누를 때 받는다
+const RouteMapModal = lazy(() => import('./RouteMap').then((m) => ({ default: m.RouteMapModal })));
+
+export const formatDuration = (min: number | null) =>
+  min == null ? null : min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`;
 
 /** 거리 할증 — 무료 거리를 넘는 km × km당 금액(천 원 단위 반올림) */
 export function distanceSurcharge(km: number | null, rule: DistanceRule) {
@@ -30,6 +35,9 @@ export function DistanceCard({
   const { can } = useAuth();
   const toast = useToast();
   const [mapOpen, setMapOpen] = useState(false);
+  // 한 번 연 뒤로는 계속 붙여 둔다(닫힘 애니메이션이 끊기지 않게)
+  const [mapUsed, setMapUsed] = useState(false);
+  if (mapOpen && !mapUsed) setMapUsed(true);
   const [ruleOpen, setRuleOpen] = useState(false);
   const [form, setForm] = useState({ freeKm: '', perKm: '' });
   const [saving, setSaving] = useState(false);
@@ -115,7 +123,11 @@ export function DistanceCard({
         )}
       </div>
 
-      <RouteMapModal estimateId={data.id} open={mapOpen} onClose={() => setMapOpen(false)} />
+      {mapUsed && (
+        <Suspense fallback={null}>
+          <RouteMapModal estimateId={data.id} open={mapOpen} onClose={() => setMapOpen(false)} />
+        </Suspense>
+      )}
       <Modal
         open={ruleOpen}
         onOpenChange={(o) => !o && setRuleOpen(false)}
