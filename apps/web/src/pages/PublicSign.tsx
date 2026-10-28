@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useParams } from 'react-router-dom';
 import { Check, Copy, Download, Eraser } from 'lucide-react';
 import { Button, Checkbox, Input, Skeleton } from '../components/ui';
-import { SERVICE_UNAVAILABLE } from '../lib/api';
+import { SERVICE_UNAVAILABLE, toApiError } from '../lib/api';
 import styles from './publicSign.module.css';
 
 interface View {
@@ -47,13 +47,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new Error(SERVICE_UNAVAILABLE);
   }
-  if (res.status >= 500) throw new Error(SERVICE_UNAVAILABLE);
-  const body = (await res.json().catch(() => ({}))) as { message?: string | string[] };
-  if (!res.ok) {
-    const m = Array.isArray(body.message) ? body.message[0] : body.message;
-    throw new Error(m ?? '요청을 처리하지 못했습니다');
-  }
-  return body as T;
+  if (!res.ok) throw await toApiError(res, `/public/sign/${path}`);
+  return (await res.json().catch(() => ({}))) as T;
 }
 
 /** 서명 칸 — 손가락·마우스로 그린다(포인터 이벤트) */
