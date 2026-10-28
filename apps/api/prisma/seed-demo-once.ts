@@ -12,23 +12,14 @@ import { PrismaClient } from '@prisma/client';
 import { ROLE_FRANCHISE } from '@tongin/shared';
 import { RESET_VERSION } from './demo-versions';
 
-const VERSION = '2026-10-27.1';
-const SCRIPTS = [
-  'seed-demo.ts',
-  'seed-demo-cases.ts',
-  'seed-demo-ops.ts',
-  'seed-demo-regions.ts',
-  'seed-demo-calendar.ts',
-  'seed-demo-campaigns.ts',
-  'seed-demo-anomaly.ts',
-  'seed-demo-agents.ts',
-];
+const VERSION = '2026-10-28.real-org';
+const SCRIPTS = ['seed-demo.ts', 'seed-demo-catalog.ts', 'seed-demo-agents.ts'];
 
 /**
  * 나중에 더한 시드 — 버전을 올려 전체를 다시 돌리지 않고(시연 중 바꾼 데이터 보존) 각각 한 번만 돌린다.
  * 끝나면 SYSTEM/DEMO_ADDON:<파일 이름>을 남긴다. 새로 더할 때는 여기에 한 줄만 추가한다.
  */
-const ADDONS = ['seed-demo-dashboards.ts', 'seed-demo-org.ts'];
+const ADDONS = ['seed-demo-dashboards.ts'];
 
 /** 서버 부팅 시더가 역할(가맹점 등)을 만들 때까지 기다린다 — 시드가 역할에 계정을 붙인다 */
 async function waitForRoles(prisma: PrismaClient) {
