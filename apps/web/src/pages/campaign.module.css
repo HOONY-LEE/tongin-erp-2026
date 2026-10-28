@@ -416,3 +416,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* 1단계 아래 버튼 — 두 카드 폭의 오른쪽 끝에 맞춘다 */
+.stepNavSpan {
+  grid-column: 1 / -1;
+}

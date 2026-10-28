@@ -1217,17 +1217,17 @@ export default function CampaignEditor() {
             />
           </div>
         </div>
+        {step === 1 && (
+          <div className={`${styles.stepNav} ${styles.stepNavSpan}`}>
+            <Button variant="outline" onClick={() => void save()} disabled={saving || !!notReady}>
+              임시저장
+            </Button>
+            <Button variant="primary" onClick={goStep2} disabled={!!notReady}>
+              다음: 받는 사람·발송 →
+            </Button>
+          </div>
+        )}
       </div>
-      {step === 1 && (
-        <div className={styles.stepNav}>
-          <Button variant="outline" onClick={() => void save()} disabled={saving || !!notReady}>
-            임시저장
-          </Button>
-          <Button variant="primary" onClick={goStep2} disabled={!!notReady}>
-            다음: 받는 사람·발송 →
-          </Button>
-        </div>
-      )}
 
       <Modal
         open={linkOpen}
