@@ -13,7 +13,12 @@ import { ROLE_FRANCHISE } from '@tongin/shared';
 import { RESET_VERSION } from './demo-versions';
 
 const VERSION = '2026-10-28.real-org';
-const SCRIPTS = ['seed-demo.ts', 'seed-demo-catalog.ts', 'seed-demo-agents.ts'];
+const SCRIPTS = [
+  'seed-demo.ts',
+  'seed-demo-catalog.ts',
+  'seed-demo-leads.ts',
+  'seed-demo-agents.ts',
+];
 
 /**
  * 나중에 더한 시드 — 버전을 올려 전체를 다시 돌리지 않고(시연 중 바꾼 데이터 보존) 각각 한 번만 돌린다.
