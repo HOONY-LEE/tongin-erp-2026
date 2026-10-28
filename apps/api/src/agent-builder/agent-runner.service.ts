@@ -46,6 +46,17 @@ export const agentRunContext = new AsyncLocalStorage<{ chain: string[] }>();
 /** 가드레일이 없어도 넘지 않는 한도(무한 실행 방지) */
 const HARD_MAX_STEPS = 300;
 const MAX_TRACE_CHARS = 4000;
+/** 문자 발송 도구에 수신자 한도 가드레일이 없을 때 쓰는 기본 한도 */
+const DEFAULT_MAX_RECIPIENTS = 50;
+
+/** 문자·캠페인처럼 고객에게 바로 나가는 도구 — 승인 노드를 지났어도 매번 실제 내용으로 승인받는다 */
+function isMessagingTool(tool: AiTool): boolean {
+  return (
+    tool.name === 'send_sms' ||
+    tool.name === 'erp_campaigns_send' ||
+    tool.permissions.includes('NOTIFICATION.SEND')
+  );
+}
 
 type StepStatus = 'ok' | 'dry' | 'error' | 'pending' | 'blocked' | 'skipped';
 
@@ -77,7 +88,7 @@ interface LoopFrame {
 }
 
 interface Guards {
-  /** 쓰기 도구 호출마다 승인 */
+  /** 승인 한 번은 다음 쓰기 한 번만 허락(기본 켜짐 — 끄는 설정은 없다) */
   strictApproval: boolean;
   allowTools: string[] | null;
   blockTools: string[];
@@ -92,7 +103,11 @@ interface Pending {
   kind: 'approval' | 'tool';
   nodeId: string;
   message: string;
+  /** 그 자리 승인일 때 실제로 부를 도구 이름 */
+  tool?: string;
   args?: Record<string, unknown>;
+  /** 승인 카드에 보여줄 미리보기(받는 사람 목록 등) */
+  preview?: unknown;
 }
 
 interface RunState {
@@ -102,7 +117,7 @@ interface RunState {
   loops: LoopFrame[];
   steps: number;
   llmCalls: number;
-  /** 사람 승인 노드를 통과했는지(쓰기 도구 실행 허락) */
+  /** 사람 승인을 받았는지 — 다음 쓰기 도구 한 번만 실행을 허락한다 */
   approved: boolean;
   guards: Guards;
   output: unknown;
@@ -149,6 +164,7 @@ export interface RunOptions {
  * - 도구는 AI 비서와 같은 레지스트리를 실행자 본인 토큰으로 부른다(권한·스코프·감사 동일).
  * - 시험 실행(dryRun)에서는 읽기 도구만 실제로 부르고, 쓰기 도구는 "이렇게 부를 것"만 기록한다.
  * - 실제 실행에서 쓰기 도구는 사람 승인을 거친 뒤에만 실행된다(승인 노드 또는 그 자리에서 승인 대기).
+ *   승인 한 번은 바로 다음 쓰기 한 번만 허락하고, 문자 발송 도구는 매번 실제 내용으로 승인받는다.
  * - 실행 상태(변수·다음 노드·반복 스택)는 JSON으로 저장돼 승인 뒤 그대로 이어 간다.
  */
 @Injectable()
@@ -196,7 +212,7 @@ export class AgentRunnerService {
       llmCalls: 0,
       approved: false,
       guards: {
-        strictApproval: false,
+        strictApproval: true,
         allowTools: null,
         blockTools: [],
         maxSteps: null,
@@ -235,6 +251,8 @@ export class AgentRunnerService {
       if (run.status !== 'AWAITING_APPROVAL' || !run.state)
         throw new BadRequestException('승인 대기 중인 실행이 아닙니다.');
       const state = run.state as unknown as RunState;
+      // 예전에 저장된 실행도 승인 한 번 = 쓰기 한 번으로 이어 간다
+      state.guards.strictApproval = true;
       const trace = run.trace as unknown as TraceStep[];
       const pending = state.pending!;
       const node = state.graph.nodes.find((n) => n.id === pending.nodeId);
@@ -569,13 +587,24 @@ export class AgentRunnerService {
               message: `시험 실행 — ${tool.summarize?.(args) ?? tool.name} 호출 예정(실제로 실행하지 않음)`,
             };
           }
-          // 승인 노드를 지났으면 실행. 엄격 모드(requireApproval 가드레일)는 승인 한 번이 쓰기 한 번만 허락한다
-          if (!state.approved) {
+          // 승인 한 번은 바로 다음 쓰기 한 번만 허락한다(반복 안의 다음 호출은 다시 승인).
+          // 문자 발송 도구는 승인 노드를 지났어도 실제 받는 사람·본문을 보여 주고 매번 승인받는다
+          if (!state.approved || isMessagingTool(tool)) {
+            let preview: unknown;
+            if (tool.preview) {
+              try {
+                preview = await tool.preview(args, ctx);
+              } catch (e) {
+                preview = { error: e instanceof Error ? e.message : String(e) };
+              }
+            }
             state.pending = {
               kind: 'tool',
               nodeId: node.id,
-              message: `${tool.summarize?.(args) ?? tool.name} — 실행할까요?`,
+              tool: tool.name,
+              message: `[${tool.name}] ${tool.summarize?.(args) ?? tool.name} — 실행할까요?`,
               args,
+              ...(preview !== undefined ? { preview } : {}),
             };
             return {
               stop: 'AWAITING_APPROVAL',
@@ -744,15 +773,16 @@ export class AgentRunnerService {
     }
   }
 
-  /** 문자 발송 가드레일 — 한 번 최대 수신자, 수신자 허용목록 */
+  /** 문자 발송 가드레일 — 한 번 최대 수신자(가드레일이 없으면 기본 한도), 수신자 허용목록 */
   private checkRecipients(tool: AiTool, args: Record<string, unknown>, state: RunState) {
     const ids = Array.isArray(args.customerIds) ? args.customerIds.map(String) : null;
     if (!ids) return;
     const g = state.guards;
-    if (g.maxRecipients && ids.length > g.maxRecipients)
+    const max = g.maxRecipients ?? (isMessagingTool(tool) ? DEFAULT_MAX_RECIPIENTS : null);
+    if (max && ids.length > max)
       throw new Stop(
         'BLOCKED',
-        `가드레일: ${tool.name} 수신자 ${ids.length}명이 한도 ${g.maxRecipients}명을 넘습니다.`,
+        `가드레일: ${tool.name} 수신자 ${ids.length}명이 한도 ${max}명을 넘습니다.`,
       );
     if (g.recipientAllowlist) {
       const bad = ids.filter((id) => !g.recipientAllowlist!.includes(id));

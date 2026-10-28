@@ -53,7 +53,8 @@ export function StaffPicker({
 }) {
   const toast = useToast();
   const { can } = useAuth();
-  const canWrite = can('MARKETING.UPDATE');
+  // 시연 번호는 전체 문자 허용목록이라 권한 관리자만 고친다
+  const canWrite = can('ROLE.UPDATE');
   const [keyword, setKeyword] = useState('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);

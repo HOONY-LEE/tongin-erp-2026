@@ -27,8 +27,8 @@ export class CampaignController {
 
   @Get()
   @RequirePermissions('MARKETING.READ')
-  findAll() {
-    return this.campaignService.findAll();
+  findAll(@CurrentUser() user: AuthPrincipal) {
+    return this.campaignService.findAll(user);
   }
 
   /** 받을 고객 찾기(조건 + 페이지) */
@@ -52,7 +52,7 @@ export class CampaignController {
     return this.campaignService.searchStaff(q, user);
   }
 
-  /** 시연 번호(문자 허용 번호에 들어간다) */
+  /** 시연 번호(문자 허용 번호에 들어간다) — 전체 문자 허용목록이라 고치기는 권한 관리자만 */
   @Get('demo-numbers')
   @RequirePermissions('MARKETING.READ')
   demoNumbers() {
@@ -60,13 +60,13 @@ export class CampaignController {
   }
 
   @Post('demo-numbers')
-  @RequirePermissions('MARKETING.UPDATE')
+  @RequirePermissions('ROLE.UPDATE')
   addDemoNumber(@Body() dto: DemoNumberDto) {
     return this.campaignService.addDemoNumber(dto);
   }
 
   @Delete('demo-numbers/:phone')
-  @RequirePermissions('MARKETING.UPDATE')
+  @RequirePermissions('ROLE.UPDATE')
   @HttpCode(204)
   removeDemoNumber(@Param('phone') phone: string) {
     return this.campaignService.removeDemoNumber(phone);
@@ -74,14 +74,14 @@ export class CampaignController {
 
   @Get(':id')
   @RequirePermissions('MARKETING.READ')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.campaignService.detail(id);
+  findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.campaignService.detail(id, user);
   }
 
   @Get(':id/preview')
   @RequirePermissions('MARKETING.READ')
-  preview(@Param('id', ParseUUIDPipe) id: string) {
-    return this.campaignService.previewCount(id);
+  preview(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.campaignService.previewCount(id, user);
   }
 
   @Post()
@@ -103,8 +103,8 @@ export class CampaignController {
   @Delete(':id')
   @RequirePermissions('MARKETING.DELETE')
   @HttpCode(204)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.campaignService.remove(id);
+  remove(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.campaignService.remove(id, user);
   }
 
   /** 발송(예약 시각이 미래면 예약) */
@@ -116,7 +116,7 @@ export class CampaignController {
 
   @Post(':id/cancel')
   @RequirePermissions('MARKETING.UPDATE')
-  cancel(@Param('id', ParseUUIDPipe) id: string) {
-    return this.campaignService.cancel(id);
+  cancel(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.campaignService.cancel(id, user);
   }
 }

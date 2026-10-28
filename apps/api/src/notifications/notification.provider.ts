@@ -9,11 +9,13 @@ import { PrismaService } from '../prisma/prisma.service';
  * - 알림톡: 템플릿 승인 전이라 아직 스텁.
  *
  * 개발·시연 DB의 고객 번호는 시드로 만든 가짜 번호라 실제 사람일 수 있다.
- * 그래서 SMS_ALLOWED_RECIPIENTS가 있으면(운영 포함) 허용 번호로만, 없으면 개발 환경은 허용 번호 밖은 막는다.
+ * 그래서 SMS_ALLOWED_RECIPIENTS가 있으면(운영 포함) 허용 번호로만 보낸다. 없으면 개발 환경은 허용 번호 밖은 막고,
+ * 운영도 SMS_LIVE=1 로 실발송을 명시적으로 켜지 않았으면 막는다(환경변수를 빠뜨려도 아무 번호로나 나가지 않게).
  * 허용 번호 = SMS_ALLOWED_RECIPIENTS ∪ 시연 번호(공통코드 SMS_DEMO_NUMBERS — 캠페인 화면에서 관리)
  *   ∪ (SMS_ALLOW_EMPLOYEE_PHONES=true일 때만) 재직 직원 번호.
  * 직원 번호는 시드가 만든 가짜 번호일 수 있어 기본은 넣지 않는다 — 실제 번호를 확인한 직원은 시연 번호로 올린다.
- * 막힌 건은 보내지 않고 실패(사유 포함)로 돌려준다. 운영에서 실제 고객에게 보내려면 SMS_ALLOWED_RECIPIENTS를 비운다.
+ * 막힌 건은 보내지 않고 실패(사유 포함)로 돌려준다.
+ * 운영에서 실제 고객에게 보내려면 SMS_ALLOWED_RECIPIENTS를 비우고 SMS_LIVE=1 을 둔다.
  */
 export interface SendResult {
   ok: boolean;
@@ -42,6 +44,9 @@ const digits = (s: string) => s.replace(/\D/g, '');
 /** 시연 번호 공통코드 그룹(code = 숫자만, name = 표시 이름) */
 export const SMS_DEMO_NUMBERS_GROUP = 'SMS_DEMO_NUMBERS';
 export const SMS_BLOCKED_REASON = '허용 번호 아님(시연 중 — 직원·시연 번호와 허용 번호로만 발송)';
+/** 운영인데 실발송 스위치(SMS_LIVE=1)도 허용 번호도 없을 때 */
+export const SMS_NOT_LIVE_REASON =
+  '허용 번호 아님(운영 실발송 꺼짐 — SMS_LIVE=1 이 없어 시연 번호로만 발송)';
 const ALLOWLIST_TTL_MS = 60_000;
 
 /**
@@ -124,9 +129,17 @@ export class StubNotificationProvider implements NotificationProvider {
     return !!(this.aligo.key && this.aligo.userId && this.aligo.sender);
   }
 
-  /** 허용 번호로만 보내는 중인지 — 허용 번호(env)가 있거나 운영이 아니면 제한한다 */
+  /** 운영에서 실제 고객에게 보내도록 명시적으로 켰는지 */
+  private get liveSwitch(): boolean {
+    return process.env.NODE_ENV === 'production' && process.env.SMS_LIVE === '1';
+  }
+
+  /**
+   * 허용 번호로만 보내는 중인지 — 허용 번호(env)가 있거나, 운영 실발송(SMS_LIVE=1)을 켜지 않았으면 제한한다.
+   * 막는 쪽이 기본(fail closed)
+   */
   get restricted(): boolean {
-    return this.allowed.size > 0 || process.env.NODE_ENV !== 'production';
+    return this.allowed.size > 0 || !this.liveSwitch;
   }
 
   /** 화면 안내용 — 지금 문자가 나갈 수 있는 번호(숫자만). 제한이 없으면 null(모두 허용) */
@@ -164,10 +177,18 @@ export class StubNotificationProvider implements NotificationProvider {
     }
     if (!recipient) return { ok: false, reason: '수신 번호 없음' };
     // 허용 번호가 정해져 있으면(시연 등) 운영에서도 그 번호(+시연 번호)로만 보낸다.
-    // 정해져 있지 않으면 개발 환경은 허용 번호 밖은 막고, 운영은 그대로 보낸다.
+    // 정해져 있지 않으면 개발 환경은 허용 번호 밖은 막고, 운영도 SMS_LIVE=1 이 없으면 막는다.
     if (!(await this.isAllowed(recipient))) {
-      this.logger.warn(`[SMS] ${recipient} 차단 — 허용 번호(직원·시연 번호 포함)에 없는 번호`);
-      return { ok: false, reason: SMS_BLOCKED_REASON };
+      const notLive =
+        process.env.NODE_ENV === 'production' && !this.allowed.size && !this.liveSwitch;
+      this.logger.warn(
+        `[SMS] ${recipient} 차단 — ${notLive ? '운영 실발송(SMS_LIVE=1) 꺼짐' : '허용 번호(직원·시연 번호 포함)에 없는 번호'}`,
+      );
+      return {
+        ok: false,
+        delivered: false,
+        reason: notLive ? SMS_NOT_LIVE_REASON : SMS_BLOCKED_REASON,
+      };
     }
     return this.solapiLive
       ? this.sendSolapi(recipient, message, opts.title)

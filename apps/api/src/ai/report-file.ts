@@ -155,7 +155,9 @@ async function buildXlsx(r: ReportInput): Promise<Buffer> {
 
 function buildCsv(r: ReportInput): Buffer {
   const esc = (v: Cell) => {
-    const s = v === null ? '' : String(v);
+    let s = v === null ? '' : String(v);
+    // 수식 주입 방지 — 글자 칸이 = + - @ (또는 탭·CR)로 시작하면 엑셀이 수식으로 실행하지 않게 ' 를 붙인다(숫자 칸은 그대로)
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = [r.columns, ...r.rows].map((row) => row.map(esc).join(','));
