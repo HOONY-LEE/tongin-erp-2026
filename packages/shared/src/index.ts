@@ -632,6 +632,30 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   { key: 'ORG_UNIT', label: '조직·지점', group: '관리', actions: ALL_CRUD },
   { key: 'EMPLOYEE', label: '직원', group: '관리', actions: ALL_CRUD },
   { key: 'COMMON_CODE', label: '공통코드·설정', group: '관리', actions: ALL_CRUD },
+  // 인사 — 본인 일(휴가 신청·출퇴근·내 결재함·결재 처리)은 권한 없이 로그인만으로. 여기 권한은 관리용
+  {
+    key: 'APPROVAL',
+    label: '전자결재',
+    group: '인사',
+    actions: ['READ'],
+    specials: [{ action: 'MANAGE', label: '결재선 설정' }],
+    hint: '조회 = 모든 결재 문서 열람. 내 문서·내 결재 차례는 권한 없이 볼 수 있습니다',
+  },
+  {
+    key: 'LEAVE',
+    label: '휴가',
+    group: '인사',
+    actions: ['READ', 'UPDATE'],
+    hint: '조회 = 전 직원 연차 현황, 수정 = 연차 조정·휴가 종류. 내 휴가 신청은 권한 없이 됩니다',
+  },
+  {
+    key: 'ATTENDANCE',
+    label: '근태',
+    group: '인사',
+    actions: ['READ', 'UPDATE'],
+    specials: [{ action: 'IMPORT', label: '근태 엑셀 업로드' }],
+    hint: '조회 = 전 직원 근태, 수정 = 기록 고치기·근무시간 설정. 출퇴근·내 근태·정정 신청은 권한 없이 됩니다',
+  },
   // 정산
   { key: 'SETTLEMENT', label: '정산', group: '정산', actions: ALL_CRUD },
   { key: 'BILLING', label: '청구', group: '정산', actions: ALL_CRUD },
@@ -797,3 +821,4 @@ export interface PartnerReceivable {
 
 export * from './agent-blueprint';
 export * from './dashboard';
+export * from './hr';

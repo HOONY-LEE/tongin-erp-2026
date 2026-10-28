@@ -1,0 +1,42 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+  white-space: nowrap;
+}
+.times {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--ark-color-gray-400);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+/* 출근하기는 눈에 띄게 */
+.in {
+  border-color: var(--ark-color-primary-500);
+  background: var(--ark-color-primary-500);
+  color: #fff;
+}
+.in:hover:not(:disabled) {
+  border-color: var(--ark-color-primary-600);
+  background: var(--ark-color-primary-600);
+}

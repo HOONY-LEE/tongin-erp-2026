@@ -45,8 +45,12 @@ export default {
     aiAgents: 'Agent Builder',
     dashboardAdmin: 'Dashboards',
     employees: 'Employees',
+    approvals: 'Approvals',
+    leave: 'Leave',
+    attendance: 'Attendance',
   },
   navGroup: {
+    hr: 'HR',
     ops: 'Operations',
     admin: 'Admin',
     work: 'Workspace',

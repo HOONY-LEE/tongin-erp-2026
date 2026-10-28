@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
+  ATTENDANCE_STATUS_LABEL,
   DASH_WIDGET_MAP,
   LEAD_STATUS,
   LEAD_STATUS_LABEL,
   SERVICE_LINE_LABEL,
+  addDaysYmd,
   canUseWidget,
   type AuthPrincipal,
   type DashData,
@@ -16,6 +18,9 @@ import {
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
+import { ApprovalService } from '../approval/approval.service';
+import { AttendanceService } from '../attendance/attendance.service';
+import { LeaveService } from '../leave/leave.service';
 import { BranchAnomalyService } from '../stats/branch-anomaly.service';
 
 const DAY = 86400_000;
@@ -135,6 +140,9 @@ export class DashboardDataService {
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
     private readonly anomaly: BranchAnomalyService,
+    private readonly approvals: ApprovalService,
+    private readonly leave: LeaveService,
+    private readonly attendance: AttendanceService,
   ) {}
 
   async many(items: Pick<DashItem, 'id' | 'widget' | 'period' | 'metric'>[], p: AuthPrincipal) {
@@ -919,6 +927,147 @@ export class DashboardDataService {
             titleText: e.title,
             date: e.date.toISOString(),
             time: e.startTime ?? '하루 종일',
+          })),
+        };
+      }
+
+      // ── 인사·근태 ──
+      case 'kpi.attendanceToday': {
+        const rows = await this.attendance.daily(p, ymd(new Date()), true);
+        const has = (...st: string[]) => rows.filter((x) => st.includes(x.status)).length;
+        const present = has('NORMAL', 'LATE', 'EARLY', 'LATE_EARLY', 'WORKING', 'NO_OUT');
+        // 휴가·휴일·기록 시작 전은 근무 대상에서 뺀다
+        const target = rows.length - has('LEAVE', 'HOLIDAY', 'NOT_TRACKED', 'UPCOMING');
+        return {
+          shape: 'value',
+          format: 'count',
+          value: present,
+          max: target || undefined,
+          hint: `근무 대상 ${target}명 · 지각 ${has('LATE', 'LATE_EARLY')} · 휴가 ${has('LEAVE')} · 미출근 ${has('ABSENT', 'BEFORE')}`,
+        };
+      }
+      case 'hr.attendanceToday': {
+        const ORDER = ['ABSENT', 'BEFORE', 'LATE', 'LATE_EARLY', 'LEAVE'];
+        const rows = (await this.attendance.daily(p, ymd(new Date()), true))
+          .filter((x) => ORDER.includes(x.status))
+          .sort(
+            (a, b) =>
+              ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || a.name.localeCompare(b.name),
+          );
+        return {
+          shape: 'rows',
+          link: '/attendance?tab=daily',
+          columns: [
+            { key: 'name', label: '이름' },
+            { key: 'org', label: '소속' },
+            { key: 'state', label: '상태' },
+            { key: 'clockIn', label: '출근' },
+          ],
+          rows: rows.slice(0, 30).map((x) => ({
+            title: x.name,
+            name: x.name,
+            org: x.orgUnitName,
+            state: x.leave
+              ? `휴가(${x.leave})`
+              : (ATTENDANCE_STATUS_LABEL[x.status as keyof typeof ATTENDANCE_STATUS_LABEL] ??
+                x.status),
+            clockIn: x.clockIn ?? '-',
+          })),
+        };
+      }
+      case 'hr.onLeave': {
+        const today = ymd(new Date());
+        const leaves = await this.leave.approvedBetween(today, addDaysYmd(today, 6), ids);
+        return {
+          shape: 'rows',
+          link: '/approvals?detail={id}',
+          columns: [
+            { key: 'name', label: '이름' },
+            { key: 'org', label: '소속' },
+            { key: 'type', label: '휴가' },
+            { key: 'period', label: '기간' },
+          ],
+          rows: leaves.slice(0, 30).map((l) => {
+            const from = l.startDate.toISOString().slice(5, 10);
+            const to = l.endDate.toISOString().slice(5, 10);
+            return {
+              id: l.approvalDocId,
+              title: l.employee.name,
+              name: l.employee.name,
+              org: l.employee.orgUnit?.name ?? null,
+              type: l.leaveType.name,
+              period: from === to ? from : `${from} ~ ${to}`,
+            };
+          }),
+        };
+      }
+      case 'hr.leaveUsage': {
+        const byOrg = new Map<string, { used: number; total: number }>();
+        for (const r of await this.leave.summary(p, true)) {
+          const k = r.orgUnitName ?? '기타';
+          const cur = byOrg.get(k) ?? { used: 0, total: 0 };
+          cur.used += r.used;
+          cur.total += r.granted + r.adjusted;
+          byOrg.set(k, cur);
+        }
+        return {
+          shape: 'category',
+          format: 'percent',
+          items: [...byOrg.entries()]
+            .filter(([, v]) => v.total > 0)
+            .map(([k, v]) => ({ key: k, label: k, value: v.used / v.total }))
+            .sort((a, b) => b.value - a.value),
+        };
+      }
+      case 'hr.headcount': {
+        const from = new Date(`${ym(new Date())}-01T00:00:00Z`);
+        const emp = ids === null ? {} : { orgUnitId: { in: ids } };
+        const moved = (kind: string) =>
+          this.prisma.employeeHistory.count({
+            where: { kind, effectiveDate: { gte: from }, employee: emp },
+          });
+        const [value, branch, joined, left] = await Promise.all([
+          this.prisma.employee.count({ where: { isActive: true, ...emp } }),
+          this.prisma.employee.count({
+            where: { isActive: true, ...emp, orgUnit: { type: 'BRANCH' } },
+          }),
+          moved('JOIN'),
+          moved('RESIGN'),
+        ]);
+        return {
+          shape: 'value',
+          format: 'count',
+          value,
+          hint: `본사 ${value - branch} · 지점 ${branch} · 이번 달 입사 ${joined} · 퇴사 ${left}`,
+        };
+      }
+      case 'kpi.pendingApprovals': {
+        const { count } = await this.approvals.pendingCount(p);
+        return {
+          shape: 'value',
+          format: 'count',
+          value: count,
+          hint: count ? '결재함에서 처리하세요' : '대기 중인 결재가 없습니다',
+        };
+      }
+      case 'approval.pending': {
+        const docs = await this.approvals.list(p, 'todo');
+        return {
+          shape: 'rows',
+          link: '/approvals?detail={id}',
+          columns: [
+            { key: 'date', label: '상신', format: 'date' },
+            { key: 'titleText', label: '문서' },
+            { key: 'kind', label: '종류' },
+            { key: 'from', label: '기안자' },
+          ],
+          rows: docs.slice(0, 10).map((d) => ({
+            id: d.id,
+            title: d.title,
+            titleText: d.title,
+            kind: d.docTypeLabel,
+            from: d.requester.name,
+            date: d.submittedAt.toISOString(),
           })),
         };
       }

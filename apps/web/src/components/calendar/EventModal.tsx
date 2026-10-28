@@ -109,6 +109,11 @@ export default function EventModal({
                 작업 일정
               </Badge>
             )}
+            {event.source === 'LEAVE' && (
+              <Badge variant="subtle" color="primary">
+                휴가
+              </Badge>
+            )}
             {event.orgUnitName && (
               <Badge variant="subtle" color="neutral">
                 {event.orgUnitName}
@@ -129,7 +134,7 @@ export default function EventModal({
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
             {event.refId && onOpenRef && (
               <Button variant="outline" onClick={() => onOpenRef(event)}>
-                작업 상세 열기 →
+                {event.source === 'LEAVE' ? '결재 문서 열기 →' : '작업 상세 열기 →'}
               </Button>
             )}
             <Button variant="ghost" onClick={onClose}>

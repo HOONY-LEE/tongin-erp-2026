@@ -1,12 +1,16 @@
 import {
   IsBoolean,
   IsDateString,
+  IsEmail,
+  IsIn,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { EMPLOYMENT_TYPES, type EmploymentType } from '@tongin/shared';
 
 export class CreateEmployeeDto {
   @IsUUID()
@@ -38,6 +42,89 @@ export class CreateEmployeeDto {
   @ValidateIf((_, v) => v !== null)
   @IsUUID()
   positionId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  // ── 인사기록(모두 선택, 비우려면 null) ──
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsDateString()
+  birthDate?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
+  @IsEmail({}, { message: '이메일 형식이 아닙니다' })
+  email?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  zipcode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  addr?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  addrDetail?: string | null;
+
+  @IsOptional()
+  @IsIn(EMPLOYMENT_TYPES)
+  employmentType?: EmploymentType;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  emergencyName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  emergencyPhone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  emergencyRelation?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  memo?: string | null;
+}
+
+export class ResignEmployeeDto {
+  @IsDateString()
+  resignDate!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+export class ChecklistToggleDto {
+  @IsBoolean()
+  done!: boolean;
+}
+
+export class ChecklistTemplateDto {
+  @IsIn(['ONBOARD', 'OFFBOARD'])
+  kind!: 'ONBOARD' | 'OFFBOARD';
+
+  @IsString()
+  @MaxLength(100)
+  title!: string;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
 
   @IsOptional()
   @IsBoolean()

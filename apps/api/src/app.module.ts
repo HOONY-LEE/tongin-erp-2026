@@ -30,6 +30,9 @@ import { GeoModule } from './modules/geo/geo.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { CampaignModule } from './modules/campaign/campaign.module';
 import { HrModule } from './modules/hr/hr.module';
+import { ApprovalModule } from './modules/approval/approval.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
 import { PaymentConfirmationModule } from './modules/payment-confirmation/payment-confirmation.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { AccountModule } from './modules/account/account.module';
@@ -82,6 +85,9 @@ import { EsignModule } from './modules/esign/esign.module';
     CalendarModule,
     CampaignModule,
     HrModule,
+    ApprovalModule,
+    LeaveModule,
+    AttendanceModule,
     PaymentConfirmationModule,
     BranchModule,
     AccountModule,

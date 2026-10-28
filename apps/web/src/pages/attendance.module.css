@@ -1,0 +1,40 @@
+/* 달·날짜 고르기 + 상태 건수 줄 */
+.monthBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hint {
+  font-size: 13px;
+  color: var(--ark-color-text-tertiary);
+}
+/* 주말·공휴일 날짜 */
+.offDay {
+  color: var(--ark-color-error-500);
+}
+.row2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.problem {
+  color: var(--ark-color-error-500);
+  font-size: 13px;
+}
+.importBox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 900px;
+}

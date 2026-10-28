@@ -3,6 +3,7 @@ import { LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ClockButton } from '../components/attendance/ClockButton';
 
 /**
  * 현장(폰·태블릿) 셸.
@@ -83,6 +84,8 @@ export default function FieldLayout() {
         >
           {user?.loginId}
         </span>
+        {/* 현장 직원도 폰에서 출퇴근 — 직원과 연결된 계정만 */}
+        {user?.employeeId && <ClockButton compact />}
         {canSeeAdmin && (
           <Button
             variant="ghost"

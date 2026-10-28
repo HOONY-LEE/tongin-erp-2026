@@ -89,4 +89,9 @@ export class CalendarQueryDto {
   @IsOptional()
   @IsBoolean()
   includeWorkOrders?: boolean;
+
+  /** 승인된 휴가를 함께 내려줄지 — 기본 true */
+  @IsOptional()
+  @IsBoolean()
+  includeLeave?: boolean;
 }

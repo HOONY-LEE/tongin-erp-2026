@@ -16,6 +16,8 @@ import {
 } from './dto/calendar-event.dto';
 
 const WORK_ORDER_COLOR = '#007AFF';
+/** 승인된 휴가 표시 색(보라) */
+const LEAVE_COLOR = '#8b5cf6';
 const WORK_STATUS_LABEL: Record<string, string> = {
   ASSIGNED: '배정',
   IN_PROGRESS: '작업중',
@@ -26,8 +28,8 @@ const WORK_STATUS_LABEL: Record<string, string> = {
 /** 캘린더에 표시되는 단일 항목(자체 일정 + 작업오더 통합 뷰). */
 export interface CalendarItem {
   id: string;
-  /** LOCAL=자체 일정, GOOGLE=구글에서 가져온 일정, WORK_ORDER=작업(읽기전용) */
-  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER';
+  /** LOCAL=자체 일정, GOOGLE=구글에서 가져온 일정, WORK_ORDER=작업(읽기전용), LEAVE=승인된 휴가(읽기전용) */
+  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'LEAVE';
   title: string;
   /** 시작 날짜 YYYY-MM-DD */
   date: string;
@@ -205,6 +207,55 @@ export class CalendarEventService {
           orgUnitName: o.orgUnit?.name ?? null,
           editable: false,
           refId: o.id,
+        });
+      }
+    }
+
+    // ── 승인된 휴가 — 조직 뷰는 범위 안 직원, 내 일정 뷰는 내 휴가만. 읽기전용 ──
+    if (query.includeLeave !== false && (scopeKind === 'ORG' || principal.employeeId)) {
+      const empWhere: Prisma.EmployeeWhereInput =
+        scopeKind === 'ORG'
+          ? query.orgUnitId
+            ? { orgUnitId: query.orgUnitId }
+            : orgIds !== null
+              ? { orgUnitId: { in: orgIds } }
+              : {}
+          : { id: principal.employeeId! };
+      const leaves = await this.prisma.leaveRequest.findMany({
+        where: {
+          status: 'APPROVED',
+          ...(to ? { startDate: { lte: to } } : {}),
+          ...(from ? { endDate: { gte: from } } : {}),
+          employee: empWhere,
+        },
+        include: {
+          leaveType: { select: { name: true } },
+          employee: {
+            select: { name: true, orgUnitId: true, orgUnit: { select: { name: true } } },
+          },
+        },
+        orderBy: { startDate: 'asc' },
+        take: 1000,
+      });
+      for (const l of leaves) {
+        items.push({
+          id: `lv-${l.id}`,
+          source: 'LEAVE',
+          title: `[휴가] ${l.employee.name} ${l.leaveType.name}`,
+          date: dateColToYmd(l.startDate),
+          endDate: dateColToYmd(l.endDate),
+          startTime: null,
+          endTime: null,
+          color: LEAVE_COLOR,
+          location: null,
+          description: `${l.leaveType.name} ${Number(l.days)}일${l.reason ? ` · ${l.reason}` : ''}`,
+          visibility: 'ORG',
+          ownerUserId: null,
+          ownerName: l.employee.name,
+          orgUnitId: l.employee.orgUnitId,
+          orgUnitName: l.employee.orgUnit?.name ?? null,
+          editable: false,
+          refId: l.approvalDocId,
         });
       }
     }

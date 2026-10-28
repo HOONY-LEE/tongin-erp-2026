@@ -402,3 +402,17 @@
   color: var(--ark-color-primary-500);
   flex-shrink: 0;
 }
+
+/* 메뉴 이름 옆 건수 배지(결재 대기 등) */
+.countBadge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ark-color-primary-500);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
