@@ -9,8 +9,18 @@ import {
 } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
-import { Badge, Button, Checkbox, FormModal, TableSkeleton, useToast } from '../../components/ui';
-import type { FormField } from '../../components/ui';
+import {
+  Badge,
+  Button,
+  Checkbox,
+  DataTable,
+  FormModal,
+  PageHeader,
+  TableSkeleton,
+  useToast,
+} from '../../components/ui';
+import type { Column, FormField, Row } from '../../components/ui';
+import { useDetailParam } from '../../lib/useDetailParam';
 import styles from './access.module.css';
 
 export interface RoleView {
@@ -59,7 +69,8 @@ export default function PermissionGroups() {
   const { can, user } = useAuth();
   const toast = useToast();
   const [roles, setRoles] = useState<RoleView[] | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 목록 → 그룹 상세(?detail=<그룹 id>) — 권한 표는 상세 화면에서만 다룬다
+  const { id: selectedId, open: openDetail, close: closeDetail } = useDetailParam();
   const [draft, setDraft] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -76,7 +87,6 @@ export default function PermissionGroups() {
     try {
       const rows = await api<RoleView[]>('/roles');
       setRoles(rows);
-      setSelectedId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : (rows[0]?.id ?? null)));
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
       setRoles([]);
@@ -183,11 +193,9 @@ export default function PermissionGroups() {
     }
   };
 
-  const pick = (id: string) => {
-    if (id === selectedId) return;
-    if (dirty && !window.confirm('저장하지 않은 변경이 있습니다. 버리고 다른 그룹으로 갈까요?'))
-      return;
-    setSelectedId(id);
+  const back = () => {
+    if (dirty && !window.confirm('저장하지 않은 변경이 있습니다. 버리고 목록으로 갈까요?')) return;
+    closeDetail();
   };
 
   const onCreate = async (values: Record<string, unknown>) => {
@@ -205,7 +213,7 @@ export default function PermissionGroups() {
       });
       toast({ type: 'success', title: `'${created.name}' 그룹을 만들었습니다` });
       await load();
-      setSelectedId(created.id);
+      openDetail(created.id);
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
       throw e;
@@ -237,7 +245,7 @@ export default function PermissionGroups() {
     try {
       await api(`/roles/${selected.id}`, { method: 'DELETE' });
       toast({ type: 'success', title: '지웠습니다' });
-      setSelectedId(null);
+      closeDetail();
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
@@ -284,54 +292,118 @@ export default function PermissionGroups() {
       [...saved].filter((c) => !draft.has(c)).length
     : 0;
 
-  return (
-    <div className={styles.layout}>
-      {/* 그룹 목록 */}
-      <div className={styles.panel}>
-        <div className={styles.panelHead}>
-          <span className={styles.panelTitle}>권한 그룹</span>
-          <span className={styles.muted}>{roles.length}개</span>
-          <span className={styles.spacer} />
-          {canCreate && (
-            <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-              + 새 그룹
-            </Button>
-          )}
-        </div>
-        <div className={styles.groupList}>
-          {roles.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              className={`${styles.groupItem} ${r.id === selectedId ? styles.groupItemActive : ''}`}
-              onClick={() => pick(r.id)}
-            >
-              <span className={styles.groupName}>
-                {r.isSuperAdmin && <Lock size={13} aria-label="고정" />}
-                {r.name}
-              </span>
-              <span className={styles.badges}>
-                <span className={styles.muted}>계정 {r.userCount}</span>
-                <span className={styles.muted}>
-                  · {r.isSuperAdmin ? '전체 권한' : `권한 ${r.permissions.length}`}
-                </span>
-                {r.fieldApp && (
-                  <Badge variant="subtle" color="info" size="sm">
-                    현장앱
-                  </Badge>
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+  // ── 목록: 그룹만 ──
+  if (!selectedId) {
+    const columns: Column[] = [
+      {
+        title: '그룹 이름',
+        dataIndex: 'name',
+        minWidth: 160,
+        render: (r) => (
+          <span className={styles.groupName}>
+            {r.isSuperAdmin ? <Lock size={13} aria-label="고정" /> : null}
+            {String(r.name)}
+          </span>
+        ),
+      },
+      { title: '설명', dataIndex: 'description', minWidth: 200, flex: 1 },
+      { title: '계정', dataIndex: 'userCount', width: 80, numeric: true },
+      {
+        title: '권한',
+        dataIndex: 'permCount',
+        width: 100,
+        render: (r) => (r.isSuperAdmin ? '전체 권한' : `${String(r.permCount)}개`),
+      },
+      { title: '추천 직책', dataIndex: 'positionNames', minWidth: 120 },
+      {
+        title: '구분',
+        width: 150,
+        render: (r) => (
+          <span className={styles.badges}>
+            {r.isSystem ? (
+              <Badge variant="subtle" color="neutral" size="sm">
+                기본 그룹
+              </Badge>
+            ) : null}
+            {r.fieldApp ? (
+              <Badge variant="subtle" color="info" size="sm">
+                현장앱
+              </Badge>
+            ) : null}
+          </span>
+        ),
+      },
+    ];
+    const rows = roles.map((r) => ({
+      ...r,
+      permCount: r.permissions.length,
+      positionNames: r.positions.join(', '),
+    }));
+    return (
+      <>
+        <DataTable
+          columns={columns}
+          rows={rows as unknown as Row[]}
+          onRowClick={(r) => openDetail(String(r.id))}
+          toolbarActions={
+            canCreate ? (
+              <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+                + 새 그룹
+              </Button>
+            ) : undefined
+          }
+        />
+        <FormModal
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          title="새 권한 그룹"
+          size="md"
+          fields={createFields}
+          onSubmit={onCreate}
+        />
+      </>
+    );
+  }
 
-      {/* 선택한 그룹 */}
+  // ── 상세: 그룹 하나의 권한 표 ──
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader
+        title={selected?.name ?? '권한 그룹을 찾을 수 없습니다'}
+        breadcrumbs={[{ label: '권한 그룹', onClick: back }]}
+        actions={
+          selected && !selected.isSuperAdmin ? (
+            <>
+              {canDelete && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void onDelete()}
+                  disabled={selected.isSystem || selected.userCount > 0}
+                  title={
+                    selected.isSystem
+                      ? '기본 그룹은 지울 수 없습니다'
+                      : selected.userCount > 0
+                        ? '이 그룹을 쓰는 계정이 있어 지울 수 없습니다'
+                        : undefined
+                  }
+                >
+                  그룹 삭제
+                </Button>
+              )}
+              {canUpdate && (
+                <Button variant="primary" size="sm" onClick={() => setEditOpen(true)}>
+                  이름·설명 고치기
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
+      />
       {selected ? (
         <div className={styles.panel}>
           <div className={styles.detailHead}>
             <div className={styles.detailTitle}>
-              <h3>{selected.name}</h3>
               <span className={styles.sub}>{selected.description || '설명 없음'}</span>
               <span className={styles.badges}>
                 {selected.isSystem && (
@@ -353,30 +425,6 @@ export default function PermissionGroups() {
                   </Badge>
                 )}
               </span>
-            </div>
-            <div className={styles.actions}>
-              {canUpdate && !selected.isSuperAdmin && (
-                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                  이름·설명 고치기
-                </Button>
-              )}
-              {canDelete && !selected.isSuperAdmin && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void onDelete()}
-                  disabled={selected.isSystem || selected.userCount > 0}
-                  title={
-                    selected.isSystem
-                      ? '기본 그룹은 지울 수 없습니다'
-                      : selected.userCount > 0
-                        ? '이 그룹을 쓰는 계정이 있어 지울 수 없습니다'
-                        : undefined
-                  }
-                >
-                  그룹 삭제
-                </Button>
-              )}
             </div>
           </div>
 
@@ -568,18 +616,11 @@ export default function PermissionGroups() {
         </div>
       ) : (
         <div className={styles.panel}>
-          <div className={styles.notice}>왼쪽에서 그룹을 고르세요.</div>
+          <div className={styles.notice}>
+            이 그룹을 찾을 수 없습니다. 목록에서 다시 골라 주세요.
+          </div>
         </div>
       )}
-
-      <FormModal
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        title="새 권한 그룹"
-        size="md"
-        fields={createFields}
-        onSubmit={onCreate}
-      />
       {selected && (
         <FormModal
           open={editOpen}
