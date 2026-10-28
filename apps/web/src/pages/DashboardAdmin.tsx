@@ -49,7 +49,8 @@ const readView = (): View => {
 };
 
 /** 지정 대상 배지 */
-function Targets({ t }: { t: TemplateRow }) {
+/** 지정 대상 배지 — max: 직원 이름을 몇 명까지 보일지(목록 한 줄에는 적게) */
+function Targets({ t, max = 3 }: { t: TemplateRow; max?: number }) {
   if (!t.roles.length && !t.users.length) {
     return (
       <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
@@ -64,14 +65,14 @@ function Targets({ t }: { t: TemplateRow }) {
           {x.name}
         </Badge>
       ))}
-      {t.users.slice(0, 3).map((x) => (
+      {t.users.slice(0, max).map((x) => (
         <Badge key={x.id} variant="subtle" color="neutral" size="sm">
           {x.name}
         </Badge>
       ))}
-      {t.users.length > 3 && (
+      {t.users.length > max && (
         <Badge variant="subtle" color="neutral" size="sm">
-          +{t.users.length - 3}명
+          +{t.users.length - max}명
         </Badge>
       )}
     </>
@@ -146,7 +147,7 @@ export default function DashboardAdmin() {
     {
       title: '템플릿',
       dataIndex: 'name',
-      minWidth: 220,
+      minWidth: 250,
       render: (r) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <div style={{ width: 52, height: 32, flexShrink: 0 }}>
@@ -170,10 +171,11 @@ export default function DashboardAdmin() {
     { title: '설명', dataIndex: 'description', flex: 1, minWidth: 200 },
     {
       title: '지정 대상',
-      minWidth: 180,
+      minWidth: 240,
       render: (r) => (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          <Targets t={r as unknown as TemplateRow} />
+        // 한 줄로 — 권한 그룹 + 직원 1명 + '+N명'
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap', overflow: 'hidden' }}>
+          <Targets t={r as unknown as TemplateRow} max={1} />
         </div>
       ),
     },
