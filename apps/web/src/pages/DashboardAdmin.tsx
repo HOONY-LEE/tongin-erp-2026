@@ -145,37 +145,32 @@ export default function DashboardAdmin() {
   const columns: Column[] = [
     {
       title: '템플릿',
-      flex: 1,
+      dataIndex: 'name',
       minWidth: 220,
       render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 64, height: 40, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{ width: 52, height: 32, flexShrink: 0 }}>
             <LayoutThumb
               items={(r as unknown as TemplateRow).preview}
               color={(r as unknown as TemplateRow).color}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <b>{String(r.name)}</b>
-              {r.isDefault ? (
-                <Badge variant="subtle" color="primary" size="sm">
-                  기본
-                </Badge>
-              ) : null}
-            </span>
-            {r.description ? (
-              <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
-                {String(r.description)}
-              </span>
-            ) : null}
-          </div>
+          <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {String(r.name)}
+          </b>
+          {r.isDefault ? (
+            <Badge variant="subtle" color="primary" size="sm">
+              기본
+            </Badge>
+          ) : null}
         </div>
       ),
     },
+    // 설명은 따로 한 줄 칸으로(이름 아래 두 줄로 쌓지 않는다)
+    { title: '설명', dataIndex: 'description', flex: 1, minWidth: 200 },
     {
       title: '지정 대상',
-      flex: 1,
+      minWidth: 180,
       render: (r) => (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           <Targets t={r as unknown as TemplateRow} />
@@ -406,7 +401,12 @@ function CreateModal({
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             취소
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void create()}>
+          <Button
+            variant="primary"
+            loading={busy}
+            disabled={!name.trim()}
+            onClick={() => void create()}
+          >
             만들고 위젯 놓기
           </Button>
         </>
@@ -415,7 +415,7 @@ function CreateModal({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className={styles.sizeRow} style={{ gap: 12 }}>
           <Input
-            label="이름"
+            label="이름 *"
             value={name}
             maxLength={60}
             onChange={(e) => setName(e.target.value)}

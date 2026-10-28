@@ -257,7 +257,7 @@ export function LayoutThumb({
       <svg
         className={`${styles.thumb} ${className ?? ''}`}
         viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="xMidYMin slice"
+        preserveAspectRatio="xMidYMin meet"
         aria-hidden
       >
         {items.length === 0 ? (
