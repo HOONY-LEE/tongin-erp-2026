@@ -18,6 +18,7 @@ const LEAVE_TYPES = [
   { code: 'ANNUAL', name: '연차', unitDays: 1, deducts: true, paid: true, sortOrder: 10 },
   { code: 'HALF_AM', name: '오전 반차', unitDays: 0.5, deducts: true, paid: true, sortOrder: 20 },
   { code: 'HALF_PM', name: '오후 반차', unitDays: 0.5, deducts: true, paid: true, sortOrder: 30 },
+  { code: 'QUARTER', name: '반반차', unitDays: 0.25, deducts: true, paid: true, sortOrder: 35 },
   { code: 'SICK', name: '병가', unitDays: 1, deducts: false, paid: false, sortOrder: 40 },
   { code: 'FAMILY', name: '경조 휴가', unitDays: 1, deducts: false, paid: true, sortOrder: 50 },
   { code: 'OFFICIAL', name: '공가', unitDays: 1, deducts: false, paid: true, sortOrder: 60 },

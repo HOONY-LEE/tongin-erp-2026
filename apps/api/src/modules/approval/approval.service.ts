@@ -9,6 +9,7 @@ import {
   APPROVAL_DOC_TYPE_LABEL,
   PERMISSION_WILDCARD,
   type ApprovalDocType,
+  type ApprovalLineKey,
   type ApprovalLineEntry,
   type ApprovalLineRule,
   type AuthPrincipal,
@@ -123,10 +124,10 @@ export class ApprovalService {
   /** 신청자 조직부터 위로 올라가며 가장 가까운 기본 결재선, 없으면 전사 기본 */
   private async findTemplate(
     db: Db,
-    docType: ApprovalDocType,
+    docType: ApprovalLineKey,
     orgUnitId: string,
     parents: Map<string, string | null>,
-  ) {
+  ): Promise<{ name: string; steps: Prisma.JsonValue } | null> {
     const all = await db.approvalLineTemplate.findMany({ where: { docType, isActive: true } });
     let cur: string | null = orgUnitId;
     const seen = new Set<string>();
@@ -136,7 +137,12 @@ export class ApprovalService {
       if (hit) return hit;
       cur = parents.get(cur) ?? null;
     }
-    return all.find((t) => t.orgUnitId === null) ?? null;
+    const base = all.find((t) => t.orgUnitId === null);
+    if (base) return base;
+    // 결재 양식에 따로 정한 결재선이 없으면 일반 품의 결재선을 쓴다
+    return docType.startsWith('FORM:')
+      ? this.findTemplate(db, 'GENERAL', orgUnitId, parents)
+      : null;
   }
 
   /** 규칙 → 사람. 결재자는 신청자·앞 단계 결재자와 겹치지 않게 고른다 */
@@ -167,7 +173,7 @@ export class ApprovalService {
   }
 
   /** 신청자의 기본 결재선(사람으로 풀어서) — 신청 화면 미리보기와 상신 기본값 */
-  async defaultLine(docType: ApprovalDocType, requesterEmpId: string, db: Db = this.prisma) {
+  async defaultLine(docType: ApprovalLineKey, requesterEmpId: string, db: Db = this.prisma) {
     const requester = await db.employee.findUnique({
       where: { id: requesterEmpId },
       select: { id: true, orgUnitId: true },
@@ -184,7 +190,7 @@ export class ApprovalService {
   }
 
   /** 미리보기용 — 사람 정보까지 붙여서 */
-  async previewLine(docType: ApprovalDocType, principal: AuthPrincipal) {
+  async previewLine(docType: ApprovalLineKey, principal: AuthPrincipal) {
     const empId = this.requireEmployee(principal);
     const { templateName, entries } = await this.defaultLine(docType, empId);
     const people = await this.people(entries.map((e) => e.employeeId));
@@ -235,6 +241,8 @@ export class ApprovalService {
       payload?: Record<string, unknown> | null;
       requesterEmpId: string;
       line?: ApprovalLineEntry[] | null;
+      /** 기본 결재선 열쇠 — 결재 양식은 'FORM:<id>'(없으면 docType) */
+      lineKey?: ApprovalLineKey;
     },
   ) {
     const requester = await tx.employee.findUnique({
@@ -250,7 +258,13 @@ export class ApprovalService {
       if (found !== ids.length)
         throw new BadRequestException('결재선에 재직하지 않는 직원이 있습니다.');
     } else {
-      line = (await this.defaultLine(input.docType, requester.id, tx)).entries;
+      line = (
+        await this.defaultLine(
+          input.lineKey ?? (input.docType as Exclude<ApprovalDocType, 'FORM'>),
+          requester.id,
+          tx,
+        )
+      ).entries;
     }
 
     // 결재 단계: 신청자 본인·중복은 건너뜀. 참조는 순서와 무관하게 뒤에 붙는다
@@ -468,7 +482,13 @@ export class ApprovalService {
       id: doc.id,
       docNo: doc.docNo,
       docType: doc.docType,
-      docTypeLabel: APPROVAL_DOC_TYPE_LABEL[doc.docType as ApprovalDocType] ?? doc.docType,
+      // 결재 양식은 양식 이름으로
+      docTypeLabel:
+        (doc.docType === 'FORM' &&
+          typeof (doc.payload as { formName?: unknown } | null)?.formName === 'string' &&
+          (doc.payload as { formName: string }).formName) ||
+        APPROVAL_DOC_TYPE_LABEL[doc.docType as ApprovalDocType] ||
+        doc.docType,
       title: doc.title,
       content: doc.content,
       payload: doc.payload,
@@ -636,7 +656,7 @@ export class ApprovalService {
   }
 
   async createTemplate(input: {
-    docType: ApprovalDocType;
+    docType: ApprovalLineKey;
     orgUnitId?: string | null;
     name: string;
     steps: ApprovalLineRule[];
@@ -658,7 +678,7 @@ export class ApprovalService {
   async updateTemplate(
     id: string,
     input: {
-      docType: ApprovalDocType;
+      docType: ApprovalLineKey;
       orgUnitId?: string | null;
       name: string;
       steps: ApprovalLineRule[];

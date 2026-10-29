@@ -11,7 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { APPROVAL_DOC_TYPES, type ApprovalDocType, type AuthPrincipal } from '@tongin/shared';
+import { isApprovalLineKey, type AuthPrincipal } from '@tongin/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { ApprovalService, type ApprovalBox } from './approval.service';
@@ -48,11 +48,11 @@ export class ApprovalController {
   /** 신청 화면의 기본 결재선 미리보기 */
   @Get('line-preview')
   preview(@CurrentUser() p: AuthPrincipal, @Query('docType') docType: string) {
-    if (!APPROVAL_DOC_TYPES.includes(docType as ApprovalDocType))
+    if (!docType || !isApprovalLineKey(docType))
       throw new BadRequestException(
-        `docType은 ${APPROVAL_DOC_TYPES.join(' | ')} 중 하나여야 합니다.`,
+        "docType은 LEAVE | ATTENDANCE_FIX | GENERAL | 'FORM:<양식 id>' 중 하나여야 합니다.",
       );
-    return this.approvals.previewLine(docType as ApprovalDocType, p);
+    return this.approvals.previewLine(docType, p);
   }
 
   @Get('line-templates')

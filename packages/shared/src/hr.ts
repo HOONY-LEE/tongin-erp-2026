@@ -2,13 +2,105 @@
 // 화면·API가 같이 쓰는 코드표와 순수 계산 함수.
 
 /** 결재 문서 종류 */
-export const APPROVAL_DOC_TYPES = ['LEAVE', 'ATTENDANCE_FIX', 'GENERAL'] as const;
+export const APPROVAL_DOC_TYPES = ['LEAVE', 'ATTENDANCE_FIX', 'GENERAL', 'FORM'] as const;
 export type ApprovalDocType = (typeof APPROVAL_DOC_TYPES)[number];
 export const APPROVAL_DOC_TYPE_LABEL: Record<ApprovalDocType, string> = {
   LEAVE: '휴가 신청',
   ATTENDANCE_FIX: '근태 정정',
   GENERAL: '일반 품의',
+  FORM: '결재 양식',
 };
+
+/**
+ * 기본 결재선의 열쇠 — 문서 종류(LEAVE 등) 또는 관리자가 만든 결재 양식('FORM:<양식 id>').
+ * 결재 양식은 양식마다 결재선을 따로 둘 수 있다(없으면 일반 품의 결재선을 쓴다).
+ */
+export type ApprovalLineKey = Exclude<ApprovalDocType, 'FORM'> | `FORM:${string}`;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isApprovalLineKey(v: string): v is ApprovalLineKey {
+  if (v.startsWith('FORM:')) return UUID_RE.test(v.slice(5));
+  return v !== 'FORM' && (APPROVAL_DOC_TYPES as readonly string[]).includes(v);
+}
+
+// ── 결재 양식(관리자가 항목을 정의하는 신청서) ──
+
+export const FORM_FIELD_TYPES = [
+  'text',
+  'textarea',
+  'number',
+  'money',
+  'date',
+  'daterange',
+  'select',
+  'checkbox',
+  'person',
+] as const;
+export type FormFieldType = (typeof FORM_FIELD_TYPES)[number];
+export const FORM_FIELD_TYPE_LABEL: Record<FormFieldType, string> = {
+  text: '한 줄 글',
+  textarea: '여러 줄 글',
+  number: '숫자',
+  money: '금액(원)',
+  date: '날짜',
+  daterange: '기간',
+  select: '선택(하나)',
+  checkbox: '체크(예/아니오)',
+  person: '직원',
+};
+
+export interface FormField {
+  /** 양식 안에서 고유한 짧은 id(값의 열쇠) */
+  id: string;
+  label: string;
+  type: FormFieldType;
+  required: boolean;
+  /** select의 선택지 */
+  options?: string[];
+  /** 입력칸 아래 도움말 */
+  help?: string;
+  placeholder?: string;
+}
+
+/** 결재 양식 값 — daterange {from,to}, person [{id,name}], checkbox boolean, 나머지는 글·숫자 */
+export type FormValue =
+  | string
+  | number
+  | boolean
+  | { from: string; to: string }
+  | { id: string; name: string }[]
+  | null;
+
+/** 휴가 신청서 설정 — 업무 대리인 지정(안 받음·선택·필수), 사유 필수 */
+export const SUBSTITUTE_MODES = ['NONE', 'OPTIONAL', 'REQUIRED'] as const;
+export type SubstituteMode = (typeof SUBSTITUTE_MODES)[number];
+export const SUBSTITUTE_MODE_LABEL: Record<SubstituteMode, string> = {
+  NONE: '받지 않음',
+  OPTIONAL: '선택',
+  REQUIRED: '필수',
+};
+export interface LeaveFormSettings {
+  substitute: SubstituteMode;
+  reasonRequired: boolean;
+}
+export const DEFAULT_LEAVE_FORM_SETTINGS: LeaveFormSettings = {
+  substitute: 'OPTIONAL',
+  reasonRequired: false,
+};
+
+/** 반차·반반차 시간대 — 반차는 오전/오후, 반반차는 하루를 넷으로 나눈 순서 */
+export const LEAVE_SLOTS = ['AM', 'PM', 'Q1', 'Q2', 'Q3', 'Q4'] as const;
+export type LeaveSlot = (typeof LEAVE_SLOTS)[number];
+export const LEAVE_SLOT_LABEL: Record<LeaveSlot, string> = {
+  AM: '오전',
+  PM: '오후',
+  Q1: '오전 앞(출근 늦게)',
+  Q2: '오전 뒤',
+  Q3: '오후 앞',
+  Q4: '오후 뒤(퇴근 일찍)',
+};
+/** 휴가 단위로 고를 수 있는 시간대 — 1일 이상은 없음 */
+export const leaveSlotsFor = (unitDays: number): LeaveSlot[] =>
+  unitDays >= 1 ? [] : unitDays >= 0.5 ? ['AM', 'PM'] : ['Q1', 'Q2', 'Q3', 'Q4'];
 
 /** 결재 문서 상태 */
 export const APPROVAL_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'CANCELED'] as const;
@@ -235,14 +327,14 @@ const toMin = (hhmm: string) => {
 
 /**
  * 하루 근태 판정 — 기록(출근·퇴근 'HH:MM', 한국 시각)·휴가·근무시간 설정으로 상태를 정한다.
- * leave: 그날 승인된 휴가 — FULL(종일) | AM(오전 반차) | PM(오후 반차) | null
+ * leave: 그날 승인된 휴가 — FULL(종일) | AM·PM(반차) | Q1~Q4(반반차) | null
  * today/now: 오늘 날짜·지금 'HH:MM'(한국 시각) — 오늘은 아직 끝나지 않아 결근·미퇴근을 바로 매기지 않는다
  */
 export function judgeAttendance(input: {
   date: string;
   clockIn: string | null;
   clockOut: string | null;
-  leave: 'FULL' | 'AM' | 'PM' | null;
+  leave: 'FULL' | LeaveSlot | null;
   today: string;
   now: string;
   settings?: WorkSettings;
@@ -254,8 +346,21 @@ export function judgeAttendance(input: {
   if (!isWorkday(date)) return 'HOLIDAY';
   // ERP로 근태를 쓰기 전 — 기록이 없어도 결근으로 세지 않는다
   if (s.trackFrom && date < s.trackFrom && !clockIn && !clockOut) return 'NOT_TRACKED';
-  const start = leave === 'AM' ? s.halfSplit : s.workStart;
-  const end = leave === 'PM' ? s.halfSplit : s.workEnd;
+  // 반차는 반나절, 반반차는 그 반나절의 절반만큼 출근 기준을 늦추거나 퇴근 기준을 당긴다(Q2·Q3는 낮이라 그대로)
+  const fromMin = (m: number) =>
+    `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const start =
+    leave === 'AM'
+      ? s.halfSplit
+      : leave === 'Q1'
+        ? fromMin(Math.round((toMin(s.workStart) + toMin(s.halfSplit)) / 2))
+        : s.workStart;
+  const end =
+    leave === 'PM'
+      ? s.halfSplit
+      : leave === 'Q4'
+        ? fromMin(Math.round((toMin(s.halfSplit) + toMin(s.workEnd)) / 2))
+        : s.workEnd;
   if (!clockIn) {
     if (date === today && toMin(now) < toMin(start) + s.lateGraceMin) return 'BEFORE';
     return 'ABSENT';

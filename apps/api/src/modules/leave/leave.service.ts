@@ -7,16 +7,21 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  LEAVE_SLOT_LABEL,
   PERMISSION_WILDCARD,
   countWorkdays,
   isWorkday,
   leaveEntitlement,
+  leaveSlotsFor,
   type ApprovalLineEntry,
   type AuthPrincipal,
+  type LeaveFormSettings,
+  type LeaveSlot,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { ApprovalService } from '../approval/approval.service';
+import { ApprovalFormService } from '../approval/approval-form.service';
 
 const ymd = (d: Date | string) =>
   typeof d === 'string' ? d.slice(0, 10) : d.toISOString().slice(0, 10);
@@ -52,6 +57,7 @@ export class LeaveService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
     private readonly approvals: ApprovalService,
+    private readonly forms: ApprovalFormService,
   ) {}
 
   /** 결재가 끝나면 휴가 신청 상태를 같은 트랜잭션에서 맞춘다 */
@@ -269,19 +275,53 @@ export class LeaveService implements OnModuleInit {
       startDate: string;
       endDate?: string;
       reason?: string;
+      slot?: LeaveSlot;
+      substituteEmpId?: string;
+      handover?: string;
+      extra?: Record<string, unknown>;
       line?: ApprovalLineEntry[];
     },
   ) {
     const empId = this.requireEmployee(p);
     const type = await this.prisma.leaveType.findUnique({ where: { id: input.leaveTypeId } });
     if (!type?.isActive) throw new BadRequestException('쓸 수 없는 휴가 종류입니다.');
-    const half = Number(type.unitDays) < 1;
+    const unit = Number(type.unitDays);
+    const half = unit < 1;
     const start = input.startDate.slice(0, 10);
     const end = half ? start : (input.endDate ?? start).slice(0, 10);
     if (end < start) throw new BadRequestException('끝 날짜가 시작 날짜보다 빠릅니다.');
     if (half && !isWorkday(start))
-      throw new BadRequestException('반차는 근무일에만 쓸 수 있습니다.');
-    const days = half ? Number(type.unitDays) : countWorkdays(start, end);
+      throw new BadRequestException('반차·반반차는 근무일에만 쓸 수 있습니다.');
+
+    // 시간대 — 반차는 오전/오후, 반반차는 Q1~Q4. 예전 '오전 반차·오후 반차' 종류는 이름으로 정해진다
+    const slots = leaveSlotsFor(unit);
+    const slot: LeaveSlot | null = !half
+      ? null
+      : (input.slot ?? (type.code.includes('PM') ? 'PM' : type.code.includes('AM') ? 'AM' : null));
+    if (half && (!slot || !slots.includes(slot)))
+      throw new BadRequestException(
+        `시간대를 골라 주세요(${slots.map((x) => LEAVE_SLOT_LABEL[x]).join(' · ')}).`,
+      );
+
+    // 휴가 신청서 설정 — 업무 대리인·사유 필수, 관리자가 더한 항목
+    const form = await this.forms.leaveForm();
+    const settings = form.settings as LeaveFormSettings;
+    if (settings.reasonRequired && !input.reason?.trim())
+      throw new BadRequestException('휴가 사유를 적어 주세요.');
+    let substitute: { id: string; name: string } | null = null;
+    if (settings.substitute !== 'NONE' && input.substituteEmpId) {
+      if (input.substituteEmpId === empId)
+        throw new BadRequestException('업무 대리인은 본인이 아닌 다른 직원으로 골라 주세요.');
+      substitute = await this.prisma.employee.findFirst({
+        where: { id: input.substituteEmpId, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (!substitute) throw new BadRequestException('업무 대리인을 찾을 수 없습니다.');
+    }
+    if (settings.substitute === 'REQUIRED' && !substitute)
+      throw new BadRequestException('업무 대리인을 골라 주세요.');
+    const extra = await this.forms.cleanValues(form.fields, input.extra);
+    const days = half ? unit : countWorkdays(start, end);
     if (days <= 0) throw new BadRequestException('고른 기간에 근무일이 없습니다(주말·공휴일).');
 
     // 같은 날짜에 이미 신청(결재 중·승인)한 휴가가 있으면 막는다
@@ -313,6 +353,10 @@ export class LeaveService implements OnModuleInit {
       select: { name: true },
     });
     const period = start === end ? start : `${start} ~ ${end}`;
+    // 이름에 이미 시간대가 들어간 종류(오전 반차)는 다시 붙이지 않는다
+    const slotText =
+      slot && !type.name.includes(LEAVE_SLOT_LABEL[slot]) ? ` ${LEAVE_SLOT_LABEL[slot]}` : '';
+    const handover = input.handover?.trim() || null;
     const out = await this.prisma.$transaction(async (tx) => {
       const req = await tx.leaveRequest.create({
         data: {
@@ -321,12 +365,16 @@ export class LeaveService implements OnModuleInit {
           startDate: dateOnly(start),
           endDate: dateOnly(end),
           days,
+          slot,
+          substituteEmpId: substitute?.id ?? null,
+          handover,
+          extra: form.fields.length ? (extra as Prisma.InputJsonValue) : undefined,
           reason: input.reason?.trim() || null,
         },
       });
       const doc = await this.approvals.submit(tx, {
         docType: 'LEAVE',
-        title: `${emp.name} ${type.name} (${period}, ${days}일)`,
+        title: `${emp.name} ${type.name} (${period}${slotText}, ${days}일)`,
         content: input.reason?.trim() || null,
         payload: {
           leaveRequestId: req.id,
@@ -335,6 +383,14 @@ export class LeaveService implements OnModuleInit {
           endDate: end,
           days,
           deducts: type.deducts,
+          slot,
+          slotLabel: slot ? LEAVE_SLOT_LABEL[slot] : null,
+          substituteEmpId: substitute?.id ?? null,
+          substituteName: substitute?.name ?? null,
+          handover,
+          // 결재 화면이 그때의 추가 항목 정의대로 보여 준다
+          fields: form.fields,
+          values: extra,
         },
         requesterEmpId: empId,
         line: input.line ?? null,
@@ -365,6 +421,69 @@ export class LeaveService implements OnModuleInit {
         effectiveDate: dateOnly(input.effectiveDate ?? todayYmd()),
         createdByUserId: p.userId,
       },
+    });
+  }
+
+  /**
+   * 연차 일괄 부여·차감 — 고른 직원과 조직(하위 포함) 직원 전부에게 같은 일수를 한 줄씩 남긴다.
+   * 데이터 범위 밖 직원은 빼고, 몇 명에게 넣었는지 돌려준다.
+   */
+  async bulkAdjust(
+    p: AuthPrincipal,
+    input: {
+      employeeIds?: string[];
+      orgUnitIds?: string[];
+      days: number;
+      reason: string;
+      effectiveDate?: string;
+    },
+  ) {
+    if (!input.days) throw new BadRequestException('부여(+)·차감(-)할 일수를 넣어 주세요.');
+    if (Math.round(input.days * 4) !== input.days * 4)
+      throw new BadRequestException('일수는 0.25일 단위로 넣어 주세요.');
+    const reason = input.reason.trim();
+    if (!reason) throw new BadRequestException('사유를 적어 주세요.');
+    const orgIds = input.orgUnitIds?.length
+      ? await this.scope.withDescendants(input.orgUnitIds)
+      : [];
+    const scopeIds = await this.scope.orgScopeIds(p);
+    const emps = await this.prisma.employee.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          ...(input.employeeIds?.length ? [{ id: { in: input.employeeIds } }] : []),
+          ...(orgIds.length ? [{ orgUnitId: { in: orgIds } }] : []),
+        ],
+        ...(scopeIds === null ? {} : { orgUnitId: { in: scopeIds } }),
+      },
+      select: { id: true },
+    });
+    if (!input.employeeIds?.length && !orgIds.length)
+      throw new BadRequestException('부여할 직원이나 조직을 골라 주세요.');
+    if (!emps.length) throw new BadRequestException('부여할 수 있는 직원이 없습니다(데이터 범위).');
+    const effectiveDate = dateOnly(input.effectiveDate ?? todayYmd());
+    await this.prisma.leaveAdjustment.createMany({
+      data: emps.map((e) => ({
+        employeeId: e.id,
+        days: input.days,
+        reason,
+        effectiveDate,
+        createdByUserId: p.userId,
+      })),
+    });
+    return { count: emps.length };
+  }
+
+  /** 최근 조정 이력(관리 화면) — 데이터 범위 안 */
+  async adjustments(p: AuthPrincipal) {
+    const scopeIds = await this.scope.orgScopeIds(p);
+    return this.prisma.leaveAdjustment.findMany({
+      where: scopeIds === null ? {} : { employee: { orgUnitId: { in: scopeIds } } },
+      include: {
+        employee: { select: { name: true, orgUnit: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
     });
   }
 

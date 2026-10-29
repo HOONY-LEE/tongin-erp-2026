@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
-import type { ApprovalDocType, ApprovalStepKind } from '@tongin/shared';
+import type { ApprovalLineKey, ApprovalStepKind } from '@tongin/shared';
 import { api } from '../../lib/api';
 import { personLabel, useDirectory, type LineEntry, type Person } from '../../lib/approvals';
 import { Badge, Button } from '../ui';
@@ -17,7 +17,8 @@ export function ApprovalLineEditor({
   onChange,
   myEmployeeId,
 }: {
-  docType: ApprovalDocType;
+  /** 문서 종류 또는 결재 양식('FORM:<id>') — 그 기본 결재선을 불러온다 */
+  docType: ApprovalLineKey;
   /** null이면 기본 결재선을 불러와 채운다 */
   value: LineEntry[] | null;
   onChange: (line: LineEntry[]) => void;
@@ -34,7 +35,7 @@ export function ApprovalLineEditor({
     let alive = true;
     setLoading(true);
     api<{ templateName: string | null; entries: LineEntry[] }>(
-      `/approvals/line-preview?docType=${docType}`,
+      `/approvals/line-preview?docType=${encodeURIComponent(docType)}`,
     )
       .then((r) => {
         if (!alive) return;

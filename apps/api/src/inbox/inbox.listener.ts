@@ -74,7 +74,28 @@ export class InboxListener {
           });
         }
         return;
-      case 'approval.approved':
+      case 'approval.approved': {
+        // 휴가 — 업무 대리인에게도 알린다
+        const pl = (doc.payload ?? {}) as {
+          substituteEmpId?: string | null;
+          startDate?: string;
+          endDate?: string;
+          handover?: string | null;
+        };
+        if (doc.docType === 'LEAVE' && pl.substituteEmpId) {
+          const period =
+            pl.startDate === pl.endDate ? pl.startDate : `${pl.startDate} ~ ${pl.endDate}`;
+          await this.inbox.toEmployees([pl.substituteEmpId], {
+            ...base,
+            actorUserId: null,
+            kind: 'LEAVE_SUBSTITUTE',
+            title: `업무 대리 · ${doc.requester.name}님 휴가(${period})`,
+            body: pl.handover
+              ? `인수인계: ${pl.handover}`
+              : `${doc.requester.name}님 휴가 동안 업무 대리인으로 지정되었습니다.`,
+            link: `/approvals?box=cc&detail=${doc.id}`,
+          });
+        }
         await this.inbox.toEmployees([doc.requesterEmpId], {
           ...base,
           kind: 'APPROVAL_RESULT',
@@ -92,6 +113,7 @@ export class InboxListener {
           });
         }
         return;
+      }
       case 'approval.rejected': {
         const rejected = doc.steps.find((s) => s.status === 'REJECTED');
         await this.inbox.toEmployees([doc.requesterEmpId], {

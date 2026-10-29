@@ -10,6 +10,7 @@ import {
   personLabel,
   toLinePayload,
   type ApprovalDocView,
+  type ApprovalFormDef,
   type LineEntry,
 } from '../lib/approvals';
 import {
@@ -28,9 +29,11 @@ import {
 import { ApprovalDetail } from '../components/approval/ApprovalDetail';
 import { ApprovalLineEditor } from '../components/approval/ApprovalLineEditor';
 import { LineTemplates } from '../components/approval/LineTemplates';
+import { FormsAdmin } from '../components/approval/FormsAdmin';
+import { FormDraftModal, NewDocPicker } from '../components/approval/NewDocPicker';
 import styles from '../components/approval/approval.module.css';
 
-type Box = 'todo' | 'mine' | 'cc' | 'all' | 'lines';
+type Box = 'todo' | 'mine' | 'cc' | 'all' | 'forms' | 'lines';
 
 const dt = (v: unknown) =>
   v ? new Date(String(v)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
@@ -50,10 +53,11 @@ export default function Approvals() {
   const [rows, setRows] = useState<ApprovalDocView[]>([]);
   const [loading, setLoading] = useState(false);
   const [todoCount, setTodoCount] = useState(0);
-  const [writing, setWriting] = useState(false);
+  // 새 결재 — 고르기 → 일반 품의 / 결재 양식 작성
+  const [writing, setWriting] = useState<'pick' | 'general' | ApprovalFormDef | null>(null);
 
   const load = useCallback(async () => {
-    if (box === 'lines') return;
+    if (box === 'lines' || box === 'forms') return;
     setLoading(true);
     try {
       const [list, pc] = await Promise.all([
@@ -123,12 +127,24 @@ export default function Approvals() {
     { title: '상신', width: 130, render: (r) => dt(r.submittedAt) },
   ];
 
+  const submitted = (doc: ApprovalDocView) => {
+    setWriting(null);
+    notifyApprovalsChanged();
+    setBox('mine');
+    detail.open(doc.id);
+  };
+
   const options = [
     { value: 'all', label: '전체' },
     { value: 'todo', label: `결재할 문서${todoCount ? ` ${todoCount}` : ''}` },
     { value: 'mine', label: '내가 올린 문서' },
     { value: 'cc', label: '참조·처리한 문서' },
-    ...(can('APPROVAL.MANAGE') ? [{ value: 'lines', label: '결재선 설정' }] : []),
+    ...(can('APPROVAL.MANAGE')
+      ? [
+          { value: 'forms', label: '결재 양식' },
+          { value: 'lines', label: '결재선 설정' },
+        ]
+      : []),
   ];
 
   return (
@@ -140,6 +156,8 @@ export default function Approvals() {
     >
       {box === 'lines' ? (
         <LineTemplates />
+      ) : box === 'forms' ? (
+        <FormsAdmin />
       ) : (
         <DataTable
           columns={columns}
@@ -148,23 +166,33 @@ export default function Approvals() {
           onRowClick={(r) => detail.open(String(r.id))}
           toolbarActions={
             user?.employeeId ? (
-              <Button variant="primary" size="sm" onClick={() => setWriting(true)}>
-                + 품의 작성
+              <Button variant="primary" size="sm" onClick={() => setWriting('pick')}>
+                + 새 결재
               </Button>
             ) : undefined
           }
         />
       )}
-      {writing && (
+      {writing === 'pick' && (
+        <NewDocPicker
+          onClose={() => setWriting(null)}
+          onGeneral={() => setWriting('general')}
+          onPickForm={(f) => setWriting(f)}
+        />
+      )}
+      {writing === 'general' && (
         <GeneralDraft
           myEmployeeId={user?.employeeId ?? null}
-          onClose={() => setWriting(false)}
-          onSubmitted={(doc) => {
-            setWriting(false);
-            notifyApprovalsChanged();
-            setBox('mine');
-            detail.open(doc.id);
-          }}
+          onClose={() => setWriting(null)}
+          onSubmitted={submitted}
+        />
+      )}
+      {writing && typeof writing === 'object' && (
+        <FormDraftModal
+          form={writing}
+          myEmployeeId={user?.employeeId ?? null}
+          onClose={() => setWriting(null)}
+          onSubmitted={submitted}
         />
       )}
     </ListPage>
