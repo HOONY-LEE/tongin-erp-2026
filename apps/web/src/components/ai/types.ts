@@ -81,6 +81,8 @@ export interface Decision {
   toolUseId: string;
   approve: boolean;
   customerIds?: string[];
+  /** 문자 발송 — 직원이 고친 본문 */
+  message?: string;
 }
 
 export interface PendingCall {

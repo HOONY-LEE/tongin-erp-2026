@@ -586,3 +586,36 @@
     display: none;
   }
 }
+
+/* 승인 카드 — 문자 본문 고치기 */
+.smsEdit {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.smsEdit:focus {
+  outline: none;
+  border-color: var(--ark-color-info-500);
+}
+.smsEditActions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.approvalError {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ark-color-error-500) 40%, var(--ark-color-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ark-color-error-500) 6%, var(--ark-color-bg));
+  color: var(--ark-color-text);
+  font-size: 13px;
+  line-height: 1.5;
+}

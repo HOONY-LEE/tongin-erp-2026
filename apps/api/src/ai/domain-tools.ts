@@ -31,6 +31,7 @@ const AFTER_CONTRACT = LEAD_STATUS.slice(CONTRACTED_FROM).filter((s) => s !== 'C
 
 const SMS_MAX_RECIPIENTS = 300;
 const NAME_TOKEN = '{고객명}';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ymd = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 /** 'YYYY-MM-DD'를 한국 시간 하루의 시작·끝으로 */
@@ -48,6 +49,32 @@ export class DomainTools {
   ) {
     // AiModule을 건드리지 않으려고 직접 만든다(같은 Prisma·Scope 서비스를 쓴다)
     this.anomaly = new BranchAnomalyService(prisma, scope);
+  }
+
+  /**
+   * 조회 결과의 고객 명단 — AI가 고객 id 수십 개를 옮겨 적다 틀리지 않게, 짧은 목록 id로 넘긴다.
+   * 승인 미리보기에서 바로 풀어 쓰고(이후엔 화면이 명단을 고객 id로 보낸다), 2시간 지나면 버린다.
+   */
+  private readonly lists = new Map<string, { userId: string; ids: string[]; at: number }>();
+
+  private saveList(userId: string, ids: string[]): string {
+    const now = Date.now();
+    for (const [k, v] of this.lists) if (now - v.at > 2 * 3_600_000) this.lists.delete(k);
+    const id = `L${Math.random().toString(36).slice(2, 10)}`;
+    this.lists.set(id, { userId, ids, at: now });
+    return id;
+  }
+
+  private listIds(input: Record<string, unknown>, userId: string): string[] {
+    const key = typeof input.recipientListId === 'string' ? input.recipientListId.trim() : '';
+    if (!key) return [];
+    const l = this.lists.get(key);
+    if (!l || l.userId !== userId) {
+      throw new ToolError(
+        `대상 목록(${key})을 찾을 수 없습니다(만료). search_leads로 다시 조회해 새 recipientListId를 쓰세요.`,
+      );
+    }
+    return l.ids;
   }
 
   private readonly anomaly: BranchAnomalyService;
@@ -282,9 +309,19 @@ export class DomainTools {
             },
           }),
         ]);
+        const customerIds = [
+          ...new Set(rows.map((l) => l.customer?.id).filter((v): v is string => !!v)),
+        ];
         return {
           total,
           returned: rows.length,
+          // 문자 보낼 때 send_sms에 그대로 넘기는 명단 id(이 결과의 고객 전원)
+          ...(customerIds.length
+            ? {
+                recipientListId: this.saveList(ctx.principal.userId, customerIds),
+                recipientCount: customerIds.length,
+              }
+            : {}),
           rows: rows.map((l) => ({
             leadId: l.id,
             leadNo: l.leadNo,
@@ -461,16 +498,20 @@ export class DomainTools {
 
   /** 문자 대상 고객을 DB에서 꺼낸다 — 범위 밖·번호 없는 고객은 따로 알려 준다 */
   private async resolveRecipients(input: Record<string, unknown>, principal: AuthPrincipal) {
-    const ids = Array.isArray(input.customerIds)
-      ? [...new Set(input.customerIds.filter((v): v is string => typeof v === 'string'))]
+    const typed = Array.isArray(input.customerIds)
+      ? input.customerIds.filter((v): v is string => typeof v === 'string')
       : [];
-    if (!ids.length) throw new ToolError('customerIds가 비어 있습니다.');
+    const ids = [...new Set([...this.listIds(input, principal.userId), ...typed])];
+    if (!ids.length)
+      throw new ToolError('받는 사람(recipientListId 또는 customerIds)이 비어 있습니다.');
     if (ids.length > SMS_MAX_RECIPIENTS) {
       throw new ToolError(`한 번에 ${SMS_MAX_RECIPIENTS}명까지 보낼 수 있습니다.`);
     }
+    // AI가 id를 옮겨 적다 틀리는 일이 있다(글자 빠짐) — 형식이 틀린 id는 조회하지 않고 따로 알린다
+    const valid = ids.filter((id) => UUID_RE.test(id));
     const scope = await this.customerScope(principal);
     const found = await this.prisma.customer.findMany({
-      where: { AND: [{ id: { in: ids } }, ...(scope ? [scope] : [])] },
+      where: { AND: [{ id: { in: valid } }, ...(scope ? [scope] : [])] },
       select: { id: true, name: true, phonePrimary: true },
     });
     const sendable = found.filter((c) => c.phonePrimary);
@@ -478,7 +519,8 @@ export class DomainTools {
     return {
       sendable,
       noPhone: found.filter((c) => !c.phonePrimary).map((c) => c.name),
-      notFound: ids.filter((id) => !foundIds.has(id)),
+      notFound: valid.filter((id) => !foundIds.has(id)),
+      invalid: ids.filter((id) => !UUID_RE.test(id)),
     };
   }
 
@@ -486,17 +528,23 @@ export class DomainTools {
     return {
       name: 'send_sms',
       description:
-        '고객에게 문자(SMS)를 보낸다. 받는 사람은 고객 id(customerIds)로만 지정하고, 번호는 시스템이 고객 원장에서 꺼낸다. ' +
+        '고객에게 문자(SMS)를 보낸다. 번호는 시스템이 고객 원장에서 꺼낸다. ' +
+        '받는 사람: search_leads 결과의 recipientListId를 그대로 넘기면 그 결과 고객 전원(권장 — id를 옮겨 적지 말 것). ' +
+        '일부만 고를 때만 customerIds(고객 id)를 쓴다. ' +
         `본문의 ${NAME_TOKEN}는 고객마다 이름으로 바뀐다. 실행 전에 사용자 승인 화면이 뜬다. ` +
         `한 번에 최대 ${SMS_MAX_RECIPIENTS}명. 대상은 먼저 search_leads·search_customers로 고른다.`,
       inputSchema: {
         type: 'object',
         properties: {
+          recipientListId: {
+            type: 'string',
+            description: 'search_leads 결과의 recipientListId(그 결과 고객 전원)',
+          },
           customerIds: {
             type: 'array',
             items: { type: 'string' },
-            minItems: 1,
             maxItems: SMS_MAX_RECIPIENTS,
+            description: '고객 id — 일부만 고를 때',
           },
           message: {
             type: 'string',
@@ -506,14 +554,20 @@ export class DomainTools {
           },
           purpose: { type: 'string', description: '발송 목적 한 줄(기록용)' },
         },
-        required: ['customerIds', 'message'],
+        required: ['message'],
       },
       mode: 'WRITE',
       permissions: ['NOTIFICATION.SEND'],
       group: 'AI 업무 도구',
       deferred: false,
-      summarize: (input) =>
-        `문자 ${Array.isArray(input.customerIds) ? input.customerIds.length : 0}명 발송`,
+      summarize: (input) => {
+        const listed =
+          typeof input.recipientListId === 'string'
+            ? (this.lists.get(input.recipientListId)?.ids.length ?? 0)
+            : 0;
+        const typed = Array.isArray(input.customerIds) ? input.customerIds.length : 0;
+        return `문자 ${listed + typed}명 발송`;
+      },
       preview: async (input, ctx) => {
         const r = await this.resolveRecipients(input, ctx.principal);
         return {
@@ -525,7 +579,8 @@ export class DomainTools {
           })),
           skipped: [
             ...r.noPhone.map((n) => `${n}(번호 없음)`),
-            ...(r.notFound.length ? [`조회 불가 ${r.notFound.length}명`] : []),
+            ...(r.notFound.length ? [`조회 불가(범위 밖·없는 고객) ${r.notFound.length}명`] : []),
+            ...(r.invalid.length ? [`잘못된 고객 id ${r.invalid.length}개`] : []),
           ],
         };
       },
@@ -568,6 +623,7 @@ export class DomainTools {
           failures,
           skippedNoPhone: r.noPhone,
           notFoundCount: r.notFound.length,
+          invalidIds: r.invalid,
           note: this.provider.smsVendor
             ? `${this.provider.smsVendor}로 실제 발송함`
             : '문자 발송사 미연결 — 실제 전송 없이 기록만 남김',

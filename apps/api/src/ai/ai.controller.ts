@@ -87,6 +87,13 @@ class DecisionInput {
   @ArrayMaxSize(300)
   @IsUUID('all', { each: true })
   customerIds?: string[];
+
+  /** 문자 발송 — 직원이 고친 본문 */
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  message?: string;
 }
 
 class DecideDto {

@@ -192,20 +192,69 @@ export function FileCard({
 const isSms = (p: unknown): p is SmsPreview =>
   !!p && typeof p === 'object' && Array.isArray((p as SmsPreview).recipients);
 
-/** {고객명} 자리를 강조해서 보여 준다 */
-function MessagePreview({ text }: { text: string }) {
-  const parts = text.split('{고객명}');
+/** 문자 본문 — {고객명} 자리를 강조해서 보여 주고, 「문구 고치기」로 직접 고친다 */
+function MessageEditor({
+  original,
+  value,
+  onChange,
+  disabled,
+}: {
+  original: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const parts = value.split('{고객명}');
+  const edited = value.trim() !== original.trim();
   return (
-    <div className={styles.smsBubble}>
-      {parts.map((p, i) => (
-        <span key={i}>
-          {i > 0 && <mark className={styles.token}>고객명</mark>}
-          {p}
-        </span>
-      ))}
+    <div className={styles.recipientEditor}>
+      <div className={styles.toolLabel}>
+        문자 내용 · {value.length}자{edited && <span className={styles.editedTag}> · 고침</span>}
+        <span className={styles.sub}> — {'{고객명}'}은 받는 사람 이름으로 바뀝니다</span>
+      </div>
+      {editing ? (
+        <textarea
+          className={styles.smsEdit}
+          value={value}
+          maxLength={1000}
+          rows={5}
+          aria-label="문자 내용"
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      ) : (
+        <div className={styles.smsBubble}>
+          {parts.map((p, i) => (
+            <span key={i}>
+              {i > 0 && <mark className={styles.token}>고객명</mark>}
+              {p}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className={styles.smsEditActions}>
+        <Button
+          variant="ghost"
+          size="sm"
+          leftIcon={editing ? undefined : <PenLine size={13} />}
+          disabled={disabled}
+          onClick={() => setEditing((v) => !v)}
+        >
+          {editing ? '미리보기' : '문구 고치기'}
+        </Button>
+        {edited && (
+          <Button variant="ghost" size="sm" disabled={disabled} onClick={() => onChange(original)}>
+            AI 문구로 되돌리기
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
+
+const previewError = (p: unknown) =>
+  p && typeof p === 'object' && 'error' in p ? String((p as { error: unknown }).error) : null;
 
 /**
  * 승인 카드 — AI가 쓰기 도구(등록·수정·발송)를 부르면 실행 전에 여기서 멈춘다.
@@ -231,28 +280,53 @@ export function ApprovalCard({
         .map((w) => [w.toolUseId, (w.preview as SmsPreview).recipients]),
     ),
   );
+  // 문자 받는 사람은 승인할 때 늘 화면에 보인 명단(고객 id)으로 보낸다 — 본 사람에게만 간다
   const editedIds = (w: PendingCall) => {
     const list = lists[w.toolUseId];
-    if (!list || !isSms(w.preview)) return undefined;
-    const orig = (w.preview as SmsPreview).recipients.map((r) => r.customerId).join();
-    const now = list.map((r) => r.customerId);
-    return now.join() === orig ? undefined : now;
+    if (!list || !isSms(w.preview) || !list.every((r) => r.customerId)) return undefined;
+    return list.map((r) => r.customerId);
   };
+  /** 문자 본문 — 직원이 고친 문구(도구 호출별) */
+  const [texts, setTexts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      writes
+        .filter((w) => isSms(w.preview))
+        .map((w) => [w.toolUseId, (w.preview as SmsPreview).message]),
+    ),
+  );
+  const editedText = (w: PendingCall) => {
+    if (!isSms(w.preview)) return undefined;
+    const t = texts[w.toolUseId]?.trim();
+    return t && t !== (w.preview as SmsPreview).message.trim() ? t : undefined;
+  };
+  // 미리보기에 실패한 작업(대상 확인 불가 등)은 승인할 수 없다 — 처음부터 체크 해제
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(writes.map((w) => [w.toolUseId, true])),
+    Object.fromEntries(writes.map((w) => [w.toolUseId, !previewError(w.preview)])),
   );
   const decide = (all?: boolean) =>
     onDecide(
       writes.map((w) => {
-        const approve = all === undefined ? !!checked[w.toolUseId] : all;
+        const approve =
+          (all === undefined ? !!checked[w.toolUseId] : all) && !previewError(w.preview);
         const customerIds = approve ? editedIds(w) : undefined;
-        return { toolUseId: w.toolUseId, approve, ...(customerIds ? { customerIds } : {}) };
+        const message = approve ? editedText(w) : undefined;
+        return {
+          toolUseId: w.toolUseId,
+          approve,
+          ...(customerIds ? { customerIds } : {}),
+          ...(message ? { message } : {}),
+        };
       }),
     );
   const multi = writes.length > 1;
   const selected = writes.filter((w) => checked[w.toolUseId]).length;
-  // 받는 사람을 다 빼면 보낼 수 없다
-  const emptySms = writes.some((w) => checked[w.toolUseId] && lists[w.toolUseId]?.length === 0);
+  // 받는 사람을 다 빼거나 본문을 비우면 보낼 수 없다
+  const emptySms = writes.some(
+    (w) =>
+      checked[w.toolUseId] &&
+      (lists[w.toolUseId]?.length === 0 || texts[w.toolUseId]?.trim() === ''),
+  );
+  const allBroken = writes.every((w) => previewError(w.preview));
 
   return (
     <div className={styles.approval} role="region" aria-label="승인이 필요한 작업">
@@ -260,7 +334,8 @@ export function ApprovalCard({
         <PenLine size={16} aria-hidden /> 실행 전에 확인해 주세요
       </div>
       <div className={styles.approvalSub}>
-        AI가 아래 작업을 하려고 합니다. 승인하면 바로 실행됩니다.
+        AI가 아래 작업을 하려고 합니다. 내용을 확인·수정한 뒤 승인해야 실행되며, 승인 전에는
+        아무것도 바뀌거나 보내지지 않습니다.
       </div>
 
       {writes.map((w) => {
@@ -270,6 +345,7 @@ export function ApprovalCard({
             <div className={styles.approvalHead}>
               {multi && (
                 <Checkbox
+                  disabled={!!previewError(preview)}
                   checked={!!checked[w.toolUseId]}
                   onCheckedChange={(v) => setChecked((c) => ({ ...c, [w.toolUseId]: v === true }))}
                   aria-label={`${toolLabel(w.name, tools)} 선택`}
@@ -279,9 +355,19 @@ export function ApprovalCard({
               <span className={styles.sub}>{w.summary}</span>
             </div>
 
-            {isSms(preview) ? (
+            {previewError(preview) ? (
+              <div className={styles.approvalError} role="alert">
+                <b>이 작업은 실행할 수 없습니다.</b> 대상을 확인하는 중에 문제가 생겼습니다(
+                {previewError(preview)}). 거절하면 AI에게 다시 찾도록 요청할 수 있습니다.
+              </div>
+            ) : isSms(preview) ? (
               <div className={styles.smsPreview}>
-                <MessagePreview text={preview.message} />
+                <MessageEditor
+                  original={preview.message}
+                  value={texts[w.toolUseId] ?? preview.message}
+                  onChange={(v) => setTexts((t) => ({ ...t, [w.toolUseId]: v }))}
+                  disabled={busy}
+                />
                 <RecipientEditor
                   // 예전 미리보기(고객 id 없음)는 고칠 수 없다 — 보기만
                   readOnly={!preview.recipients.every((r) => r.customerId)}
@@ -295,11 +381,7 @@ export function ApprovalCard({
                 )}
               </div>
             ) : (
-              <pre className={styles.pre}>
-                {preview && typeof preview === 'object' && 'error' in preview
-                  ? String((preview as { error: string }).error)
-                  : pretty(w.input)}
-              </pre>
+              <pre className={styles.pre}>{pretty(w.input)}</pre>
             )}
           </div>
         );
@@ -313,7 +395,7 @@ export function ApprovalCard({
           variant="primary"
           size="sm"
           loading={busy}
-          disabled={(multi && selected === 0) || emptySms}
+          disabled={(multi && selected === 0) || emptySms || allBroken}
           onClick={() => decide(multi ? undefined : true)}
         >
           {multi ? `선택한 ${selected}건 실행` : '승인하고 실행'}
