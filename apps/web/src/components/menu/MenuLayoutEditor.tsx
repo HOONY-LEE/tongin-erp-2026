@@ -2,10 +2,13 @@ import { useState, type DragEvent } from 'react';
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
+  ChevronRight,
   ChevronsDownUp,
   Eye,
   EyeOff,
   GripVertical,
+  Pencil,
   Plus,
   Trash2,
   X,
@@ -22,7 +25,7 @@ interface Props {
    * personal: 받은 메뉴 안에서 순서·묶음·숨김만 바꾼다.
    */
   mode: 'admin' | 'personal';
-  /** personal — 숨긴 메뉴 */
+  /** personal — 숨긴 메뉴(제자리에 흐리게 남는다) */
   hidden?: string[];
   onHiddenChange?: (hidden: string[]) => void;
   /** 이 메뉴를 지금 사람이 볼 수 있나(권한) — 못 보는 메뉴는 흐리게 표시(관리자 미리보기용) */
@@ -107,15 +110,8 @@ export function MenuLayoutEditor({
     setTarget((t) => Math.max(0, Math.min(t, groups.length - 2)));
   };
 
-  const hide = (key: string) => {
-    set((gs) => (removeItem(gs, key), gs));
-    onHiddenChange?.([...hidden, key]);
-  };
-  const unhide = (key: string) => {
-    onHiddenChange?.(hidden.filter((k) => k !== key));
-    const gi = target;
-    if (gi >= 0) place(key, gi);
-  };
+  const toggleHidden = (key: string) =>
+    onHiddenChange?.(hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key]);
 
   const toggleCatalog = (key: string) => {
     if (used.has(key)) set((gs) => (removeItem(gs, key), gs));
@@ -154,7 +150,7 @@ export function MenuLayoutEditor({
         {groups.map((g, gi) => (
           <section
             key={gi}
-            className={`${styles.group} ${target === gi ? styles.groupTarget : ''} ${over === `g${gi}` ? styles.over : ''}`}
+            className={`${styles.group} ${mode === 'admin' && target === gi ? styles.groupTarget : ''} ${over === `g${gi}` ? styles.over : ''}`}
             onDragOver={allowDrop(`g${gi}`)}
             onDragLeave={() => setOver(null)}
             onDrop={(e) => onDropItem(e, gi)}
@@ -170,13 +166,16 @@ export function MenuLayoutEditor({
               >
                 <GripVertical size={14} />
               </span>
-              <input
-                className={styles.groupLabel}
-                value={g.label}
-                maxLength={30}
-                aria-label="묶음 이름"
-                onChange={(e) => set((gs) => ((gs[gi].label = e.target.value), gs))}
-              />
+              <label className={styles.groupLabelWrap} title="묶음 이름 바꾸기">
+                <input
+                  className={styles.groupLabel}
+                  value={g.label}
+                  maxLength={30}
+                  aria-label="묶음 이름"
+                  onChange={(e) => set((gs) => ((gs[gi].label = e.target.value), gs))}
+                />
+                <Pencil size={12} className={styles.labelPencil} aria-hidden />
+              </label>
               <button
                 type="button"
                 className={`${styles.iconBtn} ${g.collapsed ? styles.iconOn : ''}`}
@@ -221,10 +220,11 @@ export function MenuLayoutEditor({
             <ul className={styles.items}>
               {g.items.map((key, ii) => {
                 const Icon = menuIcon(menuDef(key));
+                const off = mode === 'personal' && hidden.includes(key);
                 return (
                   <li
                     key={key}
-                    className={`${styles.item} ${over === key ? styles.overItem : ''} ${dim?.(key) ? styles.dim : ''}`}
+                    className={`${styles.item} ${over === key ? styles.overItem : ''} ${dim?.(key) || off ? styles.dim : ''}`}
                     draggable
                     onDragStart={(e) => onDragStart(e, { kind: 'item', key })}
                     onDragEnd={() => setDrag(null)}
@@ -256,11 +256,13 @@ export function MenuLayoutEditor({
                     {mode === 'personal' ? (
                       <button
                         type="button"
-                        className={styles.iconBtn}
-                        title="숨기기"
-                        onClick={() => hide(key)}
+                        className={`${styles.iconBtn} ${styles.eyeBtn}`}
+                        title={off ? '숨김 — 누르면 다시 보입니다' : '보임 — 누르면 숨깁니다'}
+                        aria-label={off ? `${label(key)} 다시 보이기` : `${label(key)} 숨기기`}
+                        aria-pressed={off}
+                        onClick={() => toggleHidden(key)}
                       >
-                        <EyeOff size={13} />
+                        {off ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     ) : (
                       <button
@@ -317,29 +319,56 @@ export function MenuLayoutEditor({
           ))}
         </aside>
       ) : (
-        <aside className={styles.side}>
-          <div className={styles.sideHead}>
-            숨긴 메뉴
-            <span className={styles.meta}>누르면 「{groups[target]?.label}」에 다시 보입니다</span>
-          </div>
-          {hidden.length ? (
-            hidden.map((key) => {
-              const Icon = menuIcon(menuDef(key));
-              return (
-                <button key={key} type="button" className={styles.pick} onClick={() => unhide(key)}>
-                  <Icon size={14} />
-                  <span>{label(key)}</span>
-                  <Eye size={13} className={styles.pickEnd} />
-                </button>
-              );
-            })
-          ) : (
-            <p className={styles.meta}>
-              숨긴 메뉴가 없습니다. 메뉴 오른쪽 눈 아이콘으로 숨길 수 있어요.
-            </p>
-          )}
-        </aside>
+        <SidebarPreview groups={groups} hidden={hidden} />
       )}
     </div>
+  );
+}
+
+/** 개인 편집 오른쪽 — 실제 사이드바에 어떻게 보일지(숨긴 메뉴·빈 묶음은 빠진다). 묶음을 눌러 접고 편다 */
+function SidebarPreview({ groups, hidden }: { groups: MenuGroup[]; hidden: string[] }) {
+  const label = useMenuLabel();
+  const [open, setOpen] = useState<Record<number, boolean>>({});
+  const shown = groups
+    .map((g, gi) => ({ ...g, gi, items: g.items.filter((k) => !hidden.includes(k)) }))
+    .filter((g) => g.items.length > 0);
+  return (
+    <aside className={`${styles.side} ${styles.preview}`} aria-label="사이드바 미리보기">
+      <div className={styles.sideHead}>
+        미리보기
+        <span className={styles.meta}>사이드바에 이렇게 보입니다</span>
+      </div>
+      {shown.length ? (
+        shown.map((g) => {
+          const isOpen = open[g.gi] ?? !g.collapsed;
+          const Chevron = isOpen ? ChevronDown : ChevronRight;
+          return (
+            <div key={g.gi} className={styles.pvGroup}>
+              <button
+                type="button"
+                className={styles.pvGroupHead}
+                aria-expanded={isOpen}
+                onClick={() => setOpen((o) => ({ ...o, [g.gi]: !isOpen }))}
+              >
+                <span>{g.label}</span>
+                <Chevron size={13} aria-hidden />
+              </button>
+              {isOpen &&
+                g.items.map((key) => {
+                  const Icon = menuIcon(menuDef(key));
+                  return (
+                    <div key={key} className={styles.pvItem}>
+                      <Icon size={15} aria-hidden />
+                      <span>{label(key)}</span>
+                    </div>
+                  );
+                })}
+            </div>
+          );
+        })
+      ) : (
+        <p className={styles.meta}>보이는 메뉴가 없습니다.</p>
+      )}
+    </aside>
   );
 }

@@ -5,6 +5,7 @@ import { Button, Modal, useToast } from '../ui';
 import { ApiError } from '../../lib/api';
 import { resetMyMenu, saveMyMenu, type MyMenu } from '../../lib/menu';
 import { MenuLayoutEditor } from './MenuLayoutEditor';
+import styles from './menuEditor.module.css';
 
 interface Props {
   open: boolean;
@@ -23,9 +24,12 @@ export function MyMenuModal({ open, onOpenChange, menu, visible }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    // 개인 설정 전 빈 묶음도 편집에선 보이게(normalize는 빈 묶음을 남긴다)
+    // 숨긴 메뉴도 제자리에 둔 편집용 배치(예전 캐시엔 없으면 보이는 배치) — 빈 묶음도 편집에선 보이게
     setGroups(
-      normalizeLayout(menu.layout).groups.map((g) => ({ ...g, items: g.items.filter(visible) })),
+      normalizeLayout(menu.editor ?? menu.layout).groups.map((g) => ({
+        ...g,
+        items: g.items.filter(visible),
+      })),
     );
     setHidden(menu.hidden.filter(visible));
   }, [open]);
@@ -74,7 +78,7 @@ export function MyMenuModal({ open, onOpenChange, menu, visible }: Props) {
             onClick={() => void reset()}
             style={{ marginRight: 'auto' }}
           >
-            팀 기본으로 되돌리기
+            팀 기본으로 되돌리기{from && ` (${from})`}
           </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             취소
@@ -85,23 +89,15 @@ export function MyMenuModal({ open, onOpenChange, menu, visible }: Props) {
         </>
       }
     >
-      <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>
-        끌어서 순서·묶음을 바꾸고, 잘 안 쓰는 메뉴는 숨기세요. 나에게만 적용됩니다.
-        {from && (
-          <>
-            {' '}
-            지금 받은 메뉴 구성: <b>{from}</b>.
-          </>
-        )}{' '}
-        메뉴 추가는 관리자에게 요청해 주세요.
-      </p>
-      <MenuLayoutEditor
-        mode="personal"
-        groups={groups}
-        onChange={setGroups}
-        hidden={hidden}
-        onHiddenChange={setHidden}
-      />
+      <div className={styles.personalBody}>
+        <MenuLayoutEditor
+          mode="personal"
+          groups={groups}
+          onChange={setGroups}
+          hidden={hidden}
+          onHiddenChange={setHidden}
+        />
+      </div>
     </Modal>
   );
 }

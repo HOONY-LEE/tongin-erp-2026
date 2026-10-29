@@ -90,6 +90,8 @@ export function useMenuLabel() {
 
 export interface MyMenu {
   layout: MenuLayout;
+  /** 편집용 배치 — 숨긴 메뉴도 제자리에 있다(예전 캐시엔 없을 수 있음) */
+  editor?: MenuLayout;
   /** 관리자 구성(개인 설정 전) — 개인 편집에서 고를 수 있는 메뉴 */
   base: MenuLayout;
   hidden: string[];
