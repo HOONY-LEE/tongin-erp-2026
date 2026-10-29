@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { FIELD_ROLES } from '@tongin/shared';
 import { ApiError, api, getToken, setToken } from '../lib/api';
+import { resetAiActivity } from '../lib/aiActivity';
 
 // 마지막으로 확인된 로그인 정보 — 신호 없는 현장에서 앱을 열어도 로그인 화면으로 튕기지 않도록
 const CACHED_ME = 'tongin_me';
@@ -67,6 +68,28 @@ function readCachedMe(): Principal | null {
   }
 }
 
+/**
+ * 로그아웃·로그인 만료 때 이 사람의 흔적을 지운다 — 같은 PC에서 다음 사람이 로그인해도
+ * 앞사람이 보던 메뉴·AI 대화·캐시가 남지 않게(주소는 App의 Shell이 처음(/)으로 돌린다).
+ * 화면 설정(테마·언어·사이드바 접힘·아이디 기억)은 사람과 상관없어 남긴다.
+ */
+function clearSession() {
+  setToken(null); // 선택지 캐시도 함께 비운다
+  try {
+    localStorage.removeItem(CACHED_ME);
+    for (const k of Object.keys(localStorage)) {
+      if (SESSION_KEYS.some((p) => k === p || k.startsWith(`${p}.`))) localStorage.removeItem(k);
+    }
+    sessionStorage.clear();
+  } catch {
+    // 저장소가 막힌 브라우저 — 지울 것도 없다
+  }
+  resetAiActivity();
+}
+
+/** 사람마다 다른 브라우저 저장값 — 로그아웃 때 지운다(접두어.사용자id 형식 포함) */
+const SESSION_KEYS = ['tongin_menu', 'ai.lastView'];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   // 캐시된 로그인 정보가 있으면 /auth/me를 기다리지 않고 바로 화면을 그린다(콜드 스타트에도 즉시 열림).
   // /auth/me는 뒤에서 확인하고, 401이면 아래 로그아웃 흐름이 로그인 화면으로 돌려보낸다.
@@ -98,8 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 캐시된 정보로 이미 그려 두었다 — /auth/me 응답이 오면 갱신한다
       void loadMe();
     } else setLoading(false);
+    // 로그인이 끝났을 때(만료)도 로그아웃과 똑같이 비운다 — 다음에 누가 로그인할지 모른다
     const onUnauth = () => {
-      localStorage.removeItem(CACHED_ME);
+      clearSession();
       setUser(null);
     };
     window.addEventListener('tongin:unauthorized', onUnauth);
@@ -116,8 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    setToken(null);
-    localStorage.removeItem(CACHED_ME);
+    clearSession();
     setUser(null);
   };
 

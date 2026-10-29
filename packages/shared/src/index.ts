@@ -622,6 +622,21 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     specials: [{ action: 'SEND', label: '고객에게 직접 발송' }],
   },
   { key: 'CALENDAR', label: '일정', group: '운영', actions: ALL_CRUD },
+  // 공통 — 팀 구분 없이 쓰는 업무 도구
+  {
+    key: 'NOTICE',
+    label: '공지사항',
+    group: '공통',
+    actions: ALL_CRUD,
+    hint: '조회 = 모든 공지 열람. 전사·내 소속 조직 공지는 권한 없이 볼 수 있습니다',
+  },
+  {
+    key: 'TASK',
+    label: '팀 업무',
+    group: '공통',
+    actions: ALL_CRUD,
+    hint: '조회 = 데이터 범위 안 팀 업무 열람. 내가 담당·요청한 업무는 권한 없이 보고 상태를 바꿀 수 있습니다',
+  },
   // 관리
   { key: 'CUSTOMER', label: '고객', group: '관리', actions: ALL_CRUD },
   { key: 'PRODUCT', label: '상품', group: '관리', actions: ALL_CRUD },
@@ -632,6 +647,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   { key: 'ORG_UNIT', label: '조직·지점', group: '관리', actions: ALL_CRUD },
   { key: 'EMPLOYEE', label: '직원', group: '관리', actions: ALL_CRUD },
   { key: 'COMMON_CODE', label: '공통코드·설정', group: '관리', actions: ALL_CRUD },
+  { key: 'ASSET', label: '계약·자산', group: '관리', actions: ALL_CRUD },
+  {
+    key: 'BRANCH_CASE',
+    label: '지점 관리 기록',
+    group: '관리',
+    actions: ALL_CRUD,
+    hint: '데이터 범위가 소속 조직이면 그 지점(+하위) 기록만 보입니다',
+  },
   // 인사 — 본인 일(휴가 신청·출퇴근·내 결재함·결재 처리)은 권한 없이 로그인만으로. 여기 권한은 관리용
   {
     key: 'APPROVAL',
@@ -677,6 +700,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     group: '시스템',
     actions: ALL_CRUD,
     hint: '대시보드 템플릿을 만들고 권한 그룹·사용자에게 기본으로 지정합니다',
+  },
+  {
+    key: 'MENU',
+    label: '메뉴 관리',
+    group: '시스템',
+    actions: ALL_CRUD,
+    hint: '팀(소속)·권한 그룹·직책별 사이드바 메뉴 구성을 정합니다. 내 메뉴 순서 바꾸기는 권한 없이 됩니다',
   },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
 ];
@@ -822,3 +852,65 @@ export interface PartnerReceivable {
 export * from './agent-blueprint';
 export * from './dashboard';
 export * from './hr';
+export * from './menu';
+
+// ── 공통 업무: 공지사항 · 팀 업무 · 계약·자산 · 지점 관리 기록 ──
+
+/** 공지 대상 — 전사 또는 고른 조직(+하위 조직이 본다) */
+export const NOTICE_AUDIENCE = ['ALL', 'ORG'] as const;
+export type NoticeAudience = (typeof NOTICE_AUDIENCE)[number];
+
+export const TASK_STATUS = ['TODO', 'IN_PROGRESS', 'HOLD', 'DONE'] as const;
+export type TaskStatus = (typeof TASK_STATUS)[number];
+export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
+  TODO: '할 일',
+  IN_PROGRESS: '진행 중',
+  HOLD: '보류',
+  DONE: '완료',
+};
+export const TASK_PRIORITY = ['A', 'B', 'C'] as const;
+export type TaskPriority = (typeof TASK_PRIORITY)[number];
+
+export const ASSET_KIND = ['PATENT', 'TRADEMARK', 'LEASE', 'INSURANCE', 'RENTAL', 'ETC'] as const;
+export type AssetKind = (typeof ASSET_KIND)[number];
+export const ASSET_KIND_LABEL: Record<AssetKind, string> = {
+  PATENT: '특허',
+  TRADEMARK: '상표권',
+  LEASE: '임대차',
+  INSURANCE: '보험',
+  RENTAL: '리스·렌탈',
+  ETC: '기타 계약',
+};
+/** 금액 기준 — 월·연 단위 또는 총액 */
+export const ASSET_AMOUNT_UNIT = ['MONTH', 'YEAR', 'TOTAL'] as const;
+export type AssetAmountUnit = (typeof ASSET_AMOUNT_UNIT)[number];
+export const ASSET_AMOUNT_UNIT_LABEL: Record<AssetAmountUnit, string> = {
+  MONTH: '월',
+  YEAR: '연',
+  TOTAL: '총액',
+};
+
+export const BRANCH_CASE_KIND = [
+  'INSPECTION',
+  'ILLEGAL',
+  'INSURANCE',
+  'LAWSUIT',
+  'RENEWAL',
+  'COMPLAINT',
+] as const;
+export type BranchCaseKind = (typeof BRANCH_CASE_KIND)[number];
+export const BRANCH_CASE_KIND_LABEL: Record<BranchCaseKind, string> = {
+  INSPECTION: '현장점검',
+  ILLEGAL: '불법영업',
+  INSURANCE: '보험처리',
+  LAWSUIT: '소송',
+  RENEWAL: '재계약',
+  COMPLAINT: '민원',
+};
+export const BRANCH_CASE_STATUS = ['OPEN', 'IN_PROGRESS', 'CLOSED'] as const;
+export type BranchCaseStatus = (typeof BRANCH_CASE_STATUS)[number];
+export const BRANCH_CASE_STATUS_LABEL: Record<BranchCaseStatus, string> = {
+  OPEN: '접수',
+  IN_PROGRESS: '처리 중',
+  CLOSED: '종결',
+};

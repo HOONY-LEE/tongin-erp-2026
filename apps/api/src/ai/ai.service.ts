@@ -60,6 +60,8 @@ export interface Decision {
   approve: boolean;
   /** 문자 발송 승인 때 직원이 고친 받는 사람(고객 id). 없으면 AI가 고른 그대로 */
   customerIds?: string[];
+  /** 문자 발송 승인 때 직원이 고친 본문. 없으면 AI가 쓴 그대로 */
+  message?: string;
 }
 
 type Messages = BetaMessageParam[];
@@ -334,6 +336,9 @@ export class AiService implements OnModuleInit {
       const edits = new Map(
         decisions.filter((d) => d.customerIds).map((d) => [d.toolUseId, d.customerIds!]),
       );
+      const messageEdits = new Map(
+        decisions.filter((d) => d.message?.trim()).map((d) => [d.toolUseId, d.message!.trim()]),
+      );
       const tools = new Map(this.toolsFor(ctx.principal).map((t) => [t.name, t]));
 
       const results: BetaToolResultBlockParam[] = [];
@@ -349,7 +354,20 @@ export class AiService implements OnModuleInit {
         }
         // 문자 받는 사람을 직원이 고쳐서 승인했으면 그 명단으로 보내고, AI에게도 고친 사실을 알린다
         const edited = p.name === 'send_sms' ? edits.get(p.toolUseId) : undefined;
-        const call = edited ? { ...p, input: { ...p.input, customerIds: edited } } : p;
+        const origMessage = typeof p.input.message === 'string' ? p.input.message.trim() : '';
+        const editedMsg = p.name === 'send_sms' ? messageEdits.get(p.toolUseId) : undefined;
+        const newMessage = editedMsg && editedMsg !== origMessage ? editedMsg : undefined;
+        const call =
+          edited || newMessage
+            ? {
+                ...p,
+                input: {
+                  ...p.input,
+                  ...(edited ? { customerIds: edited, recipientListId: undefined } : {}),
+                  ...(newMessage ? { message: newMessage } : {}),
+                },
+              }
+            : p;
         const result = await this.execute(
           id,
           tools.get(p.name),
@@ -357,9 +375,23 @@ export class AiService implements OnModuleInit {
           ctx,
           p.mode === 'WRITE' ? ctx.principal.userId : null,
         );
-        if (edited) {
-          const before = Array.isArray(p.input.customerIds) ? p.input.customerIds.length : 0;
-          result.content = `직원이 받는 사람을 고쳐서 승인했습니다(처음 ${before}명 → ${edited.length}명). 결과: ${String(result.content)}`;
+        // 화면은 승인할 때 미리보기 명단을 늘 고객 id로 보낸다 — 미리보기와 다를 때만 '고쳤다'
+        const shown = (p.preview as { recipients?: { customerId?: string }[] } | undefined)
+          ?.recipients;
+        const before = shown?.length ?? 0;
+        const sameList =
+          !!edited &&
+          !!shown &&
+          edited.length === shown.length &&
+          shown.every((r) => !!r.customerId && edited.includes(r.customerId));
+        if ((edited && !sameList) || newMessage) {
+          const notes = [
+            ...(edited && !sameList
+              ? [`받는 사람을 고쳤습니다(처음 ${before}명 → ${edited.length}명)`]
+              : []),
+            ...(newMessage ? [`문자 본문을 고쳤습니다(보낸 본문: ${newMessage})`] : []),
+          ];
+          result.content = `직원이 ${notes.join(', ')}. 그대로 승인했습니다. 결과: ${String(result.content)}`;
         }
         results.push(result);
       }

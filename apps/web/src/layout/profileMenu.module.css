@@ -1,0 +1,230 @@
+/* 머리글 프로필 버튼 */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px 0 4px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.trigger:hover,
+.triggerOn {
+  background: var(--ark-color-bg-subtle);
+}
+.triggerName {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .triggerName {
+    display: none;
+  }
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ark-color-primary-500);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.avatarLg {
+  width: 36px;
+  height: 36px;
+  font-size: 15px;
+}
+
+/* 드롭다운 */
+.panel {
+  position: fixed;
+  z-index: 1000;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  margin-bottom: 4px;
+}
+.headText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ark-color-text);
+}
+.headText span {
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.item > svg,
+.groupLabel > svg,
+.clockRow > svg {
+  color: var(--ark-color-text-secondary);
+  flex-shrink: 0;
+}
+.sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--ark-color-border);
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+.groupLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ark-color-text);
+}
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+}
+.seg button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.seg .segOn {
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* 출퇴근 */
+.clockRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--ark-color-text);
+}
+.clockText {
+  flex: 1;
+  min-width: 0;
+}
+.clockBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.clockIn {
+  border-color: var(--ark-color-primary-500);
+  background: var(--ark-color-primary-500);
+  color: #fff;
+}
+
+/* 내 계정 */
+.info {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.info > div {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  font-size: 13px;
+}
+.info dt {
+  color: var(--ark-color-text-secondary);
+}
+.info dd {
+  margin: 0;
+  color: var(--ark-color-text);
+}
+.formTitle {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--ark-color-text);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ark-color-text);
+}
+.req {
+  color: var(--ark-color-error-500);
+}
+.err {
+  font-size: 12px;
+  color: var(--ark-color-error-500);
+}

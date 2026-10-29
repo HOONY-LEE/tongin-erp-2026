@@ -38,6 +38,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AgentBlueprintService } from './agent-blueprint.service';
 import { AgentGeneratorService } from './agent-generator.service';
+import { AgentSuggestionService } from './agent-suggestion.service';
 import { AgentRunnerService } from './agent-runner.service';
 import { AgentReferenceService } from './agent-reference.service';
 import { AiFiles, contentDisposition } from '../ai/ai-files.service';
@@ -457,5 +458,17 @@ export class AgentCallController {
       { input: dto.input ?? {}, dryRun: dto.dryRun ?? false, mockLlm: false },
       { principal: user, authorization },
     );
+  }
+}
+
+/** 반복 행동 → 에이전트 제안 — 내가 최근 손으로 되풀이한 일. 에이전트를 만들 수 있는 사람(AI.MANAGE)에게만 */
+@Controller('agent-suggestions')
+@RequirePermissions('AI.MANAGE')
+export class AgentSuggestionController {
+  constructor(private readonly suggestions: AgentSuggestionService) {}
+
+  @Get()
+  mine(@CurrentUser() user: AuthPrincipal) {
+    return this.suggestions.forUser(user.userId);
   }
 }

@@ -1,7 +1,7 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
 import { ToastProvider } from '@sunghoon_lee/akron-ui';
 import { PageSkeleton } from './components/ui';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AuthProvider, isFieldUser, useAuth } from './auth/AuthContext';
 import AppLayout from './layout/AppLayout';
@@ -13,6 +13,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DashboardEdit = lazy(() => import('./pages/DashboardEdit'));
 const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
+const MenuMgmt = lazy(() => import('./pages/MenuMgmt'));
 const DashboardTemplateEdit = lazy(() => import('./pages/DashboardTemplateEdit'));
 const DashboardTemplateSettings = lazy(() => import('./pages/DashboardTemplateSettings'));
 const Leads = lazy(() => import('./pages/Leads'));
@@ -52,6 +53,10 @@ const Accounts = lazy(() => import('./pages/Accounts'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const PartnerMgmt = lazy(() => import('./pages/PartnerMgmt'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
+const Notices = lazy(() => import('./pages/Notices'));
+const Tasks = lazy(() => import('./pages/Tasks'));
+const Assets = lazy(() => import('./pages/Assets'));
+const BranchCases = lazy(() => import('./pages/BranchCases'));
 const FieldLayout = lazy(() => import('./field/FieldLayout'));
 const FieldWorkOrders = lazy(() => import('./field/FieldWorkOrders'));
 const FieldWorkOrderDetail = lazy(() => import('./field/FieldWorkOrderDetail'));
@@ -61,6 +66,16 @@ const page = (el: ReactNode) => <Suspense fallback={<PageSkeleton />}>{el}</Susp
 
 function Shell() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  // 로그아웃·만료로 사람이 빠지면 주소를 처음(/)으로 — 다음에 로그인한 사람이 앞사람이 보던 화면에서 시작하지 않게
+  const had = useRef(false);
+  useEffect(() => {
+    if (user) had.current = true;
+    else if (had.current) {
+      had.current = false;
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', padding: 24, boxSizing: 'border-box' }}>
@@ -95,6 +110,7 @@ function Shell() {
         <Route path="/dashboard" element={page(<Dashboard />)} />
         <Route path="/dashboard/edit" element={page(<DashboardEdit />)} />
         <Route path="/dashboard-admin" element={page(<DashboardAdmin />)} />
+        <Route path="/menu-mgmt" element={page(<MenuMgmt />)} />
         <Route path="/dashboard-admin/:id" element={page(<DashboardTemplateEdit />)} />
         <Route path="/dashboard-admin/:id/settings" element={page(<DashboardTemplateSettings />)} />
         <Route path="/ai" element={page(<AiAssistant />)} />
@@ -131,6 +147,11 @@ function Shell() {
         <Route path="/leave" element={page(<Leave />)} />
         <Route path="/attendance" element={page(<Attendance />)} />
         <Route path="/accounts" element={page(<Accounts />)} />
+        {/* 공통 업무 — 공지사항·팀 업무·계약/자산·지점 관리 기록 */}
+        <Route path="/notices" element={page(<Notices />)} />
+        <Route path="/tasks" element={page(<Tasks />)} />
+        <Route path="/assets" element={page(<Assets />)} />
+        <Route path="/branch-cases" element={page(<BranchCases />)} />
         <Route path="/agent-builder" element={page(<AgentBlueprints />)} />
         <Route path="/agent-builder/new" element={page(<AgentCreate />)} />
         <Route path="/agent-builder/:id" element={page(<AgentBuilder />)} />

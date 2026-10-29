@@ -1,39 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import {
-  Loader2,
-  Sparkles,
-  LayoutDashboard,
-  LayoutTemplate,
-  Inbox,
-  Banknote,
-  LifeBuoy,
-  Megaphone,
-  Package,
-  ShoppingCart,
-  UserRound,
-  Tag,
-  Building2,
-  Store,
-  ShieldCheck,
-  Handshake,
-  CalendarDays,
-  Globe,
-  Monitor,
-  Moon,
-  Sun,
-  LogOut,
-  Calculator,
-  Receipt,
-  Award,
-  Bot,
-  Workflow,
-  FileSignature,
-  Plane,
-  CalendarClock,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -43,23 +12,16 @@ import {
   type NotificationBellItem,
 } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
-import { useTheme, type ThemeMode } from '../theme/ThemeProvider';
-import { SUPPORTED_LANGS, setLang } from '../i18n';
-import { api } from '../lib/api';
 import { useAiRunning } from '../lib/aiActivity';
 import { usePendingApprovals } from '../lib/approvals';
-import { ClockButton } from '../components/attendance/ClockButton';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { MyMenuModal } from '../components/menu/MyMenuModal';
+import { menuIcon, useMenuLabel, useMyMenu } from '../lib/menu';
+import { useInbox } from '../lib/inbox';
+import { MENU_CATALOG, filterLayout, menuDef } from '@tongin/shared';
 import styles from './AppLayout.module.css';
 import { HeaderTabs } from './HeaderTabs';
-import { HeaderPicker } from './HeaderPicker';
-
-const LANG_SHORT: Record<string, string> = { ko: '한', en: 'EN', zh: '中' };
-const THEME_OPTIONS: { value: ThemeMode; icon: LucideIcon }[] = [
-  { value: 'system', icon: Monitor },
-  { value: 'light', icon: Sun },
-  { value: 'dark', icon: Moon },
-];
+import { ProfileMenu } from './ProfileMenu';
 
 type NavItem = {
   to: string;
@@ -79,21 +41,22 @@ type NavGroup = { label?: string; items: NavItem[]; defaultOpen?: boolean };
 
 const COLLAPSE_KEY = 'tongin_sidebar_collapsed';
 
-interface NotiRow {
-  id: string;
-  eventType: string;
-  message: string;
-  sentAt: string;
-}
+/** 알림 종류별 색 — 결재 요청은 눈에 띄게, 반려 결과도 경고색 */
+const INBOX_TYPE: Record<string, NotificationBellItem['type']> = {
+  APPROVAL_REQUEST: 'warning',
+  APPROVAL_RESULT: 'success',
+  MENTION: 'info',
+  TASK_ASSIGNED: 'warning',
+  LEAD_ASSIGNED: 'warning',
+  WORK_ASSIGNED: 'warning',
+};
 
 export default function AppLayout() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { pathname, search } = useLocation();
   const outlet = useOutlet();
   const navigate = useNavigate();
-  const { user, logout, can } = useAuth();
-  const { mode, setMode } = useTheme();
-  const ThemeIcon = THEME_OPTIONS.find((o) => o.value === mode)?.icon ?? Monitor;
+  const { user, can } = useAuth();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   const setCol = (v: boolean) => {
@@ -118,133 +81,36 @@ export default function AppLayout() {
   // 내 결재 차례 건수 — 결재함 메뉴 배지
   const pendingApprovals = usePendingApprovals(!!user?.employeeId);
 
-  const groups: NavGroup[] = [
-    {
-      label: t('navGroup.ops'),
-      items: [
-        { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
-        { to: '/ai', label: t('nav.ai'), icon: Bot, perm: 'AI.USE' },
-        {
-          to: '/leads',
-          label: t('nav.leads'),
-          icon: Inbox,
-          perm: 'LEAD.READ',
-          // 견적·계약·작업 상세는 접수 케이스가 낳은 문서들이라 '접수' 탭 안에 머문다
-          owns: ['/estimates', '/contracts', '/work-orders'],
-        },
-        {
-          to: '/calendar',
-          label: t('nav.calendar'),
-          icon: CalendarDays,
-          perm: 'WORK_ORDER.READ',
-        },
-        {
-          to: '/payments-confirm',
-          label: t('nav.paymentsConfirm'),
-          icon: Banknote,
-          perm: 'PAYMENT.READ',
-        },
-        // 현장(/field)은 폰·태블릿 전용 화면이라 PC 메뉴에 두지 않는다.
-        // 현장 작업팀 계정은 로그인하면 자동으로 그 화면으로 간다(App.tsx 분기).
-        // 리빙·케어(입주청소·정리수납 등 이사 외 서비스) 주문 — 이사 접수와 별도로 돌아가는 일정이라 메뉴로 둔다
-        {
-          to: '/service-orders',
-          label: t('nav.serviceOrders'),
-          icon: Sparkles,
-          perm: 'SERVICE_ORDER.READ',
-        },
-        { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
-        { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
-      ],
-    },
-    {
-      label: t('navGroup.hr'),
-      items: [
-        {
-          to: '/approvals',
-          label: t('nav.approvals'),
-          icon: FileSignature,
-          selfService: true,
-          badge: pendingApprovals,
-        },
-        // 직원 연결 계정이면 누구나(내 휴가), 직원 연결이 없어도 전 직원 현황 권한이 있으면
-        { to: '/leave', label: t('nav.leave'), icon: Plane, selfService: true, perm: 'LEAVE.READ' },
-        {
-          to: '/attendance',
-          label: t('nav.attendance'),
-          icon: CalendarClock,
-          selfService: true,
-          perm: 'ATTENDANCE.READ',
-        },
-      ],
-    },
-    {
-      label: t('navGroup.admin'),
-      items: [
-        { to: '/customers', label: t('nav.customers'), icon: UserRound, perm: 'CUSTOMER.READ' },
-        {
-          to: '/product-mgmt',
-          label: t('nav.productMgmt'),
-          icon: Tag,
-          perm: 'PRODUCT.READ',
-          owns: ['/products', '/cbm-items'],
-        },
-        { to: '/partner-mgmt', label: t('nav.partnerMgmt'), icon: Handshake, perm: 'PARTNER.READ' },
-        {
-          to: '/org-mgmt',
-          label: t('nav.orgMgmt'),
-          icon: Building2,
-          perm: 'ORG_UNIT.READ',
-          owns: ['/org-units'],
-        },
-        { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
-        { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
-        { to: '/agent-builder', label: t('nav.aiAgents'), icon: Workflow, perm: 'AI.MANAGE' },
-        {
-          to: '/dashboard-admin',
-          label: t('nav.dashboardAdmin'),
-          icon: LayoutTemplate,
-          perm: 'DASHBOARD.READ',
-        },
-      ],
-    },
-    {
-      label: t('navGroup.finance'),
-      // 본사는 자주 쓰지 않아 맨 아래에 접어 둔다. 지점장(정산 권한 없음)은 이 묶음에서
-      // 자재/재고·가맹점발주만 보며 매일 쓰므로 펼쳐 둔다
-      defaultOpen: !can('SETTLEMENT.READ'),
-      items: [
-        {
-          to: '/settlements',
-          label: t('nav.settlement'),
-          icon: Calculator,
-          perm: 'SETTLEMENT.READ',
-        },
-        { to: '/billing', label: t('nav.billing'), icon: Receipt, perm: 'BILLING.READ' },
-        { to: '/hr', label: t('nav.hr'), icon: Award, perm: 'HR.READ' },
-        // 자재·발주도 돈(원가·정산)과 묶여 정산 아래에 둔다
-        { to: '/materials', label: t('nav.materials'), icon: Package, perm: 'MATERIAL.READ' },
-        {
-          to: '/material-orders',
-          label: t('nav.materialOrders'),
-          icon: ShoppingCart,
-          perm: 'MATERIAL_ORDER.READ',
-        },
-      ],
-    },
-  ];
-
-  const visibleGroups = groups
-    .map((g) => ({
-      ...g,
-      items: g.items.filter((it) =>
-        it.selfService
-          ? !!user?.employeeId || (!!it.perm && can(it.perm))
-          : !it.perm || can(it.perm),
-      ),
-    }))
-    .filter((g) => g.items.length > 0);
-  const allItems = visibleGroups.flatMap((g) => g.items);
+  // 사이드바 = 관리자 메뉴 구성(팀·권한 그룹·직책) + 내 메뉴 설정, 그다음 권한으로 거른다
+  const myMenu = useMyMenu(user?.userId);
+  const menuLabel = useMenuLabel();
+  const [menuEditOpen, setMenuEditOpen] = useState(false);
+  const canSeeMenu = (key: string) =>
+    filterLayout({ groups: [{ label: '', items: [key] }] }, can, !!user?.employeeId).groups.length >
+    0;
+  const visibleGroups: NavGroup[] = filterLayout(myMenu.layout, can, !!user?.employeeId).groups.map(
+    (g) => ({
+      label: g.label,
+      defaultOpen: !g.collapsed,
+      items: g.items.map((key) => {
+        const m = menuDef(key)!;
+        return {
+          to: m.path,
+          label: menuLabel(key),
+          icon: menuIcon(m),
+          owns: m.owns,
+          badge: key === 'approvals' ? pendingApprovals : undefined,
+        };
+      }),
+    }),
+  );
+  // 탭·선택 표시는 사이드바에서 숨긴 메뉴도 알아야 한다(링크로 들어간 화면) — 권한 있는 전체 메뉴 기준
+  const allItems: NavItem[] = MENU_CATALOG.filter((m) => canSeeMenu(m.key)).map((m) => ({
+    to: m.path,
+    label: menuLabel(m.key),
+    icon: menuIcon(m),
+    owns: m.owns,
+  }));
 
   /** 이 메뉴가 현재 경로를 담당하는가 — 자기 경로이거나, owns에 등록된 하위 화면이거나. */
   // '/ai'가 '/ai-xxx' 같은 다른 경로까지 잡지 않게 — 같은 경로이거나 그 아래 경로만
@@ -310,31 +176,33 @@ export default function AppLayout() {
     navigate(closed[0].to);
   };
 
-  // ── 알림 벨 (notification 기록 표시) ──
-  const [notis, setNotis] = useState<NotificationBellItem[]>([]);
-  const loadNotis = useCallback(async () => {
-    if (!can('NOTIFICATION.READ')) return;
-    try {
-      // 벨에는 최근 20건만 보인다 — 서버에서도 20건만 받는다
-      const rows = await api<NotiRow[]>('/notifications?take=20');
-      setNotis(
-        rows.slice(0, 20).map((n) => ({
-          id: n.id,
-          title: n.eventType,
-          message: n.message,
-          timestamp: n.sentAt,
-          read: false,
-          type: 'info' as const,
-        })),
-      );
-    } catch {
-      /* 권한/네트워크 실패 시 무시 */
-    }
-  }, [can]);
+  // ── 알림 벨 — 나와 관련된 일(결재 요청·결과, 업무 배정, 멘션, 담당 지정, 공지) ──
+  const inbox = useInbox(!!user);
+  const unread = inbox.unread;
+  // 알림이 가리키는 화면을 열면(벨·대시보드·직접 이동 어느 쪽이든) 그 알림은 읽음
   useEffect(() => {
-    void loadNotis();
-  }, [loadNotis]);
-  const unread = notis.filter((n) => !n.read).length;
+    const here = new URLSearchParams(search).get('detail');
+    const seen = inbox.items.filter((n) => {
+      if (n.readAt || !n.link) return false;
+      const u = new URL(n.link, window.location.origin);
+      if (u.pathname !== pathname) return false;
+      const want = u.searchParams.get('detail');
+      return want ? want === here : true;
+    });
+    if (seen.length) void inbox.markRead(seen.map((n) => n.id));
+  }, [pathname, search, inbox.items, inbox.markRead]);
+  const notis: NotificationBellItem[] = inbox.items.map((n) => ({
+    id: n.id,
+    title: n.title,
+    message: [n.actorName, n.body].filter(Boolean).join(' · ') || undefined,
+    timestamp: n.createdAt,
+    read: !!n.readAt,
+    type: INBOX_TYPE[n.kind] ?? 'info',
+    onClick: () => {
+      if (!n.readAt) void inbox.markRead([n.id]);
+      if (n.link) navigate(n.link);
+    },
+  }));
 
   return (
     <div className={`${styles.desktopLayout} ${collapsed ? styles.collapsed : ''}`}>
@@ -352,20 +220,6 @@ export default function AppLayout() {
           />
         </div>
         <div className={styles.headerRight}>
-          {/* 출퇴근 — 직원과 연결된 계정만 */}
-          {user?.employeeId && <ClockButton />}
-          <HeaderPicker
-            title={t('lang.label')}
-            value={i18n.language}
-            options={SUPPORTED_LANGS.map((l) => ({ value: l.code, label: l.label }))}
-            onChange={setLang}
-            trigger={
-              <>
-                <Globe size={15} />
-                {LANG_SHORT[i18n.language] ?? i18n.language.toUpperCase()}
-              </>
-            }
-          />
           {aiBusy && (
             <button
               type="button"
@@ -377,25 +231,15 @@ export default function AppLayout() {
               AI 진행 중
             </button>
           )}
-          <HeaderPicker
-            title={t('theme.label')}
-            value={mode}
-            options={THEME_OPTIONS.map((o) => ({
-              value: o.value,
-              label: t(`theme.${o.value}`),
-              icon: <o.icon size={14} />,
-            }))}
-            onChange={(v) => setMode(v as ThemeMode)}
-            trigger={<ThemeIcon size={15} />}
-          />
           <NotificationBell
             count={unread}
             notifications={notis}
             size="sm"
             emptyMessage={t('noti.empty')}
-            onMarkAllRead={() => setNotis((prev) => prev.map((n) => ({ ...n, read: true })))}
-            onClear={() => setNotis([])}
+            onMarkAllRead={() => void inbox.markRead()}
+            onClear={() => void inbox.clearRead()}
           />
+          <ProfileMenu onEditMenu={() => setMenuEditOpen(true)} />
         </div>
       </header>
 
@@ -428,43 +272,11 @@ export default function AppLayout() {
                 {!collapsed && <span style={{ fontWeight: 700, fontSize: 15 }}>통인 Works</span>}
               </div>
             }
-            footer={
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-                onClick={logout}
-                title={t('common.logout')}
-              >
-                <div
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 10,
-                    background: 'var(--ark-color-gray-200)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <UserRound size={16} />
-                </div>
-                {!collapsed && (
-                  <>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{user?.loginId}</div>
-                      <div style={{ fontSize: 11, color: 'var(--ark-color-text-secondary)' }}>
-                        {t('common.logout')}
-                      </div>
-                    </div>
-                    <LogOut size={14} style={{ color: 'var(--ark-color-text-disabled)' }} />
-                  </>
-                )}
-              </div>
-            }
           >
             {visibleGroups.map((g, gi) => (
               <SidebarGroup
-                key={g.label ?? `g${gi}`}
+                // 펼침 기본값은 처음 그릴 때만 먹는다 — 메뉴 구성이 바뀌면(계정 전환·편집) 다시 그린다
+                key={`${gi}|${g.label ?? ''}|${g.defaultOpen === false ? 'c' : 'o'}|${g.items.length}`}
                 label={collapsed ? undefined : g.label}
                 collapsible={!collapsed}
                 defaultOpen={g.defaultOpen !== false || g.items.some(ownsPath)}
@@ -500,6 +312,12 @@ export default function AppLayout() {
               </SidebarGroup>
             ))}
           </LayoutSidebar>
+          <MyMenuModal
+            open={menuEditOpen}
+            onOpenChange={setMenuEditOpen}
+            menu={myMenu}
+            visible={canSeeMenu}
+          />
         </aside>
 
         <main className={styles.contentArea}>

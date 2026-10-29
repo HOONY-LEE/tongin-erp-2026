@@ -43,7 +43,8 @@ export default function Approvals() {
   const { t } = useTranslation();
   const toast = useToast();
   const { user, can } = useAuth();
-  const { tab: box, setTab: setBox } = useTabParam<Box>('todo', 'box');
+  // 처음엔 '전체'(나와 관련된 문서 모두) — 내 결재 차례인 문서는 맨 위에 굵게 보인다
+  const { tab: box, setTab: setBox } = useTabParam<Box>('all', 'box');
   const detail = useDetailParam();
   const { updatedAt, touch } = useUpdatedAt();
   const [rows, setRows] = useState<ApprovalDocView[]>([]);
@@ -87,7 +88,23 @@ export default function Approvals() {
   const columns: Column[] = [
     { title: '문서 번호', dataIndex: 'docNo', width: 140 },
     { title: '종류', dataIndex: 'docTypeLabel', width: 100 },
-    { title: '제목', dataIndex: 'title', flex: 1, minWidth: 200 },
+    {
+      title: '제목',
+      dataIndex: 'title',
+      flex: 1,
+      minWidth: 200,
+      // 내 결재 차례 — 안 읽은 메일처럼 굵게 + 점·'결재 차례' 표시(행 강조는 base.css .ap-turn)
+      render: (r) =>
+        (r as unknown as ApprovalDocView).canAct ? (
+          <span className="ap-turn">
+            <span className="ap-turn-dot" aria-hidden />
+            {String(r.title)}
+            <span className="ap-turn-tag">결재 차례</span>
+          </span>
+        ) : (
+          String(r.title)
+        ),
+    },
     {
       title: '기안자',
       minWidth: 160,
@@ -107,10 +124,10 @@ export default function Approvals() {
   ];
 
   const options = [
+    { value: 'all', label: '전체' },
     { value: 'todo', label: `결재할 문서${todoCount ? ` ${todoCount}` : ''}` },
     { value: 'mine', label: '내가 올린 문서' },
     { value: 'cc', label: '참조·처리한 문서' },
-    ...(can('APPROVAL.READ') ? [{ value: 'all', label: '전체' }] : []),
     ...(can('APPROVAL.MANAGE') ? [{ value: 'lines', label: '결재선 설정' }] : []),
   ];
 

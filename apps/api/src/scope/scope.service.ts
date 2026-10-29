@@ -30,7 +30,7 @@ export class ScopeService {
   }
 
   /** 주어진 조직들 + 모든 하위 조직 id (BFS). 조직 트리는 한 번 읽어 메모리에서 돈다. */
-  private async withDescendants(roots: string[]): Promise<string[]> {
+  async withDescendants(roots: string[]): Promise<string[]> {
     const children = await this.childrenMap();
     const all = new Set(roots);
     let frontier = [...roots];
@@ -39,6 +39,18 @@ export class ScopeService {
       frontier.forEach((id) => all.add(id));
     }
     return [...all];
+  }
+
+  /** 이 조직 + 위로 올라가는 모든 상위 조직 id(공지: 상위 조직에 건 공지도 하위 사람이 본다) */
+  async withAncestors(orgUnitId: string): Promise<string[]> {
+    const children = await this.childrenMap();
+    const parent = new Map<string, string>();
+    for (const [p, list] of children) for (const c of list) parent.set(c, p);
+    const out = [orgUnitId];
+    for (let cur = parent.get(orgUnitId); cur && !out.includes(cur); cur = parent.get(cur)) {
+      out.push(cur);
+    }
+    return out;
   }
 
   /**

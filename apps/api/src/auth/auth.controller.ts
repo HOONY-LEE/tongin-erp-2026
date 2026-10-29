@@ -3,7 +3,7 @@ import type { AuthPrincipal, LoginResponse } from '@tongin/shared';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
-import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto, LoginDto } from './dto/login.dto';
 import { LoginThrottlerGuard } from './login-throttler.guard';
 
 @Controller('auth')
@@ -23,5 +23,13 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthPrincipal): AuthPrincipal {
     return user;
+  }
+
+  /** 내 비밀번호 바꾸기(내 계정) */
+  @Post('password')
+  @HttpCode(200)
+  @UseGuards(LoginThrottlerGuard)
+  changePassword(@CurrentUser() user: AuthPrincipal, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user.userId, dto.currentPassword, dto.newPassword);
   }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Button, Input, Modal, Select, useToast } from '@sunghoon_lee/akron-ui';
+import { Button, Input, Modal, Select, Textarea, useToast } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
 import type { FormField } from './types';
 import { AddressField } from './AddressField';
@@ -210,6 +210,7 @@ function renderField(
           value={values[f.name] ?? ''}
           onValueChange={(v) => setField(f.name, v)}
           options={
+            f.optionGroups ??
             f.options ??
             (f.type === 'boolean'
               ? [
@@ -219,6 +220,14 @@ function renderField(
               : [])
           }
           placeholder={f.placeholder}
+          disabled={f.disabled}
+        />
+      ) : f.type === 'textarea' ? (
+        <Textarea
+          value={values[f.name] ?? ''}
+          placeholder={f.placeholder}
+          rows={5}
+          onChange={(e) => setField(f.name, e.target.value)}
           disabled={f.disabled}
         />
       ) : (

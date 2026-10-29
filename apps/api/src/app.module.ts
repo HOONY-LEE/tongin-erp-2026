@@ -31,6 +31,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { CampaignModule } from './modules/campaign/campaign.module';
 import { HrModule } from './modules/hr/hr.module';
 import { ApprovalModule } from './modules/approval/approval.module';
+import { MenuModule } from './modules/menu/menu.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { PaymentConfirmationModule } from './modules/payment-confirmation/payment-confirmation.module';
@@ -46,6 +47,11 @@ import { PrincipalCacheModule } from './auth/principal-cache.service';
 import { AiModule } from './ai/ai.module';
 import { AgentBuilderModule } from './agent-builder/agent-builder.module';
 import { EsignModule } from './modules/esign/esign.module';
+import { NoticeModule } from './modules/notice/notice.module';
+import { TeamTaskModule } from './modules/team-task/team-task.module';
+import { InboxModule } from './inbox/inbox.module';
+import { CorpAssetModule } from './modules/corp-asset/corp-asset.module';
+import { BranchCaseModule } from './modules/branch-case/branch-case.module';
 
 @Module({
   imports: [
@@ -86,6 +92,7 @@ import { EsignModule } from './modules/esign/esign.module';
     CampaignModule,
     HrModule,
     ApprovalModule,
+    MenuModule,
     LeaveModule,
     AttendanceModule,
     PaymentConfirmationModule,
@@ -95,6 +102,11 @@ import { EsignModule } from './modules/esign/esign.module';
     DashboardModule,
     AiModule,
     AgentBuilderModule,
+    NoticeModule,
+    TeamTaskModule,
+    InboxModule,
+    CorpAssetModule,
+    BranchCaseModule,
   ],
   controllers: [AppController],
 })

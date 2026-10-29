@@ -359,3 +359,33 @@ textarea:focus:not([readonly]) {
   --sft-z-overlay: 1000;
   --sft-z-modal: 1100;
 }
+
+/* 결재함 — 내 결재 차례인 문서(안 읽은 메일처럼) */
+.sft-tbody > [role='row']:has(.ap-turn) {
+  background: color-mix(in srgb, var(--ark-color-primary-500) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--ark-color-primary-500);
+  font-weight: 700;
+}
+.ap-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+}
+.ap-turn-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ark-color-primary-500);
+}
+.ap-turn-tag {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--ark-color-primary-500);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}

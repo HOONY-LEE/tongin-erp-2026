@@ -313,7 +313,7 @@ export class LeaveService implements OnModuleInit {
       select: { name: true },
     });
     const period = start === end ? start : `${start} ~ ${end}`;
-    return this.prisma.$transaction(async (tx) => {
+    const out = await this.prisma.$transaction(async (tx) => {
       const req = await tx.leaveRequest.create({
         data: {
           employeeId: empId,
@@ -339,8 +339,14 @@ export class LeaveService implements OnModuleInit {
         requesterEmpId: empId,
         line: input.line ?? null,
       });
-      return tx.leaveRequest.update({ where: { id: req.id }, data: { approvalDocId: doc.id } });
+      const updated = await tx.leaveRequest.update({
+        where: { id: req.id },
+        data: { approvalDocId: doc.id },
+      });
+      return { updated, doc };
     });
+    await this.approvals.announceSubmitted(out.doc);
+    return out.updated;
   }
 
   // ── 조정 ──

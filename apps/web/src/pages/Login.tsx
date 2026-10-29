@@ -18,30 +18,114 @@ interface DemoAccount {
   desc: string;
 }
 const DEMO_ACCOUNTS: DemoAccount[] = [
-  // 본사 — 실제 조직도(prisma/seed-demo.ts)
+  // 본사 — 실제 조직도(prisma/seed-demo.ts), 팀별 메뉴 구성(prisma/seed-demo-menus.ts)을 팀마다 확인할 수 있게
   {
-    group: '본사',
+    group: '대표',
     loginId: 'kookjong_ko',
     password: DEMO_PASSWORD,
     name: '고국종',
     desc: '대표이사 · 전체 권한',
   },
   {
-    group: '본사',
-    loginId: 'misun_joo',
+    group: '경영관리팀',
+    loginId: 'wansung_kim',
     password: DEMO_PASSWORD,
-    name: '주미선',
-    desc: '홈플래너 부장',
+    name: '김완성',
+    desc: '본부장 · 정산·인사·총무',
   },
   {
-    group: '본사',
+    group: '경영관리팀',
+    loginId: 'sangeun_lee',
+    password: DEMO_PASSWORD,
+    name: '이상은',
+    desc: '대리 · 정산·인사·계약/자산',
+  },
+  {
+    group: '고객관리팀',
+    loginId: 'misun_kim',
+    password: DEMO_PASSWORD,
+    name: '김미선',
+    desc: '팀장 · 접수 상담·A/S·리빙케어',
+  },
+  {
+    group: '고객관리팀',
     loginId: 'miyoung_kim',
     password: DEMO_PASSWORD,
     name: '김미영',
-    desc: '고객관리부 과장',
+    desc: '과장 · 문자·해피콜·상품/경로',
+  },
+  {
+    group: '고객관리팀',
+    loginId: 'kisook_lim',
+    password: DEMO_PASSWORD,
+    name: '임기숙',
+    desc: '사원 · 접수 상담',
+  },
+  {
+    group: '기업영업팀',
+    loginId: 'kyungchul_lee',
+    password: DEMO_PASSWORD,
+    name: '이경철',
+    desc: '부장 · 기업 이전 영업·견적',
+  },
+  {
+    group: '통인TF팀',
+    loginId: 'kyuyeol_pi',
+    password: DEMO_PASSWORD,
+    name: '피규열',
+    desc: '무브제 팀장 · 사업 추진',
+  },
+  {
+    group: '통인TF팀',
+    loginId: 'taehwan_oh',
+    password: DEMO_PASSWORD,
+    name: '오태환',
+    desc: '전속제휴 과장 · 제휴',
+  },
+  {
+    group: '가맹팀',
+    loginId: 'chulmin_jung',
+    password: DEMO_PASSWORD,
+    name: '정철민',
+    desc: '본부장 · 가맹 관리',
+  },
+  {
+    group: '가맹팀',
+    loginId: 'joonyoung_kim',
+    password: DEMO_PASSWORD,
+    name: '김준영',
+    desc: '부장 · 지점 점검·보험·소송·재계약',
+  },
+  {
+    group: '홍보디자인팀',
+    loginId: 'jisook_jeon',
+    password: DEMO_PASSWORD,
+    name: '전지숙',
+    desc: '디자인 실장 · 디자인 요청',
+  },
+  {
+    group: '홍보디자인팀',
+    loginId: 'seungho_song',
+    password: DEMO_PASSWORD,
+    name: '송승호',
+    desc: '마케팅 팀장 · 캠페인·홍보',
+  },
+  {
+    group: '홈플래너팀',
+    loginId: 'misun_joo',
+    password: DEMO_PASSWORD,
+    name: '주미선',
+    desc: '부장 · 방문 견적·상담·계약',
+  },
+  {
+    group: '홈플래너팀',
+    loginId: 'jiyong_ko',
+    password: DEMO_PASSWORD,
+    name: '고지용',
+    desc: '홈플래너 · 방문 견적',
   },
   ...(import.meta.env.DEV
-    ? [{ group: '본사', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
+    ? [{ group: '개발용', loginId: 'admin', password: 'admin1234', name: 'admin', desc: '개발용' }]
     : []),
   // 지점장 — 기존 전산 계정 목록(prisma/data/legacy-accounts.ts)
   {

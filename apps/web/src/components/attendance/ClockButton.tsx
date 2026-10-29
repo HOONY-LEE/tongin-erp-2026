@@ -12,11 +12,8 @@ interface Today {
   status: string;
 }
 
-/**
- * 머리글 출퇴근 버튼 — 직원 연결 계정에만. 출근 전엔 [출근하기], 출근 뒤엔 출근 시각 + [퇴근하기],
- * 퇴근 뒤엔 두 시각만 보인다(잘못 눌렀으면 근태 정정 신청). 시각은 서버 시계로 기록한다.
- */
-export function ClockButton({ compact = false }: { compact?: boolean }) {
+/** 오늘 출퇴근 상태와 기록하기 — 머리글 버튼·프로필 메뉴가 같이 쓴다 */
+export function useClock() {
   const toast = useToast();
   const [today, setToday] = useState<Today | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,7 +30,12 @@ export function ClockButton({ compact = false }: { compact?: boolean }) {
     void load();
     // 날짜가 바뀌거나 다른 기기에서 눌렀을 때를 위해 가끔 다시 읽는다
     const t = setInterval(() => void load(), 5 * 60_000);
-    return () => clearInterval(t);
+    const on = () => void load();
+    window.addEventListener('attendance:changed', on);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('attendance:changed', on);
+    };
   }, [load]);
 
   const clock = async (type: 'IN' | 'OUT') => {
@@ -56,6 +58,16 @@ export function ClockButton({ compact = false }: { compact?: boolean }) {
       setBusy(false);
     }
   };
+
+  return { today, busy, clock };
+}
+
+/**
+ * 머리글 출퇴근 버튼 — 직원 연결 계정에만. 출근 전엔 [출근하기], 출근 뒤엔 출근 시각 + [퇴근하기],
+ * 퇴근 뒤엔 두 시각만 보인다(잘못 눌렀으면 근태 정정 신청). 시각은 서버 시계로 기록한다.
+ */
+export function ClockButton({ compact = false }: { compact?: boolean }) {
+  const { today, busy, clock } = useClock();
 
   if (!today) return null;
   if (today.leave && !today.clockIn)

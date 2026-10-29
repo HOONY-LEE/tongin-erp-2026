@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileSpreadsheet, Paperclip, SendHorizontal, Sparkles, X } from 'lucide-react';
 import type { AgentGraph } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
@@ -103,6 +103,19 @@ export default function AgentCreate() {
     setDraft('');
     void ask(next, refs);
   };
+
+  // 반복 작업 제안에서 왔으면 그 내용을 첫 요청으로 바로 보낸다(한 번만)
+  const location = useLocation();
+  const seeded = useRef(false);
+  useEffect(() => {
+    const prompt = (location.state as { prompt?: string } | null)?.prompt;
+    if (!prompt || seeded.current || aiConfigured === null) return;
+    seeded.current = true;
+    navigate('.', { replace: true, state: null });
+    // AI가 꺼져 있으면 입력칸에만 채워 둔다
+    if (aiConfigured) send(prompt);
+    else setDraft(prompt);
+  }, [aiConfigured]);
 
   const upload = async (f: File) => {
     setUploading(true);

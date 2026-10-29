@@ -980,7 +980,7 @@ export class DashboardDataService {
         const leaves = await this.leave.approvedBetween(today, addDaysYmd(today, 6), ids);
         return {
           shape: 'rows',
-          link: '/approvals?detail={id}',
+          link: '/approvals?box=todo&detail={id}',
           columns: [
             { key: 'name', label: '이름' },
             { key: 'org', label: '소속' },
@@ -1054,7 +1054,7 @@ export class DashboardDataService {
         const docs = await this.approvals.list(p, 'todo');
         return {
           shape: 'rows',
-          link: '/approvals?detail={id}',
+          link: '/approvals?box=todo&detail={id}',
           columns: [
             { key: 'date', label: '상신', format: 'date' },
             { key: 'titleText', label: '문서' },
@@ -1068,6 +1068,41 @@ export class DashboardDataService {
             kind: d.docTypeLabel,
             from: d.requester.name,
             date: d.submittedAt.toISOString(),
+            unread: 1,
+          })),
+        };
+      }
+      case 'inbox.recent': {
+        // 안 읽은 알림 먼저, 그다음 최근 것 — 눌러서 열면(그 화면에 가면) 읽음으로 바뀐다
+        const [unread, recent] = await Promise.all([
+          this.prisma.userNotification.findMany({
+            where: { userId: p.userId, readAt: null },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+          }),
+          this.prisma.userNotification.findMany({
+            where: { userId: p.userId, readAt: { not: null } },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+          }),
+        ]);
+        return {
+          shape: 'rows',
+          columns: [
+            { key: 'date', label: '때', format: 'date' },
+            { key: 'titleText', label: '알림' },
+            { key: 'from', label: '보낸 사람' },
+            { key: 'body', label: '내용' },
+          ],
+          rows: [...unread, ...recent].slice(0, 10).map((n) => ({
+            id: n.id,
+            title: n.title,
+            titleText: n.title,
+            from: n.actorName,
+            body: n.body,
+            date: n.createdAt.toISOString(),
+            href: n.link,
+            unread: n.readAt ? 0 : 1,
           })),
         };
       }

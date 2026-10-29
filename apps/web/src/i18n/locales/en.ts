@@ -48,6 +48,11 @@ export default {
     approvals: 'Approvals',
     leave: 'Leave',
     attendance: 'Attendance',
+    menuMgmt: 'Menus',
+    notices: 'Notices',
+    tasks: 'Team Tasks',
+    assets: 'Contracts & Assets',
+    branchCases: 'Branch Cases',
   },
   navGroup: {
     hr: 'HR',

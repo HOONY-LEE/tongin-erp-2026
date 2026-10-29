@@ -1,0 +1,180 @@
+.nameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.previewCol {
+  position: sticky;
+  top: 0;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.meta {
+  margin: 0;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+.hint {
+  margin: 0;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 12px;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.req {
+  color: var(--ark-color-primary-500);
+}
+.input {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font-size: 13px;
+}
+.input:disabled {
+  opacity: 0.7;
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.targets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.targetRow {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.targetKind {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 6px 0 10px;
+  border-radius: 15px;
+  background: var(--ark-color-primary-50, var(--ark-color-bg-subtle));
+  color: var(--ark-color-primary-700, var(--ark-color-text));
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip button {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.chip button:hover {
+  background: rgb(0 0 0 / 8%);
+}
+.addSelect {
+  height: 30px;
+  max-width: 220px;
+  padding: 0 8px;
+  border: 1px dashed var(--ark-color-border);
+  border-radius: 15px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+}
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-subtle, rgb(0 0 0 / 3%));
+}
+.sbGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sbLabel {
+  padding: 0 6px 2px;
+  color: var(--ark-color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.sbItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--ark-color-text);
+  font-size: 13px;
+}

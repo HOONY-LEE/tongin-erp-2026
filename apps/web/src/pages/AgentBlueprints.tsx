@@ -23,6 +23,7 @@ import {
   type StatusMap,
 } from '../components/ui';
 import { VISIBILITY_ICON } from '../components/agent/SharePicker';
+import { HabitSuggestions } from '../components/agent/HabitSuggestions';
 import styles from './agentBuilder.module.css';
 
 type Filter = 'all' | 'mine' | 'shared';
@@ -206,6 +207,7 @@ export default function AgentBlueprints() {
       onRefresh={load}
       updatedAt={updatedAt}
     >
+      <HabitSuggestions />
       {view === 'table' ? (
         <DataTable
           columns={columns}

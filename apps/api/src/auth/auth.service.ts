@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import {
@@ -26,6 +26,24 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly cache: PrincipalCache,
   ) {}
+
+  /**
+   * 내 비밀번호 바꾸기 — 지금 비밀번호를 확인한다. 틀려도 401이 아니라 400(401은 화면이 로그아웃으로 받는다)
+   */
+  async changePassword(userId: string, current: string, next: string) {
+    const user = await this.prisma.appUser.findUnique({ where: { id: userId } });
+    if (!user?.passwordHash)
+      throw new BadRequestException('이 계정은 비밀번호로 로그인하지 않습니다.');
+    if (!(await bcrypt.compare(current, user.passwordHash))) {
+      throw new BadRequestException('지금 비밀번호가 맞지 않습니다.');
+    }
+    if (current === next) throw new BadRequestException('새 비밀번호가 지금과 같습니다.');
+    await this.prisma.appUser.update({
+      where: { id: userId },
+      data: { passwordHash: await bcrypt.hash(next, 10) },
+    });
+    return { ok: true };
+  }
 
   async login(dto: LoginDto): Promise<LoginResponse> {
     const user = await this.prisma.appUser.findUnique({ where: { loginId: dto.loginId } });

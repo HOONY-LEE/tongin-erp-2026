@@ -109,7 +109,34 @@ export default function AiAssistant() {
   const activeId = params.get('c');
   /** Agent Builder로 만든 에이전트를 부르는 중이면 그 id(대화 대신 실행 화면을 보여 준다) */
   const agentId = params.get('agent');
-  const { can } = useAuth();
+  const { can, user } = useAuth();
+
+  // 다른 화면을 다녀와도 보던 대화·에이전트를 다시 연다 — 주소에 아무것도 없이 들어오면 마지막 화면으로.
+  // 「새 채팅」을 눌러 두고 나갔으면 빈 화면이 그대로 기억된다(브라우저별 편의 설정)
+  const viewKey = `ai.lastView.${user?.userId ?? ''}`;
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!restored.current) {
+      restored.current = true;
+      if (!params.toString()) {
+        let last: string | null = null;
+        try {
+          last = localStorage.getItem(viewKey);
+        } catch {
+          // 저장소가 막힌 브라우저 — 새 채팅으로 시작
+        }
+        if (last) {
+          setParams(new URLSearchParams(last), { replace: true });
+          return;
+        }
+      }
+    }
+    try {
+      localStorage.setItem(viewKey, params.toString());
+    } catch {
+      // 저장소가 막힌 브라우저 — 이번 화면에서만 유지
+    }
+  }, [params, setParams, viewKey]);
   const [agents, setAgents] = useState<CallableAgent[] | null>(null);
   const activeAgent = agents?.find((a) => a.id === agentId) ?? null;
   const [status, setStatus] = useState<AiStatus | null>(null);

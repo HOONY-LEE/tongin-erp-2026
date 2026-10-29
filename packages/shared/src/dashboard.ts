@@ -708,6 +708,16 @@ export const DASH_WIDGETS: DashWidgetDef[] = [
     perms: [],
     size: LIST,
   },
+  {
+    key: 'inbox.recent',
+    title: '내 알림',
+    group: '인사·근태',
+    description: '결재 요청·결과, 업무 배정, 나를 언급한 댓글, 공지 — 안 읽은 알림이 굵게 보입니다',
+    shape: 'rows',
+    viz: ['list', 'table'],
+    perms: [],
+    size: LIST,
+  },
 
   // ── 기타 ──
   {
@@ -899,6 +909,8 @@ export function placeDashItem(
 /** 권한에 맞는 기본 대시보드 — 관리자가 정한 것이 없을 때 */
 export function defaultDashLayout(permissions: string[]): DashLayout {
   const want: { key: string; viz?: DashViz }[] = [
+    { key: 'approval.pending' },
+    { key: 'inbox.recent' },
     { key: 'kpi.leads' },
     { key: 'kpi.contracts' },
     { key: 'kpi.revenue' },
@@ -964,6 +976,7 @@ export type DashData =
   | {
       shape: 'rows';
       columns: { key: string; label: string; format?: DashFormat | 'date' | 'text' }[];
+      /** href = 이 행만의 이동 주소(link보다 먼저), unread = 1이면 굵게(안 읽은 알림·결재 대기) */
       rows: Record<string, string | number | null>[];
       /** 행을 누르면 갈 화면(예: /leads/:id) — {id} 자리에 행 id */
       link?: string;
