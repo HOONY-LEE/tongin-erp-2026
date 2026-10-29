@@ -49,6 +49,10 @@ export default {
     leave: '휴가',
     attendance: '근태',
     menuMgmt: '메뉴 관리',
+    notices: '공지사항',
+    tasks: '팀 업무',
+    assets: '계약·자산 관리',
+    branchCases: '지점 관리 기록',
   },
   navGroup: {
     hr: '인사',

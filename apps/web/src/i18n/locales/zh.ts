@@ -49,6 +49,10 @@ export default {
     leave: '休假',
     attendance: '考勤',
     menuMgmt: '菜单管理',
+    notices: '公告',
+    tasks: '团队任务',
+    assets: '合同与资产',
+    branchCases: '网点管理记录',
   },
   navGroup: {
     hr: '人事',

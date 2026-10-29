@@ -1,0 +1,154 @@
+/* 공통 업무 메뉴(공지·팀 업무·계약/자산·지점 관리 기록) */
+
+.titleCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.titleCell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pin {
+  flex: none;
+  color: var(--ark-color-primary-500);
+}
+
+/* 공지 본문 — 쓴 줄바꿈을 그대로 */
+.body {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-size: 14px;
+  color: var(--ark-color-text);
+  margin: 0;
+}
+
+/* 등록·수정 모달 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--ark-font-size-sm);
+  font-weight: 500;
+  color: var(--ark-color-text);
+}
+.req {
+  color: var(--ark-color-primary-500);
+}
+.orgGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+.hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ark-color-text-secondary);
+}
+
+/* 칸반 — 상태별 칸 */
+.boardBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.boardBar > :first-child {
+  flex: 0 1 280px;
+}
+.boardBar > :last-child {
+  margin-left: auto;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  align-items: start;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-subtle, var(--ark-color-surface-secondary, #f5f5f7));
+  min-height: 160px;
+}
+.columnHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 4px 4px;
+  color: var(--ark-color-text);
+}
+.columnCount {
+  font-weight: 500;
+  color: var(--ark-color-text-secondary);
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg, var(--ark-color-surface, #fff));
+  color: var(--ark-color-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.card:hover {
+  border-color: var(--ark-color-primary-300, var(--ark-color-primary-500));
+}
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cardMeta > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.empty {
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+  text-align: center;
+  padding: 16px 0;
+}
+.over {
+  color: var(--ark-color-error-500, #d93025);
+  font-weight: 600;
+}
+.soon {
+  color: var(--ark-color-warning-600, #b26a00);
+  font-weight: 600;
+}

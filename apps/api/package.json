@@ -18,8 +18,9 @@
     "demo:seed:dashboards": "tsx prisma/seed-demo-dashboard-teams.ts",
     "demo:seed:hr": "tsx prisma/seed-demo-hr.ts",
     "demo:seed:menus": "tsx prisma/seed-demo-menus.ts",
+    "demo:seed:work": "tsx prisma/seed-demo-work.ts",
     "demo:seed:once": "tsx prisma/seed-demo-once.ts",
-    "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:catalog && pnpm demo:seed:leads && pnpm demo:seed:services && pnpm demo:seed:agents && pnpm demo:seed:hr && pnpm demo:seed:dashboards && pnpm demo:seed:menus"
+    "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:catalog && pnpm demo:seed:leads && pnpm demo:seed:services && pnpm demo:seed:agents && pnpm demo:seed:hr && pnpm demo:seed:dashboards && pnpm demo:seed:work && pnpm demo:seed:menus"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
