@@ -1362,3 +1362,93 @@
   background: var(--ark-color-primary-600);
   color: #fff;
 }
+
+/* 반복 행동 → 에이전트 제안 */
+.habits {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--ark-color-primary-500) 30%, var(--ark-color-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 4%, var(--ark-color-bg));
+}
+.habitsHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ark-color-text);
+  font-size: 14px;
+}
+.habitsHead > svg {
+  color: var(--ark-color-primary-500);
+}
+.habitsMeta {
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+}
+.habitGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.habitCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--ark-color-bg);
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+}
+.habitTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.habitKind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+}
+.habitHide {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.habitHide:hover {
+  background: var(--ark-color-bg-subtle);
+  color: var(--ark-color-text);
+}
+.habitTitle {
+  font-size: 14px;
+  color: var(--ark-color-text);
+}
+.habitReason {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ark-color-text-secondary);
+}
+.habitFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.habitTrigger {
+  font-size: 12px;
+  color: var(--ark-color-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
