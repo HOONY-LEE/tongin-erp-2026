@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
+import { InboxService } from '../../inbox/inbox.service';
 import { hasPerm } from '../../common/util/perm';
 import { CreateNoticeDto, UpdateNoticeDto } from './dto/notice.dto';
 
@@ -42,6 +43,7 @@ export class NoticeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
+    private readonly inbox: InboxService,
   ) {}
 
   /** 이 사람이 볼 수 있는 공지 조건. {} = 전부 */
@@ -121,7 +123,32 @@ export class NoticeService {
       },
       include,
     });
+    await this.announce(p, row.id, row.title, targets);
     return view(row);
+  }
+
+  /** 새 공지 알림 — 전사 공지는 직원 계정 전부, 조직 공지는 그 조직(과 하위 조직) 직원에게 */
+  private async announce(p: AuthPrincipal, id: string, title: string, targets: string[]) {
+    const orgIds = targets.length ? await this.scope.withDescendants(targets) : null;
+    const users = await this.prisma.appUser.findMany({
+      where: {
+        isActive: true,
+        employee: { isActive: true, ...(orgIds ? { orgUnitId: { in: orgIds } } : {}) },
+      },
+      select: { id: true },
+    });
+    await this.inbox.toUsers(
+      users.map((u) => u.id),
+      {
+        kind: 'NOTICE',
+        title: `공지 · ${title}`,
+        body: targets.length ? '우리 팀에 새 공지가 올라왔습니다.' : '새 전사 공지가 올라왔습니다.',
+        link: `/notices?detail=${id}`,
+        entityType: 'notice',
+        entityId: id,
+        actorUserId: p.userId,
+      },
+    );
   }
 
   async update(p: AuthPrincipal, id: string, dto: UpdateNoticeDto) {

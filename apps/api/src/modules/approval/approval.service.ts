@@ -326,13 +326,28 @@ export class ApprovalService {
         line: input.line,
       }),
     );
+    await this.announceSubmitted(doc);
+    return this.get(doc.id, principal);
+  }
+
+  /**
+   * 상신 알림 이벤트 — 트랜잭션이 끝난 뒤 부른다(휴가·근태 정정도). 결재자·참조자 알림이 여기서 시작된다.
+   * 결재선이 비어 바로 승인된 문서는 알릴 결재자가 없어 건너뛴다.
+   */
+  async announceSubmitted(doc: {
+    id: string;
+    docType: string;
+    docNo: string;
+    title: string;
+    status: string;
+  }) {
+    if (doc.status !== 'PENDING') return;
     await this.events.record({
       aggregateType: 'approval_doc',
       aggregateId: doc.id,
       eventType: 'approval.submitted',
       payload: { docType: doc.docType, docNo: doc.docNo, title: doc.title },
     });
-    return this.get(doc.id, principal);
   }
 
   // ── 승인·반려·회수 ──
@@ -390,7 +405,8 @@ export class ApprovalService {
       return { doc, outcome: 'approved' as const };
     });
 
-    if (result.outcome !== 'next') {
+    {
+      // next = 다음 결재자에게 넘어감(다음 결재자·신청자 알림용)
       await this.events.record({
         aggregateType: 'approval_doc',
         aggregateId: id,
@@ -503,10 +519,14 @@ export class ApprovalService {
     const me = principal.employeeId;
     let where: Prisma.ApprovalDocWhereInput;
     if (box === 'all') {
-      if (!this.canReadAll(principal))
-        throw new ForbiddenException('전체 결재 문서를 볼 권한이 없습니다.');
-      const ids = await this.scope.orgScopeIds(principal);
-      where = ids === null ? {} : { orgUnitId: { in: ids } };
+      // 전체 = 열람 권한(APPROVAL.READ)이 있으면 범위 안 모든 문서, 없으면 나와 관련된 문서 전부(올림·결재·참조)
+      if (this.canReadAll(principal)) {
+        const ids = await this.scope.orgScopeIds(principal);
+        where = ids === null ? {} : { orgUnitId: { in: ids } };
+      } else {
+        if (!me) return [];
+        where = { OR: [{ requesterEmpId: me }, { steps: { some: { approverEmpId: me } } }] };
+      }
     } else {
       if (!me) return [];
       if (box === 'todo')
@@ -531,7 +551,9 @@ export class ApprovalService {
       orderBy: { submittedAt: 'desc' },
       take: 500,
     });
-    return rows.map((d) => this.view(d, principal));
+    // 내 결재 차례인 문서를 맨 위로(그 안에서는 최근 상신 순)
+    const views = rows.map((d) => this.view(d, principal));
+    return [...views.filter((v) => v.canAct), ...views.filter((v) => !v.canAct)];
   }
 
   /** 사이드바 배지·대시보드 — 내 결재 차례 건수 */

@@ -29,6 +29,7 @@ import {
   type Row,
   type StatusMap,
 } from '../components/ui';
+import { TaskComments } from '../components/work/TaskComments';
 import styles from './work.module.css';
 
 interface Task {
@@ -119,6 +120,16 @@ export default function Tasks() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 알림·링크로 연 업무가 지금 목록(내 업무 등)에 없으면 하나만 따로 읽는다
+  const [single, setSingle] = useState<Task | null>(null);
+  useEffect(() => {
+    if (!detail.id || loading || rows.some((r) => r.id === detail.id)) return;
+    if (single?.id === detail.id) return;
+    api<Task>(`/tasks/${detail.id}`)
+      .then(setSingle)
+      .catch(() => setSingle(null));
+  }, [detail.id, loading, rows, single?.id]);
 
   const fields: FormField[] = useMemo(
     () => [
@@ -246,7 +257,8 @@ export default function Tasks() {
   );
 
   if (detail.id) {
-    const d = rows.find((r) => r.id === detail.id);
+    const d =
+      rows.find((r) => r.id === detail.id) ?? (single?.id === detail.id ? single : undefined);
     const canEdit = !!d && (isMine(d) || can('TASK.UPDATE'));
     return (
       <>
@@ -320,7 +332,9 @@ export default function Tasks() {
                 ]
               : []
           }
-        />
+        >
+          {d && <TaskComments taskId={d.id} />}
+        </RecordDetail>
         {formModal}
       </>
     );

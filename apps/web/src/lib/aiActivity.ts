@@ -53,6 +53,14 @@ if (typeof document !== 'undefined') {
   });
 }
 
+/** 로그아웃 — 앞사람의 'AI 진행 중' 표시를 지운다 */
+export function resetAiActivity() {
+  runningIds = [];
+  if (timer) clearTimeout(timer);
+  timer = null;
+  emit();
+}
+
 /** 방금 일을 시켰다 — 바로 다시 읽어 표시를 켠다 */
 export function pokeAiActivity() {
   schedule(300);

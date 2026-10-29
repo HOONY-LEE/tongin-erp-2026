@@ -917,7 +917,7 @@ function TableViz({ d }: { d: DashData }) {
         return v == null ? '-' : String(v);
       }),
     );
-    links = d.rows.map((r) => (d.link && r.id ? d.link.replace('{id}', String(r.id)) : null));
+    links = d.rows.map((r) => rowHref(d, r));
   }
   if (!body.length) return <Empty />;
   return (
@@ -952,6 +952,17 @@ function TableViz({ d }: { d: DashData }) {
   );
 }
 
+/** 행을 누르면 갈 주소 — 행에 href가 있으면 그것, 없으면 위젯 link 틀의 {id} */
+const rowHref = (
+  d: Extract<DashData, { shape: 'rows' }>,
+  r: Record<string, string | number | null>,
+): string | null =>
+  typeof r.href === 'string' && r.href
+    ? r.href
+    : d.link && r.id
+      ? d.link.replace('{id}', String(r.id))
+      : null;
+
 // ═══════════ 목록 ═══════════
 function ListViz({ d }: { d: Extract<DashData, { shape: 'rows' }> }) {
   const navigate = useNavigate();
@@ -963,7 +974,8 @@ function ListViz({ d }: { d: Extract<DashData, { shape: 'rows' }> }) {
   return (
     <div className={`${styles.vizRoot} ${styles.list}`}>
       {d.rows.map((r, i) => {
-        const href = d.link && r.id ? d.link.replace('{id}', String(r.id)) : null;
+        const href = rowHref(d, r);
+        const strong = Number(r.unread) === 1;
         const side = numCol
           ? fmtExact(Number(r[numCol.key] ?? 0), numCol.format as DashFormat)
           : dateCol
@@ -982,12 +994,13 @@ function ListViz({ d }: { d: Extract<DashData, { shape: 'rows' }> }) {
             <span className={styles.listSide}>{side}</span>
           </>
         );
+        const cls = `${styles.listItem} ${strong ? styles.listUnread : ''}`;
         return href ? (
-          <button key={i} type="button" className={styles.listItem} onClick={() => navigate(href)}>
+          <button key={i} type="button" className={cls} onClick={() => navigate(href)}>
             {inner}
           </button>
         ) : (
-          <div key={i} className={styles.listItem}>
+          <div key={i} className={cls}>
             {inner}
           </div>
         );

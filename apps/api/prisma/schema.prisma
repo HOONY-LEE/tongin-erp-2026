@@ -1491,23 +1491,24 @@ model NoticeOrgUnit {
 
 /// 팀 업무 — 팀별 '담당자별 업무·업무일지' 시트를 대신한다. 다른 팀이 요청(requester)해 올릴 수도 있다
 model TeamTask {
-  id              String    @id @default(uuid()) @db.Uuid
+  id              String            @id @default(uuid()) @db.Uuid
   title           String
   description     String?
-  teamOrgId       String    @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프)
-  team            OrgUnit   @relation("TeamTasks", fields: [teamOrgId], references: [id])
-  assigneeEmpId   String?   @map("assignee_emp_id") @db.Uuid
-  assignee        Employee? @relation("TaskAssignee", fields: [assigneeEmpId], references: [id], onDelete: SetNull)
-  requesterEmpId  String?   @map("requester_emp_id") @db.Uuid
-  requester       Employee? @relation("TaskRequester", fields: [requesterEmpId], references: [id], onDelete: SetNull)
+  teamOrgId       String            @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프)
+  team            OrgUnit           @relation("TeamTasks", fields: [teamOrgId], references: [id])
+  assigneeEmpId   String?           @map("assignee_emp_id") @db.Uuid
+  assignee        Employee?         @relation("TaskAssignee", fields: [assigneeEmpId], references: [id], onDelete: SetNull)
+  requesterEmpId  String?           @map("requester_emp_id") @db.Uuid
+  requester       Employee?         @relation("TaskRequester", fields: [requesterEmpId], references: [id], onDelete: SetNull)
   project         String? // 사업·프로젝트 태그(예: 무브제 컨시어지)
-  status          String    @default("TODO") // TODO | IN_PROGRESS | HOLD | DONE
-  priority        String    @default("B") // A | B | C
-  dueDate         DateTime? @map("due_date") @db.Date
-  doneAt          DateTime? @map("done_at") @db.Timestamptz(6)
-  createdByUserId String?   @map("created_by_user_id") @db.Uuid
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  status          String            @default("TODO") // TODO | IN_PROGRESS | HOLD | DONE
+  priority        String            @default("B") // A | B | C
+  dueDate         DateTime?         @map("due_date") @db.Date
+  doneAt          DateTime?         @map("done_at") @db.Timestamptz(6)
+  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  comments        TeamTaskComment[]
 
   @@index([teamOrgId, status])
   @@index([assigneeEmpId])
@@ -1557,4 +1558,42 @@ model BranchCase {
   @@index([branchId, occurredAt])
   @@index([status])
   @@map("branch_case")
+}
+
+/// 팀 업무 댓글 — @이름으로 동료를 부르면(멘션) 그 사람에게 알림이 간다
+model TeamTaskComment {
+  id           String   @id @default(uuid()) @db.Uuid
+  taskId       String   @map("task_id") @db.Uuid
+  task         TeamTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorEmpId  String?  @map("author_emp_id") @db.Uuid
+  authorUserId String?  @map("author_user_id") @db.Uuid
+  body         String
+  /// 멘션한 직원 id
+  mentions     String[] @default([]) @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([taskId, createdAt])
+  @@map("team_task_comment")
+}
+
+/// 내 알림 — 결재 요청·결과, 업무 배정, 멘션, 담당 지정, 공지처럼 '나와 관련된 일'. 사람(계정)별 한 줄
+model UserNotification {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  /// APPROVAL_REQUEST | APPROVAL_RESULT | APPROVAL_CC | TASK_ASSIGNED | TASK_UPDATED | TASK_COMMENT | MENTION | LEAD_ASSIGNED | WORK_ASSIGNED | NOTICE
+  kind        String
+  title       String
+  body        String?
+  /// 눌렀을 때 갈 화면(웹 경로)
+  link        String?
+  actorUserId String?   @map("actor_user_id") @db.Uuid
+  actorName   String?   @map("actor_name")
+  entityType  String?   @map("entity_type")
+  entityId    String?   @map("entity_id")
+  readAt      DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("user_notification")
 }

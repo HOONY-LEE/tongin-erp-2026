@@ -1,5 +1,15 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsDateString, IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsDateString,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { TASK_PRIORITY, TASK_STATUS, type TaskPriority, type TaskStatus } from '@tongin/shared';
 
 export class CreateTeamTaskDto {
@@ -44,3 +54,17 @@ export class CreateTeamTaskDto {
 }
 
 export class UpdateTeamTaskDto extends PartialType(CreateTeamTaskDto) {}
+
+/** 업무 댓글 — 멘션은 화면에서 고른 직원 id(본문의 '@이름'도 서버가 함께 찾는다) */
+export class CreateTeamTaskCommentDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  body!: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsUUID('all', { each: true })
+  mentionEmpIds?: string[];
+}

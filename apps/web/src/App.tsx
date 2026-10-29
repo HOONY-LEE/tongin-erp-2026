@@ -1,7 +1,7 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
 import { ToastProvider } from '@sunghoon_lee/akron-ui';
 import { PageSkeleton } from './components/ui';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { AuthProvider, isFieldUser, useAuth } from './auth/AuthContext';
 import AppLayout from './layout/AppLayout';
@@ -66,6 +66,16 @@ const page = (el: ReactNode) => <Suspense fallback={<PageSkeleton />}>{el}</Susp
 
 function Shell() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  // 로그아웃·만료로 사람이 빠지면 주소를 처음(/)으로 — 다음에 로그인한 사람이 앞사람이 보던 화면에서 시작하지 않게
+  const had = useRef(false);
+  useEffect(() => {
+    if (user) had.current = true;
+    else if (had.current) {
+      had.current = false;
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', padding: 24, boxSizing: 'border-box' }}>

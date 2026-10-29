@@ -30,7 +30,7 @@ export class ScopeService {
   }
 
   /** 주어진 조직들 + 모든 하위 조직 id (BFS). 조직 트리는 한 번 읽어 메모리에서 돈다. */
-  private async withDescendants(roots: string[]): Promise<string[]> {
+  async withDescendants(roots: string[]): Promise<string[]> {
     const children = await this.childrenMap();
     const all = new Set(roots);
     let frontier = [...roots];

@@ -534,6 +534,7 @@ export class AttendanceService implements OnModuleInit {
         line: input.line ?? null,
       }),
     );
+    await this.approvals.announceSubmitted(doc);
     return { approvalDocId: doc.id, status: doc.status };
   }
 

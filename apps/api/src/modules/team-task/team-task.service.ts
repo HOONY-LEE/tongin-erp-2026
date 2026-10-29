@@ -5,11 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { AuthPrincipal } from '@tongin/shared';
+import { TASK_STATUS_LABEL, type AuthPrincipal, type TaskStatus } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
+import { InboxService } from '../../inbox/inbox.service';
 import { dateOrNull, hasPerm } from '../../common/util/perm';
-import { CreateTeamTaskDto, UpdateTeamTaskDto } from './dto/team-task.dto';
+import {
+  CreateTeamTaskCommentDto,
+  CreateTeamTaskDto,
+  UpdateTeamTaskDto,
+} from './dto/team-task.dto';
 
 export type TaskScope = 'mine' | 'team' | 'all';
 
@@ -29,7 +34,10 @@ export class TeamTaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly scope: ScopeService,
+    private readonly inbox: InboxService,
   ) {}
+
+  private link = (id: string) => `/tasks?detail=${id}`;
 
   private mine(p: AuthPrincipal): Prisma.TeamTaskWhereInput | null {
     if (!p.employeeId) return null;
@@ -149,7 +157,7 @@ export class TeamTaskService {
   async create(p: AuthPrincipal, dto: CreateTeamTaskDto) {
     await this.checkRefs(dto);
     // 다른 팀에 일을 맡기는 경우가 많아(디자인 요청 등) 팀은 범위와 상관없이 고를 수 있다
-    return this.prisma.teamTask.create({
+    const created = await this.prisma.teamTask.create({
       data: {
         ...this.data(dto),
         title: dto.title.trim(),
@@ -159,6 +167,18 @@ export class TeamTaskService {
       },
       include,
     });
+    if (created.assigneeEmpId) {
+      await this.inbox.toEmployees([created.assigneeEmpId], {
+        kind: 'TASK_ASSIGNED',
+        title: `업무 배정 · ${created.title}`,
+        body: `${created.team.name} 업무를 맡게 되었습니다${created.dueDate ? ` · 기한 ${created.dueDate.toISOString().slice(0, 10)}` : ''}.`,
+        link: this.link(created.id),
+        entityType: 'team_task',
+        entityId: created.id,
+        actorUserId: p.userId,
+      });
+    }
+    return created;
   }
 
   async update(p: AuthPrincipal, id: string, dto: UpdateTeamTaskDto) {
@@ -175,11 +195,146 @@ export class TeamTaskService {
         : dto.status === 'DONE'
           ? new Date()
           : null;
-    return this.prisma.teamTask.update({
+    const updated = await this.prisma.teamTask.update({
       where: { id },
       data: { ...this.data(dto), doneAt },
       include,
     });
+    await this.notifyChanges(p, task, updated);
+    return updated;
+  }
+
+  /** 담당자가 바뀌면 새 담당자에게, 상태가 바뀌면 담당자·요청자(바꾼 사람 빼고)에게 알린다 */
+  private async notifyChanges(
+    p: AuthPrincipal,
+    before: { assigneeEmpId: string | null; status: string },
+    after: {
+      id: string;
+      title: string;
+      status: string;
+      assigneeEmpId: string | null;
+      requesterEmpId: string | null;
+      dueDate: Date | null;
+    },
+  ) {
+    const base = { entityType: 'team_task', entityId: after.id, actorUserId: p.userId };
+    if (after.assigneeEmpId && after.assigneeEmpId !== before.assigneeEmpId) {
+      await this.inbox.toEmployees([after.assigneeEmpId], {
+        ...base,
+        kind: 'TASK_ASSIGNED',
+        title: `업무 배정 · ${after.title}`,
+        body: `이 업무의 담당자로 지정되었습니다${after.dueDate ? ` · 기한 ${after.dueDate.toISOString().slice(0, 10)}` : ''}.`,
+        link: this.link(after.id),
+      });
+    }
+    if (after.status !== before.status) {
+      const label = (s: string) => TASK_STATUS_LABEL[s as TaskStatus] ?? s;
+      await this.inbox.toEmployees([after.assigneeEmpId, after.requesterEmpId], {
+        ...base,
+        kind: 'TASK_UPDATED',
+        title: `${after.status === 'DONE' ? '업무 완료' : '업무 상태 변경'} · ${after.title}`,
+        body: `${label(before.status)} → ${label(after.status)}`,
+        link: this.link(after.id),
+      });
+    }
+  }
+
+  // ── 댓글·멘션 ──
+
+  async comments(p: AuthPrincipal, id: string) {
+    await this.load(p, id);
+    const rows = await this.prisma.teamTaskComment.findMany({
+      where: { taskId: id },
+      orderBy: { createdAt: 'asc' },
+      take: 500,
+    });
+    const empIds = [
+      ...new Set(
+        rows.flatMap((r) => [r.authorEmpId, ...r.mentions]).filter((v): v is string => !!v),
+      ),
+    ];
+    const emps = await this.prisma.employee.findMany({
+      where: { id: { in: empIds } },
+      select: { id: true, name: true },
+    });
+    const name = new Map(emps.map((e) => [e.id, e.name]));
+    return rows.map((r) => ({
+      id: r.id,
+      body: r.body,
+      createdAt: r.createdAt,
+      authorEmpId: r.authorEmpId,
+      authorName: (r.authorEmpId && name.get(r.authorEmpId)) || '알 수 없음',
+      mine: r.authorUserId === p.userId,
+      mentions: r.mentions.map((m) => ({ id: m, name: name.get(m) ?? '' })),
+    }));
+  }
+
+  /**
+   * 댓글 — 화면에서 고른 멘션(mentionEmpIds)에 더해, 본문의 '@이름'이 재직 중인 직원 한 명과 정확히 맞으면 멘션으로 본다.
+   * 멘션한 사람 → '나를 언급', 담당자·요청자 → '내 업무에 댓글'(멘션으로 이미 받은 사람·쓴 사람 빼고).
+   */
+  async addComment(p: AuthPrincipal, id: string, dto: CreateTeamTaskCommentDto) {
+    const { task } = await this.load(p, id);
+    const body = dto.body.trim();
+    if (!body) throw new BadRequestException('댓글 내용을 적어 주세요.');
+    const picked = [...new Set(dto.mentionEmpIds ?? [])];
+    const typed = [...body.matchAll(/@([가-힣A-Za-z]{2,10})/g)].map((m) => m[1]);
+    const byName = typed.length
+      ? await this.prisma.employee.findMany({
+          where: { name: { in: typed }, isActive: true },
+          select: { id: true, name: true },
+        })
+      : [];
+    const unique = byName.filter((e) => byName.filter((x) => x.name === e.name).length === 1);
+    const valid = picked.length
+      ? await this.prisma.employee.findMany({
+          where: { id: { in: picked }, isActive: true },
+          select: { id: true },
+        })
+      : [];
+    const mentions = [...new Set([...valid.map((e) => e.id), ...unique.map((e) => e.id)])];
+
+    const c = await this.prisma.teamTaskComment.create({
+      data: {
+        taskId: id,
+        authorEmpId: p.employeeId ?? null,
+        authorUserId: p.userId,
+        body,
+        mentions,
+      },
+    });
+    const preview = body.length > 80 ? `${body.slice(0, 80)}…` : body;
+    const base = {
+      entityType: 'team_task',
+      entityId: id,
+      actorUserId: p.userId,
+      link: this.link(id),
+    };
+    await this.inbox.toEmployees(mentions, {
+      ...base,
+      kind: 'MENTION',
+      title: `나를 언급 · ${task.title}`,
+      body: preview,
+    });
+    const others = [task.assigneeEmpId, task.requesterEmpId].filter(
+      (e): e is string => !!e && !mentions.includes(e) && e !== p.employeeId,
+    );
+    await this.inbox.toEmployees(others, {
+      ...base,
+      kind: 'TASK_COMMENT',
+      title: `내 업무에 댓글 · ${task.title}`,
+      body: preview,
+    });
+    return c;
+  }
+
+  async removeComment(p: AuthPrincipal, id: string, commentId: string) {
+    const c = await this.prisma.teamTaskComment.findFirst({ where: { id: commentId, taskId: id } });
+    if (!c) throw new NotFoundException('댓글을 찾을 수 없습니다.');
+    if (c.authorUserId !== p.userId)
+      throw new ForbiddenException('내가 쓴 댓글만 지울 수 있습니다.');
+    await this.prisma.teamTaskComment.delete({ where: { id: commentId } });
+    return { ok: true };
   }
 
   async remove(p: AuthPrincipal, id: string) {

@@ -49,6 +49,7 @@ import { AgentBuilderModule } from './agent-builder/agent-builder.module';
 import { EsignModule } from './modules/esign/esign.module';
 import { NoticeModule } from './modules/notice/notice.module';
 import { TeamTaskModule } from './modules/team-task/team-task.module';
+import { InboxModule } from './inbox/inbox.module';
 import { CorpAssetModule } from './modules/corp-asset/corp-asset.module';
 import { BranchCaseModule } from './modules/branch-case/branch-case.module';
 
@@ -103,6 +104,7 @@ import { BranchCaseModule } from './modules/branch-case/branch-case.module';
     AgentBuilderModule,
     NoticeModule,
     TeamTaskModule,
+    InboxModule,
     CorpAssetModule,
     BranchCaseModule,
   ],

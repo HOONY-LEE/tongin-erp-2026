@@ -14,7 +14,11 @@ import type { AuthPrincipal } from '@tongin/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { TeamTaskService, type TaskScope } from './team-task.service';
-import { CreateTeamTaskDto, UpdateTeamTaskDto } from './dto/team-task.dto';
+import {
+  CreateTeamTaskCommentDto,
+  CreateTeamTaskDto,
+  UpdateTeamTaskDto,
+} from './dto/team-task.dto';
 
 const SCOPES: TaskScope[] = ['mine', 'team', 'all'];
 
@@ -37,6 +41,30 @@ export class TeamTaskController {
       throw new BadRequestException(`보기는 ${SCOPES.join(' | ')} 중 하나여야 합니다.`);
     }
     return this.tasks.findAll(p, scope as TaskScope, status, q);
+  }
+
+  /** 댓글 — 업무를 볼 수 있으면 누구나 보고 쓴다. 지우기는 쓴 사람만 */
+  @Get(':id/comments')
+  comments(@CurrentUser() p: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.tasks.comments(p, id);
+  }
+
+  @Post(':id/comments')
+  addComment(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateTeamTaskCommentDto,
+  ) {
+    return this.tasks.addComment(p, id, dto);
+  }
+
+  @Delete(':id/comments/:commentId')
+  removeComment(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('commentId', ParseUUIDPipe) commentId: string,
+  ) {
+    return this.tasks.removeComment(p, id, commentId);
   }
 
   @Get(':id')

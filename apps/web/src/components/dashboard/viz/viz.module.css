@@ -340,3 +340,23 @@ button.listItem:hover {
 .dot:hover {
   fill-opacity: 1;
 }
+
+/* 안 읽은 알림·결재 대기 — 메일 '안 읽음'처럼 굵게 + 왼쪽 점 */
+.listUnread .listTitle {
+  font-weight: 700;
+}
+.listUnread .listMain::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--ark-color-primary-500);
+}
+.listUnread .listMain {
+  position: relative;
+  padding-left: 10px;
+}
