@@ -7,6 +7,8 @@
  * - 팀 = 조직도의 부서(DEPT)에 건다 — 그 부서와 하위 조직 직원에게 적용된다.
  * - 대표님 = 직책(회장·대표이사·대표)에 건다. 우선순위가 가장 높아 소속 구성보다 앞선다.
  * - 메뉴가 구성에 있어도 권한이 없으면 안 보인다(권한은 계정·권한 메뉴에서).
+ *   그래서 팀 전용 메뉴(계약·자산, 지점 관리 기록, 공지 작성)는 팀 권한 그룹을 만들어 그 부서 계정에 붙인다
+ *   — 그룹이 이미 있으면 권한은 건드리지 않고(관리자 수정 보존), 아직 안 붙은 계정에만 붙인다.
  */
 import { PrismaClient, type Prisma } from '@prisma/client';
 import {
@@ -205,6 +207,67 @@ const SPECS: Spec[] = [
   },
 ];
 
+/** 팀 전용 업무 권한 그룹 — 본사 직원 그룹(공통)에 더해 그 부서 계정에만 준다 */
+const TEAM_ROLES = [
+  {
+    code: 'TEAM_MGMT',
+    name: '경영관리팀 업무',
+    description: '총무(계약·자산 관리)와 전사 공지 작성',
+    orgs: ['경영관리'],
+    perms: [
+      'ASSET.READ',
+      'ASSET.CREATE',
+      'ASSET.UPDATE',
+      'ASSET.DELETE',
+      'NOTICE.CREATE',
+      'NOTICE.UPDATE',
+      'NOTICE.DELETE',
+    ],
+  },
+  {
+    code: 'TEAM_FRANCHISE',
+    name: '가맹팀 업무',
+    description: '지점 관리 기록(점검·불법영업·보험·소송·재계약)과 지점 공지',
+    orgs: ['가맹'],
+    perms: [
+      'BRANCH_CASE.READ',
+      'BRANCH_CASE.CREATE',
+      'BRANCH_CASE.UPDATE',
+      'BRANCH_CASE.DELETE',
+      'NOTICE.CREATE',
+      'NOTICE.UPDATE',
+    ],
+  },
+];
+
+async function seedTeamRoles(orgId: Map<string, string>) {
+  for (const t of TEAM_ROLES) {
+    let role = await prisma.role.findUnique({ where: { code: t.code } });
+    if (!role) {
+      role = await prisma.role.create({
+        data: { code: t.code, name: t.name, description: t.description, sortOrder: 60 },
+      });
+      const perms = await prisma.permission.findMany({ where: { code: { in: t.perms } } });
+      await prisma.rolePermission.createMany({
+        data: perms.map((p) => ({ roleId: role!.id, permissionId: p.id })),
+        skipDuplicates: true,
+      });
+      console.log(`권한 그룹 '${t.name}' 만듦 — 권한 ${perms.length}개`);
+    }
+    const orgIds = t.orgs.map((n) => orgId.get(n)).filter((x): x is string => !!x);
+    const users = await prisma.appUser.findMany({
+      where: { employee: { orgUnitId: { in: orgIds } }, userRoles: { none: { roleId: role.id } } },
+      select: { id: true },
+    });
+    if (users.length) {
+      await prisma.userRole.createMany({
+        data: users.map((u) => ({ userId: u.id, roleId: role!.id, dataScope: 'ALL' })),
+      });
+    }
+    console.log(`권한 그룹 '${t.name}' — 계정 ${users.length}개에 새로 붙임`);
+  }
+}
+
 async function main() {
   const [orgs, positions, roles] = await Promise.all([
     prisma.orgUnit.findMany({
@@ -217,6 +280,7 @@ async function main() {
   const orgId = new Map(orgs.map((o) => [o.name, o.id]));
   const posId = new Map(positions.map((p) => [p.name, p.id]));
   const roleId = new Map(roles.map((r) => [r.code, r.id]));
+  await seedTeamRoles(orgId);
 
   for (const s of SPECS) {
     const targets = [
