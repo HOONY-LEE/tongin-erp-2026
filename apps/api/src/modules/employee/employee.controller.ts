@@ -13,6 +13,7 @@ import {
 import type { AuthPrincipal } from '@tongin/shared';
 import { EmployeeService } from './employee.service';
 import {
+  AddConcurrentOrgDto,
   ChecklistTemplateDto,
   ChecklistToggleDto,
   CreateEmployeeDto,
@@ -59,6 +60,27 @@ export class EmployeeController {
   @RequirePermissions('EMPLOYEE.READ')
   hr(@Param('id', ParseUUIDPipe) id: string) {
     return this.employeeService.hrRecord(id);
+  }
+
+  /** 겸직(추가 소속) 더하기 — 같은 조직이면 그 조직 직책만 바꾼다 */
+  @Post(':id/concurrent-orgs')
+  @RequirePermissions('EMPLOYEE.UPDATE')
+  addConcurrent(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AddConcurrentOrgDto,
+  ) {
+    return this.employeeService.addConcurrent(id, dto, p.userId);
+  }
+
+  @Delete(':id/concurrent-orgs/:orgUnitId')
+  @RequirePermissions('EMPLOYEE.UPDATE')
+  removeConcurrent(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('orgUnitId', ParseUUIDPipe) orgUnitId: string,
+  ) {
+    return this.employeeService.removeConcurrent(id, orgUnitId, p.userId);
   }
 
   /** 퇴사 처리 — 재직 해제·연결 계정 로그인 막기·퇴사 체크리스트 */

@@ -21,7 +21,12 @@ export class EmployeeService {
   findAll(orgUnitId?: string) {
     return this.prisma.employee.findMany({
       where: orgUnitId ? { orgUnitId } : undefined,
-      include: { position: { select: { name: true, sortOrder: true } } },
+      include: {
+        position: { select: { name: true, sortOrder: true } },
+        concurrentOrgs: {
+          select: { orgUnitId: true, position: { select: { name: true, sortOrder: true } } },
+        },
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -109,6 +114,11 @@ export class EmployeeService {
             hireDate: dto.hireDate === undefined ? undefined : toDate(dto.hireDate),
           },
         });
+        // 겸직하던 조직이 주 소속이 되면 겸직 줄은 지운다
+        if (row.orgUnitId !== before.orgUnitId)
+          await tx.employeeConcurrentOrg.deleteMany({
+            where: { employeeId: id, orgUnitId: row.orgUnitId },
+          });
         // 소속·직책이 바뀌면 발령 이력을 남긴다
         if (row.orgUnitId !== before.orgUnitId)
           await tx.employeeHistory.create({
@@ -150,6 +160,16 @@ export class EmployeeService {
       include: {
         position: { select: { name: true } },
         orgUnit: { select: { name: true, type: true } },
+        concurrentOrgs: {
+          select: {
+            orgUnitId: true,
+            positionId: true,
+            createdAt: true,
+            orgUnit: { select: { name: true, type: true } },
+            position: { select: { name: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
         appUsers: { select: { loginId: true, isActive: true } },
         checklistItems: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }] },
         histories: { orderBy: [{ effectiveDate: 'desc' }, { createdAt: 'desc' }] },
@@ -184,6 +204,69 @@ export class EmployeeService {
         toPositionName: h.toPositionId ? (pn.get(h.toPositionId) ?? null) : null,
       })),
     };
+  }
+
+  // ── 겸직(추가 소속) ──
+
+  /** 겸직 추가 — 주 소속과 같은 조직은 안 된다. 이미 있으면 직책만 바꾼다. 발령 이력을 남긴다 */
+  async addConcurrent(
+    id: string,
+    input: { orgUnitId: string; positionId?: string | null },
+    actorUserId?: string,
+  ) {
+    const emp = await this.findOne(id);
+    if (emp.orgUnitId === input.orgUnitId) {
+      throw new BadRequestException('주 소속 조직은 겸직으로 더할 수 없습니다.');
+    }
+    const org = await this.prisma.orgUnit.findUnique({ where: { id: input.orgUnitId } });
+    if (!org) throw new BadRequestException('없는 조직입니다. 목록에서 다시 골라 주세요.');
+    const positionId = input.positionId || null;
+    await this.prisma.$transaction(async (tx) => {
+      const had = await tx.employeeConcurrentOrg.findUnique({
+        where: { employeeId_orgUnitId: { employeeId: id, orgUnitId: input.orgUnitId } },
+      });
+      await tx.employeeConcurrentOrg.upsert({
+        where: { employeeId_orgUnitId: { employeeId: id, orgUnitId: input.orgUnitId } },
+        create: { employeeId: id, orgUnitId: input.orgUnitId, positionId },
+        update: { positionId },
+      });
+      if (!had)
+        await tx.employeeHistory.create({
+          data: {
+            employeeId: id,
+            kind: 'CONCURRENT_ADD',
+            toOrgId: input.orgUnitId,
+            toPositionId: positionId,
+            effectiveDate: todayDate(),
+            createdByUserId: actorUserId ?? null,
+          },
+        });
+    });
+    this.principals.invalidateAll(); // 메뉴·공지·팀 업무가 겸직 조직을 따른다
+    return this.hrRecord(id);
+  }
+
+  /** 겸직 해제 */
+  async removeConcurrent(id: string, orgUnitId: string, actorUserId?: string) {
+    const row = await this.prisma.employeeConcurrentOrg.findUnique({
+      where: { employeeId_orgUnitId: { employeeId: id, orgUnitId } },
+    });
+    if (!row) throw new NotFoundException('겸직 중인 조직이 아닙니다.');
+    await this.prisma.$transaction([
+      this.prisma.employeeConcurrentOrg.delete({ where: { id: row.id } }),
+      this.prisma.employeeHistory.create({
+        data: {
+          employeeId: id,
+          kind: 'CONCURRENT_END',
+          fromOrgId: orgUnitId,
+          fromPositionId: row.positionId,
+          effectiveDate: todayDate(),
+          createdByUserId: actorUserId ?? null,
+        },
+      }),
+    ]);
+    this.principals.invalidateAll();
+    return this.hrRecord(id);
   }
 
   /** 퇴사 처리 — 퇴사일·사유, 재직 해제, 연결 계정 로그인 막기, 퇴사 이력·체크리스트 */

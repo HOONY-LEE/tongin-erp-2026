@@ -99,6 +99,17 @@ export class CreateEmployeeDto {
   memo?: string | null;
 }
 
+/** 겸직(추가 소속) 더하기 */
+export class AddConcurrentOrgDto {
+  @IsUUID()
+  orgUnitId!: string;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsUUID()
+  positionId?: string | null;
+}
+
 export class ResignEmployeeDto {
   @IsDateString()
   resignDate!: string;

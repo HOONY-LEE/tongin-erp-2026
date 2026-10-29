@@ -132,6 +132,10 @@
 .card[data-type='DEPT'] {
   border-top: 3px solid var(--ark-color-gray-400);
 }
+/* TF·프로젝트팀 — 여러 부서 사람이 겸직으로 모인다 */
+.card[data-type='TF'] {
+  border-top: 3px dashed var(--ark-color-primary-400);
+}
 .inactive {
   opacity: 0.55;
 }
@@ -205,10 +209,20 @@ button.head:focus-visible {
   outline-offset: -2px;
 }
 .memberName {
+  margin-right: auto;
   white-space: nowrap;
 }
 .memberPos {
   color: var(--ark-color-text-tertiary);
+  white-space: nowrap;
+}
+.memberConcurrent {
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--ark-color-primary-600);
+  background: var(--ark-color-primary-50);
   white-space: nowrap;
 }
 

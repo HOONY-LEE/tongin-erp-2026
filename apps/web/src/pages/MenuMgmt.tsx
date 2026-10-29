@@ -232,7 +232,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
         { id: string; loginId: string; employeeName: string | null; orgUnitName?: string | null }[]
       >('/accounts'),
     ]).then(([o, r, ps, u]) => {
-      const ORDER: Record<string, number> = { GROUP: 0, COMPANY: 1, DEPT: 2, BRANCH: 3 };
+      const ORDER: Record<string, number> = { GROUP: 0, COMPANY: 1, DEPT: 2, TF: 3, BRANCH: 4 };
       setOpts({
         ORG:
           o.status === 'fulfilled'
@@ -244,7 +244,14 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 .map((x) => ({
                   id: x.id,
                   name: x.name,
-                  sub: x.type === 'BRANCH' ? '지점' : x.type === 'DEPT' ? '부서' : '회사·그룹',
+                  sub:
+                    x.type === 'BRANCH'
+                      ? '지점'
+                      : x.type === 'DEPT'
+                        ? '부서'
+                        : x.type === 'TF'
+                          ? 'TF·프로젝트팀'
+                          : '회사·그룹',
                 }))
             : [],
         ROLE: r.status === 'fulfilled' ? r.value.map((x) => ({ id: x.id, name: x.name })) : [],

@@ -1,5 +1,5 @@
 /**
- * 메뉴 구성 — 대표님 + 본사 7개 팀 + 가맹점(지점) + 기본(전체).
+ * 메뉴 구성 — 대표님 + 본사 팀(부서별) + 가맹점(지점) + 기본(전체).
  *
  *   pnpm --filter @tongin/api demo:seed:menus
  *
@@ -29,6 +29,8 @@ interface Spec {
   orgs?: string[];
   positions?: string[];
   roles?: string[];
+  /** 계정(로그인 아이디) 직접 지정 — 소속은 다르지만 이 팀 메뉴가 필요한 사람 */
+  users?: string[];
   isDefault?: boolean;
   layout: MenuLayout;
 }
@@ -104,6 +106,7 @@ const SPECS: Spec[] = [
     description: '기업 이전 영업·견적·파트너',
     priority: 50,
     orgs: ['기업영업'],
+    users: ['minkeun_shin'], // 부동산사업부 신민근 소장 — 기업 영업도 함께 본다
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks'] },
@@ -147,15 +150,29 @@ const SPECS: Spec[] = [
       ],
     },
   },
+  // 디자인·마케팅은 따로 있는 부서 — 하는 일이 맞닿아 메뉴는 같은 모양으로 둔다
   {
-    name: '홍보디자인팀',
-    description: '디자인·홍보 요청 처리와 마케팅 캠페인',
+    name: '디자인팀',
+    description: '디자인·홍보물 요청 처리 — 팀 업무 중심',
     priority: 50,
-    orgs: ['디자인', '마케팅'],
+    orgs: ['디자인'],
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices'] },
         { label: '디자인·홍보', items: ['tasks', 'campaigns', 'branches'] },
+        MY,
+      ],
+    },
+  },
+  {
+    name: '마케팅팀',
+    description: '마케팅 캠페인·홍보 — 캠페인과 팀 업무 중심',
+    priority: 50,
+    orgs: ['마케팅'],
+    layout: {
+      groups: [
+        { label: '홈', items: ['dashboard', 'ai', 'notices'] },
+        { label: '마케팅·홍보', items: ['campaigns', 'tasks', 'branches'] },
         MY,
       ],
     },
@@ -280,14 +297,16 @@ async function seedTeamRoles(orgId: Map<string, string>) {
 }
 
 async function main() {
-  const [orgs, positions, roles] = await Promise.all([
+  const [orgs, positions, roles, users] = await Promise.all([
     prisma.orgUnit.findMany({
       where: { type: { not: 'BRANCH' } },
       select: { id: true, name: true },
     }),
     prisma.position.findMany({ select: { id: true, name: true } }),
     prisma.role.findMany({ select: { id: true, code: true } }),
+    prisma.appUser.findMany({ select: { id: true, loginId: true } }),
   ]);
+  const userId = new Map(users.map((u) => [u.loginId, u.id]));
   const orgId = new Map(orgs.map((o) => [o.name, o.id]));
   const posId = new Map(positions.map((p) => [p.name, p.id]));
   const roleId = new Map(roles.map((r) => [r.code, r.id]));
@@ -298,9 +317,14 @@ async function main() {
       ...(s.orgs ?? []).map((n) => ({ kind: 'ORG', targetId: orgId.get(n) })),
       ...(s.positions ?? []).map((n) => ({ kind: 'POSITION', targetId: posId.get(n) })),
       ...(s.roles ?? []).map((c) => ({ kind: 'ROLE', targetId: roleId.get(c) })),
+      ...(s.users ?? []).map((l) => ({ kind: 'USER', targetId: userId.get(l) })),
     ].filter((t): t is { kind: string; targetId: string } => !!t.targetId);
     const missing =
-      (s.orgs?.length ?? 0) + (s.positions?.length ?? 0) + (s.roles?.length ?? 0) - targets.length;
+      (s.orgs?.length ?? 0) +
+      (s.positions?.length ?? 0) +
+      (s.roles?.length ?? 0) +
+      (s.users?.length ?? 0) -
+      targets.length;
     if (missing) console.warn(`'${s.name}' — 조직도에 없는 대상 ${missing}개는 건너뜀`);
 
     const existing = await prisma.menuProfile.findFirst({

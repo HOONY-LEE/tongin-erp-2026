@@ -49,11 +49,31 @@ export class MenuService {
       where: { id: userId },
       select: {
         userRoles: { select: { roleId: true } },
-        employee: { select: { orgUnitId: true, positionId: true } },
+        employee: {
+          select: {
+            orgUnitId: true,
+            positionId: true,
+            concurrentOrgs: { select: { orgUnitId: true } },
+          },
+        },
       },
     });
     if (!user) return [];
-    const orgIds = user.employee ? await this.orgChain(user.employee.orgUnitId) : [];
+    // 겸직(추가 소속) 조직의 구성도 함께 걸린다 — 여러 구성은 합쳐서 보인다
+    const orgIds = user.employee
+      ? [
+          ...new Set(
+            (
+              await Promise.all(
+                [
+                  user.employee.orgUnitId,
+                  ...user.employee.concurrentOrgs.map((c) => c.orgUnitId),
+                ].map((id) => this.orgChain(id)),
+              )
+            ).flat(),
+          ),
+        ]
+      : [];
     const or: Prisma.MenuProfileTargetWhereInput[] = [{ kind: 'USER', targetId: userId }];
     const roleIds = user.userRoles.map((r) => r.roleId);
     if (roleIds.length) or.push({ kind: 'ROLE', targetId: { in: roleIds } });
@@ -295,7 +315,10 @@ export class MenuService {
     if (ids('USER').length) or.push({ id: { in: ids('USER') } });
     if (ids('ROLE').length) or.push({ userRoles: { some: { roleId: { in: ids('ROLE') } } } });
     if (ids('POSITION').length) or.push({ employee: { positionId: { in: ids('POSITION') } } });
-    if (orgs.length) or.push({ employee: { orgUnitId: { in: orgs } } });
+    if (orgs.length) {
+      or.push({ employee: { orgUnitId: { in: orgs } } });
+      or.push({ employee: { concurrentOrgs: { some: { orgUnitId: { in: orgs } } } } });
+    }
     return this.prisma.appUser.count({ where: { isActive: true, OR: or } });
   }
 
