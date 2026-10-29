@@ -59,16 +59,16 @@ model CommonCode {
 }
 
 model Employee {
-  id         String    @id @default(uuid()) @db.Uuid
-  orgUnitId  String    @map("org_unit_id") @db.Uuid
-  orgUnit    OrgUnit   @relation(fields: [orgUnitId], references: [id])
-  empNo      String?   @unique @map("emp_no") // 사번 — 비우면 입사연도 4자리+일련번호 4자리로 자동(20260001)
-  name       String
-  positionId String?   @map("position_id") @db.Uuid // 직책·직급(표시·인사용, 권한을 주지 않는다)
-  position   Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  phone      String?
-  hireDate   DateTime? @map("hire_date") @db.Date // 입사일 — 사번(입사연도+일련번호)의 기준
-  isActive   Boolean   @default(true) @map("is_active")
+  id                String    @id @default(uuid()) @db.Uuid
+  orgUnitId         String    @map("org_unit_id") @db.Uuid
+  orgUnit           OrgUnit   @relation(fields: [orgUnitId], references: [id])
+  empNo             String?   @unique @map("emp_no") // 사번 — 비우면 입사연도 4자리+일련번호 4자리로 자동(20260001)
+  name              String
+  positionId        String?   @map("position_id") @db.Uuid // 직책·직급(표시·인사용, 권한을 주지 않는다)
+  position          Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  phone             String?
+  hireDate          DateTime? @map("hire_date") @db.Date // 입사일 — 사번(입사연도+일련번호)의 기준
+  isActive          Boolean   @default(true) @map("is_active")
   // ── 인사기록 ──
   birthDate         DateTime? @map("birth_date") @db.Date
   email             String?
@@ -82,9 +82,9 @@ model Employee {
   emergencyPhone    String?   @map("emergency_phone")
   emergencyRelation String?   @map("emergency_relation")
   memo              String?
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  appUsers   AppUser[]
-  ownedLeads Lead[]
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  appUsers          AppUser[]
+  ownedLeads        Lead[]
 
   estimatorEstimates Estimate[]
   assignments        WorkAssignment[]
@@ -1409,4 +1409,43 @@ model EmployeeHistory {
 
   @@index([employeeId, effectiveDate])
   @@map("employee_history")
+}
+
+/// 메뉴 구성 — 관리자가 팀(소속)·권한 그룹·직책·개인별로 사이드바에 보일 메뉴 묶음·순서를 정한다.
+/// 한 사람에게 여러 구성이 걸리면 priority가 작은 것부터 합친다. 아무것도 안 걸리면 isDefault 구성.
+model MenuProfile {
+  id          String              @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  layout      Json // { groups: [{ label, items: [메뉴 key], collapsed? }] } — packages/shared menu.ts
+  priority    Int                 @default(100)
+  isDefault   Boolean             @default(false) @map("is_default")
+  isActive    Boolean             @default(true) @map("is_active")
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  targets     MenuProfileTarget[]
+
+  @@map("menu_profile")
+}
+
+/// 메뉴 구성의 적용 대상 — kind: ORG(소속, 하위 조직 포함) | ROLE(권한 그룹) | POSITION(직책) | USER(개인)
+model MenuProfileTarget {
+  id        String      @id @default(uuid()) @db.Uuid
+  profileId String      @map("profile_id") @db.Uuid
+  profile   MenuProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  kind      String
+  targetId  String      @map("target_id") @db.Uuid
+
+  @@unique([profileId, kind, targetId])
+  @@index([kind, targetId])
+  @@map("menu_profile_target")
+}
+
+/// 개인 메뉴 설정 — 내게 걸린 구성 안에서 순서·묶음·숨김만 바꾼다. 지우면 팀 기본으로 돌아간다
+model UserMenuPref {
+  userId    String   @id @map("user_id") @db.Uuid
+  layout    Json // { groups, hidden: [메뉴 key] }
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_menu_pref")
 }

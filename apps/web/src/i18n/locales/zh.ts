@@ -48,6 +48,7 @@ export default {
     approvals: '审批',
     leave: '休假',
     attendance: '考勤',
+    menuMgmt: '菜单管理',
   },
   navGroup: {
     hr: '人事',

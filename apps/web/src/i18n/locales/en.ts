@@ -48,6 +48,7 @@ export default {
     approvals: 'Approvals',
     leave: 'Leave',
     attendance: 'Attendance',
+    menuMgmt: 'Menus',
   },
   navGroup: {
     hr: 'HR',

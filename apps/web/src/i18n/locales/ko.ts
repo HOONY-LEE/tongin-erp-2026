@@ -48,6 +48,7 @@ export default {
     approvals: '결재함',
     leave: '휴가',
     attendance: '근태',
+    menuMgmt: '메뉴 관리',
   },
   navGroup: {
     hr: '인사',

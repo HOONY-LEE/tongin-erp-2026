@@ -678,6 +678,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     actions: ALL_CRUD,
     hint: '대시보드 템플릿을 만들고 권한 그룹·사용자에게 기본으로 지정합니다',
   },
+  {
+    key: 'MENU',
+    label: '메뉴 관리',
+    group: '시스템',
+    actions: ALL_CRUD,
+    hint: '팀(소속)·권한 그룹·직책별 사이드바 메뉴 구성을 정합니다. 내 메뉴 순서 바꾸기는 권한 없이 됩니다',
+  },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
 ];
 
@@ -822,3 +829,4 @@ export interface PartnerReceivable {
 export * from './agent-blueprint';
 export * from './dashboard';
 export * from './hr';
+export * from './menu';

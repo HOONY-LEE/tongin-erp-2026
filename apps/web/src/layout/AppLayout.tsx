@@ -4,35 +4,13 @@ import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
 import {
   Loader2,
-  Sparkles,
-  LayoutDashboard,
-  LayoutTemplate,
-  Inbox,
-  Banknote,
-  LifeBuoy,
-  Megaphone,
-  Package,
-  ShoppingCart,
-  UserRound,
-  Tag,
-  Building2,
-  Store,
-  ShieldCheck,
-  Handshake,
-  CalendarDays,
   Globe,
   Monitor,
   Moon,
   Sun,
   LogOut,
-  Calculator,
-  Receipt,
-  Award,
-  Bot,
-  Workflow,
-  FileSignature,
-  Plane,
-  CalendarClock,
+  UserRound,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   LayoutSidebar,
@@ -50,6 +28,9 @@ import { useAiRunning } from '../lib/aiActivity';
 import { usePendingApprovals } from '../lib/approvals';
 import { ClockButton } from '../components/attendance/ClockButton';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { MyMenuModal } from '../components/menu/MyMenuModal';
+import { menuIcon, useMenuLabel, useMyMenu } from '../lib/menu';
+import { MENU_CATALOG, filterLayout, menuDef } from '@tongin/shared';
 import styles from './AppLayout.module.css';
 import { HeaderTabs } from './HeaderTabs';
 import { HeaderPicker } from './HeaderPicker';
@@ -118,133 +99,36 @@ export default function AppLayout() {
   // 내 결재 차례 건수 — 결재함 메뉴 배지
   const pendingApprovals = usePendingApprovals(!!user?.employeeId);
 
-  const groups: NavGroup[] = [
-    {
-      label: t('navGroup.ops'),
-      items: [
-        { to: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, perm: 'STATS.READ' },
-        { to: '/ai', label: t('nav.ai'), icon: Bot, perm: 'AI.USE' },
-        {
-          to: '/leads',
-          label: t('nav.leads'),
-          icon: Inbox,
-          perm: 'LEAD.READ',
-          // 견적·계약·작업 상세는 접수 케이스가 낳은 문서들이라 '접수' 탭 안에 머문다
-          owns: ['/estimates', '/contracts', '/work-orders'],
-        },
-        {
-          to: '/calendar',
-          label: t('nav.calendar'),
-          icon: CalendarDays,
-          perm: 'WORK_ORDER.READ',
-        },
-        {
-          to: '/payments-confirm',
-          label: t('nav.paymentsConfirm'),
-          icon: Banknote,
-          perm: 'PAYMENT.READ',
-        },
-        // 현장(/field)은 폰·태블릿 전용 화면이라 PC 메뉴에 두지 않는다.
-        // 현장 작업팀 계정은 로그인하면 자동으로 그 화면으로 간다(App.tsx 분기).
-        // 리빙·케어(입주청소·정리수납 등 이사 외 서비스) 주문 — 이사 접수와 별도로 돌아가는 일정이라 메뉴로 둔다
-        {
-          to: '/service-orders',
-          label: t('nav.serviceOrders'),
-          icon: Sparkles,
-          perm: 'SERVICE_ORDER.READ',
-        },
-        { to: '/support', label: t('nav.support'), icon: LifeBuoy, perm: 'SUPPORT.READ' },
-        { to: '/campaigns', label: t('nav.campaigns'), icon: Megaphone, perm: 'MARKETING.READ' },
-      ],
-    },
-    {
-      label: t('navGroup.hr'),
-      items: [
-        {
-          to: '/approvals',
-          label: t('nav.approvals'),
-          icon: FileSignature,
-          selfService: true,
-          badge: pendingApprovals,
-        },
-        // 직원 연결 계정이면 누구나(내 휴가), 직원 연결이 없어도 전 직원 현황 권한이 있으면
-        { to: '/leave', label: t('nav.leave'), icon: Plane, selfService: true, perm: 'LEAVE.READ' },
-        {
-          to: '/attendance',
-          label: t('nav.attendance'),
-          icon: CalendarClock,
-          selfService: true,
-          perm: 'ATTENDANCE.READ',
-        },
-      ],
-    },
-    {
-      label: t('navGroup.admin'),
-      items: [
-        { to: '/customers', label: t('nav.customers'), icon: UserRound, perm: 'CUSTOMER.READ' },
-        {
-          to: '/product-mgmt',
-          label: t('nav.productMgmt'),
-          icon: Tag,
-          perm: 'PRODUCT.READ',
-          owns: ['/products', '/cbm-items'],
-        },
-        { to: '/partner-mgmt', label: t('nav.partnerMgmt'), icon: Handshake, perm: 'PARTNER.READ' },
-        {
-          to: '/org-mgmt',
-          label: t('nav.orgMgmt'),
-          icon: Building2,
-          perm: 'ORG_UNIT.READ',
-          owns: ['/org-units'],
-        },
-        { to: '/branches', label: t('nav.branches'), icon: Store, perm: 'ORG_UNIT.READ' },
-        { to: '/accounts', label: t('nav.accounts'), icon: ShieldCheck, perm: 'USER.READ' },
-        { to: '/agent-builder', label: t('nav.aiAgents'), icon: Workflow, perm: 'AI.MANAGE' },
-        {
-          to: '/dashboard-admin',
-          label: t('nav.dashboardAdmin'),
-          icon: LayoutTemplate,
-          perm: 'DASHBOARD.READ',
-        },
-      ],
-    },
-    {
-      label: t('navGroup.finance'),
-      // 본사는 자주 쓰지 않아 맨 아래에 접어 둔다. 지점장(정산 권한 없음)은 이 묶음에서
-      // 자재/재고·가맹점발주만 보며 매일 쓰므로 펼쳐 둔다
-      defaultOpen: !can('SETTLEMENT.READ'),
-      items: [
-        {
-          to: '/settlements',
-          label: t('nav.settlement'),
-          icon: Calculator,
-          perm: 'SETTLEMENT.READ',
-        },
-        { to: '/billing', label: t('nav.billing'), icon: Receipt, perm: 'BILLING.READ' },
-        { to: '/hr', label: t('nav.hr'), icon: Award, perm: 'HR.READ' },
-        // 자재·발주도 돈(원가·정산)과 묶여 정산 아래에 둔다
-        { to: '/materials', label: t('nav.materials'), icon: Package, perm: 'MATERIAL.READ' },
-        {
-          to: '/material-orders',
-          label: t('nav.materialOrders'),
-          icon: ShoppingCart,
-          perm: 'MATERIAL_ORDER.READ',
-        },
-      ],
-    },
-  ];
-
-  const visibleGroups = groups
-    .map((g) => ({
-      ...g,
-      items: g.items.filter((it) =>
-        it.selfService
-          ? !!user?.employeeId || (!!it.perm && can(it.perm))
-          : !it.perm || can(it.perm),
-      ),
-    }))
-    .filter((g) => g.items.length > 0);
-  const allItems = visibleGroups.flatMap((g) => g.items);
+  // 사이드바 = 관리자 메뉴 구성(팀·권한 그룹·직책) + 내 메뉴 설정, 그다음 권한으로 거른다
+  const myMenu = useMyMenu(user?.userId);
+  const menuLabel = useMenuLabel();
+  const [menuEditOpen, setMenuEditOpen] = useState(false);
+  const canSeeMenu = (key: string) =>
+    filterLayout({ groups: [{ label: '', items: [key] }] }, can, !!user?.employeeId).groups.length >
+    0;
+  const visibleGroups: NavGroup[] = filterLayout(myMenu.layout, can, !!user?.employeeId).groups.map(
+    (g) => ({
+      label: g.label,
+      defaultOpen: !g.collapsed,
+      items: g.items.map((key) => {
+        const m = menuDef(key)!;
+        return {
+          to: m.path,
+          label: menuLabel(key),
+          icon: menuIcon(m),
+          owns: m.owns,
+          badge: key === 'approvals' ? pendingApprovals : undefined,
+        };
+      }),
+    }),
+  );
+  // 탭·선택 표시는 사이드바에서 숨긴 메뉴도 알아야 한다(링크로 들어간 화면) — 권한 있는 전체 메뉴 기준
+  const allItems: NavItem[] = MENU_CATALOG.filter((m) => canSeeMenu(m.key)).map((m) => ({
+    to: m.path,
+    label: menuLabel(m.key),
+    icon: menuIcon(m),
+    owns: m.owns,
+  }));
 
   /** 이 메뉴가 현재 경로를 담당하는가 — 자기 경로이거나, owns에 등록된 하위 화면이거나. */
   // '/ai'가 '/ai-xxx' 같은 다른 경로까지 잡지 않게 — 같은 경로이거나 그 아래 경로만
@@ -464,7 +348,8 @@ export default function AppLayout() {
           >
             {visibleGroups.map((g, gi) => (
               <SidebarGroup
-                key={g.label ?? `g${gi}`}
+                // 펼침 기본값은 처음 그릴 때만 먹는다 — 메뉴 구성이 바뀌면(계정 전환·편집) 다시 그린다
+                key={`${gi}|${g.label ?? ''}|${g.defaultOpen === false ? 'c' : 'o'}|${g.items.length}`}
                 label={collapsed ? undefined : g.label}
                 collapsible={!collapsed}
                 defaultOpen={g.defaultOpen !== false || g.items.some(ownsPath)}
@@ -499,7 +384,20 @@ export default function AppLayout() {
                 ))}
               </SidebarGroup>
             ))}
+            <SidebarItem
+              icon={<SlidersHorizontal size={16} />}
+              tooltip={collapsed ? '내 메뉴 편집' : undefined}
+              onClick={() => setMenuEditOpen(true)}
+            >
+              <span style={{ color: 'var(--ark-color-text-secondary)' }}>내 메뉴 편집</span>
+            </SidebarItem>
           </LayoutSidebar>
+          <MyMenuModal
+            open={menuEditOpen}
+            onOpenChange={setMenuEditOpen}
+            menu={myMenu}
+            visible={canSeeMenu}
+          />
         </aside>
 
         <main className={styles.contentArea}>
