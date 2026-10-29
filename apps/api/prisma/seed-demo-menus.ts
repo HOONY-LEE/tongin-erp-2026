@@ -212,7 +212,8 @@ const TEAM_ROLES = [
   {
     code: 'TEAM_MGMT',
     name: '경영관리팀 업무',
-    description: '인사(인사·평가·휴가·근태 관리), 총무(계약·자산 관리), 전사 공지 작성',
+    description:
+      '인사(인사·평가·휴가·근태 정책, 결재 양식·결재선), 총무(계약·자산 관리), 전사 공지 작성',
     orgs: ['경영관리'],
     perms: [
       'HR.READ',
@@ -224,6 +225,7 @@ const TEAM_ROLES = [
       'ATTENDANCE.READ',
       'ATTENDANCE.UPDATE',
       'ATTENDANCE.IMPORT',
+      'APPROVAL.MANAGE',
       'ASSET.READ',
       'ASSET.CREATE',
       'ASSET.UPDATE',

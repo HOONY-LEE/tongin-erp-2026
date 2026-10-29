@@ -11,7 +11,8 @@ export type InboxKind =
   | 'MENTION'
   | 'LEAD_ASSIGNED'
   | 'WORK_ASSIGNED'
-  | 'NOTICE';
+  | 'NOTICE'
+  | 'LEAVE_SUBSTITUTE';
 
 export interface InboxMessage {
   kind: InboxKind;

@@ -5,6 +5,7 @@ import { RequirePermissions } from '../../auth/decorators/require-permissions.de
 import { LeaveService } from './leave.service';
 import {
   AdjustLeaveDto,
+  BulkAdjustLeaveDto,
   CreateLeaveTypeDto,
   RequestLeaveDto,
   UpdateLeaveTypeDto,
@@ -63,5 +64,19 @@ export class LeaveController {
   @RequirePermissions('LEAVE.UPDATE')
   adjust(@CurrentUser() p: AuthPrincipal, @Body() dto: AdjustLeaveDto) {
     return this.leave.adjust(p, dto);
+  }
+
+  /** 연차 일괄 부여·차감(직원 여럿·조직 단위) */
+  @Post('adjustments/bulk')
+  @RequirePermissions('LEAVE.UPDATE')
+  bulkAdjust(@CurrentUser() p: AuthPrincipal, @Body() dto: BulkAdjustLeaveDto) {
+    return this.leave.bulkAdjust(p, dto);
+  }
+
+  /** 최근 조정 이력 */
+  @Get('adjustments')
+  @RequirePermissions('LEAVE.UPDATE')
+  adjustments(@CurrentUser() p: AuthPrincipal) {
+    return this.leave.adjustments(p);
   }
 }

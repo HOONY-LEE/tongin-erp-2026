@@ -1304,7 +1304,7 @@ model LeaveType {
   id        String         @id @default(uuid()) @db.Uuid
   code      String         @unique
   name      String
-  unitDays  Decimal        @default(1) @map("unit_days") @db.Decimal(3, 1) // 1 = 하루 단위(기간), 0.5 = 반차(하루만)
+  unitDays  Decimal        @default(1) @map("unit_days") @db.Decimal(4, 2) // 1 = 하루 단위(기간), 0.5 = 반차, 0.25 = 반반차(하루만)
   deducts   Boolean        @default(true) // 연차에서 차감
   paid      Boolean        @default(true) // 유급
   sortOrder Int            @default(100) @map("sort_order")
@@ -1320,7 +1320,7 @@ model LeaveAdjustment {
   id              String   @id @default(uuid()) @db.Uuid
   employeeId      String   @map("employee_id") @db.Uuid
   employee        Employee @relation(fields: [employeeId], references: [id])
-  days            Decimal  @db.Decimal(5, 1)
+  days            Decimal  @db.Decimal(5, 2)
   reason          String
   effectiveDate   DateTime @map("effective_date") @db.Date
   createdByUserId String?  @map("created_by_user_id") @db.Uuid
@@ -1332,18 +1332,26 @@ model LeaveAdjustment {
 
 /// 휴가 신청 — 결재(approval_doc, LEAVE)와 1:1. 승인돼야 연차에서 빠진다
 model LeaveRequest {
-  id            String    @id @default(uuid()) @db.Uuid
-  employeeId    String    @map("employee_id") @db.Uuid
-  employee      Employee  @relation(fields: [employeeId], references: [id])
-  leaveTypeId   String    @map("leave_type_id") @db.Uuid
-  leaveType     LeaveType @relation(fields: [leaveTypeId], references: [id])
-  startDate     DateTime  @map("start_date") @db.Date
-  endDate       DateTime  @map("end_date") @db.Date
-  days          Decimal   @db.Decimal(5, 1) // 근무일 기준(주말·공휴일 제외), 반차 0.5
-  reason        String?
-  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELED
-  approvalDocId String?   @unique @map("approval_doc_id") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String    @id @default(uuid()) @db.Uuid
+  employeeId      String    @map("employee_id") @db.Uuid
+  employee        Employee  @relation(fields: [employeeId], references: [id])
+  leaveTypeId     String    @map("leave_type_id") @db.Uuid
+  leaveType       LeaveType @relation(fields: [leaveTypeId], references: [id])
+  startDate       DateTime  @map("start_date") @db.Date
+  endDate         DateTime  @map("end_date") @db.Date
+  days            Decimal   @db.Decimal(5, 2) // 근무일 기준(주말·공휴일 제외), 반차 0.5, 반반차 0.25
+  /// 반차·반반차 시간대 — AM·PM(반차), Q1~Q4(반반차, 하루를 넷으로 나눈 순서). 종일은 NULL
+  slot            String?
+  /// 업무 대리인(직원) — 휴가 동안 업무를 맡을 사람
+  substituteEmpId String?   @map("substitute_emp_id") @db.Uuid
+  /// 인수인계 메모
+  handover        String?
+  /// 신청서 양식에 관리자가 더한 항목의 값({필드id: 값})
+  extra           Json?
+  reason          String?
+  status          String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELED
+  approvalDocId   String?   @unique @map("approval_doc_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([employeeId, startDate])
   @@index([status, startDate])
@@ -1596,4 +1604,29 @@ model UserNotification {
   @@index([userId, createdAt])
   @@index([userId, readAt])
   @@map("user_notification")
+}
+
+/**
+ * 결재 양식 — 관리자가 항목(필드)을 정의해 올리는 신청서(구매 품의·출장·경비 등).
+ * kind=LEAVE는 휴가 신청서(하나뿐, 지울 수 없음) — 기본 항목(종류·기간·사유) 뒤에 붙는 추가 항목과 설정을 담는다.
+ * 기본 결재선은 결재선 설정(approval_line_template)에 docType 'FORM:<id>'로 둔다.
+ */
+model ApprovalForm {
+  id          String   @id @default(uuid()) @db.Uuid
+  kind        String   @default("CUSTOM") // CUSTOM | LEAVE
+  name        String
+  category    String? // 묶음(예: 총무·재무·인사)
+  description String?
+  /// 항목 [{id,label,type,required,options?,help?,placeholder?}]
+  fields      Json     @default("[]")
+  /// 양식 설정 — LEAVE: {substitute: NONE|OPTIONAL|REQUIRED, reasonRequired}
+  settings    Json     @default("{}")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(100) @map("sort_order")
+  createdBy   String?  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([kind, isActive])
+  @@map("approval_form")
 }

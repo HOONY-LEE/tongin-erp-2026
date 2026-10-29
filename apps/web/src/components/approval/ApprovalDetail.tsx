@@ -8,6 +8,8 @@ import {
   type ApprovalDocView,
 } from '../../lib/approvals';
 import { Button, Modal, RecordDetail, StatusBadge, Textarea, useToast } from '../ui';
+import type { FormField, FormValue } from '@tongin/shared';
+import { FormValuesView } from './FormFields';
 import styles from './approval.module.css';
 
 const dt = (v: string | null) =>
@@ -16,16 +18,28 @@ const dt = (v: string | null) =>
 /** 업무 문서의 기본 본문 — 휴가·근태 정정은 payload를 표로, 그 외는 내용(content) */
 function defaultBody(doc: ApprovalDocView): ReactNode {
   const p = (doc.payload ?? {}) as Record<string, unknown>;
+  // 결재 양식 — 올릴 때의 항목 정의대로 값을 보여 준다
+  if (doc.docType === 'FORM' && Array.isArray(p.fields)) {
+    return (
+      <FormValuesView
+        fields={p.fields as FormField[]}
+        values={(p.values ?? {}) as Record<string, FormValue>}
+      />
+    );
+  }
   const rows: [string, ReactNode][] = [];
   if (doc.docType === 'LEAVE') {
     rows.push(['휴가 종류', String(p.leaveType ?? '-')]);
     rows.push([
       '기간',
-      p.startDate === p.endDate
+      (p.startDate === p.endDate
         ? String(p.startDate)
-        : `${String(p.startDate)} ~ ${String(p.endDate)}`,
+        : `${String(p.startDate)} ~ ${String(p.endDate)}`) +
+        (p.slotLabel ? ` · ${String(p.slotLabel)}` : ''),
     ]);
     rows.push(['일수', `${String(p.days)}일${p.deducts === false ? ' (연차 차감 없음)' : ''}`]);
+    if (p.substituteName) rows.push(['업무 대리인', String(p.substituteName)]);
+    if (p.handover) rows.push(['인수인계', String(p.handover)]);
   } else if (doc.docType === 'ATTENDANCE_FIX') {
     rows.push(['날짜', String(p.workDate ?? '-')]);
     rows.push(['출근', String(p.clockIn ?? '-')]);
@@ -43,6 +57,13 @@ function defaultBody(doc: ApprovalDocView): ReactNode {
         ))}
       </dl>
       {doc.content && <p className={styles.content}>사유: {doc.content}</p>}
+      {/* 휴가 신청서에 관리자가 더한 항목 */}
+      {doc.docType === 'LEAVE' && Array.isArray(p.fields) && p.fields.length > 0 && (
+        <FormValuesView
+          fields={p.fields as FormField[]}
+          values={(p.values ?? {}) as Record<string, FormValue>}
+        />
+      )}
     </>
   );
 }

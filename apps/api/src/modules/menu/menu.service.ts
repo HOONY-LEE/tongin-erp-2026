@@ -117,11 +117,13 @@ export class MenuService {
     // 편집 화면의 '숨긴 메뉴' = 꺼내 쓸 수 있는데 지금 안 보이는 메뉴
     const hidden = base.pool.filter((k) => !shown.has(k));
     // 편집용 배치 — 숨긴 메뉴도 제자리에 둔다(화면에서 흐리게). 자리가 없는 메뉴는 끝 묶음에
-    const editor = applyPersonal(
+    // 복사본으로 — 개인 설정이 없으면 applyPersonal이 기준 구성을 그대로 돌려줘서, 아래 push가 사이드바까지 바꾼다
+    const picked = applyPersonal(
       base.layout,
       personal ? { ...personal, hidden: [] } : null,
       base.pool,
     );
+    const editor = { groups: picked.groups.map((g) => ({ ...g, items: [...g.items] })) };
     const placed = new Set(layoutKeys(editor));
     const extra = hidden.filter((k) => !placed.has(k));
     if (extra.length) editor.groups.push({ label: '그 밖의 메뉴', items: extra });

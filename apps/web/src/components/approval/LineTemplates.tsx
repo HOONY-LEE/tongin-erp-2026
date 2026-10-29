@@ -5,13 +5,12 @@ import {
   APPROVAL_DOC_TYPES,
   APPROVAL_DOC_TYPE_LABEL,
   APPROVAL_RESOLVER_LABEL,
-  type ApprovalDocType,
   type ApprovalLineRule,
   type ApprovalResolver,
   type ApprovalStepKind,
 } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
-import { useDirectory } from '../../lib/approvals';
+import { lineKeyLabel, useApprovalForms, useDirectory } from '../../lib/approvals';
 import {
   Badge,
   Button,
@@ -27,7 +26,8 @@ import styles from './approval.module.css';
 
 interface Template {
   id: string;
-  docType: ApprovalDocType;
+  /** 문서 종류 또는 결재 양식 'FORM:<id>' */
+  docType: string;
   orgUnitId: string | null;
   name: string;
   steps: ApprovalLineRule[];
@@ -44,6 +44,7 @@ const EMPTY_RULE: ApprovalLineRule = { kind: 'APPROVER', resolver: 'DEPT_HEAD' }
 export function LineTemplates() {
   const toast = useToast();
   const { people, orgs } = useDirectory();
+  const { forms } = useApprovalForms(true);
   const [rows, setRows] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Template | 'new' | null>(null);
@@ -81,7 +82,7 @@ export function LineTemplates() {
   const columns: Column[] = [
     {
       title: '문서 종류',
-      render: (r) => APPROVAL_DOC_TYPE_LABEL[r.docType as ApprovalDocType] ?? String(r.docType),
+      render: (r) => lineKeyLabel(String(r.docType), forms),
     },
     {
       title: '적용 조직',
@@ -137,7 +138,18 @@ function TemplateEditor({
 }) {
   const toast = useToast();
   const { people, orgs } = useDirectory();
-  const [docType, setDocType] = useState<ApprovalDocType>(initial?.docType ?? 'LEAVE');
+  const { forms } = useApprovalForms(true);
+  const [docType, setDocType] = useState<string>(initial?.docType ?? 'LEAVE');
+  // 문서 종류 + 관리자가 만든 결재 양식(양식마다 결재선을 따로 둘 수 있다)
+  const keyOptions = [
+    ...APPROVAL_DOC_TYPES.filter((d) => d !== 'FORM').map((d) => ({
+      value: d as string,
+      label: APPROVAL_DOC_TYPE_LABEL[d],
+    })),
+    ...forms
+      .filter((f) => f.kind === 'CUSTOM')
+      .map((f) => ({ value: `FORM:${f.id}`, label: `양식 · ${f.name}` })),
+  ];
   const [orgUnitId, setOrgUnitId] = useState<string>(initial?.orgUnitId ?? COMPANY);
   const [name, setName] = useState(initial?.name ?? '');
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
@@ -178,7 +190,7 @@ function TemplateEditor({
       const body = JSON.stringify({
         docType,
         orgUnitId: orgUnitId === COMPANY ? null : orgUnitId,
-        name: name.trim() || `${APPROVAL_DOC_TYPE_LABEL[docType]} 결재선`,
+        name: name.trim() || `${lineKeyLabel(docType, forms)} 결재선`,
         steps,
         isActive,
       });
@@ -230,14 +242,7 @@ function TemplateEditor({
         <div className={styles.lineAdd}>
           <label className={styles.fieldLabel} style={{ flex: '1 1 160px' }}>
             문서 종류
-            <Select
-              value={docType}
-              onValueChange={(v) => setDocType(v as ApprovalDocType)}
-              options={APPROVAL_DOC_TYPES.map((d) => ({
-                value: d,
-                label: APPROVAL_DOC_TYPE_LABEL[d],
-              }))}
-            />
+            <Select value={docType} onValueChange={setDocType} options={keyOptions} />
           </label>
           <label className={styles.fieldLabel} style={{ flex: '1 1 180px' }}>
             적용 조직
@@ -264,7 +269,7 @@ function TemplateEditor({
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={`예: ${APPROVAL_DOC_TYPE_LABEL[docType]} 기본`}
+            placeholder={`예: ${lineKeyLabel(docType, forms)} 기본`}
           />
         </label>
 

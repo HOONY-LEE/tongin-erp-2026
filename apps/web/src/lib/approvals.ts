@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ApprovalDocType, ApprovalStepKind } from '@tongin/shared';
+import {
+  APPROVAL_DOC_TYPE_LABEL,
+  type ApprovalDocType,
+  type ApprovalStepKind,
+  type FormField,
+  type LeaveFormSettings,
+} from '@tongin/shared';
 import { api, cachedApi } from './api';
 import type { StatusMap } from '../components/ui';
 
@@ -123,3 +129,45 @@ export function usePendingApprovals(enabled: boolean) {
 }
 
 export const notifyApprovalsChanged = () => window.dispatchEvent(new Event('approvals:changed'));
+
+/** 결재 양식(관리자가 항목을 정의한 신청서) */
+export interface ApprovalFormDef {
+  id: string;
+  kind: 'CUSTOM' | 'LEAVE';
+  name: string;
+  category: string | null;
+  description: string | null;
+  fields: FormField[];
+  settings: Partial<LeaveFormSettings>;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+/** 결재 양식 목록 — all=true면(관리) 꺼진 양식·휴가 신청서까지 */
+export function useApprovalForms(all = false) {
+  const [forms, setForms] = useState<ApprovalFormDef[]>([]);
+  const [loading, setLoading] = useState(true);
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      setForms(await api<ApprovalFormDef[]>(`/approval-forms${all ? '?all=1' : ''}`));
+    } catch {
+      setForms([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [all]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+  return { forms, loading, reload };
+}
+
+/** 기본 결재선 열쇠 이름 — 문서 종류 또는 결재 양식 이름 */
+export function lineKeyLabel(key: string, forms: ApprovalFormDef[]) {
+  if (key.startsWith('FORM:')) {
+    const f = forms.find((x) => x.id === key.slice(5));
+    return f ? `양식 · ${f.name}` : '양식(지워짐)';
+  }
+  return APPROVAL_DOC_TYPE_LABEL[key as ApprovalDocType] ?? key;
+}

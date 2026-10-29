@@ -16,6 +16,7 @@ import {
   type ApprovalLineEntry,
   type AttendanceStatus,
   type AuthPrincipal,
+  type LeaveSlot,
   type WorkSettings,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -51,7 +52,7 @@ const SETTING_CODES: Record<keyof WorkSettings, string> = {
 };
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-type LeaveKind = 'FULL' | 'AM' | 'PM';
+type LeaveKind = 'FULL' | LeaveSlot;
 
 /** 엑셀 업로드 미리보기 한 줄 */
 export interface ImportRow {
@@ -218,7 +219,10 @@ export class AttendanceService implements OnModuleInit {
     const map = new Map<string, { kind: LeaveKind; name: string }>();
     for (const r of rows) {
       const half = Number(r.leaveType.unitDays) < 1;
-      const kind: LeaveKind = !half ? 'FULL' : r.leaveType.code.includes('PM') ? 'PM' : 'AM';
+      // 시간대를 고른 신청(반차·반반차)은 그대로, 예전 '오전/오후 반차' 종류는 이름으로
+      const kind: LeaveKind = !half
+        ? 'FULL'
+        : ((r.slot as LeaveSlot | null) ?? (r.leaveType.code.includes('PM') ? 'PM' : 'AM'));
       for (let d = ymd(r.startDate); d <= ymd(r.endDate); d = addDaysYmd(d, 1)) {
         if (d < from || d > to) continue;
         map.set(`${r.employeeId}|${d}`, { kind, name: r.leaveType.name });
