@@ -42,6 +42,9 @@ model OrgUnit {
   invoices        Invoice[]        @relation("InvoiceOrg")
   materialOrders  MaterialOrder[]
   calendarEvents  CalendarEvent[]
+  noticeOrgUnits  NoticeOrgUnit[]  @relation("NoticeOrgUnits")
+  teamTasks       TeamTask[]       @relation("TeamTasks")
+  branchCases     BranchCase[]     @relation("BranchCases")
 
   @@map("org_unit")
 }
@@ -97,6 +100,11 @@ model Employee {
   attendanceRecords  AttendanceRecord[]
   checklistItems     EmployeeChecklistItem[]
   histories          EmployeeHistory[]
+  noticesAuthored    Notice[]              @relation("NoticeAuthor")
+  tasksAssigned      TeamTask[]            @relation("TaskAssignee")
+  tasksRequested     TeamTask[]            @relation("TaskRequester")
+  assetsManaged      CorpAsset[]           @relation("AssetManager")
+  branchCases        BranchCase[]          @relation("BranchCaseAssignee")
 
   @@map("employee")
 }
@@ -1409,4 +1417,105 @@ model EmployeeHistory {
 
   @@index([employeeId, effectiveDate])
   @@map("employee_history")
+}
+
+// ── 공통 업무: 공지사항 · 팀 업무 · 계약·자산 · 지점 관리 기록 ──
+
+/// 공지사항 — 전사(ALL) 또는 고른 조직(ORG, notice_org_unit). 조직 공지는 그 조직과 하위 조직 사람이 본다
+model Notice {
+  id           String          @id @default(uuid()) @db.Uuid
+  title        String
+  body         String
+  audience     String          @default("ALL") // ALL | ORG
+  pinned       Boolean         @default(false)
+  authorEmpId  String?         @map("author_emp_id") @db.Uuid
+  author       Employee?       @relation("NoticeAuthor", fields: [authorEmpId], references: [id], onDelete: SetNull)
+  authorUserId String?         @map("author_user_id") @db.Uuid
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  orgUnits     NoticeOrgUnit[]
+
+  @@index([pinned, createdAt])
+  @@map("notice")
+}
+
+model NoticeOrgUnit {
+  noticeId  String  @map("notice_id") @db.Uuid
+  notice    Notice  @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  orgUnitId String  @map("org_unit_id") @db.Uuid
+  orgUnit   OrgUnit @relation("NoticeOrgUnits", fields: [orgUnitId], references: [id], onDelete: Cascade)
+
+  @@id([noticeId, orgUnitId])
+  @@index([orgUnitId])
+  @@map("notice_org_unit")
+}
+
+/// 팀 업무 — 팀별 '담당자별 업무·업무일지' 시트를 대신한다. 다른 팀이 요청(requester)해 올릴 수도 있다
+model TeamTask {
+  id              String    @id @default(uuid()) @db.Uuid
+  title           String
+  description     String?
+  teamOrgId       String    @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프)
+  team            OrgUnit   @relation("TeamTasks", fields: [teamOrgId], references: [id])
+  assigneeEmpId   String?   @map("assignee_emp_id") @db.Uuid
+  assignee        Employee? @relation("TaskAssignee", fields: [assigneeEmpId], references: [id], onDelete: SetNull)
+  requesterEmpId  String?   @map("requester_emp_id") @db.Uuid
+  requester       Employee? @relation("TaskRequester", fields: [requesterEmpId], references: [id], onDelete: SetNull)
+  project         String? // 사업·프로젝트 태그(예: 무브제 컨시어지)
+  status          String    @default("TODO") // TODO | IN_PROGRESS | HOLD | DONE
+  priority        String    @default("B") // A | B | C
+  dueDate         DateTime? @map("due_date") @db.Date
+  doneAt          DateTime? @map("done_at") @db.Timestamptz(6)
+  createdByUserId String?   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([teamOrgId, status])
+  @@index([assigneeEmpId])
+  @@index([requesterEmpId])
+  @@map("team_task")
+}
+
+/// 계약·자산(총무) — 특허·상표권·임대차·보험·리스 등. 만료·갱신일(endDate)을 목록에서 D-day로 본다
+model CorpAsset {
+  id           String    @id @default(uuid()) @db.Uuid
+  kind         String // PATENT | TRADEMARK | LEASE | INSURANCE | RENTAL | ETC
+  name         String
+  counterparty String? // 상대방(임대인·보험사·리스사·특허청 등)
+  refNo        String?   @map("ref_no") // 등록·계약 번호
+  startDate    DateTime? @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date // 만료·갱신일
+  amount       Decimal?  @db.Decimal(14, 2)
+  amountUnit   String?   @map("amount_unit") // MONTH | YEAR | TOTAL
+  managerEmpId String?   @map("manager_emp_id") @db.Uuid
+  manager      Employee? @relation("AssetManager", fields: [managerEmpId], references: [id], onDelete: SetNull)
+  memo         String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([endDate])
+  @@map("corp_asset")
+}
+
+/// 지점 관리 기록(가맹팀) — 지점별 현장점검·불법영업·보험처리·소송·재계약·민원
+model BranchCase {
+  id              String    @id @default(uuid()) @db.Uuid
+  branchId        String    @map("branch_id") @db.Uuid // 지점(데이터범위 스코프)
+  branch          OrgUnit   @relation("BranchCases", fields: [branchId], references: [id])
+  kind            String // INSPECTION | ILLEGAL | INSURANCE | LAWSUIT | RENEWAL | COMPLAINT
+  title           String
+  content         String?
+  status          String    @default("OPEN") // OPEN | IN_PROGRESS | CLOSED
+  occurredAt      DateTime  @map("occurred_at") @db.Date
+  dueDate         DateTime? @map("due_date") @db.Date
+  assigneeEmpId   String?   @map("assignee_emp_id") @db.Uuid
+  assignee        Employee? @relation("BranchCaseAssignee", fields: [assigneeEmpId], references: [id], onDelete: SetNull)
+  amount          Decimal?  @db.Decimal(14, 2)
+  createdByUserId String?   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([branchId, occurredAt])
+  @@index([status])
+  @@map("branch_case")
 }

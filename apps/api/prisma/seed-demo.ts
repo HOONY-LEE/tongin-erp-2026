@@ -108,6 +108,11 @@ const HQ_EXCLUDE = [
   /^AUDIT\./,
   /^AI\.MANAGE$/,
   /^(ORG_UNIT|COMMON_CODE|EMPLOYEE)\.(CREATE|UPDATE|DELETE)$/,
+  // 공지 작성·계약/자산·지점 관리 기록은 맡은 팀(경영관리·가맹)에 따로 준다 — 이미 있는 DB에 더한
+  // 마이그레이션 20261029100100_team_work_permissions와 같은 범위(공지 조회, 팀 업무 조회·등록·수정)
+  /^NOTICE\.(CREATE|UPDATE|DELETE)$/,
+  /^TASK\.DELETE$/,
+  /^(ASSET|BRANCH_CASE)\./,
 ];
 
 /** 이름 칸에서 사람 이름만 — 사람 이름이 아니면(공용·시험 계정) null */

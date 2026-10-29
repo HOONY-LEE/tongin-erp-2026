@@ -41,6 +41,18 @@ export class ScopeService {
     return [...all];
   }
 
+  /** 이 조직 + 위로 올라가는 모든 상위 조직 id(공지: 상위 조직에 건 공지도 하위 사람이 본다) */
+  async withAncestors(orgUnitId: string): Promise<string[]> {
+    const children = await this.childrenMap();
+    const parent = new Map<string, string>();
+    for (const [p, list] of children) for (const c of list) parent.set(c, p);
+    const out = [orgUnitId];
+    for (let cur = parent.get(orgUnitId); cur && !out.includes(cur); cur = parent.get(cur)) {
+      out.push(cur);
+    }
+    return out;
+  }
+
   /**
    * 부모 id → 자식 id 목록. 예전엔 조직 깊이만큼 쿼리를 순서대로 보냈다(DB 왕복 ~200ms × 3~4).
    * 조직은 100여 행이라 통째로 읽어 60초 캐시하고, 조직을 고치면 invalidateOrgTree()로 비운다.

@@ -52,6 +52,10 @@ const Accounts = lazy(() => import('./pages/Accounts'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const PartnerMgmt = lazy(() => import('./pages/PartnerMgmt'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
+const Notices = lazy(() => import('./pages/Notices'));
+const Tasks = lazy(() => import('./pages/Tasks'));
+const Assets = lazy(() => import('./pages/Assets'));
+const BranchCases = lazy(() => import('./pages/BranchCases'));
 const FieldLayout = lazy(() => import('./field/FieldLayout'));
 const FieldWorkOrders = lazy(() => import('./field/FieldWorkOrders'));
 const FieldWorkOrderDetail = lazy(() => import('./field/FieldWorkOrderDetail'));
@@ -131,6 +135,11 @@ function Shell() {
         <Route path="/leave" element={page(<Leave />)} />
         <Route path="/attendance" element={page(<Attendance />)} />
         <Route path="/accounts" element={page(<Accounts />)} />
+        {/* 공통 업무 — 공지사항·팀 업무·계약/자산·지점 관리 기록 */}
+        <Route path="/notices" element={page(<Notices />)} />
+        <Route path="/tasks" element={page(<Tasks />)} />
+        <Route path="/assets" element={page(<Assets />)} />
+        <Route path="/branch-cases" element={page(<BranchCases />)} />
         <Route path="/agent-builder" element={page(<AgentBlueprints />)} />
         <Route path="/agent-builder/new" element={page(<AgentCreate />)} />
         <Route path="/agent-builder/:id" element={page(<AgentBuilder />)} />
