@@ -65,9 +65,9 @@ export function useWorkDirectory() {
     return {
       /** 직원 선택지 — 본사 팀별 묶음 */
       peopleGroups: groups,
-      /** 팀 선택지 — 본사 부서 */
+      /** 팀 선택지 — 본사 부서·TF */
       teamOptions: orgs
-        .filter((o) => o.type === 'DEPT')
+        .filter((o) => o.type === 'DEPT' || o.type === 'TF')
         .map((o) => ({ value: o.id, label: o.name })),
       /** 공지 대상 — 지점을 뺀 조직(그룹·회사·부서). 회사에 걸면 그 아래 지점까지 본다 */
       audienceOrgs: hqOrgs,

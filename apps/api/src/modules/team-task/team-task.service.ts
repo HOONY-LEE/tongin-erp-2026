@@ -79,7 +79,9 @@ export class TeamTaskService {
         if (!p.employeeOrgUnitId) {
           throw new ForbiddenException('소속 팀이 없는 계정입니다 — 전체 보기를 쓰세요.');
         }
-        where = { AND: [{ teamOrgId: p.employeeOrgUnitId }, inScope] };
+        // 우리 팀 = 주 소속 + 겸직(추가 소속) 팀
+        const teams = [p.employeeOrgUnitId, ...(p.concurrentOrgUnitIds ?? [])];
+        where = { AND: [{ teamOrgId: { in: teams } }, inScope] };
       } else {
         where = inScope;
       }

@@ -29,6 +29,8 @@ interface Spec {
   orgs?: string[];
   positions?: string[];
   roles?: string[];
+  /** 계정(로그인 아이디) 직접 지정 — 소속은 다르지만 이 팀 메뉴가 필요한 사람 */
+  users?: string[];
   isDefault?: boolean;
   layout: MenuLayout;
 }
@@ -104,6 +106,7 @@ const SPECS: Spec[] = [
     description: '기업 이전 영업·견적·파트너',
     priority: 50,
     orgs: ['기업영업'],
+    users: ['minkeun_shin'], // 부동산사업부 신민근 소장 — 기업 영업도 함께 본다
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks'] },
@@ -120,7 +123,7 @@ const SPECS: Spec[] = [
     name: '통인TF팀',
     description: '무브제·전속제휴 — 사업별 추진 업무 중심',
     priority: 50,
-    orgs: ['무브제', '전속제휴'],
+    orgs: ['무브제', '전속제휴', '통인TF'], // 통인TF(TF 조직)를 만들면 겸직으로 모인 사람에게도
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices'] },
@@ -280,14 +283,16 @@ async function seedTeamRoles(orgId: Map<string, string>) {
 }
 
 async function main() {
-  const [orgs, positions, roles] = await Promise.all([
+  const [orgs, positions, roles, users] = await Promise.all([
     prisma.orgUnit.findMany({
       where: { type: { not: 'BRANCH' } },
       select: { id: true, name: true },
     }),
     prisma.position.findMany({ select: { id: true, name: true } }),
     prisma.role.findMany({ select: { id: true, code: true } }),
+    prisma.appUser.findMany({ select: { id: true, loginId: true } }),
   ]);
+  const userId = new Map(users.map((u) => [u.loginId, u.id]));
   const orgId = new Map(orgs.map((o) => [o.name, o.id]));
   const posId = new Map(positions.map((p) => [p.name, p.id]));
   const roleId = new Map(roles.map((r) => [r.code, r.id]));
@@ -298,9 +303,14 @@ async function main() {
       ...(s.orgs ?? []).map((n) => ({ kind: 'ORG', targetId: orgId.get(n) })),
       ...(s.positions ?? []).map((n) => ({ kind: 'POSITION', targetId: posId.get(n) })),
       ...(s.roles ?? []).map((c) => ({ kind: 'ROLE', targetId: roleId.get(c) })),
+      ...(s.users ?? []).map((l) => ({ kind: 'USER', targetId: userId.get(l) })),
     ].filter((t): t is { kind: string; targetId: string } => !!t.targetId);
     const missing =
-      (s.orgs?.length ?? 0) + (s.positions?.length ?? 0) + (s.roles?.length ?? 0) - targets.length;
+      (s.orgs?.length ?? 0) +
+      (s.positions?.length ?? 0) +
+      (s.roles?.length ?? 0) +
+      (s.users?.length ?? 0) -
+      targets.length;
     if (missing) console.warn(`'${s.name}' — 조직도에 없는 대상 ${missing}개는 건너뜀`);
 
     const existing = await prisma.menuProfile.findFirst({

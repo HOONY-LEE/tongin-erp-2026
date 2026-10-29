@@ -161,7 +161,17 @@ export default function Employees({ view = 'list', branch }: Props) {
     // 지점 상세 안에선 모두 같은 지점이라 칸을 뺀다
     ...(branch
       ? []
-      : [{ title: orgLabel, render: (r: Row) => orgName.get(String(r.orgUnitId)) ?? '-' }]),
+      : [
+          { title: orgLabel, render: (r: Row) => orgName.get(String(r.orgUnitId)) ?? '-' },
+          {
+            title: '겸직',
+            render: (r: Row) =>
+              ((r.concurrentOrgs as { orgUnitId: string }[] | undefined) ?? [])
+                .map((c) => orgName.get(c.orgUnitId))
+                .filter(Boolean)
+                .join(', ') || '-',
+          },
+        ]),
     { title: '상태', render: (r) => (r.isActive ? '재직' : '비활성') },
   ];
 

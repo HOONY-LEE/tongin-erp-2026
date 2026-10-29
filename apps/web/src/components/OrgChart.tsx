@@ -10,6 +10,13 @@ export interface OrgChartEmployee {
   name: string;
   isActive?: boolean;
   position?: { name: string; sortOrder?: number | null } | null;
+  /** 겸직(추가 소속) — 그 조직 상자에도 '겸직' 표시와 함께 나온다 */
+  concurrentOrgs?: {
+    orgUnitId: string;
+    position?: { name: string; sortOrder?: number | null } | null;
+  }[];
+  /** 조직도 안에서만 쓰는 표시 — 이 상자에선 겸직으로 나온 사람 */
+  concurrent?: boolean;
 }
 
 interface Props {
@@ -38,8 +45,11 @@ interface Node {
 const isLeafGroup = (n: Node) =>
   n.children.length >= 3 && n.children.every((c) => c.children.length === 0);
 
+// 주 소속 사람이 먼저, 겸직은 뒤에 — 그 안에서 직책 순
 const byPosition = (a: OrgChartEmployee, b: OrgChartEmployee) =>
-  (a.position?.sortOrder ?? 999) - (b.position?.sortOrder ?? 999) || a.name.localeCompare(b.name);
+  Number(!!a.concurrent) - Number(!!b.concurrent) ||
+  (a.position?.sortOrder ?? 999) - (b.position?.sortOrder ?? 999) ||
+  a.name.localeCompare(b.name);
 
 /**
  * 본사 조직도 — 그룹 → 법인 → 부서를 위에서 아래로 잇는다.
@@ -57,10 +67,16 @@ export function OrgChart({
     const hqIds = new Set(hq.map((u) => u.id));
     const active = (employees ?? []).filter((e) => e.isActive !== false);
     const membersOf = new Map<string, OrgChartEmployee[]>();
-    for (const e of active) {
-      const list = membersOf.get(e.orgUnitId) ?? [];
+    const push = (orgId: string, e: OrgChartEmployee) => {
+      const list = membersOf.get(orgId) ?? [];
       list.push(e);
-      membersOf.set(e.orgUnitId, list);
+      membersOf.set(orgId, list);
+    };
+    for (const e of active) {
+      push(e.orgUnitId, e);
+      // 겸직 조직 상자에도 — 그 조직 직책이 있으면 그 직책으로
+      for (const c of e.concurrentOrgs ?? [])
+        push(c.orgUnitId, { ...e, position: c.position ?? null, concurrent: true });
     }
     const build = (u: OrgUnitRow): Node => {
       const members = (membersOf.get(u.id) ?? []).sort(byPosition);
@@ -105,6 +121,7 @@ export function OrgChart({
               >
                 <span className={styles.memberName}>{e.name}</span>
                 {e.position?.name && <span className={styles.memberPos}>{e.position.name}</span>}
+                {e.concurrent && <span className={styles.memberConcurrent}>겸직</span>}
               </button>
             </div>
           ))}
