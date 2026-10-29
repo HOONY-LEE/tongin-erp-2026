@@ -1,5 +1,5 @@
 /**
- * 메뉴 구성 — 대표님 + 본사 7개 팀 + 가맹점(지점) + 기본(전체).
+ * 메뉴 구성 — 대표님 + 본사 팀(부서별) + 가맹점(지점) + 기본(전체).
  *
  *   pnpm --filter @tongin/api demo:seed:menus
  *
@@ -123,7 +123,7 @@ const SPECS: Spec[] = [
     name: '통인TF팀',
     description: '무브제·전속제휴 — 사업별 추진 업무 중심',
     priority: 50,
-    orgs: ['무브제', '전속제휴', '통인TF'], // 통인TF(TF 조직)를 만들면 겸직으로 모인 사람에게도
+    orgs: ['무브제', '전속제휴'],
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices'] },
@@ -150,15 +150,29 @@ const SPECS: Spec[] = [
       ],
     },
   },
+  // 디자인·마케팅은 따로 있는 부서 — 하는 일이 맞닿아 메뉴는 같은 모양으로 둔다
   {
-    name: '홍보디자인팀',
-    description: '디자인·홍보 요청 처리와 마케팅 캠페인',
+    name: '디자인팀',
+    description: '디자인·홍보물 요청 처리 — 팀 업무 중심',
     priority: 50,
-    orgs: ['디자인', '마케팅'],
+    orgs: ['디자인'],
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices'] },
         { label: '디자인·홍보', items: ['tasks', 'campaigns', 'branches'] },
+        MY,
+      ],
+    },
+  },
+  {
+    name: '마케팅팀',
+    description: '마케팅 캠페인·홍보 — 캠페인과 팀 업무 중심',
+    priority: 50,
+    orgs: ['마케팅'],
+    layout: {
+      groups: [
+        { label: '홈', items: ['dashboard', 'ai', 'notices'] },
+        { label: '마케팅·홍보', items: ['campaigns', 'tasks', 'branches'] },
         MY,
       ],
     },
