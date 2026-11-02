@@ -233,6 +233,19 @@
 }
 
 /* 사이드바 헤더 높이를 상단 헤더(46px)와 맞춰 경계선이 일직선으로 이어지도록 */
+/* 메뉴 묶음 사이 간격(기본 24px)을 줄이고, 묶음 이름은 본문보다 한 단계 작고 덜 굵게 */
+.sidebarWrap [class*='_group_'] {
+  margin-bottom: 12px;
+}
+.sidebarWrap [class*='_groupLabelBtn_'],
+.sidebarWrap [class*='_groupLabel_'] {
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+}
+/* 아래 설정 칸 — 낮게 */
+.sidebarWrap [class*='sidebarFooter'] {
+  padding: 6px 12px;
+}
 .sidebarWrap [class*='sidebarHeader'] {
   height: 46px !important;
   min-height: 46px !important;

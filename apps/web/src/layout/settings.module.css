@@ -172,22 +172,32 @@
   flex-shrink: 0;
 }
 
-/* 사이드바 아래 설정 버튼 */
+/* 사이드바 아래 설정 버튼 — 아이콘 + 글자, 왼쪽 정렬(접으면 아이콘만 가운데) */
 .sideFoot {
   display: flex;
-  justify-content: flex-end;
 }
 .sideFootCollapsed {
   justify-content: center;
 }
 .gear {
   display: flex;
-  padding: 8px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 4px;
   border: none;
   border-radius: 8px;
   background: transparent;
   color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: var(--ark-font-size-sm);
+  text-align: left;
   cursor: pointer;
+}
+.sideFootCollapsed .gear {
+  justify-content: center;
+  width: auto;
+  padding: 6px;
 }
 .gear:hover {
   background: var(--ark-color-bg-muted);

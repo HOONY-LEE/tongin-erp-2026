@@ -267,7 +267,8 @@ export default function AppLayout() {
                   aria-label="설정"
                   onClick={() => setSettingsOpen(true)}
                 >
-                  <Settings size={18} />
+                  <Settings size={16} />
+                  {!collapsed && <span>설정</span>}
                 </button>
               </div>
             }
