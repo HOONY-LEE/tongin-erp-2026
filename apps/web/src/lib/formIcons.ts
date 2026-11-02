@@ -1,0 +1,60 @@
+import {
+  BookOpen,
+  Briefcase,
+  Building2,
+  CalendarClock,
+  CalendarOff,
+  Car,
+  ClipboardCheck,
+  Clock,
+  CreditCard,
+  FileText,
+  Gift,
+  GraduationCap,
+  HeartPulse,
+  House,
+  Laptop,
+  Megaphone,
+  Package,
+  Plane,
+  Receipt,
+  ShoppingCart,
+  Truck,
+  Users,
+  Wallet,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
+import type { FormIcon } from '@tongin/shared';
+
+/** 결재 양식 아이콘 이름 → 아이콘(@tongin/shared FORM_ICONS와 같은 목록) */
+export const FORM_ICON_MAP: Record<FormIcon, LucideIcon> = {
+  FileText,
+  Receipt,
+  Wallet,
+  CreditCard,
+  ShoppingCart,
+  Package,
+  Truck,
+  Car,
+  Plane,
+  Briefcase,
+  House,
+  Laptop,
+  Wrench,
+  CalendarOff,
+  CalendarClock,
+  Clock,
+  GraduationCap,
+  HeartPulse,
+  Gift,
+  Megaphone,
+  Users,
+  Building2,
+  ClipboardCheck,
+  BookOpen,
+};
+
+/** 양식 아이콘 — 없거나 모르는 이름이면 문서 아이콘 */
+export const formIcon = (name?: string | null): LucideIcon =>
+  (name && FORM_ICON_MAP[name as FormIcon]) || FileText;

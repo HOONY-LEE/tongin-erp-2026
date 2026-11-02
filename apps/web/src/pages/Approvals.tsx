@@ -30,7 +30,9 @@ import { ApprovalDetail } from '../components/approval/ApprovalDetail';
 import { ApprovalLineEditor } from '../components/approval/ApprovalLineEditor';
 import { LineTemplates } from '../components/approval/LineTemplates';
 import { FormsAdmin } from '../components/approval/FormsAdmin';
-import { FormDraftModal, NewDocPicker } from '../components/approval/NewDocPicker';
+import { FormDraftModal, NewDocPicker, QuickApply } from '../components/approval/NewDocPicker';
+import { LeaveApplyModal } from './Leave';
+import qstyles from '../components/approval/newDoc.module.css';
 import styles from '../components/approval/approval.module.css';
 
 type Box = 'todo' | 'mine' | 'cc' | 'all' | 'forms' | 'lines';
@@ -55,7 +57,9 @@ export default function Approvals() {
   const [loading, setLoading] = useState(false);
   const [todoCount, setTodoCount] = useState(0);
   // 새 결재 — 고르기 → 일반 품의 / 결재 양식 작성
-  const [writing, setWriting] = useState<'pick' | 'general' | ApprovalFormDef | null>(null);
+  const [writing, setWriting] = useState<'pick' | 'general' | 'leave' | ApprovalFormDef | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     if (box === 'lines' || box === 'forms') return;
@@ -156,7 +160,19 @@ export default function Approvals() {
       title={t('nav.approvals')}
       onRefresh={load}
       updatedAt={updatedAt}
-      footer={<SegmentedControl value={box} onChange={(v) => setBox(v as Box)} options={options} />}
+      footer={
+        // 제목과 탭 사이 — 바로 신청하기 카드(직원 계정, 문서 목록 탭에서만)
+        <div className={qstyles.headStack}>
+          {user?.employeeId && box !== 'forms' && box !== 'lines' && (
+            <QuickApply
+              onGeneral={() => setWriting('general')}
+              onLeave={() => setWriting('leave')}
+              onPickForm={(f) => setWriting(f)}
+            />
+          )}
+          <SegmentedControl value={box} onChange={(v) => setBox(v as Box)} options={options} />
+        </div>
+      }
     >
       {box === 'lines' ? (
         <LineTemplates />
@@ -181,7 +197,19 @@ export default function Approvals() {
         <NewDocPicker
           onClose={() => setWriting(null)}
           onGeneral={() => setWriting('general')}
+          onLeave={() => setWriting('leave')}
           onPickForm={(f) => setWriting(f)}
+        />
+      )}
+      {writing === 'leave' && (
+        <LeaveApplyModal
+          onClose={() => setWriting(null)}
+          onDone={() => {
+            setWriting(null);
+            notifyApprovalsChanged();
+            setBox('mine');
+            void load();
+          }}
         />
       )}
       {writing === 'general' && (

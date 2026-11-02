@@ -292,3 +292,42 @@
   gap: 12px;
   padding: 16px 24px;
 }
+
+/* 결재 양식 목록 — 아이콘 + 이름 */
+.formNameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.formNameCell > svg {
+  flex-shrink: 0;
+  color: var(--ark-color-text-secondary);
+}
+
+/* 결재 양식 아이콘 고르기 */
+.iconGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.iconChoice {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.iconChoice:hover {
+  border-color: var(--ark-color-border-strong);
+  color: var(--ark-color-text);
+}
+.iconChoiceOn,
+.iconChoiceOn:hover {
+  border-color: var(--chip-on-bg);
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
+}

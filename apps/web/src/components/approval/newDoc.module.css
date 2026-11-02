@@ -57,3 +57,44 @@
   font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
+
+/* 결재함 머리글 — 바로 신청하기 카드 + 탭 */
+.headStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.quick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.quickCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 14px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.quickCard:hover {
+  border-color: var(--ark-color-border-strong);
+  background: var(--ark-color-bg-subtle);
+}
+.quickCard > svg {
+  flex-shrink: 0;
+  color: var(--ark-color-primary-500);
+}
+.quickCard b {
+  overflow: hidden;
+  font-size: var(--ark-font-size-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

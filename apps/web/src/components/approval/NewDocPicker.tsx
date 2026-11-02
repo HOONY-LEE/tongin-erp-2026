@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CalendarOff, FileText, Search } from 'lucide-react';
 import { useApprovalForms, type ApprovalFormDef } from '../../lib/approvals';
 import { api, ApiError } from '../../lib/api';
@@ -7,6 +6,7 @@ import { toLinePayload, type ApprovalDocView, type LineEntry } from '../../lib/a
 import { Button, Input, Modal, useToast } from '../ui';
 import { ApprovalLineEditor } from './ApprovalLineEditor';
 import { FormFieldInputs, formReady, type FormDraft } from './FormFields';
+import { formIcon } from '../../lib/formIcons';
 import styles from './newDoc.module.css';
 import astyles from './approval.module.css';
 
@@ -17,13 +17,15 @@ import astyles from './approval.module.css';
 export function NewDocPicker({
   onClose,
   onGeneral,
+  onLeave,
   onPickForm,
 }: {
   onClose: () => void;
   onGeneral: () => void;
+  /** 휴가 신청 창 열기(결재함 안에서) */
+  onLeave: () => void;
   onPickForm: (form: ApprovalFormDef) => void;
 }) {
-  const navigate = useNavigate();
   const { forms, loading } = useApprovalForms();
   const [q, setQ] = useState('');
   const groups = useMemo(() => {
@@ -51,7 +53,7 @@ export function NewDocPicker({
             <b>일반 품의</b>
             <span>제목과 내용을 자유롭게 써서 올립니다</span>
           </button>
-          <button type="button" className={styles.card} onClick={() => navigate('/leave?apply=1')}>
+          <button type="button" className={styles.card} onClick={onLeave}>
             <CalendarOff size={18} aria-hidden />
             <b>휴가 신청</b>
             <span>연차·반차·반반차 — 휴가 화면에서 남은 연차를 보며 신청</span>
@@ -76,7 +78,7 @@ export function NewDocPicker({
                   className={styles.card}
                   onClick={() => onPickForm(f)}
                 >
-                  <FileText size={18} aria-hidden />
+                  <FormIconView name={f.icon} />
                   <b>{f.name}</b>
                   <span>{f.description || `항목 ${f.fields.length}개`}</span>
                 </button>
@@ -89,24 +91,76 @@ export function NewDocPicker({
   );
 }
 
-/** 결재 양식 작성 — 항목 채우기 + 결재선 → 상신 */
+const FormIconView = ({ name }: { name?: string | null }) => {
+  const Icon = formIcon(name);
+  return <Icon size={18} aria-hidden />;
+};
+
+/**
+ * 결재함 위 「바로 신청하기」 — 일반 품의·휴가 신청·쓸 수 있는 결재 양식을 카드로(새 결재 창을 열지 않고 바로)
+ */
+export function QuickApply({
+  onGeneral,
+  onLeave,
+  onPickForm,
+}: {
+  onGeneral: () => void;
+  onLeave: () => void;
+  onPickForm: (form: ApprovalFormDef) => void;
+}) {
+  const { forms } = useApprovalForms();
+  return (
+    <div className={styles.quick} aria-label="바로 신청하기">
+      <button type="button" className={styles.quickCard} onClick={onGeneral}>
+        <FileText size={18} aria-hidden />
+        <b>일반 품의</b>
+      </button>
+      <button type="button" className={styles.quickCard} onClick={onLeave}>
+        <CalendarOff size={18} aria-hidden />
+        <b>휴가 신청</b>
+      </button>
+      {forms.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className={styles.quickCard}
+          title={f.description ?? undefined}
+          onClick={() => onPickForm(f)}
+        >
+          <FormIconView name={f.icon} />
+          <b>{f.name}</b>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 결재 양식 작성 — 항목 채우기 + 결재선 → 상신. 제목은 따로 받지 않는다(「양식 이름 — 올린 사람」으로 서버가 붙인다) */
 export function FormDraftModal({
   form,
   myEmployeeId,
   onClose,
   onSubmitted,
+  onEdit,
 }: {
   form: ApprovalFormDef;
   myEmployeeId: string | null;
   onClose: () => void;
   onSubmitted: (doc: ApprovalDocView) => void;
+  /** 결재 양식 목록에서 열었을 때 — 왼쪽 아래 「결재 양식 편집하기」 */
+  onEdit?: () => void;
 }) {
   const toast = useToast();
-  const [title, setTitle] = useState('');
   const [values, setValues] = useState<FormDraft>({});
   const [line, setLine] = useState<LineEntry[] | null>(null);
   const [busy, setBusy] = useState(false);
   const ready = formReady(form.fields, values);
+  // 올릴 수 없는 이유(관리 화면에서 미리 볼 때) — 버튼을 막고 이유를 보인다
+  const blocked = !myEmployeeId
+    ? '직원과 연결된 계정만 결재를 올릴 수 있습니다'
+    : !form.isActive
+      ? '사용 중지된 양식입니다'
+      : null;
 
   const submit = async () => {
     setBusy(true);
@@ -114,7 +168,6 @@ export function FormDraftModal({
       const doc = await api<ApprovalDocView>(`/approval-forms/${form.id}/submit`, {
         method: 'POST',
         body: JSON.stringify({
-          title: title.trim() || undefined,
           values,
           line: line ? toLinePayload(line) : undefined,
         }),
@@ -137,25 +190,27 @@ export function FormDraftModal({
       description={form.description ?? undefined}
       footer={
         <>
+          {onEdit && (
+            <Button variant="outline" onClick={onEdit} style={{ marginRight: 'auto' }}>
+              결재 양식 편집하기
+            </Button>
+          )}
+          {blocked && <span className={astyles.muted}>{blocked}</span>}
           <Button variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button variant="primary" loading={busy} disabled={!ready} onClick={() => void submit()}>
-            상신
+          <Button
+            variant="primary"
+            loading={busy}
+            disabled={!ready || !!blocked}
+            onClick={() => void submit()}
+          >
+            {onEdit ? '결재 올리기' : '상신'}
           </Button>
         </>
       }
     >
       <div className={astyles.formCol}>
-        <label className={astyles.fieldLabel}>
-          제목
-          <Input
-            value={title}
-            maxLength={200}
-            placeholder={`비워 두면 「${form.name} — 내 이름」`}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
         <FormFieldInputs fields={form.fields} values={values} onChange={setValues} />
         <ApprovalLineEditor
           docType={`FORM:${form.id}`}

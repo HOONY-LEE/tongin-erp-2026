@@ -143,6 +143,8 @@ export interface ApprovalFormDef {
   settings: Partial<LeaveFormSettings>;
   /** 누가 고를 수 있나(결재 양식) */
   audience: FormAudience;
+  /** 아이콘 이름(FORM_ICONS) — 휴가 신청서는 기본 CalendarOff */
+  icon?: string | null;
   /** 전사 기본 결재선 — 관리 화면에서 ?detail=1로 읽을 때만 */
   line?: ApprovalLineRule[] | null;
   isActive: boolean;

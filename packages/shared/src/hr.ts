@@ -24,27 +24,28 @@ export function isApprovalLineKey(v: string): v is ApprovalLineKey {
 
 // ── 결재 양식(관리자가 항목을 정의하는 신청서) ──
 
+// 'text'는 여러 줄까지 받는 텍스트 하나(예전 한 줄/여러 줄 글을 합침 — 옛 'textarea'는 마이그레이션이 'text'로 바꿨다)
 export const FORM_FIELD_TYPES = [
   'text',
-  'textarea',
   'number',
   'money',
   'date',
   'daterange',
   'select',
+  'multiselect',
   'checkbox',
   'person',
   'file',
 ] as const;
 export type FormFieldType = (typeof FORM_FIELD_TYPES)[number];
 export const FORM_FIELD_TYPE_LABEL: Record<FormFieldType, string> = {
-  text: '한 줄 글',
-  textarea: '여러 줄 글',
+  text: '텍스트',
   number: '숫자',
   money: '금액(원)',
   date: '날짜',
   daterange: '기간',
-  select: '선택(하나)',
+  select: '단일 선택',
+  multiselect: '다중 선택',
   checkbox: '체크(예/아니오)',
   person: '직원',
   file: '첨부파일',
@@ -63,6 +64,35 @@ export const APPROVAL_LINE_MAX_STEPS = 10;
 /** 첨부파일 한 개 최대 크기·항목당 개수 */
 export const APPROVAL_FILE_MAX_BYTES = 10 * 1024 * 1024;
 export const APPROVAL_FILE_MAX_COUNT = 10;
+
+/** 결재 양식 아이콘 — 고를 수 있는 것만(lucide 아이콘 이름). 화면은 이름으로 아이콘을 찾는다 */
+export const FORM_ICONS = [
+  'FileText',
+  'Receipt',
+  'Wallet',
+  'CreditCard',
+  'ShoppingCart',
+  'Package',
+  'Truck',
+  'Car',
+  'Plane',
+  'Briefcase',
+  'House',
+  'Laptop',
+  'Wrench',
+  'CalendarOff',
+  'CalendarClock',
+  'Clock',
+  'GraduationCap',
+  'HeartPulse',
+  'Gift',
+  'Megaphone',
+  'Users',
+  'Building2',
+  'ClipboardCheck',
+  'BookOpen',
+] as const;
+export type FormIcon = (typeof FORM_ICONS)[number];
 
 /** 결재 양식을 누가 고를 수 있나 — 전 직원 또는 고른 조직(하위 포함)·직원만 */
 export interface FormAudience {
@@ -93,6 +123,7 @@ export type FormValue =
   | { from: string; to: string }
   | { id: string; name: string }[]
   | FormFile[]
+  | string[]
   | null;
 
 /** 휴가 신청서 설정 — 업무 대리인 지정(안 받음·선택·필수), 사유 필수 */

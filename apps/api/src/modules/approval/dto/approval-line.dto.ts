@@ -13,6 +13,7 @@ import {
   IsUUID,
   MaxLength,
   Validate,
+  ValidateIf,
   ValidateNested,
   ValidatorConstraint,
   type ValidatorConstraintInterface,
@@ -20,6 +21,7 @@ import {
 import {
   APPROVAL_LINE_MAX_STEPS,
   FORM_FIELD_TYPES,
+  FORM_ICONS,
   FORM_MAX_FIELDS,
   SUBSTITUTE_MODES,
   isApprovalLineKey,
@@ -211,6 +213,12 @@ export class SaveApprovalFormDto {
   @ValidateNested()
   @Type(() => LeaveFormSettingsDto)
   settings?: LeaveFormSettingsDto;
+
+  /** 아이콘(FORM_ICONS 중 하나) — null이면 기본 */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsIn(FORM_ICONS)
+  icon?: string | null;
 
   /** 결재 양식(CUSTOM) — 고를 수 있는 사람 */
   @IsOptional()

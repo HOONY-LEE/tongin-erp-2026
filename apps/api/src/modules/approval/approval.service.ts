@@ -704,9 +704,9 @@ export class ApprovalService {
   }
 
   /** 결재 양식의 전사 기본 결재선(양식 편집 화면에서 같이 정한다). 없으면 null */
-  async formLine(formId: string): Promise<ApprovalLineRule[] | null> {
+  async formLine(docType: string): Promise<ApprovalLineRule[] | null> {
     const t = await this.prisma.approvalLineTemplate.findFirst({
-      where: { docType: `FORM:${formId}`, orgUnitId: null },
+      where: { docType, orgUnitId: null },
     });
     return t ? (t.steps as unknown as ApprovalLineRule[]) : null;
   }
@@ -714,11 +714,10 @@ export class ApprovalService {
   /** 양식 결재선 저장 — 빈 배열이면 지운다(일반 품의 결재선을 쓴다) */
   async setFormLine(
     db: Prisma.TransactionClient,
-    formId: string,
+    docType: string,
     formName: string,
     steps: ApprovalLineRule[],
   ) {
-    const docType = `FORM:${formId}`;
     const cur = await db.approvalLineTemplate.findFirst({ where: { docType, orgUnitId: null } });
     if (!steps.length) {
       if (cur) await db.approvalLineTemplate.delete({ where: { id: cur.id } });

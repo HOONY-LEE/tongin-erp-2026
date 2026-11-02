@@ -265,14 +265,39 @@ function MyLeave() {
   );
 }
 
+/**
+ * 휴가 신청 창 — 남은 연차를 읽어 와서 띄운다. 결재함(바로 신청하기·새 결재)·결재 양식 목록에서도 연다.
+ * onEdit을 주면(결재 양식 목록) 왼쪽 아래 「결재 양식 편집하기」, 신청 버튼은 「결재 올리기」.
+ */
+export function LeaveApplyModal({
+  onClose,
+  onDone,
+  onEdit,
+}: {
+  onClose: () => void;
+  onDone: () => void;
+  onEdit?: () => void;
+}) {
+  const [balance, setBalance] = useState<LeaveBalance | null | undefined>(undefined);
+  useEffect(() => {
+    api<{ balance: LeaveBalance }>('/leave/me')
+      .then((d) => setBalance(d.balance))
+      .catch(() => setBalance(null)); // 직원과 연결 안 된 계정 — 신청은 막고 모양만 보인다
+  }, []);
+  if (balance === undefined) return null;
+  return <RequestModal balance={balance} onClose={onClose} onDone={onDone} onEdit={onEdit} />;
+}
+
 function RequestModal({
   balance,
   onClose,
   onDone,
+  onEdit,
 }: {
-  balance: LeaveBalance;
+  balance: LeaveBalance | null;
   onClose: () => void;
   onDone: () => void;
+  onEdit?: () => void;
 }) {
   const toast = useToast();
   const { user } = useAuth();
@@ -314,7 +339,8 @@ function RequestModal({
     if (half) return num(type.unitDays);
     return end && end >= start ? countWorkdays(start, end) : 0;
   }, [type, half, start, end]);
-  const available = balance.remaining - balance.pending;
+  const available = balance ? balance.remaining - balance.pending : 0;
+  const blocked = balance ? null : '직원과 연결된 계정만 휴가를 신청할 수 있습니다';
 
   const submit = async () => {
     setBusy(true);
@@ -350,6 +376,12 @@ function RequestModal({
       title="휴가 신청"
       footer={
         <>
+          {onEdit && (
+            <Button variant="outline" onClick={onEdit} style={{ marginRight: 'auto' }}>
+              결재 양식 편집하기
+            </Button>
+          )}
+          {blocked && <span className={astyles.muted}>{blocked}</span>}
           <Button variant="ghost" onClick={onClose}>
             취소
           </Button>
@@ -357,6 +389,7 @@ function RequestModal({
             variant="primary"
             loading={busy}
             disabled={
+              !!blocked ||
               !typeId ||
               !start ||
               (!half && !end) ||
@@ -368,7 +401,7 @@ function RequestModal({
             }
             onClick={() => void submit()}
           >
-            신청(결재 상신)
+            {onEdit ? '결재 올리기' : '신청(결재 상신)'}
           </Button>
         </>
       }
@@ -651,7 +684,6 @@ export function LeaveTypes() {
   const yesNo = (v: unknown) => (v ? '예' : '아니오');
   const columns: Column[] = [
     { title: '이름', dataIndex: 'name' },
-    { title: '코드', dataIndex: 'code' },
     {
       title: '단위',
       render: (r) =>
@@ -675,9 +707,6 @@ export function LeaveTypes() {
 
   const fields: FormField[] = [
     { name: 'name', label: '이름', required: true },
-    ...(editing === 'new'
-      ? [{ name: 'code', label: '코드(영문 대문자)', required: true, placeholder: '예: REFRESH' }]
-      : []),
     {
       name: 'unitDays',
       label: '단위',
