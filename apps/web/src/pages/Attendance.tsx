@@ -756,7 +756,7 @@ function ImportTab() {
   );
 }
 
-function SettingsTab() {
+export function SettingsTab() {
   const toast = useToast();
   const [s, setS] = useState<WorkSettings | null>(null);
   const [busy, setBusy] = useState(false);

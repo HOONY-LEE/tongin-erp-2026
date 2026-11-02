@@ -1,0 +1,227 @@
+/* 설정 창 — 옵시디언 설정처럼 왼쪽 목록 + 오른쪽 내용 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ark-z-modal, 400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--ark-color-overlay, rgba(0, 0, 0, 0.45));
+}
+.dialog {
+  display: flex;
+  width: min(1180px, 100%);
+  height: min(820px, calc(100vh - 48px));
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+  box-shadow: var(--ark-shadow-lg);
+}
+
+.nav {
+  flex: 0 0 248px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 12px;
+  overflow-y: auto;
+  border-right: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg-subtle);
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-bottom: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-tertiary);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: var(--ark-font-size-xs);
+}
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+.navLabel {
+  padding: 0 10px 4px;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--ark-color-text-tertiary);
+}
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: var(--ark-font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+.navItem:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.navOn,
+.navOn:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+  font-weight: 600;
+}
+.navGo {
+  margin-left: auto;
+  color: var(--ark-color-text-tertiary);
+}
+.empty {
+  margin: 12px 10px;
+  font-size: var(--ark-font-size-xs);
+  color: var(--ark-color-text-tertiary);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 28px 14px;
+}
+.head h2 {
+  margin: 0;
+  font-size: var(--ark-font-size-lg);
+}
+.head p {
+  margin: 4px 0 0;
+  font-size: var(--ark-font-size-xs);
+  color: var(--ark-color-text-tertiary);
+}
+.close {
+  display: flex;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.close:hover {
+  background: var(--ark-color-bg-muted);
+}
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 28px 28px;
+}
+
+/* 한 줄 설정(제목·설명 | 조작) */
+.card {
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px;
+}
+.card .row + .row {
+  border-top: 1px solid var(--ark-color-border);
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rowText b {
+  font-size: var(--ark-font-size-sm);
+}
+.rowText span {
+  font-size: var(--ark-font-size-xs);
+  color: var(--ark-color-text-tertiary);
+}
+.rowCtl {
+  flex-shrink: 0;
+}
+
+/* 사이드바 아래 설정 버튼 — 아이콘 + 글자, 왼쪽 정렬(접으면 아이콘만 가운데) */
+.sideFoot {
+  display: flex;
+}
+.sideFootCollapsed {
+  justify-content: center;
+}
+.gear {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  text-align: left;
+  cursor: pointer;
+}
+.sideFootCollapsed .gear {
+  justify-content: center;
+  width: auto;
+  padding: 6px;
+}
+.gear:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+
+@media (max-width: 760px) {
+  .overlay {
+    padding: 0;
+  }
+  .dialog {
+    flex-direction: column;
+    height: 100vh;
+    border-radius: 0;
+  }
+  .nav {
+    flex: 0 0 auto;
+    max-height: 38vh;
+    border-right: none;
+    border-bottom: 1px solid var(--ark-color-border);
+  }
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

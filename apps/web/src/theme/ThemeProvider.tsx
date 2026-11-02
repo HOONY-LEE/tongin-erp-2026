@@ -1,16 +1,31 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
+/** 글자 크기 — 중간(md)이 기본(지금 크기). html[data-font-size]로 --font-scale을 바꾼다(base.css) */
+export type FontSize = 'sm' | 'md' | 'lg';
+export const FONT_SIZES: FontSize[] = ['sm', 'md', 'lg'];
 type Resolved = 'light' | 'dark';
 
 interface ThemeCtx {
   mode: ThemeMode;
   resolved: Resolved;
   setMode: (m: ThemeMode) => void;
+  fontSize: FontSize;
+  setFontSize: (f: FontSize) => void;
 }
 
 const Ctx = createContext<ThemeCtx | undefined>(undefined);
 const KEY = 'tongin_theme';
+const FONT_KEY = 'tongin_font_size';
+
+const readFont = (): FontSize => {
+  try {
+    const v = localStorage.getItem(FONT_KEY);
+    return v === 'sm' || v === 'lg' ? v : 'md';
+  } catch {
+    return 'md';
+  }
+};
 
 export function useTheme(): ThemeCtx {
   const ctx = useContext(Ctx);
@@ -43,10 +58,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener('change', apply);
   }, [mode]);
 
+  const [fontSize, setFontState] = useState<FontSize>(readFont);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-font-size', fontSize);
+  }, [fontSize]);
+  const setFontSize = (f: FontSize) => {
+    try {
+      localStorage.setItem(FONT_KEY, f);
+    } catch {
+      /* 저장 못 해도 이번 화면엔 적용 */
+    }
+    setFontState(f);
+  };
+
   const setMode = (m: ThemeMode) => {
     localStorage.setItem(KEY, m);
     setModeState(m);
   };
 
-  return <Ctx.Provider value={{ mode, resolved, setMode }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ mode, resolved, setMode, fontSize, setFontSize }}>
+      {children}
+    </Ctx.Provider>
+  );
 }

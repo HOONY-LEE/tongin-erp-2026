@@ -70,7 +70,7 @@
   margin-bottom: 12px;
 }
 .sub {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 400;
   color: var(--ark-color-text-secondary);
 }
@@ -85,7 +85,7 @@
   background: var(--ark-color-bg-muted);
 }
 .infoLabel {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .infoValue {
@@ -100,7 +100,7 @@
   gap: 6px;
 }
 .fieldLabel {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
   color: var(--ark-color-text-secondary);
 }
@@ -151,7 +151,7 @@
 }
 .unit {
   flex: none;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 
@@ -188,7 +188,7 @@
 }
 .volValue {
   margin-top: 4px;
-  font-size: 22px;
+  font-size: calc(22px * var(--font-scale, 1));
   font-weight: 800;
 }
 .volTotal .volValue {
@@ -223,7 +223,7 @@
   height: 28px;
   border-radius: 8px;
   background: var(--ark-color-bg-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 700;
   color: var(--ark-color-text-secondary);
 }
@@ -232,7 +232,7 @@
   font-weight: 700;
 }
 .roomEng {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .cbmPill {
@@ -241,7 +241,7 @@
   padding: 4px 12px;
   border-radius: 999px;
   background: var(--ark-color-bg-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 700;
 }
 .cbmPillOn {
@@ -259,7 +259,7 @@
 }
 .itemHeadRow {
   background: var(--ark-color-bg-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 600;
   color: var(--ark-color-text-secondary);
   padding-top: 9px;
@@ -279,7 +279,7 @@
 }
 .itemEng {
   margin-left: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 400;
   color: var(--ark-color-text-secondary);
 }
@@ -335,7 +335,7 @@
 }
 .saveHint {
   margin-right: auto;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 
@@ -350,7 +350,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .volValue {
-    font-size: 18px;
+    font-size: calc(18px * var(--font-scale, 1));
   }
   /* 단계 탭 — 이름이 잘리지 않게 번호를 윗줄로 올리고 두 줄로 쓴다 */
   .step {
@@ -360,11 +360,11 @@
     white-space: normal;
     word-break: keep-all;
     line-height: 1.25;
-    font-size: 12px;
+    font-size: calc(12px * var(--font-scale, 1));
   }
   .stepNo {
     display: block;
-    font-size: 11px;
+    font-size: calc(11px * var(--font-scale, 1));
     opacity: 0.8;
   }
   /* 물품 한 줄을 세 줄로: [물품명 · 삭제] / [메모] / [부피 · 처리방법] */
@@ -409,7 +409,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
 }
 .sendRow {
   display: flex;
@@ -433,13 +433,13 @@
   border-radius: 8px;
   background: var(--ark-color-warning-50, #fff7ed);
   color: var(--ark-color-warning-700, #b45309);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .sendList {
   margin: 4px 0 0;
   padding-left: 18px;
   color: var(--ark-color-text-secondary);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   line-height: 1.6;
 }
 .sendMsg {
@@ -449,7 +449,7 @@
   background: var(--ark-color-bg-subtle, #f9fafb);
   border: 1px solid var(--ark-color-border);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   white-space: pre-wrap;
   max-height: 260px;
   overflow: auto;
@@ -471,7 +471,7 @@
   align-items: center;
   gap: 8px;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-tertiary, #9ca3af);
 }
 .flowDot {
@@ -481,7 +481,7 @@
   height: 20px;
   border-radius: 50%;
   border: 1.5px solid currentColor;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 700;
 }
 .flowStep.done {
@@ -497,7 +497,7 @@
   font-weight: 700;
 }
 .flowWhen {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 400;
   color: var(--ark-color-text-secondary);
 }
@@ -538,18 +538,18 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color: var(--ark-color-text);
 }
 .distValue b {
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
 }
 .distSrc {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .distEmpty {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .distActions {
@@ -569,21 +569,21 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
 }
 .routeKm {
-  font-size: 20px;
+  font-size: calc(20px * var(--font-scale, 1));
   font-weight: 800;
 }
 .routeSrc {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .routeAddrs {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .routeFrom,
@@ -593,13 +593,13 @@
   padding: 1px 6px;
   border-radius: 6px;
   color: #fff;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .routeFrom {
   background: #2563eb;
 }
 .routeTo {
-  background: #ff5c00;
+  background: var(--ark-color-primary-500);
 }
 .routeMap {
   height: min(60vh, 460px);

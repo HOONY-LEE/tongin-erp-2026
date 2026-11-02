@@ -22,6 +22,7 @@ import {
 } from '../components/ui';
 import { LayoutThumb, type ThumbItem } from '../components/dashboard/builder/LayoutThumb';
 import styles from '../components/dashboard/builder/builder.module.css';
+import { fs } from '../lib/fontScale';
 
 export interface TemplateRow {
   id: string;
@@ -53,7 +54,7 @@ const readView = (): View => {
 function Targets({ t, max = 3 }: { t: TemplateRow; max?: number }) {
   if (!t.roles.length && !t.users.length) {
     return (
-      <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
+      <span style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)' }}>
         {t.isDefault ? '지정 없는 모든 사람' : '지정 없음'}
       </span>
     );

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Badge, Button, Checkbox, Input, Modal, useToast } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
+import { fs } from '../lib/fontScale';
 
 interface GradeRow {
   id?: string;
@@ -125,7 +126,7 @@ function GradeSettings({
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>
+        <div style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)' }}>
           위에서부터 순서대로 보입니다. 더 쓰지 않는 등급은 &apos;사용&apos;을 끄세요(이미 그 등급인
           고객은 그대로 둡니다).
         </div>

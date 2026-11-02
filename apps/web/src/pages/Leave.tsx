@@ -627,7 +627,7 @@ function AdjustModal({
   );
 }
 
-function LeaveTypes() {
+export function LeaveTypes() {
   const toast = useToast();
   const [rows, setRows] = useState<LeaveType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -765,7 +765,7 @@ interface AdjustmentRow {
  * 연차 부여 — 직원 여럿 또는 조직(하위 포함) 전체에 같은 일수를 더하거나(+) 뺀다(-).
  * 포상·이월·특별휴가·결근 차감 등. 아래에 최근 부여·조정 내역.
  */
-function LeaveGrant() {
+export function LeaveGrant() {
   const toast = useToast();
   const { orgs } = useDirectory();
   const [mode, setMode] = useState<'people' | 'orgs'>('people');
@@ -944,7 +944,7 @@ function LeaveGrant() {
 }
 
 /** 휴가 신청서 양식 — 업무 대리인·사유 필수 설정과 추가 항목(결재 양식 관리 권한) */
-function LeaveFormSettings() {
+export function LeaveFormSettings() {
   const [form, setForm] = useState<ApprovalFormDef | null>(null);
   const load = useCallback(async () => {
     setForm(await api<ApprovalFormDef>('/approval-forms/leave'));

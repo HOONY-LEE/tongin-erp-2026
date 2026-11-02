@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { Badge, Button, Checkbox, Input, Modal, useToast } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
+import { fs } from '../lib/fontScale';
 
 interface ItemRow {
   id: string;
@@ -153,14 +154,14 @@ function RoomItemsModal({
               />
             ))}
             {!filtered.length && (
-              <div style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>
+              <div style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)' }}>
                 맞는 물품이 없습니다. 이사물품 탭에서 먼저 등록하세요.
               </div>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>
+          <div style={{ fontSize: fs(13), fontWeight: 600 }}>
             이 방에 펼쳐 둘 물품 {picked.length}개 (위에서부터 순서대로)
           </div>
           <div
@@ -182,7 +183,7 @@ function RoomItemsModal({
                   padding: '4px 8px',
                   borderRadius: 8,
                   background: 'var(--ark-color-bg-muted)',
-                  fontSize: 13,
+                  fontSize: fs(13),
                 }}
               >
                 <span style={{ flex: 1, minWidth: 0 }}>

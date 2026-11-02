@@ -90,3 +90,9 @@ export function toInitial(obj: Record<string, unknown>, keys: string[]): Record<
   }
   return out;
 }
+
+/** 이번 달(한국 날짜) — 연·월 입력칸 기본값. 월은 앞 0 없이('6') */
+export function thisMonth(): { year: string; month: string } {
+  const [y, m] = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }).split('-');
+  return { year: y, month: String(Number(m)) };
+}

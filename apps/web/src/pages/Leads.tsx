@@ -227,7 +227,7 @@ export default function Leads() {
     rows.filter((r) => inStage(String(r.status), statuses)).length;
 
   return (
-    // 화면 높이에 맞춘다 — 기본 10행이면 페이지 스크롤 없이 풋터까지, 행을 늘리면 표 안에서 스크롤
+    // 화면 높이에 맞춘다 — 기본 20개씩 보기, 화면에 다 안 들어가는 행은 표 안에서 스크롤(풋터는 늘 보임)
     <ListPage
       fit
       title={t('nav.leads')}
@@ -247,6 +247,7 @@ export default function Leads() {
     >
       <DataTable
         fit
+        pageSize={20}
         columns={columns}
         rows={filtered}
         loading={loading}

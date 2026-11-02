@@ -49,6 +49,7 @@ export default function Approvals() {
   // 처음엔 '전체'(나와 관련된 문서 모두) — 내 결재 차례인 문서는 맨 위에 굵게 보인다
   const { tab: box, setTab: setBox } = useTabParam<Box>('all', 'box');
   const detail = useDetailParam();
+  const formParam = useDetailParam('form');
   const { updatedAt, touch } = useUpdatedAt();
   const [rows, setRows] = useState<ApprovalDocView[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,6 +78,9 @@ export default function Approvals() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 결재 양식 만들기·고치기는 결재함 머리글·탭 없이 '< 양식 이름'부터
+  if (box === 'forms' && formParam.id) return <FormsAdmin urlKey="form" />;
 
   if (detail.id) {
     return (
@@ -157,7 +161,7 @@ export default function Approvals() {
       {box === 'lines' ? (
         <LineTemplates />
       ) : box === 'forms' ? (
-        <FormsAdmin />
+        <FormsAdmin urlKey="form" />
       ) : (
         <DataTable
           columns={columns}

@@ -3,6 +3,7 @@ import { WORK_PHOTO_KINDS, WORK_PHOTO_KIND_LABEL, type WorkPhotoMeta } from '@to
 import { api, ApiError } from '../../lib/api';
 import { Button, PageCard, Spinner } from '../ui';
 import { PhotoGrid } from './PhotoGrid';
+import { fs } from '../../lib/fontScale';
 
 /** 관리자 작업 상세 — 현장에서 올린 사진(조회만). 종류별로 묶어 보여 준다 */
 export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {
@@ -33,13 +34,13 @@ export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {
       }
     >
       {error ? (
-        <div style={{ color: 'var(--ark-color-error-600)', fontSize: 14 }}>{error}</div>
+        <div style={{ color: 'var(--ark-color-error-600)', fontSize: fs(14) }}>{error}</div>
       ) : !photos ? (
         <div style={{ padding: 20, textAlign: 'center' }}>
           <Spinner size="sm" />
         </div>
       ) : !photos.length ? (
-        <div style={{ color: 'var(--ark-color-text-tertiary)', fontSize: 14 }}>
+        <div style={{ color: 'var(--ark-color-text-tertiary)', fontSize: fs(14) }}>
           현장에서 올린 사진이 없습니다
         </div>
       ) : (
@@ -49,7 +50,7 @@ export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {
             if (!list.length) return null;
             return (
               <div key={k}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                <div style={{ fontSize: fs(13), fontWeight: 600, marginBottom: 8 }}>
                   {WORK_PHOTO_KIND_LABEL[k]}{' '}
                   <span style={{ color: 'var(--ark-color-text-tertiary)', fontWeight: 400 }}>
                     ({list.length})

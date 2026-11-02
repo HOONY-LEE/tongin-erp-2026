@@ -22,6 +22,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { ApprovalService } from '../approval/approval.service';
 import { ApprovalFormService } from '../approval/approval-form.service';
+import { ApprovalAttachmentService } from '../approval/approval-attachment.service';
 
 const ymd = (d: Date | string) =>
   typeof d === 'string' ? d.slice(0, 10) : d.toISOString().slice(0, 10);
@@ -58,6 +59,7 @@ export class LeaveService implements OnModuleInit {
     private readonly scope: ScopeService,
     private readonly approvals: ApprovalService,
     private readonly forms: ApprovalFormService,
+    private readonly files: ApprovalAttachmentService,
   ) {}
 
   /** 결재가 끝나면 휴가 신청 상태를 같은 트랜잭션에서 맞춘다 */
@@ -320,7 +322,7 @@ export class LeaveService implements OnModuleInit {
     }
     if (settings.substitute === 'REQUIRED' && !substitute)
       throw new BadRequestException('업무 대리인을 골라 주세요.');
-    const extra = await this.forms.cleanValues(form.fields, input.extra);
+    const extra = await this.forms.cleanValues(form.fields, input.extra, p.userId);
     const days = half ? unit : countWorkdays(start, end);
     if (days <= 0) throw new BadRequestException('고른 기간에 근무일이 없습니다(주말·공휴일).');
 
@@ -395,6 +397,7 @@ export class LeaveService implements OnModuleInit {
         requesterEmpId: empId,
         line: input.line ?? null,
       });
+      await this.files.link(tx, doc.id, this.forms.attachmentsIn(form.fields, extra));
       const updated = await tx.leaveRequest.update({
         where: { id: req.id },
         data: { approvalDocId: doc.id },

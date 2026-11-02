@@ -66,6 +66,7 @@ import type { ReferenceOpt } from '../components/agent/Inspector';
 import { SharePicker, VISIBILITY_ICON, type ShareCandidate } from '../components/agent/SharePicker';
 import { NODE_COLOR, NODE_HEX, NODE_ICON, nodeSummary } from '../components/agent/meta';
 import styles from './agentBuilder.module.css';
+import { fs } from '../lib/fontScale';
 
 interface Blueprint {
   id: string;
@@ -1237,7 +1238,7 @@ function Editor() {
                   <div
                     key={k}
                     className={i.level === 'error' ? styles.errDot : styles.warnDot}
-                    style={{ fontWeight: 400, fontSize: 12 }}
+                    style={{ fontWeight: 400, fontSize: fs(12) }}
                   >
                     {i.level === 'error' ? '오류' : '경고'} · {i.message}
                   </div>

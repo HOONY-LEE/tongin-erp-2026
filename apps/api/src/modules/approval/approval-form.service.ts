@@ -6,8 +6,14 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  DEFAULT_FORM_AUDIENCE,
+  FORM_MAX_FIELDS,
   DEFAULT_LEAVE_FORM_SETTINGS,
   FORM_FIELD_TYPES,
+  PERMISSION_WILDCARD,
+  type ApprovalLineRule,
+  type FormAudience,
+  type FormFile,
   SUBSTITUTE_MODES,
   type ApprovalLineEntry,
   type AuthPrincipal,
@@ -16,13 +22,24 @@ import {
   type LeaveFormSettings,
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 import { ApprovalService } from './approval.service';
+import { ApprovalAttachmentService } from './approval-attachment.service';
 
 const FIELD_ID = /^[A-Za-z][A-Za-z0-9_]{0,29}$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_FIELDS = 30;
+const MAX_FIELDS = FORM_MAX_FIELDS;
 
 type FormRow = Prisma.ApprovalFormGetPayload<object>;
+
+const audienceOf = (f: FormRow): FormAudience => {
+  const a = ((f.settings as { audience?: Partial<FormAudience> }) ?? {}).audience;
+  return {
+    mode: a?.mode === 'SOME' ? 'SOME' : 'ALL',
+    orgIds: Array.isArray(a?.orgIds) ? a.orgIds : [],
+    employeeIds: Array.isArray(a?.employeeIds) ? a.employeeIds : [],
+  };
+};
 
 const view = (f: FormRow) => ({
   id: f.id,
@@ -35,6 +52,7 @@ const view = (f: FormRow) => ({
     f.kind === 'LEAVE'
       ? { ...DEFAULT_LEAVE_FORM_SETTINGS, ...((f.settings as object) ?? {}) }
       : ((f.settings as object) ?? {}),
+  audience: f.kind === 'CUSTOM' ? audienceOf(f) : DEFAULT_FORM_AUDIENCE,
   isActive: f.isActive,
   sortOrder: f.sortOrder,
   updatedAt: f.updatedAt,
@@ -46,6 +64,8 @@ export interface FormInput {
   description?: string | null;
   fields?: FormField[];
   settings?: Partial<LeaveFormSettings>;
+  audience?: FormAudience;
+  line?: ApprovalLineRule[];
   isActive?: boolean;
   sortOrder?: number;
 }
@@ -59,15 +79,39 @@ export class ApprovalFormService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly approvals: ApprovalService,
+    private readonly files: ApprovalAttachmentService,
+    private readonly scope: ScopeService,
   ) {}
 
-  /** 상신할 수 있는 양식(사용 중) — 관리 화면은 all=true로 꺼진 것·휴가 신청서까지 */
-  async list(all: boolean) {
+  /**
+   * 상신할 수 있는 양식(사용 중, 이 사람에게 공개된 것) — 관리 화면은 all=true로 꺼진 것·휴가 신청서·모든 대상까지
+   */
+  async list(p: AuthPrincipal, all: boolean) {
     const rows = await this.prisma.approvalForm.findMany({
       where: all ? {} : { kind: 'CUSTOM', isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
-    return rows.map(view);
+    if (all) return rows.map(view);
+    const out: ReturnType<typeof view>[] = [];
+    for (const r of rows) if (await this.canUse(p, audienceOf(r))) out.push(view(r));
+    return out;
+  }
+
+  /** 이 사람이 이 양식을 고를 수 있나 — 전 직원, 또는 고른 조직(하위 포함)·직원. 관리자는 늘 */
+  private async canUse(p: AuthPrincipal, a: FormAudience) {
+    if (a.mode === 'ALL') return true;
+    if (p.permissions.includes(PERMISSION_WILDCARD) || p.permissions.includes('APPROVAL.MANAGE'))
+      return true;
+    if (p.employeeId && a.employeeIds.includes(p.employeeId)) return true;
+    if (!p.employeeOrgUnitId || !a.orgIds.length) return false;
+    const orgs = await this.scope.withDescendants(a.orgIds);
+    return orgs.includes(p.employeeOrgUnitId);
+  }
+
+  /** 관리 화면용 — 양식 + 전사 기본 결재선 */
+  async detail(id: string) {
+    const f = await this.get(id);
+    return { ...f, line: await this.approvals.formLine(id) };
   }
 
   async get(id: string) {
@@ -136,49 +180,69 @@ export class ApprovalFormService {
   async create(p: AuthPrincipal, input: FormInput) {
     const name = input.name?.trim();
     if (!name) throw new BadRequestException('양식 이름을 적어 주세요.');
-    const row = await this.prisma.approvalForm.create({
-      data: {
-        kind: 'CUSTOM',
-        name: name.slice(0, 60),
-        category: input.category?.trim() || null,
-        description: input.description?.trim() || null,
-        fields: this.cleanFields(input.fields ?? []) as unknown as Prisma.InputJsonValue,
-        isActive: input.isActive ?? true,
-        sortOrder: input.sortOrder ?? 100,
-        createdBy: p.userId,
-      },
+    const row = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.approvalForm.create({
+        data: {
+          kind: 'CUSTOM',
+          name: name.slice(0, 60),
+          category: input.category?.trim() || null,
+          description: input.description?.trim() || null,
+          fields: this.cleanFields(input.fields ?? []) as unknown as Prisma.InputJsonValue,
+          settings: {
+            audience: this.cleanAudience(input.audience),
+          } as unknown as Prisma.InputJsonValue,
+          isActive: input.isActive ?? true,
+          sortOrder: input.sortOrder ?? 100,
+          createdBy: p.userId,
+        },
+      });
+      if (input.line) await this.approvals.setFormLine(tx, row.id, row.name, input.line);
+      return row;
     });
-    return view(row);
+    return this.detail(row.id);
+  }
+
+  private cleanAudience(a: FormAudience | undefined): FormAudience {
+    if (!a || a.mode !== 'SOME') return DEFAULT_FORM_AUDIENCE;
+    const orgIds = [...new Set(a.orgIds ?? [])];
+    const employeeIds = [...new Set(a.employeeIds ?? [])];
+    if (!orgIds.length && !employeeIds.length)
+      throw new BadRequestException('공개 대상을 고르거나 「전 직원」으로 두세요.');
+    return { mode: 'SOME', orgIds, employeeIds };
   }
 
   async update(id: string, input: FormInput) {
     const cur = await this.get(id);
     const name = input.name === undefined ? undefined : input.name.trim();
     if (name === '') throw new BadRequestException('양식 이름을 적어 주세요.');
-    const row = await this.prisma.approvalForm.update({
-      where: { id },
-      data: {
-        name: name?.slice(0, 60),
-        category: input.category === undefined ? undefined : input.category?.trim() || null,
-        description:
-          input.description === undefined ? undefined : input.description?.trim() || null,
-        fields:
-          input.fields === undefined
-            ? undefined
-            : (this.cleanFields(input.fields) as unknown as Prisma.InputJsonValue),
-        settings:
-          cur.kind === 'LEAVE' && input.settings
-            ? (this.cleanLeaveSettings(
-                input.settings,
-                cur.settings as LeaveFormSettings,
-              ) as unknown as Prisma.InputJsonValue)
-            : undefined,
-        // 휴가 신청서는 끌 수 없다
-        isActive: cur.kind === 'LEAVE' ? undefined : input.isActive,
-        sortOrder: input.sortOrder,
-      },
+    const settings =
+      cur.kind === 'LEAVE' && input.settings
+        ? this.cleanLeaveSettings(input.settings, cur.settings as LeaveFormSettings)
+        : cur.kind === 'CUSTOM' && input.audience
+          ? { ...(cur.settings as object), audience: this.cleanAudience(input.audience) }
+          : undefined;
+    await this.prisma.$transaction(async (tx) => {
+      const row = await tx.approvalForm.update({
+        where: { id },
+        data: {
+          name: name?.slice(0, 60),
+          category: input.category === undefined ? undefined : input.category?.trim() || null,
+          description:
+            input.description === undefined ? undefined : input.description?.trim() || null,
+          fields:
+            input.fields === undefined
+              ? undefined
+              : (this.cleanFields(input.fields) as unknown as Prisma.InputJsonValue),
+          settings: settings as unknown as Prisma.InputJsonValue | undefined,
+          // 휴가 신청서는 끌 수 없다
+          isActive: cur.kind === 'LEAVE' ? undefined : input.isActive,
+          sortOrder: input.sortOrder,
+        },
+      });
+      if (input.line && cur.kind === 'CUSTOM')
+        await this.approvals.setFormLine(tx, id, row.name, input.line);
     });
-    return view(row);
+    return this.detail(id);
   }
 
   /** 지우기 — 올린 문서는 양식 정의를 함께 갖고 있어 그대로 보인다. 휴가 신청서는 못 지운다 */
@@ -200,6 +264,8 @@ export class ApprovalFormService {
   async cleanValues(
     fields: FormField[],
     raw: Record<string, unknown> | undefined,
+    /** 첨부파일 항목이 있으면 — 올린 사람(이 사람이 올린 파일만 받는다) */
+    uploaderUserId?: string,
   ): Promise<Record<string, FormValue>> {
     const values = raw ?? {};
     const out: Record<string, FormValue> = {};
@@ -302,9 +368,27 @@ export class ApprovalFormService {
           out[f.id] = list.map((id) => ({ id, name: nameOf.get(id)! }));
           break;
         }
+        case 'file': {
+          if (!uploaderUserId)
+            throw new BadRequestException(`'${f.label}' 첨부파일을 받을 수 없습니다.`);
+          const list = await this.files.resolve(uploaderUserId, f.label, v);
+          if (!list.length) {
+            missing();
+            break;
+          }
+          out[f.id] = list;
+          break;
+        }
       }
     }
     return out;
+  }
+
+  /** 값 안의 첨부파일 전부(문서에 붙일 것) */
+  attachmentsIn(fields: FormField[], values: Record<string, FormValue>): FormFile[] {
+    return fields
+      .filter((f) => f.type === 'file')
+      .flatMap((f) => (Array.isArray(values[f.id]) ? (values[f.id] as FormFile[]) : []));
   }
 
   // ── 상신 ──
@@ -319,22 +403,26 @@ export class ApprovalFormService {
     const form = await this.get(id);
     if (form.kind !== 'CUSTOM' || !form.isActive)
       throw new BadRequestException('지금 쓸 수 없는 양식입니다.');
-    const values = await this.cleanValues(form.fields, input.values);
+    if (!(await this.canUse(p, form.audience)))
+      throw new ForbiddenException('이 양식을 쓸 수 있는 대상이 아닙니다.');
+    const values = await this.cleanValues(form.fields, input.values, p.userId);
     const emp = await this.prisma.employee.findUniqueOrThrow({
       where: { id: p.employeeId },
       select: { name: true },
     });
     const title = input.title?.trim() || `${form.name} — ${emp.name}`;
-    const doc = await this.prisma.$transaction((tx) =>
-      this.approvals.submit(tx, {
+    const doc = await this.prisma.$transaction(async (tx) => {
+      const doc = await this.approvals.submit(tx, {
         docType: 'FORM',
         title: title.slice(0, 200),
         payload: { formId: form.id, formName: form.name, fields: form.fields, values },
         requesterEmpId: p.employeeId!,
         line: input.line ?? null,
         lineKey: `FORM:${form.id}`,
-      }),
-    );
+      });
+      await this.files.link(tx, doc.id, this.attachmentsIn(form.fields, values));
+      return doc;
+    });
     await this.approvals.announceSubmitted(doc);
     return this.approvals.get(doc.id, p);
   }

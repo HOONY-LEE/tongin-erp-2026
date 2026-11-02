@@ -1,4 +1,5 @@
 import { MapPin } from 'lucide-react';
+import { fs } from '../../lib/fontScale';
 
 interface Props {
   label?: string;
@@ -46,7 +47,7 @@ export function AddressView({
           whiteSpace: 'nowrap',
         }}
       >
-        {label && <b style={{ fontSize: 13 }}>{label} </b>}
+        {label && <b style={{ fontSize: fs(13) }}>{label} </b>}
         {full}
         {zipcode && <span style={{ color: 'var(--ark-color-text-tertiary)' }}>({zipcode})</span>}
       </span>
@@ -55,7 +56,7 @@ export function AddressView({
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-      {label && <b style={{ fontSize: 13 }}>{label}</b>}
+      {label && <b style={{ fontSize: fs(13) }}>{label}</b>}
       <span>
         {full}
         {zipcode && <span style={{ color: 'var(--ark-color-text-tertiary)' }}>({zipcode})</span>}
@@ -69,7 +70,7 @@ export function AddressView({
             display: 'inline-flex',
             alignItems: 'center',
             gap: 2,
-            fontSize: 12,
+            fontSize: fs(12),
             color: 'var(--ark-color-primary-600)',
             textDecoration: 'none',
           }}

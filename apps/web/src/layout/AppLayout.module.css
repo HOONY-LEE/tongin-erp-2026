@@ -106,7 +106,7 @@
   background: transparent;
   color: var(--ark-color-text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .moreTabs:hover,
 .moreTabsOn {
@@ -147,7 +147,7 @@
   border: none;
   background: transparent;
   color: var(--ark-color-text);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   text-align: left;
   cursor: pointer;
 }
@@ -233,6 +233,27 @@
 }
 
 /* 사이드바 헤더 높이를 상단 헤더(46px)와 맞춰 경계선이 일직선으로 이어지도록 */
+/* 메뉴 묶음 사이 간격(기본 24px)을 줄이고, 묶음 이름은 본문보다 한 단계 작고 덜 굵게 */
+.sidebarWrap [class*='_group_'] {
+  margin-bottom: 12px;
+}
+.sidebarWrap [class*='_groupLabelBtn_'],
+.sidebarWrap [class*='_groupLabel_'] {
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+}
+/* 메뉴 이름 칸을 끝까지 늘려 숫자 배지(.countBadge, margin-left:auto)가 오른쪽 끝에 붙게 — 접힌 사이드바는 제외 */
+.desktopLayout:not(.collapsed) .sidebarWrap [class*='_itemLabel_'] {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* 아래 설정 칸 — 낮게 */
+.sidebarWrap [class*='sidebarFooter'] {
+  padding: 6px 12px;
+}
 .sidebarWrap [class*='sidebarHeader'] {
   height: 46px !important;
   min-height: 46px !important;
@@ -257,6 +278,12 @@
   display: flex;
   flex-direction: column;
   padding: 32px 36px 40px;
+}
+/* 내용이 화면보다 긴 페이지 — 상자가 내용만큼 늘어나야 아래 여백(padding-bottom)이 스크롤 끝에 남는다.
+   (줄어들게 두면 상자는 화면 높이에 멈추고 내용만 넘쳐서 표 아래 페이지 버튼이 화면 끝에 붙는다)
+   화면 높이에 맞춰 쓰는 페이지(목록 fit·캘린더·AI)는 그대로 화면 높이 */
+.contentInner:not(.contentInnerTight):not(.contentInnerFlush):not(:has(:global(.list-page.fit))) {
+  flex: 1 0 auto; /* flex:1은 기준 크기가 0이라 내용만큼 늘지 않는다 */
 }
 /* 캘린더는 화면을 꽉 채워 쓰는 페이지라 여백을 예전대로 좁게 둔다 */
 .contentInnerTight {
@@ -305,7 +332,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--ark-color-primary-500) 14%, transparent);
   color: var(--ark-color-primary-600);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 600;
 }
 .spin {
@@ -328,7 +355,7 @@
   background: color-mix(in srgb, var(--ark-color-primary-500) 10%, transparent);
   color: var(--ark-color-primary-600);
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -378,7 +405,7 @@
   background: transparent;
   cursor: pointer;
   color: var(--ark-color-text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 600;
 }
 .pickerBtn:hover,
@@ -411,7 +438,7 @@
   border-radius: 999px;
   background: var(--ark-color-primary-500);
   color: #fff;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 700;
   line-height: 20px;
   text-align: center;

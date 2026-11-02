@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -22,6 +22,11 @@ import { MENU_CATALOG, filterLayout, menuDef } from '@tongin/shared';
 import styles from './AppLayout.module.css';
 import { HeaderTabs } from './HeaderTabs';
 import { ProfileMenu } from './ProfileMenu';
+import settingsStyles from './settings.module.css';
+import { fs } from '../lib/fontScale';
+
+// 설정 창은 누를 때만 읽는다(인사·결재 설정 화면까지 들어 있어 무겁다)
+const SettingsModal = lazy(() => import('./SettingsModal'));
 
 type NavItem = {
   to: string;
@@ -85,6 +90,7 @@ export default function AppLayout() {
   const myMenu = useMyMenu(user?.userId);
   const menuLabel = useMenuLabel();
   const [menuEditOpen, setMenuEditOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const canSeeMenu = (key: string) =>
     filterLayout({ groups: [{ label: '', items: [key] }] }, can, !!user?.employeeId).groups.length >
     0;
@@ -250,6 +256,22 @@ export default function AppLayout() {
             collapsed={collapsed}
             onCollapse={() => setCol(true)}
             onExpand={() => setCol(false)}
+            footer={
+              <div
+                className={`${settingsStyles.sideFoot} ${collapsed ? settingsStyles.sideFootCollapsed : ''}`}
+              >
+                <button
+                  type="button"
+                  className={settingsStyles.gear}
+                  title="앱 설정"
+                  aria-label="앱 설정"
+                  onClick={() => setSettingsOpen(true)}
+                >
+                  <Settings size={16} />
+                  {!collapsed && <span>앱 설정</span>}
+                </button>
+              </div>
+            }
             header={
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div
@@ -262,14 +284,16 @@ export default function AppLayout() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#fff',
-                    fontSize: 13,
+                    fontSize: fs(13),
                     fontWeight: 800,
                     flexShrink: 0,
                   }}
                 >
                   통
                 </div>
-                {!collapsed && <span style={{ fontWeight: 700, fontSize: 15 }}>통인 Works</span>}
+                {!collapsed && (
+                  <span style={{ fontWeight: 700, fontSize: fs(15) }}>통인 Works</span>
+                )}
               </div>
             }
           >
@@ -312,6 +336,14 @@ export default function AppLayout() {
               </SidebarGroup>
             ))}
           </LayoutSidebar>
+          {settingsOpen && (
+            <Suspense fallback={null}>
+              <SettingsModal
+                onClose={() => setSettingsOpen(false)}
+                onEditMenu={() => setMenuEditOpen(true)}
+              />
+            </Suspense>
+          )}
           <MyMenuModal
             open={menuEditOpen}
             onOpenChange={setMenuEditOpen}

@@ -16,6 +16,7 @@ import {
   type Row,
   type StatusMap,
 } from '../components/ui';
+import { fs } from '../lib/fontScale';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
@@ -127,7 +128,7 @@ export default function PaymentConfirm() {
         r.sentAt || r.signed ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {Boolean(r.sentAt) && (
-              <span style={{ fontSize: 12, color: 'var(--ark-color-text-secondary)' }}>
+              <span style={{ fontSize: fs(12), color: 'var(--ark-color-text-secondary)' }}>
                 {md(r.sentAt)} 발송
               </span>
             )}

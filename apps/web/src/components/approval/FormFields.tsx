@@ -1,15 +1,20 @@
-import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowDown, ArrowUp, Paperclip, Plus, Trash2, X } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import {
   FORM_FIELD_TYPES,
   FORM_FIELD_TYPE_LABEL,
+  APPROVAL_FILE_MAX_BYTES,
+  APPROVAL_FILE_MAX_COUNT,
+  FORM_MAX_FIELDS,
   type FormField,
+  type FormFile,
   type FormFieldType,
   type FormValue,
 } from '@tongin/shared';
 import { useDirectory } from '../../lib/approvals';
-import { Button, Checkbox, Input, Select, Textarea } from '../ui';
+import { api, ApiError, downloadFile } from '../../lib/api';
+import { Button, Checkbox, Input, Select, Textarea, useToast } from '../ui';
 import styles from './formFields.module.css';
 
 /** 화면에서 채우는 값 — person은 고른 직원 id 목록(서버가 이름을 붙인다) */
@@ -23,7 +28,7 @@ export function formReady(fields: FormField[], values: FormDraft) {
     if (!f.required) return true;
     const v = values[f.id];
     if (f.type === 'checkbox') return v === true;
-    if (f.type === 'person') return Array.isArray(v) && v.length > 0;
+    if (f.type === 'person' || f.type === 'file') return Array.isArray(v) && v.length > 0;
     if (f.type === 'daterange') {
       const r = v as { from?: string; to?: string } | undefined;
       return !!r?.from && !!r?.to;
@@ -78,15 +83,131 @@ export function PersonPicker({
   );
 }
 
-/** 결재 양식 항목 입력 */
+const fileSize = (n: number) =>
+  n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`;
+
+const readBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ''));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+
+/**
+ * 첨부파일 칸 — 고르면 바로 올리고(/approval-attachments) 값에는 파일 정보만 둔다.
+ * 미리보기(preview)에서는 올리지 않고 고른 파일 이름만 보여 준다.
+ */
+export function FileField({
+  value,
+  onChange,
+  preview,
+}: {
+  value: FormFile[];
+  onChange: (v: FormFile[]) => void;
+  preview?: boolean;
+}) {
+  const toast = useToast();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const pick = async (list: FileList | null) => {
+    if (!list?.length) return;
+    const files = [...list];
+    if (value.length + files.length > APPROVAL_FILE_MAX_COUNT) {
+      toast({ type: 'error', title: `파일은 ${APPROVAL_FILE_MAX_COUNT}개까지 붙일 수 있습니다` });
+      return;
+    }
+    const big = files.find((f) => f.size > APPROVAL_FILE_MAX_BYTES);
+    if (big) {
+      toast({
+        type: 'error',
+        title: `${big.name} — ${APPROVAL_FILE_MAX_BYTES / 1048576}MB까지 붙일 수 있습니다`,
+      });
+      return;
+    }
+    // 미리보기 — 올리지 않고 고른 파일만 칩으로 보여 준다
+    if (preview) {
+      onChange([
+        ...value,
+        ...files.map((f, i) => ({
+          id: `preview-${Date.now()}-${i}`,
+          name: f.name,
+          size: f.size,
+          mediaType: f.type,
+        })),
+      ]);
+      if (input.current) input.current.value = '';
+      return;
+    }
+    setBusy(true);
+    let next = value;
+    try {
+      for (const f of files) {
+        const up = await api<FormFile>('/approval-attachments', {
+          method: 'POST',
+          body: JSON.stringify({
+            fileName: f.name,
+            mediaType: f.type || 'application/octet-stream',
+            data: await readBase64(f),
+          }),
+        });
+        next = [...next, up];
+        onChange(next);
+      }
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = '';
+    }
+  };
+  const remove = (f: FormFile) => {
+    onChange(value.filter((x) => x.id !== f.id));
+    if (!preview)
+      void api(`/approval-attachments/${f.id}`, { method: 'DELETE' }).catch(() => undefined);
+  };
+
+  return (
+    <div className={styles.files}>
+      {value.map((f) => (
+        <span key={f.id} className={styles.fileChip}>
+          <Paperclip size={12} aria-hidden />
+          <span className={styles.fileName}>{f.name}</span>
+          <span className={styles.fileSize}>{fileSize(f.size)}</span>
+          <button type="button" aria-label={`${f.name} 빼기`} onClick={() => remove(f)}>
+            <X size={12} />
+          </button>
+        </span>
+      ))}
+      <input ref={input} type="file" multiple hidden onChange={(e) => void pick(e.target.files)} />
+      <Button
+        variant="outline"
+        size="sm"
+        leftIcon={<Paperclip size={14} />}
+        loading={busy}
+        onClick={() => input.current?.click()}
+      >
+        파일 첨부
+      </Button>
+      <span className={styles.hint}>
+        한 개 {APPROVAL_FILE_MAX_BYTES / 1048576}MB · {APPROVAL_FILE_MAX_COUNT}개까지
+      </span>
+    </div>
+  );
+}
+
+/** 결재 양식 항목 입력 — preview면 첨부파일을 올리지 않는다(양식 편집 미리보기) */
 export function FormFieldInputs({
   fields,
   values,
   onChange,
+  preview,
 }: {
   fields: FormField[];
   values: FormDraft;
   onChange: (next: FormDraft) => void;
+  preview?: boolean;
 }) {
   const set = (id: string, v: unknown) => onChange({ ...values, [id]: v });
   return (
@@ -179,6 +300,19 @@ export function FormFieldInputs({
                 />
               </div>
             );
+          case 'file':
+            // label 안에 두면 칩을 누를 때 파일 고르기가 열린다 — div로
+            return (
+              <div key={f.id} className={styles.field}>
+                {label}
+                <FileField
+                  value={Array.isArray(v) ? (v as FormFile[]) : []}
+                  onChange={(x) => set(f.id, x)}
+                  preview={preview}
+                />
+                {f.help && <span className={styles.hint}>{f.help}</span>}
+              </div>
+            );
           case 'person':
             input = (
               <PersonPicker
@@ -216,8 +350,26 @@ export function FormValuesView({
   fields: FormField[];
   values: Record<string, FormValue>;
 }) {
-  const show = (f: FormField): string => {
+  const show = (f: FormField): ReactNode => {
     const v = values[f.id];
+    if (f.type === 'file' && Array.isArray(v) && v.length)
+      return (
+        <span className={styles.files}>
+          {(v as FormFile[]).map((x) => (
+            <button
+              key={x.id}
+              type="button"
+              className={styles.fileChip}
+              title="내려받기"
+              onClick={() => void downloadFile(`/approval-attachments/${x.id}`, x.name)}
+            >
+              <Paperclip size={12} aria-hidden />
+              <span className={styles.fileName}>{x.name}</span>
+              <span className={styles.fileSize}>{fileSize(x.size)}</span>
+            </button>
+          ))}
+        </span>
+      );
     if (v === null || v === undefined || v === '') return '-';
     switch (f.type) {
       case 'money':
@@ -262,9 +414,12 @@ const newId = (fields: FormField[]) => {
 export function FormBuilder({
   fields,
   onChange,
+  hidePreview,
 }: {
   fields: FormField[];
   onChange: (next: FormField[]) => void;
+  /** 미리보기를 바깥(상신 창 미리보기)에서 그리면 */
+  hidePreview?: boolean;
 }) {
   const [preview, setPreview] = useState<FormDraft>({});
   const set = (i: number, patch: Partial<FormField>) =>
@@ -280,7 +435,7 @@ export function FormBuilder({
     onChange([...fields, { id: newId(fields), label: '', type: 'text', required: false }]);
 
   return (
-    <div className={styles.builder}>
+    <div className={`${styles.builder} ${hidePreview ? styles.builderSolo : ''}`}>
       <div className={styles.builderList}>
         {fields.length === 0 && (
           <p className={styles.hint}>
@@ -362,28 +517,46 @@ export function FormBuilder({
             />
           </div>
         ))}
-        <Button variant="secondary" size="sm" leftIcon={<Plus size={14} />} onClick={add}>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<Plus size={14} />}
+          disabled={fields.length >= FORM_MAX_FIELDS}
+          onClick={add}
+        >
           항목 추가
         </Button>
+        {fields.length >= FORM_MAX_FIELDS && (
+          <span className={styles.hint}>항목은 {FORM_MAX_FIELDS}개까지 둘 수 있습니다.</span>
+        )}
       </div>
-      <aside className={styles.preview} aria-label="신청 화면 미리보기">
-        <div className={styles.previewHead}>미리보기</div>
-        <div className={styles.previewBody}>
-          <FormFieldInputs
-            fields={fields
-              .filter((f) => f.label.trim())
-              .map((f) => ({ ...f, options: f.options?.map((o) => o.trim()).filter(Boolean) }))}
-            values={preview}
-            onChange={setPreview}
-          />
-          {!fields.some((f) => f.label.trim()) && (
-            <p className={styles.hint}>항목을 넣으면 여기서 보입니다.</p>
-          )}
-        </div>
-      </aside>
+      {!hidePreview && (
+        <aside className={styles.preview} aria-label="신청 화면 미리보기">
+          <div className={styles.previewHead}>미리보기</div>
+          <div className={styles.previewBody}>
+            <FormFieldInputs
+              fields={fields
+                .filter((f) => f.label.trim())
+                .map((f) => ({ ...f, options: f.options?.map((o) => o.trim()).filter(Boolean) }))}
+              values={preview}
+              onChange={setPreview}
+              preview
+            />
+            {!fields.some((f) => f.label.trim()) && (
+              <p className={styles.hint}>항목을 넣으면 여기서 보입니다.</p>
+            )}
+          </div>
+        </aside>
+      )}
     </div>
   );
 }
+
+/** 미리보기용 — 이름 없는 항목은 빼고 선택지 공백 정리 */
+export const previewFields = (fields: FormField[]): FormField[] =>
+  fields
+    .filter((f) => f.label.trim())
+    .map((f) => ({ ...f, options: f.options?.map((o) => o.trim()).filter(Boolean) }));
 
 /** 저장 전 정리 — 선택지 공백·빈 값 빼기 */
 export const cleanFieldsForSave = (fields: FormField[]): FormField[] =>

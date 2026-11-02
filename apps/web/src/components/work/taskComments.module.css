@@ -14,11 +14,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text);
 }
 .meta {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .del {
@@ -39,7 +39,7 @@
   margin: 6px 0 0;
   white-space: pre-wrap;
   line-height: 1.6;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color: var(--ark-color-text);
 }
 .mention {
@@ -61,7 +61,7 @@
   background: var(--ark-color-bg);
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   line-height: 1.5;
   resize: vertical;
 }
@@ -94,7 +94,7 @@
   background: none;
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   text-align: left;
   cursor: pointer;
 }

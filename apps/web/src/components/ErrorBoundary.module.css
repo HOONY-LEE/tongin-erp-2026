@@ -27,13 +27,13 @@
 }
 .title {
   margin: 0 0 8px;
-  font-size: 22px;
+  font-size: calc(22px * var(--font-scale, 1));
   font-weight: 700;
   color: var(--ark-color-text, #20242a);
 }
 .desc {
   margin: 0 0 20px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   line-height: 1.6;
   color: var(--ark-color-text-secondary, #6b6f76);
 }
@@ -51,7 +51,7 @@
   padding: 0 16px;
   border-radius: 10px;
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 600;
   cursor: pointer;
 }
@@ -67,7 +67,7 @@
 }
 
 .ref {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-tertiary);
   font-variant-numeric: tabular-nums;
 }

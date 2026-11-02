@@ -155,7 +155,7 @@ export default function Support() {
       type: 'select',
       options: [
         { value: 'PHONE', label: t('support.phone') },
-        { value: 'EMAIL', label: 'Email' },
+        { value: 'EMAIL', label: '이메일' },
         { value: 'KAKAO', label: '카카오' },
         { value: 'VISIT', label: t('support.visit') },
       ],

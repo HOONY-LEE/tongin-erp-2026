@@ -30,6 +30,7 @@ import {
   type CalendarItem,
   type CalendarView,
 } from '../../lib/calendarUtils';
+import { fs } from '../../lib/fontScale';
 
 const VIEW_OPTIONS = [
   { value: 'day', label: '일간' },
@@ -40,10 +41,14 @@ const VIEW_OPTIONS = [
 
 const BORDER = '1px solid var(--ark-color-border)';
 /** 공휴일·일요일 빨강 */
-const HOLIDAY_COLOR = '#FF3B30';
+const HOLIDAY_COLOR = 'var(--ark-color-error-500)';
 /** 일요일 빨강 · 토요일 파랑 · 평일 기본 */
 const weekendColor = (i: number) =>
-  i === 0 ? '#FF3B30' : i === 6 ? '#007AFF' : 'var(--ark-color-text-secondary)';
+  i === 0
+    ? 'var(--ark-color-error-500)'
+    : i === 6
+      ? 'var(--ark-color-info-500)'
+      : 'var(--ark-color-text-secondary)';
 
 function IconBtn({
   onClick,
@@ -63,8 +68,8 @@ function IconBtn({
       aria-label={label}
       title={label}
       style={{
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
         borderRadius: 8,
         border: 'none',
         cursor: 'pointer',
@@ -126,7 +131,7 @@ function SourceFilter({
           border: BORDER,
           background: 'var(--ark-color-bg)',
           color: 'var(--ark-color-text)',
-          fontSize: 13,
+          fontSize: fs(13),
           cursor: 'pointer',
         }}
       >
@@ -166,7 +171,7 @@ function SourceFilter({
                   border: 'none',
                   background: 'transparent',
                   cursor: 'pointer',
-                  fontSize: 13,
+                  fontSize: fs(13),
                   color: 'var(--ark-color-text)',
                   textAlign: 'left',
                 }}
@@ -235,7 +240,7 @@ function GoogleMenu({
     : syncing
       ? 'var(--ark-color-primary-500)'
       : google.connected
-        ? '#34C759'
+        ? 'var(--ark-color-success-500)'
         : 'var(--ark-color-text-tertiary)';
 
   const statusText = !google?.configured
@@ -273,7 +278,7 @@ function GoogleMenu({
         background: 'transparent',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.45 : 1,
-        fontSize: 13,
+        fontSize: fs(13),
         color: 'var(--ark-color-text)',
         textAlign: 'left',
       }}
@@ -337,10 +342,10 @@ function GoogleMenu({
           }}
         >
           <div style={{ padding: '8px 10px 10px' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>구글 캘린더</div>
+            <div style={{ fontSize: fs(13), fontWeight: 600, marginBottom: 2 }}>구글 캘린더</div>
             <div
               style={{
-                fontSize: 12,
+                fontSize: fs(12),
                 color: 'var(--ark-color-text-secondary)',
                 wordBreak: 'break-all',
               }}
@@ -348,7 +353,9 @@ function GoogleMenu({
               {statusText}
             </div>
             {google?.connected && (
-              <div style={{ fontSize: 11, color: 'var(--ark-color-text-tertiary)', marginTop: 3 }}>
+              <div
+                style={{ fontSize: fs(11), color: 'var(--ark-color-text-tertiary)', marginTop: 3 }}
+              >
                 마지막 동기화 {lastSync ?? '없음'}
               </div>
             )}
@@ -498,12 +505,12 @@ function SpanBar({
         borderBottomRightRadius: continuesToNext ? 0 : 4,
       }}
     >
-      {continuesFromPrev && <span style={{ fontSize: 10, opacity: 0.7 }}>◀</span>}
+      {continuesFromPrev && <span style={{ fontSize: fs(10), opacity: 0.7 }}>◀</span>}
       <span
         style={{
           flex: 1,
           minWidth: 0,
-          fontSize: 11.5,
+          fontSize: fs(11.5),
           fontWeight: 600,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
@@ -512,7 +519,7 @@ function SpanBar({
       >
         {event.title}
       </span>
-      {continuesToNext && <span style={{ fontSize: 10, opacity: 0.7 }}>▶</span>}
+      {continuesToNext && <span style={{ fontSize: fs(10), opacity: 0.7 }}>▶</span>}
     </button>
   );
 }
@@ -541,7 +548,7 @@ function MonthView({
             key={d}
             style={{
               textAlign: 'right',
-              fontSize: 12,
+              fontSize: fs(12),
               fontWeight: 500,
               padding: '7px 10px',
               color: weekendColor(i),
@@ -617,7 +624,7 @@ function MonthView({
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            fontSize: 11,
+                            fontSize: fs(11),
                             fontWeight: 600,
                             color: outside ? 'var(--ark-color-text-disabled)' : HOLIDAY_COLOR,
                           }}
@@ -633,7 +640,7 @@ function MonthView({
                           minWidth: 20,
                           height: 20,
                           borderRadius: 999,
-                          fontSize: 12,
+                          fontSize: fs(12),
                           fontWeight: isToday ? 700 : 500,
                           background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
                           color: isToday
@@ -666,7 +673,7 @@ function MonthView({
                       {list.length > 4 && (
                         <span
                           style={{
-                            fontSize: 11,
+                            fontSize: fs(11),
                             color: 'var(--ark-color-text-secondary)',
                             paddingLeft: 6,
                           }}
@@ -737,7 +744,7 @@ function WeekView({
                 background: 'var(--ark-color-bg-subtle)',
               }}
             >
-              <div style={{ fontSize: 12, color: holiday ? HOLIDAY_COLOR : weekendColor(i) }}>
+              <div style={{ fontSize: fs(12), color: holiday ? HOLIDAY_COLOR : weekendColor(i) }}>
                 {holiday ? `${holiday} · ` : ''}
                 {WEEKDAYS[i]}
               </div>
@@ -750,7 +757,7 @@ function WeekView({
                   height: 26,
                   marginTop: 2,
                   borderRadius: 999,
-                  fontSize: 15,
+                  fontSize: fs(15),
                   fontWeight: 600,
                   background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
                   color: isToday ? '#fff' : holiday ? HOLIDAY_COLOR : 'var(--ark-color-text)',
@@ -808,7 +815,7 @@ function DayView({
               textAlign: 'center',
               color: 'var(--ark-color-text-secondary)',
               padding: '60px 0',
-              fontSize: 14,
+              fontSize: fs(14),
             }}
           >
             일정이 없습니다. 클릭해서 추가하세요.
@@ -835,18 +842,22 @@ function DayView({
                 }}
               >
                 <span
-                  style={{ minWidth: 78, fontSize: 13, color: 'var(--ark-color-text-secondary)' }}
+                  style={{
+                    minWidth: 78,
+                    fontSize: fs(13),
+                    color: 'var(--ark-color-text-secondary)',
+                  }}
                 >
                   {ev.startTime ? formatTime(ev.startTime) : '종일'}
                 </span>
-                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ark-color-text)' }}>
+                <span style={{ fontSize: fs(15), fontWeight: 600, color: 'var(--ark-color-text)' }}>
                   {ev.title}
                 </span>
                 {ev.ownerName && (
                   <span
                     style={{
                       marginLeft: 'auto',
-                      fontSize: 12,
+                      fontSize: fs(12),
                       color: 'var(--ark-color-text-tertiary)',
                     }}
                   >
@@ -883,7 +894,7 @@ function MiniMonth({
     >
       <div
         style={{
-          fontSize: 14,
+          fontSize: fs(14),
           fontWeight: 700,
           color: 'var(--ark-color-primary-500)',
           marginBottom: 6,
@@ -894,7 +905,7 @@ function MiniMonth({
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
         {WEEKDAYS.map((d, i) => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 9, color: weekendColor(i) }}>
+          <div key={d} style={{ textAlign: 'center', fontSize: fs(9), color: weekendColor(i) }}>
             {d}
           </div>
         ))}
@@ -908,7 +919,7 @@ function MiniMonth({
               style={{
                 position: 'relative',
                 textAlign: 'center',
-                fontSize: 10,
+                fontSize: fs(10),
                 padding: '2px 0',
                 opacity: outside ? 0.25 : 1,
               }}
@@ -927,7 +938,7 @@ function MiniMonth({
                     : date.getDay() === 0 || holidayName(date)
                       ? HOLIDAY_COLOR
                       : date.getDay() === 6
-                        ? '#007AFF'
+                        ? 'var(--ark-color-info-500)'
                         : 'var(--ark-color-text)',
                 }}
               >
@@ -1073,7 +1084,7 @@ export default function CalendarGrid({
         <h2
           style={{
             margin: 0,
-            fontSize: 21,
+            fontSize: fs(21),
             fontWeight: 700,
             letterSpacing: '-0.02em',
             color: 'var(--ark-color-text)',
@@ -1109,7 +1120,7 @@ export default function CalendarGrid({
                 border: BORDER,
                 background: 'var(--ark-color-bg)',
                 color: 'var(--ark-color-text)',
-                fontSize: 13,
+                fontSize: fs(13),
                 outline: 'none',
               }}
             />

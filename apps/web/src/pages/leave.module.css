@@ -22,7 +22,7 @@
   border-color: var(--ark-color-primary-500);
 }
 .cardLabel {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-tertiary);
 }
 .cardValue {
@@ -31,7 +31,7 @@
 }
 .period {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 @media (max-width: 900px) {
@@ -60,6 +60,6 @@
   min-width: 170px;
 }
 .over {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-error-500);
 }

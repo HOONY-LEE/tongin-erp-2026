@@ -3,7 +3,7 @@
   min-height: 100vh;
   background: var(--ark-color-bg-canvas, #f4f5f7);
   color: var(--ark-color-text-primary);
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
 }
 .center {
   min-height: 60vh;
@@ -24,12 +24,12 @@
 }
 .brand {
   font-weight: 900;
-  font-size: 18px;
-  color: #ef7b2b;
+  font-size: calc(18px * var(--font-scale, 1));
+  color: var(--ark-color-primary-600);
   letter-spacing: -0.5px;
 }
 .no {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .main {
@@ -42,7 +42,7 @@
 }
 .hero h1 {
   margin: 8px 0 4px;
-  font-size: 22px;
+  font-size: calc(22px * var(--font-scale, 1));
   line-height: 1.35;
   letter-spacing: -0.5px;
 }
@@ -57,7 +57,7 @@
 }
 .card h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
 }
 .paid {
   border-color: var(--ark-color-success-300, #86efac);
@@ -71,11 +71,11 @@
   color: var(--ark-color-text-secondary);
 }
 .total {
-  font-size: 22px;
+  font-size: calc(22px * var(--font-scale, 1));
   font-weight: 800;
 }
 .sub {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
   line-height: 1.5;
 }
@@ -89,7 +89,7 @@
   background: var(--ark-color-bg-subtle, #f9fafb);
 }
 .account b {
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
 }
 .done {
   display: flex;
@@ -97,7 +97,7 @@
   gap: 6px;
   margin: 0;
   color: var(--ark-color-success-600, #16a34a);
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 600;
 }
 .docHead {
@@ -109,7 +109,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
   color: var(--ark-color-primary-600);
   text-decoration: none;
@@ -131,7 +131,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .padWrap {
@@ -168,13 +168,13 @@
   background: rgba(0, 0, 0, 0.05);
   color: #4b5563;
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   cursor: pointer;
 }
 .error {
   margin: 0;
   color: var(--ark-color-danger-600, #dc2626);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .errorBig {
   color: var(--ark-color-text-secondary);
@@ -184,6 +184,6 @@
 .foot {
   padding: 24px 16px 40px;
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }

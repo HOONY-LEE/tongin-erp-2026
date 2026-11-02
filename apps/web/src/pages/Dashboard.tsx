@@ -10,6 +10,7 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import { DashboardView } from '../components/dashboard/builder/DashboardView';
 import { DashColorScope } from '../components/dashboard/DashColorScope';
+import { fs } from '../lib/fontScale';
 
 export interface MyDashboard {
   source: 'PERSONAL' | 'USER' | 'ROLE' | 'DEFAULT' | 'BUILTIN';
@@ -124,7 +125,7 @@ export default function Dashboard() {
               ) : (
                 <span
                   style={{
-                    fontSize: 12,
+                    fontSize: fs(12),
                     color: 'var(--ark-color-text-tertiary)',
                     alignSelf: 'center',
                   }}

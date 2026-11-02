@@ -7,6 +7,7 @@ import {
 } from '@tongin/shared';
 import { Badge, DataTable, PageCard, type BadgeColor, type Column, type Row } from '../ui';
 import { api } from '../../lib/api';
+import { fs } from '../../lib/fontScale';
 
 const LEVEL_COLOR: Record<AnomalyLevel, BadgeColor> = {
   NORMAL: 'neutral',
@@ -60,7 +61,7 @@ export function BranchAnomalyCard({ reload }: { reload: number }) {
       flex: 1,
       minWidth: 220,
       render: (r) => (
-        <span title={b(r).reasons.join('\n')} style={{ fontSize: 13 }}>
+        <span title={b(r).reasons.join('\n')} style={{ fontSize: fs(13) }}>
           {b(r).reasons[0] ?? '-'}
         </span>
       ),
@@ -72,7 +73,7 @@ export function BranchAnomalyCard({ reload }: { reload: number }) {
     <PageCard title="이상 지점 (수수료 누락 의심)" count={flagged.length} plain>
       <div
         style={{
-          fontSize: 12,
+          fontSize: fs(12),
           color: 'var(--ark-color-text-secondary)',
           padding: '0 16px 8px',
         }}

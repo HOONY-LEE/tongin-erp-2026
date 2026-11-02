@@ -270,6 +270,7 @@ export default {
   },
   calendar: { today: '오늘' },
   theme: { label: '테마', system: '시스템', light: '라이트', dark: '다크' },
+  fontSize: { label: '글자 크기', sm: '작게', md: '중간', lg: '크게' },
   lang: { label: '언어' },
   login: { id: '아이디', password: '비밀번호', failed: '로그인에 실패했습니다' },
   dashboard: {

@@ -7,6 +7,7 @@ import {
   formatTime,
   type CalendarItem,
 } from '../../lib/calendarUtils';
+import { fs } from '../../lib/fontScale';
 
 export interface EventFormValues {
   title: string;
@@ -128,7 +129,7 @@ export default function EventModal({
           <Row label="시간" value={event.startTime ? formatTime(event.startTime) : '종일'} />
           {event.location && <Row label="장소" value={event.location} />}
           {event.description && <Row label="메모" value={event.description} />}
-          <div style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>
+          <div style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)' }}>
             다른 사람이 등록했거나 시스템이 생성한 일정이라 여기서는 수정할 수 없습니다.
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
@@ -194,7 +195,7 @@ export default function EventModal({
             />
           </div>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)', marginTop: -10 }}>
+        <div style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)', marginTop: -10 }}>
           시간을 비워두면 종일 일정으로 저장됩니다. 종료일을 지정하면 여러 날 막대로 표시됩니다.
         </div>
 
@@ -235,7 +236,7 @@ export default function EventModal({
         <div>
           <div
             style={{
-              fontSize: 13,
+              fontSize: fs(13),
               fontWeight: 500,
               marginBottom: 8,
               color: 'var(--ark-color-text-secondary)',
@@ -289,7 +290,7 @@ export default function EventModal({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', gap: 12, fontSize: 14 }}>
+    <div style={{ display: 'flex', gap: 12, fontSize: fs(14) }}>
       <span style={{ minWidth: 48, color: 'var(--ark-color-text-secondary)' }}>{label}</span>
       <span style={{ color: 'var(--ark-color-text)' }}>{value}</span>
     </div>

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   APPROVAL_DOC_TYPE_LABEL,
   type ApprovalDocType,
+  type ApprovalLineRule,
   type ApprovalStepKind,
+  type FormAudience,
   type FormField,
   type LeaveFormSettings,
 } from '@tongin/shared';
@@ -139,6 +141,10 @@ export interface ApprovalFormDef {
   description: string | null;
   fields: FormField[];
   settings: Partial<LeaveFormSettings>;
+  /** 누가 고를 수 있나(결재 양식) */
+  audience: FormAudience;
+  /** 전사 기본 결재선 — 관리 화면에서 ?detail=1로 읽을 때만 */
+  line?: ApprovalLineRule[] | null;
   isActive: boolean;
   sortOrder: number;
 }
