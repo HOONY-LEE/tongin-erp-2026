@@ -651,7 +651,6 @@ export function LeaveTypes() {
   const yesNo = (v: unknown) => (v ? '예' : '아니오');
   const columns: Column[] = [
     { title: '이름', dataIndex: 'name' },
-    { title: '코드', dataIndex: 'code' },
     {
       title: '단위',
       render: (r) =>
@@ -675,9 +674,6 @@ export function LeaveTypes() {
 
   const fields: FormField[] = [
     { name: 'name', label: '이름', required: true },
-    ...(editing === 'new'
-      ? [{ name: 'code', label: '코드(영문 대문자)', required: true, placeholder: '예: REFRESH' }]
-      : []),
     {
       name: 'unitDays',
       label: '단위',

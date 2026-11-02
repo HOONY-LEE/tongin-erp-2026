@@ -11,7 +11,6 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
@@ -82,10 +81,8 @@ export class AdjustLeaveDto {
   effectiveDate?: string;
 }
 
+/** 휴가 종류 만들기 — 코드는 서버가 붙인다(사람이 정하면 겹치거나 시스템이 쓰는 코드와 부딪힐 수 있다) */
 export class CreateLeaveTypeDto {
-  @Matches(/^[A-Z][A-Z0-9_]{1,30}$/, { message: '코드는 영문 대문자·숫자·_ 로 2~31자' })
-  code!: string;
-
   @IsString()
   @MaxLength(50)
   name!: string;

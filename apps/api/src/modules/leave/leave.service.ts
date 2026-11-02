@@ -85,15 +85,24 @@ export class LeaveService implements OnModuleInit {
     });
   }
 
-  createType(input: {
-    code: string;
+  /** 새 휴가 종류 — 코드는 T0001부터 비어 있는 다음 번호(기본 종류 ANNUAL·HALF_AM 등은 시드가 정한 그대로) */
+  async createType(input: {
     name: string;
     unitDays: number;
     deducts: boolean;
     paid: boolean;
     sortOrder?: number;
   }) {
-    return this.prisma.leaveType.create({ data: input });
+    const used = await this.prisma.leaveType.findMany({
+      where: { code: { startsWith: 'T' } },
+      select: { code: true },
+    });
+    const nums = used
+      .map((t) => /^T(\d{4,})$/.exec(t.code)?.[1])
+      .filter(Boolean)
+      .map(Number);
+    const code = `T${String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0')}`;
+    return this.prisma.leaveType.create({ data: { ...input, code } });
   }
 
   updateType(
