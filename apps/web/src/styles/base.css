@@ -23,6 +23,9 @@ a {
   /* 글자 크기 배율 — 작게/중간/크게(html[data-font-size], lib/fontScale.ts). 중간 = 1 = 지금 크기.
      화면의 font-size는 모두 calc(Npx * var(--font-scale))로 이 값을 따른다 */
   --font-scale: 1;
+  /* 칩(하나·여럿 고르기) 선택됨 — 라이트: 검정 바탕·흰 글자, 다크는 아래에서 뒤집는다 */
+  --chip-on-bg: #111827;
+  --chip-on-fg: #ffffff;
   /* 전체 폰트 사이즈를 디자인 시스템 스케일에서 한 단계씩 올림 (메뉴·타이틀·버튼 등 전역 적용) */
   --ark-font-size-xs: calc(14px * var(--font-scale));
   --ark-font-size-sm: calc(16px * var(--font-scale));
@@ -69,6 +72,8 @@ html[data-font-size='lg'] {
 }
 [data-theme='dark'] {
   color-scheme: dark;
+  --chip-on-bg: #f3f4f6;
+  --chip-on-fg: #111827;
 
   --ark-color-primary-50: #2b160c;
   --ark-color-primary-100: #3d1f11;

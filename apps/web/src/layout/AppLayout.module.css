@@ -242,6 +242,14 @@
   font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
 }
+/* 메뉴 이름 칸을 끝까지 늘려 숫자 배지(.countBadge, margin-left:auto)가 오른쪽 끝에 붙게 — 접힌 사이드바는 제외 */
+.desktopLayout:not(.collapsed) .sidebarWrap [class*='_itemLabel_'] {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 /* 아래 설정 칸 — 낮게 */
 .sidebarWrap [class*='sidebarFooter'] {
   padding: 6px 12px;

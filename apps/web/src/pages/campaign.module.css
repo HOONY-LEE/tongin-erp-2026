@@ -117,9 +117,9 @@
 }
 .chipOn,
 .chipOn:hover {
-  border-color: var(--ark-color-primary-500);
-  background: var(--ark-color-primary-50);
-  color: var(--ark-color-primary-600);
+  border-color: var(--chip-on-bg);
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
   font-weight: 600;
 }
 .chip:focus-visible {
