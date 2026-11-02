@@ -190,7 +190,7 @@
   background: transparent;
   color: var(--ark-color-text-secondary);
   font: inherit;
-  font-size: var(--ark-font-size-sm);
+  font-size: calc(13px * var(--font-scale, 1));
   text-align: left;
   cursor: pointer;
 }

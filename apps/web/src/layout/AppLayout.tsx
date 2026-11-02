@@ -263,12 +263,12 @@ export default function AppLayout() {
                 <button
                   type="button"
                   className={settingsStyles.gear}
-                  title="설정"
-                  aria-label="설정"
+                  title="앱 설정"
+                  aria-label="앱 설정"
                   onClick={() => setSettingsOpen(true)}
                 >
                   <Settings size={16} />
-                  {!collapsed && <span>설정</span>}
+                  {!collapsed && <span>앱 설정</span>}
                 </button>
               </div>
             }

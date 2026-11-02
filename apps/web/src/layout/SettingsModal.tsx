@@ -227,7 +227,7 @@ export default function SettingsModal({
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
-        aria-label="설정"
+        aria-label="앱 설정"
         data-settings
       >
         <nav className={styles.nav}>

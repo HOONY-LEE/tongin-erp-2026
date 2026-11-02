@@ -44,6 +44,14 @@ a {
   --ark-color-primary-foreground: #ffffff;
   --ark-color-primary-hover: #e35f28;
 
+  /* softium-ui(표) 글자·행 높이도 글자 크기 배율을 따른다 */
+  --sft-font-size-xs: calc(11px * var(--font-scale));
+  --sft-font-size-sm: calc(12px * var(--font-scale));
+  --sft-font-size-md: calc(13px * var(--font-scale));
+  --sft-font-size-lg: calc(15px * var(--font-scale));
+  --sft-font-size-xl: calc(20px * var(--font-scale));
+  --sft-table-row-height: calc(40px * var(--font-scale));
+  --sft-table-header-height: calc(44px * var(--font-scale));
   /* softium-ui Table 기본 폰트를 한 단계 키움(md→lg) */
   --sft-table-font-size: var(--sft-font-size-lg);
 
@@ -403,4 +411,14 @@ textarea:focus:not([readonly]) {
 .sft-tfoot__pagesize {
   height: 30px;
   box-sizing: border-box;
+}
+
+/* 표 행 높이 — softium Table이 표마다 인라인으로 44px를 박아 넣어서 글자 크기 배율을 따르게 덮어쓴다 */
+.sft-table {
+  --sft-table-row-height: calc(44px * var(--font-scale)) !important;
+}
+
+/* 아이콘(lucide — 앱·akron-ui 공통)도 글자 크기 배율을 따른다. size={16} 같은 고정 크기를 배율만큼 키우고 줄인다 */
+svg.lucide {
+  zoom: var(--font-scale);
 }
