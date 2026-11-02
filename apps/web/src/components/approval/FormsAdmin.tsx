@@ -11,6 +11,7 @@ import {
   type SubstituteMode,
 } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
+import { useDetailParam } from '../../lib/useDetailParam';
 import { useApprovalForms, useDirectory, type ApprovalFormDef } from '../../lib/approvals';
 import {
   Badge,
@@ -40,13 +41,29 @@ import fstyles from './formFields.module.css';
  * 결재 양식 관리(APPROVAL.MANAGE) — 지출 결의·구매 품의처럼 회사마다 다른 신청서를 항목으로 정의한다.
  * 양식 편집에서 공개 대상·기본 결재선까지 함께 정한다.
  */
-export function FormsAdmin() {
+export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
   const { forms, loading, reload } = useApprovalForms(true);
   const { orgs, people } = useDirectory();
-  const [editing, setEditing] = useState<ApprovalFormDef | 'new' | null>(null);
+  // 결재함에서는 편집 중인 양식을 주소(?form=<id>|new)에 둔다 — 결재함 머리글을 숨기고 뒤로가기도 된다.
+  // 설정 창 안에서는 주소를 건드리지 않게 화면 안에서만 기억한다
+  const param = useDetailParam(urlKey ?? '__unused');
+  const [localEditing, setLocalEditing] = useState<ApprovalFormDef | 'new' | null>(null);
+  const editing: ApprovalFormDef | 'new' | null = urlKey
+    ? param.id === 'new'
+      ? 'new'
+      : (forms.find((f) => f.id === param.id) ?? null)
+    : localEditing;
+  const setEditing = (v: ApprovalFormDef | 'new' | null) => {
+    if (!urlKey) return setLocalEditing(v);
+    if (v) param.open(v === 'new' ? 'new' : v.id);
+    else param.close();
+  };
   const custom = forms.filter((f) => f.kind === 'CUSTOM');
   const orgName = useMemo(() => new Map(orgs.map((o) => [o.id, o.name])), [orgs]);
   const personName = useMemo(() => new Map(people.map((p) => [p.id, p.name])), [people]);
+
+  // 주소로 바로 열었는데 목록을 아직 못 읽었으면 잠깐 비워 둔다(목록이 번쩍 보이지 않게)
+  if (urlKey && param.id && !editing && loading) return null;
 
   if (editing) {
     return (
