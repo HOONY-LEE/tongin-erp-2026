@@ -19,7 +19,6 @@ import {
   DataTable,
   Input,
   PageHeader,
-  SegmentedControl,
   Textarea,
   useToast,
   type Column,
@@ -72,7 +71,7 @@ export function FormsAdmin() {
 
   const columns: Column[] = [
     { title: '양식', dataIndex: 'name', minWidth: 180 },
-    { title: '묶음', dataIndex: 'category', width: 110 },
+    { title: '분류', dataIndex: 'category', width: 110 },
     { title: '설명', dataIndex: 'description', flex: 1, minWidth: 200 },
     {
       title: '공개 대상',
@@ -134,6 +133,7 @@ export function FormEditor({
   const [category, setCategory] = useState(initial?.category ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [isActive, setActive] = useState(initial?.isActive ?? true);
+  const { forms: allForms } = useApprovalForms(true);
   const [fields, setFields] = useState<FormField[]>(initial?.fields ?? []);
   const [audience, setAudience] = useState<FormAudience>(
     initial?.audience ?? DEFAULT_FORM_AUDIENCE,
@@ -214,6 +214,24 @@ export function FormEditor({
     }
   };
 
+  /** 사용 중지 — 직원의 「+ 새 결재」에서 빠진다(이미 올린 문서는 그대로). 바로 저장 */
+  const toggleActive = async () => {
+    if (!initial) return;
+    try {
+      await api(`/approval-forms/${initial.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive: !isActive }),
+      });
+      setActive(!isActive);
+      toast({
+        type: 'success',
+        title: isActive ? '사용을 멈췄습니다 — 직원 목록에서 빠집니다' : '다시 사용합니다',
+      });
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
+    }
+  };
+
   const saveBtn = (
     <Button
       variant="primary"
@@ -228,14 +246,25 @@ export function FormEditor({
 
   const header = onBack ? (
     <PageHeader
-      title={leave ? '휴가 신청서' : initial ? initial.name : '새 결재 양식'}
+      title={
+        leave
+          ? '휴가 신청서'
+          : initial
+            ? `${initial.name}${isActive ? '' : ' (사용 안 함)'}`
+            : '새 결재 양식'
+      }
       breadcrumbs={[{ label: backLabel, onClick: onBack }]}
       actions={
         <>
           {initial && !leave && (
-            <Button variant="ghost" size="sm" onClick={() => void remove()}>
-              삭제
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" onClick={() => void remove()}>
+                삭제
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => void toggleActive()}>
+                {isActive ? '사용 중지' : '다시 사용'}
+              </Button>
+            </>
           )}
           {saveBtn}
         </>
@@ -259,8 +288,7 @@ export function FormEditor({
           <div className={styles.formCol}>
             <div className={styles.fieldLabel}>
               업무 대리인
-              <SegmentedControl
-                size="sm"
+              <ChoiceChips
                 value={substitute}
                 onChange={(v) => setSubstitute(v as SubstituteMode)}
                 options={SUBSTITUTE_MODES.map((m) => ({
@@ -307,15 +335,16 @@ export function FormEditor({
                     onChange={(e) => setName(e.target.value)}
                   />
                 </label>
-                <label className={styles.fieldLabel} style={{ flex: '1 1 140px' }}>
-                  묶음
-                  <Input
-                    value={category}
-                    maxLength={30}
-                    placeholder="예: 재무"
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                </label>
+              </div>
+              <div className={styles.fieldLabel}>
+                분류 <span className={styles.muted}>「+ 새 결재」에서 이 분류로 묶여 보입니다</span>
+                <CategoryPicker
+                  value={category}
+                  onChange={setCategory}
+                  existing={allForms
+                    .filter((f) => f.kind === 'CUSTOM' && f.category)
+                    .map((f) => f.category as string)}
+                />
               </div>
               <label className={styles.fieldLabel}>
                 설명
@@ -327,19 +356,18 @@ export function FormEditor({
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </label>
-              <Checkbox
-                checked={isActive}
-                onCheckedChange={(c) => setActive(c === true)}
-                label="사용(직원이 고를 수 있음)"
-              />
             </div>
+          </section>
+
+          <section className="rd-card">
+            <h3 className="rd-title">항목</h3>
+            <FormBuilder fields={fields} onChange={setFields} hidePreview />
           </section>
 
           <section className="rd-card">
             <h3 className="rd-title">공개 대상</h3>
             <div className={styles.formCol}>
-              <SegmentedControl
-                size="sm"
+              <ChoiceChips
                 value={audience.mode}
                 onChange={(v) => setAudience({ ...audience, mode: v as FormAudience['mode'] })}
                 options={[
@@ -379,8 +407,7 @@ export function FormEditor({
           <section className="rd-card">
             <h3 className="rd-title">결재선</h3>
             <div className={styles.formCol}>
-              <SegmentedControl
-                size="sm"
+              <ChoiceChips
                 value={lineMode}
                 onChange={(v) => setLineMode(v as LineMode)}
                 options={[
@@ -403,17 +430,9 @@ export function FormEditor({
               )}
             </div>
           </section>
-
-          <section className="rd-card">
-            <h3 className="rd-title">항목</h3>
-            <FormBuilder fields={fields} onChange={setFields} hidePreview />
-          </section>
         </div>
 
         <aside className={styles.formEditorSide} aria-label="상신 창 미리보기">
-          <div className={styles.previewCaption}>
-            직원이 보게 될 상신 창 — 실제 크기, 입력·첨부를 해 볼 수 있습니다(올라가지 않음)
-          </div>
           <SubmitPreview
             name={name}
             description={description}
@@ -593,6 +612,103 @@ function OrgPicker({ value, onChange }: { value: string[]; onChange: (v: string[
         searchPlaceholder="조직 이름으로 찾기"
         onChange={(v) => v && onChange([...value, v])}
       />
+    </div>
+  );
+}
+
+/** 하나 고르기 — 내용 폭만큼의 칩(세그먼트처럼 줄 전체를 차지하지 않는다) */
+function ChoiceChips({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className={styles.choiceChips} role="radiogroup">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          className={`${styles.choiceChip} ${value === o.value ? styles.choiceChipOn : ''}`}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 분류 고르기 — 이미 쓰는 분류를 칩으로 고르고, 없으면 「+ 새 분류」로 더한다.
+ * 글자를 매번 손으로 치면 '재무'·'재무팀'처럼 갈라져 묶음 기준이 흐트러진다.
+ */
+function CategoryPicker({
+  value,
+  onChange,
+  existing,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  existing: string[];
+}) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
+  const list = [...new Set([...existing, ...(value ? [value] : [])])].sort((a, b) =>
+    a.localeCompare(b, 'ko'),
+  );
+  const commit = () => {
+    const v = draft.trim();
+    if (v) onChange(v);
+    setDraft('');
+    setAdding(false);
+  };
+  return (
+    <div className={styles.choiceChips}>
+      <button
+        type="button"
+        className={`${styles.choiceChip} ${!value ? styles.choiceChipOn : ''}`}
+        onClick={() => onChange('')}
+      >
+        기타
+      </button>
+      {list.map((c) => (
+        <button
+          key={c}
+          type="button"
+          className={`${styles.choiceChip} ${value === c ? styles.choiceChipOn : ''}`}
+          onClick={() => onChange(c)}
+        >
+          {c}
+        </button>
+      ))}
+      {adding ? (
+        <Input
+          autoFocus
+          value={draft}
+          maxLength={30}
+          placeholder="새 분류 이름"
+          style={{ width: 150, height: 32 }}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') {
+              setDraft('');
+              setAdding(false);
+            }
+          }}
+        />
+      ) : (
+        <button type="button" className={styles.choiceChipAdd} onClick={() => setAdding(true)}>
+          + 새 분류
+        </button>
+      )}
     </div>
   );
 }
