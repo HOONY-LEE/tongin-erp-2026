@@ -234,6 +234,7 @@ export default function SettingsModal({
           <label className={styles.search}>
             <Search size={15} aria-hidden />
             <input
+              className="no-focus-ring"
               value={q}
               placeholder="설정 찾기…"
               onChange={(e) => setQ(e.target.value)}
