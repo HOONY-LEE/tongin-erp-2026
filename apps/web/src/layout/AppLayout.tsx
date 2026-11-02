@@ -283,13 +283,17 @@ export default function AppLayout() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: fs(13),
-                    fontWeight: 800,
                     flexShrink: 0,
                   }}
                 >
-                  통
+                  {/* 흰색 통인 호랑이 — 색 있는 로고는 /brand/tongin-logo-color.png */}
+                  <img
+                    src="/brand/tongin-logo-white.png"
+                    alt="통인익스프레스"
+                    width={22}
+                    height={22}
+                    style={{ display: 'block' }}
+                  />
                 </div>
                 {!collapsed && (
                   <span style={{ fontWeight: 700, fontSize: fs(15) }}>{PRODUCT_NAME}</span>
