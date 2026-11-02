@@ -12,6 +12,8 @@ import {
 } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { useDetailParam } from '../../lib/useDetailParam';
+import { useAuth } from '../../auth/AuthContext';
+import { FormDraftModal } from './NewDocPicker';
 import { useApprovalForms, useDirectory, type ApprovalFormDef } from '../../lib/approvals';
 import {
   Badge,
@@ -49,6 +51,8 @@ export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
   // 설정 창 안에서는 주소를 건드리지 않게 화면 안에서만 기억한다
   const param = useDetailParam(urlKey ?? '__unused');
   const [localEditing, setLocalEditing] = useState<ApprovalFormDef | 'new' | null>(null);
+  const [previewing, setPreviewing] = useState<ApprovalFormDef | null>(null);
+  const { user } = useAuth();
   const editing: ApprovalFormDef | 'new' | null = urlKey
     ? param.id === 'new'
       ? 'new'
@@ -114,17 +118,34 @@ export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
   ];
 
   return (
-    <DataTable
-      columns={columns}
-      rows={custom as unknown as Row[]}
-      loading={loading}
-      onRowClick={(r) => setEditing(r as unknown as ApprovalFormDef)}
-      toolbarActions={
-        <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-          + 새 양식
-        </Button>
-      }
-    />
+    <>
+      <DataTable
+        columns={columns}
+        rows={custom as unknown as Row[]}
+        loading={loading}
+        // 행을 누르면 직원이 보게 될 상신 창 그대로 — 거기서 편집하기 / 바로 결재 올리기
+        onRowClick={(r) => setPreviewing(r as unknown as ApprovalFormDef)}
+        toolbarActions={
+          <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
+            + 새 양식
+          </Button>
+        }
+      />
+      {previewing && (
+        <FormDraftModal
+          key={previewing.id}
+          form={previewing}
+          myEmployeeId={user?.employeeId ?? null}
+          onClose={() => setPreviewing(null)}
+          onSubmitted={() => setPreviewing(null)}
+          onEdit={() => {
+            const f = previewing;
+            setPreviewing(null);
+            setEditing(f);
+          }}
+        />
+      )}
+    </>
   );
 }
 

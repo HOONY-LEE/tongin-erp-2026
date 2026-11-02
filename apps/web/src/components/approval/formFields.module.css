@@ -238,3 +238,12 @@ button.fileChip:hover {
   gap: 8px 16px;
   font-weight: 400;
 }
+
+/* 텍스트 칸(자동으로 늘어나는 글상자) — 다른 입력칸과 같은 높이(36px)에서 시작, 비어 있는 글자 수 칸은 숨긴다 */
+.textField [class*='_wrapper_'] {
+  min-height: 36px;
+  align-items: center;
+}
+.textField [class*='_footer_']:has(> span:empty:only-child) {
+  display: none;
+}

@@ -95,17 +95,26 @@ export function FormDraftModal({
   myEmployeeId,
   onClose,
   onSubmitted,
+  onEdit,
 }: {
   form: ApprovalFormDef;
   myEmployeeId: string | null;
   onClose: () => void;
   onSubmitted: (doc: ApprovalDocView) => void;
+  /** 결재 양식 목록에서 열었을 때 — 왼쪽 아래 「결재 양식 편집하기」 */
+  onEdit?: () => void;
 }) {
   const toast = useToast();
   const [values, setValues] = useState<FormDraft>({});
   const [line, setLine] = useState<LineEntry[] | null>(null);
   const [busy, setBusy] = useState(false);
   const ready = formReady(form.fields, values);
+  // 올릴 수 없는 이유(관리 화면에서 미리 볼 때) — 버튼을 막고 이유를 보인다
+  const blocked = !myEmployeeId
+    ? '직원과 연결된 계정만 결재를 올릴 수 있습니다'
+    : !form.isActive
+      ? '사용 중지된 양식입니다'
+      : null;
 
   const submit = async () => {
     setBusy(true);
@@ -135,11 +144,22 @@ export function FormDraftModal({
       description={form.description ?? undefined}
       footer={
         <>
+          {onEdit && (
+            <Button variant="outline" onClick={onEdit} style={{ marginRight: 'auto' }}>
+              결재 양식 편집하기
+            </Button>
+          )}
+          {blocked && <span className={astyles.muted}>{blocked}</span>}
           <Button variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button variant="primary" loading={busy} disabled={!ready} onClick={() => void submit()}>
-            상신
+          <Button
+            variant="primary"
+            loading={busy}
+            disabled={!ready || !!blocked}
+            onClick={() => void submit()}
+          >
+            {onEdit ? '결재 올리기' : '상신'}
           </Button>
         </>
       }

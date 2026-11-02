@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, Paperclip, Plus, Trash2, X } from 'lucide-react';
-import { Combobox } from '@sunghoon_lee/akron-ui';
+import { AutoSizeTextarea, Combobox } from '@sunghoon_lee/akron-ui';
 import {
   FORM_FIELD_TYPES,
   FORM_FIELD_TYPE_LABEL,
@@ -14,7 +14,7 @@ import {
 } from '@tongin/shared';
 import { useDirectory } from '../../lib/approvals';
 import { api, ApiError, downloadFile } from '../../lib/api';
-import { Button, Checkbox, Input, Select, Textarea, useToast } from '../ui';
+import { Button, Checkbox, Input, Select, useToast } from '../ui';
 import styles from './formFields.module.css';
 
 /** 화면에서 채우는 값 — person은 고른 직원 id 목록(서버가 이름을 붙인다) */
@@ -226,12 +226,16 @@ export function FormFieldInputs({
           // 텍스트 — 짧은 답도 긴 글도 한 칸에서(여러 줄 가능)
           case 'text':
             input = (
-              <Textarea
-                rows={2}
-                value={String(v ?? '')}
-                placeholder={f.placeholder}
-                onChange={(e) => set(f.id, e.target.value)}
-              />
+              // 한 줄 높이로 시작해 쓰는 만큼 늘어난다(최대 8줄, 넘으면 안에서 스크롤)
+              <div className={styles.textField}>
+                <AutoSizeTextarea
+                  minRows={1}
+                  maxRows={8}
+                  value={String(v ?? '')}
+                  placeholder={f.placeholder}
+                  onChange={(e) => set(f.id, e.target.value)}
+                />
+              </div>
             );
             break;
           case 'number':
