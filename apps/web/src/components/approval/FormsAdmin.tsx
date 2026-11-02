@@ -3,6 +3,7 @@ import { Combobox } from '@sunghoon_lee/akron-ui';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import {
   DEFAULT_FORM_AUDIENCE,
+  FORM_ICONS,
   SUBSTITUTE_MODES,
   SUBSTITUTE_MODE_LABEL,
   type ApprovalLineRule,
@@ -14,6 +15,8 @@ import { api, ApiError } from '../../lib/api';
 import { useDetailParam } from '../../lib/useDetailParam';
 import { useAuth } from '../../auth/AuthContext';
 import { FormDraftModal } from './NewDocPicker';
+import { LeaveApplyModal } from '../../pages/Leave';
+import { formIcon } from '../../lib/formIcons';
 import { useApprovalForms, useDirectory, type ApprovalFormDef } from '../../lib/approvals';
 import {
   Badge,
@@ -22,6 +25,7 @@ import {
   DataTable,
   Input,
   PageHeader,
+  Select,
   Textarea,
   useToast,
   type Column,
@@ -63,7 +67,11 @@ export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
     if (v) param.open(v === 'new' ? 'new' : v.id);
     else param.close();
   };
-  const custom = forms.filter((f) => f.kind === 'CUSTOM');
+  // 휴가 신청서도 결재 양식 중 하나 — 맨 위에(지울 수 없고 늘 사용)
+  const rows = [
+    ...forms.filter((f) => f.kind === 'LEAVE'),
+    ...forms.filter((f) => f.kind === 'CUSTOM'),
+  ];
   const orgName = useMemo(() => new Map(orgs.map((o) => [o.id, o.name])), [orgs]);
   const personName = useMemo(() => new Map(people.map((p) => [p.id, p.name])), [people]);
 
@@ -92,13 +100,28 @@ export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
         ].join(', ');
 
   const columns: Column[] = [
-    { title: '양식', dataIndex: 'name', minWidth: 180 },
+    {
+      title: '양식',
+      minWidth: 200,
+      render: (r) => {
+        const Icon = formIcon(r.icon as string | null);
+        return (
+          <span className={styles.formNameCell}>
+            <Icon size={16} aria-hidden />
+            {String(r.name)}
+          </span>
+        );
+      },
+    },
     { title: '분류', dataIndex: 'category', width: 110 },
     { title: '설명', dataIndex: 'description', flex: 1, minWidth: 200 },
     {
       title: '공개 대상',
       minWidth: 140,
-      render: (r) => audienceText((r.audience as FormAudience) ?? DEFAULT_FORM_AUDIENCE),
+      render: (r) =>
+        r.kind === 'LEAVE'
+          ? '전 직원'
+          : audienceText((r.audience as FormAudience) ?? DEFAULT_FORM_AUDIENCE),
     },
     {
       title: '항목',
@@ -121,7 +144,7 @@ export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
     <>
       <DataTable
         columns={columns}
-        rows={custom as unknown as Row[]}
+        rows={rows as unknown as Row[]}
         loading={loading}
         // 행을 누르면 직원이 보게 될 상신 창 그대로 — 거기서 편집하기 / 바로 결재 올리기
         onRowClick={(r) => setPreviewing(r as unknown as ApprovalFormDef)}
@@ -131,7 +154,18 @@ export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
           </Button>
         }
       />
-      {previewing && (
+      {previewing?.kind === 'LEAVE' && (
+        <LeaveApplyModal
+          onClose={() => setPreviewing(null)}
+          onDone={() => setPreviewing(null)}
+          onEdit={() => {
+            const f = previewing;
+            setPreviewing(null);
+            setEditing(f);
+          }}
+        />
+      )}
+      {previewing && previewing.kind !== 'LEAVE' && (
         <FormDraftModal
           key={previewing.id}
           form={previewing}
@@ -185,6 +219,7 @@ export function FormEditor({
   const [reasonRequired, setReasonRequired] = useState(!!initial?.settings.reasonRequired);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
+  const [icon, setIcon] = useState<string | null>(initial?.icon ?? null);
 
   // 다른 양식을 고르면(휴가 화면에서 다시 읽힌 경우 등) 입력을 맞춘다
   useEffect(() => {
@@ -195,7 +230,7 @@ export function FormEditor({
 
   // 기본 결재선은 목록에 없어 따로 읽는다
   useEffect(() => {
-    if (!initial || leave) return;
+    if (!initial) return;
     void api<ApprovalFormDef>(`/approval-forms/${initial.id}?detail=1`)
       .then((d) => {
         if (d.line?.length) {
@@ -204,7 +239,7 @@ export function FormEditor({
         }
       })
       .catch(() => undefined);
-  }, [initial, leave]);
+  }, [initial]);
 
   const labelsOk = fields.every((f) => f.label.trim());
   const audienceOk =
@@ -214,17 +249,24 @@ export function FormEditor({
   const save = async () => {
     setBusy(true);
     try {
+      // 빈 배열 = 기본 결재선을 따른다(양식: 일반 품의 결재선, 휴가: 휴가 결재선 설정·부서장)
+      const line = lineMode === 'CUSTOM' ? steps : [];
       const body = leave
-        ? { fields: cleanFieldsForSave(fields), settings: { substitute, reasonRequired } }
+        ? {
+            fields: cleanFieldsForSave(fields),
+            settings: { substitute, reasonRequired },
+            icon,
+            line,
+          }
         : {
             name: name.trim(),
+            icon,
             category: category.trim() || null,
             description: description.trim() || null,
             isActive,
             fields: cleanFieldsForSave(fields),
             audience,
-            // 빈 배열 = 일반 품의 결재선을 따른다
-            line: lineMode === 'CUSTOM' ? steps : [],
+            line,
           };
       await api(initial ? `/approval-forms/${initial.id}` : '/approval-forms', {
         method: initial ? 'PATCH' : 'POST',
@@ -315,49 +357,11 @@ export function FormEditor({
     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{saveBtn}</div>
   );
 
-  // 휴가 신청서 — 신청 설정 + 추가 항목(미리보기는 항목 옆)
-  if (leave) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {header}
-        <section className="rd-card">
-          <h3 className="rd-title">신청 설정</h3>
-          <p className={styles.muted} style={{ margin: '0 0 12px' }}>
-            휴가 종류·날짜(반차·반반차는 시간대)·사유는 기본으로 들어갑니다. 아래 항목은 그 뒤에
-            붙습니다.
-          </p>
-          <div className={styles.formCol}>
-            <div className={styles.fieldLabel}>
-              업무 대리인
-              <ChoiceChips
-                value={substitute}
-                onChange={(v) => setSubstitute(v as SubstituteMode)}
-                options={SUBSTITUTE_MODES.map((m) => ({
-                  value: m,
-                  label: SUBSTITUTE_MODE_LABEL[m],
-                }))}
-              />
-              <span className={styles.muted} style={{ fontWeight: 400 }}>
-                필수면 대리인을 골라야 신청할 수 있고, 승인되면 대리인에게 알림이 갑니다.
-              </span>
-            </div>
-            <Checkbox
-              checked={reasonRequired}
-              onCheckedChange={(c) => setReasonRequired(c === true)}
-              label="휴가 사유 필수"
-            />
-          </div>
-        </section>
-        <section className="rd-card">
-          <h3 className="rd-title">추가 항목</h3>
-          <FormBuilder fields={fields} onChange={setFields} />
-        </section>
-      </div>
-    );
-  }
-
-  const step1Ready = !!name.trim() && labelsOk;
-  const STEPS = ['양식 만들기', '공개 대상 · 결재선'] as const;
+  // 휴가 신청서도 같은 단계 — 이름·분류는 고정, 공개 대상은 전 직원
+  const step1Ready = (leave || !!name.trim()) && labelsOk;
+  const STEPS = leave
+    ? (['신청서 만들기', '결재선'] as const)
+    : (['양식 만들기', '공개 대상 · 결재선'] as const);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -386,99 +390,149 @@ export function FormEditor({
             <>
               <div className={styles.builderBlock}>
                 <h3 className={cstyles.panelTitle}>기본 정보</h3>
-                <label className={styles.fieldLabel}>
-                  <span>
-                    양식 이름 <span style={{ color: 'var(--ark-color-error-500)' }}>*</span>
-                  </span>
-                  <Input
-                    value={name}
-                    maxLength={60}
-                    placeholder="예: 지출 결의서"
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </label>
+                {leave ? (
+                  <p className={styles.muted} style={{ margin: 0 }}>
+                    휴가 신청서 — 이름은 고정입니다. 휴가 종류·날짜(반차·반반차는 시간대)·사유는
+                    기본으로 들어가고, 아래 「추가 항목」이 그 뒤에 붙습니다.
+                  </p>
+                ) : (
+                  <label className={styles.fieldLabel}>
+                    <span>
+                      양식 이름 <span style={{ color: 'var(--ark-color-error-500)' }}>*</span>
+                    </span>
+                    <Input
+                      value={name}
+                      maxLength={60}
+                      placeholder="예: 지출 결의서"
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </label>
+                )}
                 <div className={styles.fieldLabel}>
-                  분류{' '}
-                  <span className={styles.muted}>「+ 새 결재」에서 이 분류로 묶여 보입니다</span>
-                  <CategoryPicker
-                    value={category}
-                    onChange={setCategory}
-                    existing={allForms
-                      .filter((f) => f.kind === 'CUSTOM' && f.category)
-                      .map((f) => f.category as string)}
+                  아이콘 <span className={styles.muted}>결재함 신청 카드·목록에 보입니다</span>
+                  <IconPicker
+                    value={icon ?? (leave ? 'CalendarOff' : 'FileText')}
+                    onChange={setIcon}
                   />
                 </div>
-                <label className={styles.fieldLabel}>
-                  설명
-                  <Textarea
-                    rows={2}
-                    value={description}
-                    maxLength={300}
-                    placeholder="언제 쓰는 양식인지 — 새 결재 고르기 화면에 보입니다"
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </label>
+                {!leave && (
+                  <div className={styles.fieldLabel}>
+                    분류{' '}
+                    <span className={styles.muted}>「+ 새 결재」에서 이 분류로 묶여 보입니다</span>
+                    <CategoryPicker
+                      value={category}
+                      onChange={setCategory}
+                      existing={allForms
+                        .filter((f) => f.kind === 'CUSTOM' && f.category)
+                        .map((f) => f.category as string)}
+                    />
+                  </div>
+                )}
+                {!leave && (
+                  <label className={styles.fieldLabel}>
+                    설명
+                    <Textarea
+                      rows={2}
+                      value={description}
+                      maxLength={300}
+                      placeholder="언제 쓰는 양식인지 — 새 결재 고르기 화면에 보입니다"
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </label>
+                )}
               </div>
+              {leave && (
+                <div className={styles.builderBlock}>
+                  <h3 className={cstyles.panelTitle}>신청 설정</h3>
+                  <div className={styles.fieldLabel}>
+                    업무 대리인
+                    <ChoiceChips
+                      value={substitute}
+                      onChange={(v) => setSubstitute(v as SubstituteMode)}
+                      options={SUBSTITUTE_MODES.map((m) => ({
+                        value: m,
+                        label: SUBSTITUTE_MODE_LABEL[m],
+                      }))}
+                    />
+                    <span className={styles.muted} style={{ fontWeight: 400 }}>
+                      필수면 대리인을 골라야 신청할 수 있고, 승인되면 대리인에게 알림이 갑니다.
+                    </span>
+                  </div>
+                  <Checkbox
+                    checked={reasonRequired}
+                    onCheckedChange={(c) => setReasonRequired(c === true)}
+                    label="휴가 사유 필수"
+                  />
+                </div>
+              )}
               <div className={styles.builderBlock}>
-                <h3 className={cstyles.panelTitle}>항목</h3>
+                <h3 className={cstyles.panelTitle}>{leave ? '추가 항목' : '항목'}</h3>
                 <FormBuilder fields={fields} onChange={setFields} hidePreview />
               </div>
               <div className={cstyles.stepNav}>
                 <Button variant="primary" disabled={!step1Ready} onClick={() => setStep(2)}>
-                  다음: 공개 대상·결재선 →
+                  {leave ? '다음: 결재선 →' : '다음: 공개 대상·결재선 →'}
                 </Button>
               </div>
             </>
           ) : (
             <>
-              <div className={styles.builderBlock}>
-                <h3 className={cstyles.panelTitle}>공개 대상</h3>
-                <ChoiceChips
-                  value={audience.mode}
-                  onChange={(v) => setAudience({ ...audience, mode: v as FormAudience['mode'] })}
-                  options={[
-                    { value: 'ALL', label: '전 직원' },
-                    { value: 'SOME', label: '고른 조직·직원만' },
-                  ]}
-                />
-                {audience.mode === 'SOME' && (
-                  <>
-                    <div className={styles.fieldLabel}>
-                      조직 <span className={styles.muted}>하위 조직까지 함께 봅니다</span>
-                      <OrgPicker
-                        value={audience.orgIds}
-                        onChange={(orgIds) => setAudience({ ...audience, orgIds })}
-                      />
-                    </div>
-                    <div className={styles.fieldLabel}>
-                      직원
-                      <PersonPicker
-                        value={audience.employeeIds}
-                        onChange={(employeeIds) => setAudience({ ...audience, employeeIds })}
-                      />
-                    </div>
-                    {!audienceOk && (
-                      <span
-                        className={styles.muted}
-                        style={{ color: 'var(--ark-color-error-500)' }}
-                      >
-                        조직이나 직원을 하나 이상 고르세요.
-                      </span>
-                    )}
-                  </>
-                )}
-                <span className={styles.muted}>
-                  고른 사람만 「+ 새 결재」에서 이 양식을 봅니다. 결재 양식 관리자는 늘 봅니다.
-                </span>
-              </div>
+              {!leave && (
+                <div className={styles.builderBlock}>
+                  <h3 className={cstyles.panelTitle}>공개 대상</h3>
+                  <ChoiceChips
+                    value={audience.mode}
+                    onChange={(v) => setAudience({ ...audience, mode: v as FormAudience['mode'] })}
+                    options={[
+                      { value: 'ALL', label: '전 직원' },
+                      { value: 'SOME', label: '고른 조직·직원만' },
+                    ]}
+                  />
+                  {audience.mode === 'SOME' && (
+                    <>
+                      <div className={styles.fieldLabel}>
+                        조직 <span className={styles.muted}>하위 조직까지 함께 봅니다</span>
+                        <OrgPicker
+                          value={audience.orgIds}
+                          onChange={(orgIds) => setAudience({ ...audience, orgIds })}
+                        />
+                      </div>
+                      <div className={styles.fieldLabel}>
+                        직원
+                        <PersonPicker
+                          value={audience.employeeIds}
+                          onChange={(employeeIds) => setAudience({ ...audience, employeeIds })}
+                        />
+                      </div>
+                      {!audienceOk && (
+                        <span
+                          className={styles.muted}
+                          style={{ color: 'var(--ark-color-error-500)' }}
+                        >
+                          조직이나 직원을 하나 이상 고르세요.
+                        </span>
+                      )}
+                    </>
+                  )}
+                  <span className={styles.muted}>
+                    고른 사람만 「+ 새 결재」에서 이 양식을 봅니다. 결재 양식 관리자는 늘 봅니다.
+                  </span>
+                </div>
+              )}
               <div className={styles.builderBlock}>
                 <h3 className={cstyles.panelTitle}>결재선</h3>
                 <ChoiceChips
                   value={lineMode}
                   onChange={(v) => setLineMode(v as LineMode)}
                   options={[
-                    { value: 'GENERAL', label: '일반 품의 결재선 따르기' },
-                    { value: 'CUSTOM', label: '이 양식 결재선 정하기' },
+                    {
+                      value: 'GENERAL',
+                      label: leave ? '부서장 결재(기본) 따르기' : '일반 품의 결재선 따르기',
+                    },
+                    {
+                      value: 'CUSTOM',
+                      label: leave ? '휴가 결재선 정하기' : '이 양식 결재선 정하기',
+                    },
                   ]}
                 />
                 {lineMode === 'CUSTOM' ? (
@@ -491,7 +545,9 @@ export function FormEditor({
                   </>
                 ) : (
                   <span className={styles.muted}>
-                    「결재선 설정」의 일반 품의 결재선(없으면 부서장 결재 한 단계)을 씁니다.
+                    {leave
+                      ? '신청자 부서의 부서장이 결재합니다(「결재선 설정」에 조직별 휴가 결재선이 있으면 그것을 씁니다).'
+                      : '「결재선 설정」의 일반 품의 결재선(없으면 부서장 결재 한 단계)을 씁니다.'}
                   </span>
                 )}
               </div>
@@ -517,10 +573,11 @@ export function FormEditor({
           <h3 className={cstyles.panelTitle}>미리보기</h3>
           <div className={styles.previewStage}>
             <SubmitPreview
-              name={name}
-              description={description}
+              name={leave ? '휴가 신청' : name}
+              description={leave ? '' : description}
               fields={fields}
               steps={lineMode === 'CUSTOM' ? steps : null}
+              leave={leave ? { substitute, reasonRequired } : undefined}
             />
           </div>
         </section>
@@ -538,11 +595,14 @@ function SubmitPreview({
   description,
   fields,
   steps,
+  leave,
 }: {
   name: string;
   description: string;
   fields: FormField[];
   steps: ApprovalLineRule[] | null;
+  /** 휴가 신청서 — 휴가 종류·날짜·사유·업무 대리인(기본 칸)을 추가 항목 앞에 보인다 */
+  leave?: { substitute: SubstituteMode; reasonRequired: boolean };
 }) {
   const toast = useToast();
   const ruleText = useRuleText();
@@ -570,6 +630,7 @@ function SubmitPreview({
       </div>
       <div className={styles.mockBody}>
         <div className={styles.formCol}>
+          {leave && <LeavePreviewFields {...leave} />}
           <FormFieldInputs fields={shown} values={values} onChange={setValues} preview />
           {!shown.length && <p className={fstyles.hint}>항목을 넣으면 여기에 보입니다.</p>}
           <div className={styles.lineEditor}>
@@ -578,7 +639,9 @@ function SubmitPreview({
               <span className={styles.muted}>
                 {steps
                   ? `기본: ${name.trim() || '이 양식'} 기본 — 바꿔서 올릴 수 있습니다`
-                  : '기본 결재선(일반 품의) — 바꿔서 올릴 수 있습니다'}
+                  : leave
+                    ? '기본 결재선(부서장) — 바꿔서 올릴 수 있습니다'
+                    : '기본 결재선(일반 품의) — 바꿔서 올릴 수 있습니다'}
               </span>
             </div>
             <ol className={styles.lineList}>
@@ -646,9 +709,87 @@ function SubmitPreview({
           취소
         </Button>
         <Button variant="primary" disabled={!ready} onClick={tryIt}>
-          상신
+          {leave ? '신청(결재 상신)' : '상신'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** 휴가 신청 창의 기본 칸 미리보기 — 실제 신청 창(휴가 화면)과 같은 순서·모양 */
+function LeavePreviewFields({
+  substitute,
+  reasonRequired,
+}: {
+  substitute: SubstituteMode;
+  reasonRequired: boolean;
+}) {
+  const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
+  const [typeId, setTypeId] = useState('');
+  const [people, setPeople] = useState<string[]>([]);
+  useEffect(() => {
+    void api<{ id: string; name: string }[]>('/leave/types')
+      .then((ts) => {
+        setTypes(ts);
+        setTypeId(ts[0]?.id ?? '');
+      })
+      .catch(() => undefined);
+  }, []);
+  const req = <span style={{ color: 'var(--ark-color-error-500)' }}> *</span>;
+  return (
+    <>
+      <label className={styles.fieldLabel}>
+        휴가 종류
+        <Select
+          value={typeId}
+          onValueChange={setTypeId}
+          options={types.map((t) => ({ value: t.id, label: t.name }))}
+        />
+      </label>
+      <div className={styles.lineAdd}>
+        <label className={styles.fieldLabel} style={{ flex: 1 }}>
+          시작일
+          <Input type="date" />
+        </label>
+        <label className={styles.fieldLabel} style={{ flex: 1 }}>
+          끝일
+          <Input type="date" />
+        </label>
+      </div>
+      <label className={styles.fieldLabel}>
+        <span>사유{reasonRequired && req}</span>
+        <Textarea rows={2} />
+      </label>
+      {substitute !== 'NONE' && (
+        <div className={styles.fieldLabel}>
+          <span>업무 대리인{substitute === 'REQUIRED' && req}</span>
+          <PersonPicker value={people} onChange={(v) => setPeople(v.slice(-1))} />
+        </div>
+      )}
+    </>
+  );
+}
+
+/** 아이콘 고르기 — 고를 수 있는 아이콘만(FORM_ICONS) */
+function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className={styles.iconGrid} role="radiogroup" aria-label="아이콘">
+      {FORM_ICONS.map((name) => {
+        const Icon = formIcon(name);
+        return (
+          <button
+            key={name}
+            type="button"
+            role="radio"
+            aria-checked={value === name}
+            aria-label={name}
+            className={`${styles.iconChoice} ${value === name ? styles.iconChoiceOn : ''}`}
+            onClick={() => onChange(name)}
+          >
+            <Icon size={18} aria-hidden />
+          </button>
+        );
+      })}
     </div>
   );
 }

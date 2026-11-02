@@ -65,6 +65,35 @@ export const APPROVAL_LINE_MAX_STEPS = 10;
 export const APPROVAL_FILE_MAX_BYTES = 10 * 1024 * 1024;
 export const APPROVAL_FILE_MAX_COUNT = 10;
 
+/** 결재 양식 아이콘 — 고를 수 있는 것만(lucide 아이콘 이름). 화면은 이름으로 아이콘을 찾는다 */
+export const FORM_ICONS = [
+  'FileText',
+  'Receipt',
+  'Wallet',
+  'CreditCard',
+  'ShoppingCart',
+  'Package',
+  'Truck',
+  'Car',
+  'Plane',
+  'Briefcase',
+  'House',
+  'Laptop',
+  'Wrench',
+  'CalendarOff',
+  'CalendarClock',
+  'Clock',
+  'GraduationCap',
+  'HeartPulse',
+  'Gift',
+  'Megaphone',
+  'Users',
+  'Building2',
+  'ClipboardCheck',
+  'BookOpen',
+] as const;
+export type FormIcon = (typeof FORM_ICONS)[number];
+
 /** 결재 양식을 누가 고를 수 있나 — 전 직원 또는 고른 조직(하위 포함)·직원만 */
 export interface FormAudience {
   mode: 'ALL' | 'SOME';

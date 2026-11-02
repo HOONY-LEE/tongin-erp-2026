@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CalendarOff, FileText, Search } from 'lucide-react';
 import { useApprovalForms, type ApprovalFormDef } from '../../lib/approvals';
 import { api, ApiError } from '../../lib/api';
@@ -7,6 +6,7 @@ import { toLinePayload, type ApprovalDocView, type LineEntry } from '../../lib/a
 import { Button, Input, Modal, useToast } from '../ui';
 import { ApprovalLineEditor } from './ApprovalLineEditor';
 import { FormFieldInputs, formReady, type FormDraft } from './FormFields';
+import { formIcon } from '../../lib/formIcons';
 import styles from './newDoc.module.css';
 import astyles from './approval.module.css';
 
@@ -17,13 +17,15 @@ import astyles from './approval.module.css';
 export function NewDocPicker({
   onClose,
   onGeneral,
+  onLeave,
   onPickForm,
 }: {
   onClose: () => void;
   onGeneral: () => void;
+  /** 휴가 신청 창 열기(결재함 안에서) */
+  onLeave: () => void;
   onPickForm: (form: ApprovalFormDef) => void;
 }) {
-  const navigate = useNavigate();
   const { forms, loading } = useApprovalForms();
   const [q, setQ] = useState('');
   const groups = useMemo(() => {
@@ -51,7 +53,7 @@ export function NewDocPicker({
             <b>일반 품의</b>
             <span>제목과 내용을 자유롭게 써서 올립니다</span>
           </button>
-          <button type="button" className={styles.card} onClick={() => navigate('/leave?apply=1')}>
+          <button type="button" className={styles.card} onClick={onLeave}>
             <CalendarOff size={18} aria-hidden />
             <b>휴가 신청</b>
             <span>연차·반차·반반차 — 휴가 화면에서 남은 연차를 보며 신청</span>
@@ -76,7 +78,7 @@ export function NewDocPicker({
                   className={styles.card}
                   onClick={() => onPickForm(f)}
                 >
-                  <FileText size={18} aria-hidden />
+                  <FormIconView name={f.icon} />
                   <b>{f.name}</b>
                   <span>{f.description || `항목 ${f.fields.length}개`}</span>
                 </button>
@@ -86,6 +88,50 @@ export function NewDocPicker({
         ))
       )}
     </Modal>
+  );
+}
+
+const FormIconView = ({ name }: { name?: string | null }) => {
+  const Icon = formIcon(name);
+  return <Icon size={18} aria-hidden />;
+};
+
+/**
+ * 결재함 위 「바로 신청하기」 — 일반 품의·휴가 신청·쓸 수 있는 결재 양식을 카드로(새 결재 창을 열지 않고 바로)
+ */
+export function QuickApply({
+  onGeneral,
+  onLeave,
+  onPickForm,
+}: {
+  onGeneral: () => void;
+  onLeave: () => void;
+  onPickForm: (form: ApprovalFormDef) => void;
+}) {
+  const { forms } = useApprovalForms();
+  return (
+    <div className={styles.quick} aria-label="바로 신청하기">
+      <button type="button" className={styles.quickCard} onClick={onGeneral}>
+        <FileText size={18} aria-hidden />
+        <b>일반 품의</b>
+      </button>
+      <button type="button" className={styles.quickCard} onClick={onLeave}>
+        <CalendarOff size={18} aria-hidden />
+        <b>휴가 신청</b>
+      </button>
+      {forms.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className={styles.quickCard}
+          title={f.description ?? undefined}
+          onClick={() => onPickForm(f)}
+        >
+          <FormIconView name={f.icon} />
+          <b>{f.name}</b>
+        </button>
+      ))}
+    </div>
   );
 }
 

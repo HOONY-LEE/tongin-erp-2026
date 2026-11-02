@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import {
   DEFAULT_FORM_AUDIENCE,
+  FORM_ICONS,
   FORM_MAX_FIELDS,
   DEFAULT_LEAVE_FORM_SETTINGS,
   FORM_FIELD_TYPES,
@@ -41,6 +42,10 @@ const audienceOf = (f: FormRow): FormAudience => {
   };
 };
 
+/** 기본 결재선 열쇠 — 휴가 신청서는 휴가(LEAVE), 결재 양식은 FORM:<id> */
+const lineKeyOf = (f: { id: string; kind: string }) =>
+  f.kind === 'LEAVE' ? 'LEAVE' : `FORM:${f.id}`;
+
 const view = (f: FormRow) => ({
   id: f.id,
   kind: f.kind,
@@ -53,6 +58,8 @@ const view = (f: FormRow) => ({
       ? { ...DEFAULT_LEAVE_FORM_SETTINGS, ...((f.settings as object) ?? {}) }
       : ((f.settings as object) ?? {}),
   audience: f.kind === 'CUSTOM' ? audienceOf(f) : DEFAULT_FORM_AUDIENCE,
+  icon:
+    ((f.settings as { icon?: string }) ?? {}).icon ?? (f.kind === 'LEAVE' ? 'CalendarOff' : null),
   isActive: f.isActive,
   sortOrder: f.sortOrder,
   updatedAt: f.updatedAt,
@@ -65,6 +72,7 @@ export interface FormInput {
   fields?: FormField[];
   settings?: Partial<LeaveFormSettings>;
   audience?: FormAudience;
+  icon?: string | null;
   line?: ApprovalLineRule[];
   isActive?: boolean;
   sortOrder?: number;
@@ -111,7 +119,7 @@ export class ApprovalFormService {
   /** 관리 화면용 — 양식 + 전사 기본 결재선 */
   async detail(id: string) {
     const f = await this.get(id);
-    return { ...f, line: await this.approvals.formLine(id) };
+    return { ...f, line: await this.approvals.formLine(lineKeyOf(f)) };
   }
 
   async get(id: string) {
@@ -190,16 +198,23 @@ export class ApprovalFormService {
           fields: this.cleanFields(input.fields ?? []) as unknown as Prisma.InputJsonValue,
           settings: {
             audience: this.cleanAudience(input.audience),
+            ...(input.icon ? { icon: this.cleanIcon(input.icon) } : {}),
           } as unknown as Prisma.InputJsonValue,
           isActive: input.isActive ?? true,
           sortOrder: input.sortOrder ?? 100,
           createdBy: p.userId,
         },
       });
-      if (input.line) await this.approvals.setFormLine(tx, row.id, row.name, input.line);
+      if (input.line) await this.approvals.setFormLine(tx, lineKeyOf(row), row.name, input.line);
       return row;
     });
     return this.detail(row.id);
+  }
+
+  private cleanIcon(icon: string): string {
+    if (!(FORM_ICONS as readonly string[]).includes(icon))
+      throw new BadRequestException('목록에 있는 아이콘을 골라 주세요.');
+    return icon;
   }
 
   private cleanAudience(a: FormAudience | undefined): FormAudience {
@@ -215,12 +230,25 @@ export class ApprovalFormService {
     const cur = await this.get(id);
     const name = input.name === undefined ? undefined : input.name.trim();
     if (name === '') throw new BadRequestException('양식 이름을 적어 주세요.');
-    const settings =
-      cur.kind === 'LEAVE' && input.settings
-        ? this.cleanLeaveSettings(input.settings, cur.settings as LeaveFormSettings)
-        : cur.kind === 'CUSTOM' && input.audience
-          ? { ...(cur.settings as object), audience: this.cleanAudience(input.audience) }
-          : undefined;
+    // 설정은 바뀐 것만 덮는다(휴가: 대리인·사유 필수 / 양식: 공개 대상 / 공통: 아이콘)
+    const touched =
+      (cur.kind === 'LEAVE' && !!input.settings) ||
+      (cur.kind === 'CUSTOM' && !!input.audience) ||
+      input.icon !== undefined;
+    const settings = touched
+      ? {
+          ...(cur.settings as object),
+          ...(cur.kind === 'LEAVE' && input.settings
+            ? this.cleanLeaveSettings(input.settings, cur.settings as LeaveFormSettings)
+            : {}),
+          ...(cur.kind === 'CUSTOM' && input.audience
+            ? { audience: this.cleanAudience(input.audience) }
+            : {}),
+          ...(input.icon !== undefined
+            ? { icon: input.icon ? this.cleanIcon(input.icon) : null }
+            : {}),
+        }
+      : undefined;
     await this.prisma.$transaction(async (tx) => {
       const row = await tx.approvalForm.update({
         where: { id },
@@ -239,8 +267,7 @@ export class ApprovalFormService {
           sortOrder: input.sortOrder,
         },
       });
-      if (input.line && cur.kind === 'CUSTOM')
-        await this.approvals.setFormLine(tx, id, row.name, input.line);
+      if (input.line) await this.approvals.setFormLine(tx, lineKeyOf(row), row.name, input.line);
     });
     return this.detail(id);
   }
