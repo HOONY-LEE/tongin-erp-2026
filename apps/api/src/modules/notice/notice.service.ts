@@ -52,7 +52,11 @@ export class NoticeService {
     if (!p.employeeOrgUnitId) {
       throw new ForbiddenException('직원과 연결된 계정만 공지사항을 볼 수 있습니다.');
     }
-    const orgIds = await this.scope.withAncestors(p.employeeOrgUnitId);
+    // 겸직(추가 소속) 조직에 건 공지도 본다
+    const mine = [p.employeeOrgUnitId, ...(p.concurrentOrgUnitIds ?? [])];
+    const orgIds = [
+      ...new Set((await Promise.all(mine.map((id) => this.scope.withAncestors(id)))).flat()),
+    ];
     return {
       OR: [{ audience: 'ALL' }, { orgUnits: { some: { orgUnitId: { in: orgIds } } } }],
     };
@@ -133,7 +137,17 @@ export class NoticeService {
     const users = await this.prisma.appUser.findMany({
       where: {
         isActive: true,
-        employee: { isActive: true, ...(orgIds ? { orgUnitId: { in: orgIds } } : {}) },
+        employee: {
+          isActive: true,
+          ...(orgIds
+            ? {
+                OR: [
+                  { orgUnitId: { in: orgIds } },
+                  { concurrentOrgs: { some: { orgUnitId: { in: orgIds } } } },
+                ],
+              }
+            : {}),
+        },
       },
       select: { id: true },
     });

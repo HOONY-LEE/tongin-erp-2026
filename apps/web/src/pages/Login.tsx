@@ -97,14 +97,14 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     desc: '부장 · 지점 점검·보험·소송·재계약',
   },
   {
-    group: '홍보디자인팀',
+    group: '디자인팀',
     loginId: 'jisook_jeon',
     password: DEMO_PASSWORD,
     name: '전지숙',
     desc: '디자인 실장 · 디자인 요청',
   },
   {
-    group: '홍보디자인팀',
+    group: '마케팅팀',
     loginId: 'seungho_song',
     password: DEMO_PASSWORD,
     name: '송승호',

@@ -16,7 +16,7 @@ model OrgUnit {
   parentId        String?    @map("parent_id") @db.Uuid
   parent          OrgUnit?   @relation("OrgUnitParent", fields: [parentId], references: [id])
   children        OrgUnit[]  @relation("OrgUnitParent")
-  type            String // GROUP | COMPANY | BRANCH | PARTNER
+  type            String // GROUP | COMPANY | DEPT | TF | BRANCH | PARTNER — TF는 여러 부서 사람이 겸직으로 모이는 팀
   code            String     @unique
   name            String
   // 위치 — 지점은 대시보드 지도에 점으로 찍힌다. 주소 검색(카카오)으로 좌표까지 채운다
@@ -35,16 +35,17 @@ model OrgUnit {
   brandedProducts Product[]  @relation("ProductBrand")
   leads           Lead[]
 
-  estimates       Estimate[]
-  contracts       Contract[]
-  workOrders      WorkOrder[]
-  commissionRules CommissionRule[] @relation("CommissionRuleOrg")
-  invoices        Invoice[]        @relation("InvoiceOrg")
-  materialOrders  MaterialOrder[]
-  calendarEvents  CalendarEvent[]
-  noticeOrgUnits  NoticeOrgUnit[]  @relation("NoticeOrgUnits")
-  teamTasks       TeamTask[]       @relation("TeamTasks")
-  branchCases     BranchCase[]     @relation("BranchCases")
+  estimates         Estimate[]
+  contracts         Contract[]
+  workOrders        WorkOrder[]
+  commissionRules   CommissionRule[]        @relation("CommissionRuleOrg")
+  invoices          Invoice[]               @relation("InvoiceOrg")
+  materialOrders    MaterialOrder[]
+  calendarEvents    CalendarEvent[]
+  noticeOrgUnits    NoticeOrgUnit[]         @relation("NoticeOrgUnits")
+  teamTasks         TeamTask[]              @relation("TeamTasks")
+  branchCases       BranchCase[]            @relation("BranchCases")
+  concurrentMembers EmployeeConcurrentOrg[]
 
   @@map("org_unit")
 }
@@ -105,8 +106,26 @@ model Employee {
   tasksRequested     TeamTask[]              @relation("TaskRequester")
   assetsManaged      CorpAsset[]             @relation("AssetManager")
   branchCases        BranchCase[]            @relation("BranchCaseAssignee")
+  concurrentOrgs     EmployeeConcurrentOrg[]
 
   @@map("employee")
+}
+
+/// 겸직(추가 소속) — 주 소속(employee.org_unit_id)은 하나, TF·프로젝트팀처럼 다른 조직에도 함께 속할 때.
+/// 메뉴·공지·팀 업무는 추가 소속까지 따르고, 결재선(팀장 찾기)·근태·데이터 범위는 주 소속 기준이다.
+model EmployeeConcurrentOrg {
+  id         String    @id @default(uuid()) @db.Uuid
+  employeeId String    @map("employee_id") @db.Uuid
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  orgUnitId  String    @map("org_unit_id") @db.Uuid
+  orgUnit    OrgUnit   @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  positionId String?   @map("position_id") @db.Uuid // 그 조직에서의 직책(예: TF장) — 비우면 표시 안 함
+  position   Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([employeeId, orgUnitId])
+  @@index([orgUnitId])
+  @@map("employee_concurrent_org")
 }
 
 model Customer {
@@ -180,14 +199,15 @@ model Role {
 // 직책·직급(회장·대표·이사·부장…) — 관리자가 자유롭게 정의. 권한은 주지 않고,
 // 계정을 만들 때 기본 권한 그룹을 추천하는 데만 쓴다(defaultRole).
 model Position {
-  id            String     @id @default(uuid()) @db.Uuid
-  name          String     @unique
-  sortOrder     Int        @default(100) @map("sort_order")
-  isActive      Boolean    @default(true) @map("is_active")
-  defaultRoleId String?    @map("default_role_id") @db.Uuid
-  defaultRole   Role?      @relation(fields: [defaultRoleId], references: [id], onDelete: SetNull)
-  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  employees     Employee[]
+  id             String                  @id @default(uuid()) @db.Uuid
+  name           String                  @unique
+  sortOrder      Int                     @default(100) @map("sort_order")
+  isActive       Boolean                 @default(true) @map("is_active")
+  defaultRoleId  String?                 @map("default_role_id") @db.Uuid
+  defaultRole    Role?                   @relation(fields: [defaultRoleId], references: [id], onDelete: SetNull)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  employees      Employee[]
+  concurrentOrgs EmployeeConcurrentOrg[]
 
   @@map("position")
 }
@@ -1413,7 +1433,7 @@ model EmployeeHistory {
   id              String   @id @default(uuid()) @db.Uuid
   employeeId      String   @map("employee_id") @db.Uuid
   employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  kind            String // JOIN | TRANSFER | POSITION | RESIGN | REHIRE
+  kind            String // JOIN | TRANSFER | POSITION | RESIGN | REHIRE | CONCURRENT_ADD | CONCURRENT_END
   fromOrgId       String?  @map("from_org_id") @db.Uuid
   toOrgId         String?  @map("to_org_id") @db.Uuid
   fromPositionId  String?  @map("from_position_id") @db.Uuid

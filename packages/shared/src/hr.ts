@@ -401,4 +401,6 @@ export const EMPLOYEE_HISTORY_LABEL: Record<string, string> = {
   POSITION: '직책 변경',
   RESIGN: '퇴사',
   REHIRE: '재입사',
+  CONCURRENT_ADD: '겸직 발령',
+  CONCURRENT_END: '겸직 해제',
 };

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ORG_UNIT_TYPE_LABEL,
   CHECKLIST_KIND_LABEL,
   EMPLOYEE_HISTORY_LABEL,
   EMPLOYMENT_TYPE_LABEL,
@@ -9,6 +10,8 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { api, ApiError } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
+import { isHqUnit, useOrgUnits } from '../../lib/orgUnits';
+import { useOptions } from '../../lib/useOptions';
 import {
   Badge,
   Button,
@@ -17,6 +20,7 @@ import {
   Modal,
   RecordDetail,
   SegmentedControl,
+  Select,
   useToast,
   type DetailItem,
 } from '../ui';
@@ -48,6 +52,12 @@ export interface HrRecord {
   memo: string | null;
   position: { name: string } | null;
   orgUnit: { name: string; type: string } | null;
+  concurrentOrgs: {
+    orgUnitId: string;
+    positionId: string | null;
+    orgUnit: { name: string; type: string };
+    position: { name: string } | null;
+  }[];
   appUsers: { loginId: string; isActive: boolean }[];
   checklistItems: {
     id: string;
@@ -125,6 +135,14 @@ export function EmployeeHrDetail({
         { label: '사번', value: rec.empNo },
         { label: '직책', value: rec.position?.name },
         { label: '소속', value: rec.orgUnit?.name },
+        {
+          label: '겸직',
+          value: rec.concurrentOrgs.length
+            ? rec.concurrentOrgs
+                .map((c) => `${c.orgUnit.name}${c.position ? ` · ${c.position.name}` : ''}`)
+                .join(', ')
+            : null,
+        },
         {
           label: '고용 형태',
           value: EMPLOYMENT_TYPE_LABEL[rec.employmentType] ?? rec.employmentType,
@@ -215,6 +233,9 @@ export function EmployeeHrDetail({
                 </dl>
               </section>
             )}
+            {tab === 'info' && canEdit && !rec.resignDate && (
+              <ConcurrentOrgs rec={rec} onChanged={setRec} />
+            )}
             {tab === 'leave' && <EmployeeLeave employeeId={rec.id} />}
             {tab === 'attendance' && <MonthDays employeeId={rec.id} />}
             {tab === 'history' && <History rec={rec} />}
@@ -236,6 +257,106 @@ export function EmployeeHrDetail({
         />
       )}
     </>
+  );
+}
+
+/**
+ * 겸직(추가 소속) — TF·프로젝트팀처럼 주 소속 외의 조직에도 함께 속한다.
+ * 그 조직의 메뉴·공지·팀 업무를 함께 받고, 조직도 그 상자에도 '겸직'으로 나온다.
+ * 결재선(팀장 찾기)·근태는 주 소속 기준이다.
+ */
+function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRecord) => void }) {
+  const toast = useToast();
+  const { units } = useOrgUnits();
+  const positions = useOptions('/positions', 'name', 'id', (r) => r.isActive !== false);
+  const [orgId, setOrgId] = useState('');
+  const [posId, setPosId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const taken = new Set([rec.orgUnitId, ...rec.concurrentOrgs.map((c) => c.orgUnitId)]);
+  const orgOptions = units
+    .filter((u) => isHqUnit(u) && u.isActive && !taken.has(u.id))
+    .map((u) => ({
+      value: u.id,
+      label: u.name,
+      description: (ORG_UNIT_TYPE_LABEL as Record<string, string>)[u.type] ?? u.type,
+    }));
+
+  const run = async (fn: () => Promise<HrRecord>, done: string) => {
+    setBusy(true);
+    try {
+      onChanged(await fn());
+      toast({ type: 'success', title: done });
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const add = () =>
+    run(async () => {
+      const r = await api<HrRecord>(`/employees/${rec.id}/concurrent-orgs`, {
+        method: 'POST',
+        body: JSON.stringify({ orgUnitId: orgId, positionId: posId || null }),
+      });
+      setOrgId('');
+      setPosId('');
+      return r;
+    }, '겸직을 더했습니다');
+  const remove = (c: HrRecord['concurrentOrgs'][number]) => {
+    if (!window.confirm(`${c.orgUnit.name} 겸직을 해제할까요?`)) return;
+    void run(
+      () =>
+        api<HrRecord>(`/employees/${rec.id}/concurrent-orgs/${c.orgUnitId}`, {
+          method: 'DELETE',
+        }),
+      '겸직을 해제했습니다',
+    );
+  };
+
+  return (
+    <section className="rd-card">
+      <h3 className="rd-title">겸직(추가 소속)</h3>
+      <p className={styles.muted} style={{ margin: '0 0 12px' }}>
+        TF·프로젝트팀처럼 다른 조직에도 함께 속하면 더하세요. 그 조직의 메뉴·공지·팀 업무를 함께
+        받습니다. 결재선과 근태는 주 소속({rec.orgUnit?.name ?? '-'}) 기준입니다.
+      </p>
+      {rec.concurrentOrgs.length > 0 && (
+        <ul className={styles.concurrentList}>
+          {rec.concurrentOrgs.map((c) => (
+            <li key={c.orgUnitId}>
+              <b>{c.orgUnit.name}</b>
+              <span className={styles.muted}>{c.position?.name ?? '직책 없음'}</span>
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => remove(c)}>
+                해제
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className={styles.concurrentAdd}>
+        <Select
+          value={orgId}
+          placeholder="조직 고르기"
+          onValueChange={setOrgId}
+          options={orgOptions}
+        />
+        <Select
+          value={posId}
+          placeholder="그 조직 직책(선택)"
+          onValueChange={setPosId}
+          options={positions}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={busy}
+          disabled={!orgId}
+          onClick={() => void add()}
+        >
+          겸직 더하기
+        </Button>
+      </div>
+    </section>
   );
 }
 
@@ -275,6 +396,10 @@ function History({ rec }: { rec: HrRecord }) {
       return `${h.fromPositionName ?? '직책 없음'} → ${h.toPositionName ?? '직책 없음'}`;
     if (h.kind === 'JOIN')
       return [h.toOrgName, h.toPositionName].filter(Boolean).join(' · ') || '-';
+    if (h.kind === 'CONCURRENT_ADD')
+      return [h.toOrgName, h.toPositionName].filter(Boolean).join(' · ') || '-';
+    if (h.kind === 'CONCURRENT_END')
+      return [h.fromOrgName, h.fromPositionName].filter(Boolean).join(' · ') || '-';
     if (h.kind === 'RESIGN')
       return [h.fromOrgName, h.fromPositionName].filter(Boolean).join(' · ') || '-';
     return '-';

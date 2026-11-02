@@ -2,12 +2,14 @@
 // 설계노트의 도메인 개념과 1:1 (서비스라인·산정방식·상태·처리구분).
 
 // 조직 유형 (그룹사 > 법인/브랜드 > 본사 부서·지점). 외부업체(전속·제휴·기업고객)는 조직이 아니라 거래처(Partner)다
-export const ORG_UNIT_TYPES = ['GROUP', 'COMPANY', 'DEPT', 'BRANCH'] as const;
+// TF = 여러 부서 사람이 겸직(추가 소속)으로 모이는 팀 — 주 소속은 원래 부서에 두고 TF에 함께 속한다
+export const ORG_UNIT_TYPES = ['GROUP', 'COMPANY', 'DEPT', 'TF', 'BRANCH'] as const;
 export type OrgUnitType = (typeof ORG_UNIT_TYPES)[number];
 export const ORG_UNIT_TYPE_LABEL: Record<OrgUnitType, string> = {
   GROUP: '그룹사',
   COMPANY: '법인/브랜드',
   DEPT: '본사·부서',
+  TF: 'TF·프로젝트팀',
   BRANCH: '지점',
 };
 
@@ -761,6 +763,8 @@ export interface AuthPrincipal {
   employeeId: string | null; // 직원 계정이면 연결된 직원(현장 배정 조회에 사용). 외부인·에이전트는 null
   employeeName: string | null; // 연결된 직원 이름(담당자 기본값 표시용). employeeId가 null이면 null
   employeeOrgUnitId: string | null; // 연결된 직원의 소속 조직(접수 지점 기본값)
+  /** 겸직(추가 소속) 조직 — 메뉴·공지·팀 업무는 주 소속과 함께 따른다. 결재선·데이터 범위는 주 소속·권한 기준 */
+  concurrentOrgUnitIds?: string[];
   partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
   scopes: {
