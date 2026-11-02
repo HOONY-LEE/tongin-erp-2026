@@ -22,7 +22,7 @@ const prisma = new PrismaClient();
 
 const MY = {
   label: '내 업무',
-  items: ['approvals', 'spaces', 'leave', 'attendance'],
+  items: ['approvals', 'drive', 'spaces', 'leave', 'attendance'],
   collapsed: true,
 };
 
@@ -48,7 +48,7 @@ const SPECS: Spec[] = [
     layout: {
       groups: [
         { label: '경영 현황', items: ['dashboard', 'ai', 'notices'] },
-        { label: '결재·업무', items: ['approvals', 'tasks', 'spaces'] },
+        { label: '결재·업무', items: ['approvals', 'drive', 'tasks', 'spaces'] },
         { label: '영업 현황', items: ['leads', 'calendar', 'payments-confirm', 'support'] },
         { label: '경영관리', items: ['settlements', 'billing', 'hr', 'assets'] },
         {
@@ -73,7 +73,7 @@ const SPECS: Spec[] = [
         },
         {
           label: '인사·총무',
-          items: ['hr', 'assets', 'spaces', 'approvals', 'leave', 'attendance'],
+          items: ['hr', 'assets', 'spaces', 'approvals', 'drive', 'leave', 'attendance'],
         },
         {
           label: '관리',

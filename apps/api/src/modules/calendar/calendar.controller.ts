@@ -17,6 +17,7 @@ import type { AuthPrincipal } from '@tongin/shared';
 import { CalendarService } from './calendar.service';
 import { CalendarEventService } from './calendar-event.service';
 import { GoogleCalendarService } from './google-calendar.service';
+import { GoogleDriveService, isDriveState } from '../drive/google-drive.service';
 import {
   CalendarQueryDto,
   CreateCalendarEventDto,
@@ -34,6 +35,7 @@ export class CalendarController {
     private readonly calendar: CalendarService,
     private readonly events: CalendarEventService,
     private readonly google: GoogleCalendarService,
+    private readonly googleDrive: GoogleDriveService,
   ) {}
 
   /** 기간 내 캘린더 항목(자체 일정 + 작업오더). scope=MINE|ORG */
@@ -98,6 +100,17 @@ export class CalendarController {
     @Query('error') error: string | undefined,
     @Res() res: Response,
   ) {
+    // 드라이브 연결도 같은 리디렉션 주소로 온다(구글 콘솔에 주소를 하나만 등록) — state로 가른다
+    if (isDriveState(state)) {
+      if (error) return res.redirect(`${WEB_APP_URL}/drive?google=denied`);
+      try {
+        await this.googleDrive.handleCallback(code, state);
+        return res.redirect(`${WEB_APP_URL}/drive?google=connected`);
+      } catch (e) {
+        const msg = encodeURIComponent((e as Error).message);
+        return res.redirect(`${WEB_APP_URL}/drive?google=error&message=${msg}`);
+      }
+    }
     if (error) return res.redirect(`${WEB_APP_URL}/calendar?google=denied`);
     try {
       await this.google.handleCallback(code, state);

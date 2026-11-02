@@ -1,5 +1,6 @@
 import { SystemLogModule } from './system-log/system-log.module';
 import { SpaceModule } from './modules/space/space.module';
+import { DriveModule } from './modules/drive/drive.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -66,6 +67,7 @@ import { BranchCaseModule } from './modules/branch-case/branch-case.module';
     AuditModule,
     SystemLogModule,
     SpaceModule,
+    DriveModule,
     NotificationsModule,
     AuthModule,
     OrgUnitModule,

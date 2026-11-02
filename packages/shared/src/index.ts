@@ -722,6 +722,12 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     actions: [],
     specials: [{ action: 'MANAGE', label: '공간 관리·모든 예약 수정·대여 고객 정보' }],
     hint: '예약하기·내 예약 고치기는 권한 없이 됩니다. 이 권한은 공간을 만들고 고치며, 남의 예약과 외부 대여 고객 정보(연락처·대여료)를 다룹니다',
+    key: 'DRIVE',
+    label: '드라이브',
+    group: '시스템',
+    actions: [],
+    specials: [{ action: 'MANAGE', label: '모든 조직·공유 드라이브 관리' }],
+    hint: '내 드라이브와 내 조직·공유 드라이브는 권한 없이 씁니다. 이 권한은 모든 조직·공유 드라이브를 관리자로 엽니다(개인 드라이브는 제외)',
   },
   {
     key: 'SYSTEM_LOG',
@@ -878,6 +884,7 @@ export const AI_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 export const AI_TITLE_MAX = 60;
 
 export * from './agent-blueprint';
+export * from './drive';
 export * from './dashboard';
 export * from './hr';
 export * from './menu';

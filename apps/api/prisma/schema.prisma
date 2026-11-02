@@ -1799,4 +1799,121 @@ model SpaceReservation {
   @@index([spaceId, startAt])
   @@index([startAt])
   @@map("space_reservation")
+// ─── 드라이브 ───
+
+// 공간 — PERSONAL(사람 한 명, owner_user_id) | ORG(조직 하나, org_unit_id — 그 조직·하위 조직 사람) | SHARED(구성원)
+model DriveSpace {
+  id          String             @id @default(uuid()) @db.Uuid
+  kind        String
+  name        String
+  description String?
+  ownerUserId String?            @unique @map("owner_user_id") @db.Uuid
+  orgUnitId   String?            @unique @map("org_unit_id") @db.Uuid
+  createdBy   String?            @map("created_by") @db.Uuid
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  members     DriveSpaceMember[]
+  items       DriveItem[]
+
+  @@map("drive_space")
+}
+
+// 공유 드라이브 구성원(조직 드라이브는 따로 관리자만 둘 때) — 직원 기준
+model DriveSpaceMember {
+  spaceId    String     @map("space_id") @db.Uuid
+  space      DriveSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  employeeId String     @map("employee_id") @db.Uuid
+  role       String // MANAGER | EDITOR | VIEWER
+
+  @@id([spaceId, employeeId])
+  @@index([employeeId])
+  @@map("drive_space_member")
+}
+
+// 폴더·파일·링크. 휴지통에 넣으면 trashed_at(그 아래 항목은 부모를 따라 함께 안 보인다)
+model DriveItem {
+  id           String        @id @default(uuid()) @db.Uuid
+  spaceId      String        @map("space_id") @db.Uuid
+  space        DriveSpace    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  parentId     String?       @map("parent_id") @db.Uuid
+  parent       DriveItem?    @relation("DriveItemParent", fields: [parentId], references: [id], onDelete: Cascade)
+  children     DriveItem[]   @relation("DriveItemParent")
+  kind         String // FOLDER | FILE | LINK
+  name         String
+  mimeType     String?       @map("mime_type")
+  size         Int?
+  // LINK: 구글 드라이브 파일
+  googleFileId String?       @map("google_file_id")
+  url          String?
+  createdBy    String?       @map("created_by") @db.Uuid
+  updatedBy    String?       @map("updated_by") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  trashedAt    DateTime?     @map("trashed_at") @db.Timestamptz(6)
+  trashedBy    String?       @map("trashed_by") @db.Uuid
+  content      DriveContent?
+  shares       DriveShare[]
+  stars        DriveStar[]
+  recents      DriveRecent[]
+
+  @@index([spaceId, parentId])
+  @@index([trashedAt])
+  @@map("drive_item")
+}
+
+// 파일 내용 — 목록을 읽을 때 같이 읽히지 않게 따로 둔다
+model DriveContent {
+  itemId String    @id @map("item_id") @db.Uuid
+  item   DriveItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  bytes  Bytes
+
+  @@map("drive_content")
+}
+
+// 항목 공유(사람별) — 폴더를 공유하면 그 아래 전부
+model DriveShare {
+  itemId     String    @map("item_id") @db.Uuid
+  item       DriveItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  employeeId String    @map("employee_id") @db.Uuid
+  role       String // EDITOR | VIEWER
+  createdBy  String?   @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([itemId, employeeId])
+  @@index([employeeId])
+  @@map("drive_share")
+}
+
+model DriveStar {
+  userId String    @map("user_id") @db.Uuid
+  itemId String    @map("item_id") @db.Uuid
+  item   DriveItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([userId, itemId])
+  @@map("drive_star")
+}
+
+// 최근 연 파일(사람별 마지막으로 연 때)
+model DriveRecent {
+  userId   String    @map("user_id") @db.Uuid
+  itemId   String    @map("item_id") @db.Uuid
+  item     DriveItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  openedAt DateTime  @default(now()) @map("opened_at") @db.Timestamptz(6)
+
+  @@id([userId, itemId])
+  @@index([userId, openedAt])
+  @@map("drive_recent")
+}
+
+// 구글 드라이브 연결(사람별) — 캘린더 연결과 따로(권한 범위가 다르다)
+model GoogleDriveLink {
+  userId       String    @id @map("user_id") @db.Uuid
+  googleEmail  String    @map("google_email")
+  accessToken  String    @map("access_token")
+  refreshToken String?   @map("refresh_token")
+  tokenExpiry  DateTime? @map("token_expiry") @db.Timestamptz(6)
+  scope        String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("google_drive_link")
 }

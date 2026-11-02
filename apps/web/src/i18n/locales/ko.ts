@@ -49,6 +49,7 @@ export default {
     employees: '직원',
     approvals: '결재함',
     spaces: '공간 예약',
+    drive: '드라이브',
     leave: '휴가',
     attendance: '근태',
     menuMgmt: '메뉴 관리',
