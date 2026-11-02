@@ -41,10 +41,14 @@ const VIEW_OPTIONS = [
 
 const BORDER = '1px solid var(--ark-color-border)';
 /** 공휴일·일요일 빨강 */
-const HOLIDAY_COLOR = '#FF3B30';
+const HOLIDAY_COLOR = 'var(--ark-color-error-500)';
 /** 일요일 빨강 · 토요일 파랑 · 평일 기본 */
 const weekendColor = (i: number) =>
-  i === 0 ? '#FF3B30' : i === 6 ? '#007AFF' : 'var(--ark-color-text-secondary)';
+  i === 0
+    ? 'var(--ark-color-error-500)'
+    : i === 6
+      ? 'var(--ark-color-info-500)'
+      : 'var(--ark-color-text-secondary)';
 
 function IconBtn({
   onClick,
@@ -64,8 +68,8 @@ function IconBtn({
       aria-label={label}
       title={label}
       style={{
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
         borderRadius: 8,
         border: 'none',
         cursor: 'pointer',
@@ -236,7 +240,7 @@ function GoogleMenu({
     : syncing
       ? 'var(--ark-color-primary-500)'
       : google.connected
-        ? '#34C759'
+        ? 'var(--ark-color-success-500)'
         : 'var(--ark-color-text-tertiary)';
 
   const statusText = !google?.configured
@@ -934,7 +938,7 @@ function MiniMonth({
                     : date.getDay() === 0 || holidayName(date)
                       ? HOLIDAY_COLOR
                       : date.getDay() === 6
-                        ? '#007AFF'
+                        ? 'var(--ark-color-info-500)'
                         : 'var(--ark-color-text)',
                 }}
               >

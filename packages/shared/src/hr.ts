@@ -57,6 +57,9 @@ export interface FormFile {
   size: number;
   mediaType: string;
 }
+/** 결재 양식 항목 수·결재선 단계 수 최대 */
+export const FORM_MAX_FIELDS = 30;
+export const APPROVAL_LINE_MAX_STEPS = 10;
 /** 첨부파일 한 개 최대 크기·항목당 개수 */
 export const APPROVAL_FILE_MAX_BYTES = 10 * 1024 * 1024;
 export const APPROVAL_FILE_MAX_COUNT = 10;

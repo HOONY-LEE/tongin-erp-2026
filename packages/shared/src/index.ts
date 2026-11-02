@@ -849,6 +849,11 @@ export interface PartnerReceivable {
   outstanding: number;
 }
 
+/** AI 에이전트 대화 — 한 번에 붙이는 파일 수·크기, 대화 제목 길이(화면·서버 같은 값) */
+export const AI_ATTACHMENT_MAX_COUNT = 5;
+export const AI_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const AI_TITLE_MAX = 60;
+
 export * from './agent-blueprint';
 export * from './dashboard';
 export * from './hr';

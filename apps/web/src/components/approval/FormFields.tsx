@@ -6,6 +6,7 @@ import {
   FORM_FIELD_TYPE_LABEL,
   APPROVAL_FILE_MAX_BYTES,
   APPROVAL_FILE_MAX_COUNT,
+  FORM_MAX_FIELDS,
   type FormField,
   type FormFile,
   type FormFieldType,
@@ -516,9 +517,18 @@ export function FormBuilder({
             />
           </div>
         ))}
-        <Button variant="secondary" size="sm" leftIcon={<Plus size={14} />} onClick={add}>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<Plus size={14} />}
+          disabled={fields.length >= FORM_MAX_FIELDS}
+          onClick={add}
+        >
           항목 추가
         </Button>
+        {fields.length >= FORM_MAX_FIELDS && (
+          <span className={styles.hint}>항목은 {FORM_MAX_FIELDS}개까지 둘 수 있습니다.</span>
+        )}
       </div>
       {!hidePreview && (
         <aside className={styles.preview} aria-label="신청 화면 미리보기">

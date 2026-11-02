@@ -15,7 +15,7 @@ import type {
   BetaToolResultBlockParam,
   BetaToolUnion,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
+import { PERMISSION_WILDCARD, type AuthPrincipal, AI_TITLE_MAX } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiCatalog } from './api-catalog';
 import { DomainTools } from './domain-tools';
@@ -33,8 +33,8 @@ const TITLE_SYSTEM = [
 ].join('\n');
 /** 목록에 보일 제목 최대 길이 */
 const TITLE_MAX = 24;
-/** 사용자가 직접 정하는 제목 최대 길이(컨트롤러 검증과 같게) */
-export const TITLE_INPUT_MAX = 60;
+/** 사용자가 직접 정하는 제목 최대 길이(화면·컨트롤러와 같은 값 — shared) */
+export const TITLE_INPUT_MAX = AI_TITLE_MAX;
 /** 한 번의 요청에서 모델↔도구를 오갈 수 있는 최대 횟수(무한 반복 방지) — 코드 실행의 pause_turn도 한 번으로 센다 */
 const MAX_STEPS = 24;
 /** 도구 결과가 이보다 길면 잘라서 모델에 넘긴다 — 조건을 좁혀 다시 조회하게 한다 */

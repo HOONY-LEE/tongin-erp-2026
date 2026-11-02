@@ -39,6 +39,7 @@ import type {
   Decision,
 } from '../components/ai/types';
 import styles from './aiAgent.module.css';
+import { AI_ATTACHMENT_MAX_BYTES, AI_ATTACHMENT_MAX_COUNT, AI_TITLE_MAX } from '@tongin/shared';
 
 const SUGGESTIONS = [
   '이번 주 미계약 고객들에게 계약 안내 문자 한 번 더 보내줘',
@@ -62,14 +63,14 @@ const BY_EXT: Record<string, string> = {
   md: 'text/markdown',
   json: 'application/json',
 };
-const MAX_FILES = 5;
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_FILES = AI_ATTACHMENT_MAX_COUNT;
+const MAX_BYTES = AI_ATTACHMENT_MAX_BYTES;
 /** 첫 질문 뒤 요약 제목(서버가 따로 만든다)을 목록에 반영하려고 다시 읽는 시점 */
 const TITLE_REFRESH_MS = 2500;
 /** 고른 AI 모델을 기억하는 키 */
 const MODEL_KEY = 'tongin.aiModel';
-/** 대화 제목 최대 길이 — 서버 검증과 같게 */
-const TITLE_MAX = 60;
+/** 대화 제목 최대 길이 — 서버 검증과 같은 값(shared) */
+const TITLE_MAX = AI_TITLE_MAX;
 /** 입력칸이 이 높이까지 늘어나고, 넘으면 안에서 스크롤 */
 const MAX_INPUT_PX = 220;
 
@@ -310,7 +311,10 @@ export default function AiAssistant() {
         continue;
       }
       if (f.size > MAX_BYTES) {
-        toast({ type: 'warning', title: `${f.name}: 10MB까지 올릴 수 있습니다` });
+        toast({
+          type: 'warning',
+          title: `${f.name}: ${MAX_BYTES / 1048576}MB까지 올릴 수 있습니다`,
+        });
         continue;
       }
       try {

@@ -25,7 +25,7 @@
 .brand {
   font-weight: 900;
   font-size: calc(18px * var(--font-scale, 1));
-  color: #ef7b2b;
+  color: var(--ark-color-primary-600);
   letter-spacing: -0.5px;
 }
 .no {

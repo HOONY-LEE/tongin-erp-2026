@@ -27,7 +27,11 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import type { AuthPrincipal } from '@tongin/shared';
+import {
+  AI_ATTACHMENT_MAX_BYTES,
+  AI_ATTACHMENT_MAX_COUNT,
+  type AuthPrincipal,
+} from '@tongin/shared';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AiService, ATTACHMENT_TYPES, TITLE_INPUT_MAX } from './ai.service';
@@ -43,7 +47,7 @@ class AttachmentInput {
   mediaType!: string;
 
   @IsString()
-  @MaxLength(14_000_000) // base64 ≈ 10MB 파일
+  @MaxLength(Math.ceil((AI_ATTACHMENT_MAX_BYTES * 4) / 3) + 100) // base64
   data!: string;
 }
 
@@ -54,7 +58,7 @@ class SendMessageDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(5)
+  @ArrayMaxSize(AI_ATTACHMENT_MAX_COUNT)
   @ValidateNested({ each: true })
   @Type(() => AttachmentInput)
   attachments?: AttachmentInput[];

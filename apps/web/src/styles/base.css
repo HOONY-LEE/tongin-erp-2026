@@ -398,3 +398,9 @@ textarea:focus:not([readonly]) {
   font-size: calc(11px * var(--font-scale, 1));
   font-weight: 600;
 }
+
+/* 표 아래 '10개씩 보기'를 옆 설정 버튼(30px)과 같은 높이로 */
+.sft-tfoot__pagesize {
+  height: 30px;
+  box-sizing: border-box;
+}

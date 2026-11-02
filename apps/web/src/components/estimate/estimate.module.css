@@ -599,7 +599,7 @@
   background: #2563eb;
 }
 .routeTo {
-  background: #ff5c00;
+  background: var(--ark-color-primary-500);
 }
 .routeMap {
   height: min(60vh, 460px);

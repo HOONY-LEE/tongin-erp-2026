@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import {
   APPROVAL_DOC_TYPES,
+  APPROVAL_LINE_MAX_STEPS,
   APPROVAL_DOC_TYPE_LABEL,
   APPROVAL_RESOLVER_LABEL,
   type ApprovalLineRule,
@@ -376,7 +377,7 @@ export function LineStepsEditor({
         <Button
           size="sm"
           variant="outline"
-          disabled={steps.length >= 10}
+          disabled={steps.length >= APPROVAL_LINE_MAX_STEPS}
           onClick={() => onChange([...steps, { ...EMPTY_RULE }])}
         >
           + 단계 추가

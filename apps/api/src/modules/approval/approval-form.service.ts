@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import {
   DEFAULT_FORM_AUDIENCE,
+  FORM_MAX_FIELDS,
   DEFAULT_LEAVE_FORM_SETTINGS,
   FORM_FIELD_TYPES,
   PERMISSION_WILDCARD,
@@ -27,7 +28,7 @@ import { ApprovalAttachmentService } from './approval-attachment.service';
 
 const FIELD_ID = /^[A-Za-z][A-Za-z0-9_]{0,29}$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_FIELDS = 30;
+const MAX_FIELDS = FORM_MAX_FIELDS;
 
 type FormRow = Prisma.ApprovalFormGetPayload<object>;
 

@@ -273,7 +273,7 @@
   cursor: pointer;
 }
 .submitOn:hover {
-  background: #f07030;
+  background: var(--ark-color-primary-600);
   box-shadow: 0 4px 16px rgba(255, 127, 59, 0.32);
 }
 .submitOn:active {

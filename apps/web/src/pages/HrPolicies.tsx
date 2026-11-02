@@ -20,6 +20,7 @@ import {
   type StatusMap,
 } from '../components/ui';
 import { fs } from '../lib/fontScale';
+import { thisMonth } from '../lib/workMenus';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
@@ -63,8 +64,9 @@ export default function HrPolicies() {
   const orgs = useOptions('/org-units', 'name');
 
   const [targetType, setTargetType] = useState('EMPLOYEE');
-  const [year, setYear] = useState('2026');
-  const [month, setMonth] = useState('6');
+  // 기본은 이번 달(한국 시간)
+  const [year, setYear] = useState(() => thisMonth().year);
+  const [month, setMonth] = useState(() => thisMonth().month);
   const [result, setResult] = useState<PayoutTarget[] | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
 
