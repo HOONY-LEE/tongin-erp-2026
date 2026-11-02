@@ -18,6 +18,7 @@ import {
   type Row,
   type StatusMap,
 } from '../components/ui';
+import { fs } from '../lib/fontScale';
 
 const ORDER_STATUS: StatusMap = {
   REQUESTED: { label: '요청', color: 'warning' },
@@ -285,7 +286,7 @@ export default function MaterialOrders() {
             placeholder={t('order.pickOrg')}
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <span style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>
+            <span style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)' }}>
               {t('order.lines')}
               <span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>
             </span>

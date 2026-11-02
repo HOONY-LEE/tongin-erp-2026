@@ -7,7 +7,7 @@
 }
 .empty {
   color: var(--ark-color-text-tertiary);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   padding: 8px 0;
 }
 .plot {
@@ -42,14 +42,14 @@
   cursor: default;
 }
 .colValue {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 600;
   color: var(--ark-color-text-primary, var(--ark-color-text));
   white-space: nowrap;
 }
 .colSub {
   display: block;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 500;
   color: var(--ark-color-text-tertiary);
 }
@@ -72,7 +72,7 @@
 }
 .colLabel {
   width: 100%;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
   text-align: center;
   overflow: hidden;
@@ -110,7 +110,7 @@
   stroke-width: 1;
 }
 .dotLabel {
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale, 1));
   font-weight: 600;
   fill: var(--ark-color-text);
   dominant-baseline: middle;
@@ -167,7 +167,7 @@
   border-radius: 6px;
   background: var(--ark-color-bg);
   color: var(--ark-color-text-secondary);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 600;
   line-height: 1.6;
   cursor: pointer;
@@ -180,7 +180,7 @@
   position: absolute;
   right: 4px;
   bottom: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-tertiary);
   pointer-events: none;
 }
@@ -213,11 +213,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .legendNote {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-tertiary);
 }
 
@@ -232,7 +232,7 @@
   background: var(--ark-color-bg);
   border: 1px solid var(--ark-color-border);
   box-shadow: 0 4px 14px rgb(0 0 0 / 10%);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   line-height: 1.5;
   color: var(--ark-color-text);
 }

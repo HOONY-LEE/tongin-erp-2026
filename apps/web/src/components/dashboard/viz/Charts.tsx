@@ -4,6 +4,7 @@ import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import type { DashData, DashFormat, DashItem, DashViz } from '@tongin/shared';
 import { KOREA_MAP, normalizeSido, projectLatLng } from '../koreaMap';
 import styles from './viz.module.css';
+import { fs } from '../../../lib/fontScale';
 
 // ── 숫자 표기 ──
 export function fmt(v: number, f: DashFormat | 'date' | 'text' | undefined): string {
@@ -152,7 +153,7 @@ function GaugeViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
           x={100}
           y={92}
           textAnchor="middle"
-          style={{ fill: 'var(--ink)', fontSize: 30, fontWeight: 700 }}
+          style={{ fill: 'var(--ink)', fontSize: fs(30), fontWeight: 700 }}
         >
           {fmt(d.value, d.format)}
         </text>

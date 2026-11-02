@@ -4,6 +4,7 @@ import {
   PageHeader as AkronPageHeader,
   type PageHeaderProps as AkronPageHeaderProps,
 } from '@sunghoon_lee/akron-ui';
+import { fs } from '../../lib/fontScale';
 
 export interface PageHeaderProps extends AkronPageHeaderProps {
   /** 새로고침 버튼 클릭 시 호출. 지정 시 헤더 우측에 새로고침 아이콘이 노출됨 */
@@ -70,7 +71,7 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       {actions}
       {updatedAt && (
-        <span style={{ fontSize: 11, color: 'var(--ark-color-text-tertiary)' }}>
+        <span style={{ fontSize: fs(11), color: 'var(--ark-color-text-tertiary)' }}>
           {formatUpdatedAt(updatedAt)}
         </span>
       )}

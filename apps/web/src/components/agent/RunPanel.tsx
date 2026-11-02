@@ -4,6 +4,7 @@ import { AGENT_RUN_STATUS_LABEL, type TriggerConfig } from '@tongin/shared';
 import { Badge, Button } from '../ui';
 import { FileCard } from '../ai/ChatParts';
 import styles from '../../pages/agentBuilder.module.css';
+import { fs } from '../../lib/fontScale';
 
 export interface TraceStep {
   seq: number;
@@ -209,7 +210,7 @@ export function RunPanel({
                 {tokens ? ` · 토큰 ${tokens.toLocaleString()}` : ''}
               </span>
               {run.error && (
-                <span className={styles.errDot} style={{ fontWeight: 400, fontSize: 12 }}>
+                <span className={styles.errDot} style={{ fontWeight: 400, fontSize: fs(12) }}>
                   {run.error}
                 </span>
               )}

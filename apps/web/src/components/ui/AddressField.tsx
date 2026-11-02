@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { embedPostcode, type PostcodeResult } from '../../lib/daumPostcode';
 import { addrKey, type AddressPart } from './address';
+import { fs } from '../../lib/fontScale';
 
 interface Props {
   addrPrefix: string; // '' | 'from' | 'to'
@@ -90,7 +91,7 @@ export function AddressField({ addrPrefix, label, values, setField, required }: 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 13, fontWeight: 500 }}>
+      <span style={{ fontSize: fs(13), fontWeight: 500 }}>
         {label}
         {required && <span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>}
       </span>
@@ -166,7 +167,7 @@ export function AddressField({ addrPrefix, label, values, setField, required }: 
                   borderBottom: '1px solid var(--ark-color-border)',
                 }}
               >
-                <span style={{ fontSize: 15, fontWeight: 600 }}>{t('address.search')}</span>
+                <span style={{ fontSize: fs(15), fontWeight: 600 }}>{t('address.search')}</span>
                 <button
                   type="button"
                   onClick={() => setSearchOpen(false)}
@@ -195,7 +196,7 @@ export function AddressField({ addrPrefix, label, values, setField, required }: 
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'var(--ark-color-text-tertiary)',
-                      fontSize: 13,
+                      fontSize: fs(13),
                     }}
                   >
                     불러오는 중…

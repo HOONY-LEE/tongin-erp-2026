@@ -22,6 +22,7 @@ import {
   PageSkeleton,
 } from '../components/ui';
 import { UnitField } from '../components/estimate/parts';
+import { fs } from '../lib/fontScale';
 
 const won = (v: unknown) => (v != null && v !== '' ? `${Number(v).toLocaleString()}원` : '-');
 
@@ -204,13 +205,15 @@ export default function ProductDetail() {
           </div>
         }
       >
-        <div style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)', marginBottom: 10 }}>
+        <div
+          style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)', marginBottom: 10 }}
+        >
           필수는 견적에서 뺄 수 없고, 기본선택은 처음부터 체크되며, 선택은 고르면 들어갑니다. 구성
           단가를 비우면 상품 기본가를 씁니다. 여기 없는 상품도 견적에서 &apos;추가 상품&apos;으로
           고를 수 있습니다.
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(13) }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--ark-color-border)' }}>
                 {['순서', '상품', '역할', '기본가', '구성 단가', ''].map((h, i) => (
@@ -308,7 +311,7 @@ export default function ProductDetail() {
           </table>
         </div>
         {!rows.length && (
-          <div style={{ padding: '20px 0', textAlign: 'center', fontSize: 13 }}>
+          <div style={{ padding: '20px 0', textAlign: 'center', fontSize: fs(13) }}>
             구성 상품이 없습니다. 아래에서 추가하세요.
           </div>
         )}

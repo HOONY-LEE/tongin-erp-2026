@@ -34,6 +34,7 @@ import { TemplateInput, VarChips } from './TemplateInput';
 import { ModeBadge, SchemaPreview, ToolExplorer } from './ToolExplorer';
 import { NODE_COLOR } from './meta';
 import styles from '../../pages/agentBuilder.module.css';
+import { fs } from '../../lib/fontScale';
 
 interface Props {
   node: AgentNode;
@@ -120,7 +121,7 @@ export function Inspector({
             <div
               key={k}
               className={i.level === 'error' ? styles.errDot : styles.warnDot}
-              style={{ fontWeight: 400, fontSize: 12 }}
+              style={{ fontWeight: 400, fontSize: fs(12) }}
             >
               {i.level === 'error' ? '오류' : '경고'} · {i.message}
             </div>
@@ -547,7 +548,7 @@ function ToolFields({
             {info ? (
               <div className={styles.toolDesc}>{info.description}</div>
             ) : (
-              <div className={styles.errDot} style={{ fontSize: 12, fontWeight: 400 }}>
+              <div className={styles.errDot} style={{ fontSize: fs(12), fontWeight: 400 }}>
                 이 계정에서 쓸 수 없는 도구입니다(권한 없음 또는 이름 오류).
               </div>
             )}

@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
   white-space: nowrap;
 }
@@ -19,7 +19,7 @@
   background: var(--ark-color-bg);
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
   cursor: pointer;
 }

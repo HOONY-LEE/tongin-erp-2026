@@ -19,6 +19,7 @@ import {
   type Row,
   type StatusMap,
 } from '../components/ui';
+import { fs } from '../lib/fontScale';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
@@ -169,7 +170,7 @@ export default function HrPolicies() {
       multiline: true,
       render: (r) =>
         (r.lines as PayoutLine[]).map((l, i) => (
-          <span key={i} style={{ fontSize: 12, color: 'var(--ark-color-text-secondary)' }}>
+          <span key={i} style={{ fontSize: fs(12), color: 'var(--ark-color-text-secondary)' }}>
             {l.policyName}: {METRIC[l.metric]}{' '}
             {AMOUNT_METRIC.includes(l.metric) ? won(l.base) : `${l.base}건`} →{' '}
             <b style={{ color: l.amount < 0 ? 'var(--ark-color-error-600)' : 'inherit' }}>

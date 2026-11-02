@@ -27,11 +27,11 @@
   color: #000;
   font-family:
     -apple-system, 'SF Pro Text', 'Apple SD Gothic Neo', 'Pretendard', system-ui, sans-serif;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .compact .screen {
   border-radius: 28px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
 }
 .link {
   color: inherit;
@@ -48,7 +48,7 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 11px 20px 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
 }
 .clock {
@@ -147,13 +147,13 @@
   padding: 3px 9px;
   border-radius: 12px;
   background: rgb(0 0 0 / 5%);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 600;
 }
 .smsMeta {
   margin: 2px 0 6px;
   text-align: center;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale, 1));
   color: #8e8e93;
 }
 .smsBubble {
@@ -194,7 +194,7 @@
   padding: 0 10px 0 13px;
   border: 1px solid #d1d1d6;
   border-radius: 17px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: #a1a1a6;
 }
 
@@ -208,7 +208,7 @@
   align-items: center;
   padding: 6px 10px 8px;
   text-align: center;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .kNavIcons {
   display: inline-flex;
@@ -230,7 +230,7 @@
   border-radius: 12px;
   background: #fee500;
   font-weight: 700;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .kCol {
   display: flex;
@@ -239,7 +239,7 @@
   min-width: 0;
 }
 .kName {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   color: #4a4a4a;
 }
 .kTimeRow {
@@ -260,7 +260,7 @@
   padding: 8px 12px;
   background: #fee500;
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .kBody {
   padding: 10px 12px;
@@ -279,11 +279,11 @@
   border-radius: 6px;
   background: #f2f2f2;
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
 }
 .kTime {
   flex-shrink: 0;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--font-scale, 1));
   color: #556677;
 }
 .kComposer {
@@ -308,7 +308,7 @@
   align-items: center;
   padding: 6px 10px 8px;
   color: #007aff;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .mBack,
 .mArrows {
@@ -347,7 +347,7 @@
 }
 .mFromText span,
 .mDate {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale, 1));
   color: #8e8e93;
 }
 .mSubject {
@@ -394,7 +394,7 @@
   border-radius: 50%;
   background: #262626;
   color: #fff;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 700;
 }
 .iWho {
@@ -405,7 +405,7 @@
   line-height: 1.2;
 }
 .iWho span {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale, 1));
   color: #737373;
 }
 .iNavIcons {
@@ -418,7 +418,7 @@
 .iMeta {
   margin-bottom: 8px;
   text-align: center;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--font-scale, 1));
   color: #737373;
 }
 .iRow {
@@ -435,7 +435,7 @@
   border-radius: 50%;
   background: #262626;
   color: #fff;
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale, 1));
   font-weight: 700;
 }
 .iBubble {
@@ -468,6 +468,6 @@
 }
 .iInput {
   flex: 1;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: #737373;
 }

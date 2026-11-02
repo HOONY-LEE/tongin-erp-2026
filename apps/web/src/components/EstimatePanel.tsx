@@ -6,6 +6,7 @@ const HANDLING_TEXT: Record<string, string> = HANDLING_LABEL;
 const ACCESS_TEXT: Record<string, string> = ACCESS_LABEL;
 import { api } from '../lib/api';
 import { Badge, DataTable, type Column, type Row, SkeletonText } from './ui';
+import { fs } from '../lib/fontScale';
 
 interface Line {
   id: string;
@@ -77,7 +78,7 @@ function Row2({ label, value, strong }: { label: string; value: string; strong?:
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ark-color-text-secondary)' }}>
+      <div style={{ fontSize: fs(13), fontWeight: 600, color: 'var(--ark-color-text-secondary)' }}>
         {title}
       </div>
       {children}

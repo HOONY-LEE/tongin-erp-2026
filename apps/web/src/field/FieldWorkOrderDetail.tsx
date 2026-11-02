@@ -13,6 +13,7 @@ import {
   type FieldWorkOrderDetail as Detail,
 } from './fieldTypes';
 import { FieldPhotos, type PhotoCounts } from './FieldPhotos';
+import { fs } from '../lib/fontScale';
 
 /** 작업지시서 — 현장에서 이 화면 하나로 일이 되게. */
 export default function FieldWorkOrderDetail() {
@@ -94,7 +95,7 @@ export default function FieldWorkOrderDetail() {
           background: 'transparent',
           padding: 0,
           color: 'var(--ark-color-text-secondary)',
-          fontSize: 14,
+          fontSize: fs(14),
           cursor: 'pointer',
         }}
       >
@@ -102,12 +103,12 @@ export default function FieldWorkOrderDetail() {
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{d.customerName}</h1>
+        <h1 style={{ margin: 0, fontSize: fs(22), fontWeight: 700 }}>{d.customerName}</h1>
         <Badge variant="subtle" color={st.color}>
           {st.label}
         </Badge>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--ark-color-text-tertiary)', marginTop: -8 }}>
+      <div style={{ fontSize: fs(13), color: 'var(--ark-color-text-tertiary)', marginTop: -8 }}>
         {formatDay(d.scheduledDate)} · {d.workNo}
       </div>
 
@@ -124,7 +125,7 @@ export default function FieldWorkOrderDetail() {
             background: 'var(--ark-color-primary-500)',
             color: '#fff',
             fontWeight: 700,
-            fontSize: 16,
+            fontSize: fs(16),
             textDecoration: 'none',
           }}
         >
@@ -163,7 +164,7 @@ export default function FieldWorkOrderDetail() {
           <p
             style={{
               margin: 0,
-              fontSize: 15,
+              fontSize: fs(15),
               lineHeight: 1.6,
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
@@ -199,7 +200,7 @@ export default function FieldWorkOrderDetail() {
 
       <Card title={`품목 (${allLines.length}) · 총 ${d.totalCbm}CBM`}>
         {allLines.length === 0 ? (
-          <span style={{ color: 'var(--ark-color-text-tertiary)', fontSize: 14 }}>
+          <span style={{ color: 'var(--ark-color-text-tertiary)', fontSize: fs(14) }}>
             등록된 품목이 없습니다
           </span>
         ) : (
@@ -208,7 +209,7 @@ export default function FieldWorkOrderDetail() {
               <div key={z.id}>
                 <div
                   style={{
-                    fontSize: 13,
+                    fontSize: fs(13),
                     fontWeight: 600,
                     color: 'var(--ark-color-text-secondary)',
                     marginBottom: 6,
@@ -243,7 +244,7 @@ export default function FieldWorkOrderDetail() {
               size="lg"
               disabled={acting}
               onClick={() => void act(d.status === 'ASSIGNED' ? 'start' : 'complete')}
-              style={{ width: '100%', height: 52, fontSize: 17, fontWeight: 700 }}
+              style={{ width: '100%', height: 52, fontSize: fs(17), fontWeight: 700 }}
             >
               {d.status === 'ASSIGNED' ? '작업 시작' : '작업 완료'}
             </Button>
@@ -264,7 +265,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
         background: 'var(--ark-color-bg)',
       }}
     >
-      <h2 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700 }}>{title}</h2>
+      <h2 style={{ margin: '0 0 10px', fontSize: fs(14), fontWeight: 700 }}>{title}</h2>
       {children}
     </section>
   );
@@ -296,7 +297,9 @@ function Place({
 }) {
   if (!addr) {
     return (
-      <div style={{ fontSize: 14, color: 'var(--ark-color-text-tertiary)' }}>{label} · 미입력</div>
+      <div style={{ fontSize: fs(14), color: 'var(--ark-color-text-tertiary)' }}>
+        {label} · 미입력
+      </div>
     );
   }
   // 좌표가 있으면 핀으로, 없으면 검색으로 — 현장에서 바로 길찾기로 넘어가게
@@ -307,11 +310,13 @@ function Place({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ark-color-primary-600)' }}>
+        <span style={{ fontSize: fs(12), fontWeight: 700, color: 'var(--ark-color-primary-600)' }}>
           {label}
         </span>
         {pyeong && (
-          <span style={{ fontSize: 12, color: 'var(--ark-color-text-tertiary)' }}>{pyeong}평</span>
+          <span style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)' }}>
+            {pyeong}평
+          </span>
         )}
         {access !== 'NONE' && (
           // 엘리베이터만 '수월', 사다리차·계단은 장비·인원 준비가 필요해 주의색
@@ -321,9 +326,9 @@ function Place({
           </Badge>
         )}
       </div>
-      <div style={{ fontSize: 15, lineHeight: 1.5 }}>
+      <div style={{ fontSize: fs(15), lineHeight: 1.5 }}>
         {zipcode && (
-          <span style={{ color: 'var(--ark-color-text-tertiary)', fontSize: 13 }}>
+          <span style={{ color: 'var(--ark-color-text-tertiary)', fontSize: fs(13) }}>
             ({zipcode}){' '}
           </span>
         )}
@@ -343,7 +348,7 @@ function Place({
           padding: '8px 14px',
           borderRadius: 8,
           border: '1px solid var(--ark-color-gray-200)',
-          fontSize: 14,
+          fontSize: fs(14),
           color: 'var(--ark-color-text)',
           textDecoration: 'none',
         }}
@@ -360,7 +365,7 @@ function LineList({ lines }: { lines: FieldLine[] }) {
       {lines.map((l) => (
         <div
           key={l.id}
-          style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 15, minWidth: 0 }}
+          style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: fs(15), minWidth: 0 }}
         >
           <span style={{ flex: 1, minWidth: 0 }}>{l.itemName}</span>
           {l.handling !== 'CARRY' && (

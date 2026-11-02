@@ -21,18 +21,18 @@
 }
 .headText h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: calc(22px * var(--font-scale, 1));
 }
 .headText p {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .meta {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-tertiary);
 }
 .close {
@@ -77,17 +77,17 @@
   background: var(--ark-color-bg);
 }
 .cardTitle {
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale, 1));
 }
 .hint {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .field {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .req {
@@ -101,7 +101,7 @@
   background: var(--ark-color-bg);
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
 }
 .input:focus {
   outline: 2px solid color-mix(in srgb, var(--ark-color-primary-500) 40%, transparent);
@@ -111,7 +111,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .actions {
@@ -135,7 +135,7 @@
 }
 .approval p {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
 }
 .approvalTitle {
   display: flex;
@@ -151,13 +151,13 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--ark-color-error-500, #ef4444) 8%, var(--ark-color-bg));
   color: var(--ark-color-error-600, #dc2626);
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
 }
 .output {
   padding: 12px 14px;
   border-radius: 10px;
   background: var(--ark-color-bg-subtle);
-  font-size: 15px;
+  font-size: calc(15px * var(--font-scale, 1));
 }
 .pre {
   margin: 0;
@@ -166,13 +166,13 @@
   overflow: auto;
   border-radius: 8px;
   background: var(--ark-color-bg-subtle);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   white-space: pre-wrap;
   word-break: break-all;
 }
 .steps summary {
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .steps ol {
@@ -194,7 +194,7 @@
   background: transparent;
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   text-align: left;
   cursor: pointer;
 }
@@ -240,7 +240,7 @@
   background: transparent;
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   cursor: pointer;
   text-align: left;
 }

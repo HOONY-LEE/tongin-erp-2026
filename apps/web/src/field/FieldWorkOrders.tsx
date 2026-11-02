@@ -5,6 +5,7 @@ import { api, ApiError } from '../lib/api';
 import { Badge, useToast, PageSkeleton } from '../components/ui';
 import { SegmentedControl } from '../components/ui';
 import { formatDay, todayKey, WORK_STATUS, type FieldWorkOrder } from './fieldTypes';
+import { fs } from '../lib/fontScale';
 
 type Filter = 'TODAY' | 'UPCOMING' | 'ALL';
 
@@ -61,7 +62,7 @@ export default function FieldWorkOrders() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, flex: 1 }}>내 작업</h1>
+        <h1 style={{ margin: 0, fontSize: fs(22), fontWeight: 700, flex: 1 }}>내 작업</h1>
         <button
           type="button"
           onClick={() => void load()}
@@ -111,7 +112,7 @@ export default function FieldWorkOrders() {
             <h2
               style={{
                 margin: 0,
-                fontSize: 13,
+                fontSize: fs(13),
                 fontWeight: 600,
                 color: 'var(--ark-color-text-secondary)',
               }}
@@ -149,7 +150,7 @@ function WorkCard({ w, onOpen }: { w: FieldWorkOrder; onOpen: () => void }) {
     >
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>{w.customerName}</span>
+          <span style={{ fontSize: fs(16), fontWeight: 700 }}>{w.customerName}</span>
           <Badge variant="subtle" color={st.color}>
             {st.label}
           </Badge>
@@ -159,7 +160,7 @@ function WorkCard({ w, onOpen }: { w: FieldWorkOrder; onOpen: () => void }) {
           style={{
             display: 'flex',
             gap: 12,
-            fontSize: 12,
+            fontSize: fs(12),
             color: 'var(--ark-color-text-tertiary)',
           }}
         >
@@ -184,7 +185,7 @@ function Route({ from, to }: { from: string | null; to: string | null }) {
         display: 'flex',
         alignItems: 'center',
         gap: 6,
-        fontSize: 13,
+        fontSize: fs(13),
         color: 'var(--ark-color-text-secondary)',
         minWidth: 0,
       }}

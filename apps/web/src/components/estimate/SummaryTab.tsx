@@ -7,6 +7,7 @@ import { DistanceCard, distanceSurcharge } from './DistanceCard';
 import { useTabForm } from './useTabForm';
 import { toNum, won, type EstimateDetailData, type TabProps } from './types';
 import styles from './estimate.module.css';
+import { fs } from '../../lib/fontScale';
 
 interface AmountForm {
   moveAmount: string;
@@ -117,7 +118,7 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
           ).map(([label, v], i) => (
             <div key={label} className={[styles.volCard, i === 3 ? styles.volTotal : ''].join(' ')}>
               <div className={styles.infoLabel}>{label}</div>
-              <div className={styles.volValue} style={{ fontSize: 18 }}>
+              <div className={styles.volValue} style={{ fontSize: fs(18) }}>
                 {v} <span className={styles.unit}>{unitText}</span>
               </div>
             </div>
@@ -284,7 +285,7 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
           </div>
         </div>
         {balanceGap !== 0 && (
-          <div style={{ fontSize: 13, color: 'var(--ark-color-warning-600, #d97706)' }}>
+          <div style={{ fontSize: fs(13), color: 'var(--ark-color-warning-600, #d97706)' }}>
             계약금 + 잔금이 총비용과 {won(Math.abs(balanceGap))}{' '}
             {balanceGap > 0 ? '많습니다' : '적습니다'}. 계약 전환 시 잔금은 총비용 − 계약금으로
             정해집니다.

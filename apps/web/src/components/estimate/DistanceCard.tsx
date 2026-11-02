@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { Button, Input, Modal, useToast } from '../ui';
 import type { DistanceRule, EstimateDetailData } from './types';
 import styles from './estimate.module.css';
+import { fs } from '../../lib/fontScale';
 
 // 지도(leaflet)는 무겁다 — '지도' 버튼을 처음 누를 때 받는다
 const RouteMapModal = lazy(() => import('./RouteMap').then((m) => ({ default: m.RouteMapModal })));
@@ -156,7 +157,7 @@ export function DistanceCard({
             value={form.perKm}
             onChange={(e) => setForm((f) => ({ ...f, perKm: e.target.value.replace(/\D/g, '') }))}
           />
-          <div style={{ fontSize: 13, color: 'var(--ark-color-text-secondary)' }}>
+          <div style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)' }}>
             예: 30km · 3,000원이면 45km 이사는 15km × 3,000원 = 45,000원(천 원 단위 반올림).
           </div>
         </div>

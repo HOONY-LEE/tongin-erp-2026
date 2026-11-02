@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 600;
   color: var(--ark-color-text);
 }
@@ -10,7 +10,7 @@
   color: var(--ark-color-error-500);
 }
 .hint {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 400;
   color: var(--ark-color-text-secondary);
 }
@@ -40,7 +40,7 @@
   padding: 0 4px 0 10px;
   border-radius: 999px;
   background: var(--ark-color-bg-subtle);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .chip button {
   display: inline-grid;
@@ -68,12 +68,12 @@
   min-width: 0;
 }
 .view dt {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .view dd {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   color: var(--ark-color-text);
   white-space: pre-wrap;
   word-break: break-word;
@@ -132,7 +132,7 @@
   }
 }
 .no {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
   text-align: center;
 }
@@ -164,7 +164,7 @@
 .previewHead {
   padding: 8px 12px;
   border-bottom: 1px solid var(--ark-color-border);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 700;
   color: var(--ark-color-text);
 }

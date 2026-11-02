@@ -6,6 +6,7 @@ import type { FormField } from './types';
 import { AddressField } from './AddressField';
 import { ADDRESS_PARTS, addrKey } from './address';
 import { formatPhone } from '../../lib/phone';
+import { fs } from '../../lib/fontScale';
 
 /** akron Input/Select 기본 라벨 스타일과 맞춘 커스텀 라벨(필수 표시는 테마색 *). */
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
@@ -144,7 +145,7 @@ export function FormModal({
                 border: 'none',
                 background: 'transparent',
                 color: 'var(--ark-color-text-secondary)',
-                fontSize: 13,
+                fontSize: fs(13),
                 cursor: 'pointer',
                 padding: '2px 0',
               }}

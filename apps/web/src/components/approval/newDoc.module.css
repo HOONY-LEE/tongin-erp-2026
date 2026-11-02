@@ -14,7 +14,7 @@
 }
 .groupLabel {
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   font-weight: 700;
   color: var(--ark-color-text-secondary);
 }
@@ -46,14 +46,14 @@
   color: var(--ark-color-primary-500);
 }
 .card b {
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
 }
 .card span {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
   line-height: 1.4;
 }
 .empty {
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }

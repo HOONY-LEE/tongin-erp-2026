@@ -6,7 +6,7 @@
   min-width: 0;
 }
 .hint {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .picker {
@@ -30,7 +30,7 @@
   padding: 3px 6px 3px 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ark-color-primary-500) 12%, var(--ark-color-bg));
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }
 .chip small {
   color: var(--ark-color-text-secondary);
@@ -66,7 +66,7 @@
   background: transparent;
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
 }
 .linkBtn {
   flex-shrink: 0;
@@ -74,7 +74,7 @@
   background: transparent;
   color: var(--ark-color-primary-600, var(--ark-color-primary-500));
   font: inherit;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   cursor: pointer;
 }
 .linkBtn:disabled {
@@ -108,10 +108,10 @@
   background: var(--ark-color-bg-subtle);
 }
 .itemName {
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 500;
 }
 .itemMeta {
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }

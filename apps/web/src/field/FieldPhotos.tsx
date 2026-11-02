@@ -16,6 +16,7 @@ import {
   primePhotoUrl,
 } from '../components/photos/workPhotos';
 import styles from '../components/photos/photos.module.css';
+import { fs } from '../lib/fontScale';
 
 export type PhotoCounts = Record<WorkPhotoKind, number>;
 
@@ -160,13 +161,13 @@ export function FieldPhotos({
         gap: 12,
       }}
     >
-      <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+      <h2 style={{ margin: 0, fontSize: fs(14), fontWeight: 700 }}>
         작업 사진 ({photos.length})
         {uploading && (
           <span
             style={{
               marginLeft: 8,
-              fontSize: 12,
+              fontSize: fs(12),
               fontWeight: 500,
               color: 'var(--ark-color-text-tertiary)',
             }}
@@ -207,7 +208,7 @@ export function FieldPhotos({
               variant="primary"
               size="lg"
               onClick={() => cameraRef.current?.click()}
-              style={{ flex: 2, height: 52, fontSize: 16, fontWeight: 700 }}
+              style={{ flex: 2, height: 52, fontSize: fs(16), fontWeight: 700 }}
             >
               <Camera size={20} style={{ marginRight: 6 }} />
               {WORK_PHOTO_KIND_LABEL[kind]} 사진 찍기
@@ -216,7 +217,7 @@ export function FieldPhotos({
               variant="outline"
               size="lg"
               onClick={() => albumRef.current?.click()}
-              style={{ flex: 1, height: 52, fontSize: 15 }}
+              style={{ flex: 1, height: 52, fontSize: fs(15) }}
             >
               <Images size={18} style={{ marginRight: 6 }} />
               앨범

@@ -34,7 +34,7 @@
   border-radius: 999px;
   background: var(--ark-color-info-500);
   color: #fff;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale, 1));
   line-height: 18px;
   text-align: center;
 }
@@ -72,7 +72,7 @@
   background: transparent;
   color: var(--ark-color-text-secondary);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   cursor: pointer;
 }
 .clear:hover {
@@ -85,7 +85,7 @@
   flex-direction: column;
   gap: 4px;
   margin-bottom: 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
 }
 .dateRow > div {
@@ -102,5 +102,5 @@
   background: var(--ark-color-bg);
   color: var(--ark-color-text);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale, 1));
 }

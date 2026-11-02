@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ClockButton } from '../components/attendance/ClockButton';
+import { fs } from '../lib/fontScale';
 
 /**
  * 현장(폰·태블릿) 셸.
@@ -63,18 +64,18 @@ export default function FieldLayout() {
               background: 'var(--ark-color-primary-500)',
               color: '#fff',
               fontWeight: 800,
-              fontSize: 13,
+              fontSize: fs(13),
               flexShrink: 0,
             }}
           >
             통
           </span>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>현장</span>
+          <span style={{ fontWeight: 700, fontSize: fs(16) }}>현장</span>
         </button>
 
         <span
           style={{
-            fontSize: 13,
+            fontSize: fs(13),
             color: 'var(--ark-color-text-secondary)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',

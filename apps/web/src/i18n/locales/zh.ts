@@ -270,6 +270,7 @@ export default {
   },
   calendar: { today: '今天' },
   theme: { label: '主题', system: '系统', light: '浅色', dark: '深色' },
+  fontSize: { label: '字体大小', sm: '小', md: '中', lg: '大' },
   lang: { label: '语言' },
   login: { id: '账号', password: '密码', failed: '登录失败' },
   dashboard: {

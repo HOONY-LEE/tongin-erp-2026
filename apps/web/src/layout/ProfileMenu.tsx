@@ -10,11 +10,12 @@ import {
   Moon,
   SlidersHorizontal,
   Sun,
+  Type,
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { useTheme, type ThemeMode } from '../theme/ThemeProvider';
+import { FONT_SIZES, useTheme, type ThemeMode } from '../theme/ThemeProvider';
 import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { useClock } from '../components/attendance/ClockButton';
 import { MyAccountModal } from './MyAccountModal';
@@ -61,7 +62,7 @@ function ClockRow() {
 export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
-  const { mode, setMode } = useTheme();
+  const { mode, setMode, fontSize, setFontSize } = useTheme();
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ right: number; top: number } | null>(null);
@@ -186,6 +187,27 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
                   >
                     <o.icon size={13} aria-hidden />
                     {t(`theme.${o.value}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.group}>
+              <span className={styles.groupLabel}>
+                <Type size={15} aria-hidden />
+                {t('fontSize.label')}
+              </span>
+              <div className={styles.seg} role="radiogroup" aria-label={t('fontSize.label')}>
+                {FONT_SIZES.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    role="radio"
+                    aria-checked={fontSize === f}
+                    className={fontSize === f ? styles.segOn : undefined}
+                    onClick={() => setFontSize(f)}
+                  >
+                    {t(`fontSize.${f}`)}
                   </button>
                 ))}
               </div>

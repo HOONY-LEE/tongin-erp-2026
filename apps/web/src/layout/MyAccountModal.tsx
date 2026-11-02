@@ -5,8 +5,27 @@ import { api, ApiError } from '../lib/api';
 import { useDirectory } from '../lib/approvals';
 import styles from './profileMenu.module.css';
 
-/** 내 계정 — 내 정보 보기 + 비밀번호 바꾸기 */
+/** 내 계정 — 내 정보 보기 + 비밀번호 바꾸기(프로필 메뉴의 창) */
 export function MyAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      title="내 계정"
+      size="sm"
+      footer={
+        <Button variant="ghost" onClick={onClose}>
+          닫기
+        </Button>
+      }
+    >
+      {open && <AccountSettings onDone={onClose} />}
+    </Modal>
+  );
+}
+
+/** 내 정보 + 비밀번호 바꾸기 — 내 계정 창과 설정 창이 같이 쓴다 */
+export function AccountSettings({ onDone }: { onDone?: () => void }) {
   const toast = useToast();
   const { user } = useAuth();
   const { people } = useDirectory();
@@ -21,10 +40,6 @@ export function MyAccountModal({ open, onClose }: { open: boolean; onClose: () =
     setNext('');
     setAgain('');
   };
-  const close = () => {
-    reset();
-    onClose();
-  };
 
   const mismatch = !!again && next !== again;
   const tooShort = !!next && next.length < 6;
@@ -38,7 +53,8 @@ export function MyAccountModal({ open, onClose }: { open: boolean; onClose: () =
         body: JSON.stringify({ currentPassword: cur, newPassword: next }),
       });
       toast({ type: 'success', title: '비밀번호를 바꿨습니다' });
-      close();
+      reset();
+      onDone?.();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
     } finally {
@@ -54,22 +70,7 @@ export function MyAccountModal({ open, onClose }: { open: boolean; onClose: () =
   ];
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={(o) => !o && close()}
-      title="내 계정"
-      size="sm"
-      footer={
-        <>
-          <Button variant="ghost" onClick={close}>
-            닫기
-          </Button>
-          <Button variant="primary" loading={saving} disabled={!ready} onClick={() => void save()}>
-            비밀번호 바꾸기
-          </Button>
-        </>
-      }
-    >
+    <>
       <dl className={styles.info}>
         {rows.map(([k, v]) => (
           <div key={k}>
@@ -107,6 +108,11 @@ export function MyAccountModal({ open, onClose }: { open: boolean; onClose: () =
           {mismatch && <span className={styles.err}>새 비밀번호와 다릅니다.</span>}
         </label>
       </div>
-    </Modal>
+      <div className={styles.formActions}>
+        <Button variant="primary" loading={saving} disabled={!ready} onClick={() => void save()}>
+          비밀번호 바꾸기
+        </Button>
+      </div>
+    </>
   );
 }

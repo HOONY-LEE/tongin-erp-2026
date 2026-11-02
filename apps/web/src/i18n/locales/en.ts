@@ -270,6 +270,7 @@ export default {
   },
   calendar: { today: 'Today' },
   theme: { label: 'Theme', system: 'System', light: 'Light', dark: 'Dark' },
+  fontSize: { label: 'Text size', sm: 'Small', md: 'Medium', lg: 'Large' },
   lang: { label: 'Language' },
   login: { id: 'Username', password: 'Password', failed: 'Sign in failed' },
   dashboard: {
