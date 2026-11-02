@@ -7,6 +7,10 @@ import './i18n';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { installErrorReporter } from './lib/reportError';
+
+// 화면 오류를 관리자 '시스템 로그'로 보낸다
+installErrorReporter();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

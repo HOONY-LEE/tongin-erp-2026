@@ -121,8 +121,8 @@ export class AiController {
   ) {}
 
   @Get('status')
-  status() {
-    return this.ai.status();
+  status(@CurrentUser() user: AuthPrincipal) {
+    return this.ai.status(user.userId);
   }
 
   @Get('tools')

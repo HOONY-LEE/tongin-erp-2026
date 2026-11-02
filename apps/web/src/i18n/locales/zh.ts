@@ -1,5 +1,5 @@
 export default {
-  app: { title: '通仁快递 ERP' },
+  app: { title: '通仁 AI-WORKS' },
   common: {
     add: '添加',
     save: '保存',
@@ -43,6 +43,8 @@ export default {
     branches: '网点管理',
     accounts: '账户与权限',
     aiAgents: 'Agent Builder',
+    aiAdmin: 'AI 管理',
+    systemLogs: '系统日志',
     dashboardAdmin: '仪表板管理',
     employees: '员工',
     approvals: '审批',

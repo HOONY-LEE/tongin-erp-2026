@@ -1,3 +1,5 @@
+import { logSystem } from '../system-log/system-log.sink';
+import { HTTP_ERROR_CONTEXT } from '../system-log/system-logger';
 import { randomBytes } from 'node:crypto';
 import {
   type ArgumentsHost,
@@ -102,7 +104,8 @@ const isBodyParserError = (e: unknown): e is { type: string; status: number } =>
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger('Error');
+  // 시스템 로그에는 아래에서 요청 정보까지 붙여 직접 남긴다(로거 쪽에서는 이 이름을 건너뛴다)
+  private readonly logger = new Logger(HTTP_ERROR_CONTEXT);
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -155,15 +158,36 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
     if (!message || isDefaultEnglish(message)) message = DEFAULT_MESSAGE[status] ?? '';
 
+    const userId = (req as { user?: { userId?: string } }).user?.userId ?? null;
     if (code === 'INTERNAL') {
       ref = randomBytes(3).toString('hex').toUpperCase();
       message = `서버에서 오류가 났습니다. 같은 문제가 계속되면 오류 번호 ${ref}를 알려 주세요.`;
-      this.logger.error(
-        `[${ref}] ${req.method} ${req.originalUrl}`,
-        exception instanceof Error ? exception.stack : String(exception),
-      );
+      const stack = exception instanceof Error ? exception.stack : String(exception);
+      this.logger.error(`[${ref}] ${req.method} ${req.originalUrl}`, stack);
+      logSystem({
+        level: 'ERROR',
+        source: 'API',
+        context: HTTP_ERROR_CONTEXT,
+        message: exception instanceof Error ? exception.message : String(exception),
+        detail: stack ?? null,
+        method: req.method,
+        path: req.originalUrl,
+        status,
+        userId,
+        ref,
+      });
     } else if (status >= 500) {
       this.logger.warn(`${req.method} ${req.originalUrl} → ${status} ${code}: ${message}`);
+      logSystem({
+        level: 'WARN',
+        source: 'API',
+        context: HTTP_ERROR_CONTEXT,
+        message: `${code}: ${message}`,
+        method: req.method,
+        path: req.originalUrl,
+        status,
+        userId,
+      });
     }
 
     res.status(status).json({ statusCode: status, code, message, ...(ref ? { ref } : {}) });

@@ -1,5 +1,5 @@
 export default {
-  app: { title: 'Tongin Express ERP' },
+  app: { title: 'Tongin AI-WORKS' },
   common: {
     add: 'Add',
     save: 'Save',
@@ -43,6 +43,8 @@ export default {
     branches: 'Branches',
     accounts: 'Accounts & Access',
     aiAgents: 'Agent Builder',
+    aiAdmin: 'AI Admin',
+    systemLogs: 'System Logs',
     dashboardAdmin: 'Dashboards',
     employees: 'Employees',
     approvals: 'Approvals',

@@ -18,7 +18,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { MyMenuModal } from '../components/menu/MyMenuModal';
 import { menuIcon, useMenuLabel, useMyMenu } from '../lib/menu';
 import { useInbox } from '../lib/inbox';
-import { MENU_CATALOG, filterLayout, menuDef } from '@tongin/shared';
+import { MENU_CATALOG, PRODUCT_NAME, filterLayout, menuDef } from '@tongin/shared';
 import styles from './AppLayout.module.css';
 import { HeaderTabs } from './HeaderTabs';
 import { ProfileMenu } from './ProfileMenu';
@@ -292,7 +292,7 @@ export default function AppLayout() {
                   통
                 </div>
                 {!collapsed && (
-                  <span style={{ fontWeight: 700, fontSize: fs(15) }}>통인 Works</span>
+                  <span style={{ fontWeight: 700, fontSize: fs(15) }}>{PRODUCT_NAME}</span>
                 )}
               </div>
             }

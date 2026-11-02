@@ -1,3 +1,4 @@
+import { SystemLogModule } from './system-log/system-log.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -62,6 +63,7 @@ import { BranchCaseModule } from './modules/branch-case/branch-case.module';
     ScopeModule,
     PrincipalCacheModule,
     AuditModule,
+    SystemLogModule,
     NotificationsModule,
     AuthModule,
     OrgUnitModule,

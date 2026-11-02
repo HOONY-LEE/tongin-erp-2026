@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, UserRound } from 'lucide-react';
+import { PRODUCT_NAME } from '@tongin/shared';
 import { useToast } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../lib/api';
@@ -416,7 +417,7 @@ export default function Login() {
         </div>
         <div className={styles.copy}>
           <div className={styles.slogan}>마음까지 통하는 사람들</div>
-          <div className={styles.title}>통인전산시스템</div>
+          <div className={styles.title}>{PRODUCT_NAME}</div>
           <div className={styles.lead}>
             언제 어디서나 빠르고 정확하게.
             <br className={styles.wideBr} />

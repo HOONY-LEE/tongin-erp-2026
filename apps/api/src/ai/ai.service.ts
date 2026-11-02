@@ -2,6 +2,7 @@ import {
   type OnModuleInit,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -15,14 +16,15 @@ import type {
   BetaToolResultBlockParam,
   BetaToolUnion,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { PERMISSION_WILDCARD, type AuthPrincipal, AI_TITLE_MAX } from '@tongin/shared';
+import { AI_MODELS, PERMISSION_WILDCARD, type AuthPrincipal, AI_TITLE_MAX } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiCatalog } from './api-catalog';
 import { DomainTools } from './domain-tools';
 import { SYSTEM_PROMPT, contextBlock } from './prompt';
 import { ToolError, type AiTool, type ToolContext } from './ai-tool.types';
 import { AiFiles, type AiFileMeta } from './ai-files.service';
-import { DEFAULT_AI_MODEL, modelOptions, resolveChatModel } from './ai-models';
+import { defaultModel, modelOptions, resolveChatModel } from './ai-models';
+import { AiUsageService, aiCaller, trackClaude } from './ai-usage.service';
 
 /** 대화 제목 요약용 — 작고 싼 모델로 따로 한 번 부른다(본 답변을 늦추지 않게 비동기) */
 const TITLE_MODEL = process.env.AI_TITLE_MODEL ?? 'claude-haiku-5-5';
@@ -122,6 +124,7 @@ export class AiService implements OnModuleInit {
     private readonly catalog: ApiCatalog,
     private readonly domain: DomainTools,
     private readonly files: AiFiles,
+    private readonly usage: AiUsageService,
   ) {
     const key = process.env.ANTHROPIC_API_KEY;
     // 워크스페이스에 묶이지 않은 키(sk-ant-usr-…)는 어느 워크스페이스로 쓸지 헤더로 알려야 한다
@@ -134,9 +137,17 @@ export class AiService implements OnModuleInit {
       : null;
   }
 
-  status() {
-    // models: 고를 수 있는 모델(닫힌 모델은 enabled=false로 보이기만)
-    return { configured: !!this.client, model: DEFAULT_AI_MODEL, models: modelOptions() };
+  /** models: 고를 수 있는 모델(회사에서 닫았거나 이 사용자에게 안 준 모델은 enabled=false로 보이기만) */
+  async status(userId: string) {
+    const allowed = await this.usage.modelsFor(userId);
+    const limit = await this.usage.limitFor(userId);
+    return {
+      configured: !!this.client,
+      model: resolveChatModel(defaultModel(), allowed),
+      models: modelOptions(allowed),
+      // 이번 달 한도(토큰)와 쓴 양 — 한도가 없으면 null
+      quota: limit == null ? null : { limit, used: await this.usage.usedThisMonth(userId) },
+    };
   }
 
   /** 사용자 권한으로 쓸 수 있는 도구만. 업무 도구가 같은 이름의 API 도구보다 우선 */
@@ -233,16 +244,23 @@ export class AiService implements OnModuleInit {
   private async summarizeTitle(id: string, question: string, fallback: string) {
     if (!this.client) return;
     try {
-      const res = await this.client.messages.create({
-        model: TITLE_MODEL,
-        max_tokens: 40,
-        // 제목 한 줄이라 생각 없이 바로 답하게(Haiku 5.5는 기본이 생각 켜짐)
-        thinking: { type: 'disabled' },
-        system: TITLE_SYSTEM,
-        messages: [
-          { role: 'user', content: `<question>\n${question.slice(0, 2000)}\n</question>` },
-        ],
-      });
+      const client = this.client;
+      const res = await trackClaude(
+        'TITLE',
+        TITLE_MODEL,
+        () =>
+          client.messages.create({
+            model: TITLE_MODEL,
+            max_tokens: 40,
+            // 제목 한 줄이라 생각 없이 바로 답하게(Haiku 5.5는 기본이 생각 켜짐)
+            thinking: { type: 'disabled' },
+            system: TITLE_SYSTEM,
+            messages: [
+              { role: 'user', content: `<question>\n${question.slice(0, 2000)}\n</question>` },
+            ],
+          }),
+        id,
+      );
       const raw = res.content
         .map((b) => (b.type === 'text' ? b.text : ''))
         .join('')
@@ -278,6 +296,12 @@ export class AiService implements OnModuleInit {
       throw new BadRequestException('메시지나 첨부가 있어야 합니다.');
     }
     const client = this.requireClient();
+    await this.usage.assertCanUse(ctx.principal.userId);
+    const allowed = await this.usage.modelsFor(ctx.principal.userId);
+    if (!AI_MODELS.some((m) => m.chat && allowed.has(m.id)))
+      throw new ForbiddenException(
+        '이 계정에 대화에 쓸 수 있는 AI 모델이 없습니다. 관리자에게 모델을 열어 달라고 요청하세요.',
+      );
     return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const messages = c.messages as unknown as Messages;
@@ -314,7 +338,7 @@ export class AiService implements OnModuleInit {
           pending: null as never,
           status: 'RUNNING',
           // 고른 모델(닫힌 모델이면 기본 모델로) — 이후 승인·다시 시도도 이 모델로 이어 간다
-          ...(model ? { model: resolveChatModel(model) } : {}),
+          ...(model ? { model: resolveChatModel(model, allowed) } : {}),
           // 요약 제목이 오기 전까지는 첫 질문 앞부분을 제목으로 둔다
           ...(firstQuestion ? { title: fallbackTitle } : {}),
         },
@@ -328,6 +352,7 @@ export class AiService implements OnModuleInit {
   /** 승인 대기 중인 도구 호출을 승인·거절하고 루프를 이어 간다 */
   async decide(id: string, decisions: Decision[], ctx: ToolContext) {
     const client = this.requireClient();
+    await this.usage.assertCanUse(ctx.principal.userId);
     return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const pending = (c.pending as unknown as PendingCall[] | null) ?? [];
@@ -408,6 +433,7 @@ export class AiService implements OnModuleInit {
   /** 오류로 멈춘 대화를 마지막 상태에서 다시 돌린다 */
   async retry(id: string, ctx: ToolContext) {
     const client = this.requireClient();
+    await this.usage.assertCanUse(ctx.principal.userId);
     return this.background(id, ctx, async () => {
       const c = await this.load(id, ctx.principal.userId);
       const messages = c.messages as unknown as Messages;
@@ -437,27 +463,31 @@ export class AiService implements OnModuleInit {
       select: { containerId: true, model: true },
     });
     let container = conv?.containerId ?? null;
-    // 대화에 정한 모델(없거나 닫힌 모델이면 기본 Sonnet)
-    const model = resolveChatModel(conv?.model);
+    // 대화에 정한 모델(없거나 닫힌 모델·이 사용자에게 안 준 모델이면 기본 모델)
+    const model = resolveChatModel(conv?.model, await this.usage.modelsFor(ctx.principal.userId));
     const call = (containerId: string | null) =>
-      client.beta.messages.create({
-        model,
-        max_tokens: 16000,
-        betas: BETAS,
-        fallbacks: 'default',
-        // 생각은 항상 켜져 있다(Sonnet·Opus 5.5). 도구 구성이 바뀐 대화도 오류 없이 이어지도록 drop_block
-        thinking: {
-          type: 'adaptive',
-          block_binding: { prefix_mismatch_behavior: 'drop_block' },
-        } as never,
-        output_config: { effort: 'medium' },
-        // 대화가 길어져도 앞부분(도구 정의·시스템·이전 턴)은 캐시에서 읽는다
-        cache_control: { type: 'ephemeral' },
-        system: SYSTEM_PROMPT,
-        tools: apiTools,
-        messages,
-        ...(containerId ? { container: containerId } : {}),
-      });
+      aiCaller.run({ userId: ctx.principal.userId, refId: id }, () =>
+        trackClaude('CHAT', model, () =>
+          client.beta.messages.create({
+            model,
+            max_tokens: 16000,
+            betas: BETAS,
+            fallbacks: 'default',
+            // 생각은 항상 켜져 있다(Sonnet·Opus 5.5). 도구 구성이 바뀐 대화도 오류 없이 이어지도록 drop_block
+            thinking: {
+              type: 'adaptive',
+              block_binding: { prefix_mismatch_behavior: 'drop_block' },
+            } as never,
+            output_config: { effort: 'medium' },
+            // 대화가 길어져도 앞부분(도구 정의·시스템·이전 턴)은 캐시에서 읽는다
+            cache_control: { type: 'ephemeral' },
+            system: SYSTEM_PROMPT,
+            tools: apiTools,
+            messages,
+            ...(containerId ? { container: containerId } : {}),
+          }),
+        ),
+      );
 
     for (let step = 0; step < MAX_STEPS; step++) {
       let res: Anthropic.Beta.Messages.BetaMessage;

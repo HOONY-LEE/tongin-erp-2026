@@ -99,6 +99,14 @@ export class AuthService {
       };
     });
 
+    // AI 관리에서 사람별로 정한 'AI 비서 사용' — 허용(그룹에 없어도 줌)·막음(그룹에 있어도 뺌)
+    const ai = await this.prisma.aiUserPolicy.findUnique({
+      where: { userId },
+      select: { access: true },
+    });
+    if (ai?.access === 'ALLOW') permSet.add('AI.USE');
+    if (ai?.access === 'BLOCK') permSet.delete('AI.USE');
+
     const permissions = permSet.has(PERMISSION_WILDCARD) ? [PERMISSION_WILDCARD] : [...permSet];
     return {
       userId: user.id,

@@ -2,6 +2,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
+import { PRODUCT_NAME } from '@tongin/shared';
 
 /**
  * AI 보고서 파일 만들기 — 표(열 이름 + 행) 하나를 엑셀·CSV·PDF로.
@@ -106,7 +107,7 @@ const isNumberColumn = (rows: Cell[][], i: number) =>
 
 async function buildXlsx(r: ReportInput): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = '통인 ERP AI 비서';
+  wb.creator = `${PRODUCT_NAME} AI 비서`;
   wb.created = new Date();
   // 시트 이름: 31자, []:*?/\ 금지
   const sheet = (r.sheetName || r.title).replace(/[[\]:*?/\\]/g, ' ').slice(0, 31) || 'Sheet1';
@@ -173,7 +174,7 @@ async function buildPdf(r: ReportInput): Promise<Buffer> {
     layout: landscape ? 'landscape' : 'portrait',
     margins: { top: 40, bottom: 40, left: 36, right: 36 },
     bufferPages: true,
-    info: { Title: r.title, Creator: '통인 ERP AI 비서' },
+    info: { Title: r.title, Creator: `${PRODUCT_NAME} AI 비서` },
   });
   doc.registerFont('R', join(FONT_DIR, 'Pretendard-Regular.otf'));
   doc.registerFont('B', join(FONT_DIR, 'Pretendard-Bold.otf'));
@@ -194,7 +195,7 @@ async function buildPdf(r: ReportInput): Promise<Buffer> {
     .font('R')
     .fontSize(9)
     .fillColor('#666')
-    .text(`작성: ${today} (통인 ERP AI 비서) · ${r.rows.length.toLocaleString('ko-KR')}행`);
+    .text(`작성: ${today} (${PRODUCT_NAME} AI 비서) · ${r.rows.length.toLocaleString('ko-KR')}행`);
   if (r.note) doc.text(r.note);
   doc.moveDown(0.6);
 

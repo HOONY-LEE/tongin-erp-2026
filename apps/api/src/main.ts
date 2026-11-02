@@ -7,9 +7,12 @@ import { AppModule } from './app.module';
 import { koreanValidationError } from './common/validation-message';
 import { AllExceptionsFilter } from './common/http-exception.filter';
 import { requestContextMiddleware } from './events/request-context';
+import { SystemLogger } from './system-log/system-logger';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // 부팅 중 로그도 놓치지 않게 모아 두었다가 시스템 로거로 넘긴다(경고·오류는 DB 시스템 로그에도)
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+  app.useLogger(new SystemLogger());
   // AI 에이전트 첨부(이미지·PDF를 base64로)가 기본 100KB를 넘는다
   app.useBodyParser('json', { limit: '30mb' });
   // 응답 압축(gzip) — 목록 JSON이 3~5배 작아진다. 1KB 미만은 그대로 보낸다(compression 기본값)

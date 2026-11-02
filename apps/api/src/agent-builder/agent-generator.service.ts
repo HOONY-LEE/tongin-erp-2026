@@ -32,8 +32,9 @@ import {
 } from '@tongin/shared';
 import { AgentBlueprintService } from './agent-blueprint.service';
 import type { ReferenceMeta } from './agent-reference.service';
+import { trackClaude } from '../ai/ai-usage.service';
 import {
-  BUILDER_MODEL,
+  builderModel,
   FALLBACK_BETA,
   assertComplete,
   createClaude,
@@ -351,27 +352,30 @@ export class AgentGeneratorService {
 
     let res: Anthropic.Beta.Messages.BetaMessage;
     try {
-      res = await client.beta.messages
-        .stream({
-          model: BUILDER_MODEL,
-          max_tokens: 32000,
-          betas: [FALLBACK_BETA],
-          fallbacks: 'default',
-          output_config: {
-            effort: 'medium',
-            format: { type: 'json_schema', schema: OUTPUT_SCHEMA },
-          },
-          // 안내문 + 도구 목록은 사용자(권한)가 같으면 그대로라 캐시에서 읽는다
-          system: [
-            {
-              type: 'text',
-              text: `${GUIDE}\n\n## 업무 도구(자세히)\n${domainDetail}\n\n## 호출할 수 있는 도구 전체(${tools.length}개)\n${compactCatalog(tools)}`,
-              cache_control: { type: 'ephemeral' },
+      const model = builderModel();
+      res = await trackClaude('AGENT_GENERATE', model, () =>
+        client.beta.messages
+          .stream({
+            model,
+            max_tokens: 32000,
+            betas: [FALLBACK_BETA],
+            fallbacks: 'default',
+            output_config: {
+              effort: 'medium',
+              format: { type: 'json_schema', schema: OUTPUT_SCHEMA },
             },
-          ],
-          messages: [{ role: 'user', content: userText }],
-        })
-        .finalMessage();
+            // 안내문 + 도구 목록은 사용자(권한)가 같으면 그대로라 캐시에서 읽는다
+            system: [
+              {
+                type: 'text',
+                text: `${GUIDE}\n\n## 업무 도구(자세히)\n${domainDetail}\n\n## 호출할 수 있는 도구 전체(${tools.length}개)\n${compactCatalog(tools)}`,
+                cache_control: { type: 'ephemeral' },
+              },
+            ],
+            messages: [{ role: 'user', content: userText }],
+          })
+          .finalMessage(),
+      );
       assertComplete(res);
     } catch (e) {
       const msg = describeClaudeError(e);
@@ -439,27 +443,30 @@ export class AgentGeneratorService {
       : '(아직 없음)';
     let res: Anthropic.Beta.Messages.BetaMessage;
     try {
-      res = await client.beta.messages
-        .stream({
-          model: BUILDER_MODEL,
-          max_tokens: 8000,
-          betas: [FALLBACK_BETA],
-          fallbacks: 'default',
-          output_config: {
-            effort: 'low',
-            format: { type: 'json_schema', schema: DESIGN_SCHEMA },
-          },
-          system: [
-            {
-              type: 'text',
-              text: `${DESIGN_GUIDE}\n\n## 에이전트가 쓸 수 있는 ERP 도구(${tools.length}개)\n${compactCatalog(tools)}`,
-              cache_control: { type: 'ephemeral' },
+      const model = builderModel();
+      res = await trackClaude('AGENT_DESIGN', model, () =>
+        client.beta.messages
+          .stream({
+            model,
+            max_tokens: 8000,
+            betas: [FALLBACK_BETA],
+            fallbacks: 'default',
+            output_config: {
+              effort: 'low',
+              format: { type: 'json_schema', schema: DESIGN_SCHEMA },
             },
-            { type: 'text', text: `## 지금까지 올린 참고 양식\n${refText}` },
-          ],
-          messages: messages.map((m) => ({ role: m.role, content: m.text })),
-        })
-        .finalMessage();
+            system: [
+              {
+                type: 'text',
+                text: `${DESIGN_GUIDE}\n\n## 에이전트가 쓸 수 있는 ERP 도구(${tools.length}개)\n${compactCatalog(tools)}`,
+                cache_control: { type: 'ephemeral' },
+              },
+              { type: 'text', text: `## 지금까지 올린 참고 양식\n${refText}` },
+            ],
+            messages: messages.map((m) => ({ role: m.role, content: m.text })),
+          })
+          .finalMessage(),
+      );
       assertComplete(res);
     } catch (e) {
       const msg = describeClaudeError(e);

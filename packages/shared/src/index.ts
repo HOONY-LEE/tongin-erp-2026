@@ -1,4 +1,7 @@
-// 통인 ERP 공유 타입/상수 — 프론트(web)와 백엔드(api)가 함께 사용.
+// 통인 AI-WORKS 공유 타입/상수 — 프론트(web)와 백엔드(api)가 함께 사용.
+
+/** 제품 이름 — 사이드바·로그인·브라우저 탭·내려받는 파일에 쓴다 */
+export const PRODUCT_NAME = '통인 AI-WORKS';
 // 설계노트의 도메인 개념과 1:1 (서비스라인·산정방식·상태·처리구분).
 
 // 조직 유형 (그룹사 > 법인/브랜드 > 본사 부서·지점). 외부업체(전속·제휴·기업고객)는 조직이 아니라 거래처(Partner)다
@@ -605,6 +608,7 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     specials: [
       { action: 'USE', label: 'AI 비서 사용' },
       { action: 'MANAGE', label: '에이전트 빌더' },
+      { action: 'ADMIN', label: 'AI 관리(모델·사용자별 권한·사용량)' },
     ],
     hint: 'AI는 사용자 본인 권한 안에서만 도구를 실행합니다',
   },
@@ -711,6 +715,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     hint: '팀(소속)·권한 그룹·직책별 사이드바 메뉴 구성을 정합니다. 내 메뉴 순서 바꾸기는 권한 없이 됩니다',
   },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
+  {
+    key: 'SYSTEM_LOG',
+    label: '시스템 로그',
+    group: '시스템',
+    actions: ['READ'],
+    hint: '서버·화면에서 난 오류와 경고를 봅니다(디버깅용)',
+  },
 ];
 
 /** 카탈로그에서 펼친 전체 권한 코드 */

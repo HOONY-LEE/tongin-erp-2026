@@ -835,7 +835,7 @@ function OrgPicker({ value, onChange }: { value: string[]; onChange: (v: string[
 }
 
 /** 하나 고르기 — 내용 폭만큼의 칩(세그먼트처럼 줄 전체를 차지하지 않는다) */
-function ChoiceChips({
+export function ChoiceChips({
   value,
   onChange,
   options,

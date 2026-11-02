@@ -1,0 +1,189 @@
+/* AI 관리 · 시스템 로그 */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.cardLabel {
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--ark-color-text-tertiary);
+}
+.cardValue {
+  font-size: var(--ark-font-size-xl);
+  font-weight: 700;
+}
+.cardSub {
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--ark-color-text-tertiary);
+}
+.errorValue {
+  color: var(--ark-color-danger-600, #dc2626);
+}
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dateInput {
+  width: 150px;
+}
+.muted {
+  color: var(--ark-color-text-tertiary);
+}
+.notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-subtle, #f5f6f8);
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+.warn {
+  background: var(--ark-color-warning-50, #fff7ed);
+  color: var(--ark-color-warning-700, #b45309);
+}
+
+/* 설정 폼 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 760px;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.sectionTitle {
+  margin: 0;
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.hint {
+  margin: 0;
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--ark-color-text-tertiary);
+}
+.modelRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 110px 110px;
+  align-items: center;
+  gap: 10px;
+}
+.modelHead {
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--ark-color-text-tertiary);
+}
+.modelName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modelHint {
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--ark-color-text-tertiary);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 500;
+}
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.limitInput {
+  width: 180px;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* 로그 자세히 */
+.pre {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-subtle, #f5f6f8);
+  font-family: var(--ark-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: calc(12px * var(--font-scale, 1));
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.mono {
+  font-family: var(--ark-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
+
+@media (max-width: 900px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.monthSelect {
+  width: 160px;
+}
+.breakdowns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.breakdown {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 110px;
+  row-gap: 8px;
+  column-gap: 12px;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.breakdown[data-cost] {
+  grid-template-columns: minmax(0, 1fr) 70px 110px 90px;
+}
+.numCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.breakdown .modelHead:not(:first-child) {
+  text-align: right;
+}
+@media (max-width: 900px) {
+  .breakdowns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cards3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 760px;
+}

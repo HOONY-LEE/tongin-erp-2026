@@ -1305,3 +1305,53 @@ export function normalizeAgentGraph(raw: unknown): AgentGraph {
   }
   return { version: 1, nodes, edges };
 }
+
+/** AI 사용 기록의 기능 이름 */
+export const AI_FEATURES = {
+  CHAT: 'AI 비서 대화',
+  TITLE: '대화 제목 요약',
+  AGENT_DESIGN: '에이전트 설계 대화',
+  AGENT_GENERATE: '에이전트 만들기',
+  AGENT_RUN: '에이전트 실행',
+  AGENT_FILE: '양식 채우기',
+} as const;
+export type AiFeature = keyof typeof AI_FEATURES;
+
+/** 사용자별 AI 권한 — DEFAULT(권한 그룹을 따름) | ALLOW(허용) | BLOCK(막음) */
+export const AI_ACCESS = { DEFAULT: '권한 그룹 따름', ALLOW: '허용', BLOCK: '막음' } as const;
+export type AiAccess = keyof typeof AI_ACCESS;
+
+/** 모델별 단가(달러 / 100만 토큰) — 관리자가 콘솔 요금표를 보고 넣는다. 없으면 비용을 계산하지 않는다 */
+export type AiPrices = Record<string, { input: number; output: number }>;
+
+/**
+ * 예상 비용(달러). 캐시 쓰기는 입력의 1.25배, 캐시 읽기는 0.1배로 친다.
+ * 단가를 모르면 null.
+ */
+export function aiCost(
+  prices: AiPrices,
+  model: string,
+  u: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+  },
+): number | null {
+  const p = prices[model];
+  if (!p) return null;
+  return (
+    (u.inputTokens * p.input +
+      u.cacheWriteTokens * p.input * 1.25 +
+      u.cacheReadTokens * p.input * 0.1 +
+      u.outputTokens * p.output) /
+    1_000_000
+  );
+}
+
+/** 한도에 세는 토큰 — 입력 + 캐시 쓰기 + 출력(캐시 읽기는 값이 1/10이라 세지 않는다) */
+export const aiBilledTokens = (u: {
+  inputTokens: number;
+  outputTokens: number;
+  cacheWriteTokens: number;
+}) => u.inputTokens + u.cacheWriteTokens + u.outputTokens;
