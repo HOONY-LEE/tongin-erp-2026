@@ -152,10 +152,11 @@ interface RouteArg {
   data?: string;
 }
 
+/** 도구 이름은 영문·숫자·_·-만 된다(Claude API 규칙) — 'me/notifications'의 '/'처럼 다른 글자는 _로 */
 const snake = (s: string) =>
   s
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .replace(/-/g, '_')
+    .replace(/[^A-Za-z0-9]+/g, '_')
     .toLowerCase();
 
 @Injectable()

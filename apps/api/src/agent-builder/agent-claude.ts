@@ -1,10 +1,10 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import type { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { DEFAULT_AI_MODEL } from '../ai/ai-models';
+import { defaultModel } from '../ai/ai-models';
 
-/** 에이전트 빌더(자연어 생성)에 쓰는 모델 — AI 비서 기본 모델과 같게(Sonnet) */
-export const BUILDER_MODEL = DEFAULT_AI_MODEL;
+/** 에이전트 빌더(자연어 생성)에 쓰는 모델 — AI 비서 기본 모델과 같게(관리자가 'AI 관리'에서 정한 기본 모델) */
+export const builderModel = () => defaultModel();
 
 /** 안전 분류기가 거절하면 서버가 권장 대체 모델로 다시 돌린다(Opus·Sonnet만 지원) */
 export const FALLBACK_BETA = 'server-side-fallback-2026-07-01';

@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { RefreshCw, Wrench } from 'lucide-react';
+import { reportClientError } from '../lib/reportError';
 import styles from './ErrorBoundary.module.css';
 
 interface Props {
@@ -33,6 +34,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`[화면 오류 ${this.state.ref ?? ''}]`, error, info.componentStack);
+    // 옛 화면 조각 오류는 새로고침으로 풀리니 남기지 않는다
+    if (!isChunkError(error))
+      reportClientError(error, {
+        ref: this.state.ref ?? undefined,
+        componentStack: info.componentStack ?? undefined,
+      });
   }
 
   render() {

@@ -1670,3 +1670,79 @@ model ApprovalForm {
   @@index([kind, isActive])
   @@map("approval_form")
 }
+
+// ─── AI 관리 · 시스템 로그 ───
+
+// AI 설정(회사 전체 한 줄) — 쓸 모델·기본 모델·모델별 단가(달러/100만 토큰, 비우면 비용을 계산하지 않음)
+model AiSetting {
+  id           Int      @id @default(1)
+  allowed      String[] // 열린 모델 id
+  defaultModel String   @map("default_model")
+  // { "<모델 id>": { "input": 3, "output": 15 } }
+  prices       Json     @default("{}")
+  // 사용자 한도를 따로 안 정한 사람의 월 한도(토큰). NULL이면 무제한
+  monthlyTokenLimit Int? @map("monthly_token_limit")
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  @@map("ai_setting")
+}
+
+// 사용자별 AI 권한 — 줄이 없으면 회사 기본(권한 그룹을 따름·열린 모델 전부·회사 월 한도)
+model AiUserPolicy {
+  userId            String   @id @map("user_id") @db.Uuid
+  // DEFAULT(권한 그룹의 'AI 비서 사용'을 따름) | ALLOW(그룹과 상관없이 허용) | BLOCK(막음)
+  access            String   @default("DEFAULT")
+  // 쓸 수 있는 모델(비면 회사에 열린 모델 전부)
+  models            String[] @default([])
+  // 월 한도(토큰). NULL이면 회사 기본 한도를 따른다
+  monthlyTokenLimit Int?     @map("monthly_token_limit")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("ai_user_policy")
+}
+
+// AI 호출 한 번 = 한 줄. 1년 지나면 지운다(AiUsageService.prune)
+model AiUsageLog {
+  id               String   @id @default(uuid()) @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  userId           String?  @map("user_id") @db.Uuid
+  feature          String // CHAT | TITLE | AGENT_GENERATE | AGENT_RUN | AGENT_REFERENCE
+  model            String
+  inputTokens      Int      @default(0) @map("input_tokens")
+  outputTokens     Int      @default(0) @map("output_tokens")
+  cacheReadTokens  Int      @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int      @default(0) @map("cache_write_tokens")
+  durationMs       Int      @default(0) @map("duration_ms")
+  ok               Boolean  @default(true)
+  error            String?
+  // 대화·에이전트·실행 id(어디서 썼는지 찾아가기)
+  refId            String?  @map("ref_id")
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("ai_usage_log")
+}
+
+// 시스템 로그 — 경고·오류만 남긴다(정보성 로그는 서버 콘솔에만). 30일·최대 2만 줄을 넘으면 지운다
+model SystemLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  level     String // ERROR | WARN
+  source    String // API | WEB
+  context   String? // 로거 이름(예: AiService)
+  message   String
+  // 스택 등 자세한 내용(앞 4000자)
+  detail    String?
+  method    String?
+  path      String?
+  status    Int?
+  userId    String?  @map("user_id") @db.Uuid
+  // 화면에 보인 오류 번호(예: 3FA21C) — 직원이 알려 준 번호로 바로 찾는다
+  ref       String?
+
+  @@index([createdAt])
+  @@index([level, createdAt])
+  @@index([ref])
+  @@map("system_log")
+}

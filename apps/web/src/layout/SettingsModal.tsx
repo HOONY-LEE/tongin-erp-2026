@@ -50,6 +50,8 @@ const SHORTCUT_KEYS = [
   'product-mgmt',
   'partner-mgmt',
   'agent-builder',
+  'ai-admin',
+  'system-logs',
 ];
 
 /**

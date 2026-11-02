@@ -84,9 +84,11 @@ export function TaskComments({ taskId }: { taskId: string }) {
 
   const pick = (p: DirectoryPerson) => {
     const el = ref.current;
-    const caret = el?.selectionStart ?? text.length;
-    const before = text.slice(0, caret).replace(/@([가-힣A-Za-z]{0,10})$/, `@${p.name} `);
-    const next = before + text.slice(caret);
+    // 한글 조합이 막 끝난 직후엔 state가 한 박자 늦다 — 입력칸의 지금 값으로 바꾼다
+    const cur = el?.value ?? text;
+    const caret = el?.selectionStart ?? cur.length;
+    const before = cur.slice(0, caret).replace(/@([가-힣A-Za-z]{0,10})$/, `@${p.name} `);
+    const next = before + cur.slice(caret);
     setText(next);
     setPicked((cur) => (cur.some((x) => x.id === p.id) ? cur : [...cur, p]));
     setQuery(null);
@@ -129,7 +131,30 @@ export function TaskComments({ taskId }: { taskId: string }) {
     }
   };
 
+  /**
+   * 한글 조합 중 Enter — 여기서 바로 고르면 조합이 끝나며 마지막 글자가 한 번 더 붙는다(고국종 → 고국종종).
+   * 조합이 끝난 뒤에 고른다(브라우저가 조합 뒤 Enter를 다시 보내면 그쪽에서, 아니면 compositionend에서).
+   */
+  const pendingPick = useRef(false);
+  const pickAfterComposition = () => {
+    if (!pendingPick.current) return;
+    setTimeout(() => {
+      if (!pendingPick.current) return;
+      pendingPick.current = false;
+      const el = ref.current;
+      const v = el?.value ?? '';
+      const m = /@([가-힣A-Za-z]{0,10})$/.exec(v.slice(0, el?.selectionStart ?? v.length));
+      const best =
+        m && (people.find((x) => x.name === m[1]) ?? people.find((x) => x.name.startsWith(m[1])));
+      if (best) pick(best);
+    }, 0);
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+      if (matches.length && (e.key === 'Enter' || e.key === 'Tab')) pendingPick.current = true;
+      return;
+    }
     if (matches.length) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
@@ -138,6 +163,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
+        pendingPick.current = false;
         pick(matches[active]);
         return;
       }
@@ -192,6 +218,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
           aria-label="댓글"
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
+          onCompositionEnd={pickAfterComposition}
           onBlur={() => setTimeout(() => setQuery(null), 150)}
         />
         {matches.length > 0 && (

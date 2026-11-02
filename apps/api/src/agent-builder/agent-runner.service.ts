@@ -29,6 +29,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ToolError, type AiTool, type ToolContext } from '../ai/ai-tool.types';
 import { resolveModel } from '../ai/ai-models';
+import { AiUsageService, aiCaller, trackClaude } from '../ai/ai-usage.service';
 import { AgentBlueprintService } from './agent-blueprint.service';
 import {
   FALLBACK_BETA,
@@ -176,6 +177,7 @@ export class AgentRunnerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly blueprints: AgentBlueprintService,
+    private readonly usage: AiUsageService,
   ) {}
 
   async start(blueprintId: string, opts: RunOptions, ctx: ToolContext) {
@@ -324,7 +326,11 @@ export class AgentRunnerService {
   /** 실행 중에 생긴 업무 이벤트가 같은 에이전트를 다시 깨우지 않게 실행 사슬을 기억한다 */
   private drive(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
     const chain = [...(agentRunContext.getStore()?.chain ?? []), ctx.blueprintId ?? runId];
-    return agentRunContext.run({ chain }, () => this.driveSteps(runId, state, trace, ctx));
+    return agentRunContext.run({ chain }, () =>
+      aiCaller.run({ userId: ctx.principal.userId, refId: runId }, () =>
+        this.driveSteps(runId, state, trace, ctx),
+      ),
+    );
   }
 
   private async driveSteps(runId: string, state: RunState, trace: TraceStep[], ctx: ToolContext) {
@@ -811,17 +817,23 @@ export class AgentRunnerService {
     schema: Record<string, unknown> | null,
   ) {
     const client = requireClaude(this.client);
-    const res = await client.beta.messages.create({
-      model,
-      max_tokens: 8000,
-      ...(supportsFallback(model) ? { betas: [FALLBACK_BETA], fallbacks: 'default' as const } : {}),
-      output_config: {
-        effort,
-        ...(schema ? { format: { type: 'json_schema' as const, schema } } : {}),
-      },
-      ...(system.trim() ? { system } : {}),
-      messages: [{ role: 'user', content: prompt.trim() || '(내용 없음)' }],
-    });
+    // 실행 주인에게 준 모델 안에서만(회사에서 닫았거나 안 준 모델이면 기본 모델)
+    model = resolveModel(model, await this.usage.modelsFor(aiCaller.getStore()?.userId));
+    const res = await trackClaude('AGENT_RUN', model, () =>
+      client.beta.messages.create({
+        model,
+        max_tokens: 8000,
+        ...(supportsFallback(model)
+          ? { betas: [FALLBACK_BETA], fallbacks: 'default' as const }
+          : {}),
+        output_config: {
+          effort,
+          ...(schema ? { format: { type: 'json_schema' as const, schema } } : {}),
+        },
+        ...(system.trim() ? { system } : {}),
+        messages: [{ role: 'user', content: prompt.trim() || '(내용 없음)' }],
+      }),
+    );
     assertComplete(res);
     return res;
   }

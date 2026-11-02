@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type Anthropic from '@anthropic-ai/sdk';
 import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
-import { DEFAULT_AI_MODEL } from '../ai/ai-models';
+import { defaultModel } from '../ai/ai-models';
+import { trackClaude } from '../ai/ai-usage.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiFiles } from '../ai/ai-files.service';
 import { ToolError, type AiTool } from '../ai/ai-tool.types';
@@ -251,34 +252,37 @@ export class AgentReferenceService {
     if (data.length > MAX_DATA_CHARS) data = `${data.slice(0, MAX_DATA_CHARS)}…(이하 생략)`;
     const kst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
     try {
-      const res = await client.beta.messages
-        .stream({
-          model: DEFAULT_AI_MODEL,
-          max_tokens: 32000,
-          betas: [FALLBACK_BETA],
-          fallbacks: 'default',
-          output_config: {
-            effort: 'low',
-            format: { type: 'json_schema', schema: FILL_SPEC_SCHEMA },
-          },
-          system:
-            '당신은 회사 보고서 양식을 채우는 담당입니다. 양식의 구조(칸 주소·글자)를 보고, 주어진 데이터로 채울 칸과 표 행을 정합니다.\n' +
-            '- 양식의 제목·머리글 글자는 바꾸지 않습니다. 비어 있는 값 칸(예: "기간:" 오른쪽 칸, 머리글 아래 행)만 채웁니다.\n' +
-            '- 표는 머리글 바로 아래 칸을 startCell로, 머리글 순서대로 값을 넣습니다. 숫자는 쉼표 없이 숫자만.\n' +
-            '- 칸 주소(addr·startCell)는 항상 양식의 원래 위치로 씁니다. 표 행이 양식의 빈 행보다 많아도 아래 칸(합계·특이사항 등)의 주소를 미리 옮겨 계산하지 마세요 — 서버가 행을 늘리며 함께 옮깁니다.\n' +
-            '- 수식 칸(합계 등)은 넣지 않습니다. 데이터에 없는 값은 지어내지 말고 빈 글자로 둡니다.\n' +
-            `- 오늘은 ${kst}(한국 시간)입니다. 시트 이름은 양식 그대로 씁니다.`,
-          messages: [
-            {
-              role: 'user',
-              content:
-                `<template>\n${describeTemplate(name, st)}\n</template>\n\n` +
-                `<instructions>\n${String(input.instructions ?? '양식에 맞게 데이터를 채워 주세요.')}\n</instructions>\n\n` +
-                `<data>\n${data}\n</data>`,
+      const model = defaultModel();
+      const res = await trackClaude('AGENT_FILE', model, () =>
+        client.beta.messages
+          .stream({
+            model,
+            max_tokens: 32000,
+            betas: [FALLBACK_BETA],
+            fallbacks: 'default',
+            output_config: {
+              effort: 'low',
+              format: { type: 'json_schema', schema: FILL_SPEC_SCHEMA },
             },
-          ],
-        })
-        .finalMessage();
+            system:
+              '당신은 회사 보고서 양식을 채우는 담당입니다. 양식의 구조(칸 주소·글자)를 보고, 주어진 데이터로 채울 칸과 표 행을 정합니다.\n' +
+              '- 양식의 제목·머리글 글자는 바꾸지 않습니다. 비어 있는 값 칸(예: "기간:" 오른쪽 칸, 머리글 아래 행)만 채웁니다.\n' +
+              '- 표는 머리글 바로 아래 칸을 startCell로, 머리글 순서대로 값을 넣습니다. 숫자는 쉼표 없이 숫자만.\n' +
+              '- 칸 주소(addr·startCell)는 항상 양식의 원래 위치로 씁니다. 표 행이 양식의 빈 행보다 많아도 아래 칸(합계·특이사항 등)의 주소를 미리 옮겨 계산하지 마세요 — 서버가 행을 늘리며 함께 옮깁니다.\n' +
+              '- 수식 칸(합계 등)은 넣지 않습니다. 데이터에 없는 값은 지어내지 말고 빈 글자로 둡니다.\n' +
+              `- 오늘은 ${kst}(한국 시간)입니다. 시트 이름은 양식 그대로 씁니다.`,
+            messages: [
+              {
+                role: 'user',
+                content:
+                  `<template>\n${describeTemplate(name, st)}\n</template>\n\n` +
+                  `<instructions>\n${String(input.instructions ?? '양식에 맞게 데이터를 채워 주세요.')}\n</instructions>\n\n` +
+                  `<data>\n${data}\n</data>`,
+              },
+            ],
+          })
+          .finalMessage(),
+      );
       assertComplete(res);
       return JSON.parse(textOf(res)) as FillSpec;
     } catch (e) {

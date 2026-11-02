@@ -1,5 +1,5 @@
 export default {
-  app: { title: '통인익스프레스 ERP' },
+  app: { title: '통인 AI-WORKS' },
   common: {
     add: '추가',
     save: '저장',
@@ -43,6 +43,8 @@ export default {
     branches: '지점관리',
     accounts: '계정·권한',
     aiAgents: 'Agent Builder',
+    aiAdmin: 'AI 관리',
+    systemLogs: '시스템 로그',
     dashboardAdmin: '대시보드 관리',
     employees: '직원',
     approvals: '결재함',

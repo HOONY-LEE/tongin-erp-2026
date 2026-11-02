@@ -14,6 +14,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DashboardEdit = lazy(() => import('./pages/DashboardEdit'));
 const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
 const MenuMgmt = lazy(() => import('./pages/MenuMgmt'));
+const AiAdmin = lazy(() => import('./pages/AiAdmin'));
+const SystemLogs = lazy(() => import('./pages/SystemLogs'));
 const DashboardTemplateEdit = lazy(() => import('./pages/DashboardTemplateEdit'));
 const DashboardTemplateSettings = lazy(() => import('./pages/DashboardTemplateSettings'));
 const Leads = lazy(() => import('./pages/Leads'));
@@ -111,6 +113,8 @@ function Shell() {
         <Route path="/dashboard/edit" element={page(<DashboardEdit />)} />
         <Route path="/dashboard-admin" element={page(<DashboardAdmin />)} />
         <Route path="/menu-mgmt" element={page(<MenuMgmt />)} />
+        <Route path="/ai-admin" element={page(<AiAdmin />)} />
+        <Route path="/system-logs" element={page(<SystemLogs />)} />
         <Route path="/dashboard-admin/:id" element={page(<DashboardTemplateEdit />)} />
         <Route path="/dashboard-admin/:id/settings" element={page(<DashboardTemplateSettings />)} />
         <Route path="/ai" element={page(<AiAssistant />)} />
