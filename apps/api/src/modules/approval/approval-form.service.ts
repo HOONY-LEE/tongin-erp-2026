@@ -152,7 +152,7 @@ export class ApprovalFormService {
       if (ids.has(id)) throw new BadRequestException(`항목 id가 겹칩니다(${id}).`);
       ids.add(id);
       const out: FormField = { id, label, type: f.type, required: !!f.required };
-      if (f.type === 'select') {
+      if (f.type === 'select' || f.type === 'multiselect') {
         const options = [
           ...new Set((f.options ?? []).map((o) => String(o).trim()).filter(Boolean)),
         ];
@@ -290,14 +290,13 @@ export class ApprovalFormService {
         out[f.id] = null;
       };
       switch (f.type) {
-        case 'text':
-        case 'textarea': {
+        case 'text': {
           const t = typeof v === 'string' ? v.trim() : '';
           if (!t) {
             missing();
             break;
           }
-          const max = f.type === 'text' ? 200 : 5000;
+          const max = 5000;
           if (t.length > max)
             throw new BadRequestException(`'${f.label}'은(는) ${max}자까지입니다.`);
           out[f.id] = t;
@@ -351,6 +350,20 @@ export class ApprovalFormService {
           if (!f.options?.includes(t))
             throw new BadRequestException(`'${f.label}'에서 목록에 있는 값을 골라 주세요.`);
           out[f.id] = t;
+          break;
+        }
+        case 'multiselect': {
+          const picked = Array.isArray(v)
+            ? [...new Set(v.filter((x): x is string => typeof x === 'string'))]
+            : [];
+          if (!picked.length) {
+            missing();
+            break;
+          }
+          if (picked.some((x) => !f.options?.includes(x)))
+            throw new BadRequestException(`'${f.label}'에서 목록에 있는 값만 골라 주세요.`);
+          // 선택지 순서대로 남긴다
+          out[f.id] = (f.options ?? []).filter((o) => picked.includes(o));
           break;
         }
         case 'checkbox':

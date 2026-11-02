@@ -230,3 +230,11 @@ button.fileChip:hover {
   color: var(--ark-color-text-secondary);
   cursor: pointer;
 }
+
+/* 다중 선택 — 선택지마다 체크 칸 */
+.multi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-weight: 400;
+}

@@ -549,13 +549,6 @@ function SubmitPreview({
       </div>
       <div className={styles.mockBody}>
         <div className={styles.formCol}>
-          <label className={styles.fieldLabel}>
-            제목
-            <Input
-              maxLength={200}
-              placeholder={`비워 두면 「${name.trim() || '양식 이름'} — 내 이름」`}
-            />
-          </label>
           <FormFieldInputs fields={shown} values={values} onChange={setValues} preview />
           {!shown.length && <p className={fstyles.hint}>항목을 넣으면 여기에 보입니다.</p>}
           <div className={styles.lineEditor}>

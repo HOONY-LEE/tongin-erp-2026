@@ -89,7 +89,7 @@ export function NewDocPicker({
   );
 }
 
-/** 결재 양식 작성 — 항목 채우기 + 결재선 → 상신 */
+/** 결재 양식 작성 — 항목 채우기 + 결재선 → 상신. 제목은 따로 받지 않는다(「양식 이름 — 올린 사람」으로 서버가 붙인다) */
 export function FormDraftModal({
   form,
   myEmployeeId,
@@ -102,7 +102,6 @@ export function FormDraftModal({
   onSubmitted: (doc: ApprovalDocView) => void;
 }) {
   const toast = useToast();
-  const [title, setTitle] = useState('');
   const [values, setValues] = useState<FormDraft>({});
   const [line, setLine] = useState<LineEntry[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -114,7 +113,6 @@ export function FormDraftModal({
       const doc = await api<ApprovalDocView>(`/approval-forms/${form.id}/submit`, {
         method: 'POST',
         body: JSON.stringify({
-          title: title.trim() || undefined,
           values,
           line: line ? toLinePayload(line) : undefined,
         }),
@@ -147,15 +145,6 @@ export function FormDraftModal({
       }
     >
       <div className={astyles.formCol}>
-        <label className={astyles.fieldLabel}>
-          제목
-          <Input
-            value={title}
-            maxLength={200}
-            placeholder={`비워 두면 「${form.name} — 내 이름」`}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
         <FormFieldInputs fields={form.fields} values={values} onChange={setValues} />
         <ApprovalLineEditor
           docType={`FORM:${form.id}`}

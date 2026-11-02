@@ -24,27 +24,28 @@ export function isApprovalLineKey(v: string): v is ApprovalLineKey {
 
 // ── 결재 양식(관리자가 항목을 정의하는 신청서) ──
 
+// 'text'는 여러 줄까지 받는 텍스트 하나(예전 한 줄/여러 줄 글을 합침 — 옛 'textarea'는 마이그레이션이 'text'로 바꿨다)
 export const FORM_FIELD_TYPES = [
   'text',
-  'textarea',
   'number',
   'money',
   'date',
   'daterange',
   'select',
+  'multiselect',
   'checkbox',
   'person',
   'file',
 ] as const;
 export type FormFieldType = (typeof FORM_FIELD_TYPES)[number];
 export const FORM_FIELD_TYPE_LABEL: Record<FormFieldType, string> = {
-  text: '한 줄 글',
-  textarea: '여러 줄 글',
+  text: '텍스트',
   number: '숫자',
   money: '금액(원)',
   date: '날짜',
   daterange: '기간',
-  select: '선택(하나)',
+  select: '단일 선택',
+  multiselect: '다중 선택',
   checkbox: '체크(예/아니오)',
   person: '직원',
   file: '첨부파일',
@@ -93,6 +94,7 @@ export type FormValue =
   | { from: string; to: string }
   | { id: string; name: string }[]
   | FormFile[]
+  | string[]
   | null;
 
 /** 휴가 신청서 설정 — 업무 대리인 지정(안 받음·선택·필수), 사유 필수 */

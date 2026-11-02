@@ -28,7 +28,8 @@ export function formReady(fields: FormField[], values: FormDraft) {
     if (!f.required) return true;
     const v = values[f.id];
     if (f.type === 'checkbox') return v === true;
-    if (f.type === 'person' || f.type === 'file') return Array.isArray(v) && v.length > 0;
+    if (f.type === 'person' || f.type === 'file' || f.type === 'multiselect')
+      return Array.isArray(v) && v.length > 0;
     if (f.type === 'daterange') {
       const r = v as { from?: string; to?: string } | undefined;
       return !!r?.from && !!r?.to;
@@ -222,10 +223,11 @@ export function FormFieldInputs({
         );
         let input: React.ReactNode;
         switch (f.type) {
-          case 'textarea':
+          // 텍스트 — 짧은 답도 긴 글도 한 칸에서(여러 줄 가능)
+          case 'text':
             input = (
               <Textarea
-                rows={3}
+                rows={2}
                 value={String(v ?? '')}
                 placeholder={f.placeholder}
                 onChange={(e) => set(f.id, e.target.value)}
@@ -289,6 +291,28 @@ export function FormFieldInputs({
               />
             );
             break;
+          case 'multiselect': {
+            const picked = Array.isArray(v) ? (v as string[]) : [];
+            // 체크 칸을 누를 때 label이 다른 칸을 같이 누르지 않게 div로
+            return (
+              <div key={f.id} className={styles.field}>
+                {label}
+                <div className={styles.multi}>
+                  {(f.options ?? []).map((o) => (
+                    <Checkbox
+                      key={o}
+                      checked={picked.includes(o)}
+                      label={o}
+                      onCheckedChange={(c) =>
+                        set(f.id, c === true ? [...picked, o] : picked.filter((x) => x !== o))
+                      }
+                    />
+                  ))}
+                </div>
+                {f.help && <span className={styles.hint}>{f.help}</span>}
+              </div>
+            );
+          }
           case 'checkbox':
             return (
               <div key={f.id} className={styles.field}>
@@ -382,6 +406,8 @@ export function FormValuesView({
         const r = v as { from: string; to: string };
         return r.from === r.to ? r.from : `${r.from} ~ ${r.to}`;
       }
+      case 'multiselect':
+        return (v as string[]).join(', ');
       case 'person':
         return (v as { name: string }[]).map((x) => x.name).join(', ');
       default:
@@ -391,7 +417,13 @@ export function FormValuesView({
   return (
     <dl className={styles.view}>
       {fields.map((f) => (
-        <div key={f.id} className={f.type === 'textarea' ? styles.viewWide : undefined}>
+        <div
+          key={f.id}
+          // 옛 문서의 'textarea'(여러 줄 글)도 넓게
+          className={
+            f.type === 'text' || (f.type as string) === 'textarea' ? styles.viewWide : undefined
+          }
+        >
           <dt>{f.label}</dt>
           <dd>{show(f)}</dd>
         </div>
@@ -458,7 +490,12 @@ export function FormBuilder({
                 onValueChange={(t) =>
                   set(i, {
                     type: t as FormFieldType,
-                    options: t === 'select' ? (f.options?.length ? f.options : ['']) : undefined,
+                    options:
+                      t === 'select' || t === 'multiselect'
+                        ? f.options?.length
+                          ? f.options
+                          : ['']
+                        : undefined,
                   })
                 }
                 options={FORM_FIELD_TYPES.map((t) => ({
@@ -498,7 +535,7 @@ export function FormBuilder({
                 <Trash2 size={14} />
               </button>
             </div>
-            {f.type === 'select' && (
+            {(f.type === 'select' || f.type === 'multiselect') && (
               <Input
                 value={(f.options ?? []).join(', ')}
                 placeholder="고를 값을 쉼표로 나눠 적으세요(예: 교통비, 식대, 소모품)"
@@ -564,6 +601,8 @@ export const cleanFieldsForSave = (fields: FormField[]): FormField[] =>
     ...f,
     label: f.label.trim(),
     options:
-      f.type === 'select' ? (f.options ?? []).map((o) => o.trim()).filter(Boolean) : undefined,
+      f.type === 'select' || f.type === 'multiselect'
+        ? (f.options ?? []).map((o) => o.trim()).filter(Boolean)
+        : undefined,
     help: f.help?.trim() || undefined,
   }));
