@@ -166,6 +166,22 @@ export class LeaveFormSettingsDto {
   reasonRequired?: boolean;
 }
 
+/** 결재 양식을 누가 고를 수 있나 */
+export class FormAudienceDto {
+  @IsIn(['ALL', 'SOME'])
+  mode!: 'ALL' | 'SOME';
+
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID('all', { each: true })
+  orgIds!: string[];
+
+  @IsArray()
+  @ArrayMaxSize(500)
+  @IsUUID('all', { each: true })
+  employeeIds!: string[];
+}
+
 export class SaveApprovalFormDto {
   @IsOptional()
   @IsString()
@@ -194,6 +210,20 @@ export class SaveApprovalFormDto {
   @Type(() => LeaveFormSettingsDto)
   settings?: LeaveFormSettingsDto;
 
+  /** 결재 양식(CUSTOM) — 고를 수 있는 사람 */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => FormAudienceDto)
+  audience?: FormAudienceDto;
+
+  /** 이 양식의 기본 결재선(전사) — 빈 배열이면 지운다(일반 품의 결재선을 쓴다), 안 보내면 그대로 */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => ApprovalLineRuleDto)
+  line?: ApprovalLineRuleDto[];
+
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
@@ -203,6 +233,21 @@ export class SaveApprovalFormDto {
   @Min(0)
   @Max(10000)
   sortOrder?: number;
+}
+
+/** 첨부파일 올리기 — 내용은 base64(JSON 본문 한도 30MB 안에서, 한 개 최대 10MB) */
+export class UploadAttachmentDto {
+  @IsString()
+  @MaxLength(200)
+  fileName!: string;
+
+  @IsString()
+  @MaxLength(150)
+  mediaType!: string;
+
+  @IsString()
+  @MaxLength(14_000_000)
+  data!: string;
 }
 
 /** 결재 양식 상신 — 값은 서비스가 항목 정의대로 확인한다 */

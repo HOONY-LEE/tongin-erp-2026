@@ -29,7 +29,7 @@ export class ApprovalFormController {
   list(@CurrentUser() p: AuthPrincipal, @Query('all') all?: string) {
     const manage =
       p.permissions.includes(PERMISSION_WILDCARD) || p.permissions.includes('APPROVAL.MANAGE');
-    return this.forms.list(all === '1' && manage);
+    return this.forms.list(p, all === '1' && manage);
   }
 
   /** 휴가 신청서 — 신청 화면이 추가 항목·설정을 읽는다 */
@@ -38,9 +38,16 @@ export class ApprovalFormController {
     return this.forms.leaveForm();
   }
 
+  /** 양식 하나 — 관리 화면은 detail=1로 기본 결재선까지 */
   @Get(':id')
-  get(@Param('id', ParseUUIDPipe) id: string) {
-    return this.forms.get(id);
+  get(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('detail') detail?: string,
+  ) {
+    const manage =
+      p.permissions.includes(PERMISSION_WILDCARD) || p.permissions.includes('APPROVAL.MANAGE');
+    return detail === '1' && manage ? this.forms.detail(id) : this.forms.get(id);
   }
 
   @Post()

@@ -128,3 +128,110 @@
   font-size: calc(14px * var(--font-scale, 1));
   font-weight: 600;
 }
+
+/* ── 결재 양식 편집: 왼쪽 설정 + 오른쪽 상신 창 미리보기(실제 창과 같은 720px) ── */
+.formEditorGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 720px;
+  gap: 20px;
+  align-items: start;
+}
+.formEditorMain {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.formEditorSide {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+/* 좁으면(설정 창 안 등) 미리보기를 아래로 — 그래도 폭은 실제 창과 같게(넘치면 가로 스크롤) */
+@media (max-width: 1500px) {
+  .formEditorGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .formEditorSide {
+    position: static;
+    overflow-x: auto;
+  }
+}
+.previewCaption {
+  font-size: var(--ark-font-size-xs);
+  font-weight: 600;
+  color: var(--ark-color-text-tertiary);
+}
+
+/* 실제 akron Modal(lg) 값 그대로 — 폭 720 · 둥글기 12 · 머리 20/24 · 본문 20/24 · 구분선 · 바닥 16/24 */
+.mockModal {
+  display: flex;
+  flex-direction: column;
+  width: 720px;
+  max-width: none;
+  max-height: calc(100vh - 140px);
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--ark-color-border);
+}
+.mockHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 0;
+}
+.mockHead h2 {
+  margin: 0;
+  font-size: var(--ark-font-size-lg);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ark-color-text);
+}
+.mockHead p {
+  margin: 4px 0 0;
+  font-size: var(--ark-font-size-sm);
+  line-height: 1.5;
+  color: var(--ark-color-text-secondary);
+}
+.mockClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.mockClose:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+.mockBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+.mockDivider {
+  height: 1px;
+  background: var(--ark-color-border);
+}
+.mockFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+}

@@ -702,4 +702,35 @@ export class ApprovalService {
   async removeTemplate(id: string) {
     await this.prisma.approvalLineTemplate.delete({ where: { id } });
   }
+
+  /** 결재 양식의 전사 기본 결재선(양식 편집 화면에서 같이 정한다). 없으면 null */
+  async formLine(formId: string): Promise<ApprovalLineRule[] | null> {
+    const t = await this.prisma.approvalLineTemplate.findFirst({
+      where: { docType: `FORM:${formId}`, orgUnitId: null },
+    });
+    return t ? (t.steps as unknown as ApprovalLineRule[]) : null;
+  }
+
+  /** 양식 결재선 저장 — 빈 배열이면 지운다(일반 품의 결재선을 쓴다) */
+  async setFormLine(
+    db: Prisma.TransactionClient,
+    formId: string,
+    formName: string,
+    steps: ApprovalLineRule[],
+  ) {
+    const docType = `FORM:${formId}`;
+    const cur = await db.approvalLineTemplate.findFirst({ where: { docType, orgUnitId: null } });
+    if (!steps.length) {
+      if (cur) await db.approvalLineTemplate.delete({ where: { id: cur.id } });
+      return;
+    }
+    this.validateSteps(steps);
+    const data = {
+      name: `${formName} 기본`,
+      steps: this.cleanSteps(steps) as unknown as Prisma.InputJsonValue,
+      isActive: true,
+    };
+    if (cur) await db.approvalLineTemplate.update({ where: { id: cur.id }, data });
+    else await db.approvalLineTemplate.create({ data: { ...data, docType, orgUnitId: null } });
+  }
 }

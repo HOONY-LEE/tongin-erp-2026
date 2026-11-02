@@ -34,6 +34,7 @@ export const FORM_FIELD_TYPES = [
   'select',
   'checkbox',
   'person',
+  'file',
 ] as const;
 export type FormFieldType = (typeof FORM_FIELD_TYPES)[number];
 export const FORM_FIELD_TYPE_LABEL: Record<FormFieldType, string> = {
@@ -46,7 +47,27 @@ export const FORM_FIELD_TYPE_LABEL: Record<FormFieldType, string> = {
   select: '선택(하나)',
   checkbox: '체크(예/아니오)',
   person: '직원',
+  file: '첨부파일',
 };
+
+/** 첨부파일 항목 값 한 개 — 파일은 먼저 올리고(/approval-attachments) id로 붙인다 */
+export interface FormFile {
+  id: string;
+  name: string;
+  size: number;
+  mediaType: string;
+}
+/** 첨부파일 한 개 최대 크기·항목당 개수 */
+export const APPROVAL_FILE_MAX_BYTES = 10 * 1024 * 1024;
+export const APPROVAL_FILE_MAX_COUNT = 10;
+
+/** 결재 양식을 누가 고를 수 있나 — 전 직원 또는 고른 조직(하위 포함)·직원만 */
+export interface FormAudience {
+  mode: 'ALL' | 'SOME';
+  orgIds: string[];
+  employeeIds: string[];
+}
+export const DEFAULT_FORM_AUDIENCE: FormAudience = { mode: 'ALL', orgIds: [], employeeIds: [] };
 
 export interface FormField {
   /** 양식 안에서 고유한 짧은 id(값의 열쇠) */
@@ -68,6 +89,7 @@ export type FormValue =
   | boolean
   | { from: string; to: string }
   | { id: string; name: string }[]
+  | FormFile[]
   | null;
 
 /** 휴가 신청서 설정 — 업무 대리인 지정(안 받음·선택·필수), 사유 필수 */

@@ -1259,20 +1259,21 @@ model ApprovalLineTemplate {
 
 /// 결재 문서 — 휴가·근태 정정·일반 품의. 업무 쪽 데이터는 payload(또는 그 모듈 테이블의 approvalDocId)로 잇는다.
 model ApprovalDoc {
-  id             String         @id @default(uuid()) @db.Uuid
-  docNo          String         @unique @map("doc_no") // AP-2026-0001
-  docType        String         @map("doc_type")
+  id             String               @id @default(uuid()) @db.Uuid
+  docNo          String               @unique @map("doc_no") // AP-2026-0001
+  docType        String               @map("doc_type")
   title          String
   content        String?
   payload        Json?
-  requesterEmpId String         @map("requester_emp_id") @db.Uuid
-  requester      Employee       @relation(fields: [requesterEmpId], references: [id])
-  orgUnitId      String         @map("org_unit_id") @db.Uuid // 상신 시점 신청자 소속(데이터 범위)
-  status         String         @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELED
-  currentSeq     Int?           @map("current_seq") // 지금 결재할 단계(끝나면 NULL)
-  submittedAt    DateTime       @default(now()) @map("submitted_at") @db.Timestamptz(6)
-  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+  requesterEmpId String               @map("requester_emp_id") @db.Uuid
+  requester      Employee             @relation(fields: [requesterEmpId], references: [id])
+  orgUnitId      String               @map("org_unit_id") @db.Uuid // 상신 시점 신청자 소속(데이터 범위)
+  status         String               @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELED
+  currentSeq     Int?                 @map("current_seq") // 지금 결재할 단계(끝나면 NULL)
+  submittedAt    DateTime             @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  completedAt    DateTime?            @map("completed_at") @db.Timestamptz(6)
   steps          ApprovalStep[]
+  attachments    ApprovalAttachment[]
 
   @@index([requesterEmpId])
   @@index([status])
@@ -1611,6 +1612,24 @@ model UserNotification {
  * kind=LEAVE는 휴가 신청서(하나뿐, 지울 수 없음) — 기본 항목(종류·기간·사유) 뒤에 붙는 추가 항목과 설정을 담는다.
  * 기본 결재선은 결재선 설정(approval_line_template)에 docType 'FORM:<id>'로 둔다.
  */
+/// 결재 첨부파일 — 양식의 '첨부파일' 항목. 작성 중에 먼저 올리고(doc_id 없음) 상신하면 문서에 붙는다.
+/// 내용은 DB에(현장 사진과 같은 방식, 한 개 최대 10MB)
+model ApprovalAttachment {
+  id               String       @id @default(uuid()) @db.Uuid
+  docId            String?      @map("doc_id") @db.Uuid
+  doc              ApprovalDoc? @relation(fields: [docId], references: [id], onDelete: Cascade)
+  uploadedByUserId String       @map("uploaded_by_user_id") @db.Uuid
+  fileName         String       @map("file_name")
+  mediaType        String       @map("media_type")
+  size             Int
+  bytes            Bytes
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([docId])
+  @@index([uploadedByUserId, createdAt])
+  @@map("approval_attachment")
+}
+
 model ApprovalForm {
   id          String   @id @default(uuid()) @db.Uuid
   kind        String   @default("CUSTOM") // CUSTOM | LEAVE
@@ -1620,6 +1639,7 @@ model ApprovalForm {
   /// 항목 [{id,label,type,required,options?,help?,placeholder?}]
   fields      Json     @default("[]")
   /// 양식 설정 — LEAVE: {substitute: NONE|OPTIONAL|REQUIRED, reasonRequired}
+  /// CUSTOM: {audience: {mode: ALL|SOME, orgIds, employeeIds}} — 누가 이 양식을 고를 수 있나
   settings    Json     @default("{}")
   isActive    Boolean  @default(true) @map("is_active")
   sortOrder   Int      @default(100) @map("sort_order")
