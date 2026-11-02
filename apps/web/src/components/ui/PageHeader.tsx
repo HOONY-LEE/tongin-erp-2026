@@ -11,6 +11,8 @@ export interface PageHeaderProps extends AkronPageHeaderProps {
   onRefresh?: () => void | Promise<void>;
   /** 마지막 데이터 갱신 시각. 지정 시 새로고침 아이콘 옆에 작고 연하게 표시 */
   updatedAt?: Date | null;
+  /** 제목 위 작은 경로 글자는 숨기고 '<' 돌아가기 버튼만 둔다 */
+  hideBreadcrumbs?: boolean;
 }
 
 function formatUpdatedAt(d: Date) {
@@ -25,7 +27,17 @@ function formatUpdatedAt(d: Date) {
  * 전 페이지 공통: 하단 구분선은 기본 제거, 새로고침 아이콘·마지막 업데이트 시각을 우측 끝에 표시.
  */
 export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function PageHeader(
-  { style, divider = false, actions, onRefresh, updatedAt, icon, breadcrumbs, ...props },
+  {
+    style,
+    divider = false,
+    actions,
+    onRefresh,
+    updatedAt,
+    icon,
+    breadcrumbs,
+    hideBreadcrumbs,
+    ...props
+  },
   ref,
 ) {
   const [refreshing, setRefreshing] = useState(false);
@@ -108,7 +120,7 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
       style={{ paddingTop: 0, paddingBottom: 0, ...style }}
       divider={divider}
       actions={refreshSlot}
-      breadcrumbs={breadcrumbs}
+      breadcrumbs={hideBreadcrumbs ? undefined : breadcrumbs}
       icon={icon ?? backButton}
       {...props}
     />
