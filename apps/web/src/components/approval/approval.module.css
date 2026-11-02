@@ -132,9 +132,36 @@
 /* ── 결재 양식 편집: 왼쪽 설정 + 오른쪽 상신 창 미리보기(실제 창과 같은 720px) ── */
 .formEditorGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 720px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 20px;
   align-items: start;
+}
+/* 왼쪽 만들기 상자 — 구획(기본 정보·항목 / 공개 대상·결재선)은 경계선으로 나눈다 */
+.builderPanel {
+  min-width: 0;
+  gap: 0;
+  padding: 0;
+}
+.builderBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+.builderBlock + .builderBlock {
+  border-top: 1px solid var(--ark-color-border);
+}
+.builderPanel > :last-child {
+  padding: 0 18px 18px;
+}
+/* 미리보기 상자 안 — 옅은 바탕 위에 실제 상신 창 */
+.previewStage {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-subtle);
+  overflow-x: auto;
 }
 .formEditorMain {
   display: flex;
@@ -145,13 +172,10 @@
 .formEditorSide {
   position: sticky;
   top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   min-width: 0;
 }
 /* 좁으면(설정 창 안 등) 미리보기를 아래로 — 그래도 폭은 실제 창과 같게(넘치면 가로 스크롤) */
-@media (max-width: 1500px) {
+@media (max-width: 1600px) {
   .formEditorGrid {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -35,6 +35,7 @@ import {
 } from './FormFields';
 import { EMPTY_RULE, LineStepsEditor, useRuleText } from './LineTemplates';
 import styles from './approval.module.css';
+import cstyles from '../../pages/campaign.module.css';
 import fstyles from './formFields.module.css';
 
 /**
@@ -162,6 +163,7 @@ export function FormEditor({
   );
   const [reasonRequired, setReasonRequired] = useState(!!initial?.settings.reasonRequired);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
 
   // 다른 양식을 고르면(휴가 화면에서 다시 읽힌 경우 등) 입력을 맞춘다
   useEffect(() => {
@@ -271,6 +273,7 @@ export function FormEditor({
             : '새 결재 양식'
       }
       breadcrumbs={[{ label: backLabel, onClick: onBack }]}
+      hideBreadcrumbs
       actions={
         <>
           {initial && !leave && (
@@ -332,16 +335,37 @@ export function FormEditor({
     );
   }
 
+  const step1Ready = !!name.trim() && labelsOk;
+  const STEPS = ['양식 만들기', '공개 대상 · 결재선'] as const;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {header}
+      {/* 캠페인 작성처럼 단계로 — 1) 이름·분류·설명·항목 2) 공개 대상·결재선 */}
+      <ol className={cstyles.steps}>
+        {STEPS.map((label, i) => (
+          <li key={label}>
+            <button
+              type="button"
+              className={`${cstyles.stepItem} ${step === i + 1 ? cstyles.stepOn : ''} ${step > i + 1 ? cstyles.stepDone : ''}`}
+              onClick={() => (i === 0 || step1Ready ? setStep((i + 1) as 1 | 2) : undefined)}
+              disabled={i === 1 && !step1Ready}
+              aria-current={step === i + 1 ? 'step' : undefined}
+            >
+              <span className={cstyles.stepNo}>{i + 1}</span>
+              {label}
+            </button>
+          </li>
+        ))}
+      </ol>
       <div className={styles.formEditorGrid}>
-        <div className={styles.formEditorMain}>
-          <section className="rd-card">
-            <h3 className="rd-title">기본 정보</h3>
-            <div className={styles.formCol}>
-              <div className={styles.lineAdd}>
-                <label className={styles.fieldLabel} style={{ flex: '2 1 220px' }}>
+        {/* 왼쪽 — 결재 양식 만들기(한 상자, 구획은 경계선으로) */}
+        <section className={`${cstyles.panel} ${styles.builderPanel}`}>
+          {step === 1 ? (
+            <>
+              <div className={styles.builderBlock}>
+                <h3 className={cstyles.panelTitle}>기본 정보</h3>
+                <label className={styles.fieldLabel}>
                   <span>
                     양식 이름 <span style={{ color: 'var(--ark-color-error-500)' }}>*</span>
                   </span>
@@ -352,111 +376,133 @@ export function FormEditor({
                     onChange={(e) => setName(e.target.value)}
                   />
                 </label>
+                <div className={styles.fieldLabel}>
+                  분류{' '}
+                  <span className={styles.muted}>「+ 새 결재」에서 이 분류로 묶여 보입니다</span>
+                  <CategoryPicker
+                    value={category}
+                    onChange={setCategory}
+                    existing={allForms
+                      .filter((f) => f.kind === 'CUSTOM' && f.category)
+                      .map((f) => f.category as string)}
+                  />
+                </div>
+                <label className={styles.fieldLabel}>
+                  설명
+                  <Textarea
+                    rows={2}
+                    value={description}
+                    maxLength={300}
+                    placeholder="언제 쓰는 양식인지 — 새 결재 고르기 화면에 보입니다"
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </label>
               </div>
-              <div className={styles.fieldLabel}>
-                분류 <span className={styles.muted}>「+ 새 결재」에서 이 분류로 묶여 보입니다</span>
-                <CategoryPicker
-                  value={category}
-                  onChange={setCategory}
-                  existing={allForms
-                    .filter((f) => f.kind === 'CUSTOM' && f.category)
-                    .map((f) => f.category as string)}
-                />
+              <div className={styles.builderBlock}>
+                <h3 className={cstyles.panelTitle}>항목</h3>
+                <FormBuilder fields={fields} onChange={setFields} hidePreview />
               </div>
-              <label className={styles.fieldLabel}>
-                설명
-                <Textarea
-                  rows={2}
-                  value={description}
-                  maxLength={300}
-                  placeholder="언제 쓰는 양식인지 — 새 결재 고르기 화면에 보입니다"
-                  onChange={(e) => setDescription(e.target.value)}
+              <div className={cstyles.stepNav}>
+                <Button variant="primary" disabled={!step1Ready} onClick={() => setStep(2)}>
+                  다음: 공개 대상·결재선 →
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.builderBlock}>
+                <h3 className={cstyles.panelTitle}>공개 대상</h3>
+                <ChoiceChips
+                  value={audience.mode}
+                  onChange={(v) => setAudience({ ...audience, mode: v as FormAudience['mode'] })}
+                  options={[
+                    { value: 'ALL', label: '전 직원' },
+                    { value: 'SOME', label: '고른 조직·직원만' },
+                  ]}
                 />
-              </label>
-            </div>
-          </section>
-
-          <section className="rd-card">
-            <h3 className="rd-title">항목</h3>
-            <FormBuilder fields={fields} onChange={setFields} hidePreview />
-          </section>
-
-          <section className="rd-card">
-            <h3 className="rd-title">공개 대상</h3>
-            <div className={styles.formCol}>
-              <ChoiceChips
-                value={audience.mode}
-                onChange={(v) => setAudience({ ...audience, mode: v as FormAudience['mode'] })}
-                options={[
-                  { value: 'ALL', label: '전 직원' },
-                  { value: 'SOME', label: '고른 조직·직원만' },
-                ]}
-              />
-              {audience.mode === 'SOME' && (
-                <>
-                  <div className={styles.fieldLabel}>
-                    조직 <span className={styles.muted}>하위 조직까지 함께 봅니다</span>
-                    <OrgPicker
-                      value={audience.orgIds}
-                      onChange={(orgIds) => setAudience({ ...audience, orgIds })}
-                    />
-                  </div>
-                  <div className={styles.fieldLabel}>
-                    직원
-                    <PersonPicker
-                      value={audience.employeeIds}
-                      onChange={(employeeIds) => setAudience({ ...audience, employeeIds })}
-                    />
-                  </div>
-                  {!audienceOk && (
-                    <span className={styles.muted} style={{ color: 'var(--ark-color-error-500)' }}>
-                      조직이나 직원을 하나 이상 고르세요.
-                    </span>
-                  )}
-                </>
-              )}
-              <span className={styles.muted}>
-                고른 사람만 「+ 새 결재」에서 이 양식을 봅니다. 결재 양식 관리자는 늘 봅니다.
-              </span>
-            </div>
-          </section>
-
-          <section className="rd-card">
-            <h3 className="rd-title">결재선</h3>
-            <div className={styles.formCol}>
-              <ChoiceChips
-                value={lineMode}
-                onChange={(v) => setLineMode(v as LineMode)}
-                options={[
-                  { value: 'GENERAL', label: '일반 품의 결재선 따르기' },
-                  { value: 'CUSTOM', label: '이 양식 결재선 정하기' },
-                ]}
-              />
-              {lineMode === 'CUSTOM' ? (
-                <>
-                  <span className={styles.muted}>
-                    결재는 위에서부터 차례로, 참조는 순서와 무관합니다. 상신하는 사람에 따라
-                    부서장이 정해지고, 상신할 때 고칠 수 있습니다.
-                  </span>
-                  <LineStepsEditor steps={steps} onChange={setSteps} />
-                </>
-              ) : (
+                {audience.mode === 'SOME' && (
+                  <>
+                    <div className={styles.fieldLabel}>
+                      조직 <span className={styles.muted}>하위 조직까지 함께 봅니다</span>
+                      <OrgPicker
+                        value={audience.orgIds}
+                        onChange={(orgIds) => setAudience({ ...audience, orgIds })}
+                      />
+                    </div>
+                    <div className={styles.fieldLabel}>
+                      직원
+                      <PersonPicker
+                        value={audience.employeeIds}
+                        onChange={(employeeIds) => setAudience({ ...audience, employeeIds })}
+                      />
+                    </div>
+                    {!audienceOk && (
+                      <span
+                        className={styles.muted}
+                        style={{ color: 'var(--ark-color-error-500)' }}
+                      >
+                        조직이나 직원을 하나 이상 고르세요.
+                      </span>
+                    )}
+                  </>
+                )}
                 <span className={styles.muted}>
-                  「결재선 설정」의 일반 품의 결재선(없으면 부서장 결재 한 단계)을 씁니다.
+                  고른 사람만 「+ 새 결재」에서 이 양식을 봅니다. 결재 양식 관리자는 늘 봅니다.
                 </span>
-              )}
-            </div>
-          </section>
-        </div>
+              </div>
+              <div className={styles.builderBlock}>
+                <h3 className={cstyles.panelTitle}>결재선</h3>
+                <ChoiceChips
+                  value={lineMode}
+                  onChange={(v) => setLineMode(v as LineMode)}
+                  options={[
+                    { value: 'GENERAL', label: '일반 품의 결재선 따르기' },
+                    { value: 'CUSTOM', label: '이 양식 결재선 정하기' },
+                  ]}
+                />
+                {lineMode === 'CUSTOM' ? (
+                  <>
+                    <span className={styles.muted}>
+                      결재는 위에서부터 차례로, 참조는 순서와 무관합니다. 상신하는 사람에 따라
+                      부서장이 정해지고, 상신할 때 고칠 수 있습니다.
+                    </span>
+                    <LineStepsEditor steps={steps} onChange={setSteps} />
+                  </>
+                ) : (
+                  <span className={styles.muted}>
+                    「결재선 설정」의 일반 품의 결재선(없으면 부서장 결재 한 단계)을 씁니다.
+                  </span>
+                )}
+              </div>
+              <div className={cstyles.stepNav}>
+                <Button variant="ghost" onClick={() => setStep(1)}>
+                  ← 양식 수정
+                </Button>
+                <Button
+                  variant="primary"
+                  loading={busy}
+                  disabled={!ready}
+                  onClick={() => void save()}
+                >
+                  저장
+                </Button>
+              </div>
+            </>
+          )}
+        </section>
 
-        <aside className={styles.formEditorSide} aria-label="상신 창 미리보기">
-          <SubmitPreview
-            name={name}
-            description={description}
-            fields={fields}
-            steps={lineMode === 'CUSTOM' ? steps : null}
-          />
-        </aside>
+        {/* 오른쪽 — 미리보기 상자 안에 실제 상신 창(모달) */}
+        <section className={`${cstyles.panel} ${styles.formEditorSide}`} aria-label="미리보기">
+          <h3 className={cstyles.panelTitle}>미리보기</h3>
+          <div className={styles.previewStage}>
+            <SubmitPreview
+              name={name}
+              description={description}
+              fields={fields}
+              steps={lineMode === 'CUSTOM' ? steps : null}
+            />
+          </div>
+        </section>
       </div>
     </div>
   );
