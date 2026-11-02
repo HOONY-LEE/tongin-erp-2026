@@ -160,10 +160,43 @@
     overflow-x: auto;
   }
 }
-.previewCaption {
+/* 하나 고르기 칩(공개 대상·결재선·분류) — 내용 폭만큼 */
+.choiceChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+}
+.choiceChip,
+.choiceChipAdd {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
   font-size: var(--ark-font-size-xs);
+  cursor: pointer;
+}
+.choiceChip:hover {
+  border-color: var(--ark-color-border-strong);
+  color: var(--ark-color-text);
+}
+.choiceChipOn,
+.choiceChipOn:hover {
+  border-color: var(--ark-color-primary-500);
+  background: var(--ark-color-primary-50);
+  color: var(--ark-color-primary-700);
   font-weight: 600;
+}
+.choiceChipAdd {
+  border-style: dashed;
   color: var(--ark-color-text-tertiary);
+}
+.choiceChipAdd:hover {
+  color: var(--ark-color-text);
 }
 
 /* 실제 akron Modal(lg) 값 그대로 — 폭 720 · 둥글기 12 · 머리 20/24 · 본문 20/24 · 구분선 · 바닥 16/24 */
