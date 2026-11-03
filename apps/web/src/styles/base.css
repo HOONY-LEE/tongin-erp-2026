@@ -567,6 +567,38 @@ input[placeholder*='찾기'] {
   margin-top: 8px !important;
   padding-top: 8px !important;
 }
+/* 칸 아래 '+ 업무 추가' — 마지막 카드 바로 밑(새 카드가 생길 자리)에 점선 카드로, 칸에 마우스를 올렸을 때만.
+   카드 목록이 칸 높이를 다 먹지 않게(내용만큼) 두고, 남는 아래 빈 곳은 칸이 그대로 채운다 */
+.task-kanban [class*='_cardList_sj7t4'] {
+  flex: 0 1 auto !important;
+}
+.task-kanban [class*='_addButton_sj7t4'] {
+  margin-top: 8px !important;
+  min-height: 44px;
+  border: 1.5px dashed var(--ark-color-border-strong, var(--ark-color-border)) !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--ark-color-text-tertiary) !important;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.task-kanban [class*='_column_sj7t4']:hover [class*='_addButton_sj7t4'],
+.task-kanban [class*='_addButton_sj7t4']:focus-visible {
+  opacity: 1;
+}
+.task-kanban [class*='_addButton_sj7t4']:hover {
+  border-color: var(--ark-color-text-tertiary) !important;
+  color: var(--ark-color-text) !important;
+  background: var(--ark-color-bg) !important;
+}
+/* 글자는 '카드 추가' 대신 '업무 추가' */
+.task-kanban [class*='_addButton_sj7t4'] > span {
+  font-size: 0;
+}
+.task-kanban [class*='_addButton_sj7t4'] > span::after {
+  content: '업무 추가';
+  font-size: var(--ark-font-size-sm);
+}
 
 /* ── 입력칸 포커스 = 검은 테두리(다크 모드는 흰색), 앱 전체 ──
    akron 기본은 테마 주황(--ark-color-primary-500)을 직접 써서 토큰으로 못 바꾼다.

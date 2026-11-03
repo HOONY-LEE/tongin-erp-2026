@@ -139,6 +139,8 @@ export default function Tasks() {
   const [status, setStatus] = useState<'ALL' | TaskStatus>('ALL');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Task | 'new' | null>(null);
+  // 칸반 칸 아래 '+ 업무 추가'로 열면 그 칸의 상태로 시작한다
+  const [newStatus, setNewStatus] = useState<TaskStatus>('TODO');
 
   const canTeam = can('TASK.READ');
   const effScope: Scope = canTeam ? scope : 'mine';
@@ -210,7 +212,8 @@ export default function Tasks() {
         label: '상태',
         type: 'select',
         options: TASK_STATUS.map((s) => ({ value: s, label: TASK_STATUS_LABEL[s] })),
-        pairWithNext: true,
+        // 칸반 칸에서 '+ 업무 추가'로 열면 그 칸 상태로 채워져 있다 — 바로 보이게
+        alwaysShow: true,
       },
       { name: 'project', label: '사업·프로젝트', placeholder: '예: 무브제 컨시어지' },
       // 업무 분장 항목 — 고르면 그 항목의 '진행 중'에 센다
@@ -287,7 +290,7 @@ export default function Tasks() {
               teamOrgId: user?.employeeOrgUnitId ?? '',
               assigneeEmpId: user?.employeeId ?? '',
               priority: 'B',
-              status: 'TODO',
+              status: newStatus,
             }
           : editing
             ? toInitial(editing as unknown as Record<string, unknown>, [
@@ -428,7 +431,14 @@ export default function Tasks() {
   ];
 
   const addButton = can('TASK.CREATE') ? (
-    <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
+    <Button
+      variant="primary"
+      size="sm"
+      onClick={() => {
+        setNewStatus('TODO');
+        setEditing('new');
+      }}
+    >
       + 업무 등록
     </Button>
   ) : undefined;
@@ -499,6 +509,14 @@ export default function Tasks() {
           viewSwitch={viewSwitch}
           tabs={scopeTabs}
           addButton={addButton}
+          onAdd={
+            can('TASK.CREATE')
+              ? (st) => {
+                  setNewStatus(st);
+                  setEditing('new');
+                }
+              : undefined
+          }
           canMove={(task) => isMine(task) || can('TASK.UPDATE')}
           onMove={(task, to) => void changeStatus(task, to)}
           onOpen={detail.open}
@@ -582,6 +600,7 @@ function Board({
   viewSwitch,
   tabs,
   addButton,
+  onAdd,
 }: {
   rows: Task[];
   q: string;
@@ -590,6 +609,8 @@ function Board({
   viewSwitch: ReactNode;
   tabs?: ReactNode;
   addButton?: ReactNode;
+  /** 칸 아래 '+ 업무 추가' — 그 칸의 상태로 등록 창을 연다 */
+  onAdd?: (status: TaskStatus) => void;
   canMove: (task: Task) => boolean;
   onMove: (task: Task, to: TaskStatus) => void;
   onOpen: (id: string) => void;
@@ -661,7 +682,8 @@ function Board({
             columns={cols}
             onChange={onChange}
             onCardClick={(card) => onOpen(card.id)}
-            showAddButton={false}
+            showAddButton={!!onAdd}
+            onAddCard={(colId) => onAdd?.(colId as TaskStatus)}
             columnMinWidth={260}
           />
         </div>
