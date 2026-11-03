@@ -380,7 +380,10 @@ export default function AppLayout() {
             className={[
               styles.contentInner,
               pathname.startsWith('/calendar') ? styles.contentInnerTight : '',
-              under('/ai') ? styles.contentInnerFlush : '',
+              // 화면 전체를 쓰는 작업 화면 — AI 비서 대화, 에이전트 만들기·편집(캔버스)
+              under('/ai') || pathname.startsWith('/agent-builder/')
+                ? styles.contentInnerFlush
+                : '',
             ]
               .filter(Boolean)
               .join(' ')}
