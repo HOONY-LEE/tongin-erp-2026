@@ -1799,6 +1799,8 @@ model SpaceReservation {
   @@index([spaceId, startAt])
   @@index([startAt])
   @@map("space_reservation")
+}
+
 // ─── 드라이브 ───
 
 // 공간 — PERSONAL(사람 한 명, owner_user_id) | ORG(조직 하나, org_unit_id — 그 조직·하위 조직 사람) | SHARED(구성원)

@@ -89,6 +89,8 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     selfService: true,
     category: '공통',
     desc: '회의실·파티룸 등 공간 예약·대여',
+  },
+  {
     key: 'drive',
     path: '/drive',
     label: '드라이브',
