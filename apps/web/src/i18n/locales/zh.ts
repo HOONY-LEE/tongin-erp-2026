@@ -50,6 +50,8 @@ export default {
     approvals: '审批',
     spaces: '空间预约',
     duties: '职责分工',
+    franchise: '加盟店现况',
+    franchiseLeads: '加盟招商',
     performance: '绩效评估',
     drive: '云盘',
     leave: '休假',

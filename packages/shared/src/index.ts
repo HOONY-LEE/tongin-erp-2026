@@ -722,6 +722,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
   {
+    key: 'FRANCHISE',
+    label: '가맹',
+    group: '관리',
+    actions: ALL_CRUD,
+    hint: '가맹점 현황(계약·가맹비·보증금·재계약)과 가맹 영업 CRM(가맹점 모집 상담)',
+  },
+  {
     key: 'DUTY',
     label: '업무분장',
     group: '공통',
@@ -905,6 +912,7 @@ export * from './dashboard';
 export * from './hr';
 export * from './performance';
 export * from './phone';
+export * from './franchise';
 export * from './menu';
 
 // ── 공통 업무: 공지사항 · 작업관리 · 계약·자산 · 지점 관리 기록 ──
