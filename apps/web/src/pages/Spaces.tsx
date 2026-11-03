@@ -10,6 +10,7 @@ import {
   Checkbox,
   DataTable,
   Input,
+  ListToolbar,
   Modal,
   PageHeader,
   SegmentedControl,
@@ -194,6 +195,69 @@ export default function Spaces() {
     };
   });
 
+  // 목록 화면 공통 배치 — 날짜(왼쪽) ……… 일간/이달 목록(오른쪽) / ……… 공간 관리·예약하기(오른쪽)
+  const dateNav = (
+    <div className={styles.dateNav}>
+      <button
+        type="button"
+        className={styles.navBtn}
+        aria-label={view === 'day' ? '전날' : '지난달'}
+        onClick={() =>
+          setDate((d) => (view === 'day' ? addDays(d, -1) : addDays(monthRange(d)[0], -1)))
+        }
+      >
+        <ChevronLeft size={16} />
+      </button>
+      <span className={styles.dateText}>
+        {view === 'day' ? dateLabel(date) : `${date.slice(0, 4)}년 ${Number(date.slice(5, 7))}월`}
+      </span>
+      <button
+        type="button"
+        className={styles.navBtn}
+        aria-label={view === 'day' ? '다음날' : '다음달'}
+        onClick={() =>
+          setDate((d) => (view === 'day' ? addDays(d, 1) : addDays(monthRange(d)[1], 1)))
+        }
+      >
+        <ChevronRight size={16} />
+      </button>
+      {date !== today && (
+        <Button variant="ghost" size="sm" onClick={() => setDate(today)}>
+          오늘
+        </Button>
+      )}
+      <Input
+        type="date"
+        className={styles.dateInput}
+        value={date}
+        aria-label="날짜 고르기"
+        onChange={(e) => e.target.value && setDate(e.target.value)}
+      />
+    </div>
+  );
+  const viewSwitch = (
+    <SegmentedControl
+      value={view}
+      onChange={(v) => setView(v as 'day' | 'list')}
+      options={[
+        { value: 'day', label: '일간' },
+        { value: 'list', label: '이달 목록' },
+      ]}
+    />
+  );
+  const actions = (
+    <div className={styles.actions}>
+      {manager && (
+        <Button variant="outline" size="sm" onClick={() => setAdmin(true)}>
+          <Settings2 size={15} /> 공간 관리
+        </Button>
+      )}
+      <Button variant="primary" size="sm" onClick={() => setEditing({})} disabled={!spaces.length}>
+        <Plus size={15} /> 예약하기
+      </Button>
+    </div>
+  );
+
   return (
     <div className={styles.page}>
       <PageHeader
@@ -203,74 +267,9 @@ export default function Spaces() {
           void load();
         }}
         updatedAt={updatedAt}
-        actions={
-          <div className={styles.actions}>
-            {manager && (
-              <Button variant="outline" size="sm" onClick={() => setAdmin(true)}>
-                <Settings2 size={15} /> 공간 관리
-              </Button>
-            )}
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setEditing({})}
-              disabled={!spaces.length}
-            >
-              <Plus size={15} /> 예약하기
-            </Button>
-          </div>
-        }
       />
 
-      <div className={styles.toolbar}>
-        <div className={styles.dateNav}>
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label={view === 'day' ? '전날' : '지난달'}
-            onClick={() =>
-              setDate((d) => (view === 'day' ? addDays(d, -1) : addDays(monthRange(d)[0], -1)))
-            }
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className={styles.dateText}>
-            {view === 'day'
-              ? dateLabel(date)
-              : `${date.slice(0, 4)}년 ${Number(date.slice(5, 7))}월`}
-          </span>
-          <button
-            type="button"
-            className={styles.navBtn}
-            aria-label={view === 'day' ? '다음날' : '다음달'}
-            onClick={() =>
-              setDate((d) => (view === 'day' ? addDays(d, 1) : addDays(monthRange(d)[1], 1)))
-            }
-          >
-            <ChevronRight size={16} />
-          </button>
-          {date !== today && (
-            <Button variant="ghost" size="sm" onClick={() => setDate(today)}>
-              오늘
-            </Button>
-          )}
-          <Input
-            type="date"
-            className={styles.dateInput}
-            value={date}
-            aria-label="날짜 고르기"
-            onChange={(e) => e.target.value && setDate(e.target.value)}
-          />
-        </div>
-        <SegmentedControl
-          value={view}
-          onChange={(v) => setView(v as 'day' | 'list')}
-          options={[
-            { value: 'day', label: '일간' },
-            { value: 'list', label: '이달 목록' },
-          ]}
-        />
-      </div>
+      {view === 'day' && <ListToolbar search={dateNav} viewSwitch={viewSwitch} actions={actions} />}
 
       {view === 'day' && (
         <div className={styles.cards}>
@@ -336,6 +335,9 @@ export default function Spaces() {
           rows={listRows as unknown as Row[]}
           loading={loading}
           onRowClick={(r) => setDetail(rows.find((x) => x.id === r.id) ?? null)}
+          filters={dateNav}
+          viewSwitch={viewSwitch}
+          toolbarActions={actions}
           exportable
           exportFileName={`공간예약-${date.slice(0, 7)}`}
         />

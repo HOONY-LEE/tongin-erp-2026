@@ -12,9 +12,9 @@ interface Props {
   rowKey?: string;
   /** 지정 시 로우 클릭으로 상세 이동 등 처리 (로우 안의 버튼/링크 클릭은 무시하고 그 자체 동작만 수행) */
   onRowClick?: (row: Row) => void;
-  /** 툴바 오른쪽 끝에 배치할 커스텀 액션(예: "+ 등록" 버튼) — 내보내기 버튼 뒤에 온다 */
+  /** 셋째 줄 오른쪽 끝 — 생성하기류 버튼(예: "+ 등록"). 내보내기 버튼 뒤에 온다 */
   toolbarActions?: ReactNode;
-  /** 툴바 왼쪽, 검색창 바로 오른쪽에 붙는 필터 컨트롤(예: 상태 Select) */
+  /** 둘째 줄 가운데 — 검색창 바로 오른쪽에 붙는 필터(예: 날짜·종류 Select) */
   filters?: ReactNode;
   /** CSV/Excel/JSON/XML 내보내기 메뉴 노출 여부. 기본 false. */
   exportable?: boolean;
@@ -27,8 +27,10 @@ interface Props {
    * 행 수를 늘려 넘치면 표 본문만 스크롤된다(머리글·풋터는 그대로).
    */
   fit?: boolean;
-  /** 필터(세그먼트 등)를 검색창 앞(왼쪽)에 둔다 — 기본은 검색창 뒤 */
-  filtersFirst?: boolean;
+  /** 세그먼트 탭(상태·범위) — 셋째 줄 왼쪽. 오른쪽 끝에는 내보내기·toolbarActions(생성 버튼) */
+  tabs?: ReactNode;
+  /** 보기 바꾸기(목록/칸반/카드 등) — 둘째 줄 오른쪽 끝(검색 · 필터 ……… 보기) */
+  viewSwitch?: ReactNode;
 }
 
 /** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
@@ -52,7 +54,8 @@ export function DataTable({
   exportFileName,
   pageSize,
   fit,
-  filtersFirst,
+  tabs,
+  viewSwitch,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wasLoading = useRef(false);
@@ -153,7 +156,8 @@ export function DataTable({
         showSkeleton ? 'dt-loading' : '',
         multiline ? 'dt-multiline' : '',
         fit ? 'dt-fit' : '',
-        filtersFirst && filters ? 'dt-filters-first' : '',
+        // 셋째 줄(탭·생성 버튼)이 없으면 그 줄을 비우지 않고 접는다
+        tabs || exportable || toolbarActions ? '' : 'dt-no-row3',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -164,14 +168,21 @@ export function DataTable({
         locale="ko"
         emptyText={loading ? '불러오는 중…' : '데이터가 없습니다'}
         toolbarActions={
-          // softium Table의 툴바에는 왼쪽 확장 슬롯이 없다. toolbarActions는 오른쪽 컨테이너에
-          // 그대로 펼쳐지므로, 필터를 Fragment 첫 자식으로 넣고 CSS(margin-right:auto)로
-          // 검색창 옆까지 끌어와 "왼쪽=검색+필터 / 오른쪽=내보내기+액션" 배치를 만든다.
+          // softium Table 툴바 = [검색(왼쪽)][toolbarActions(오른쪽)] 뿐이라, 오른쪽 컨테이너를
+          // display:contents로 풀고 CSS grid 영역으로 목록 화면 공통 배치를 만든다(base.css .dt-wrap .sft-toolbar).
+          //   검색 · 필터 ……… 보기 바꾸기
+          //   세그먼트 탭 ……… 내보내기 · 생성 버튼
           <>
             {filters && <div className="dt-toolbar-filters">{filters}</div>}
-            {/* 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다) */}
-            {exportable && <ExportMenu table={table} fileName={exportFileName ?? 'table'} />}
-            {toolbarActions}
+            {viewSwitch && <div className="dt-toolbar-view">{viewSwitch}</div>}
+            {tabs && <div className="dt-toolbar-tabs">{tabs}</div>}
+            {(exportable || toolbarActions) && (
+              <div className="dt-toolbar-actions">
+                {/* 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다) */}
+                {exportable && <ExportMenu table={table} fileName={exportFileName ?? 'table'} />}
+                {toolbarActions}
+              </div>
+            )}
           </>
         }
         disableVirtualization={multiline}

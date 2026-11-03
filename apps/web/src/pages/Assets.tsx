@@ -303,20 +303,15 @@ export default function Assets() {
   ];
 
   return (
-    <ListPage
-      fit
-      title={t('nav.assets')}
-      onRefresh={load}
-      updatedAt={updatedAt}
-      footer={
-        <SegmentedControl
-          value={kind}
-          onChange={(v) => setKind(v as 'ALL' | AssetKind)}
-          options={kindOptions}
-        />
-      }
-    >
+    <ListPage fit title={t('nav.assets')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
+        tabs={
+          <SegmentedControl
+            value={kind}
+            onChange={(v) => setKind(v as 'ALL' | AssetKind)}
+            options={kindOptions}
+          />
+        }
         fit
         columns={columns}
         rows={byKind.filter((r) => dueMatch(r, due)) as unknown as Row[]}

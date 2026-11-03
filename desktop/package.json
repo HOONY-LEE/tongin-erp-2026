@@ -28,7 +28,7 @@
     ],
     "mac": {
       "category": "public.app-category.business",
-      "icon": "assets/icon.png",
+      "icon": "assets/icon.icns",
       "target": [
         {
           "target": "dmg",

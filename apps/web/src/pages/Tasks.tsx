@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowRight, CalendarClock, Search } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ import {
   FormModal,
   Input,
   ListPage,
+  ListToolbar,
   RecordDetail,
   SegmentedControl,
   StatusBadge,
@@ -405,35 +406,27 @@ export default function Tasks() {
       : []),
   ];
 
+  const scopeTabs =
+    scopeOptions.length > 1 ? (
+      <SegmentedControl
+        value={effScope}
+        onChange={(v) => setScope(v as Scope)}
+        options={scopeOptions}
+      />
+    ) : undefined;
+  const viewSwitch = (
+    <SegmentedControl
+      value={view}
+      onChange={(v) => setView(v as View)}
+      options={[
+        { value: 'board', label: '칸반' },
+        { value: 'list', label: '리스트' },
+      ]}
+    />
+  );
+
   return (
-    <ListPage
-      fit
-      title={t('nav.tasks')}
-      onRefresh={load}
-      updatedAt={updatedAt}
-      actions={
-        <div className={styles.headActions}>
-          {scopeOptions.length > 1 && (
-            <SegmentedControl
-              size="sm"
-              value={effScope}
-              onChange={(v) => setScope(v as Scope)}
-              options={scopeOptions}
-            />
-          )}
-          <SegmentedControl
-            size="sm"
-            value={view}
-            onChange={(v) => setView(v as View)}
-            options={[
-              { value: 'board', label: '칸반' },
-              { value: 'list', label: '리스트' },
-            ]}
-          />
-          {addButton}
-        </div>
-      }
-    >
+    <ListPage fit title={t('nav.tasks')} onRefresh={load} updatedAt={updatedAt}>
       {view === 'list' ? (
         <DataTable
           fit
@@ -441,7 +434,6 @@ export default function Tasks() {
           rows={listRows as unknown as Row[]}
           loading={loading}
           onRowClick={(r) => detail.open(String(r.id))}
-          filtersFirst
           filters={
             <SegmentedControl
               value={status}
@@ -449,6 +441,9 @@ export default function Tasks() {
               options={statusOptions}
             />
           }
+          viewSwitch={viewSwitch}
+          tabs={scopeTabs}
+          toolbarActions={addButton}
           exportable
           exportFileName="팀업무"
         />
@@ -458,6 +453,9 @@ export default function Tasks() {
           q={q}
           setQ={setQ}
           loading={loading}
+          viewSwitch={viewSwitch}
+          tabs={scopeTabs}
+          addButton={addButton}
           canMove={(task) => isMine(task) || can('TASK.UPDATE')}
           onMove={(task, to) => void changeStatus(task, to)}
           onOpen={detail.open}
@@ -538,11 +536,17 @@ function Board({
   canMove,
   onMove,
   onOpen,
+  viewSwitch,
+  tabs,
+  addButton,
 }: {
   rows: Task[];
   q: string;
   setQ: (v: string) => void;
   loading: boolean;
+  viewSwitch: ReactNode;
+  tabs?: ReactNode;
+  addButton?: ReactNode;
   canMove: (task: Task) => boolean;
   onMove: (task: Task, to: TaskStatus) => void;
   onOpen: (id: string) => void;
@@ -591,16 +595,21 @@ function Board({
 
   return (
     <>
-      <div className={styles.boardBar}>
-        <div className={styles.boardSearch}>
-          <Search size={15} aria-hidden />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="업무·사업·담당자 검색"
-          />
-        </div>
-      </div>
+      <ListToolbar
+        search={
+          <div className={styles.boardSearch}>
+            <Search size={15} aria-hidden />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="업무·사업·담당자 검색"
+            />
+          </div>
+        }
+        viewSwitch={viewSwitch}
+        tabs={tabs}
+        actions={addButton}
+      />
       {loading && !rows.length ? (
         <div className={styles.empty}>불러오는 중…</div>
       ) : (

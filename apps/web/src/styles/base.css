@@ -155,28 +155,76 @@ html[data-font-size='lg'] {
    내보내기+등록 버튼이 한 줄에 다 안 들어가 필터가 검색창 뒤로 겹쳐 보이지 않게 되던
    문제 — 검색창을 고정폭 대신 줄어들 수 있는 폭으로 바꾸고, 그래도 안 맞으면 툴바
    자체가 다음 줄로 넘어가게 한다(겹침 대신 줄바꿈). */
-.dt-wrap .sft-toolbar {
-  flex-wrap: wrap;
-  row-gap: 8px;
+.dt-wrap .sft-toolbar,
+.list-toolbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 400px) minmax(0, 1fr) auto;
+  grid-template-areas:
+    'search filters view'
+    'tabs tabs actions';
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 12px;
 }
-.dt-wrap .sft-toolbar__left {
-  flex: 1 1 200px;
-  min-width: 160px;
+/* 셋째 줄(탭·생성 버튼)이 없는 표 — 한 줄로 */
+.dt-wrap.dt-no-row3 .sft-toolbar,
+.list-toolbar.no-row3 {
+  grid-template-areas: 'search filters view';
+}
+.dt-wrap .sft-toolbar__left,
+.list-toolbar .lt-search {
+  grid-area: search;
+  min-width: 0;
 }
 .dt-wrap .sft-toolbar__right {
-  flex: 1 1 auto;
-  min-width: 0;
-  flex-wrap: wrap;
-  row-gap: 8px;
-  justify-content: flex-end;
+  display: contents;
 }
-.dt-wrap .dt-toolbar-filters {
-  /* 내보내기 버튼이 DOM상 먼저 오므로 order로 맨 앞(검색창 옆)으로 당긴다 */
-  order: -1;
+.dt-wrap .dt-toolbar-filters,
+.list-toolbar .lt-filters {
+  grid-area: filters;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-right: auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.dt-wrap .dt-toolbar-view,
+.list-toolbar .lt-view {
+  grid-area: view;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dt-wrap .dt-toolbar-tabs,
+.list-toolbar .lt-tabs {
+  grid-area: tabs;
+  min-width: 0;
+  overflow-x: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dt-wrap .dt-toolbar-actions,
+.list-toolbar .lt-actions {
+  grid-area: actions;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* 좁은 화면 — 한 칸씩 아래로 */
+@media (max-width: 720px) {
+  .dt-wrap .sft-toolbar,
+  .list-toolbar,
+  .dt-wrap.dt-no-row3 .sft-toolbar,
+  .list-toolbar.no-row3 {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'search view'
+      'filters filters'
+      'tabs actions';
+  }
 }
 
 /* 검색 인풋 최대폭은 440px이되, 공간이 부족하면 줄어든다(고정폭이면 좁은 화면에서
@@ -263,17 +311,20 @@ html[data-font-size='lg'] {
   flex: none;
 }
 
-/* 툴바 세그먼트 탭(단계·범위 필터) — 검색창 높이(38px)에 맞춘다. 배치: [검색][세그먼트] ……… [내보내기][+ 등록] */
-.sft-toolbar [class*='_track_'] {
+/* 툴바 세그먼트 탭(단계·범위) — 검색창 높이(38px)에 맞춘다 */
+.sft-toolbar [class*='_track_'],
+.list-toolbar [class*='_track_'] {
   height: 38px;
   box-sizing: border-box;
 }
-.sft-toolbar [class*='_track_'] [class*='_segment_'] {
+.sft-toolbar [class*='_track_'] [class*='_segment_'],
+.list-toolbar [class*='_track_'] [class*='_segment_'] {
   min-height: 30px;
   height: 30px;
   padding: 0 14px;
 }
-.sft-toolbar [class*='_track_'] [class*='_indicator_'] {
+.sft-toolbar [class*='_track_'] [class*='_indicator_'],
+.list-toolbar [class*='_track_'] [class*='_indicator_'] {
   height: 30px;
 }
 .dt-wrap .sft-toolbar__search,
@@ -451,22 +502,6 @@ input[type='search'],
 input[placeholder*='검색'],
 input[placeholder*='찾기'] {
   border-radius: var(--search-radius) !important;
-}
-
-/* 표 툴바 — 필터를 검색창 앞에(DataTable filtersFirst): [세그먼트][검색] ……… [내보내기][+ 등록] */
-.dt-filters-first .sft-toolbar__right {
-  display: contents;
-}
-.dt-filters-first .dt-toolbar-filters {
-  order: -2;
-  /* 툴바 간격(12px)보다 바짝 — 세그먼트 바로 옆에 검색창 */
-  margin-right: -4px;
-}
-.dt-filters-first .sft-toolbar__left {
-  order: -1;
-  flex: 0 1 520px;
-  min-width: 200px;
-  margin-right: auto;
 }
 
 /* akron 토큰에 없는 간격 — AutoSizeTextarea(결재 양식 '텍스트' 칸 등)가 이 값을 써서,

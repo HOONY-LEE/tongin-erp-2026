@@ -287,8 +287,8 @@ export default function AppLayout() {
                 <img
                   src="/brand/tongin-logo-color.png"
                   alt="통인익스프레스"
-                  width={32}
-                  height={32}
+                  width={30}
+                  height={30}
                   style={{ display: 'block', flexShrink: 0 }}
                 />
                 {!collapsed && (

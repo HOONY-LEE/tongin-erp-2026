@@ -65,6 +65,8 @@ function createWindow() {
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
     trafficLightPosition: isMac ? { x: 18, y: 12 } : undefined,
     backgroundColor: '#ffffff',
+    // 창·작업 표시줄 아이콘(윈도우·리눅스). 맥은 설치 파일의 icon.icns
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -135,6 +137,8 @@ function buildMenu() {
 }
 
 app.whenReady().then(() => {
+  // 개발 실행(npm start)에서도 독에 통인 아이콘
+  if (isMac && app.dock) app.dock.setIcon(path.join(__dirname, 'assets', 'icon.png'));
   buildMenu();
   createWindow();
 });

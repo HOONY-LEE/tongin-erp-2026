@@ -168,7 +168,10 @@
   pointer-events: none;
 }
 .boardSearch input {
-  padding-left: 34px;
+  padding-left: 34px !important;
+}
+.boardSearch > svg {
+  z-index: 1;
 }
 .kanbanWrap {
   flex: 1;

@@ -13,6 +13,7 @@ import {
   Input,
   Modal,
   PageHeader,
+  ListToolbar,
   SegmentedControl,
   Select,
   TableSkeleton,
@@ -189,6 +190,23 @@ export default function DashboardAdmin() {
     },
   ];
 
+  // 목록 화면 공통 배치 — 카드/목록(둘째 줄 오른쪽) · 새 템플릿(셋째 줄 오른쪽)
+  const viewSwitch = (
+    <SegmentedControl
+      value={view}
+      onChange={(v) => changeView(v as View)}
+      options={[
+        { value: 'card', label: '카드' },
+        { value: 'list', label: '목록' },
+      ]}
+    />
+  );
+  const createButton = canCreate ? (
+    <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setOpen(true)}>
+      새 템플릿
+    </Button>
+  ) : undefined;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
@@ -196,28 +214,6 @@ export default function DashboardAdmin() {
         subtitle="대시보드 템플릿을 만들어 권한 그룹이나 사용자에게 기본으로 보여 줍니다. 사람마다 볼 수 없는 데이터의 위젯은 자동으로 빠집니다."
         onRefresh={load}
         updatedAt={updatedAt}
-        actions={
-          canCreate ? (
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus size={14} />}
-              onClick={() => setOpen(true)}
-            >
-              새 템플릿
-            </Button>
-          ) : undefined
-        }
-        footer={
-          <SegmentedControl
-            value={view}
-            onChange={(v) => changeView(v as View)}
-            options={[
-              { value: 'card', label: '카드' },
-              { value: 'list', label: '목록' },
-            ]}
-          />
-        }
       />
 
       {rows === null ? (
@@ -228,81 +224,86 @@ export default function DashboardAdmin() {
           columns={columns}
           rows={rows as unknown as Row[]}
           onRowClick={(r) => editLayout(String(r.id))}
+          viewSwitch={viewSwitch}
+          toolbarActions={createButton}
         />
       ) : (
-        <div className={styles.cardGrid}>
-          {rows.map((t) => (
-            <article
-              key={t.id}
-              className={styles.tplCard}
-              onClick={() => editLayout(t.id)}
-              aria-label={t.name}
-            >
-              <div className={styles.tplPreview}>
-                <LayoutThumb items={t.preview} color={t.color} />
-              </div>
-              <div className={styles.tplBody}>
-                <span className={styles.tplName}>
-                  {t.name}
-                  {t.isDefault && (
-                    <Badge variant="subtle" color="primary" size="sm">
-                      기본
-                    </Badge>
-                  )}
-                  {!t.allowPersonal && (
-                    <Badge variant="subtle" color="neutral" size="sm">
-                      잠금
-                    </Badge>
-                  )}
-                </span>
-                <span className={styles.tplDesc}>{t.description || '설명 없음'}</span>
-                <div className={styles.tplTags}>
-                  <Targets t={t} />
+        <>
+          <ListToolbar viewSwitch={viewSwitch} actions={createButton} />
+          <div className={styles.cardGrid}>
+            {rows.map((t) => (
+              <article
+                key={t.id}
+                className={styles.tplCard}
+                onClick={() => editLayout(t.id)}
+                aria-label={t.name}
+              >
+                <div className={styles.tplPreview}>
+                  <LayoutThumb items={t.preview} color={t.color} />
                 </div>
-                <div className={styles.tplFoot} onClick={(e) => e.stopPropagation()}>
-                  위젯 {t.widgetCount}개 · {new Date(t.updatedAt).toLocaleDateString('ko-KR')}
-                  <span className={styles.spacer} />
-                  <button
-                    type="button"
-                    className={styles.iconBtn}
-                    title="위젯 편집"
-                    aria-label={`${t.name} 위젯 편집`}
-                    onClick={() => editLayout(t.id)}
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  {canUpdate && (
+                <div className={styles.tplBody}>
+                  <span className={styles.tplName}>
+                    {t.name}
+                    {t.isDefault && (
+                      <Badge variant="subtle" color="primary" size="sm">
+                        기본
+                      </Badge>
+                    )}
+                    {!t.allowPersonal && (
+                      <Badge variant="subtle" color="neutral" size="sm">
+                        잠금
+                      </Badge>
+                    )}
+                  </span>
+                  <span className={styles.tplDesc}>{t.description || '설명 없음'}</span>
+                  <div className={styles.tplTags}>
+                    <Targets t={t} />
+                  </div>
+                  <div className={styles.tplFoot} onClick={(e) => e.stopPropagation()}>
+                    위젯 {t.widgetCount}개 · {new Date(t.updatedAt).toLocaleDateString('ko-KR')}
+                    <span className={styles.spacer} />
                     <button
                       type="button"
                       className={styles.iconBtn}
-                      title="이름·지정 설정"
-                      aria-label={`${t.name} 설정`}
-                      onClick={() => navigate(`/dashboard-admin/${t.id}/settings`)}
+                      title="위젯 편집"
+                      aria-label={`${t.name} 위젯 편집`}
+                      onClick={() => editLayout(t.id)}
                     >
-                      <Settings2 size={14} />
+                      <Pencil size={14} />
                     </button>
-                  )}
-                  {canDelete && (
-                    <button
-                      type="button"
-                      className={styles.iconBtn}
-                      title="삭제"
-                      aria-label={`${t.name} 삭제`}
-                      onClick={() => void remove(t)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                    {canUpdate && (
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        title="이름·지정 설정"
+                        aria-label={`${t.name} 설정`}
+                        onClick={() => navigate(`/dashboard-admin/${t.id}/settings`)}
+                      >
+                        <Settings2 size={14} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        title="삭제"
+                        aria-label={`${t.name} 삭제`}
+                        onClick={() => void remove(t)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-          {canCreate && (
-            <button type="button" className={styles.newCard} onClick={() => setOpen(true)}>
-              <Plus size={22} />새 템플릿 만들기
-            </button>
-          )}
-        </div>
+              </article>
+            ))}
+            {canCreate && (
+              <button type="button" className={styles.newCard} onClick={() => setOpen(true)}>
+                <Plus size={22} />새 템플릿 만들기
+              </button>
+            )}
+          </div>
+        </>
       )}
 
       {open && (

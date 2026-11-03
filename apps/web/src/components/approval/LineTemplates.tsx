@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import {
@@ -42,7 +42,8 @@ export const EMPTY_RULE: ApprovalLineRule = { kind: 'APPROVER', resolver: 'DEPT_
  * 기본 결재선 설정 — 문서 종류 × 조직마다 결재 규칙을 정한다.
  * 신청자 조직부터 위로 올라가며 가장 가까운 결재선을 쓰고, 없으면 전사 기본, 그것도 없으면 부서장 결재 한 단계.
  */
-export function LineTemplates() {
+/** tabs: 표 툴바 셋째 줄 왼쪽 탭(결재함의 상자 탭) */
+export function LineTemplates({ tabs }: { tabs?: ReactNode } = {}) {
   const toast = useToast();
   const { people, orgs } = useDirectory();
   const { forms } = useApprovalForms(true);
@@ -104,6 +105,7 @@ export function LineTemplates() {
   return (
     <>
       <DataTable
+        tabs={tabs}
         columns={columns}
         rows={rows as unknown as Row[]}
         loading={loading}

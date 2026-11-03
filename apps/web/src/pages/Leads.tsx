@@ -228,24 +228,18 @@ export default function Leads() {
 
   return (
     // 화면 높이에 맞춘다 — 기본 20개씩 보기, 화면에 다 안 들어가는 행은 표 안에서 스크롤(풋터는 늘 보임)
-    <ListPage
-      fit
-      title={t('nav.leads')}
-      onRefresh={load}
-      updatedAt={updatedAt}
-      // 단계 세그먼트는 검색창 위 줄 — 다른 화면의 머리글 세그먼트(조직관리 탭 등)와 같은 크기
-      footer={
-        <SegmentedControl
-          value={stage}
-          onChange={setStage}
-          options={STAGES.map((s) => ({
-            value: s.key,
-            label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.statuses)}`,
-          }))}
-        />
-      }
-    >
+    <ListPage fit title={t('nav.leads')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
+        tabs={
+          <SegmentedControl
+            value={stage}
+            onChange={setStage}
+            options={STAGES.map((s) => ({
+              value: s.key,
+              label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.statuses)}`,
+            }))}
+          />
+        }
         fit
         pageSize={20}
         columns={columns}
