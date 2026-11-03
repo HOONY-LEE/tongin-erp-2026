@@ -14,7 +14,13 @@ export interface CrmStageDef {
   won?: boolean;
   /** 실패 */
   lost?: boolean;
+  /** 진행 중 단계가 리드(발굴·첫 연락)인지 상담·영업 기회인지 — 화면 위 탭(리드 · 진행 · 계약)으로 나눈다 */
+  phase?: 'lead' | 'deal';
 }
+
+/** 화면 위 탭 — 리드 · 상담(영업 기회) · 계약(수주) · 보류·실패 */
+export const CRM_PHASES = ['lead', 'deal', 'won', 'closed'] as const;
+export type CrmPhase = (typeof CRM_PHASES)[number];
 
 export interface CrmFieldDef {
   key: string;
@@ -43,6 +49,9 @@ export interface CrmPipelineDef {
   /** 계약 뒤 이어 둘 대상 — BRANCH(가맹점=지점) | PARTNER(거래처) */
   link: 'BRANCH' | 'PARTNER' | null;
   linkLabel: string;
+  /** 화면 번호 앞 글자(F000012) */
+  codePrefix: string;
+  phaseLabels: Record<CrmPhase, string>;
   stages: CrmStageDef[];
   sources: { key: string; label: string }[];
   /** 파이프라인만의 항목(fields JSON에 저장) */
@@ -52,7 +61,7 @@ export interface CrmPipelineDef {
 export const CRM_PIPELINES: Record<CrmPipelineKey, CrmPipelineDef> = {
   FRANCHISE: {
     key: 'FRANCHISE',
-    label: '가맹 영업',
+    label: '가맹 고객관리',
     perm: 'FRANCHISE',
     path: '/franchise-leads',
     description:
@@ -64,12 +73,14 @@ export const CRM_PIPELINES: Record<CrmPipelineKey, CrmPipelineDef> = {
     expectedLabel: '개점 희망일',
     link: 'BRANCH',
     linkLabel: '계약 후 연결된 가맹점',
+    codePrefix: 'F',
+    phaseLabels: { lead: '리드', deal: '상담 진행', won: '계약', closed: '보류·실패' },
     stages: [
-      { key: 'NEW', label: '발굴', color: '#9ca3af', open: true },
-      { key: 'CONTACTED', label: '첫 연락', color: '#60a5fa', open: true },
-      { key: 'CONSULTING', label: '상담 중', color: '#3b82f6', open: true },
-      { key: 'MEETING', label: '미팅·방문', color: '#8b5cf6', open: true },
-      { key: 'CONTRACTING', label: '계약 진행', color: '#f59e0b', open: true },
+      { key: 'NEW', label: '발굴', color: '#9ca3af', open: true, phase: 'lead' },
+      { key: 'CONTACTED', label: '첫 연락', color: '#60a5fa', open: true, phase: 'lead' },
+      { key: 'CONSULTING', label: '상담 중', color: '#3b82f6', open: true, phase: 'deal' },
+      { key: 'MEETING', label: '미팅·방문', color: '#8b5cf6', open: true, phase: 'deal' },
+      { key: 'CONTRACTING', label: '계약 진행', color: '#f59e0b', open: true, phase: 'deal' },
       { key: 'WON', label: '계약 완료', color: '#16a34a', won: true },
       { key: 'HOLD', label: '보류', color: '#a8a29e' },
       { key: 'LOST', label: '실패', color: '#ef4444', lost: true },
@@ -107,13 +118,15 @@ export const CRM_PIPELINES: Record<CrmPipelineKey, CrmPipelineDef> = {
     expectedLabel: '이전 예정일',
     link: 'PARTNER',
     linkLabel: '수주 후 연결된 거래처',
+    codePrefix: 'B',
+    phaseLabels: { lead: '리드', deal: '영업 기회', won: '수주', closed: '보류·실패' },
     stages: [
-      { key: 'LEAD', label: '리드 발굴', color: '#9ca3af', open: true },
-      { key: 'CONTACTED', label: '첫 연락', color: '#60a5fa', open: true },
-      { key: 'MEETING', label: '미팅', color: '#3b82f6', open: true },
-      { key: 'SURVEY', label: '현장 실사', color: '#8b5cf6', open: true },
-      { key: 'QUOTED', label: '견적 제출', color: '#d946ef', open: true },
-      { key: 'NEGOTIATING', label: '협상', color: '#f59e0b', open: true },
+      { key: 'LEAD', label: '리드 발굴', color: '#9ca3af', open: true, phase: 'lead' },
+      { key: 'CONTACTED', label: '첫 연락', color: '#60a5fa', open: true, phase: 'lead' },
+      { key: 'MEETING', label: '미팅', color: '#3b82f6', open: true, phase: 'deal' },
+      { key: 'SURVEY', label: '현장 실사', color: '#8b5cf6', open: true, phase: 'deal' },
+      { key: 'QUOTED', label: '견적 제출', color: '#d946ef', open: true, phase: 'deal' },
+      { key: 'NEGOTIATING', label: '협상', color: '#f59e0b', open: true, phase: 'deal' },
       { key: 'WON', label: '수주', color: '#16a34a', won: true },
       { key: 'HOLD', label: '보류', color: '#a8a29e' },
       { key: 'LOST', label: '실패', color: '#ef4444', lost: true },
@@ -148,6 +161,17 @@ export const isCrmPipeline = (k: string): k is CrmPipelineKey =>
   (CRM_PIPELINE_KEYS as readonly string[]).includes(k);
 export const crmStage = (p: CrmPipelineKey, key: string) =>
   CRM_PIPELINES[p].stages.find((s) => s.key === key);
+/** 단계 → 화면 탭 */
+export const crmPhaseOf = (def: CrmPipelineDef, stage: string): CrmPhase => {
+  const s = def.stages.find((x) => x.key === stage);
+  if (!s) return 'closed';
+  if (s.won) return 'won';
+  if (!s.open) return 'closed';
+  return s.phase ?? 'deal';
+};
+/** 화면 번호 — 사람이 넣지 않고 시스템이 매긴 순번으로 */
+export const crmCode = (def: CrmPipelineDef, seq: number) =>
+  `${def.codePrefix}${String(seq).padStart(6, '0')}`;
 
 /** 관심도 */
 export const CRM_INTERESTS = ['A', 'B', 'C'] as const;
@@ -168,6 +192,8 @@ export const CRM_ACTIVITY_LABEL: Record<CrmActivityKind, string> = {
 
 export interface CrmLeadView {
   id: string;
+  /** 화면 번호 F000012 · B000012 */
+  code: string;
   pipeline: CrmPipelineKey;
   companyName: string;
   contactName: string | null;

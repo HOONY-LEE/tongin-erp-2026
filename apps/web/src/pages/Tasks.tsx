@@ -45,12 +45,15 @@ import {
   TASK_PRIORITY_META,
   TASK_STATUS_COLOR,
   TaskPriorityLabel,
+  TaskStatusIcon,
   TaskStatusLabel,
 } from '../components/work/TaskIcons';
 import styles from './work.module.css';
 
 interface Task {
   id: string;
+  /** 화면 번호 T-12(시스템이 매김) */
+  seq: number;
   title: string;
   description: string | null;
   teamOrgId: string | null;
@@ -59,6 +62,8 @@ interface Task {
   assignee: PersonRef | null;
   requesterEmpId: string | null;
   requester: PersonRef | null;
+  /** 만든 사람(생성자) — 담당자와 따로 */
+  creator: { id: string | null; name: string } | null;
   project: string | null;
   dutyId: string | null;
   duty: { id: string; title: string } | null;
@@ -128,6 +133,8 @@ export default function Tasks() {
   const [rows, setRows] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'ALL' | TaskStatus>('ALL');
+  const [priority, setPriority] = useState<'ALL' | Task['priority']>('ALL');
+  const [teamFilter, setTeamFilter] = useState('ALL');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Task | 'new' | null>(null);
   // 칸반 칸 아래 '+ 업무 추가'로 열면 그 칸의 상태로 시작한다
@@ -361,8 +368,10 @@ export default function Tasks() {
                         label: '우선순위',
                         value: <TaskPriorityLabel priority={d.priority} />,
                       },
+                      { label: '번호', value: `T-${d.seq}` },
                       { label: '팀', value: d.team?.name },
                       { label: '담당자', value: d.assignee?.name },
+                      { label: '생성자', value: d.creator?.name },
                       {
                         label: '요청자',
                         value: d.requester
@@ -427,9 +436,40 @@ export default function Tasks() {
     { value: 'ALL', label: `모든 상태 ${count('ALL')}` },
     ...TASK_STATUS.map((s) => ({ value: s, label: `${TASK_STATUS_LABEL[s]} ${count(s)}` })),
   ];
-  const listRows = status === 'ALL' ? rows : rows.filter((r) => r.status === status);
+  const teamOptions = [
+    { value: 'ALL', label: '모든 팀' },
+    ...[...new Map(rows.filter((r) => r.team).map((r) => [r.team!.id, r.team!.name])).entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label })),
+    ...(rows.some((r) => !r.team) ? [{ value: 'NONE', label: '팀 없음(개인)' }] : []),
+  ];
+  const term = q.trim().toLowerCase();
+  const listRows = rows.filter(
+    (r) =>
+      (status === 'ALL' || r.status === status) &&
+      (priority === 'ALL' || r.priority === priority) &&
+      (teamFilter === 'ALL' || (teamFilter === 'NONE' ? !r.team : r.team?.id === teamFilter)) &&
+      (!term ||
+        [r.title, r.project, r.assignee?.name, r.creator?.name, `t-${r.seq}`].some((x) =>
+          x?.toLowerCase().includes(term),
+        )),
+  );
 
   const columns: Column[] = [
+    {
+      title: '번호',
+      width: 80,
+      render: (r) => <span className={styles.taskNo}>T-{(r as unknown as Task).seq}</span>,
+      exportValue: (r) => `T-${(r as unknown as Task).seq}`,
+    },
+    { title: '업무', dataIndex: 'title', flex: 1, minWidth: 220 },
+    {
+      title: '우선순위',
+      width: 96,
+      dataIndex: 'priority',
+      render: (r) => <TaskPriorityLabel priority={(r as unknown as Task).priority} />,
+      exportValue: (r) => TASK_PRIORITY_META[(r as unknown as Task).priority]?.label ?? '',
+    },
     {
       title: '상태',
       width: 100,
@@ -437,20 +477,32 @@ export default function Tasks() {
       exportValue: (r) => TASK_STATUS_LABEL[r.status as TaskStatus],
     },
     {
-      title: '우선순위',
-      width: 100,
-      dataIndex: 'priority',
-      render: (r) => <TaskPriorityLabel priority={(r as unknown as Task).priority} />,
-      exportValue: (r) => TASK_PRIORITY_META[(r as unknown as Task).priority]?.label ?? '',
+      title: '사업',
+      minWidth: 120,
+      render: (r) => (r as unknown as Task).project ?? '-',
+      exportValue: (r) => (r as unknown as Task).project ?? '',
     },
-    { title: '업무', dataIndex: 'title', flex: 1, minWidth: 240 },
-    { title: '사업', dataIndex: 'project', minWidth: 130 },
-    { title: '팀', width: 110, render: (r) => (r as unknown as Task).team?.name ?? '-' },
-    { title: '담당', width: 90, render: (r) => (r as unknown as Task).assignee?.name ?? '-' },
-    { title: '요청', width: 90, render: (r) => (r as unknown as Task).requester?.name ?? '-' },
+    {
+      title: '팀',
+      width: 110,
+      render: (r) => (r as unknown as Task).team?.name ?? '-',
+      exportValue: (r) => (r as unknown as Task).team?.name ?? '',
+    },
+    {
+      title: '담당자',
+      width: 96,
+      render: (r) => <PersonChip name={(r as unknown as Task).assignee?.name} empty="미배정" />,
+      exportValue: (r) => (r as unknown as Task).assignee?.name ?? '',
+    },
+    {
+      title: '생성자',
+      width: 96,
+      render: (r) => <PersonChip name={(r as unknown as Task).creator?.name} />,
+      exportValue: (r) => (r as unknown as Task).creator?.name ?? '',
+    },
     {
       title: '기한',
-      width: 160,
+      width: 150,
       dataIndex: 'dueDate',
       render: (r) => <Due t={r as unknown as Task} />,
       exportValue: (r) => ymd(r.dueDate) || null,
@@ -502,31 +554,78 @@ export default function Tasks() {
   return (
     <ListPage fit title={t('nav.tasks')} onRefresh={load} updatedAt={updatedAt}>
       {view === 'list' ? (
-        <DataTable
-          fit
-          columns={columns}
-          rows={listRows as unknown as Row[]}
-          loading={loading}
-          onRowClick={(r) => detail.open(String(r.id))}
-          viewSwitch={viewSwitch}
-          // 범위 탭(내 업무·우리 팀·전체) 바로 오른쪽에 상태 고르기
-          tabs={
-            <>
-              {scopeTabs}
-              <div className={styles.statusFilter}>
-                <Select
-                  value={status}
-                  onValueChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
-                  options={statusOptions}
-                  aria-label="상태"
-                />
-              </div>
-            </>
-          }
-          toolbarActions={addButton}
-          exportable
-          exportFileName="작업관리"
-        />
+        <>
+          {/* 상태 요약 — 누르면 그 상태만 */}
+          <div className={styles.taskStats}>
+            {(['ALL', ...TASK_STATUS] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`${styles.taskStat} ${status === k ? styles.taskStatOn : ''}`}
+                onClick={() => setStatus(status === k && k !== 'ALL' ? 'ALL' : k)}
+              >
+                <span>{k === 'ALL' ? '전체 업무' : `${TASK_STATUS_LABEL[k]}`}</span>
+                <b>{count(k)}</b>
+                {k === 'ALL' ? (
+                  <i className={styles.taskStatIcon} aria-hidden />
+                ) : (
+                  <span className={styles.taskStatIcon}>
+                    <TaskStatusIcon status={k} />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <DataTable
+            fit
+            columns={columns}
+            rows={listRows as unknown as Row[]}
+            loading={loading}
+            onRowClick={(r) => detail.open(String(r.id))}
+            viewSwitch={viewSwitch}
+            // 범위 탭(내 업무·우리 팀·전체) 오른쪽에 상태·우선순위·팀 고르기
+            tabs={
+              <>
+                {scopeTabs}
+                <div className={styles.statusFilter}>
+                  <Select
+                    value={status}
+                    onValueChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
+                    options={statusOptions}
+                    aria-label="상태"
+                  />
+                </div>
+                <div className={styles.statusFilter}>
+                  <Select
+                    value={priority}
+                    onValueChange={(v) => setPriority(v as 'ALL' | Task['priority'])}
+                    options={[
+                      { value: 'ALL', label: '모든 우선순위' },
+                      ...(['A', 'B', 'C'] as const).map((p) => ({
+                        value: p,
+                        label: TASK_PRIORITY_META[p].label,
+                      })),
+                    ]}
+                    aria-label="우선순위"
+                  />
+                </div>
+                {teamOptions.length > 2 && (
+                  <div className={styles.statusFilter}>
+                    <Select
+                      value={teamFilter}
+                      onValueChange={setTeamFilter}
+                      options={teamOptions}
+                      aria-label="팀"
+                    />
+                  </div>
+                )}
+              </>
+            }
+            toolbarActions={addButton}
+            exportable
+            exportFileName="작업관리"
+          />
+        </>
       ) : (
         <Board
           rows={rows}
@@ -560,6 +659,15 @@ function md(v: string): string {
   if (!d) return '—';
   const [y, m, day] = d.split('-');
   return y === String(new Date().getFullYear()) ? `${m}.${day}` : `${y.slice(2)}.${m}.${day}`;
+}
+
+/** 목록의 사람 칩(담당자·생성자) */
+function PersonChip({ name, empty = '-' }: { name?: string | null; empty?: string }) {
+  return name ? (
+    <span className={styles.personChip}>{name}</span>
+  ) : (
+    <span className={styles.kMuted}>{empty}</span>
+  );
 }
 
 /** 이름 첫 글자 동그라미 */

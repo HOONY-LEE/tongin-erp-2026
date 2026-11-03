@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import {
   CRM_PIPELINES,
+  crmCode,
   PERMISSION_WILDCARD,
   type AuthPrincipal,
   type CrmActivityKind,
@@ -90,6 +91,7 @@ export class CrmService {
     const link = this.def(pipeline).link;
     return {
       id: l.id,
+      code: crmCode(this.def(pipeline), l.seq),
       pipeline,
       companyName: l.companyName,
       contactName: l.contactName,

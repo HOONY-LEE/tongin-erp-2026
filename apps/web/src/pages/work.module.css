@@ -350,3 +350,68 @@
   font-size: calc(13px * var(--font-scale, 1));
   font-weight: 500;
 }
+
+/* ── 작업관리 목록 — 상태 요약 카드 · 번호 · 사람 칩 ── */
+.taskStats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.taskStat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.taskStat:hover {
+  background: var(--ark-color-bg-muted);
+}
+.taskStat > span:first-child {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.taskStat b {
+  font-size: calc(22px * var(--font-scale, 1));
+  font-weight: 700;
+}
+.taskStatOn {
+  border-color: var(--ark-color-text);
+}
+.taskStatIcon {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+}
+i.taskStatIcon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px dashed var(--ark-color-text-tertiary);
+}
+.taskNo {
+  color: var(--ark-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.personChip {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  font-size: calc(12px * var(--font-scale, 1));
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .taskStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

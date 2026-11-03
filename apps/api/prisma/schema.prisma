@@ -1530,6 +1530,7 @@ model NoticeOrgUnit {
 /// 팀 업무 — 팀별 '담당자별 업무·업무일지' 시트를 대신한다. 다른 팀이 요청(requester)해 올릴 수도 있다
 model TeamTask {
   id              String            @id @default(uuid()) @db.Uuid
+  seq             Int               @unique @default(autoincrement()) // 화면 번호(T-12) — 시스템이 매긴다
   title           String
   description     String?
   teamOrgId       String?           @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프) — 비우면 개인 업무(담당·요청·만든 사람만)
@@ -2026,6 +2027,7 @@ model FranchiseInfo {
 /// 영업 CRM(공통 틀) — 파이프라인(FRANCHISE 가맹 영업 · B2B 기업영업)마다 단계·유입 경로·추가 항목(fields)만 다르다
 model CrmLead {
   id              String        @id @default(uuid()) @db.Uuid
+  seq             Int           @unique @default(autoincrement()) // 화면 번호(F000012 · B000012) — 시스템이 매긴다
   pipeline        String        @default("FRANCHISE") // FRANCHISE | B2B
   companyName     String        @map("company_name") // 상호·회사명
   contactName     String?       @map("contact_name")
