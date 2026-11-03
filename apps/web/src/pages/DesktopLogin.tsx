@@ -16,9 +16,34 @@ interface Picked {
   password?: string;
 }
 
+/** 고리 가운데 자물쇠(검은 채움) */
+function LockIcon({ size = 56 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M8.5 10.5V9a3.5 3.5 0 0 1 7 0v1.5"
+        stroke="var(--login-lock, #111111)"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <rect x="4.5" y="10" width="15" height="10.5" rx="3" fill="var(--login-lock, #111111)" />
+      <circle cx="12" cy="14.3" r="1.5" fill="var(--ark-color-bg, #fff)" />
+      <rect
+        x="11.35"
+        y="14.3"
+        width="1.3"
+        height="3.2"
+        rx="0.65"
+        fill="var(--ark-color-bg, #fff)"
+      />
+    </svg>
+  );
+}
+
 /**
  * 맥 '계정으로 로그인' 같은 도트 고리 — 네 줄의 점이 천천히 함께 돌고, 색은 화면 위치(각도)에 따라 정해진다.
- * 가운데는 통인 로고(처음) 또는 고른 사람 이름 첫 글자.
+ * 가운데는 자물쇠(처음) 또는 고른 사람 이름 첫 글자.
  */
 function SignInRing({
   center,
@@ -103,7 +128,7 @@ function SignInRing({
 
 /**
  * 데스크톱 앱 로그인 — 작은 고정 창(600×860)에 맞춘 맥 앱 느낌.
- *  처음: 도트 고리(가운데 통인 로고) · 아이디/비밀번호 · 아래 데모 계정 목록
+ *  처음: 도트 고리(가운데 자물쇠) · 아이디/비밀번호 · 아래 데모 계정 목록
  *  계정을 고르면: 고리 가운데 이름 첫 글자 · 비밀번호만 넣고 로그인
  * 웹은 기존 로그인 화면(pages/Login.tsx)을 그대로 쓴다.
  */
@@ -171,7 +196,7 @@ export default function DesktopLogin() {
           <h2 className={styles.name}>{picked.name}</h2>
           <p className={styles.sub}>{picked.desc}</p>
           <input
-            className={`${styles.input} ${error ? styles.inputError : ''} no-focus-ring`}
+            className={`${styles.input} ${error ? styles.inputError : ''}`}
             type="password"
             value={password}
             placeholder="비밀번호"
@@ -206,15 +231,8 @@ export default function DesktopLogin() {
     <div className={styles.page}>
       <div className={styles.landing}>
         <div className={styles.head}>
-          <SignInRing
-            size={180}
-            center={
-              <span className={styles.logo}>
-                <img src="/brand/tongin-logo-color.png" alt="통인익스프레스" />
-              </span>
-            }
-          />
-          <h1 className={styles.title}>{PRODUCT_NAME}</h1>
+          <SignInRing size={180} center={<LockIcon />} />
+          <h1 className={styles.title}>{PRODUCT_NAME} 로그인</h1>
         </div>
 
         <form
@@ -225,7 +243,7 @@ export default function DesktopLogin() {
           }}
         >
           <input
-            className={`${styles.input} no-focus-ring`}
+            className={styles.input}
             value={loginId}
             placeholder="아이디"
             autoComplete="username"
@@ -236,7 +254,7 @@ export default function DesktopLogin() {
             }}
           />
           <input
-            className={`${styles.input} ${error ? styles.inputError : ''} no-focus-ring`}
+            className={`${styles.input} ${error ? styles.inputError : ''}`}
             type="password"
             value={password}
             placeholder="비밀번호"
