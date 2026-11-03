@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import ExcelJS from 'exceljs';
@@ -251,7 +252,7 @@ export class CrmImportService {
     const unmatchedOwners = new Set<string>();
 
     const rows: CrmImportPreview['rows'] = [];
-    const toCreate: Prisma.CrmLeadUncheckedCreateInput[] = [];
+    const toCreate: Prisma.CrmLeadCreateManyInput[] = [];
     for (const r of table.slice(1)) {
       const get = (f: string) => {
         const i = fields.indexOf(f);
@@ -339,29 +340,23 @@ export class CrmImportService {
 
     let imported: number | undefined;
     if (!dryRun && toCreate.length) {
-      // 원격 DB(운영)는 왕복이 느려 기본 5초 트랜잭션 한도를 넘는다 — 상담 기록은 함께 만들고(한 번에) 한도를 넉넉히
-      imported = await this.prisma.$transaction(
-        async (tx) => {
-          for (const data of toCreate)
-            await tx.crmLead.create({
-              data: {
-                ...data,
-                activities: {
-                  create: {
-                    kind: 'STAGE',
-                    toStage: data.stage,
-                    content: '가져오기로 등록',
-                    actorUserId: p.userId,
-                    actorName: p.employeeName ?? p.loginId,
-                    at: data.createdAt ?? new Date(),
-                  },
-                },
-              },
-            });
-          return toCreate.length;
-        },
-        { maxWait: 10_000, timeout: 120_000 },
-      );
+      // 한 줄씩 넣으면 원격 DB(운영)에서 줄마다 왕복이 생겨 72건에 1분 가까이 걸렸다 —
+      // id를 미리 만들어 영업 대상·상담 기록을 각각 한 번(createMany)에 넣는다
+      const leads = toCreate.map((d) => ({ ...d, id: randomUUID() }));
+      const acts = leads.map((l) => ({
+        leadId: l.id,
+        kind: 'STAGE',
+        toStage: l.stage,
+        content: '가져오기로 등록',
+        actorUserId: p.userId,
+        actorName: p.employeeName ?? p.loginId,
+        at: l.createdAt ?? new Date(),
+      }));
+      await this.prisma.$transaction([
+        this.prisma.crmLead.createMany({ data: leads }),
+        this.prisma.crmActivity.createMany({ data: acts }),
+      ]);
+      imported = leads.length;
     }
     return {
       columns: headers.map((h, i) => ({ header: h, field: fields[i], label: labelOf(fields[i]) })),
