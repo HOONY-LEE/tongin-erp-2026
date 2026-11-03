@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { ArrowRight, CalendarClock, Search } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
-import { TASK_STATUS, TASK_STATUS_LABEL, type TaskStatus } from '@tongin/shared';
+import { TASK_STATUS, TASK_STATUS_LABEL, type DutyView, type TaskStatus } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
@@ -47,6 +47,8 @@ interface Task {
   requesterEmpId: string | null;
   requester: PersonRef | null;
   project: string | null;
+  dutyId: string | null;
+  duty: { id: string; title: string } | null;
   status: TaskStatus;
   priority: 'A' | 'B' | 'C';
   dueDate: string | null;
@@ -108,6 +110,30 @@ export default function Tasks() {
   const { tab: view, setTab: setView } = useTabParam<View>('board', 'view');
   const { updatedAt, touch } = useUpdatedAt();
   const dir = useWorkDirectory();
+  // 업무 분장 항목(조직별 묶음) — 업무를 맡은 일에 이을 때 고른다
+  const [dutyGroups, setDutyGroups] = useState<
+    { label: string; options: { value: string; label: string }[] }[]
+  >([]);
+  useEffect(() => {
+    let alive = true;
+    void api<{ duties: DutyView[] }>('/duties')
+      .then(({ duties }) => {
+        if (!alive) return;
+        const by = new Map<string, { value: string; label: string }[]>();
+        for (const d of duties) {
+          const owner = d.ownerName ? ` · ${d.ownerName}` : '';
+          by.set(d.orgUnitName, [
+            ...(by.get(d.orgUnitName) ?? []),
+            { value: d.id, label: `${d.title}${owner}` },
+          ]);
+        }
+        setDutyGroups([...by.entries()].map(([label, options]) => ({ label, options })));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [rows, setRows] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'ALL' | TaskStatus>('ALL');
@@ -187,6 +213,14 @@ export default function Tasks() {
         pairWithNext: true,
       },
       { name: 'project', label: '사업·프로젝트', placeholder: '예: 무브제 컨시어지' },
+      // 업무 분장 항목 — 고르면 그 항목의 '진행 중'에 센다
+      {
+        name: 'dutyId',
+        label: '업무 분장',
+        type: 'select',
+        optionGroups: dutyGroups,
+        placeholder: '맡은 업무 중 하나라면 고르세요',
+      },
       {
         name: 'requesterEmpId',
         label: '요청자(다른 팀이 맡긴 일)',
@@ -195,7 +229,7 @@ export default function Tasks() {
       },
       { name: 'description', label: '내용', type: 'textarea' },
     ],
-    [dir],
+    [dir, dutyGroups],
   );
 
   const save = async (values: Record<string, unknown>) => {
@@ -264,6 +298,7 @@ export default function Tasks() {
                 'dueDate',
                 'status',
                 'project',
+                'dutyId',
                 'requesterEmpId',
                 'description',
               ])
@@ -329,6 +364,7 @@ export default function Tasks() {
                           : null,
                       },
                       { label: '사업·프로젝트', value: d.project },
+                      { label: '업무 분장', value: d.duty?.title },
                       { label: '기한', value: d.dueDate ? <Due t={d} /> : null },
                       { label: '등록일', value: shortDate(d.createdAt) },
                       { label: '완료일', value: d.doneAt ? shortDate(d.doneAt) : null },

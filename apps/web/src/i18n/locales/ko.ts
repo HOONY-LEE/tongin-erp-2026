@@ -49,6 +49,8 @@ export default {
     employees: '직원',
     approvals: '결재함',
     spaces: '공간 예약',
+    duties: '업무 분장',
+    performance: '성과 평가',
     drive: '드라이브',
     leave: '휴가',
     attendance: '근태',

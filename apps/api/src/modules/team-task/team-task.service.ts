@@ -21,6 +21,7 @@ export type TaskScope = 'mine' | 'team' | 'all';
 const person = { select: { id: true, name: true, orgUnit: { select: { name: true } } } };
 const include = {
   team: { select: { id: true, name: true } },
+  duty: { select: { id: true, title: true } },
   assignee: person,
   requester: person,
 } satisfies Prisma.TeamTaskInclude;
@@ -140,6 +141,10 @@ export class TeamTaskService {
       const n = await this.prisma.employee.count({ where: { id: { in: emps } } });
       if (n !== new Set(emps).size) throw new BadRequestException('없는 직원이 들어 있습니다.');
     }
+    if (dto.dutyId) {
+      const d = await this.prisma.duty.findUnique({ where: { id: dto.dutyId } });
+      if (!d || !d.isActive) throw new BadRequestException('없는 업무 분장 항목입니다.');
+    }
   }
 
   private data(dto: UpdateTeamTaskDto) {
@@ -150,6 +155,7 @@ export class TeamTaskService {
       assigneeEmpId: dto.assigneeEmpId,
       requesterEmpId: dto.requesterEmpId,
       project: dto.project === undefined ? undefined : dto.project?.trim() || null,
+      dutyId: dto.dutyId === undefined ? undefined : dto.dutyId || null,
       status: dto.status,
       priority: dto.priority,
       dueDate: dateOrNull(dto.dueDate),

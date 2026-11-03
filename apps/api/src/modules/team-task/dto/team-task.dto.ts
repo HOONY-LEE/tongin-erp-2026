@@ -9,6 +9,7 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { TASK_PRIORITY, TASK_STATUS, type TaskPriority, type TaskStatus } from '@tongin/shared';
 
@@ -39,6 +40,12 @@ export class CreateTeamTaskDto {
   @IsString()
   @MaxLength(100)
   project?: string | null;
+
+  /** 업무 분장 항목(어느 맡은 일의 하나인지) */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
+  @IsUUID()
+  dutyId?: string | null;
 
   @IsOptional()
   @IsIn(TASK_STATUS)

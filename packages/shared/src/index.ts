@@ -688,7 +688,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   // 정산
   { key: 'SETTLEMENT', label: '정산', group: '정산', actions: ALL_CRUD },
   { key: 'BILLING', label: '청구', group: '정산', actions: ALL_CRUD },
-  { key: 'HR', label: '인사·평가', group: '정산', actions: ALL_CRUD },
+  {
+    key: 'HR',
+    label: '인사·평가',
+    group: '정산',
+    actions: ALL_CRUD,
+    hint: '성과 평가: 조회 = 조직·직원 지표·점수 보기, 수정 = 지표 구성·목표·실적 입력',
+  },
   { key: 'MATERIAL', label: '자재', group: '정산', actions: ALL_CRUD },
   { key: 'MATERIAL_ORDER', label: '자재 발주', group: '정산', actions: ALL_CRUD },
   // 시스템
@@ -715,6 +721,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     hint: '팀(소속)·권한 그룹·직책별 사이드바 메뉴 구성을 정합니다. 내 메뉴 순서 바꾸기는 권한 없이 됩니다',
   },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
+  {
+    key: 'DUTY',
+    label: '업무 분장',
+    group: '공통',
+    actions: [],
+    specials: [{ action: 'MANAGE', label: '조직 역할·업무 분장 정하기' }],
+    hint: '업무 분장 보기는 권한 없이 됩니다. 이 권한은 조직의 역할과 업무 항목·담당자를 정합니다',
+  },
   {
     key: 'SPACE',
     label: '공간 예약',
@@ -889,6 +903,7 @@ export * from './agent-blueprint';
 export * from './drive';
 export * from './dashboard';
 export * from './hr';
+export * from './performance';
 export * from './menu';
 
 // ── 공통 업무: 공지사항 · 팀 업무 · 계약·자산 · 지점 관리 기록 ──

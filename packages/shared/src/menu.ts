@@ -81,6 +81,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     desc: '전자결재',
   },
   {
+    key: 'duties',
+    path: '/duties',
+    label: '업무 분장',
+    i18n: 'duties',
+    icon: 'ClipboardList',
+    selfService: true,
+    category: '공통',
+    desc: '조직·직원별 역할과 맡은 업무 범위',
+  },
+  {
     key: 'spaces',
     path: '/spaces',
     label: '공간 예약',
@@ -257,6 +267,15 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     category: '정산·경영',
   },
   {
+    key: 'performance',
+    path: '/performance',
+    label: '성과 평가',
+    i18n: 'performance',
+    icon: 'Hexagon',
+    perm: 'HR.READ',
+    category: '정산·경영',
+  },
+  {
     key: 'assets',
     path: '/assets',
     label: '계약·자산 관리',
@@ -402,7 +421,7 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
     },
     {
       label: '내 업무',
-      items: ['notices', 'tasks', 'approvals', 'drive', 'spaces', 'leave', 'attendance'],
+      items: ['notices', 'tasks', 'duties', 'approvals', 'drive', 'spaces', 'leave', 'attendance'],
     },
     {
       label: '관리',
@@ -423,7 +442,15 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
     },
     {
       label: '정산',
-      items: ['settlements', 'billing', 'hr', 'assets', 'materials', 'material-orders'],
+      items: [
+        'settlements',
+        'billing',
+        'hr',
+        'performance',
+        'assets',
+        'materials',
+        'material-orders',
+      ],
       collapsed: true,
     },
   ],

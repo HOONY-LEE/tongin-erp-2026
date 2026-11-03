@@ -49,6 +49,8 @@ export default {
     employees: 'Employees',
     approvals: 'Approvals',
     spaces: 'Space Booking',
+    duties: 'Duties',
+    performance: 'Performance',
     drive: 'Drive',
     leave: 'Leave',
     attendance: 'Attendance',
