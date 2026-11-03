@@ -67,10 +67,7 @@
   gap: 8px;
 }
 .boardBar > :first-child {
-  flex: 0 1 280px;
-}
-.boardBar > :last-child {
-  margin-left: auto;
+  flex: 0 1 320px;
 }
 .board {
   display: grid;
@@ -151,4 +148,110 @@
 .soon {
   color: var(--ark-color-warning-600, #b26a00);
   font-weight: 600;
+}
+
+/* ── 팀 업무 칸반(akron KanbanBoard) ── */
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.boardSearch {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.boardSearch > svg {
+  position: absolute;
+  left: 12px;
+  color: var(--ark-color-text-tertiary);
+  pointer-events: none;
+}
+.boardSearch input {
+  padding-left: 34px;
+}
+.kanbanWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.kFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+.kRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.kPriority {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: calc(11.5px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.kDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.kChip {
+  max-width: 60%;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(10.5px * var(--font-scale, 1));
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:global([data-theme='dark']) .kChip {
+  background: rgba(255, 255, 255, 0.08);
+}
+.kMuted {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(11px * var(--font-scale, 1));
+}
+.kDue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.kPeople {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: calc(11.5px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+.kLabel {
+  color: var(--ark-color-text-tertiary);
+}
+.kName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 16%, transparent);
+  color: var(--ark-color-primary-600);
+  font-size: calc(10.5px * var(--font-scale, 1));
+  font-weight: 700;
+  flex-shrink: 0;
 }

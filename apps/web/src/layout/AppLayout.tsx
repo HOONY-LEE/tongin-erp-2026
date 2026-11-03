@@ -283,27 +283,14 @@ export default function AppLayout() {
             }
             header={
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
-                    background: 'var(--ark-color-primary-500)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {/* 흰색 통인 호랑이 — 색 있는 로고는 /brand/tongin-logo-color.png */}
-                  <img
-                    src="/brand/tongin-logo-white.png"
-                    alt="통인익스프레스"
-                    width={22}
-                    height={22}
-                    style={{ display: 'block' }}
-                  />
-                </div>
+                {/* 색 있는 통인 호랑이 로고만(배경 상자 없이). 흰색은 /brand/tongin-logo-white.png */}
+                <img
+                  src="/brand/tongin-logo-color.png"
+                  alt="통인익스프레스"
+                  width={32}
+                  height={32}
+                  style={{ display: 'block', flexShrink: 0 }}
+                />
                 {!collapsed && (
                   <span style={{ fontWeight: 700, fontSize: fs(15) }}>{PRODUCT_NAME}</span>
                 )}

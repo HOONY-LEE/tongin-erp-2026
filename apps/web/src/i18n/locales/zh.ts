@@ -1,5 +1,5 @@
 export default {
-  app: { title: '通仁 AI-WORKS' },
+  app: { title: '通仁 AI Works' },
   common: {
     add: '添加',
     save: '保存',
@@ -48,6 +48,7 @@ export default {
     dashboardAdmin: '仪表板管理',
     employees: '员工',
     approvals: '审批',
+    spaces: '空间预约',
     leave: '休假',
     attendance: '考勤',
     menuMgmt: '菜单管理',

@@ -1,0 +1,337 @@
+/* 공간 예약 */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  flex: 1;
+  min-height: 0;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  cursor: pointer;
+}
+.navBtn:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.dateText {
+  min-width: 190px;
+  text-align: center;
+  font-size: calc(17px * var(--font-scale, 1));
+  font-weight: 700;
+}
+.dateInput {
+  width: 150px;
+}
+
+/* 공간 카드 */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(15px * var(--font-scale, 1));
+  color: var(--ark-color-text);
+}
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cardMeta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.cardFac {
+  color: var(--ark-color-text-tertiary);
+}
+.cardCount {
+  font-weight: 600;
+  color: var(--ark-color-text-tertiary);
+}
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.empty {
+  padding: 24px;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.muted {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 400;
+}
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 일간 표 — 머리(공간 이름)는 고정, 시간 영역만 스크롤 */
+.grid {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 320px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--ark-color-bg);
+}
+.gridHead,
+.gridInner {
+  display: grid;
+  grid-template-columns: 64px repeat(var(--cols), minmax(160px, 1fr));
+}
+.gridHead {
+  flex-shrink: 0;
+  background: var(--ark-color-bg-subtle);
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.timeHead {
+  padding: 10px 0;
+  text-align: center;
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--ark-color-text-secondary);
+}
+.colHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-left: 1px solid var(--ark-color-border);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gridBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.gridInner {
+  position: relative;
+}
+.timeCol {
+  display: flex;
+  flex-direction: column;
+}
+.timeLabel {
+  box-sizing: border-box;
+  padding-top: 3px;
+  text-align: center;
+  font-size: calc(11px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.col {
+  position: relative;
+  border-left: 1px solid var(--ark-color-border);
+  cursor: pointer;
+  /* 1시간마다 실선, 30분마다 옅은 점선 */
+  background-image:
+    linear-gradient(to bottom, transparent calc(var(--hour-h) - 1px), var(--ark-color-border) 0),
+    linear-gradient(
+      to bottom,
+      transparent calc(var(--hour-h) / 2 - 1px),
+      color-mix(in srgb, var(--ark-color-border) 50%, transparent) 0,
+      color-mix(in srgb, var(--ark-color-border) 50%, transparent) calc(var(--hour-h) / 2),
+      transparent 0
+    );
+  background-size: 100% var(--hour-h);
+}
+.col:hover {
+  background-color: color-mix(in srgb, var(--ark-color-primary-500) 3%, transparent);
+}
+.closed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ark-color-bg-subtle),
+    var(--ark-color-bg-subtle) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  cursor: not-allowed;
+}
+.block {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  border-left: 3px solid var(--c);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 12%, var(--ark-color-bg));
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+.block:hover {
+  background: color-mix(in srgb, var(--c) 20%, var(--ark-color-bg));
+}
+.blockTitle {
+  max-width: 100%;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--ark-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blockMeta {
+  max-width: 100%;
+  font-size: calc(11px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nowLine {
+  position: absolute;
+  left: 64px;
+  right: 0;
+  z-index: 3;
+  height: 2px;
+  background: var(--ark-color-error-500, #ef4444);
+  pointer-events: none;
+}
+.nowLine::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+/* 상세·편집 창 */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dItem {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 12px;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.dItem > span {
+  color: var(--ark-color-text-tertiary);
+}
+.pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 500;
+  min-width: 0;
+}
+.row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.short {
+  max-width: 160px;
+}
+.rental {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #f97316 6%, var(--ark-color-bg));
+  border: 1px solid color-mix(in srgb, #f97316 25%, transparent);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.swatches {
+  display: flex;
+  gap: 8px;
+}
+.swatchBtn {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.swatchBtn[aria-pressed='true'] {
+  border-color: var(--ark-color-bg);
+  box-shadow: 0 0 0 2px var(--focus-ring, #111827);
+}
+@media (max-width: 768px) {
+  .row3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

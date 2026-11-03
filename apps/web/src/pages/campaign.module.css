@@ -68,8 +68,8 @@
 }
 .textarea:focus {
   outline: none;
-  border-color: var(--ark-color-info-500);
-  box-shadow: 0 0 0 1px var(--ark-color-info-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .counter {
   display: flex;
@@ -412,8 +412,8 @@
   color: var(--ark-color-text-tertiary);
 }
 .searchBox:focus-within {
-  border-color: var(--ark-color-info-500);
-  box-shadow: 0 0 0 2px var(--ark-color-info-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 .searchInput {
   flex: 1;

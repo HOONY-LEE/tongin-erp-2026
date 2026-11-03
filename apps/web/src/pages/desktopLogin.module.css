@@ -71,7 +71,7 @@
   transition: border-color 0.2s;
 }
 .input:focus {
-  border-color: #0071e3;
+  border-color: var(--focus-ring, #1d1d1f);
 }
 .inputError,
 .inputError:focus {

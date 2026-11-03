@@ -1,5 +1,5 @@
 export default {
-  app: { title: 'Tongin AI-WORKS' },
+  app: { title: 'Tongin AI Works' },
   common: {
     add: 'Add',
     save: 'Save',
@@ -48,6 +48,7 @@ export default {
     dashboardAdmin: 'Dashboards',
     employees: 'Employees',
     approvals: 'Approvals',
+    spaces: 'Space Booking',
     leave: 'Leave',
     attendance: 'Attendance',
     menuMgmt: 'Menus',

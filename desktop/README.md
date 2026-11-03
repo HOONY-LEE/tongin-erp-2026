@@ -1,4 +1,4 @@
-# 통인 AI-WORKS 데스크톱 앱 (Electron)
+# 통인 AI Works 데스크톱 앱 (Electron)
 
 웹 앱을 창 하나로 감싼 데스크톱 앱입니다. 화면은 서버(운영: https://tongin-erp.vercel.app)에서 받으므로
 **웹을 배포하면 데스크톱도 바로 새 화면**이 됩니다. 앱을 다시 깔아야 하는 건 이 폴더(main.js·preload.js)를 바꿨을 때뿐입니다.

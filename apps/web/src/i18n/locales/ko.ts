@@ -1,5 +1,5 @@
 export default {
-  app: { title: '통인 AI-WORKS' },
+  app: { title: '통인 AI Works' },
   common: {
     add: '추가',
     save: '저장',
@@ -48,6 +48,7 @@ export default {
     dashboardAdmin: '대시보드 관리',
     employees: '직원',
     approvals: '결재함',
+    spaces: '공간 예약',
     leave: '휴가',
     attendance: '근태',
     menuMgmt: '메뉴 관리',

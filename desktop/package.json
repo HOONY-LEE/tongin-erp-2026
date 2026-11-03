@@ -1,9 +1,9 @@
 {
   "name": "tongin-ai-works-desktop",
-  "productName": "통인 AI-WORKS",
+  "productName": "통인 AI Works",
   "version": "0.1.0",
   "private": true,
-  "description": "통인 AI-WORKS 데스크톱 앱(Electron) — 웹 앱을 창으로 감싼다",
+  "description": "통인 AI Works 데스크톱 앱(Electron) — 웹 앱을 창으로 감싼다",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.tonginexp.aiworks",
-    "productName": "통인 AI-WORKS",
+    "productName": "통인 AI Works",
     "copyright": "Copyright © 2026 통인익스프레스",
     "asar": true,
     "files": [
@@ -40,7 +40,7 @@
       ]
     },
     "dmg": {
-      "title": "통인 AI-WORKS 설치"
+      "title": "통인 AI Works 설치"
     },
     "win": {
       "icon": "assets/icon.png",

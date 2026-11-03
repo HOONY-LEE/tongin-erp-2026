@@ -1,4 +1,4 @@
-// 통인 AI-WORKS 데스크톱 앱 — 웹 앱(운영: Vercel)을 창 하나로 감싼다.
+// 통인 AI Works 데스크톱 앱 — 웹 앱(운영: Vercel)을 창 하나로 감싼다.
 // 화면 코드는 서버에서 받으므로 배포하면 데스크톱도 바로 새 버전이 된다(앱을 다시 깔 필요 없음).
 const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
@@ -13,7 +13,7 @@ const APP_ORIGIN = new URL(APP_URL).origin;
 // 구글 계정 연결(드라이브·캘린더) 동의 화면은 창 안에서 연다 — 끝나면 앱 주소로 돌아온다
 const ALLOWED_ORIGINS = new Set([APP_ORIGIN, 'https://accounts.google.com']);
 
-app.setName('통인 AI-WORKS');
+app.setName('통인 AI Works');
 
 /* 창 크기 — 로그인은 좁은 고정 창, 로그인 뒤에는 넓은 창 */
 const LOGIN_SIZE = { width: 600, height: 860 };
@@ -60,7 +60,7 @@ function createWindow() {
     resizable: false,
     maximizable: false,
     fullscreenable: false,
-    title: '통인 AI-WORKS',
+    title: '통인 AI Works',
     // 맥: 창 버튼(빨강·노랑·초록)을 화면 헤더 안에 — 웹이 그 자리를 비워 둔다(AppLayout .native)
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
     trafficLightPosition: isMac ? { x: 18, y: 12 } : undefined,
