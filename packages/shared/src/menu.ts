@@ -234,7 +234,7 @@ export const MENU_CATALOG: readonly MenuDef[] = [
   {
     key: 'franchise-leads',
     path: '/franchise-leads',
-    label: '가맹 영업',
+    label: '가맹 고객관리',
     i18n: 'franchiseLeads',
     icon: 'Handshake',
     perm: 'FRANCHISE.READ',

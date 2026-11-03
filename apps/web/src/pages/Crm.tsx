@@ -5,7 +5,10 @@ import {
   CRM_ACTIVITY_LABEL,
   CRM_INTERESTS,
   CRM_INTEREST_LABEL,
+  CRM_PHASES,
   CRM_PIPELINES,
+  crmPhaseOf,
+  type CrmPhase,
   type CrmActivityKind,
   type CrmActivityView,
   type CrmInterest,
@@ -38,10 +41,14 @@ import {
 import styles from './franchise.module.css';
 
 type View = 'board' | 'list';
-type ListTab = string;
 const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
-const isOpen = (def: CrmPipelineDef, stage: string) =>
-  def.stages.find((s) => s.key === stage)?.open ?? false;
+/** 목록·카드용 짧은 금액 — 7.5억 · 3,000만 */
+const wonShort = (n: number) =>
+  n >= 1e8
+    ? `${(n / 1e8).toFixed(n % 1e8 ? 1 : 0).replace(/\.0$/, '')}억`
+    : n >= 1e4
+      ? `${Math.round(n / 1e4).toLocaleString('ko-KR')}만`
+      : `${n.toLocaleString('ko-KR')}원`;
 const stageLabel = (def: CrmPipelineDef, k: string | null) =>
   (k && def.stages.find((s) => s.key === k)?.label) ?? k ?? '';
 const sourceLabel = (def: CrmPipelineDef, k: string) =>
@@ -53,6 +60,12 @@ const fieldText = (f: CrmPipelineDef['fields'][number], v: unknown) =>
       ? `${Number(v).toLocaleString('ko-KR')}${f.unit ?? ''}`
       : String(v);
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+/** 목록용 짧은 날짜 — 올해면 11.01, 아니면 25.11.01 */
+const shortYmd = (iso: string) => {
+  const d = new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 10);
+  const [y, m, dd] = d.split('-');
+  return y === kstToday().slice(0, 4) ? `${m}.${dd}` : `${y.slice(2)}.${m}.${dd}`;
+};
 const md = (s: string) => `${Number(s.slice(5, 7))}.${Number(s.slice(8, 10))}`;
 const when = (iso: string) =>
   new Date(iso).toLocaleString('ko-KR', {
@@ -94,7 +107,6 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const def = CRM_PIPELINES[pipeline];
   const base = `/crm/${pipeline}/leads`;
   const OPEN = def.stages.filter((s) => s.open).map((s) => s.key);
-  const wonKey = def.stages.find((s) => s.won)?.key ?? 'WON';
   const toast = useToast();
   const { user, can } = useAuth();
   const { people } = useDirectory();
@@ -104,8 +116,9 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const [mineOnly, setMineOnly] = useState(false);
   const [editing, setEditing] = useState<CrmLeadView | 'new' | null>(null);
   const [links, setLinks] = useState<{ value: string; label: string }[]>([]);
-  const { tab: view, setTab: setView } = useTabParam<View>('board', 'view');
-  const { tab: listTab, setTab: setListTab } = useTabParam<ListTab>('open');
+  const { tab: view, setTab: setView } = useTabParam<View>('list', 'view');
+  // 위 탭 — 리드 · 상담 진행(영업 기회) · 계약(수주) · 보류·실패 · 전체
+  const { tab: phase, setTab: setPhase } = useTabParam<CrmPhase | 'all'>('lead', 'phase');
   const detail = useDetailParam();
   const { updatedAt, touch } = useUpdatedAt();
 
@@ -363,8 +376,8 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       value={view}
       onChange={(v) => setView(v as View)}
       options={[
-        { value: 'board', label: '칸반' },
         { value: 'list', label: '리스트' },
+        { value: 'board', label: '칸반' },
       ]}
     />
   );
@@ -394,110 +407,205 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     </div>
   );
 
+  const phaseRows = filtered.filter((r) => phase === 'all' || crmPhaseOf(def, r.stage) === phase);
+  const inPhase = rows.filter((r) => phase === 'all' || crmPhaseOf(def, r.stage) === phase);
+  const sum = (list: CrmLeadView[]) => list.reduce((n, r) => n + (r.amount ?? 0), 0);
+  const wonN = rows.filter((r) => crmPhaseOf(def, r.stage) === 'won').length;
+  const lostN = rows.filter((r) => def.stages.find((s) => s.key === r.stage)?.lost).length;
+  const holdN = rows.filter((r) => crmPhaseOf(def, r.stage) === 'closed').length - lostN;
+  const amountName = def.amountLabel?.replace(/\(.*\)/, '') ?? '금액';
+  const kpis: { label: string; value: string; sub?: string }[] =
+    phase === 'lead' || phase === 'all'
+      ? [
+          {
+            label: `${def.phaseLabels.lead} 수`,
+            value: `${inPhase.length}`,
+            sub: `일주일 안 연락할 곳 ${dueSoon}`,
+          },
+          ...(def.amountLabel
+            ? [{ label: `${def.phaseLabels.lead} ${amountName}`, value: won(sum(inPhase)) }]
+            : []),
+          {
+            label: '관심도 높음',
+            value: inPhase.length
+              ? `${Math.round((inPhase.filter((r) => r.interest === 'A').length / inPhase.length) * 100)}%`
+              : '—',
+            sub: `${inPhase.filter((r) => r.interest === 'A').length}곳`,
+          },
+        ]
+      : phase === 'deal'
+        ? [
+            {
+              label: `${def.phaseLabels.deal} 건수`,
+              value: `${inPhase.length}`,
+              sub: `일주일 안 연락할 곳 ${dueSoon}`,
+            },
+            ...(def.amountLabel ? [{ label: '파이프라인 가치', value: won(sum(inPhase)) }] : []),
+            {
+              label: '전환율',
+              value: wonN + lostN ? `${Math.round((wonN / (wonN + lostN)) * 100)}%` : '—',
+              sub: `${def.phaseLabels.won} ${wonN} · 실패 ${lostN}`,
+            },
+          ]
+        : phase === 'won'
+          ? [
+              { label: `${def.phaseLabels.won} 건수`, value: `${inPhase.length}` },
+              ...(def.amountLabel
+                ? [
+                    { label: `총 ${amountName}`, value: won(sum(inPhase)) },
+                    {
+                      label: `평균 ${amountName}`,
+                      value: inPhase.length ? won(Math.round(sum(inPhase) / inPhase.length)) : '—',
+                    },
+                  ]
+                : []),
+            ]
+          : [
+              { label: '보류', value: `${holdN}` },
+              { label: '실패', value: `${lostN}` },
+            ];
+
   const columns: Column[] = [
     {
-      title: '단계',
-      width: 110,
-      render: (r) => <StageBadge def={def} stage={String(r.stage)} />,
-      exportValue: (r) => stageLabel(def, String(r.stage)),
+      title: 'ID',
+      width: 92,
+      render: (r) => <span className={styles.code}>{(r as unknown as CrmLeadView).code}</span>,
+      exportValue: (r) => (r as unknown as CrmLeadView).code,
     },
     {
-      title: pipeline === 'B2B' ? '회사' : '상호',
+      title: '고객명',
+      width: 80,
+      render: (r) => (r.contactName as string) ?? '—',
+      exportValue: (r) => (r.contactName as string) ?? '',
+    },
+    {
+      title: pipeline === 'B2B' ? '회사명' : '상호',
       dataIndex: 'companyName',
       flex: 1,
       minWidth: 140,
     },
     {
-      title: '담당자',
-      dataIndex: 'contactName',
-      width: 90,
-      render: (r) => (r.contactName as string) ?? '—',
+      title: '연락처',
+      width: 142,
+      render: (r) => (r.phone ? formatPhone(String(r.phone)) : '—'),
+      exportValue: (r) => (r.phone ? formatPhone(String(r.phone)) : ''),
     },
-    { title: '연락처', width: 130, render: (r) => (r.phone ? formatPhone(String(r.phone)) : '—') },
-    { title: '지역', dataIndex: 'region', width: 130, render: (r) => (r.region as string) ?? '—' },
-    {
-      title: '경로',
-      width: 110,
-      render: (r) => sourceLabel(def, String(r.source)),
-    },
-    {
-      title: '관심도',
-      width: 70,
-      render: (r) => CRM_INTEREST_LABEL[r.interest as CrmInterest],
-    },
-    ...(def.amountLabel
+    // 유입 경로는 리드 단계에서 주로 본다 — 진행·계약 탭은 금액·다음 연락을 보이려고 뺀다
+    ...(phase === 'lead' || phase === 'all'
+      ? [{ title: '유입경로', width: 96, render: (r: Row) => sourceLabel(def, String(r.source)) }]
+      : []),
+    ...(phase === 'lead' || phase === 'all'
       ? [
           {
-            title: def.amountLabel.replace(/\(.*\)/, ''),
-            width: 120,
-            render: (r: Row) => (r.amount == null ? '—' : won(Number(r.amount))),
+            title: '지역',
+            width: 100,
+            render: (r: Row) => (r.region as string) ?? '—',
+            exportValue: (r: Row) => (r.region as string) ?? '',
+          },
+        ]
+      : []),
+    {
+      title: '단계',
+      width: 100,
+      render: (r) => <StageBadge def={def} stage={String(r.stage)} />,
+      exportValue: (r) => stageLabel(def, String(r.stage)),
+    },
+    {
+      title: '영업 담당',
+      width: 80,
+      render: (r) =>
+        r.ownerName ? <span className={styles.personChip}>{r.ownerName as string}</span> : '—',
+      exportValue: (r) => (r.ownerName as string) ?? '',
+    },
+    {
+      title: '마지막 접촉',
+      width: 96,
+      render: (r) => (r.lastActivityAt ? shortYmd(String(r.lastActivityAt)) : '—'),
+      exportValue: (r) => (r.lastActivityAt ? String(r.lastActivityAt).slice(0, 10) : ''),
+    },
+    ...(def.amountLabel && phase !== 'lead'
+      ? [
+          {
+            title: amountName,
+            width: 90,
+            render: (r: Row) => (r.amount == null ? '—' : wonShort(Number(r.amount))),
             exportValue: (r: Row) => (r.amount == null ? '' : String(r.amount)),
           },
         ]
       : []),
-    { title: '영업 담당', width: 90, render: (r) => (r.ownerName as string) ?? '—' },
+    ...(phase === 'won' && def.link
+      ? [
+          {
+            title: def.link === 'BRANCH' ? '가맹점' : '거래처',
+            width: 100,
+            render: (r: Row) => (r.linkName as string) ?? '—',
+            exportValue: (r: Row) => (r.linkName as string) ?? '',
+          },
+        ]
+      : [
+          {
+            title: '다음 연락',
+            width: 110,
+            render: (r: Row) => <NextAction l={r as unknown as CrmLeadView} />,
+            exportValue: (r: Row) => (r.nextActionAt as string) ?? '',
+          },
+        ]),
     {
-      title: '다음 연락',
-      width: 150,
-      render: (r) => <NextAction l={r as unknown as CrmLeadView} />,
-      exportValue: (r) => (r.nextActionAt as string) ?? '',
+      title: '관심도',
+      width: 72,
+      render: (r) => (
+        <span className={`${styles.interest} ${styles[`interest${r.interest as CrmInterest}`]}`}>
+          {CRM_INTEREST_LABEL[r.interest as CrmInterest]}
+        </span>
+      ),
+      exportValue: (r) => CRM_INTEREST_LABEL[r.interest as CrmInterest],
     },
   ];
-  const listRows = filtered.filter((r) =>
-    listTab === 'open' ? OPEN.includes(r.stage) : listTab === 'all' ? true : r.stage === listTab,
+
+  const phaseTabs = (
+    <SegmentedControl
+      value={phase}
+      onChange={(v) => setPhase(v as CrmPhase | 'all')}
+      options={[
+        ...CRM_PHASES.map((p) => ({ value: p, label: def.phaseLabels[p] })),
+        { value: 'all', label: '전체' },
+      ]}
+    />
   );
 
   return (
     <ListPage
       fit
       title={def.label}
-      subtitle={`${def.description} 카드를 끌어 단계를 옮기고, 상세에서 통화·문자·미팅 기록을 남기세요.`}
+      subtitle={`${def.description} 상세에서 통화·문자·미팅 기록을 남기고, 칸반에서는 카드를 끌어 단계를 옮깁니다.`}
       onRefresh={load}
       updatedAt={updatedAt}
+      actions={view === 'list' ? phaseTabs : undefined}
     >
-      <div className={styles.leadStats}>
-        <span>
-          진행 중 <b>{open.length}</b>
-        </span>
-        <span className={dueSoon ? styles.soon : ''}>
-          일주일 안 연락할 곳 <b>{dueSoon}</b>
-        </span>
-        <span>
-          {stageLabel(def, wonKey)} <b>{rows.filter((r) => r.stage === wonKey).length}</b>
-        </span>
-        <span>
-          보류·실패 <b>{rows.filter((r) => !isOpen(def, r.stage) && r.stage !== wonKey).length}</b>
-        </span>
-        {def.amountLabel && (
-          <span>
-            진행 중 금액 <b>{won(open.reduce((n, r) => n + (r.amount ?? 0), 0))}</b>
-          </span>
-        )}
-      </div>
       {view === 'list' ? (
-        <DataTable
-          fit
-          columns={columns}
-          rows={listRows as unknown as Row[]}
-          loading={loading}
-          exportable
-          exportFileName={def.label.replace(/\s/g, '')}
-          filters={filters}
-          viewSwitch={viewSwitch}
-          tabs={
-            <SegmentedControl
-              value={listTab}
-              onChange={(v) => setListTab(v as ListTab)}
-              options={[
-                { value: 'open', label: '진행 중' },
-                ...def.stages.filter((s) => !s.open).map((s) => ({ value: s.key, label: s.label })),
-                { value: 'all', label: '전체' },
-              ]}
-            />
-          }
-          toolbarActions={addButton}
-          onRowClick={(r) => detail.open(String(r.id))}
-        />
+        <>
+          <div className={styles.kpis}>
+            {kpis.map((k) => (
+              <div key={k.label} className={styles.kpi}>
+                <span>{k.label}</span>
+                <b>{k.value}</b>
+                {k.sub && <small>{k.sub}</small>}
+              </div>
+            ))}
+          </div>
+          <DataTable
+            fit
+            columns={columns}
+            rows={phaseRows as unknown as Row[]}
+            loading={loading}
+            exportable
+            exportFileName={`${def.label.replace(/\s/g, '')}_${phase === 'all' ? '전체' : def.phaseLabels[phase]}`}
+            filters={filters}
+            viewSwitch={viewSwitch}
+            toolbarActions={addButton}
+            onRowClick={(r) => detail.open(String(r.id))}
+          />
+        </>
       ) : (
         <Board
           def={def}
@@ -735,29 +843,47 @@ function LeadDetail({
         l
           ? [
               {
+                title: '기본 정보',
                 items: [
+                  { label: 'ID', value: l.code },
+                  { label: '등록일', value: l.createdAt.slice(0, 10) },
+                  { label: def.key === 'B2B' ? '회사명' : '상호', value: l.companyName },
                   { label: '단계', value: <StageBadge def={def} stage={l.stage} /> },
-                  {
-                    label: def.contactLabel,
-                    value: [l.contactName, l.contactTitle].filter(Boolean).join(' · ') || null,
-                  },
-                  { label: '연락처', value: l.phone ? formatPhone(l.phone) : null },
-                  ...(l.email ? [{ label: '메일', value: l.email }] : []),
                   { label: def.regionLabel, value: l.region },
                   { label: '유입 경로', value: sourceLabel(def, l.source) },
-                  { label: '관심도', value: CRM_INTEREST_LABEL[l.interest] },
-                  { label: '영업 담당', value: l.ownerName },
-                  ...(def.amountLabel
-                    ? [{ label: def.amountLabel, value: l.amount == null ? null : won(l.amount) }]
-                    : []),
-                  ...(def.expectedLabel ? [{ label: def.expectedLabel, value: l.expectedAt }] : []),
-                  { label: '다음 연락', value: <NextAction l={l} /> },
-                  { label: '다음에 할 일', value: l.nextAction },
                   ...def.fields.map((f) => ({
                     label: f.label,
                     value: fieldText(f, l.fields?.[f.key]),
                     wide: f.type === 'textarea',
                   })),
+                ],
+              },
+              {
+                title: '연락처 정보',
+                items: [
+                  {
+                    label: def.contactLabel,
+                    value: [l.contactName, l.contactTitle].filter(Boolean).join(' · ') || null,
+                  },
+                  { label: '연락처', value: l.phone ? formatPhone(l.phone) : null },
+                  ...(def.key === 'B2B' ? [{ label: '메일', value: l.email }] : []),
+                ],
+              },
+              {
+                title: '영업 정보',
+                items: [
+                  { label: '영업 담당', value: l.ownerName },
+                  { label: '관심도', value: CRM_INTEREST_LABEL[l.interest] },
+                  ...(def.amountLabel
+                    ? [{ label: def.amountLabel, value: l.amount == null ? null : won(l.amount) }]
+                    : []),
+                  ...(def.expectedLabel ? [{ label: def.expectedLabel, value: l.expectedAt }] : []),
+                  {
+                    label: '마지막 접촉',
+                    value: l.lastActivityAt ? l.lastActivityAt.slice(0, 10) : null,
+                  },
+                  { label: '다음 연락', value: <NextAction l={l} /> },
+                  { label: '다음에 할 일', value: l.nextAction },
                   ...(def.link ? [{ label: def.linkLabel, value: l.linkName }] : []),
                   { label: '실패·보류 이유', value: l.lostReason },
                   { label: '메모', value: l.memo, wide: true },

@@ -120,7 +120,26 @@ export class TeamTaskService {
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
       take: 500,
     });
-    return rows;
+    return this.withCreator(rows);
+  }
+
+  /** 만든 사람(생성자) 이름 — 담당자와 따로 보인다. 계정에 직원이 없으면 로그인 아이디 */
+  private async withCreator<T extends { createdByUserId: string | null }>(rows: T[]) {
+    const ids = [...new Set(rows.map((r) => r.createdByUserId).filter((v): v is string => !!v))];
+    const users = ids.length
+      ? await this.prisma.appUser.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, loginId: true, employee: { select: { id: true, name: true } } },
+        })
+      : [];
+    const byId = new Map(users.map((u) => [u.id, u]));
+    return rows.map((r) => {
+      const u = r.createdByUserId ? byId.get(r.createdByUserId) : undefined;
+      return {
+        ...r,
+        creator: u ? { id: u.employee?.id ?? null, name: u.employee?.name ?? u.loginId } : null,
+      };
+    });
   }
 
   /** 볼 수 있는 업무 하나 — 내 업무이거나 TASK.READ + 범위 안 */
@@ -137,7 +156,7 @@ export class TeamTaskService {
   }
 
   async findOne(p: AuthPrincipal, id: string) {
-    return (await this.load(p, id)).task;
+    return (await this.withCreator([(await this.load(p, id)).task]))[0];
   }
 
   private async checkRefs(dto: UpdateTeamTaskDto) {

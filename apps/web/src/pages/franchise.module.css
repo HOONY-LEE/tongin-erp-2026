@@ -199,3 +199,63 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ── 영업 CRM 목록(리드 · 상담 진행 · 계약) ── */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.kpi > span {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.kpi > b {
+  font-size: calc(24px * var(--font-scale, 1));
+  font-weight: 700;
+}
+.kpi > small {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.code {
+  color: var(--ark-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.personChip {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  font-size: calc(12px * var(--font-scale, 1));
+  white-space: nowrap;
+}
+.interest {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: calc(11px * var(--font-scale, 1));
+  white-space: nowrap;
+}
+.interestA {
+  color: #16a34a;
+  background: color-mix(in srgb, #16a34a 8%, transparent);
+}
+.interestB {
+  color: #d97706;
+  background: color-mix(in srgb, #d97706 8%, transparent);
+}
+.interestC {
+  color: #dc2626;
+  background: color-mix(in srgb, #dc2626 8%, transparent);
+}
