@@ -761,3 +761,10 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
 [class*='_sidebarContent_']:focus-within {
   scrollbar-color: color-mix(in srgb, var(--ark-color-text) 22%, transparent) transparent;
 }
+/* 펼친 사이드바 — 메뉴와 스크롤바 사이 빈 칸을 줄인다(오른쪽 여백 12px → 4px).
+   스크롤바 자리는 늘 비워 둬(stable) 스크롤이 생겨도 메뉴 폭이 흔들리지 않는다. 접힌 사이드바는 그대로 */
+[class*='_sidebar_']:not([class*='_sidebarCollapsed_']) > [class*='_sidebarContent_'],
+[class*='_sidebarContent_']:not([class*='_sidebarCollapsed_'] *) {
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}

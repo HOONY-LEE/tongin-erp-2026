@@ -451,7 +451,6 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
         'materials',
         'material-orders',
       ],
-      collapsed: true,
     },
   ],
 };
