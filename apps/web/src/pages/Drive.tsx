@@ -8,15 +8,18 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Folder,
   FolderInput,
   FolderPlus,
   FolderSearch,
+  FolderUp,
   HardDrive,
   Info,
   LayoutGrid,
   List,
   Pencil,
   Plus,
+  RefreshCw,
   RotateCcw,
   Search,
   Share2,
@@ -45,13 +48,15 @@ import {
   driveDate,
   fetchDriveFile,
   fileIcon,
+  pickFromDirectoryInput,
   previewKind,
+  readDropped,
   uploadDriveFile,
+  type FolderPick,
 } from '../lib/drive';
 import { Button, PopoutButton, useToast } from '../components/ui';
 import {
   MoveModal,
-  NameModal,
   PreviewModal,
   ShareModal,
   SpaceModal,
@@ -76,6 +81,13 @@ interface Listing {
   role: DriveRole;
   items: DriveItemView[];
 }
+/** 왼쪽 폴더 나무 — 편집할 수 있는 드라이브의 폴더 전부(GET /drive/folders) */
+interface FolderTree {
+  folders: { id: string; spaceId: string; parentId: string | null; name: string }[];
+}
+type Target = { spaceId: string; parentId: string | null };
+// 컴퓨터가 몰래 만드는 파일은 올리지 않는다
+const JUNK = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
 interface Upload {
   key: string;
   name: string;
@@ -98,7 +110,9 @@ const readLayout = (): 'list' | 'grid' => {
 /**
  * 드라이브 — 구글 드라이브처럼.
  *  왼쪽: 새로 만들기 · 내 드라이브 · 공유 문서함 · 최근 · 중요 · 휴지통 · 공유 드라이브 · 조직 드라이브 · 구글 드라이브
- *  오른쪽: 찾기 · 경로 · 목록/바둑판 · 고르기(클릭, ⌘/Ctrl·Shift로 여럿) · 열기(두 번 클릭) · 오른쪽 클릭 메뉴 · 끌어다 놓아 올리기·옮기기
+ *  왼쪽 아래 폴더 나무(펼치기·접기, 폴더로 끌어다 놓기)
+ *  오른쪽: 찾기 · 경로 · 새 폴더·올리기 · 목록/바둑판 · 고르기(클릭, ⌘/Ctrl·Shift로 여럿) · 열기(두 번 클릭)
+ *         · 오른쪽 클릭 메뉴(항목·빈 곳) · 이름은 그 자리에서 고침 · 파일·폴더째 끌어다 놓아 올리기 · 항목 옮기기
  * 주소: ?space=&folder= 또는 ?view=recent|starred|shared|trash|google, 찾기는 &q=
  */
 export default function Drive() {
@@ -122,11 +136,13 @@ export default function Drive() {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
+  const [tree, setTree] = useState<FolderTree['folders']>([]);
+  const [openNodes, setOpenNodes] = useState<Set<string>>(new Set());
+  // 그 자리에서 이름 고치는 항목(새 폴더를 만들면 바로 이름 칸이 열린다)
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [preview, setPreview] = useState<DriveItemView | null>(null);
-  const [naming, setNaming] = useState<
-    { kind: 'folder' } | { kind: 'rename'; item: DriveItemView } | null
-  >(null);
   const [sharing, setSharing] = useState<DriveItemView | null>(null);
   const [moving, setMoving] = useState<DriveItemView[] | null>(null);
   const [spaceModal, setSpaceModal] = useState<{ id: string | null } | null>(null);
@@ -158,9 +174,17 @@ export default function Drive() {
       toast({ type: 'error', title: errText(e, '드라이브를 불러오지 못했습니다') });
     }
   }, [toast]);
+  const loadTree = useCallback(async () => {
+    try {
+      setTree((await api<FolderTree>('/drive/folders')).folders);
+    } catch {
+      // 나무가 없어도 드라이브는 쓸 수 있다
+    }
+  }, []);
   useEffect(() => {
     void loadSpaces();
-  }, [loadSpaces]);
+    void loadTree();
+  }, [loadSpaces, loadTree]);
 
   const load = useCallback(async () => {
     if (view === 'google') return;
@@ -212,23 +236,33 @@ export default function Drive() {
   const refreshAll = useCallback(() => {
     void load();
     void loadSpaces();
-  }, [load, loadSpaces]);
+    void loadTree();
+  }, [load, loadSpaces, loadTree]);
+
+  // 지금 보는 폴더까지 왼쪽 나무를 펼쳐 둔다
+  useEffect(() => {
+    if (!listing) return;
+    setOpenNodes((s) => {
+      const ids = [listing.space.id, ...listing.path.slice(0, -1).map((p) => p.id)];
+      if (ids.every((id) => s.has(id))) return s;
+      return new Set([...s, ...ids]);
+    });
+  }, [listing]);
 
   // ── 올리기 ──
 
-  const startUploads = useCallback(
-    async (files: File[], target: { spaceId: string; parentId: string | null } | null) => {
-      if (!target) return;
-      const list = files.filter((f) => f.size > 0 || f.type);
-      const too = list.filter((f) => f.size > DRIVE_FILE_MAX_BYTES);
+  const uploadJobs = useCallback(
+    async (jobs: { file: File; target: Target }[]) => {
+      const list = jobs.filter(({ file: f }) => (f.size > 0 || f.type) && !JUNK.has(f.name));
+      const too = list.filter(({ file: f }) => f.size > DRIVE_FILE_MAX_BYTES);
       if (too.length)
         toast({
           type: 'error',
           title: `${too.length}개는 ${DRIVE_FILE_MAX_BYTES / 1024 / 1024}MB를 넘어 올리지 않았습니다(큰 파일은 구글 드라이브 링크로)`,
         });
-      const ok = list.filter((f) => f.size <= DRIVE_FILE_MAX_BYTES);
+      const ok = list.filter(({ file: f }) => f.size <= DRIVE_FILE_MAX_BYTES);
       if (!ok.length) return;
-      const batch = ok.map((f, i) => ({
+      const batch = ok.map(({ file: f }, i) => ({
         key: `${Date.now()}-${i}-${f.name}`,
         name: f.name,
         progress: 0,
@@ -245,7 +279,7 @@ export default function Drive() {
           const b = batch[i];
           set(b.key, { status: 'up' });
           try {
-            await uploadDriveFile(ok[i], target, (p) => set(b.key, { progress: p }));
+            await uploadDriveFile(ok[i].file, ok[i].target, (p) => set(b.key, { progress: p }));
             set(b.key, { status: 'done', progress: 1 });
           } catch (e) {
             set(b.key, { status: 'error', error: errText(e, '올리지 못했습니다') });
@@ -257,6 +291,97 @@ export default function Drive() {
     },
     [toast, refreshAll],
   );
+  const startUploads = useCallback(
+    (files: File[], target: Target | null) =>
+      target ? uploadJobs(files.map((file) => ({ file, target }))) : Promise.resolve(),
+    [uploadJobs],
+  );
+
+  /** 폴더째 올리기 — 폴더를 먼저(위에서부터) 만들고 파일을 각 폴더에 올린다 */
+  const uploadPick = useCallback(
+    async (pick: FolderPick, target: Target | null) => {
+      if (!target) return;
+      if (!pick.dirs.length)
+        return startUploads(
+          pick.files.map((f) => f.file),
+          target,
+        );
+      const ids = new Map<string, string | null>([['', target.parentId]]);
+      const dirs = [...new Set(pick.dirs)].sort(
+        (a, b) => a.split('/').length - b.split('/').length,
+      );
+      try {
+        for (const dir of dirs) {
+          const cut = dir.lastIndexOf('/');
+          const parentId = ids.get(cut < 0 ? '' : dir.slice(0, cut)) ?? target.parentId;
+          const { id } = await api<{ id: string }>('/drive/folders', {
+            method: 'POST',
+            body: JSON.stringify({
+              spaceId: target.spaceId,
+              parentId: parentId ?? undefined,
+              name: dir.slice(cut + 1),
+            }),
+          });
+          ids.set(dir, id);
+        }
+      } catch (e) {
+        toast({ type: 'error', title: errText(e, '폴더를 만들지 못했습니다') });
+        refreshAll();
+        return;
+      }
+      if (!pick.files.length) return refreshAll();
+      await uploadJobs(
+        pick.files.map(({ file, dir }) => ({
+          file,
+          target: { spaceId: target.spaceId, parentId: ids.get(dir) ?? target.parentId },
+        })),
+      );
+    },
+    [startUploads, uploadJobs, toast, refreshAll],
+  );
+  /** 끌어다 놓은 파일·폴더 올리기 — drop 처리 안에서 바로 불러야 한다(readDropped) */
+  const uploadDropped = (dt: DataTransfer, target: Target | null) => {
+    if (!target) return;
+    readDropped(dt)
+      .then((pick) => uploadPick(pick, target))
+      .catch(() => toast({ type: 'error', title: '끌어다 놓은 것을 읽지 못했습니다' }));
+  };
+
+  /** 새 폴더 — '새 폴더'로 바로 만들고 그 자리에서 이름을 고치게 한다(컴퓨터 탐색기처럼) */
+  const newFolder = async () => {
+    const target = uploadTarget;
+    if (!target) return;
+    const here =
+      !view &&
+      !searching &&
+      listing?.space.id === target.spaceId &&
+      (folderId ?? null) === target.parentId;
+    const taken = new Set(here ? items.filter((i) => i.kind === 'FOLDER').map((i) => i.name) : []);
+    let name = '새 폴더';
+    for (let n = 2; taken.has(name); n++) name = `새 폴더 ${n}`;
+    try {
+      const { id } = await api<{ id: string }>('/drive/folders', {
+        method: 'POST',
+        body: JSON.stringify({ ...target, parentId: target.parentId ?? undefined, name }),
+      });
+      if (!here) go({ space: target.spaceId, folder: target.parentId });
+      setSel(new Set([id]));
+      setEditingId(id);
+      refreshAll();
+    } catch (e) {
+      toast({ type: 'error', title: errText(e, '폴더를 만들지 못했습니다') });
+    }
+  };
+
+  /** 그 자리 이름 고치기 끝 — 바뀌었을 때만 저장 */
+  const finishRename = async (it: DriveItemView, name: string | null) => {
+    setEditingId(null);
+    const next = name?.trim();
+    if (!next || next === it.name) return;
+    await run('이름 바꾸기', () =>
+      api(`/drive/items/${it.id}`, { method: 'PATCH', body: JSON.stringify({ name: next }) }),
+    );
+  };
 
   // ── 동작 ──
 
@@ -377,7 +502,7 @@ export default function Drive() {
         label: '이름 바꾸기',
         icon: <Pencil size={16} />,
         shortcut: 'F2',
-        onClick: () => setNaming({ kind: 'rename', item: one }),
+        onClick: () => setEditingId(one.id),
       });
     if (one && one.kind !== 'FOLDER' && editable)
       entries.push({
@@ -454,7 +579,7 @@ export default function Drive() {
       if (
         t.closest('input, textarea, [contenteditable], [role="dialog"]') ||
         preview ||
-        naming ||
+        editingId ||
         sharing ||
         moving ||
         spaceModal
@@ -473,7 +598,7 @@ export default function Drive() {
         if (selected.every((x) => canEdit(x.role))) void trash(selected);
       } else if (e.key === 'F2' && selected.length === 1 && canEdit(selected[0].role)) {
         e.preventDefault();
-        setNaming({ kind: 'rename', item: selected[0] });
+        setEditingId(selected[0].id);
       } else if (e.key === 'Enter' && selected.length === 1) open(selected[0]);
     };
     window.addEventListener('keydown', onKey);
@@ -496,10 +621,7 @@ export default function Drive() {
     setDropTarget(null);
     setDragOver(false);
     if (isFileDrag(e)) {
-      void startUploads([...e.dataTransfer.files], {
-        spaceId: folder.spaceId,
-        parentId: folder.id,
-      });
+      uploadDropped(e.dataTransfer, { spaceId: folder.spaceId, parentId: folder.id });
       return;
     }
     const raw = e.dataTransfer.getData(DRAG_TYPE);
@@ -546,18 +668,80 @@ export default function Drive() {
     on: boolean,
     onClick: () => void,
     drop?: { spaceId: string; id: string | null; enabled: boolean },
-  ) => (
-    <button
-      key={key}
-      type="button"
-      className={`${styles.navItem} ${on ? styles.navItemOn : ''} ${dropTarget === key ? styles.navItemDrop : ''}`}
-      onClick={onClick}
-      {...(drop ? folderDropProps(drop, key, drop.enabled) : {})}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
+    node?: { id: string; depth: number; hasKids: boolean },
+  ) => {
+    const btn = (
+      <button
+        key={node ? undefined : key}
+        type="button"
+        className={`${styles.navItem} ${on ? styles.navItemOn : ''} ${dropTarget === key ? styles.navItemDrop : ''}`}
+        // 맨 위(드라이브)는 다른 메뉴와 줄을 맞추고 화살표를 오른쪽 끝에, 폴더는 깊이만큼 들여 쓰고 화살표를 왼쪽에
+        style={node?.depth ? { paddingLeft: 34 + (node.depth - 1) * 16 } : undefined}
+        title={node ? label : undefined}
+        onClick={onClick}
+        {...(drop ? folderDropProps(drop, key, drop.enabled) : {})}
+      >
+        {icon}
+        <span>{label}</span>
+      </button>
+    );
+    if (!node) return btn;
+    const opened = openNodes.has(node.id);
+    return (
+      <div key={key} className={styles.navNode}>
+        {btn}
+        {node.hasKids && (
+          <button
+            type="button"
+            className={`${styles.navToggle} ${opened ? styles.navToggleOpen : ''}`}
+            style={node.depth ? { left: 12 + (node.depth - 1) * 16 } : { right: 8 }}
+            aria-label={opened ? '접기' : '펼치기'}
+            aria-expanded={opened}
+            onClick={() =>
+              setOpenNodes((s) => {
+                const n = new Set(s);
+                if (n.has(node.id)) n.delete(node.id);
+                else n.add(node.id);
+                return n;
+              })
+            }
+          >
+            <ChevronRight size={14} />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  /** 폴더 나무 — 펼친 드라이브·폴더의 하위 폴더 */
+  const kids = (sid: string, parentId: string | null) =>
+    tree.filter((f) => f.spaceId === sid && f.parentId === parentId);
+  const folderNodes = (sid: string, parentId: string | null, depth: number): React.ReactNode[] =>
+    kids(sid, parentId).flatMap((f) => [
+      navItem(
+        `tree:${f.id}`,
+        f.name,
+        <Folder size={16} />,
+        !view && !searching && folderId === f.id,
+        () => go({ space: f.spaceId, folder: f.id }),
+        { spaceId: f.spaceId, id: f.id, enabled: true },
+        { id: f.id, depth, hasKids: kids(sid, f.id).length > 0 },
+      ),
+      ...(openNodes.has(f.id) ? folderNodes(sid, f.id, depth + 1) : []),
+    ]);
+  /** 드라이브 하나(맨 위) + 펼쳤으면 그 아래 폴더들 */
+  const spaceNav = (s: { id: string; role: DriveRole }, label: string, icon: React.ReactNode) => [
+    navItem(
+      `space:${s.id}`,
+      label,
+      icon,
+      !view && spaceId === s.id && !searching && !folderId,
+      () => go({ space: s.id }),
+      { spaceId: s.id, id: null, enabled: canEdit(s.role) },
+      { id: s.id, depth: 0, hasKids: kids(s.id, null).length > 0 },
+    ),
+    ...(openNodes.has(s.id) ? folderNodes(s.id, null, 1) : []),
+  ];
 
   const sharedSpaces = spaces.filter((s) => s.kind === 'SHARED');
   const orgSpaces = spaces.filter((s) => s.kind === 'ORG');
@@ -591,7 +775,11 @@ export default function Drive() {
       >
         <span className={styles.nameCell}>
           <Icon size={20} color={color} fill={isFolder ? color : 'none'} aria-hidden />
-          <span className={styles.nameText}>{it.name}</span>
+          {editingId === it.id ? (
+            <NameEditor initial={it.name} onDone={(n) => void finishRename(it, n)} />
+          ) : (
+            <span className={styles.nameText}>{it.name}</span>
+          )}
           {it.shared && <Users size={14} className={styles.badgeIcon} aria-label="공유됨" />}
           {it.starred && <Star size={14} className={styles.badgeIcon} aria-label="중요" />}
         </span>
@@ -649,13 +837,21 @@ export default function Drive() {
           {isFolder ? (
             <>
               <Icon size={20} color={color} fill={color} aria-hidden />
-              <span className={styles.nameText}>{it.name}</span>
+              {editingId === it.id ? (
+                <NameEditor initial={it.name} onDone={(n) => void finishRename(it, n)} />
+              ) : (
+                <span className={styles.nameText}>{it.name}</span>
+              )}
             </>
           ) : (
             <>
               <span className={styles.fileCardTop}>
                 <Icon size={18} color={color} aria-hidden />
-                <span className={styles.nameText}>{it.name}</span>
+                {editingId === it.id ? (
+                  <NameEditor initial={it.name} onDone={(n) => void finishRename(it, n)} />
+                ) : (
+                  <span className={styles.nameText}>{it.name}</span>
+                )}
               </span>
               <span className={styles.thumb}>
                 <Thumb item={it} />
@@ -672,7 +868,7 @@ export default function Drive() {
       label: '새 폴더',
       icon: <FolderPlus size={16} />,
       disabled: !uploadTarget,
-      onClick: () => setNaming({ kind: 'folder' }),
+      onClick: () => void newFolder(),
     },
     { type: 'separator' },
     {
@@ -680,6 +876,12 @@ export default function Drive() {
       icon: <Upload size={16} />,
       disabled: !uploadTarget,
       onClick: () => fileInput.current?.click(),
+    },
+    {
+      label: '폴더 올리기',
+      icon: <FolderUp size={16} />,
+      disabled: !uploadTarget,
+      onClick: () => folderInput.current?.click(),
     },
     {
       label: '구글 드라이브에서 가져오기',
@@ -695,6 +897,29 @@ export default function Drive() {
     },
   ];
 
+  const canAddHere = !view && !searching && canEdit(hereRole);
+  const uploadMenu: MenuEntry[] = [
+    {
+      label: '파일 올리기',
+      icon: <Upload size={16} />,
+      onClick: () => fileInput.current?.click(),
+    },
+    {
+      label: '폴더 올리기',
+      icon: <FolderUp size={16} />,
+      onClick: () => folderInput.current?.click(),
+    },
+  ];
+  // 빈 곳 오른쪽 클릭 — 항목 위에서는 항목 메뉴가 먼저 열린다
+  const areaMenu: ContextMenuEntry[] = canAddHere
+    ? [
+        { label: '새 폴더', icon: <FolderPlus size={16} />, onClick: () => void newFolder() },
+        ...(uploadMenu as ContextMenuEntry[]),
+        { type: 'separator' },
+        { label: '새로고침', icon: <RefreshCw size={16} />, onClick: refreshAll },
+      ]
+    : [{ label: '새로고침', icon: <RefreshCw size={16} />, onClick: refreshAll }];
+
   return (
     <div className={styles.drive}>
       <aside className={styles.nav} aria-label="드라이브 탐색">
@@ -707,19 +932,7 @@ export default function Drive() {
             </button>
           }
         />
-        {personal &&
-          navItem(
-            'nav:mine',
-            '내 드라이브',
-            <HardDrive size={18} />,
-            !view && spaceId === personal.id && !searching,
-            () => go({ space: personal.id }),
-            {
-              spaceId: personal.id,
-              id: null,
-              enabled: true,
-            },
-          )}
+        {personal && spaceNav(personal, '내 드라이브', <HardDrive size={18} />)}
         {navItem('nav:shared', '공유 문서함', <Users size={18} />, view === 'shared', () =>
           go({ view: 'shared' }),
         )}
@@ -748,40 +961,14 @@ export default function Drive() {
           )}
         </div>
         {sharedSpaces.length ? (
-          sharedSpaces.map((s) =>
-            navItem(
-              `space:${s.id}`,
-              s.name,
-              <Users size={18} />,
-              !view && spaceId === s.id && !searching,
-              () => go({ space: s.id }),
-              {
-                spaceId: s.id,
-                id: null,
-                enabled: canEdit(s.role),
-              },
-            ),
-          )
+          sharedSpaces.flatMap((s) => spaceNav(s, s.name, <Users size={18} />))
         ) : (
           <span className={styles.navEmpty}>
             팀·프로젝트별로 함께 쓰는 드라이브를 만들어 보세요
           </span>
         )}
         {orgSpaces.length > 0 && <div className={styles.navGroup}>조직 드라이브</div>}
-        {orgSpaces.map((s) =>
-          navItem(
-            `space:${s.id}`,
-            s.name,
-            <Building2 size={18} />,
-            !view && spaceId === s.id && !searching,
-            () => go({ space: s.id }),
-            {
-              spaceId: s.id,
-              id: null,
-              enabled: canEdit(s.role),
-            },
-          ),
-        )}
+        {orgSpaces.flatMap((s) => spaceNav(s, s.name, <Building2 size={18} />))}
         <div className={styles.navGroup}>연결</div>
         {navItem('nav:google', '구글 드라이브', <GoogleMark />, view === 'google', () =>
           go({ view: 'google' }),
@@ -820,7 +1007,7 @@ export default function Drive() {
           if (!isFileDrag(e)) return;
           e.preventDefault();
           setDragOver(false);
-          void startUploads([...e.dataTransfer.files], uploadTarget);
+          uploadDropped(e.dataTransfer, uploadTarget);
         }}
       >
         <div className={styles.searchRow}>
@@ -944,6 +1131,27 @@ export default function Drive() {
                   )}
                 </div>
               )}
+              {canAddHere && selected.length === 0 && (
+                <div className={styles.headActions}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<FolderPlus size={14} />}
+                    onClick={() => void newFolder()}
+                  >
+                    새 폴더
+                  </Button>
+                  <Menu
+                    items={uploadMenu}
+                    placement="bottom-end"
+                    trigger={
+                      <Button variant="outline" size="sm" leftIcon={<Upload size={14} />}>
+                        올리기
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
               {view === 'trash' && items.length > 0 && (
                 <Button
                   variant="ghost"
@@ -999,46 +1207,53 @@ export default function Drive() {
               </p>
             )}
 
-            {loading && !items.length ? (
-              <div className={styles.empty}>불러오는 중…</div>
-            ) : !items.length ? (
-              <EmptyState
-                view={searching ? 'search' : view}
-                canUpload={canEdit(hereRole)}
-                onUpload={() => fileInput.current?.click()}
-              />
-            ) : layout === 'list' ? (
-              <div
-                className={styles.list}
-                role="listbox"
-                aria-multiselectable
-                aria-label="파일 목록"
-              >
-                <div className={`${styles.row} ${styles.rowHead} ${showLoc ? styles.wideLoc : ''}`}>
-                  <span>이름</span>
-                  {showLoc && <span>위치</span>}
-                  <span>만든 사람</span>
-                  <span>{view === 'trash' ? '지운 날짜' : '수정한 날짜'}</span>
-                  <span>크기</span>
-                </div>
-                {items.map(row)}
-              </div>
-            ) : (
-              <div role="listbox" aria-multiselectable aria-label="파일 목록">
-                {folders.length > 0 && (
-                  <>
-                    <div className={styles.gridTitle}>폴더</div>
-                    <div className={styles.grid}>{folders.map(card)}</div>
-                  </>
+            <ContextMenu items={areaMenu}>
+              <div className={styles.area}>
+                {loading && !items.length ? (
+                  <div className={styles.empty}>불러오는 중…</div>
+                ) : !items.length ? (
+                  <EmptyState
+                    view={searching ? 'search' : view}
+                    canUpload={canEdit(hereRole)}
+                    onUpload={() => fileInput.current?.click()}
+                    onNewFolder={() => void newFolder()}
+                  />
+                ) : layout === 'list' ? (
+                  <div
+                    className={styles.list}
+                    role="listbox"
+                    aria-multiselectable
+                    aria-label="파일 목록"
+                  >
+                    <div
+                      className={`${styles.row} ${styles.rowHead} ${showLoc ? styles.wideLoc : ''}`}
+                    >
+                      <span>이름</span>
+                      {showLoc && <span>위치</span>}
+                      <span>만든 사람</span>
+                      <span>{view === 'trash' ? '지운 날짜' : '수정한 날짜'}</span>
+                      <span>크기</span>
+                    </div>
+                    {items.map(row)}
+                  </div>
+                ) : (
+                  <div role="listbox" aria-multiselectable aria-label="파일 목록">
+                    {folders.length > 0 && (
+                      <>
+                        <div className={styles.gridTitle}>폴더</div>
+                        <div className={styles.grid}>{folders.map(card)}</div>
+                      </>
+                    )}
+                    {others.length > 0 && (
+                      <>
+                        <div className={styles.gridTitle}>파일</div>
+                        <div className={styles.grid}>{others.map(card)}</div>
+                      </>
+                    )}
+                  </div>
                 )}
-                {others.length > 0 && (
-                  <>
-                    <div className={styles.gridTitle}>파일</div>
-                    <div className={styles.grid}>{others.map(card)}</div>
-                  </>
-                )}
               </div>
-            )}
+            </ContextMenu>
           </>
         )}
 
@@ -1066,6 +1281,18 @@ export default function Drive() {
           void startUploads(files, uploadTarget);
         }}
       />
+      <input
+        ref={folderInput}
+        type="file"
+        multiple
+        hidden
+        {...{ webkitdirectory: '', directory: '' }}
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = '';
+          if (files.length) void uploadPick(pickFromDirectoryInput(files), uploadTarget);
+        }}
+      />
 
       {uploads.length > 0 && (
         <UploadPanel
@@ -1077,38 +1304,6 @@ export default function Drive() {
       )}
 
       {preview && <PreviewModal item={preview} onClose={() => setPreview(null)} />}
-      {naming && (
-        <NameModal
-          title={naming.kind === 'folder' ? '새 폴더' : '이름 바꾸기'}
-          initial={naming.kind === 'folder' ? '제목 없는 폴더' : naming.item.name}
-          confirmLabel={naming.kind === 'folder' ? '만들기' : '확인'}
-          onClose={() => setNaming(null)}
-          onSubmit={async (name) => {
-            try {
-              if (naming.kind === 'folder') {
-                if (!uploadTarget) return;
-                await api('/drive/folders', {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    ...uploadTarget,
-                    parentId: uploadTarget.parentId ?? undefined,
-                    name,
-                  }),
-                });
-              } else {
-                await api(`/drive/items/${naming.item.id}`, {
-                  method: 'PATCH',
-                  body: JSON.stringify({ name }),
-                });
-              }
-              setNaming(null);
-              refreshAll();
-            } catch (e) {
-              toast({ type: 'error', title: errText(e, '저장하지 못했습니다') });
-            }
-          }}
-        />
-      )}
       {sharing && (
         <ShareModal
           item={sharing}
@@ -1156,10 +1351,12 @@ function EmptyState({
   view,
   canUpload,
   onUpload,
+  onNewFolder,
 }: {
   view: View | 'search' | null;
   canUpload: boolean;
   onUpload: () => void;
+  onNewFolder: () => void;
 }) {
   const text: Record<string, [string, string]> = {
     search: ['찾은 파일이 없습니다', '다른 낱말로 찾아 보세요.'],
@@ -1176,16 +1373,21 @@ function EmptyState({
   };
   const [title, desc] = text[view ?? ''] ?? [
     '비어 있는 폴더입니다',
-    '파일을 여기로 끌어다 놓거나 「새로 만들기」로 올리세요.',
+    '파일·폴더를 여기로 끌어다 놓거나, 새 폴더를 만들어 정리하세요(빈 곳 오른쪽 클릭도 됩니다).',
   ];
   return (
     <div className={styles.empty}>
       <span className={styles.emptyTitle}>{title}</span>
       <span>{desc}</span>
       {!view && canUpload && (
-        <Button variant="outline" onClick={onUpload}>
-          <Upload size={16} /> 파일 올리기
-        </Button>
+        <div className={styles.emptyActions}>
+          <Button variant="outline" leftIcon={<FolderPlus size={16} />} onClick={onNewFolder}>
+            새 폴더
+          </Button>
+          <Button variant="outline" leftIcon={<Upload size={16} />} onClick={onUpload}>
+            파일 올리기
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -1276,5 +1478,42 @@ function UploadPanel({ uploads, onClose }: { uploads: Upload[]; onClose: () => v
         ))}
       </div>
     </div>
+  );
+}
+
+/** 그 자리에서 이름 고치기 — Enter·다른 곳 누르면 저장, Esc는 그대로 둠. 파일은 확장자 앞까지만 골라 둔다 */
+function NameEditor({
+  initial,
+  onDone,
+}: {
+  initial: string;
+  onDone: (name: string | null) => void;
+}) {
+  const done = useRef(false);
+  const finish = (v: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(v);
+  };
+  return (
+    <input
+      className={styles.nameInput}
+      defaultValue={initial}
+      maxLength={200}
+      aria-label="이름"
+      autoFocus
+      onFocus={(e) => {
+        const dot = e.target.value.lastIndexOf('.');
+        e.target.setSelectionRange(0, dot > 0 ? dot : e.target.value.length);
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter' && !e.nativeEvent.isComposing) finish(e.currentTarget.value);
+        else if (e.key === 'Escape') finish(null);
+      }}
+      onBlur={(e) => finish(e.currentTarget.value)}
+    />
   );
 }

@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutTemplate, Pencil, RotateCcw, Settings } from 'lucide-react';
+import { Download, LayoutTemplate, Pencil, RotateCcw, Settings } from 'lucide-react';
 import { Menu } from '@sunghoon_lee/akron-ui';
 import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { openDashboardEditor, useDashEditorMessages } from '../lib/dashboardWindow';
 import { useAuth } from '../auth/AuthContext';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { downloadDashboardPdf } from '../lib/dashboardPdf';
 import { Badge, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import { DashboardView } from '../components/dashboard/builder/DashboardView';
 import { DashColorScope } from '../components/dashboard/DashColorScope';
@@ -74,8 +75,23 @@ export default function Dashboard() {
     }
   };
 
+  // PDF로 받기 — 화면 그대로(버튼 빼고) A4 가로에 넣어 내려받는다. 받은 파일을 열어 인쇄
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const savePdf = async () => {
+    if (!pageRef.current || pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      await downloadDashboardPdf(pageRef.current, t('dashboard.title'));
+    } catch {
+      toast({ type: 'error', title: 'PDF를 만들지 못했습니다' });
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div ref={pageRef} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         title={t('dashboard.title')}
         tags={
@@ -90,49 +106,61 @@ export default function Dashboard() {
         updatedAt={updatedAt}
         trailing={
           me && (
-            <Menu
-              placement="bottom-end"
-              items={[
-                ...(can('DASHBOARD.READ')
-                  ? [
-                      {
-                        label: '대시보드 관리',
-                        icon: <LayoutTemplate size={15} />,
-                        onClick: () => navigate('/dashboard-admin'),
-                      },
-                    ]
-                  : []),
-                {
-                  label: me.canCustomize
-                    ? '대시보드 편집'
-                    : '대시보드 편집 (관리자가 정한 대시보드)',
-                  icon: <Pencil size={15} />,
-                  disabled: !me.canCustomize,
-                  onClick: () =>
-                    openDashboardEditor('/dashboard/edit', 'mine') || navigate('/dashboard/edit'),
-                },
-                ...(me.hasPersonal && me.canCustomize
-                  ? [
-                      { type: 'separator' as const },
-                      {
-                        label: '기본 대시보드로 되돌리기',
-                        icon: <RotateCcw size={15} />,
-                        onClick: () => void reset(),
-                      },
-                    ]
-                  : []),
-              ]}
-              trigger={
-                <button
-                  type="button"
-                  className="header-icon-btn"
-                  aria-label="대시보드 설정"
-                  title="대시보드 설정"
-                >
-                  <Settings size={14} />
-                </button>
-              }
-            />
+            <span data-pdf-skip style={{ display: 'contents' }}>
+              <button
+                type="button"
+                className="header-icon-btn"
+                aria-label="PDF로 받기"
+                title="PDF로 받기(인쇄용)"
+                disabled={pdfBusy}
+                onClick={() => void savePdf()}
+              >
+                <Download size={14} className={pdfBusy ? 'ark-spin' : undefined} />
+              </button>
+              <Menu
+                placement="bottom-end"
+                items={[
+                  ...(can('DASHBOARD.READ')
+                    ? [
+                        {
+                          label: '대시보드 관리',
+                          icon: <LayoutTemplate size={15} />,
+                          onClick: () => navigate('/dashboard-admin'),
+                        },
+                      ]
+                    : []),
+                  {
+                    label: me.canCustomize
+                      ? '대시보드 편집'
+                      : '대시보드 편집 (관리자가 정한 대시보드)',
+                    icon: <Pencil size={15} />,
+                    disabled: !me.canCustomize,
+                    onClick: () =>
+                      openDashboardEditor('/dashboard/edit', 'mine') || navigate('/dashboard/edit'),
+                  },
+                  ...(me.hasPersonal && me.canCustomize
+                    ? [
+                        { type: 'separator' as const },
+                        {
+                          label: '기본 대시보드로 되돌리기',
+                          icon: <RotateCcw size={15} />,
+                          onClick: () => void reset(),
+                        },
+                      ]
+                    : []),
+                ]}
+                trigger={
+                  <button
+                    type="button"
+                    className="header-icon-btn"
+                    aria-label="대시보드 설정"
+                    title="대시보드 설정"
+                  >
+                    <Settings size={14} />
+                  </button>
+                }
+              />
+            </span>
           )
         }
       />

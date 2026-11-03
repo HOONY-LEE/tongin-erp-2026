@@ -142,3 +142,60 @@ export function driveDate(iso: string): string {
     return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
   return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
 }
+
+/* ── 폴더째 올리기 — 컴퓨터의 폴더 구조를 그대로 드라이브에 만든다 ── */
+
+/** 올릴 파일과 그 파일이 들어갈 폴더 경로('사진/2026', 맨 위는 '') + 비어 있는 폴더까지 포함한 폴더 경로 목록 */
+export interface FolderPick {
+  files: { file: File; dir: string }[];
+  dirs: string[];
+}
+
+/** <input webkitdirectory>로 고른 파일 — webkitRelativePath에 '고른폴더/하위/파일' 경로가 들어 있다 */
+export function pickFromDirectoryInput(list: File[]): FolderPick {
+  const dirs = new Set<string>();
+  const files = list.map((file) => {
+    const parts = (file.webkitRelativePath || file.name).split('/').slice(0, -1);
+    for (let i = 1; i <= parts.length; i++) dirs.add(parts.slice(0, i).join('/'));
+    return { file, dir: parts.join('/') };
+  });
+  return { files, dirs: [...dirs] };
+}
+
+/**
+ * 끌어다 놓은 것 읽기 — 폴더가 섞여 있으면 안까지 훑는다.
+ * 브라우저가 놓은 직후에만 항목을 꺼낼 수 있어서, 이 함수는 drop 처리 안에서 바로(await 전에) 불러야 한다.
+ */
+export function readDropped(dt: DataTransfer): Promise<FolderPick> {
+  const entries = [...dt.items]
+    .map((i) => (i.kind === 'file' ? i.webkitGetAsEntry?.() : null))
+    .filter((e): e is FileSystemEntry => !!e);
+  if (!entries.some((e) => e.isDirectory))
+    return Promise.resolve({ files: [...dt.files].map((file) => ({ file, dir: '' })), dirs: [] });
+
+  const files: FolderPick['files'] = [];
+  const dirs: string[] = [];
+  const fileOf = (e: FileSystemFileEntry) => new Promise<File>((res, rej) => e.file(res, rej));
+  // 한 번에 100개씩 나눠 주므로 빈 배열이 올 때까지 읽는다
+  const readAll = async (d: FileSystemDirectoryEntry) => {
+    const reader = d.createReader();
+    const out: FileSystemEntry[] = [];
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((res, rej) =>
+        reader.readEntries(res, rej),
+      );
+      if (!batch.length) return out;
+      out.push(...batch);
+    }
+  };
+  const walk = async (e: FileSystemEntry, dir: string): Promise<void> => {
+    if (e.isFile) {
+      files.push({ file: await fileOf(e as FileSystemFileEntry), dir });
+    } else if (e.isDirectory) {
+      const path = dir ? `${dir}/${e.name}` : e.name;
+      dirs.push(path);
+      for (const child of await readAll(e as FileSystemDirectoryEntry)) await walk(child, path);
+    }
+  };
+  return Promise.all(entries.map((e) => walk(e, ''))).then(() => ({ files, dirs }));
+}

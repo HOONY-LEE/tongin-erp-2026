@@ -20,12 +20,18 @@ export function ListToolbar({
   actions?: ReactNode;
 }) {
   return (
-    <div className={`list-toolbar ${tabs || actions ? '' : 'no-row3'}`}>
+    // 탭이 없으면 셋째 줄을 접고 생성 버튼은 검색 줄 오른쪽 끝으로(DataTable과 같은 규칙)
+    <div className={`list-toolbar ${tabs ? '' : 'no-row3'}`}>
       <div className="lt-search">{search}</div>
       {filters && <div className="lt-filters">{filters}</div>}
-      {viewSwitch && <div className="lt-view">{viewSwitch}</div>}
+      {(viewSwitch || (!tabs && actions)) && (
+        <div className="lt-view">
+          {viewSwitch}
+          {!tabs && actions}
+        </div>
+      )}
       {tabs && <div className="lt-tabs">{tabs}</div>}
-      {actions && <div className="lt-actions">{actions}</div>}
+      {tabs && actions && <div className="lt-actions">{actions}</div>}
     </div>
   );
 }

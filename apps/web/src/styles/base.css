@@ -166,7 +166,7 @@ html[data-font-size='lg'] {
   column-gap: 8px;
   row-gap: 12px;
 }
-/* 셋째 줄(탭·생성 버튼)이 없는 표 — 한 줄로 */
+/* 셋째 줄(세그먼트 탭)이 없는 목록 — 한 줄로(생성 버튼은 검색 줄 오른쪽 끝) */
 .dt-wrap.dt-no-row3 .sft-toolbar,
 .list-toolbar.no-row3 {
   grid-template-areas: 'search filters view';
@@ -713,4 +713,15 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
 }
 [class*='_mainRow_bs28e_'] > [class*='_iconSlot_'] {
   align-self: center;
+}
+
+/* ── 사이드바 스크롤바 — 기본 스크롤바는 트랙 테두리 때문에 사이드바와 사이에 선이 생긴다.
+   트랙은 투명, 얇은 손잡이만 두고 사이드바에 마우스를 올렸을 때만 보인다 ── */
+[class*='_sidebarContent_'] {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+[class*='_sidebarContent_']:hover,
+[class*='_sidebarContent_']:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--ark-color-text) 22%, transparent) transparent;
 }

@@ -740,3 +740,72 @@
 .popout {
   margin-left: auto;
 }
+
+/* ── 폴더 나무(왼쪽) — 펼치기 화살표는 칸 왼쪽에 겹쳐 둔다 ── */
+.navNode {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.navNode > .navItem {
+  min-height: 32px;
+  gap: 8px;
+}
+.navToggle {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-top: -10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.navToggle:hover {
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.06));
+}
+.navToggle svg {
+  transition: transform 0.15s ease;
+}
+.navToggleOpen svg {
+  transform: rotate(90deg);
+}
+
+/* 경로 줄 오른쪽 — 새 폴더 · 올리기 */
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 목록 영역 — 빈 곳 오른쪽 클릭을 받도록 남은 높이를 채운다 */
+.area {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 240px;
+}
+.emptyActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 그 자리 이름 고치기 */
+.nameInput {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--focus-ring, #111827);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  outline: none;
+}
