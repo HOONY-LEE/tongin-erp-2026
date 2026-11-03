@@ -52,7 +52,9 @@ const DOMAIN: Record<string, string> = {
   settlements: '정산 — 입금 내역·고객별 미수금·월별 입금·수수료 규칙·지점 정산',
   billing: '청구 — 외주비·마진·세금계산서(청구서)·파트너 미수',
   hr: '인사 — 인센티브·패널티 정책과 지급액 계산',
-  stats: '통계 — 대시보드 KPI(접수·계약·매출 추이)',
+  stats: '통계 — 대시보드 KPI(접수·계약·매출 추이)·필터 매출 통계',
+  'crm/:pipeline':
+    '영업 CRM — pipeline=FRANCHISE(가맹 영업: 가맹점 모집) | B2B(기업영업: 기업이전 리드·견적·수주). 단계·유입 경로·담당별',
   geo: '주소 — 도로명주소를 좌표·시도/시군구로 변환',
 };
 
@@ -105,6 +107,13 @@ const OVERRIDE: Record<string, string> = {
   'settlements.createRule': '수수료 규칙 등록',
   'settlements.updateRule': '수수료 규칙 수정',
   'settlements.removeRule': '수수료 규칙 삭제',
+  'stats.sales':
+    '매출 통계(필터) — 기간(from·to YYYY-MM-DD)·상품 종류(serviceLine: B2B_MOVING=기업이전, MOVING=가정이사 …)·지점(orgUnitId)·거래처(partnerId)·접수 경로(source)로 거르고 groupBy(day·week·month·branch·partner·serviceLine·source·region)로 묶어 접수·계약 건수·계약 매출·전환율을 낸다. 기업이전 매출·거래처별 실적·월별 추이는 이걸 쓴다',
+  'crm/:pipeline.list':
+    '영업 대상 목록 — stage·ownerEmpId·source·q(이름·연락처 검색)·from·to(등록일)로 거른다',
+  'crm/:pipeline.stats':
+    '영업 파이프라인 통계 — 전체·진행 중·수주(계약)·실패·수주율·수주 금액·진행 중 금액, 단계별·유입 경로별·담당자별. from·to·ownerEmpId·source로 거른다',
+  'crm/:pipeline.one': '영업 대상 한 건과 상담 기록(통화·문자·미팅·단계 변경)',
   'settlements.branch':
     '지점 한 곳의 월 정산(계약별 수수료) — orgUnitId(지점 id)·year·month 필수. 여러 지점 실적 비교·주간 보고에는 쓰지 말고 branches.overview를 쓴다',
   'billing.setOutsourceCost': '작업오더 외주비 입력',

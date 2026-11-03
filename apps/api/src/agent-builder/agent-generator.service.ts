@@ -196,6 +196,7 @@ const DESIGN_GUIDE = `당신은 통인익스프레스(이사·리빙케어 회�
 - 언제 시작하나: 필요할 때 직접 실행 / AI 비서 대화에서 / 정해진 시간(예: 매주 월요일 9시) / 업무가 생기면 바로(새 접수, 계약 서명, 입금 확인, 작업 완료, 새 CS 티켓 등)
 - 결과물: 화면 요약인지, 파일(엑셀·PDF)인지, 문자인지
 - 안전 장치: 데이터를 바꾸거나 문자를 보내면 사람 승인은 기본으로 넣는다(묻지 말고 알려만 준다). 발송 인원 한도 등은 필요할 때만 묻는다.
+- AI 판단이 꼭 필요한 부분: 반복 업무는 도구·규칙으로 돌고, AI는 판단·작문이 필요한 곳에서만 부른다(AI 호출을 줄이는 것이 목적). 기준을 규칙으로 정할 수 있으면(예: 3일 이상 연락 없음, 금액 100만 원 이상) 규칙을 확인하고, 사람처럼 읽고 판단해야 하는 일만 AI에게 맡긴다고 정리한다.
 
 ## 보고서·문서 파일
 - 보고서·집계표·주간/월간 보고처럼 파일을 만드는 일이면, 실제로 쓰는 양식 파일(엑셀 .xlsx 또는 CSV)을 올려 달라고 요청하고 askForFile을 true로 합니다. 올리면 그 양식(서식·칸 위치) 그대로 채워 만든다고 설명합니다.
@@ -243,7 +244,14 @@ ${TRIGGER_EVENTS.map((e) => `- ${e}: ${TRIGGER_EVENT_LABEL[e]} — ${TRIGGER_EVE
 이벤트로 시작하면 보통 input.event.id로 해당 건을 조회하는 도구 노드를 먼저 둡니다.
 필요한 입력값은 inputFields로 정의합니다(예: 기간, 지점 id).
 
-## 설계 원칙
+## 설계 원칙 — AI(LLM) 호출은 최소로
+에이전트 빌더의 목적은 반복 업무를 매번 AI에게 시키지 않고, 정해진 도구·규칙(알고리즘)으로 돌게 해 AI 호출량을 줄이는 것입니다.
+- 조회·필터·집계·정렬·개수 세기·날짜 계산·서식 맞추기·파일 만들기는 도구(tool)·조건(branch condition)·반복(loop)·출력 템플릿(output)으로 처리합니다. 이런 일에 llm 노드를 쓰지 않습니다.
+- 도구 인자(기간·상태·지점·groupBy 등)로 거를 수 있으면 AI에게 거르게 하지 말고 도구 인자로 거릅니다. 통계는 묶음(groupBy) 인자가 있는 도구로 한 번에 받습니다.
+- 규칙으로 정할 수 있는 분기는 condition 모드로 씁니다. classify 모드(AI 분류)는 자유 글(상담 내용·CS 내용 등)을 읽어 판단해야 할 때만 씁니다.
+- llm 노드는 진짜 판단·작문이 필요할 때만 둡니다(예: 고객 문의 내용을 읽고 답장 초안 쓰기, 여러 자료를 보고 원인 분석). 하나로 충분하면 하나만, loop 본문 안에 llm을 넣는 것은 항목마다 꼭 따로 판단해야 할 때만입니다.
+- 보고서 문장(요약·코멘트)이 꼭 필요하지 않으면 output 템플릿에 {{변수}}로 숫자를 그대로 넣습니다.
+- summary에 이 에이전트가 실행마다 AI를 몇 번 부르는지(예: "AI 호출 0곳 — 도구와 규칙만으로 돕니다")를 적습니다.
 - 도구는 아래 목록에 있는 이름만 그대로 씁니다. 지어내지 마세요. 필수 인자(*)는 반드시 채웁니다.
 - 데이터를 바꾸는 쓰기(WRITE) 도구 앞에는 반드시 approval 노드(사람 승인)를 둡니다. 문자 발송이 있으면 guardrail로 maxRecipients 같은 한도도 겁니다.
 - 고객 문자(send_sms)는 customerIds(고객 id 배열)와 message가 필요합니다. 본문은 [통인익스프레스]로 시작하고 {고객명}을 쓰면 고객마다 이름이 들어갑니다.
@@ -315,6 +323,9 @@ function parseConfig(
   }
 }
 
+/** 만든 뒤 검사 오류를 AI에게 돌려 고치게 하는 횟수 */
+const MAX_REPAIR = 2;
+
 @Injectable()
 export class AgentGeneratorService {
   private readonly logger = new Logger('AgentGenerator');
@@ -350,80 +361,107 @@ export class AgentGeneratorService {
       ? `${refText}<current_blueprint>\n${JSON.stringify(compactGraph(current))}\n</current_blueprint>\n\n<request>\n${prompt}\n</request>\n\n위 블루프린트를 요청대로 고친 전체 그래프를 돌려주세요.`
       : `${refText}<request>\n${prompt}\n</request>\n\n이 일을 하는 에이전트 블루프린트를 새로 설계해 주세요.`;
 
-    let res: Anthropic.Beta.Messages.BetaMessage;
-    try {
-      const model = builderModel();
-      res = await trackClaude('AGENT_GENERATE', model, () =>
-        client.beta.messages
-          .stream({
-            model,
-            max_tokens: 32000,
-            betas: [FALLBACK_BETA],
-            fallbacks: 'default',
-            output_config: {
-              effort: 'medium',
-              format: { type: 'json_schema', schema: OUTPUT_SCHEMA },
-            },
-            // 안내문 + 도구 목록은 사용자(권한)가 같으면 그대로라 캐시에서 읽는다
-            system: [
-              {
-                type: 'text',
-                text: `${GUIDE}\n\n## 업무 도구(자세히)\n${domainDetail}\n\n## 호출할 수 있는 도구 전체(${tools.length}개)\n${compactCatalog(tools)}`,
-                cache_control: { type: 'ephemeral' },
+    const system = [
+      {
+        type: 'text' as const,
+        text: `${GUIDE}\n\n## 업무 도구(자세히)\n${domainDetail}\n\n## 호출할 수 있는 도구 전체(${tools.length}개)\n${compactCatalog(tools)}`,
+        cache_control: { type: 'ephemeral' as const },
+      },
+    ];
+    const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
+    const design = async (text: string) => {
+      let res: Anthropic.Beta.Messages.BetaMessage;
+      try {
+        const model = builderModel();
+        res = await trackClaude('AGENT_GENERATE', model, () =>
+          client.beta.messages
+            .stream({
+              model,
+              max_tokens: 32000,
+              betas: [FALLBACK_BETA],
+              fallbacks: 'default',
+              output_config: {
+                effort: 'medium',
+                format: { type: 'json_schema', schema: OUTPUT_SCHEMA },
               },
-            ],
-            messages: [{ role: 'user', content: userText }],
-          })
-          .finalMessage(),
-      );
-      assertComplete(res);
-    } catch (e) {
-      const msg = describeClaudeError(e);
-      this.logger.warn(`블루프린트 생성 실패: ${msg}`);
-      throw new BadGatewayException(msg);
-    }
-
-    let raw: {
-      name: string;
-      description: string;
-      summary: string;
-      nodes: RawNode[];
-      edges: { source: string; sourceHandle: string; target: string }[];
-    };
-    try {
-      raw = JSON.parse(textOf(res));
-    } catch {
-      throw new BadGatewayException('AI 응답을 블루프린트로 읽지 못했습니다. 다시 시도해 주세요.');
-    }
-
-    const fixes: string[] = [];
-    let graph = toGraph(raw, fixes);
-    graph = insertApprovals(graph, toolMap, fixes);
-    for (const n of graph.nodes) {
-      if (
-        n.type === 'tool' &&
-        (n.config as ToolConfig).tool &&
-        !toolMap.has((n.config as ToolConfig).tool)
-      )
-        fixes.push(
-          `'${n.label}'의 도구 '${(n.config as ToolConfig).tool}'는 목록에 없습니다 — 직접 골라 주세요.`,
+              // 안내문 + 도구 목록은 사용자(권한)가 같으면 그대로라 캐시에서 읽는다
+              system,
+              messages: [{ role: 'user', content: text }],
+            })
+            .finalMessage(),
         );
+        assertComplete(res);
+      } catch (e) {
+        const msg = describeClaudeError(e);
+        this.logger.warn(`블루프린트 생성 실패: ${msg}`);
+        throw new BadGatewayException(msg);
+      }
+      usage.inputTokens += res.usage.input_tokens;
+      usage.outputTokens += res.usage.output_tokens;
+      usage.cacheReadTokens += res.usage.cache_read_input_tokens ?? 0;
+      let raw: {
+        name: string;
+        description: string;
+        summary: string;
+        nodes: RawNode[];
+        edges: { source: string; sourceHandle: string; target: string }[];
+      };
+      try {
+        raw = JSON.parse(textOf(res));
+      } catch {
+        throw new BadGatewayException(
+          'AI 응답을 블루프린트로 읽지 못했습니다. 다시 시도해 주세요.',
+        );
+      }
+      const fixes: string[] = [];
+      let graph = toGraph(raw, fixes);
+      graph = insertApprovals(graph, toolMap, fixes);
+      const unknown: string[] = [];
+      for (const n of graph.nodes) {
+        if (
+          n.type === 'tool' &&
+          (n.config as ToolConfig).tool &&
+          !toolMap.has((n.config as ToolConfig).tool)
+        )
+          unknown.push(`'${n.label}'의 도구 '${(n.config as ToolConfig).tool}'는 목록에 없습니다`);
+      }
+      graph = placeNodes(graph, current);
+      const issues = this.blueprints.validate(graph, principal);
+      const errors = [
+        ...unknown,
+        ...issues.filter((i) => i.level === 'error').map((i) => i.message),
+      ];
+      return { raw, graph, fixes, unknown, issues, errors };
+    };
+
+    // 만든 뒤 스스로 검사하고, 오류가 있으면 오류 목록을 주고 고치게 한다(최대 2번)
+    let d = await design(userText);
+    const repaired: string[] = [];
+    for (let round = 0; round < MAX_REPAIR && d.errors.length; round++) {
+      repaired.push(...d.errors);
+      this.logger.log(`블루프린트 자가 수정 ${round + 1}회 — 오류 ${d.errors.length}개`);
+      d = await design(
+        `${refText}<request>\n${prompt}\n</request>\n\n<draft_blueprint>\n${JSON.stringify(compactGraph(d.graph))}\n</draft_blueprint>\n\n` +
+          `<errors>\n${d.errors.map((e) => `- ${e}`).join('\n')}\n</errors>\n\n` +
+          '위 초안은 검사에서 오류가 났습니다. 오류를 모두 고친 전체 그래프를 돌려주세요. ' +
+          '꼭 넣어야 하는 인자(required)는 값이나 {{변수}}로 채우고, 필요한 값을 얻을 도구가 없으면 그 값을 받지 않는 다른 도구(예: 여러 지점을 한 번에 주는 목록·현황 도구)로 바꾸세요.',
+      );
     }
-    graph = placeNodes(graph, current);
+    const fixes = [...d.fixes, ...d.unknown.map((u) => `${u} — 직접 골라 주세요.`)];
+    if (repaired.length)
+      fixes.unshift(
+        `만든 뒤 검사에서 나온 오류 ${repaired.length}개를 AI가 스스로 고쳤습니다${d.errors.length ? '(남은 오류가 있습니다)' : ''}.`,
+      );
 
     return {
-      name: raw.name,
-      description: raw.description,
-      summary: raw.summary,
-      graph,
-      changes: diffGraphs(current, graph),
+      name: d.raw.name,
+      description: d.raw.description,
+      summary: d.raw.summary,
+      graph: d.graph,
+      changes: diffGraphs(current, d.graph),
       fixes,
-      issues: this.blueprints.validate(graph, principal),
-      usage: {
-        inputTokens: res.usage.input_tokens,
-        outputTokens: res.usage.output_tokens,
-        cacheReadTokens: res.usage.cache_read_input_tokens ?? 0,
-      },
+      issues: d.issues,
+      usage,
     };
   }
 

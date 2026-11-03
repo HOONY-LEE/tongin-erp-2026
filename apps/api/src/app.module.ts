@@ -2,6 +2,7 @@ import { SystemLogModule } from './system-log/system-log.module';
 import { SpaceModule } from './modules/space/space.module';
 import { PerformanceModule } from './modules/performance/performance.module';
 import { FranchiseModule } from './modules/franchise/franchise.module';
+import { CrmModule } from './modules/crm/crm.module';
 import { DriveModule } from './modules/drive/drive.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -71,6 +72,7 @@ import { BranchCaseModule } from './modules/branch-case/branch-case.module';
     SpaceModule,
     PerformanceModule,
     FranchiseModule,
+    CrmModule,
     DriveModule,
     NotificationsModule,
     AuthModule,

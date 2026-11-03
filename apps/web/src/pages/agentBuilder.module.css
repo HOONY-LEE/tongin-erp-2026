@@ -1470,3 +1470,170 @@
   line-height: 1.6;
   text-align: center;
 }
+
+/* ── 편집 화면 큰 탭: 자연어 모드 | 블루프린트 모드 ── */
+.modeTabs [class*='_segment_'] {
+  padding: 6px 14px;
+  font-weight: 600;
+}
+.bodyHidden {
+  display: none !important;
+}
+.nlWork {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+.nlChat {
+  min-height: 0;
+  border-right: 1px solid var(--ark-color-border);
+}
+.nlOk,
+.nlFail {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.nlOk {
+  background: color-mix(in srgb, var(--ab-output) 10%, transparent);
+}
+.nlFail {
+  background: color-mix(in srgb, var(--ab-trigger) 10%, transparent);
+}
+.nlSide {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--ab-panel);
+}
+.nlSideHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nlStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.nlStats > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-muted);
+}
+.nlStats > .nlLlm {
+  color: var(--ab-llm);
+  background: color-mix(in srgb, var(--ab-llm) 12%, transparent);
+}
+.nlStats > .nlErr {
+  color: var(--ab-trigger);
+  background: color-mix(in srgb, var(--ab-trigger) 12%, transparent);
+}
+.nlStats > .nlGood {
+  color: var(--ab-output);
+  background: color-mix(in srgb, var(--ab-output) 12%, transparent);
+}
+.nlSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nlStep {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nlStep:hover {
+  background: var(--ark-color-bg-muted);
+}
+.nlNum {
+  flex: none;
+  width: 18px;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(11px * var(--font-scale, 1));
+  line-height: 20px;
+  text-align: right;
+}
+.nlIcon {
+  flex: none;
+  line-height: 20px;
+}
+.nlBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nlBody > .note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nlTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.nlErrText {
+  color: var(--ab-trigger);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.nlTestBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ark-color-border);
+}
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  text-decoration: underline;
+  cursor: pointer;
+}
+.nlRun {
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .nlWork {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+}
+/* 자연어 모드 오른쪽 좁은 칸 — 테스트 패널을 위아래로 */
+.nlRun .runPanel {
+  height: auto;
+  border-top: 0;
+  grid-template-columns: 1fr;
+}
+.nlRun .runForm {
+  border-right: 0;
+  border-bottom: 1px solid var(--ark-color-border);
+}

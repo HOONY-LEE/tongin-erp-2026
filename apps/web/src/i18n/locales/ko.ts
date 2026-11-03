@@ -52,6 +52,7 @@ export default {
     duties: '업무분장',
     franchise: '가맹점 현황',
     franchiseLeads: '가맹 영업',
+    b2bCrm: '기업영업 CRM',
     performance: '성과 평가',
     drive: '드라이브',
     leave: '휴가',

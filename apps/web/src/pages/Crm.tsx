@@ -1,20 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, MessageSquare, Phone, Search, StickyNote, Users } from 'lucide-react';
+import { CalendarClock, Mail, MessageSquare, Phone, Search, StickyNote, Users } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import {
-  FRANCHISE_ACTIVITY_LABEL,
-  FRANCHISE_INTERESTS,
-  FRANCHISE_INTEREST_LABEL,
-  FRANCHISE_LEAD_SOURCES,
-  FRANCHISE_LEAD_SOURCE_LABEL,
-  FRANCHISE_LEAD_STAGES,
-  FRANCHISE_LEAD_STAGE_COLOR,
-  FRANCHISE_LEAD_STAGE_LABEL,
-  FRANCHISE_PIPELINE,
-  type FranchiseActivityKind,
-  type FranchiseActivityView,
-  type FranchiseLeadStage,
-  type FranchiseLeadView,
+  CRM_ACTIVITY_LABEL,
+  CRM_INTERESTS,
+  CRM_INTEREST_LABEL,
+  CRM_PIPELINES,
+  type CrmActivityKind,
+  type CrmActivityView,
+  type CrmInterest,
+  type CrmLeadView,
+  type CrmPipelineDef,
+  type CrmPipelineKey,
 } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
@@ -41,8 +38,20 @@ import {
 import styles from './franchise.module.css';
 
 type View = 'board' | 'list';
-type ListTab = 'open' | 'WON' | 'HOLD' | 'LOST' | 'all';
-const OPEN: FranchiseLeadStage[] = ['NEW', 'CONTACTED', 'CONSULTING', 'MEETING', 'CONTRACTING'];
+type ListTab = string;
+const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
+const isOpen = (def: CrmPipelineDef, stage: string) =>
+  def.stages.find((s) => s.key === stage)?.open ?? false;
+const stageLabel = (def: CrmPipelineDef, k: string | null) =>
+  (k && def.stages.find((s) => s.key === k)?.label) ?? k ?? '';
+const sourceLabel = (def: CrmPipelineDef, k: string) =>
+  def.sources.find((s) => s.key === k)?.label ?? k;
+const fieldText = (f: CrmPipelineDef['fields'][number], v: unknown) =>
+  v == null || v === ''
+    ? null
+    : f.type === 'number'
+      ? `${Number(v).toLocaleString('ko-KR')}${f.unit ?? ''}`
+      : String(v);
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 const md = (s: string) => `${Number(s.slice(5, 7))}.${Number(s.slice(8, 10))}`;
 const when = (iso: string) =>
@@ -54,16 +63,17 @@ const when = (iso: string) =>
     hour12: false,
   });
 
-function StageBadge({ stage }: { stage: FranchiseLeadStage }) {
+function StageBadge({ def, stage }: { def: CrmPipelineDef; stage: string }) {
+  const s = def.stages.find((x) => x.key === stage);
   return (
     <span className={styles.stage}>
-      <i style={{ background: FRANCHISE_LEAD_STAGE_COLOR[stage] }} />
-      {FRANCHISE_LEAD_STAGE_LABEL[stage]}
+      <i style={{ background: s?.color }} />
+      {s?.label ?? stage}
     </span>
   );
 }
 
-function NextAction({ l }: { l: FranchiseLeadView }) {
+function NextAction({ l }: { l: CrmLeadView }) {
   if (!l.nextActionAt) return <span className={styles.muted}>—</span>;
   const t = kstToday();
   const cls = l.nextActionAt < t ? styles.over : l.nextActionAt === t ? styles.soon : '';
@@ -76,19 +86,24 @@ function NextAction({ l }: { l: FranchiseLeadView }) {
 }
 
 /**
- * 가맹 영업 — 가맹점 모집 CRM(이사 고객 CRM인 '접수'와 따로).
- * 발굴 → 첫 연락 → 상담 → 미팅·방문 → 계약 진행 → 계약 완료(보류·실패). 칸반·목록, 상담 기록(통화·문자·미팅·메모), 다음 연락일
+ * 영업 CRM 공통 화면 — 가맹 영업(/franchise-leads) · 기업영업(/b2b-crm).
+ * 단계·유입 경로·추가 항목·금액 이름은 CRM_PIPELINES 설정에서 오고 화면 코드는 하나다.
+ * 칸반·목록, 상담 기록(통화·문자·메일·미팅·메모), 다음 연락일
  */
-export default function FranchiseLeads() {
+export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
+  const def = CRM_PIPELINES[pipeline];
+  const base = `/crm/${pipeline}/leads`;
+  const OPEN = def.stages.filter((s) => s.open).map((s) => s.key);
+  const wonKey = def.stages.find((s) => s.won)?.key ?? 'WON';
   const toast = useToast();
   const { user, can } = useAuth();
   const { people } = useDirectory();
-  const [rows, setRows] = useState<FranchiseLeadView[]>([]);
+  const [rows, setRows] = useState<CrmLeadView[]>([]);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState('');
   const [mineOnly, setMineOnly] = useState(false);
-  const [editing, setEditing] = useState<FranchiseLeadView | 'new' | null>(null);
-  const [branches, setBranches] = useState<{ value: string; label: string }[]>([]);
+  const [editing, setEditing] = useState<CrmLeadView | 'new' | null>(null);
+  const [links, setLinks] = useState<{ value: string; label: string }[]>([]);
   const { tab: view, setTab: setView } = useTabParam<View>('board', 'view');
   const { tab: listTab, setTab: setListTab } = useTabParam<ListTab>('open');
   const detail = useDetailParam();
@@ -97,20 +112,25 @@ export default function FranchiseLeads() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await api<FranchiseLeadView[]>('/franchise/leads'));
+      setRows(await api<CrmLeadView[]>(base));
       touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
     } finally {
       setLoading(false);
     }
-  }, [toast, touch]);
+  }, [base, toast, touch]);
   useEffect(() => {
     void load();
-    void api<{ rows: { orgUnitId: string; name: string }[] }>('/franchise/branches')
-      .then((r) => setBranches(r.rows.map((b) => ({ value: b.orgUnitId, label: b.name }))))
-      .catch(() => undefined);
-  }, [load]);
+    if (def.link === 'BRANCH')
+      void api<{ rows: { orgUnitId: string; name: string }[] }>('/franchise/branches')
+        .then((r) => setLinks(r.rows.map((b) => ({ value: b.orgUnitId, label: b.name }))))
+        .catch(() => undefined);
+    else if (def.link === 'PARTNER')
+      void api<{ id: string; name: string }[]>('/partners')
+        .then((r) => setLinks(r.map((b) => ({ value: b.id, label: b.name }))))
+        .catch(() => undefined);
+  }, [load, def.link]);
 
   const term = q.trim();
   const filtered = useMemo(
@@ -119,7 +139,7 @@ export default function FranchiseLeads() {
         (r) =>
           (!mineOnly || r.ownerEmpId === user?.employeeId) &&
           (!term ||
-            [r.companyName, r.contactName, r.region, r.ownerName, r.memo].some((x) =>
+            [r.companyName, r.contactName, r.region, r.ownerName, r.memo, r.email].some((x) =>
               x?.includes(term),
             ) ||
             (term.replace(/\D/g, '').length >= 3 &&
@@ -134,10 +154,10 @@ export default function FranchiseLeads() {
   const open = rows.filter((r) => OPEN.includes(r.stage));
   const dueSoon = open.filter((r) => r.nextActionAt && r.nextActionAt <= weekLater).length;
 
-  const changeStage = async (l: FranchiseLeadView, stage: FranchiseLeadStage) => {
+  const changeStage = async (l: CrmLeadView, stage: string) => {
     try {
-      await api(`/franchise/leads/${l.id}`, { method: 'PATCH', body: JSON.stringify({ stage }) });
-      toast({ type: 'success', title: `${FRANCHISE_LEAD_STAGE_LABEL[stage]}(으)로 옮겼습니다` });
+      await api(`${base}/${l.id}`, { method: 'PATCH', body: JSON.stringify({ stage }) });
+      toast({ type: 'success', title: `${stageLabel(def, stage)}(으)로 옮겼습니다` });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
@@ -153,12 +173,29 @@ export default function FranchiseLeads() {
     [people],
   );
   const fields: FormField[] = [
-    { name: 'companyName', label: '상호(또는 이름)', required: true },
-    { name: 'contactName', label: '담당자(사장님)', alwaysShow: true, pairWithNext: true },
-    { name: 'phone', label: '연락처', type: 'tel', alwaysShow: true },
+    { name: 'companyName', label: def.companyLabel, required: true },
+    { name: 'contactName', label: def.contactLabel, alwaysShow: true, pairWithNext: true },
+    ...(pipeline === 'B2B'
+      ? [
+          {
+            name: 'contactTitle',
+            label: '직함·부서',
+            placeholder: '예: 총무팀 과장',
+            alwaysShow: true,
+          },
+        ]
+      : []),
+    {
+      name: 'phone',
+      label: '연락처',
+      type: 'tel',
+      alwaysShow: true,
+      pairWithNext: pipeline === 'B2B',
+    },
+    ...(pipeline === 'B2B' ? [{ name: 'email', label: '메일', alwaysShow: true }] : []),
     {
       name: 'region',
-      label: '희망·운영 지역',
+      label: def.regionLabel,
       placeholder: '예: 경기 성남 분당',
       alwaysShow: true,
       pairWithNext: true,
@@ -167,27 +204,21 @@ export default function FranchiseLeads() {
       name: 'source',
       label: '유입 경로',
       type: 'select',
-      options: FRANCHISE_LEAD_SOURCES.map((v) => ({
-        value: v,
-        label: FRANCHISE_LEAD_SOURCE_LABEL[v],
-      })),
+      options: def.sources.map((v) => ({ value: v.key, label: v.label })),
       alwaysShow: true,
     },
     {
       name: 'stage',
       label: '단계',
       type: 'chips',
-      options: FRANCHISE_LEAD_STAGES.map((v) => ({
-        value: v,
-        label: FRANCHISE_LEAD_STAGE_LABEL[v],
-      })),
+      options: def.stages.map((v) => ({ value: v.key, label: v.label })),
       alwaysShow: true,
     },
     {
       name: 'interest',
       label: '관심도',
       type: 'chips',
-      options: FRANCHISE_INTERESTS.map((v) => ({ value: v, label: FRANCHISE_INTEREST_LABEL[v] })),
+      options: CRM_INTERESTS.map((v) => ({ value: v, label: CRM_INTEREST_LABEL[v] })),
       alwaysShow: true,
       pairWithNext: true,
     },
@@ -199,6 +230,20 @@ export default function FranchiseLeads() {
       searchable: true,
       alwaysShow: true,
     },
+    ...(def.amountLabel
+      ? [
+          {
+            name: 'amount',
+            label: `${def.amountLabel}(원)`,
+            type: 'number',
+            alwaysShow: true,
+            pairWithNext: !!def.expectedLabel,
+          },
+        ]
+      : []),
+    ...(def.expectedLabel
+      ? [{ name: 'expectedAt', label: def.expectedLabel, type: 'date', alwaysShow: true }]
+      : []),
     {
       name: 'nextActionAt',
       label: '다음 연락일',
@@ -209,42 +254,49 @@ export default function FranchiseLeads() {
     {
       name: 'nextAction',
       label: '다음에 할 일',
-      placeholder: '예: 가맹 설명 자료 보내기',
+      placeholder: '예: 설명 자료 보내기',
       alwaysShow: true,
     },
-    { name: 'currentBiz', label: '지금 하는 사업', placeholder: '예: 개인 이사업체 5년, 차량 2대' },
+    ...def.fields.map((f, i) => ({
+      name: `f_${f.key}`,
+      label: f.unit ? `${f.label}(${f.unit})` : f.label,
+      type: f.type,
+      placeholder: f.placeholder,
+      options: f.options?.map((o) => ({ value: o, label: o })),
+      pairWithNext: f.type !== 'textarea' && i % 2 === 0 && i < def.fields.length - 1,
+    })),
     { name: 'memo', label: '메모', type: 'textarea' },
     { name: 'lostReason', label: '실패·보류 이유' },
-    {
-      name: 'branchId',
-      label: '계약 후 연결된 가맹점',
-      type: 'select',
-      options: branches,
-      searchable: true,
-    },
-  ];
+    ...(def.link
+      ? [{ name: 'linkId', label: def.linkLabel, type: 'select', options: links, searchable: true }]
+      : []),
+  ] as FormField[];
   const save = async (v: Record<string, unknown>) => {
     const isNew = editing === 'new';
     const str = (k: string) => (v[k] === '' || v[k] == null ? null : String(v[k]));
+    const extra = Object.fromEntries(def.fields.map((f) => [f.key, str(`f_${f.key}`)]));
     const body = {
       companyName: String(v.companyName ?? '').trim(),
       contactName: str('contactName'),
+      ...(pipeline === 'B2B' && { contactTitle: str('contactTitle'), email: str('email') }),
       phone: str('phone'),
       region: str('region'),
-      source: v.source || 'DB',
-      stage: v.stage || 'NEW',
+      source: v.source || def.sources[0].key,
+      stage: v.stage || def.stages[0].key,
       interest: v.interest || 'B',
       ownerEmpId: str('ownerEmpId'),
+      ...(def.amountLabel && { amount: str('amount') == null ? null : Number(v.amount) }),
+      ...(def.expectedLabel && { expectedAt: str('expectedAt') }),
       nextActionAt: str('nextActionAt'),
       nextAction: str('nextAction'),
-      currentBiz: str('currentBiz'),
       memo: str('memo'),
       lostReason: str('lostReason'),
-      branchId: str('branchId'),
+      fields: extra,
+      ...(def.link && { linkId: str('linkId') }),
     };
     try {
       const res = await api<{ id?: string }>(
-        isNew ? '/franchise/leads' : `/franchise/leads/${(editing as FranchiseLeadView).id}`,
+        isNew ? base : `${base}/${(editing as CrmLeadView).id}`,
         { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) },
       );
       toast({ type: 'success', title: isNew ? '영업 대상을 등록했습니다' : '저장했습니다' });
@@ -256,11 +308,19 @@ export default function FranchiseLeads() {
       throw e;
     }
   };
-  const initialOf = (l: FranchiseLeadView | 'new') =>
+  const initialOf = (l: CrmLeadView | 'new') =>
     l === 'new'
-      ? { source: 'DB', stage: 'NEW', interest: 'B', ownerEmpId: user?.employeeId ?? '' }
+      ? {
+          source: def.sources[0].key,
+          stage: def.stages[0].key,
+          interest: 'B',
+          ownerEmpId: user?.employeeId ?? '',
+        }
       : Object.fromEntries(
-          Object.entries(l)
+          [
+            ...Object.entries(l),
+            ...Object.entries(l.fields ?? {}).map(([k, x]) => [`f_${k}`, x] as const),
+          ]
             .filter(([k, x]) => x !== null && fields.some((f) => f.name === k))
             .map(([k, x]) => [k, String(x)]),
         );
@@ -268,14 +328,14 @@ export default function FranchiseLeads() {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? '가맹 영업 대상 등록' : '영업 대상 수정'}
+      title={editing === 'new' ? `${def.label} 대상 등록` : '영업 대상 수정'}
       size="md"
       fields={fields}
       initialValues={editing ? initialOf(editing) : undefined}
       onSubmit={save}
     />
   );
-  const addButton = can('FRANCHISE.CREATE') ? (
+  const addButton = can(`${def.perm}.CREATE`) ? (
     <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
       + 영업 대상 등록
     </Button>
@@ -285,9 +345,10 @@ export default function FranchiseLeads() {
     return (
       <>
         <LeadDetail
+          def={def}
           id={detail.id}
-          canEdit={can('FRANCHISE.UPDATE')}
-          canDelete={can('FRANCHISE.DELETE')}
+          canEdit={can(`${def.perm}.UPDATE`)}
+          canDelete={can(`${def.perm}.DELETE`)}
           onBack={detail.close}
           onEdit={(l) => setEditing(l)}
           onChanged={load}
@@ -337,10 +398,15 @@ export default function FranchiseLeads() {
     {
       title: '단계',
       width: 110,
-      render: (r) => <StageBadge stage={r.stage as FranchiseLeadStage} />,
-      exportValue: (r) => FRANCHISE_LEAD_STAGE_LABEL[r.stage as FranchiseLeadStage],
+      render: (r) => <StageBadge def={def} stage={String(r.stage)} />,
+      exportValue: (r) => stageLabel(def, String(r.stage)),
     },
-    { title: '상호', dataIndex: 'companyName', flex: 1, minWidth: 140 },
+    {
+      title: pipeline === 'B2B' ? '회사' : '상호',
+      dataIndex: 'companyName',
+      flex: 1,
+      minWidth: 140,
+    },
     {
       title: '담당자',
       dataIndex: 'contactName',
@@ -352,19 +418,28 @@ export default function FranchiseLeads() {
     {
       title: '경로',
       width: 110,
-      render: (r) =>
-        FRANCHISE_LEAD_SOURCE_LABEL[r.source as keyof typeof FRANCHISE_LEAD_SOURCE_LABEL],
+      render: (r) => sourceLabel(def, String(r.source)),
     },
     {
       title: '관심도',
       width: 70,
-      render: (r) => FRANCHISE_INTEREST_LABEL[r.interest as 'A' | 'B' | 'C'],
+      render: (r) => CRM_INTEREST_LABEL[r.interest as CrmInterest],
     },
+    ...(def.amountLabel
+      ? [
+          {
+            title: def.amountLabel.replace(/\(.*\)/, ''),
+            width: 120,
+            render: (r: Row) => (r.amount == null ? '—' : won(Number(r.amount))),
+            exportValue: (r: Row) => (r.amount == null ? '' : String(r.amount)),
+          },
+        ]
+      : []),
     { title: '영업 담당', width: 90, render: (r) => (r.ownerName as string) ?? '—' },
     {
       title: '다음 연락',
       width: 150,
-      render: (r) => <NextAction l={r as unknown as FranchiseLeadView} />,
+      render: (r) => <NextAction l={r as unknown as CrmLeadView} />,
       exportValue: (r) => (r.nextActionAt as string) ?? '',
     },
   ];
@@ -375,8 +450,8 @@ export default function FranchiseLeads() {
   return (
     <ListPage
       fit
-      title="가맹 영업"
-      subtitle="가맹점이 될 업체(사장님)를 발굴하고 상담해 계약까지 이끄는 CRM입니다. 이사 고객(접수)과 따로 관리합니다. 카드를 끌어 단계를 옮기고, 상세에서 통화·문자·미팅 기록을 남기세요."
+      title={def.label}
+      subtitle={`${def.description} 카드를 끌어 단계를 옮기고, 상세에서 통화·문자·미팅 기록을 남기세요.`}
       onRefresh={load}
       updatedAt={updatedAt}
     >
@@ -388,11 +463,16 @@ export default function FranchiseLeads() {
           일주일 안 연락할 곳 <b>{dueSoon}</b>
         </span>
         <span>
-          계약 완료 <b>{rows.filter((r) => r.stage === 'WON').length}</b>
+          {stageLabel(def, wonKey)} <b>{rows.filter((r) => r.stage === wonKey).length}</b>
         </span>
         <span>
-          보류·실패 <b>{rows.filter((r) => r.stage === 'HOLD' || r.stage === 'LOST').length}</b>
+          보류·실패 <b>{rows.filter((r) => !isOpen(def, r.stage) && r.stage !== wonKey).length}</b>
         </span>
+        {def.amountLabel && (
+          <span>
+            진행 중 금액 <b>{won(open.reduce((n, r) => n + (r.amount ?? 0), 0))}</b>
+          </span>
+        )}
       </div>
       {view === 'list' ? (
         <DataTable
@@ -401,7 +481,7 @@ export default function FranchiseLeads() {
           rows={listRows as unknown as Row[]}
           loading={loading}
           exportable
-          exportFileName="가맹영업"
+          exportFileName={def.label.replace(/\s/g, '')}
           filters={filters}
           viewSwitch={viewSwitch}
           tabs={
@@ -410,9 +490,7 @@ export default function FranchiseLeads() {
               onChange={(v) => setListTab(v as ListTab)}
               options={[
                 { value: 'open', label: '진행 중' },
-                { value: 'WON', label: '계약 완료' },
-                { value: 'HOLD', label: '보류' },
-                { value: 'LOST', label: '실패' },
+                ...def.stages.filter((s) => !s.open).map((s) => ({ value: s.key, label: s.label })),
                 { value: 'all', label: '전체' },
               ]}
             />
@@ -422,6 +500,7 @@ export default function FranchiseLeads() {
         />
       ) : (
         <Board
+          def={def}
           rows={filtered}
           loading={loading}
           toolbar={
@@ -432,7 +511,7 @@ export default function FranchiseLeads() {
               actions={addButton}
             />
           }
-          canMove={can('FRANCHISE.UPDATE')}
+          canMove={can(`${def.perm}.UPDATE`)}
           onMove={(l, s) => void changeStage(l, s)}
           onOpen={detail.open}
         />
@@ -443,6 +522,7 @@ export default function FranchiseLeads() {
 }
 
 function Board({
+  def,
   rows,
   loading,
   toolbar,
@@ -450,52 +530,56 @@ function Board({
   onMove,
   onOpen,
 }: {
-  rows: FranchiseLeadView[];
+  def: CrmPipelineDef;
+  rows: CrmLeadView[];
   loading: boolean;
   toolbar: React.ReactNode;
   canMove: boolean;
-  onMove: (l: FranchiseLeadView, s: FranchiseLeadStage) => void;
+  onMove: (l: CrmLeadView, s: string) => void;
   onOpen: (id: string) => void;
 }) {
   const toast = useToast();
   const t = kstToday();
-  const make = (list: FranchiseLeadView[]): KanbanColumn[] =>
-    FRANCHISE_PIPELINE.map((s) => ({
-      id: s,
-      title: FRANCHISE_LEAD_STAGE_LABEL[s],
-      color: FRANCHISE_LEAD_STAGE_COLOR[s],
-      cards: list
-        .filter((r) => r.stage === s)
-        .map(
-          (r): KanbanCard => ({
-            id: r.id,
-            title: r.companyName,
-            footer: (
-              <div className={styles.kFooter}>
-                <div className={styles.kRow}>
-                  <span>{[r.contactName, r.region].filter(Boolean).join(' · ') || '—'}</span>
-                  <span className={styles.kChip}>{FRANCHISE_INTEREST_LABEL[r.interest]}</span>
+  const make = (list: CrmLeadView[]): KanbanColumn[] =>
+    def.stages
+      .filter((s) => s.open || s.won)
+      .map((s) => ({
+        id: s.key,
+        title: s.label,
+        color: s.color,
+        cards: list
+          .filter((r) => r.stage === s.key)
+          .map(
+            (r): KanbanCard => ({
+              id: r.id,
+              title: r.companyName,
+              footer: (
+                <div className={styles.kFooter}>
+                  <div className={styles.kRow}>
+                    <span>{[r.contactName, r.region].filter(Boolean).join(' · ') || '—'}</span>
+                    <span className={styles.kChip}>{CRM_INTEREST_LABEL[r.interest]}</span>
+                  </div>
+                  <div className={styles.kRow}>
+                    <span
+                      className={
+                        r.nextActionAt && r.nextActionAt < t
+                          ? styles.over
+                          : r.nextActionAt === t
+                            ? styles.soon
+                            : styles.muted
+                      }
+                    >
+                      <CalendarClock size={11} aria-hidden /> 다음 연락{' '}
+                      {r.nextActionAt ? md(r.nextActionAt) : '—'}
+                    </span>
+                    {r.amount != null && <span className={styles.muted}>{won(r.amount)}</span>}
+                    <span className={styles.muted}>{r.ownerName ?? '담당 없음'}</span>
+                  </div>
                 </div>
-                <div className={styles.kRow}>
-                  <span
-                    className={
-                      r.nextActionAt && r.nextActionAt < t
-                        ? styles.over
-                        : r.nextActionAt === t
-                          ? styles.soon
-                          : styles.muted
-                    }
-                  >
-                    <CalendarClock size={11} aria-hidden /> 다음 연락{' '}
-                    {r.nextActionAt ? md(r.nextActionAt) : '—'}
-                  </span>
-                  <span className={styles.muted}>{r.ownerName ?? '담당 없음'}</span>
-                </div>
-              </div>
-            ),
-          }),
-        ),
-    }));
+              ),
+            }),
+          ),
+      }));
   const [cols, setCols] = useState<KanbanColumn[]>(() => make(rows));
   const key = rows.map((r) => `${r.id}:${r.stage}:${r.nextActionAt}`).join('|');
   useEffect(() => {
@@ -511,7 +595,7 @@ function Board({
           setCols(make(rows));
           return;
         }
-        onMove(l, col.id as FranchiseLeadStage);
+        onMove(l, col.id);
       }
     setCols(next);
   };
@@ -535,10 +619,11 @@ function Board({
   );
 }
 
-const ACT_KINDS: Exclude<FranchiseActivityKind, 'STAGE'>[] = ['CALL', 'SMS', 'MEETING', 'MEMO'];
-const ACT_ICON = { CALL: Phone, SMS: MessageSquare, MEETING: Users, MEMO: StickyNote };
+const ACT_KINDS: Exclude<CrmActivityKind, 'STAGE'>[] = ['CALL', 'SMS', 'EMAIL', 'MEETING', 'MEMO'];
+const ACT_ICON = { CALL: Phone, SMS: MessageSquare, EMAIL: Mail, MEETING: Users, MEMO: StickyNote };
 
 function LeadDetail({
+  def,
   id,
   canEdit,
   canDelete,
@@ -546,17 +631,19 @@ function LeadDetail({
   onEdit,
   onChanged,
 }: {
+  def: CrmPipelineDef;
   id: string;
   canEdit: boolean;
   canDelete: boolean;
   onBack: () => void;
-  onEdit: (l: FranchiseLeadView) => void;
+  onEdit: (l: CrmLeadView) => void;
   onChanged: () => Promise<void> | void;
 }) {
   const toast = useToast();
+  const base = `/crm/${def.key}/leads`;
   const [d, setD] = useState<{
-    lead: FranchiseLeadView;
-    activities: FranchiseActivityView[];
+    lead: CrmLeadView;
+    activities: CrmActivityView[];
   } | null>(null);
   const [kind, setKind] = useState<(typeof ACT_KINDS)[number]>('CALL');
   const [content, setContent] = useState('');
@@ -565,11 +652,11 @@ function LeadDetail({
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     try {
-      setD(await api(`/franchise/leads/${id}`));
+      setD(await api(`${base}/${id}`));
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
     }
-  }, [id, toast]);
+  }, [base, id, toast]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -578,7 +665,7 @@ function LeadDetail({
     if (!content.trim()) return;
     setBusy(true);
     try {
-      await api(`/franchise/leads/${id}/activities`, {
+      await api(`${base}/${id}/activities`, {
         method: 'POST',
         body: JSON.stringify({
           kind,
@@ -597,9 +684,9 @@ function LeadDetail({
       setBusy(false);
     }
   };
-  const stage = async (s: FranchiseLeadStage) => {
+  const stage = async (s: string) => {
     try {
-      await api(`/franchise/leads/${id}`, { method: 'PATCH', body: JSON.stringify({ stage: s }) });
+      await api(`${base}/${id}`, { method: 'PATCH', body: JSON.stringify({ stage: s }) });
       await load();
       await onChanged();
     } catch (e) {
@@ -613,7 +700,7 @@ function LeadDetail({
     )
       return;
     try {
-      await api(`/franchise/leads/${id}`, { method: 'DELETE' });
+      await api(`${base}/${id}`, { method: 'DELETE' });
       await onChanged();
       onBack();
     } catch (e) {
@@ -626,7 +713,7 @@ function LeadDetail({
     <RecordDetail
       loading={!d}
       title={l?.companyName ?? ''}
-      backLabel="가맹 영업"
+      backLabel={def.label}
       onBack={onBack}
       actions={
         l ? (
@@ -649,17 +736,29 @@ function LeadDetail({
           ? [
               {
                 items: [
-                  { label: '단계', value: <StageBadge stage={l.stage} /> },
-                  { label: '담당자(사장님)', value: l.contactName },
+                  { label: '단계', value: <StageBadge def={def} stage={l.stage} /> },
+                  {
+                    label: def.contactLabel,
+                    value: [l.contactName, l.contactTitle].filter(Boolean).join(' · ') || null,
+                  },
                   { label: '연락처', value: l.phone ? formatPhone(l.phone) : null },
-                  { label: '지역', value: l.region },
-                  { label: '유입 경로', value: FRANCHISE_LEAD_SOURCE_LABEL[l.source] },
-                  { label: '관심도', value: FRANCHISE_INTEREST_LABEL[l.interest] },
+                  ...(l.email ? [{ label: '메일', value: l.email }] : []),
+                  { label: def.regionLabel, value: l.region },
+                  { label: '유입 경로', value: sourceLabel(def, l.source) },
+                  { label: '관심도', value: CRM_INTEREST_LABEL[l.interest] },
                   { label: '영업 담당', value: l.ownerName },
+                  ...(def.amountLabel
+                    ? [{ label: def.amountLabel, value: l.amount == null ? null : won(l.amount) }]
+                    : []),
+                  ...(def.expectedLabel ? [{ label: def.expectedLabel, value: l.expectedAt }] : []),
                   { label: '다음 연락', value: <NextAction l={l} /> },
                   { label: '다음에 할 일', value: l.nextAction },
-                  { label: '지금 하는 사업', value: l.currentBiz, wide: true },
-                  { label: '연결된 가맹점', value: l.branchName },
+                  ...def.fields.map((f) => ({
+                    label: f.label,
+                    value: fieldText(f, l.fields?.[f.key]),
+                    wide: f.type === 'textarea',
+                  })),
+                  ...(def.link ? [{ label: def.linkLabel, value: l.linkName }] : []),
                   { label: '실패·보류 이유', value: l.lostReason },
                   { label: '메모', value: l.memo, wide: true },
                 ],
@@ -675,11 +774,8 @@ function LeadDetail({
               <h3 className={styles.blockTitle}>단계</h3>
               <SegmentedControl
                 value={l.stage}
-                onChange={(v) => v !== l.stage && void stage(v as FranchiseLeadStage)}
-                options={FRANCHISE_LEAD_STAGES.map((s) => ({
-                  value: s,
-                  label: FRANCHISE_LEAD_STAGE_LABEL[s],
-                }))}
+                onChange={(v) => v !== l.stage && void stage(v)}
+                options={def.stages.map((s) => ({ value: s.key, label: s.label }))}
               />
             </section>
           )}
@@ -697,7 +793,7 @@ function LeadDetail({
                       className={`form-chip${kind === k ? ' form-chip-on' : ''}`}
                       onClick={() => setKind(k)}
                     >
-                      {FRANCHISE_ACTIVITY_LABEL[k]}
+                      {CRM_ACTIVITY_LABEL[k]}
                     </button>
                   ))}
                 </div>
@@ -705,7 +801,7 @@ function LeadDetail({
                   rows={3}
                   value={content}
                   maxLength={3000}
-                  placeholder="상담 내용 — 예: 가맹비·초도 자재 문의, 다음 주 매장 방문 희망"
+                  placeholder="상담 내용 — 예: 조건 문의, 다음 주 방문 희망"
                   onChange={(e) => setContent(e.target.value)}
                 />
                 <div className={styles.actNext}>
@@ -741,13 +837,12 @@ function LeadDetail({
                           <b>{a.actorName ?? '알 수 없음'}</b> ·{' '}
                           {a.kind === 'STAGE' ? (
                             <>
-                              단계{' '}
-                              {a.fromStage ? `${FRANCHISE_LEAD_STAGE_LABEL[a.fromStage]} → ` : ''}
-                              <b>{a.toStage ? FRANCHISE_LEAD_STAGE_LABEL[a.toStage] : ''}</b>
+                              단계 {a.fromStage ? `${stageLabel(def, a.fromStage)} → ` : ''}
+                              <b>{stageLabel(def, a.toStage)}</b>
                             </>
                           ) : (
                             <Badge variant="subtle" size="sm">
-                              {FRANCHISE_ACTIVITY_LABEL[a.kind]}
+                              {CRM_ACTIVITY_LABEL[a.kind]}
                             </Badge>
                           )}
                         </span>

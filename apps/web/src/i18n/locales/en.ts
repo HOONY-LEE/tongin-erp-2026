@@ -52,6 +52,7 @@ export default {
     duties: 'Duties',
     franchise: 'Franchisees',
     franchiseLeads: 'Franchise Sales',
+    b2bCrm: 'B2B CRM',
     performance: 'Performance',
     drive: 'Drive',
     leave: 'Leave',

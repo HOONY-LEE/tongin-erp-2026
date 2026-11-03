@@ -180,11 +180,8 @@ export default function AgentCreate() {
           referenceFileIds: refs.map((r) => r.id),
         }),
       });
-      toast({
-        type: 'success',
-        title: '에이전트를 만들었습니다 — 노드에서 세부 내용을 다듬어 보세요',
-      });
-      navigate(`/agent-builder/${b.id}`, { replace: true });
+      // 편집 화면(자연어 모드)에서 시험 실행 → 오류면 AI가 스스로 고쳐 저장까지 한다
+      navigate(`/agent-builder/${b.id}?mode=nl`, { replace: true, state: { autoTest: true } });
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
       setBuilding(false);
@@ -326,7 +323,7 @@ export default function AgentCreate() {
                     <div className={styles.readyActions}>
                       <span className={styles.note}>
                         {building
-                          ? 'AI가 노드·분기·승인을 설계하고 있어요(30초~1분)…'
+                          ? 'AI가 설계하고 있어요(30초~1분) — 만든 뒤 시험 실행까지 해 볼게요…'
                           : '바꿀 점이 있으면 아래에 말씀해 주세요. 만든 뒤에도 노드에서 고칠 수 있어요.'}
                       </span>
                       <Button
