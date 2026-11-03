@@ -20,7 +20,11 @@ import {
 
 const prisma = new PrismaClient();
 
-const MY = { label: '내 업무', items: ['approvals', 'leave', 'attendance'], collapsed: true };
+const MY = {
+  label: '내 업무',
+  items: ['approvals', 'spaces', 'leave', 'attendance'],
+  collapsed: true,
+};
 
 interface Spec {
   name: string;
@@ -44,7 +48,7 @@ const SPECS: Spec[] = [
     layout: {
       groups: [
         { label: '경영 현황', items: ['dashboard', 'ai', 'notices'] },
-        { label: '결재·업무', items: ['approvals', 'tasks'] },
+        { label: '결재·업무', items: ['approvals', 'tasks', 'spaces'] },
         { label: '영업 현황', items: ['leads', 'calendar', 'payments-confirm', 'support'] },
         { label: '경영관리', items: ['settlements', 'billing', 'hr', 'assets'] },
         {
@@ -67,7 +71,10 @@ const SPECS: Spec[] = [
           label: '정산·회계',
           items: ['settlements', 'payments-confirm', 'billing', 'material-orders', 'materials'],
         },
-        { label: '인사·총무', items: ['hr', 'assets', 'approvals', 'leave', 'attendance'] },
+        {
+          label: '인사·총무',
+          items: ['hr', 'assets', 'spaces', 'approvals', 'leave', 'attendance'],
+        },
         {
           label: '관리',
           items: [
@@ -230,7 +237,7 @@ const TEAM_ROLES = [
     code: 'TEAM_MGMT',
     name: '경영관리팀 업무',
     description:
-      '인사(인사·평가·휴가·근태 정책, 결재 양식·결재선), 총무(계약·자산 관리), 전사 공지 작성',
+      '인사(인사·평가·휴가·근태 정책, 결재 양식·결재선), 총무(계약·자산 관리·공간 예약), 전사 공지 작성',
     orgs: ['경영관리'],
     perms: [
       'HR.READ',
@@ -250,6 +257,7 @@ const TEAM_ROLES = [
       'NOTICE.CREATE',
       'NOTICE.UPDATE',
       'NOTICE.DELETE',
+      'SPACE.MANAGE',
     ],
   },
   {

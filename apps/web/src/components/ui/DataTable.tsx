@@ -1,4 +1,6 @@
-import { useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
@@ -12,9 +14,9 @@ interface Props {
   rowKey?: string;
   /** 지정 시 로우 클릭으로 상세 이동 등 처리 (로우 안의 버튼/링크 클릭은 무시하고 그 자체 동작만 수행) */
   onRowClick?: (row: Row) => void;
-  /** 툴바 오른쪽 끝에 배치할 커스텀 액션(예: "+ 등록" 버튼) — 내보내기 버튼 뒤에 온다 */
+  /** 셋째 줄 오른쪽 끝 — 생성하기류 버튼(예: "+ 등록"). 내보내기 버튼 뒤에 온다 */
   toolbarActions?: ReactNode;
-  /** 툴바 왼쪽, 검색창 바로 오른쪽에 붙는 필터 컨트롤(예: 상태 Select) */
+  /** 둘째 줄 가운데 — 검색창 바로 오른쪽에 붙는 필터(예: 날짜·종류 Select) */
   filters?: ReactNode;
   /** CSV/Excel/JSON/XML 내보내기 메뉴 노출 여부. 기본 false. */
   exportable?: boolean;
@@ -27,6 +29,10 @@ interface Props {
    * 행 수를 늘려 넘치면 표 본문만 스크롤된다(머리글·풋터는 그대로).
    */
   fit?: boolean;
+  /** 세그먼트 탭(상태·범위) — 셋째 줄 왼쪽. 오른쪽 끝에는 내보내기·toolbarActions(생성 버튼) */
+  tabs?: ReactNode;
+  /** 보기 바꾸기(목록/칸반/카드 등) — 둘째 줄 오른쪽 끝(검색 · 필터 ……… 보기) */
+  viewSwitch?: ReactNode;
 }
 
 /** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
@@ -50,8 +56,17 @@ export function DataTable({
   exportFileName,
   pageSize,
   fit,
+  tabs,
+  viewSwitch,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // 한 쪽뿐이라도 페이지 표시를 늘 보인다 — softium은 1쪽이면 가운데를 비워 둔다(그 자리에 같은 모양으로 그림)
+  const row3 = !!(tabs || toolbarActions);
+  const [pagerSlot, setPagerSlot] = useState<Element | null>(null);
+  useLayoutEffect(() => {
+    const el = containerRef.current?.querySelector('.sft-tfoot__center') ?? null;
+    if (el !== pagerSlot) setPagerSlot(el);
+  });
   const wasLoading = useRef(false);
   // 여러 줄 셀이 있는 표 — 행 높이를 내용에 맞춰 늘린다(고정 행 높이 전제의 가상 스크롤은 끈다)
   const multiline = columns.some((c) => c.multiline);
@@ -140,6 +155,11 @@ export function DataTable({
       }
     : undefined;
 
+  // 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다)
+  const exportMenu = exportable ? (
+    <ExportMenu table={table} fileName={exportFileName ?? 'table'} />
+  ) : null;
+
   return (
     <div
       ref={containerRef}
@@ -150,6 +170,8 @@ export function DataTable({
         showSkeleton ? 'dt-loading' : '',
         multiline ? 'dt-multiline' : '',
         fit ? 'dt-fit' : '',
+        // 셋째 줄(탭·생성 버튼)이 없으면 그 줄을 비우지 않고 접는다
+        row3 ? '' : 'dt-no-row3',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -160,18 +182,52 @@ export function DataTable({
         locale="ko"
         emptyText={loading ? '불러오는 중…' : '데이터가 없습니다'}
         toolbarActions={
-          // softium Table의 툴바에는 왼쪽 확장 슬롯이 없다. toolbarActions는 오른쪽 컨테이너에
-          // 그대로 펼쳐지므로, 필터를 Fragment 첫 자식으로 넣고 CSS(margin-right:auto)로
-          // 검색창 옆까지 끌어와 "왼쪽=검색+필터 / 오른쪽=내보내기+액션" 배치를 만든다.
+          // softium Table 툴바 = [검색(왼쪽)][toolbarActions(오른쪽)] 뿐이라, 오른쪽 컨테이너를
+          // display:contents로 풀고 CSS grid 영역으로 목록 화면 공통 배치를 만든다(base.css .dt-wrap .sft-toolbar).
+          //   검색 · 필터 ……… 보기 바꾸기
+          //   세그먼트 탭 ……… 내보내기 · 생성 버튼
           <>
             {filters && <div className="dt-toolbar-filters">{filters}</div>}
-            {/* 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다) */}
-            {exportable && <ExportMenu table={table} fileName={exportFileName ?? 'table'} />}
-            {toolbarActions}
+            {/* 탭·생성 버튼이 없으면 셋째 줄을 만들지 않고 내보내기를 검색 줄 오른쪽 끝에 둔다 */}
+            {(viewSwitch || (exportable && !row3)) && (
+              <div className="dt-toolbar-view">
+                {viewSwitch}
+                {exportable && !row3 && exportMenu}
+              </div>
+            )}
+            {tabs && <div className="dt-toolbar-tabs">{tabs}</div>}
+            {row3 && (exportable || toolbarActions) && (
+              <div className="dt-toolbar-actions">
+                {exportable && exportMenu}
+                {toolbarActions}
+              </div>
+            )}
           </>
         }
         disableVirtualization={multiline}
       />
+      {pagerSlot &&
+        createPortal(
+          <nav className="sft-pager dt-pager-single" aria-label="pagination">
+            <button type="button" className="sft-pager__btn sft-pager__btn--nav" disabled>
+              <ChevronLeft size={14} aria-hidden />
+              <span className="sft-pager__navlabel">이전</span>
+            </button>
+            <button
+              type="button"
+              className="sft-pager__btn sft-pager__btn--page"
+              data-active="true"
+              aria-current="page"
+            >
+              1
+            </button>
+            <button type="button" className="sft-pager__btn sft-pager__btn--nav" disabled>
+              <span className="sft-pager__navlabel">다음</span>
+              <ChevronRight size={14} aria-hidden />
+            </button>
+          </nav>,
+          pagerSlot,
+        )}
     </div>
   );
 }

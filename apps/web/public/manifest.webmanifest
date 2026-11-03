@@ -1,7 +1,7 @@
 {
-  "name": "통인 AI-WORKS",
-  "short_name": "AI-WORKS",
-  "description": "통인익스프레스 통인 AI-WORKS — 접수·견적·계약·작업·정산",
+  "name": "통인 AI Works",
+  "short_name": "통인 AI Works",
+  "description": "통인익스프레스 통인 AI Works — 접수·견적·계약·작업·정산",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -13,13 +13,19 @@
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

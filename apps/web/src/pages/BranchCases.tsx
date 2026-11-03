@@ -349,20 +349,15 @@ export default function BranchCases() {
   ];
 
   return (
-    <ListPage
-      fit
-      title={t('nav.branchCases')}
-      onRefresh={load}
-      updatedAt={updatedAt}
-      footer={
-        <SegmentedControl
-          value={kind}
-          onChange={(v) => setKind(v as 'ALL' | BranchCaseKind)}
-          options={kindOptions}
-        />
-      }
-    >
+    <ListPage fit title={t('nav.branchCases')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
+        tabs={
+          <SegmentedControl
+            value={kind}
+            onChange={(v) => setKind(v as 'ALL' | BranchCaseKind)}
+            options={kindOptions}
+          />
+        }
         fit
         columns={columns}
         rows={byKind.filter((r) => statusMatch(r, status)) as unknown as Row[]}

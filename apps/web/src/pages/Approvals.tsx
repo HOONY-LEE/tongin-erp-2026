@@ -32,7 +32,6 @@ import { LineTemplates } from '../components/approval/LineTemplates';
 import { FormsAdmin } from '../components/approval/FormsAdmin';
 import { FormDraftModal, NewDocPicker, QuickApply } from '../components/approval/NewDocPicker';
 import { LeaveApplyModal } from './Leave';
-import qstyles from '../components/approval/newDoc.module.css';
 import styles from '../components/approval/approval.module.css';
 
 type Box = 'todo' | 'mine' | 'cc' | 'all' | 'forms' | 'lines';
@@ -155,31 +154,33 @@ export default function Approvals() {
       : []),
   ];
 
+  const boxTabs = (
+    <SegmentedControl value={box} onChange={(v) => setBox(v as Box)} options={options} />
+  );
+
   return (
     <ListPage
       title={t('nav.approvals')}
       onRefresh={load}
       updatedAt={updatedAt}
       footer={
-        // 제목과 탭 사이 — 바로 신청하기 카드(직원 계정, 문서 목록 탭에서만)
-        <div className={qstyles.headStack}>
-          {user?.employeeId && box !== 'forms' && box !== 'lines' && (
-            <QuickApply
-              onGeneral={() => setWriting('general')}
-              onLeave={() => setWriting('leave')}
-              onPickForm={(f) => setWriting(f)}
-            />
-          )}
-          <SegmentedControl value={box} onChange={(v) => setBox(v as Box)} options={options} />
-        </div>
+        // 제목과 표 사이 — 바로 신청하기 카드(직원 계정, 문서 목록 탭에서만)
+        user?.employeeId && box !== 'forms' && box !== 'lines' ? (
+          <QuickApply
+            onGeneral={() => setWriting('general')}
+            onLeave={() => setWriting('leave')}
+            onPickForm={(f) => setWriting(f)}
+          />
+        ) : undefined
       }
     >
       {box === 'lines' ? (
-        <LineTemplates />
+        <LineTemplates tabs={boxTabs} />
       ) : box === 'forms' ? (
-        <FormsAdmin urlKey="form" />
+        <FormsAdmin urlKey="form" tabs={boxTabs} />
       ) : (
         <DataTable
+          tabs={boxTabs}
           columns={columns}
           rows={rows as unknown as Row[]}
           loading={loading}

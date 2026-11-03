@@ -8,6 +8,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useNodesInitialized,
   useReactFlow,
   type Connection,
   type Edge,
@@ -228,14 +229,44 @@ function Editor() {
     };
   }, [id]);
 
-  // 처음 열 때 한 번 — 모든 노드 크기를 잰 뒤에 화면에 맞춘다(제어 모드에선 fitView 속성만으로는 안 맞는다)
+  // 처음 열 때 한 번 — React Flow가 노드 크기를 다 잰 뒤(useNodesInitialized), 캔버스 크기가 잡힌 다음 화면에 맞춘다.
+  // (예전엔 직접 잰 크기를 기다렸는데 조건이 맞지 않으면 끝내 맞추지 않아 빈 곳을 비췄다)
+  const nodesReady = useNodesInitialized();
   const fitted = useRef<string | null>(null);
+  /** 전체가 보이게 맞추되, 너무 작아져 글자를 못 읽으면(65% 미만) 그 크기로 두고 시작(왼쪽 끝)부터 보여 준다 */
+  const fitNow = useCallback(() => {
+    void rf.fitView({ padding: 0.15, maxZoom: 1, duration: 0 }).then(() => {
+      const MIN = 0.65;
+      if (rf.getZoom() >= MIN) return;
+      const el = wrapRef.current;
+      const b = rf.getNodesBounds(rf.getNodes());
+      if (!el || !b.width) return;
+      void rf.setViewport({
+        x: 48 - b.x * MIN,
+        y: el.clientHeight / 2 - (b.y + b.height / 2) * MIN,
+        zoom: MIN,
+      });
+    });
+  }, [rf]);
   useEffect(() => {
-    if (fitted.current === id || !graph.nodes.length) return;
-    if (!graph.nodes.every((n) => measured[n.id])) return;
+    if (fitted.current === id || !graph.nodes.length || !nodesReady) return;
     fitted.current = id;
-    requestAnimationFrame(() => void rf.fitView({ padding: 0.15, maxZoom: 1 }));
-  }, [id, graph.nodes, measured, rf]);
+    // 레이아웃(왼쪽·오른쪽 패널)이 자리 잡은 다음 프레임에
+    requestAnimationFrame(() => requestAnimationFrame(fitNow));
+  }, [id, graph.nodes.length, nodesReady, fitNow]);
+  // 캔버스 크기가 처음 0에서 잡히면(화면 전환 직후 등) 한 번 더 맞춘다
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    let sized = el.clientWidth > 0 && el.clientHeight > 0;
+    const ro = new ResizeObserver(() => {
+      const now = el.clientWidth > 0 && el.clientHeight > 0;
+      if (now && !sized && fitted.current === id) fitNow();
+      sized = now;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [id, fitNow]);
 
   const toolMap = useMemo(() => new Map((tools ?? []).map((t) => [t.name, t])), [tools]);
   const issues = useMemo(

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import {
@@ -48,7 +48,14 @@ import fstyles from './formFields.module.css';
  * 결재 양식 관리(APPROVAL.MANAGE) — 지출 결의·구매 품의처럼 회사마다 다른 신청서를 항목으로 정의한다.
  * 양식 편집에서 공개 대상·기본 결재선까지 함께 정한다.
  */
-export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
+export function FormsAdmin({
+  urlKey,
+  tabs,
+}: {
+  urlKey?: string;
+  /** 표 툴바 셋째 줄 왼쪽 탭(결재함의 상자 탭) */
+  tabs?: ReactNode;
+} = {}) {
   const { forms, loading, reload } = useApprovalForms(true);
   const { orgs, people } = useDirectory();
   // 결재함에서는 편집 중인 양식을 주소(?form=<id>|new)에 둔다 — 결재함 머리글을 숨기고 뒤로가기도 된다.
@@ -143,6 +150,7 @@ export function FormsAdmin({ urlKey }: { urlKey?: string } = {}) {
   return (
     <>
       <DataTable
+        tabs={tabs}
         columns={columns}
         rows={rows as unknown as Row[]}
         loading={loading}

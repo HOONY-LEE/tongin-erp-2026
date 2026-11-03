@@ -1,7 +1,7 @@
-// 통인 AI-WORKS 공유 타입/상수 — 프론트(web)와 백엔드(api)가 함께 사용.
+// 통인 AI Works 공유 타입/상수 — 프론트(web)와 백엔드(api)가 함께 사용.
 
 /** 제품 이름 — 사이드바·로그인·브라우저 탭·내려받는 파일에 쓴다 */
-export const PRODUCT_NAME = '통인 AI-WORKS';
+export const PRODUCT_NAME = '통인 AI Works';
 // 설계노트의 도메인 개념과 1:1 (서비스라인·산정방식·상태·처리구분).
 
 // 조직 유형 (그룹사 > 법인/브랜드 > 본사 부서·지점). 외부업체(전속·제휴·기업고객)는 조직이 아니라 거래처(Partner)다
@@ -716,6 +716,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
   {
+    key: 'SPACE',
+    label: '공간 예약',
+    group: '시스템',
+    actions: [],
+    specials: [{ action: 'MANAGE', label: '공간 관리·모든 예약 수정·대여 고객 정보' }],
+    hint: '예약하기·내 예약 고치기는 권한 없이 됩니다. 이 권한은 공간을 만들고 고치며, 남의 예약과 외부 대여 고객 정보(연락처·대여료)를 다룹니다',
+  },
+  {
     key: 'SYSTEM_LOG',
     label: '시스템 로그',
     group: '시스템',
@@ -880,7 +888,7 @@ export * from './menu';
 export const NOTICE_AUDIENCE = ['ALL', 'ORG'] as const;
 export type NoticeAudience = (typeof NOTICE_AUDIENCE)[number];
 
-export const TASK_STATUS = ['TODO', 'IN_PROGRESS', 'HOLD', 'DONE'] as const;
+export const TASK_STATUS = ['TODO', 'IN_PROGRESS', 'DONE', 'HOLD'] as const;
 export type TaskStatus = (typeof TASK_STATUS)[number];
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   TODO: '할 일',

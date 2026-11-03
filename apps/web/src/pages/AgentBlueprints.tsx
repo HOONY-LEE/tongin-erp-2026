@@ -14,6 +14,7 @@ import {
   Button,
   DataTable,
   ListPage,
+  ListToolbar,
   SegmentedControl,
   Skeleton,
   StatusBadge,
@@ -154,7 +155,7 @@ export default function AgentBlueprints() {
     { title: '수정', dataIndex: 'updatedAt', render: (r) => dt(r.updatedAt) },
   ];
 
-  // 목록을 나누는 탭 — 검색창 바로 오른쪽에 붙는다
+  // 목록을 나누는 탭 — 툴바 셋째 줄 왼쪽
   const tabs = (
     <SegmentedControl
       value={filter}
@@ -167,37 +168,38 @@ export default function AgentBlueprints() {
     />
   );
 
-  // 툴바 오른쪽 끝 — 보기 전환 + 새 에이전트
+  // 툴바 둘째 줄 오른쪽 — 카드형/목록형
+  const viewSwitch = (
+    <SegmentedControl
+      className={styles.viewToggle}
+      value={view}
+      onChange={(v) => changeView(v as View)}
+      aria-label="보기 방식"
+      options={[
+        {
+          value: 'cards',
+          label: (
+            <span title="카드형" aria-label="카드형">
+              <LayoutGrid size={15} aria-hidden />
+            </span>
+          ),
+        },
+        {
+          value: 'table',
+          label: (
+            <span title="목록형" aria-label="목록형">
+              <List size={15} aria-hidden />
+            </span>
+          ),
+        },
+      ]}
+    />
+  );
+  // 툴바 셋째 줄 오른쪽 — 새 에이전트
   const actions = (
-    <>
-      <SegmentedControl
-        className={styles.viewToggle}
-        value={view}
-        onChange={(v) => changeView(v as View)}
-        aria-label="보기 방식"
-        options={[
-          {
-            value: 'cards',
-            label: (
-              <span title="카드형" aria-label="카드형">
-                <LayoutGrid size={15} aria-hidden />
-              </span>
-            ),
-          },
-          {
-            value: 'table',
-            label: (
-              <span title="목록형" aria-label="목록형">
-                <List size={15} aria-hidden />
-              </span>
-            ),
-          },
-        ]}
-      />
-      <Button variant="primary" size="sm" onClick={() => navigate('/agent-builder/new')}>
-        + 새 에이전트
-      </Button>
-    </>
+    <Button variant="primary" size="sm" onClick={() => navigate('/agent-builder/new')}>
+      + 새 에이전트
+    </Button>
   );
 
   return (
@@ -214,15 +216,16 @@ export default function AgentBlueprints() {
           rows={shown}
           loading={loading}
           onRowClick={open}
-          filters={tabs}
+          tabs={tabs}
+          viewSwitch={viewSwitch}
           toolbarActions={actions}
         />
       ) : (
         <>
-          {/* 표 툴바와 같은 모양 — DataTable 툴바 클래스(base.css)를 그대로 빌려 쓴다 */}
+          {/* 표 툴바와 같은 자리(ListToolbar) — 검색칸은 표 검색과 같은 모양(.dt-wrap 아래 softium 클래스) */}
           <div className="dt-wrap">
-            <div className="sft-toolbar">
-              <div className="sft-toolbar__left">
+            <ListToolbar
+              search={
                 <div className="sft-toolbar__search-wrap">
                   <span className="sft-toolbar__search-icon" aria-hidden="true">
                     <Search size={15} />
@@ -236,12 +239,11 @@ export default function AgentBlueprints() {
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
-              </div>
-              <div className="sft-toolbar__right">
-                <div className="dt-toolbar-filters">{tabs}</div>
-                {actions}
-              </div>
-            </div>
+              }
+              viewSwitch={viewSwitch}
+              tabs={tabs}
+              actions={actions}
+            />
           </div>
           {loading && rows.length === 0 ? (
             <div className={styles.cardGrid} aria-busy>

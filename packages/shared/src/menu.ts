@@ -81,6 +81,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     desc: '전자결재',
   },
   {
+    key: 'spaces',
+    path: '/spaces',
+    label: '공간 예약',
+    i18n: 'spaces',
+    icon: 'DoorOpen',
+    selfService: true,
+    category: '공통',
+    desc: '회의실·파티룸 등 공간 예약·대여',
+  },
+  {
     key: 'leave',
     path: '/leave',
     label: '휴가',
@@ -380,7 +390,7 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
         'campaigns',
       ],
     },
-    { label: '내 업무', items: ['notices', 'tasks', 'approvals', 'leave', 'attendance'] },
+    { label: '내 업무', items: ['notices', 'tasks', 'approvals', 'spaces', 'leave', 'attendance'] },
     {
       label: '관리',
       items: [

@@ -1,0 +1,70 @@
+{
+  "name": "tongin-ai-works-desktop",
+  "productName": "통인 AI Works",
+  "version": "0.1.0",
+  "private": true,
+  "description": "통인 AI Works 데스크톱 앱(Electron) — 웹 앱을 창으로 감싼다",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "36.4.0",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.tonginexp.aiworks",
+    "productName": "통인 AI Works",
+    "copyright": "Copyright © 2026 통인익스프레스",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**"
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "TonginAIWorks-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "통인 AI Works 설치"
+    },
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "TonginAIWorks-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": [
+        "ko_KR"
+      ],
+      "language": "1042"
+    },
+    "publish": null
+  }
+}

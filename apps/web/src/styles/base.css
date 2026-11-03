@@ -155,28 +155,76 @@ html[data-font-size='lg'] {
    내보내기+등록 버튼이 한 줄에 다 안 들어가 필터가 검색창 뒤로 겹쳐 보이지 않게 되던
    문제 — 검색창을 고정폭 대신 줄어들 수 있는 폭으로 바꾸고, 그래도 안 맞으면 툴바
    자체가 다음 줄로 넘어가게 한다(겹침 대신 줄바꿈). */
-.dt-wrap .sft-toolbar {
-  flex-wrap: wrap;
-  row-gap: 8px;
+.dt-wrap .sft-toolbar,
+.list-toolbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 400px) minmax(0, 1fr) auto;
+  grid-template-areas:
+    'search filters view'
+    'tabs tabs actions';
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 12px;
 }
-.dt-wrap .sft-toolbar__left {
-  flex: 1 1 200px;
-  min-width: 160px;
+/* 셋째 줄(탭·생성 버튼)이 없는 표 — 한 줄로 */
+.dt-wrap.dt-no-row3 .sft-toolbar,
+.list-toolbar.no-row3 {
+  grid-template-areas: 'search filters view';
+}
+.dt-wrap .sft-toolbar__left,
+.list-toolbar .lt-search {
+  grid-area: search;
+  min-width: 0;
 }
 .dt-wrap .sft-toolbar__right {
-  flex: 1 1 auto;
-  min-width: 0;
-  flex-wrap: wrap;
-  row-gap: 8px;
-  justify-content: flex-end;
+  display: contents;
 }
-.dt-wrap .dt-toolbar-filters {
-  /* 내보내기 버튼이 DOM상 먼저 오므로 order로 맨 앞(검색창 옆)으로 당긴다 */
-  order: -1;
+.dt-wrap .dt-toolbar-filters,
+.list-toolbar .lt-filters {
+  grid-area: filters;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-right: auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.dt-wrap .dt-toolbar-view,
+.list-toolbar .lt-view {
+  grid-area: view;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dt-wrap .dt-toolbar-tabs,
+.list-toolbar .lt-tabs {
+  grid-area: tabs;
+  min-width: 0;
+  overflow-x: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dt-wrap .dt-toolbar-actions,
+.list-toolbar .lt-actions {
+  grid-area: actions;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* 좁은 화면 — 한 칸씩 아래로 */
+@media (max-width: 720px) {
+  .dt-wrap .sft-toolbar,
+  .list-toolbar,
+  .dt-wrap.dt-no-row3 .sft-toolbar,
+  .list-toolbar.no-row3 {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'search view'
+      'filters filters'
+      'tabs actions';
+  }
 }
 
 /* 검색 인풋 최대폭은 440px이되, 공간이 부족하면 줄어든다(고정폭이면 좁은 화면에서
@@ -263,23 +311,26 @@ html[data-font-size='lg'] {
   flex: none;
 }
 
-/* 툴바 세그먼트 탭(단계·범위 필터) — 검색창 높이(38px)에 맞춘다. 배치: [검색][세그먼트] ……… [내보내기][+ 등록] */
-.sft-toolbar [class*='_track_'] {
+/* 툴바 세그먼트 탭(단계·범위) — 검색창 높이(38px)에 맞춘다 */
+.sft-toolbar [class*='_track_'],
+.list-toolbar [class*='_track_'] {
   height: 38px;
   box-sizing: border-box;
 }
-.sft-toolbar [class*='_track_'] [class*='_segment_'] {
+.sft-toolbar [class*='_track_'] [class*='_segment_'],
+.list-toolbar [class*='_track_'] [class*='_segment_'] {
   min-height: 30px;
   height: 30px;
   padding: 0 14px;
 }
-.sft-toolbar [class*='_track_'] [class*='_indicator_'] {
+.sft-toolbar [class*='_track_'] [class*='_indicator_'],
+.list-toolbar [class*='_track_'] [class*='_indicator_'] {
   height: 30px;
 }
 .dt-wrap .sft-toolbar__search,
 .dt-wrap .sft-export__trigger,
-.dt-wrap .sft-toolbar__right button,
-.dt-wrap .dt-toolbar-filters button,
+.dt-wrap .sft-toolbar__right button:not([role='checkbox']),
+.dt-wrap .dt-toolbar-filters button:not([role='checkbox']),
 .dt-wrap .dt-toolbar-filters [role='combobox'] {
   height: 38px;
   box-sizing: border-box;
@@ -295,8 +346,8 @@ html[data-font-size='lg'] {
 [role='combobox']:focus-visible,
 [role='combobox'][data-state='open'] {
   outline: none;
-  border-color: var(--ark-color-info-500);
-  box-shadow: 0 0 0 1px var(--ark-color-info-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 
 /* Select 드롭다운의 선택/호버 표시도 같은 블루로 — akron 기본은 primary(주황)라
@@ -325,8 +376,8 @@ html[data-font-size='lg'] {
 input:focus:not([readonly]),
 textarea:focus:not([readonly]) {
   outline: none;
-  border-color: var(--ark-color-info-500);
-  box-shadow: 0 0 0 1px var(--ark-color-info-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 /* 테두리 없는 검색칸(직원·조직 찾기 드롭다운 안의 검색, 설정 창 검색 등)은 위 링을 그리지 않는다 —
    바깥 상자가 이미 열려 있음을 보여 줘서 안쪽에 링이 하나 더 생기면 이중 테두리가 된다 */
@@ -433,4 +484,233 @@ input.no-focus-ring:focus:not([readonly]) {
 /* 아이콘(lucide — 앱·akron-ui 공통)도 글자 크기 배율을 따른다. size={16} 같은 고정 크기를 배율만큼 키우고 줄인다 */
 svg.lucide {
   zoom: var(--font-scale);
+}
+
+/* ── 헤더 알림 벨 숫자 — akron 기본은 1.5초마다 커졌다 작아진다(_pulse_). 크기를 고정한다 ── */
+[class*='_badge_'][class*='_pulse_'] {
+  animation: none !important;
+}
+
+/* ── 검색칸 둥글기 = 세그먼트 탭(--ark-radius-xl)과 같게, 앱 전체 ──
+   표 위 검색(softium), 검색·찾기 입력(akron Input — 테두리가 input 자체), type=search.
+   직접 만든 검색 상자(드라이브·설정 창 등)는 각 모듈 CSS에서 var(--search-radius)를 쓴다. */
+:root {
+  --search-radius: var(--control-radius);
+}
+.sft-toolbar__search,
+input[type='search'],
+input[placeholder*='검색'],
+input[placeholder*='찾기'] {
+  border-radius: var(--search-radius) !important;
+}
+
+/* akron 토큰에 없는 간격 — AutoSizeTextarea(결재 양식 '텍스트' 칸 등)가 이 값을 써서,
+   없으면 여백 규칙 전체가 무효가 돼 글자가 테두리에 붙는다 */
+:root {
+  --ark-spacing-2-5: 10px;
+}
+
+/* ── 칸반(akron KanbanBoard) — 팀 업무. 칸은 옅은 회색 영역·둥근 모서리, 상태는 점,
+   카드는 부드러운 모서리·옅은 그림자. 칸은 화면 높이를 채우고 카드가 많으면 칸 안에서 스크롤 ── */
+.task-kanban [class*='_root_'][class*='_sj7t4_'],
+.task-kanban > div:first-child {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+}
+.task-kanban [class*='_column_sj7t4'] {
+  flex: 1 1 0 !important;
+  min-width: 260px !important;
+  background: var(--ark-color-bg-subtle) !important;
+  padding: 10px 10px 12px !important;
+  border-radius: 12px !important;
+  min-height: 0;
+}
+.task-kanban [class*='_columnHeader_sj7t4'] {
+  padding: 2px 4px 10px !important;
+}
+.task-kanban [class*='_colorBar_sj7t4'] {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+}
+.task-kanban [class*='_cardCount_sj7t4'] {
+  background: transparent !important;
+  color: var(--ark-color-text-tertiary) !important;
+  min-width: auto !important;
+}
+.task-kanban [class*='_cardList_sj7t4'] {
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  gap: 8px !important;
+}
+.task-kanban [class*='_card_sj7t4'] {
+  border-radius: 10px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  padding: 11px 12px !important;
+}
+.task-kanban [class*='_card_sj7t4']:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  border-color: var(--ark-color-border-strong) !important;
+}
+.task-kanban [class*='_cardTitle_sj7t4'] {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px !important;
+}
+.task-kanban [class*='_cardFooter_sj7t4'] {
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+}
+
+/* ── 입력칸 포커스 = 검은 테두리(다크 모드는 흰색), 앱 전체 ──
+   akron 기본은 테마 주황(--ark-color-primary-500)을 직접 써서 토큰으로 못 바꾼다.
+   입력칸 자체에 그리는 것(input·textarea·표 검색·Select)은 위 규칙이 var(--focus-ring)을 쓰고,
+   바깥 상자에 그리는(:focus-within) akron 컴포넌트는 아래에서 덮는다 — 클래스 해시는 akron 버전마다
+   바뀔 수 있어 컴포넌트별 접두어로 잡고, 오류 상태(빨간 링)는 건드리지 않는다. */
+:root {
+  --focus-ring: #111827;
+}
+[data-theme='dark'] {
+  --focus-ring: #f3f4f6;
+}
+[class*='_inputWrapper_']:focus-within:not([class*='rror']):not([class*='_valid_']),
+[class*='_inputGroup_']:focus-within:not([class*='rror']),
+[class*='_wrapper_1oa1d_']:focus-within:not([class*='rror']),
+[class*='_wrapper_r2ieu_']:focus-within:not([class*='rror']),
+[class*='_field_nok7f_']:focus-within,
+[class*='_group_rkg7l_']:focus-within:not([class*='rror']),
+[class*='_inputWrap_']:focus-within:not([class*='rror']) {
+  border-color: var(--focus-ring) !important;
+  box-shadow: 0 0 0 1px var(--focus-ring) !important;
+}
+[class*='_searchWrapper_']:focus-within {
+  border-color: var(--focus-ring) !important;
+}
+/* akron 입력칸 자체(_input_ 등)의 주황 포커스 — 오류 상태(특이도 더 높음)는 그대로 빨강 */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):focus-visible,
+textarea:focus-visible,
+select:focus {
+  outline: none;
+}
+
+/* 헤더 알림 숫자 — 빨강 대신 통인 주황(테마 색) */
+[class*='_badge_'][class*='_pulse_'] {
+  background-color: var(--ark-color-primary-500) !important;
+}
+
+/* 머리글 새로고침 옆 작은 아이콘 버튼(대시보드 설정 등) — 새로고침 버튼과 같은 모양 */
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.header-icon-btn:hover,
+.header-icon-btn[data-state='open'] {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
+
+/* ── 입력·선택 컨트롤과 세그먼트 탭 둥글기 통일(앱 전체) ──
+   세그먼트 탭(akron 기본 --ark-radius-xl 12px)보다 한 단계 작은 10px 하나로 — 입력칸·텍스트 상자·
+   드롭다운(Select·Combobox)·검색칸·날짜칸·세그먼트 탭. 버튼·카드·메뉴는 그대로(--ark-radius-md 등).
+   akron 토큰으로 바뀌는 것은 토큰으로, 토큰 없이 radius를 직접 쓰는 컴포넌트는 접두어 선택자로 덮는다. */
+:root {
+  --control-radius: 10px;
+  --ark-input-radius: var(--control-radius);
+  --ark-select-radius: var(--control-radius);
+  --ark-textarea-radius: var(--control-radius);
+}
+/* 직접 만든 입력칸(모듈 CSS에서 둥글기를 정한 곳은 그쪽이 이긴다 — :where로 특이도 0) */
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  textarea,
+  select
+) {
+  border-radius: var(--control-radius);
+}
+/* 드롭다운 열기 버튼(Select·Combobox)·표 아래 'N개씩 보기' */
+.dt-wrap .sft-tfoot__pagesize,
+[role='combobox']:not(input) {
+  border-radius: var(--control-radius) !important;
+}
+/* 테두리를 바깥 상자에 그리는 akron 입력(아이콘 붙은 입력·자동 높이 글상자·입력 묶음) */
+[class*='_inputWrapper_'],
+[class*='_inputGroup_'],
+[class*='_wrapper_1oa1d_'],
+[class*='_wrapper_r2ieu_'],
+[class*='_group_rkg7l_'],
+[class*='_inputWrap_'] {
+  border-radius: var(--control-radius) !important;
+}
+/* 세그먼트 탭 — 바깥 트랙은 10px, 안쪽 칸·움직이는 표시는 트랙 안쪽 여백(4px)만큼 작게 */
+[class*='_track_b4708_'] {
+  border-radius: var(--control-radius) !important;
+}
+[class*='_track_b4708_'] [class*='_segment_'],
+[class*='_track_b4708_'] [class*='_indicator_'] {
+  border-radius: calc(var(--control-radius) - 4px) !important;
+}
+
+/* ── 표 아래 페이지 표시 — 한 쪽뿐이어도 보인다(DataTable이 1쪽 표시를 그려 둠, 여러 쪽이면 softium 것만) ── */
+.sft-tfoot__center:has(.sft-pager:not(.dt-pager-single)) .dt-pager-single {
+  display: none;
+}
+/* 지금 쪽 = 검정 바탕·흰 글자(다크 모드 반대) — 칩 선택색과 같게 */
+.sft-pager__btn[data-active='true'],
+.sft-pager__btn[data-active='true']:hover {
+  background: var(--chip-on-bg) !important;
+  border-color: var(--chip-on-bg) !important;
+  color: var(--chip-on-fg) !important;
+}
+
+/* ── 버튼 — 둥글기·글자 통일, 주요(primary) 버튼은 검정(다크 모드 흰색) ──
+   글자: akron 기본은 작은 버튼 14px·보통 16px(이 앱 글자 크기 기준)로 섞여 보여 15px 하나로, 굵기는 한 단계(500→600) */
+:root {
+  --ark-btn-radius: var(--control-radius);
+  --ark-btn-font-size-sm: calc(15px * var(--font-scale, 1));
+  --ark-btn-font-size-md: calc(15px * var(--font-scale, 1));
+}
+button[class*='_button_wkrzh_'] {
+  font-weight: 600;
+}
+button[class*='_button_wkrzh_'][class*='_primary_'] {
+  background-color: var(--chip-on-bg);
+  color: var(--chip-on-fg);
+}
+button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--chip-on-bg) 82%, var(--chip-on-fg));
+}
+/* 표 툴바 내보내기 버튼도 같은 글자 */
+.dt-wrap .sft-export__trigger {
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+  border-radius: var(--control-radius);
+}
+
+/* 툴바 체크박스(예: '쓰는 계정만') — 상자와 글자를 가운데 줄에 */
+.dt-wrap .dt-toolbar-filters label,
+.list-toolbar .lt-filters label {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* ── 화면 머리글(akron PageHeader) — '<' 돌아가기·아이콘, 제목, 오른쪽 버튼을 한 줄 가운데에 ──
+   akron 기본은 위쪽 맞춤이라 아이콘 칸(40px)과 제목 줄 높이가 달라 '<'가 제목보다 위·아래로 어긋났다 */
+[class*='_mainRow_bs28e_'] {
+  align-items: center !important;
+}
+[class*='_mainRow_bs28e_'] > [class*='_iconSlot_'] {
+  align-self: center;
 }

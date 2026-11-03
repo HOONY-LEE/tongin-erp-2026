@@ -1746,3 +1746,57 @@ model SystemLog {
   @@index([ref])
   @@map("system_log")
 }
+
+// ─── 공간 예약 ───
+
+// 예약할 수 있는 공간 — MEETING(회의실 등 사내) | RENTAL(파티룸처럼 외부 고객에게 빌려주는 곳)
+model Space {
+  id           String             @id @default(uuid()) @db.Uuid
+  name         String
+  kind         String             @default("MEETING")
+  location     String?
+  capacity     Int?
+  facilities   String[]           @default([])
+  color        String             @default("#3b82f6")
+  // RENTAL 기본 대여료(원/시간) — 예약할 때 시간 × 이 값으로 채운다(고칠 수 있음)
+  hourlyFee    Int?               @map("hourly_fee")
+  // 예약 받는 시간(시, 0~24)
+  openHour     Int                @default(8) @map("open_hour")
+  closeHour    Int                @default(22) @map("close_hour")
+  description  String?
+  isActive     Boolean            @default(true) @map("is_active")
+  sortOrder    Int                @default(100) @map("sort_order")
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  reservations SpaceReservation[]
+
+  @@map("space")
+}
+
+// 예약 한 건 — 같은 공간에서 시간이 겹치는 예약(취소 제외)은 받지 않는다
+model SpaceReservation {
+  id             String    @id @default(uuid()) @db.Uuid
+  spaceId        String    @map("space_id") @db.Uuid
+  space          Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  title          String
+  startAt        DateTime  @map("start_at") @db.Timestamptz(6)
+  endAt          DateTime  @map("end_at") @db.Timestamptz(6)
+  status         String    @default("CONFIRMED") // CONFIRMED | CANCELLED
+  bookedBy       String    @map("booked_by") @db.Uuid
+  attendeeEmpIds String[]  @default([]) @map("attendee_emp_ids")
+  description    String?
+  // 외부 대여(RENTAL) — 고객 정보·대여료
+  customerName   String?   @map("customer_name")
+  customerPhone  String?   @map("customer_phone")
+  headcount      Int?
+  fee            Int?
+  paid           Boolean   @default(false)
+  cancelledAt    DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy    String?   @map("cancelled_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId, startAt])
+  @@index([startAt])
+  @@map("space_reservation")
+}

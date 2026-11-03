@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Loader2, Settings } from 'lucide-react';
+import { Download, Loader2, Settings } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -24,9 +24,15 @@ import { HeaderTabs } from './HeaderTabs';
 import { ProfileMenu } from './ProfileMenu';
 import settingsStyles from './settings.module.css';
 import { fs } from '../lib/fontScale';
+import { isDesktop, isMacDesktop } from '../lib/desktop';
 
 // 설정 창은 누를 때만 읽는다(인사·결재 설정 화면까지 들어 있어 무겁다)
 const SettingsModal = lazy(() => import('./SettingsModal'));
+const DesktopDownloadModal = lazy(() =>
+  import('../components/desktop/DesktopDownloadModal').then((m) => ({
+    default: m.DesktopDownloadModal,
+  })),
+);
 
 type NavItem = {
   to: string;
@@ -91,6 +97,7 @@ export default function AppLayout() {
   const menuLabel = useMenuLabel();
   const [menuEditOpen, setMenuEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const canSeeMenu = (key: string) =>
     filterLayout({ groups: [{ label: '', items: [key] }] }, can, !!user?.employeeId).groups.length >
     0;
@@ -211,7 +218,15 @@ export default function AppLayout() {
   }));
 
   return (
-    <div className={`${styles.desktopLayout} ${collapsed ? styles.collapsed : ''}`}>
+    <div
+      className={[
+        styles.desktopLayout,
+        collapsed ? styles.collapsed : '',
+        isMacDesktop ? styles.native : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {/* 상단 풀폭 헤더 */}
       <header className={styles.topHeader}>
         <div className={styles.headerLeft} />
@@ -270,27 +285,30 @@ export default function AppLayout() {
                   <Settings size={16} />
                   {!collapsed && <span>앱 설정</span>}
                 </button>
+                {/* 웹에서만 — 데스크톱 앱 설치(이 컴퓨터 OS에 맞는 설치 파일) */}
+                {!isDesktop && (
+                  <button
+                    type="button"
+                    className={settingsStyles.footIcon}
+                    title="데스크톱 앱 설치"
+                    aria-label="데스크톱 앱 설치"
+                    onClick={() => setDownloadOpen(true)}
+                  >
+                    <Download size={16} />
+                  </button>
+                )}
               </div>
             }
             header={
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
-                    background: 'var(--ark-color-primary-500)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: fs(13),
-                    fontWeight: 800,
-                    flexShrink: 0,
-                  }}
-                >
-                  통
-                </div>
+                {/* 색 있는 통인 호랑이 로고만(배경 상자 없이). 흰색은 /brand/tongin-logo-white.png */}
+                <img
+                  src="/brand/tongin-logo-color.png"
+                  alt="통인익스프레스"
+                  width={30}
+                  height={30}
+                  style={{ display: 'block', flexShrink: 0 }}
+                />
                 {!collapsed && (
                   <span style={{ fontWeight: 700, fontSize: fs(15) }}>{PRODUCT_NAME}</span>
                 )}
@@ -336,6 +354,11 @@ export default function AppLayout() {
               </SidebarGroup>
             ))}
           </LayoutSidebar>
+          {downloadOpen && (
+            <Suspense fallback={null}>
+              <DesktopDownloadModal onClose={() => setDownloadOpen(false)} />
+            </Suspense>
+          )}
           {settingsOpen && (
             <Suspense fallback={null}>
               <SettingsModal
@@ -357,7 +380,10 @@ export default function AppLayout() {
             className={[
               styles.contentInner,
               pathname.startsWith('/calendar') ? styles.contentInnerTight : '',
-              under('/ai') ? styles.contentInnerFlush : '',
+              // 화면 전체를 쓰는 작업 화면 — AI 비서 대화, 에이전트 만들기·편집(캔버스)
+              under('/ai') || pathname.startsWith('/agent-builder/')
+                ? styles.contentInnerFlush
+                : '',
             ]
               .filter(Boolean)
               .join(' ')}

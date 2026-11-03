@@ -5,6 +5,7 @@ export { PageHeader } from './PageHeader';
 export { ListPage } from './ListPage';
 export { SegmentedControl } from './SegmentedControl';
 export { DataTable } from './DataTable';
+export { ListToolbar } from './ListToolbar';
 export { Skeleton, SkeletonText, TableSkeleton, PageSkeleton } from './Skeleton';
 export { FormModal } from './FormModal';
 export { StatusBadge, type StatusMap } from './StatusBadge';

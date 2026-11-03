@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ArrowRight, CalendarClock, Search } from 'lucide-react';
+import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
 import { TASK_STATUS, TASK_STATUS_LABEL, type TaskStatus } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
@@ -20,8 +22,10 @@ import {
   FormModal,
   Input,
   ListPage,
+  ListToolbar,
   RecordDetail,
   SegmentedControl,
+  Select,
   StatusBadge,
   useToast,
   type Column,
@@ -65,6 +69,19 @@ const PRIORITY: StatusMap = {
 type Scope = 'mine' | 'team' | 'all';
 type View = 'list' | 'board';
 
+/** 칸반 칸 색(상태 점) — 할 일 회색 · 진행 중 파랑 · 완료 초록 · 보류 주황 */
+const STATUS_COLOR: Record<TaskStatus, string> = {
+  TODO: '#9ca3af',
+  IN_PROGRESS: '#3b82f6',
+  DONE: '#22c55e',
+  HOLD: '#f59e0b',
+};
+const PRIORITY_DOT: Record<Task['priority'], { label: string; color: string }> = {
+  A: { label: '긴급', color: '#ef4444' },
+  B: { label: '보통', color: '#3b82f6' },
+  C: { label: '낮음', color: '#9ca3af' },
+};
+
 /** 기한 — 끝나지 않은 일만 지남·임박을 색으로 */
 function Due({ t }: { t: Task }) {
   if (!t.dueDate) return <>-</>;
@@ -88,7 +105,7 @@ export default function Tasks() {
   const { user, can } = useAuth();
   const detail = useDetailParam();
   const { tab: scope, setTab: setScope } = useTabParam<Scope>('mine', 'scope');
-  const { tab: view, setTab: setView } = useTabParam<View>('list', 'view');
+  const { tab: view, setTab: setView } = useTabParam<View>('board', 'view');
   const { updatedAt, touch } = useUpdatedAt();
   const dir = useWorkDirectory();
   const [rows, setRows] = useState<Task[]>([]);
@@ -343,7 +360,7 @@ export default function Tasks() {
   const count = (s: 'ALL' | TaskStatus) =>
     s === 'ALL' ? rows.length : rows.filter((r) => r.status === s).length;
   const statusOptions = [
-    { value: 'ALL', label: `전체 ${count('ALL')}` },
+    { value: 'ALL', label: `모든 상태 ${count('ALL')}` },
     ...TASK_STATUS.map((s) => ({ value: s, label: `${TASK_STATUS_LABEL[s]} ${count(s)}` })),
   ];
   const listRows = status === 'ALL' ? rows : rows.filter((r) => r.status === status);
@@ -390,33 +407,27 @@ export default function Tasks() {
       : []),
   ];
 
+  const scopeTabs =
+    scopeOptions.length > 1 ? (
+      <SegmentedControl
+        value={effScope}
+        onChange={(v) => setScope(v as Scope)}
+        options={scopeOptions}
+      />
+    ) : undefined;
+  const viewSwitch = (
+    <SegmentedControl
+      value={view}
+      onChange={(v) => setView(v as View)}
+      options={[
+        { value: 'board', label: '칸반' },
+        { value: 'list', label: '리스트' },
+      ]}
+    />
+  );
+
   return (
-    <ListPage
-      fit={view === 'list'}
-      title={t('nav.tasks')}
-      onRefresh={load}
-      updatedAt={updatedAt}
-      actions={
-        <SegmentedControl
-          size="sm"
-          value={view}
-          onChange={(v) => setView(v as View)}
-          options={[
-            { value: 'list', label: '목록' },
-            { value: 'board', label: '칸반' },
-          ]}
-        />
-      }
-      footer={
-        scopeOptions.length > 1 ? (
-          <SegmentedControl
-            value={effScope}
-            onChange={(v) => setScope(v as Scope)}
-            options={scopeOptions}
-          />
-        ) : undefined
-      }
-    >
+    <ListPage fit title={t('nav.tasks')} onRefresh={load} updatedAt={updatedAt}>
       {view === 'list' ? (
         <DataTable
           fit
@@ -425,88 +436,197 @@ export default function Tasks() {
           loading={loading}
           onRowClick={(r) => detail.open(String(r.id))}
           filters={
-            <SegmentedControl
-              value={status}
-              onChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
-              options={statusOptions}
-            />
+            <div className={styles.statusFilter}>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
+                options={statusOptions}
+                aria-label="상태"
+              />
+            </div>
           }
+          viewSwitch={viewSwitch}
+          tabs={scopeTabs}
           toolbarActions={addButton}
           exportable
           exportFileName="팀업무"
         />
       ) : (
-        <Board rows={rows} q={q} setQ={setQ} onOpen={detail.open} addButton={addButton} />
+        <Board
+          rows={rows}
+          q={q}
+          setQ={setQ}
+          loading={loading}
+          viewSwitch={viewSwitch}
+          tabs={scopeTabs}
+          addButton={addButton}
+          canMove={(task) => isMine(task) || can('TASK.UPDATE')}
+          onMove={(task, to) => void changeStatus(task, to)}
+          onOpen={detail.open}
+        />
       )}
       {formModal}
     </ListPage>
   );
 }
 
-/** 칸반 — 상태별 칸. 카드를 누르면 상세(상태는 상세에서 바꾼다) */
+/** 카드용 짧은 날짜 — 올해면 11.03, 아니면 25.11.03 */
+function md(v: string): string {
+  const d = ymd(v);
+  if (!d) return '—';
+  const [y, m, day] = d.split('-');
+  return y === String(new Date().getFullYear()) ? `${m}.${day}` : `${y.slice(2)}.${m}.${day}`;
+}
+
+/** 이름 첫 글자 동그라미 */
+function Avatar({ name }: { name: string }) {
+  return <span className={styles.avatar}>{name.slice(0, 1)}</span>;
+}
+
+/** 칸반 카드 아래 — 우선순위·사업 / 기한·등록일 / 요청 → 담당 */
+function CardFooter({ task }: { task: Task }) {
+  const p = PRIORITY_DOT[task.priority];
+  const info = task.dueDate && task.status !== 'DONE' ? ddayInfo(task.dueDate, 3) : null;
+  return (
+    <div className={styles.kFooter}>
+      <div className={styles.kRow}>
+        <span className={styles.kPriority} style={{ color: p.color }}>
+          <span className={styles.kDot} style={{ background: p.color }} />
+          {p.label}
+        </span>
+        <span className={styles.kChip}>{task.project || task.team?.name}</span>
+      </div>
+      <div className={`${styles.kRow} ${styles.kMuted}`}>
+        <span
+          className={`${styles.kDue} ${info?.level === 'over' ? styles.over : info?.level === 'soon' ? styles.soon : ''}`}
+        >
+          <CalendarClock size={11} aria-hidden /> 기한 {task.dueDate ? md(task.dueDate) : '—'}
+          {info && info.level !== 'ok' ? ` · ${info.label}` : ''}
+        </span>
+        <span>등록 {md(task.createdAt)}</span>
+      </div>
+      <div className={styles.kPeople}>
+        {task.requester ? (
+          <>
+            <Avatar name={task.requester.name} />
+            <span className={styles.kName}>{task.requester.name}</span>
+            <ArrowRight size={12} className={styles.kMuted} aria-label="에게" />
+          </>
+        ) : (
+          <span className={styles.kLabel}>담당</span>
+        )}
+        {task.assignee ? (
+          <>
+            <Avatar name={task.assignee.name} />
+            <span className={styles.kName}>{task.assignee.name}</span>
+          </>
+        ) : (
+          <span className={styles.kMuted}>미배정</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 칸반 — 할 일 · 진행 중 · 완료 · 보류. 카드를 끌어 다른 칸에 놓으면 상태가 바뀐다(내 업무이거나 수정 권한).
+ * 카드를 누르면 상세.
+ */
 function Board({
   rows,
   q,
   setQ,
+  loading,
+  canMove,
+  onMove,
   onOpen,
+  viewSwitch,
+  tabs,
   addButton,
 }: {
   rows: Task[];
   q: string;
   setQ: (v: string) => void;
-  onOpen: (id: string) => void;
+  loading: boolean;
+  viewSwitch: ReactNode;
+  tabs?: ReactNode;
   addButton?: ReactNode;
+  canMove: (task: Task) => boolean;
+  onMove: (task: Task, to: TaskStatus) => void;
+  onOpen: (id: string) => void;
 }) {
+  const toast = useToast();
   const term = q.trim().toLowerCase();
   const shown = term
     ? rows.filter((r) =>
-        [r.title, r.project, r.assignee?.name, r.team?.name, r.description]
+        [r.title, r.project, r.assignee?.name, r.requester?.name, r.team?.name, r.description]
           .filter(Boolean)
           .some((s) => String(s).toLowerCase().includes(term)),
       )
     : rows;
+  // 칸반이 들고 있는 순서(끌어 옮긴 직후 바로 보이게) — 목록이 새로 오면 다시 맞춘다
+  const make = (list: Task[]): KanbanColumn[] =>
+    TASK_STATUS.map((s) => ({
+      id: s,
+      title: TASK_STATUS_LABEL[s],
+      color: STATUS_COLOR[s],
+      cards: list
+        .filter((r) => r.status === s)
+        .map((r): KanbanCard => ({ id: r.id, title: r.title, footer: <CardFooter task={r} /> })),
+    }));
+  const [cols, setCols] = useState<KanbanColumn[]>(() => make(shown));
+  const key = shown.map((r) => `${r.id}:${r.status}:${r.priority}:${r.dueDate}`).join('|');
+  useEffect(() => {
+    setCols(make(shown));
+    // 내용이 바뀔 때만(key) 다시 만든다
+  }, [key]);
+
+  const onChange = (next: KanbanColumn[]) => {
+    for (const col of next) {
+      for (const card of col.cards) {
+        const task = rows.find((r) => r.id === card.id);
+        if (!task || task.status === col.id) continue;
+        if (!canMove(task)) {
+          toast({ type: 'error', title: '내가 맡거나 요청한 업무만 상태를 바꿀 수 있습니다' });
+          setCols(make(shown));
+          return;
+        }
+        onMove(task, col.id as TaskStatus);
+      }
+    }
+    setCols(next);
+  };
+
   return (
     <>
-      <div className={styles.boardBar}>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="검색" />
-        {addButton}
-      </div>
-      <div className={styles.board}>
-        {TASK_STATUS.map((s) => {
-          const items = shown.filter((r) => r.status === s);
-          return (
-            <section key={s} className={styles.column}>
-              <div className={styles.columnHead}>
-                <StatusBadge value={s} map={STATUS} />
-                <span className={styles.columnCount}>{items.length}</span>
-              </div>
-              {items.length === 0 && <div className={styles.empty}>없음</div>}
-              {items.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  className={styles.card}
-                  onClick={() => onOpen(task.id)}
-                >
-                  <span className={styles.cardTitle}>{task.title}</span>
-                  <span className={styles.cardMeta}>
-                    <StatusBadge value={task.priority} map={PRIORITY} />
-                    <span>
-                      {[task.team?.name, task.assignee?.name].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                  {(task.project || task.dueDate) && (
-                    <span className={styles.cardMeta}>
-                      {task.project && <span>{task.project}</span>}
-                      {task.dueDate && <Due t={task} />}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </section>
-          );
-        })}
-      </div>
+      <ListToolbar
+        search={
+          <div className={styles.boardSearch}>
+            <Search size={15} aria-hidden />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="업무·사업·담당자 검색"
+            />
+          </div>
+        }
+        viewSwitch={viewSwitch}
+        tabs={tabs}
+        actions={addButton}
+      />
+      {loading && !rows.length ? (
+        <div className={styles.empty}>불러오는 중…</div>
+      ) : (
+        <div className={`task-kanban ${styles.kanbanWrap}`}>
+          <KanbanBoard
+            columns={cols}
+            onChange={onChange}
+            onCardClick={(card) => onOpen(card.id)}
+            showAddButton={false}
+            columnMinWidth={260}
+          />
+        </div>
+      )}
     </>
   );
 }

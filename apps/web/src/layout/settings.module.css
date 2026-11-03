@@ -37,7 +37,7 @@
   margin-bottom: 8px;
   padding: 0 12px;
   border: 1px solid var(--ark-color-border);
-  border-radius: 999px;
+  border-radius: var(--search-radius);
   background: var(--ark-color-bg);
   color: var(--ark-color-text-tertiary);
 }
@@ -175,6 +175,26 @@
 /* 사이드바 아래 설정 버튼 — 아이콘 + 글자, 왼쪽 정렬(접으면 아이콘만 가운데) */
 .sideFoot {
   display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* 앱 설정 오른쪽 작은 아이콘 버튼(데스크톱 앱 설치) */
+.footIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.footIcon:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
 }
 .sideFootCollapsed {
   justify-content: center;
