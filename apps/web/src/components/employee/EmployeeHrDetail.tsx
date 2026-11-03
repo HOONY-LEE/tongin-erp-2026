@@ -262,7 +262,7 @@ export function EmployeeHrDetail({
 
 /**
  * 겸직(추가 소속) — TF·프로젝트팀처럼 주 소속 외의 조직에도 함께 속한다.
- * 그 조직의 메뉴·공지·팀 업무를 함께 받고, 조직도 그 상자에도 '겸직'으로 나온다.
+ * 그 조직의 메뉴·공지·작업관리를 함께 받고, 조직도 그 상자에도 '겸직'으로 나온다.
  * 결재선(팀장 찾기)·근태는 주 소속 기준이다.
  */
 function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRecord) => void }) {
@@ -317,7 +317,7 @@ function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRe
     <section className="rd-card">
       <h3 className="rd-title">겸직(추가 소속)</h3>
       <p className={styles.muted} style={{ margin: '0 0 12px' }}>
-        TF·프로젝트팀처럼 다른 조직에도 함께 속하면 더하세요. 그 조직의 메뉴·공지·팀 업무를 함께
+        TF·프로젝트팀처럼 다른 조직에도 함께 속하면 더하세요. 그 조직의 메뉴·공지·작업관리를 함께
         받습니다. 결재선과 근태는 주 소속({rec.orgUnit?.name ?? '-'}) 기준입니다.
       </p>
       {rec.concurrentOrgs.length > 0 && (

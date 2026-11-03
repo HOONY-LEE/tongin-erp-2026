@@ -638,10 +638,10 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   },
   {
     key: 'TASK',
-    label: '팀 업무',
+    label: '작업관리',
     group: '공통',
     actions: ALL_CRUD,
-    hint: '조회 = 데이터 범위 안 팀 업무 열람. 내가 담당·요청한 업무는 권한 없이 보고 상태를 바꿀 수 있습니다',
+    hint: '조회 = 데이터 범위 안 작업관리 열람. 내가 담당·요청한 업무는 권한 없이 보고 상태를 바꿀 수 있습니다',
   },
   // 관리
   { key: 'CUSTOMER', label: '고객', group: '관리', actions: ALL_CRUD },
@@ -804,7 +804,7 @@ export interface AuthPrincipal {
   employeeId: string | null; // 직원 계정이면 연결된 직원(현장 배정 조회에 사용). 외부인·에이전트는 null
   employeeName: string | null; // 연결된 직원 이름(담당자 기본값 표시용). employeeId가 null이면 null
   employeeOrgUnitId: string | null; // 연결된 직원의 소속 조직(접수 지점 기본값)
-  /** 겸직(추가 소속) 조직 — 메뉴·공지·팀 업무는 주 소속과 함께 따른다. 결재선·데이터 범위는 주 소속·권한 기준 */
+  /** 겸직(추가 소속) 조직 — 메뉴·공지·작업관리는 주 소속과 함께 따른다. 결재선·데이터 범위는 주 소속·권한 기준 */
   concurrentOrgUnitIds?: string[];
   partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
@@ -906,7 +906,7 @@ export * from './hr';
 export * from './performance';
 export * from './menu';
 
-// ── 공통 업무: 공지사항 · 팀 업무 · 계약·자산 · 지점 관리 기록 ──
+// ── 공통 업무: 공지사항 · 작업관리 · 계약·자산 · 지점 관리 기록 ──
 
 /** 공지 대상 — 전사 또는 고른 조직(+하위 조직이 본다) */
 export const NOTICE_AUDIENCE = ['ALL', 'ORG'] as const;

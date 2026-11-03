@@ -241,7 +241,7 @@ export default function Performance() {
     <div className={`list-page ${tab === 'person' ? 'fit' : ''}`}>
       <PageHeader
         title="성과 평가"
-        subtitle="조직·직원마다 지표 3~8개와 목표를 정하면, ERP 기록(계약·입금·작업·팀 업무·근태)과 직접 넣은 실적으로 달성률·종합 점수·등급(S~D)을 냅니다. 다각형 바깥 점선이 목표 100%입니다."
+        subtitle="조직·직원마다 지표 3~8개와 목표를 정하면, ERP 기록(계약·입금·작업·작업관리 업무·근태)과 직접 넣은 실적으로 달성률·종합 점수·등급(S~D)을 냅니다. 다각형 바깥 점선이 목표 100%입니다."
         onRefresh={load}
         updatedAt={updatedAt}
         actions={periodSelect}

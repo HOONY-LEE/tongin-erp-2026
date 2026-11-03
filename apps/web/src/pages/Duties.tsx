@@ -46,7 +46,7 @@ const NONE = '__none__';
 
 /**
  * 업무 분장 — 조직마다 맡는 역할(미션)과 업무 항목·주/부 담당자·주기·쓰는 도구.
- * 조직별(표) · 사람별(카드) · 내 업무. 팀 업무(칸반)를 항목에 이으면 '진행 중'이 실제로 센다.
+ * 조직별(표) · 사람별(카드) · 내 업무. 작업관리(칸반)를 항목에 이으면 '진행 중'이 실제로 센다.
  * 보기는 누구나, 정하기는 DUTY.MANAGE.
  */
 export default function Duties() {
@@ -230,7 +230,7 @@ export default function Duties() {
     <div className={`list-page ${tab === 'person' ? '' : 'fit'}`}>
       <PageHeader
         title="업무 분장"
-        subtitle="조직마다 맡는 역할과 업무 항목·주/부 담당자·주기·쓰는 도구를 정해 둡니다. 팀 업무(칸반)를 업무 항목에 이으면 '진행 중'에 실제로 하고 있는 일이 셉니다."
+        subtitle="조직마다 맡는 역할과 업무 항목·주/부 담당자·주기·쓰는 도구를 정해 둡니다. 작업관리(칸반)의 업무를 이 항목에 이으면 '진행 중'에 실제로 하고 있는 일이 셉니다."
         onRefresh={load}
         updatedAt={updatedAt}
       />
@@ -448,7 +448,7 @@ interface LinkedTask {
   assigneeName: string | null;
 }
 
-/** 업무 항목 — 보기(이어진 팀 업무 포함)·고치기·지우기 */
+/** 업무 항목 — 보기(이어진 작업관리 포함)·고치기·지우기 */
 function DutyModal({
   duty,
   orgs,
@@ -527,7 +527,7 @@ function DutyModal({
     setBusy(true);
     try {
       await api(`/duties/${duty.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '업무를 지웠습니다(이어진 팀 업무는 그대로)' });
+      toast({ type: 'success', title: '업무 분장을 지웠습니다(이어진 작업관리 업무는 그대로)' });
       onSaved();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
@@ -686,7 +686,7 @@ function DutyModal({
 
         {duty && (
           <div className={styles.linked}>
-            <b>이어진 팀 업무(안 끝난 것)</b>
+            <b>이어진 작업관리 업무(안 끝난 것)</b>
             {tasks === null ? (
               <span className={styles.muted}>불러오는 중…</span>
             ) : tasks.length ? (
@@ -708,7 +708,8 @@ function DutyModal({
               </ul>
             ) : (
               <span className={styles.muted}>
-                없습니다 — 팀 업무를 만들 때 「업무 분장」에서 이 항목을 고르면 여기에 모입니다.
+                없습니다 — 작업관리에서 업무를 만들 때 「업무 분장」에서 이 항목을 고르면 여기에
+                모입니다.
               </span>
             )}
           </div>

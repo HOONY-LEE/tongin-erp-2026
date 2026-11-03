@@ -513,7 +513,7 @@ input[placeholder*='찾기'] {
   --ark-spacing-2-5: 10px;
 }
 
-/* ── 칸반(akron KanbanBoard) — 팀 업무. 칸은 옅은 회색 영역·둥근 모서리, 상태는 점,
+/* ── 칸반(akron KanbanBoard) — 작업관리. 칸은 옅은 회색 영역·둥근 모서리, 상태는 점,
    카드는 부드러운 모서리·옅은 그림자. 칸은 화면 높이를 채우고 카드가 많으면 칸 안에서 스크롤 ── */
 .task-kanban [class*='_root_'][class*='_sj7t4_'],
 .task-kanban > div:first-child {
@@ -574,7 +574,8 @@ input[placeholder*='찾기'] {
 }
 .task-kanban [class*='_addButton_sj7t4'] {
   margin-top: 8px !important;
-  min-height: 44px;
+  /* 실제 업무 카드와 같은 높이(제목·상태 줄·기한·담당 네 줄) — 글자 크기 설정을 따라간다 */
+  min-height: calc(123px * var(--font-scale, 1));
   border: 1.5px dashed var(--ark-color-border-strong, var(--ark-color-border)) !important;
   border-radius: 10px !important;
   background: transparent !important;

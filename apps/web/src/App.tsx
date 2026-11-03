@@ -165,7 +165,7 @@ function Shell() {
         <Route path="/leave" element={page(<Leave />)} />
         <Route path="/attendance" element={page(<Attendance />)} />
         <Route path="/accounts" element={page(<Accounts />)} />
-        {/* 공통 업무 — 공지사항·팀 업무·계약/자산·지점 관리 기록 */}
+        {/* 공통 업무 — 공지사항·작업관리·계약/자산·지점 관리 기록 */}
         <Route path="/notices" element={page(<Notices />)} />
         <Route path="/tasks" element={page(<Tasks />)} />
         <Route path="/assets" element={page(<Assets />)} />

@@ -27,7 +27,7 @@ const include = {
 } satisfies Prisma.TeamTaskInclude;
 
 /**
- * 팀 업무. 내가 담당·요청한 업무는 권한 없이 보고 고친다(직원 계정).
+ * 작업관리. 내가 담당·요청한 업무는 권한 없이 보고 고친다(직원 계정).
  * TASK.READ = 데이터 범위 안 팀들의 업무(우리 팀·전체 보기), TASK.UPDATE = 그 업무 수정.
  */
 @Injectable()
@@ -73,7 +73,9 @@ export class TeamTaskService {
       where = mine;
     } else {
       if (!hasPerm(p, 'TASK.READ')) {
-        throw new ForbiddenException('팀 업무 조회 권한이 없습니다 — 내 업무만 볼 수 있습니다.');
+        throw new ForbiddenException(
+          '작업관리 전체 조회 권한이 없습니다 — 내 업무만 볼 수 있습니다.',
+        );
       }
       const inScope = await this.scopeWhere(p);
       if (scope === 'team') {

@@ -32,7 +32,7 @@ const OPEN = ['TODO', 'IN_PROGRESS', 'HOLD'];
 
 /**
  * 업무 분장 — 조직마다 맡는 일(업무 항목)과 주·부 담당자, 조직의 역할(미션).
- * 보기는 누구나, 정하기는 DUTY.MANAGE. 팀 업무가 dutyId로 이어지면 그 항목의 '지금 하는 일'을 센다.
+ * 보기는 누구나, 정하기는 DUTY.MANAGE. 작업관리가 dutyId로 이어지면 그 항목의 '지금 하는 일'을 센다.
  */
 @Injectable()
 export class DutyService {
@@ -124,7 +124,7 @@ export class DutyService {
     }));
   }
 
-  /** 한 항목에 이어진 아직 안 끝난 팀 업무 */
+  /** 한 항목에 이어진 아직 안 끝난 작업관리 */
   async tasks(id: string) {
     await this.get(id);
     const rows = await this.prisma.teamTask.findMany({
@@ -219,7 +219,7 @@ export class DutyService {
     return { ok: true };
   }
 
-  /** 지우기 — 이어진 팀 업무는 그대로 두고 연결만 끊긴다(onDelete SetNull) */
+  /** 지우기 — 이어진 작업관리는 그대로 두고 연결만 끊긴다(onDelete SetNull) */
   async remove(p: AuthPrincipal, id: string) {
     this.assertManage(p);
     await this.get(id);

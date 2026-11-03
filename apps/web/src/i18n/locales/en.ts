@@ -56,7 +56,7 @@ export default {
     attendance: 'Attendance',
     menuMgmt: 'Menus',
     notices: 'Notices',
-    tasks: 'Team Tasks',
+    tasks: 'Task Management',
     assets: 'Contracts & Assets',
     branchCases: 'Branch Cases',
   },

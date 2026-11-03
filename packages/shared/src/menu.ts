@@ -62,7 +62,7 @@ export const MENU_CATALOG: readonly MenuDef[] = [
   {
     key: 'tasks',
     path: '/tasks',
-    label: '팀 업무',
+    label: '작업관리',
     i18n: 'tasks',
     icon: 'ListTodo',
     perm: 'TASK.READ',

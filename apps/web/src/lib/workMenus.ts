@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useDirectory } from './approvals';
 import type { BadgeColor } from '../components/ui';
 
-/** 공통 업무 메뉴(공지·팀 업무·계약/자산·지점 관리 기록)가 같이 쓰는 도우미 */
+/** 공통 업무 메뉴(공지·작업관리·계약/자산·지점 관리 기록)가 같이 쓰는 도우미 */
 
 export interface PersonRef {
   id: string;

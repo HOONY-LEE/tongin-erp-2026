@@ -40,7 +40,7 @@ function Body({ text, names }: { text: string; names: string[] }) {
 }
 
 /**
- * 팀 업무 댓글 — '@'를 치면 직원을 골라 부를 수 있다(멘션). 부른 사람과 담당자·요청자에게 알림이 간다.
+ * 작업관리 댓글 — '@'를 치면 직원을 골라 부를 수 있다(멘션). 부른 사람과 담당자·요청자에게 알림이 간다.
  */
 export function TaskComments({ taskId }: { taskId: string }) {
   const toast = useToast();

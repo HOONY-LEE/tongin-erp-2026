@@ -1,4 +1,4 @@
-/* 공통 업무 메뉴(공지·팀 업무·계약/자산·지점 관리 기록) */
+/* 공통 업무 메뉴(공지·작업관리·계약/자산·지점 관리 기록) */
 
 .titleCell {
   display: inline-flex;
@@ -150,7 +150,7 @@
   font-weight: 600;
 }
 
-/* ── 팀 업무 칸반(akron KanbanBoard) ── */
+/* ── 작업관리 칸반(akron KanbanBoard) ── */
 .headActions {
   display: flex;
   align-items: center;

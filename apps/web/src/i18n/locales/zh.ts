@@ -56,7 +56,7 @@ export default {
     attendance: '考勤',
     menuMgmt: '菜单管理',
     notices: '公告',
-    tasks: '团队任务',
+    tasks: '任务管理',
     assets: '合同与资产',
     branchCases: '网点管理记录',
   },

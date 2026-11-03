@@ -98,7 +98,7 @@ function Due({ t }: { t: Task }) {
 }
 
 /**
- * 팀 업무 — 팀별 '담당자별 업무·업무일지' 시트 대신. 내가 담당·요청한 업무는 권한 없이 보고 상태를 바꾼다.
+ * 작업관리 — 팀별 '담당자별 업무·업무일지' 시트 대신. 내가 담당·요청한 업무는 권한 없이 보고 상태를 바꾼다.
  * 우리 팀·전체 보기는 TASK.READ. 목록/칸반(상태별 칸) 두 가지로 본다.
  */
 export default function Tasks() {
@@ -498,7 +498,7 @@ export default function Tasks() {
           }
           toolbarActions={addButton}
           exportable
-          exportFileName="팀업무"
+          exportFileName="작업관리"
         />
       ) : (
         <Board
