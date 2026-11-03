@@ -135,6 +135,12 @@ const EXCLUDED_ROUTES = new Set([
   'calendar.googleAuthUrl',
   'calendar.googleCallback',
   'calendar.workOrders',
+  // 드라이브: 파일 바이트를 주고받는 것·구글 계정 연결은 AI가 부를 일이 아니다
+  'drive.upload',
+  'drive.content',
+  'drive.googleAuthUrl',
+  'drive.googleDisconnect',
+  'drive.emptyTrash',
 ]);
 /** GET이 아니어도 데이터를 바꾸지 않는 라우트 */
 const READ_ONLY_POSTS = new Set(['geo.geocode']);

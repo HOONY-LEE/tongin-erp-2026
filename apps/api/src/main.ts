@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import compression from 'compression';
+import { raw } from 'express';
+import { DRIVE_FILE_MAX_BYTES } from '@tongin/shared';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { koreanValidationError } from './common/validation-message';
@@ -17,6 +19,8 @@ async function bootstrap() {
   app.useBodyParser('json', { limit: '30mb' });
   // 응답 압축(gzip) — 목록 JSON이 3~5배 작아진다. 1KB 미만은 그대로 보낸다(compression 기본값)
   app.use(compression());
+  // 드라이브 파일 올리기 — 본문을 바이트 그대로(이름은 헤더). 다른 요청은 JSON만
+  app.use('/api/drive/upload', raw({ type: () => true, limit: DRIVE_FILE_MAX_BYTES + 1024 }));
   app.setGlobalPrefix('api');
   // 도메인 이벤트에 행위자(actorUserId)를 남기려고 요청마다 컨텍스트를 연다
   app.use(requestContextMiddleware);

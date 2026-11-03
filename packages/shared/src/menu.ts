@@ -91,6 +91,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     desc: '회의실·파티룸 등 공간 예약·대여',
   },
   {
+    key: 'drive',
+    path: '/drive',
+    label: '드라이브',
+    i18n: 'drive',
+    icon: 'HardDrive',
+    selfService: true,
+    category: '공통',
+    desc: '내 드라이브·조직 드라이브·공유 드라이브, 구글 드라이브 연동',
+  },
+  {
     key: 'leave',
     path: '/leave',
     label: '휴가',
@@ -390,7 +400,10 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
         'campaigns',
       ],
     },
-    { label: '내 업무', items: ['notices', 'tasks', 'approvals', 'spaces', 'leave', 'attendance'] },
+    {
+      label: '내 업무',
+      items: ['notices', 'tasks', 'approvals', 'drive', 'spaces', 'leave', 'attendance'],
+    },
     {
       label: '관리',
       items: [

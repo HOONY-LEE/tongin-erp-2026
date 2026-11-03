@@ -49,6 +49,7 @@ export default {
     employees: 'Employees',
     approvals: 'Approvals',
     spaces: 'Space Booking',
+    drive: 'Drive',
     leave: 'Leave',
     attendance: 'Attendance',
     menuMgmt: 'Menus',

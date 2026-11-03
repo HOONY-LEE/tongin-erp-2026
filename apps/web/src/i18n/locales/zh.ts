@@ -49,6 +49,7 @@ export default {
     employees: '员工',
     approvals: '审批',
     spaces: '空间预约',
+    drive: '云盘',
     leave: '休假',
     attendance: '考勤',
     menuMgmt: '菜单管理',
