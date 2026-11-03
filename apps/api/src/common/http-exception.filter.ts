@@ -153,6 +153,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // 자주 나오는 영어 기본 문장(깨진 JSON·id 형식) → 한국어
     if (/in JSON at position|Unexpected token|is not valid JSON/i.test(message)) {
       message = '보낸 내용을 읽지 못했습니다(형식 오류).';
+    } else if (/value passed as UUID is not a string/i.test(message)) {
+      // ParseUUIDPipe에 값이 아예 안 왔을 때(예: ?orgUnitId= 빠짐)
+      message = '꼭 넣어야 하는 id 값이 빠졌습니다(예: 지점·조직 id).';
     } else if (/^Validation failed \((uuid|numeric string)/i.test(message)) {
       message = '주소의 번호(id) 형식이 올바르지 않습니다. 목록에서 다시 열어 주세요.';
     }

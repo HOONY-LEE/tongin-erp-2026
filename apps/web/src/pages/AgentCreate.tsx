@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileSpreadsheet, Paperclip, SendHorizontal, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowUp, FileSpreadsheet, Paperclip, Sparkles, X } from 'lucide-react';
 import type { AgentGraph } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { Button, PopoutButton, useToast } from '../components/ui';
+import { Markdown } from '../components/ai/Markdown';
 import styles from './agentBuilder.module.css';
+import ai from './aiAgent.module.css';
 
 const EXAMPLES = [
   '매주 월요일 아침에 지점별 지난주 실적을 우리 주간 보고 양식으로 만들어 줘',
@@ -238,141 +240,137 @@ export default function AgentCreate() {
           </div>
         </div>
       ) : (
-        <>
-          <div className={styles.chatLog} aria-live="polite">
-            <div className={`${styles.bubbleRow}`}>
-              <span className={styles.botIcon}>
-                <Sparkles size={14} />
-              </span>
-              <div className={styles.bubbleBot}>{GREETING}</div>
-            </div>
-            {msgs.length === 0 && (
-              <div className={styles.examples} style={{ paddingLeft: 36 }}>
+        // AI 비서 대화창과 같은 모양 — 처음엔 인사·예시, 대화가 시작되면 말풍선 줄, 입력칸은 아래에 고정
+        <div className={`${ai.main} ${styles.createChat}`}>
+          {msgs.length === 0 && !thinking ? (
+            <div className={ai.welcome}>
+              <h2 className={ai.greeting}>어떤 에이전트를 만들까요?</h2>
+              <p className={styles.createLead}>{GREETING.split('\n').slice(1).join(' ')}</p>
+              <div className={ai.suggestions}>
                 {EXAMPLES.map((ex) => (
-                  <button key={ex} type="button" className={styles.chip} onClick={() => send(ex)}>
+                  <button
+                    key={ex}
+                    type="button"
+                    className={ai.suggestion}
+                    disabled={busy}
+                    onClick={() => send(ex)}
+                  >
                     {ex}
                   </button>
                 ))}
               </div>
-            )}
-            {msgs.map((m, i) =>
-              m.role === 'user' ? (
-                <div key={i} className={`${styles.bubbleRow} ${styles.bubbleRowMe}`}>
-                  <div className={styles.bubbleMe}>
-                    {m.file ? (
-                      <span className={styles.fileChip}>
-                        <FileSpreadsheet size={14} /> {m.file.name}
-                      </span>
-                    ) : (
-                      m.text
-                    )}
-                    {m.file && m.text.includes('\n') && (
-                      <div style={{ marginTop: 6 }}>{m.text.split('\n').slice(1).join('\n')}</div>
-                    )}
-                  </div>
+            </div>
+          ) : (
+            <div className={ai.scroll} aria-live="polite">
+              <div className={ai.thread}>
+                <div className={ai.aiMsg}>
+                  <Markdown text={GREETING} />
                 </div>
-              ) : (
-                <div key={i} className={styles.bubbleRow}>
-                  <span className={styles.botIcon}>
-                    <Sparkles size={14} />
-                  </span>
-                  <div className={styles.bubbleBot}>{m.text}</div>
-                </div>
-              ),
-            )}
-            {thinking && (
-              <div className={styles.bubbleRow}>
-                <span className={styles.botIcon}>
-                  <Sparkles size={14} />
-                </span>
-                <div className={`${styles.bubbleBot} ${styles.typing}`}>
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              </div>
-            )}
-            {last?.askForFile && !thinking && !building && (
-              <div className={styles.askFile}>
-                <FileSpreadsheet size={16} />
-                <span>실제로 쓰는 양식 파일(엑셀 .xlsx · CSV)을 올려 주세요.</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  loading={uploading}
-                  onClick={() => fileRef.current?.click()}
-                >
-                  양식 올리기
-                </Button>
-              </div>
-            )}
-            {ready && (
-              <div className={styles.readyCard}>
-                <div className={styles.readyHead}>
-                  <b>{last.name || '새 에이전트'}</b>
-                  {last.description && <span className={styles.note}>{last.description}</span>}
-                </div>
-                {refs.length > 0 && (
-                  <div className={styles.examples}>
-                    {refs.map((r) => (
-                      <span key={r.id} className={styles.fileChip}>
-                        <FileSpreadsheet size={13} /> {r.name}
-                      </span>
-                    ))}
+                {msgs.map((m, i) =>
+                  m.role === 'user' ? (
+                    <div key={i} className={ai.userTurn}>
+                      {m.file && (
+                        <div className={ai.userFiles}>
+                          <span className={ai.userFile}>
+                            <FileSpreadsheet size={14} /> {m.file.name}
+                          </span>
+                        </div>
+                      )}
+                      {(m.file ? m.text.split('\n').slice(1).join('\n') : m.text) && (
+                        <div className={ai.userMsg}>
+                          {m.file ? m.text.split('\n').slice(1).join('\n') : m.text}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div key={i} className={ai.aiMsg}>
+                      <Markdown text={m.text} />
+                    </div>
+                  ),
+                )}
+                {thinking && (
+                  <div className={ai.working} role="status">
+                    <span className={ai.spark} aria-hidden />
+                    생각하는 중…
                   </div>
                 )}
-                <div className={styles.readyActions}>
-                  <span className={styles.note}>
-                    {building
-                      ? 'AI가 노드·분기·승인을 설계하고 있어요(30초~1분)…'
-                      : '바꿀 점이 있으면 아래에 말씀해 주세요. 만든 뒤에도 노드에서 고칠 수 있어요.'}
-                  </span>
-                  <Button
-                    variant="primary"
-                    loading={building}
-                    leftIcon={<Sparkles size={14} />}
-                    onClick={() => void build()}
-                  >
-                    이대로 만들기
-                  </Button>
-                </div>
-              </div>
-            )}
-            <div ref={endRef} />
-          </div>
-
-          <div className={styles.composer}>
-            {refs.length > 0 && (
-              <div className={styles.composerFiles}>
-                {refs.map((r) => (
-                  <span key={r.id} className={styles.fileChip}>
-                    <FileSpreadsheet size={13} /> {r.name}
-                    <button
-                      type="button"
-                      aria-label={`${r.name} 빼기`}
-                      onClick={() => setRefs((p) => p.filter((x) => x.id !== r.id))}
-                      disabled={busy}
+                {last?.askForFile && !thinking && !building && (
+                  <div className={styles.askFile}>
+                    <FileSpreadsheet size={16} />
+                    <span>실제로 쓰는 양식 파일(엑셀 .xlsx · CSV)을 올려 주세요.</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={uploading}
+                      onClick={() => fileRef.current?.click()}
                     >
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
+                      양식 올리기
+                    </Button>
+                  </div>
+                )}
+                {ready && (
+                  <div className={styles.readyCard}>
+                    <div className={styles.readyHead}>
+                      <b>{last.name || '새 에이전트'}</b>
+                      {last.description && <span className={styles.note}>{last.description}</span>}
+                    </div>
+                    {refs.length > 0 && (
+                      <div className={styles.examples}>
+                        {refs.map((r) => (
+                          <span key={r.id} className={styles.fileChip}>
+                            <FileSpreadsheet size={13} /> {r.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className={styles.readyActions}>
+                      <span className={styles.note}>
+                        {building
+                          ? 'AI가 노드·분기·승인을 설계하고 있어요(30초~1분)…'
+                          : '바꿀 점이 있으면 아래에 말씀해 주세요. 만든 뒤에도 노드에서 고칠 수 있어요.'}
+                      </span>
+                      <Button
+                        variant="primary"
+                        loading={building}
+                        leftIcon={<Sparkles size={14} />}
+                        onClick={() => void build()}
+                      >
+                        이대로 만들기
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div ref={endRef} />
               </div>
-            )}
-            <div className={styles.composerRow}>
-              <button
-                type="button"
-                className={styles.composerBtn}
-                onClick={() => fileRef.current?.click()}
-                disabled={busy || aiConfigured === null}
-                title="참고 양식 올리기(엑셀·CSV)"
-                aria-label="참고 양식 올리기"
-              >
-                <Paperclip size={16} />
-              </button>
+            </div>
+          )}
+
+          <div className={ai.composerWrap}>
+            <div className={ai.composer}>
+              {refs.length > 0 && (
+                <div className={ai.files}>
+                  {refs.map((r) => (
+                    <div key={r.id} className={ai.fileChip}>
+                      <span className={ai.fileIcon}>
+                        <FileSpreadsheet size={16} />
+                      </span>
+                      <span className={ai.fileName}>{r.name}</span>
+                      <button
+                        type="button"
+                        className={ai.fileRemove}
+                        aria-label={`${r.name} 빼기`}
+                        onClick={() => setRefs((p) => p.filter((x) => x.id !== r.id))}
+                        disabled={busy}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <textarea
                 ref={inputRef}
-                className={styles.composerInput}
+                className={ai.input}
                 rows={1}
                 value={draft}
                 autoFocus
@@ -389,30 +387,48 @@ export default function AgentCreate() {
                   }
                 }}
                 disabled={building}
+                aria-label="에이전트 만들기 대화"
               />
-              <button
-                type="button"
-                className={`${styles.composerBtn} ${styles.composerSend}`}
-                onClick={() => send()}
-                disabled={!draft.trim() || busy}
-                aria-label="보내기"
-              >
-                <SendHorizontal size={16} />
-              </button>
+              <div className={ai.composerBar}>
+                <span className={ai.barLeft}>
+                  <button
+                    type="button"
+                    className={ai.iconBtn}
+                    onClick={() => fileRef.current?.click()}
+                    disabled={busy || aiConfigured === null}
+                    title="참고 양식 올리기(엑셀·CSV)"
+                    aria-label="참고 양식 올리기"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+                </span>
+                <button
+                  type="button"
+                  className={ai.sendBtn}
+                  onClick={() => send()}
+                  disabled={!draft.trim() || busy}
+                  aria-label="보내기"
+                >
+                  <ArrowUp size={20} strokeWidth={2.4} />
+                </button>
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                hidden
+                accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) void upload(f);
+                }}
+              />
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              hidden
-              accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = '';
-                if (f) void upload(f);
-              }}
-            />
+            <div className={ai.footnote}>
+              만든 에이전트는 사용 전에 편집 화면에서 단계를 확인할 수 있습니다.
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

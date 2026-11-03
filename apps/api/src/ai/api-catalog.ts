@@ -95,7 +95,8 @@ const OVERRIDE: Record<string, string> = {
   'calendar.googleStatus': '구글 캘린더 연동 상태',
   'calendar.googleSync': '구글 캘린더와 동기화',
   'calendar.googleDisconnect': '구글 캘린더 연동 해제',
-  'branches.overview': '지점별 접수·계약·매출 현황 요약',
+  'branches.overview':
+    '모든 지점의 실적을 한 번에 — 지점별 접수 건수·계약 건수·계약 매출·완료 작업·진행 중 작업·직원 수. from·to(YYYY-MM-DD, 한국 날짜, 둘 다 포함)로 기간을 정하면 그 기간 실적(지난주·지난달 보고서에 이것을 쓴다), 비우면 전체 기간',
   'stats.overview': '대시보드 통계 요약(기간별 접수·계약·매출)',
   'settlements.payments': '입금 내역 조회(기간·지점 필터)',
   'settlements.receivables': '고객별 미수금(청구 − 입금)',
@@ -104,7 +105,8 @@ const OVERRIDE: Record<string, string> = {
   'settlements.createRule': '수수료 규칙 등록',
   'settlements.updateRule': '수수료 규칙 수정',
   'settlements.removeRule': '수수료 규칙 삭제',
-  'settlements.branch': '지점 월 정산(매출·수수료)',
+  'settlements.branch':
+    '지점 한 곳의 월 정산(계약별 수수료) — orgUnitId(지점 id)·year·month 필수. 여러 지점 실적 비교·주간 보고에는 쓰지 말고 branches.overview를 쓴다',
   'billing.setOutsourceCost': '작업오더 외주비 입력',
   'billing.margins': '작업별 마진(매출 − 외주비)',
   'billing.listInvoices': '청구서 목록',
@@ -156,7 +158,18 @@ const METHOD_NAME: Partial<Record<RequestMethod, string>> = {
 interface RouteArg {
   index: number;
   data?: string;
+  /** @Query('x', ParseUUIDPipe) 처럼 붙은 파이프 — 있으면 그 값은 꼭 넣어야 한다 */
+  pipes?: unknown[];
 }
+/** 값이 없으면 400을 내는 파이프(필수 값) — 이름으로 본다(Optional 옵션이 켜진 것은 제외) */
+const isRequiredPipe = (p: unknown) => {
+  const name =
+    typeof p === 'function'
+      ? p.name
+      : (p as { constructor?: { name?: string } })?.constructor?.name;
+  const optional = !!(p as { options?: { optional?: boolean } } | null)?.options?.optional;
+  return !optional && /^Parse(UUID|Int|Float|Bool|Enum)Pipe$/.test(name ?? '');
+};
 
 /** 도구 이름은 영문·숫자·_·-만 된다(Claude API 규칙) — 'me/notifications'의 '/'처럼 다른 글자는 _로 */
 const snake = (s: string) =>
@@ -254,10 +267,12 @@ export class ApiCatalog implements OnApplicationBootstrap {
         pathParams.push(arg.data);
       } else if (type === RouteParamtypes.QUERY) {
         if (arg.data) {
+          const must = (arg.pipes ?? []).some(isRequiredPipe);
           properties[arg.data] = {
             type: designType === Number ? 'number' : 'string',
-            description: '조회 조건(선택)',
+            description: must ? '꼭 넣어야 하는 값' : '조회 조건(선택)',
           };
+          if (must) required.push(arg.data);
           queryParams.push(arg.data);
         } else if (typeof designType === 'function' && designType !== Object) {
           const s = dtoToSchema(designType as new () => unknown);

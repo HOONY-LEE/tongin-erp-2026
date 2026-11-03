@@ -52,6 +52,8 @@ const ProductMgmt = lazy(() => import('./pages/ProductMgmt'));
 const OrgMgmt = lazy(() => import('./pages/OrgMgmt'));
 const PaymentConfirm = lazy(() => import('./pages/PaymentConfirm'));
 const Duties = lazy(() => import('./pages/Duties'));
+const Franchise = lazy(() => import('./pages/Franchise'));
+const FranchiseLeads = lazy(() => import('./pages/FranchiseLeads'));
 const Performance = lazy(() => import('./pages/Performance'));
 const Branches = lazy(() => import('./pages/Branches'));
 const Approvals = lazy(() => import('./pages/Approvals'));
@@ -154,6 +156,8 @@ function Shell() {
         <Route path="/hr" element={page(<HrPolicies />)} />
         <Route path="/performance" element={page(<Performance />)} />
         <Route path="/duties" element={page(<Duties />)} />
+        <Route path="/franchise" element={page(<Franchise />)} />
+        <Route path="/franchise-leads" element={page(<FranchiseLeads />)} />
         <Route path="/org-units" element={page(<OrgUnits />)} />
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}
         <Route path="/product-mgmt" element={page(<ProductMgmt />)} />

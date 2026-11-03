@@ -50,6 +50,8 @@ export default {
     approvals: 'Approvals',
     spaces: 'Space Booking',
     duties: 'Duties',
+    franchise: 'Franchisees',
+    franchiseLeads: 'Franchise Sales',
     performance: 'Performance',
     drive: 'Drive',
     leave: 'Leave',

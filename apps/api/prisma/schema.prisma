@@ -48,6 +48,8 @@ model OrgUnit {
   noticeOrgUnits    NoticeOrgUnit[]         @relation("NoticeOrgUnits")
   teamTasks         TeamTask[]              @relation("TeamTasks")
   branchCases       BranchCase[]            @relation("BranchCases")
+  franchiseInfo     FranchiseInfo?
+  franchiseLeadsWon FranchiseLead[]         @relation("FranchiseLeadBranch")
   concurrentMembers EmployeeConcurrentOrg[]
 
   @@map("org_unit")
@@ -96,6 +98,7 @@ model Employee {
   estimatorEstimates Estimate[]
   assignments        WorkAssignment[]
   dutiesOwned        Duty[]                  @relation("DutyOwner")
+  franchiseLeads     FranchiseLead[]         @relation("FranchiseLeadOwner")
   dutiesBackup       Duty[]                  @relation("DutyBackup")
   campaignRecipients CampaignRecipient[]
   agentShares        AgentBlueprintShare[]
@@ -1988,4 +1991,74 @@ model TeamTaskEvent {
 
   @@index([taskId, createdAt])
   @@map("team_task_event")
+}
+
+// ── 가맹: 가맹점 계약 정보 · 가맹 영업 CRM ──
+
+/// 가맹점(지점) 계약 정보 — 지점 하나에 한 줄. 재계약 대상·가맹비/보증금 입금 확인의 근거
+model FranchiseInfo {
+  orgUnitId       String    @id @map("org_unit_id") @db.Uuid
+  orgUnit         OrgUnit   @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  status          String    @default("OPERATING") // OPERATING | PREPARING | SUSPENDED | TERMINATED
+  ownerName       String?   @map("owner_name") // 가맹주(대표)
+  ownerPhone      String?   @map("owner_phone") // 숫자만
+  bizNo           String?   @map("biz_no") // 사업자등록번호
+  contractStart   DateTime? @map("contract_start") @db.Date
+  contractEnd     DateTime? @map("contract_end") @db.Date
+  franchiseFee    Decimal?  @map("franchise_fee") @db.Decimal(14, 0) // 가맹비
+  feePaidAt       DateTime? @map("fee_paid_at") @db.Date
+  deposit         Decimal?  @db.Decimal(14, 0) // 보증금
+  depositPaidAt   DateTime? @map("deposit_paid_at") @db.Date
+  royalty         Decimal?  @db.Decimal(14, 0) // 월 상호사용료(CMS)
+  memo            String?
+  updatedByUserId String?   @map("updated_by_user_id") @db.Uuid
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("franchise_info")
+}
+
+/// 가맹 영업 — 가맹점이 될 업체(사장님). 발굴 → 첫 연락 → 상담 → 미팅 → 계약 진행 → 계약 완료(보류·실패)
+model FranchiseLead {
+  id              String                  @id @default(uuid()) @db.Uuid
+  companyName     String                  @map("company_name") // 상호(또는 이름)
+  contactName     String?                 @map("contact_name")
+  phone           String? // 숫자만
+  region          String? // 희망·운영 지역
+  source          String                  @default("DB") // DB | INBOUND | OUTBOUND | REFERRAL | EXPO | ETC
+  stage           String                  @default("NEW")
+  interest        String                  @default("B") // A 높음 | B 보통 | C 낮음
+  ownerEmpId      String?                 @map("owner_emp_id") @db.Uuid
+  owner           Employee?               @relation("FranchiseLeadOwner", fields: [ownerEmpId], references: [id], onDelete: SetNull)
+  nextActionAt    DateTime?               @map("next_action_at") @db.Date // 다음 연락일
+  nextAction      String?                 @map("next_action")
+  currentBiz      String?                 @map("current_biz") // 지금 하는 사업(이사업체 운영 여부·규모)
+  memo            String?
+  lostReason      String?                 @map("lost_reason")
+  branchId        String?                 @map("branch_id") @db.Uuid // 계약 완료 후 연결된 가맹점(지점)
+  branch          OrgUnit?                @relation("FranchiseLeadBranch", fields: [branchId], references: [id], onDelete: SetNull)
+  createdByUserId String?                 @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  activities      FranchiseLeadActivity[]
+
+  @@index([stage])
+  @@index([ownerEmpId])
+  @@map("franchise_lead")
+}
+
+/// 가맹 영업 상담 기록 — 통화·문자·미팅·메모, 단계 변경은 자동으로
+model FranchiseLeadActivity {
+  id          String        @id @default(uuid()) @db.Uuid
+  leadId      String        @map("lead_id") @db.Uuid
+  lead        FranchiseLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  kind        String // CALL | SMS | MEETING | MEMO | STAGE
+  content     String?
+  fromStage   String?       @map("from_stage")
+  toStage     String?       @map("to_stage")
+  actorUserId String?       @map("actor_user_id") @db.Uuid
+  actorName   String?       @map("actor_name")
+  at          DateTime      @default(now()) @db.Timestamptz(6)
+
+  @@index([leadId, at])
+  @@map("franchise_lead_activity")
 }

@@ -15,6 +15,8 @@ export interface AiStatus {
   /** 서버 기본 모델 */
   model: string;
   models?: AiModelOption[];
+  /** 이번 달 한도(토큰, 없으면 null)와 쓴 양 */
+  quota?: { limit: number | null; used: number } | null;
 }
 
 export interface AiToolInfo {

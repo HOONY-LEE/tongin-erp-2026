@@ -50,6 +50,8 @@ export default {
     approvals: '결재함',
     spaces: '공간 예약',
     duties: '업무분장',
+    franchise: '가맹점 현황',
+    franchiseLeads: '가맹 영업',
     performance: '성과 평가',
     drive: '드라이브',
     leave: '휴가',

@@ -1456,3 +1456,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 새 에이전트 만들기 — AI 비서 대화창(aiAgent.module.css)을 그대로 쓰고, 남는 높이를 채운다 */
+.createChat {
+  flex: 1;
+  min-height: 0;
+}
+.createLead {
+  max-width: 640px;
+  margin: 0 0 18px;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.6;
+  text-align: center;
+}

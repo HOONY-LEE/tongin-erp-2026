@@ -145,8 +145,8 @@ export class AiService implements OnModuleInit {
       configured: !!this.client,
       model: resolveChatModel(defaultModel(), allowed),
       models: modelOptions(allowed),
-      // 이번 달 한도(토큰)와 쓴 양 — 한도가 없으면 null
-      quota: limit == null ? null : { limit, used: await this.usage.usedThisMonth(userId) },
+      // 이번 달 한도(토큰, 없으면 null)와 쓴 양 — AI 비서 왼쪽 아래 사용량 막대
+      quota: { limit, used: await this.usage.usedThisMonth(userId) },
     };
   }
 
