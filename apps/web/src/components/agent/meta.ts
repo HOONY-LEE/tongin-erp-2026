@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import { aiModelLabel } from '../../lib/aiModels';
 import {
   BrainCircuit,
   Flag,
@@ -10,7 +11,6 @@ import {
   Zap,
 } from 'lucide-react';
 import {
-  AGENT_MODELS,
   GUARDRAIL_LABEL,
   TRIGGER_EVENT_LABEL,
   TRIGGER_KIND_LABEL,
@@ -62,8 +62,7 @@ export const NODE_HEX: Record<AgentNodeType, string> = {
   output: '#30a46c',
 };
 
-export const modelLabel = (id: string) =>
-  AGENT_MODELS.find((m) => m.id === id)?.label.split(' (')[0] ?? id;
+export const modelLabel = (id: string) => aiModelLabel(id).split(' (')[0];
 
 const cut = (s: string, n = 70) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 

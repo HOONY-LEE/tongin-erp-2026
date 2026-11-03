@@ -6,15 +6,31 @@ import {
   type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
-import { aiBilledTokens, type AiAccess, type AiFeature, type AiPrices } from '@tongin/shared';
+import {
+  aiBilledTokens,
+  type AiAccess,
+  type AiFeature,
+  type AiModelDef,
+  type AiPrices,
+} from '@tongin/shared';
+import type { Prisma } from '@prisma/client';
+import { createClaude } from '../agent-builder/agent-claude';
 import { PrismaService } from '../prisma/prisma.service';
 import { currentActorUserId } from '../events/request-context';
-import { allowedFor, applyModelSetting } from './ai-models';
+import {
+  allowedFor,
+  allowedModels,
+  applyModelSetting,
+  defaultModel,
+  setCatalog,
+} from './ai-models';
 
 /** 사용 기록 보관 기간 — 이보다 오래된 줄은 하루 한 번 지운다 */
 const USAGE_RETENTION_DAYS = 365;
 /** 설정·사용자 정책·이번 달 사용량을 메모리에 들고 있는 시간 */
 const CACHE_MS = 60_000;
+/** 모델 목록을 Claude에서 다시 받는 간격 */
+const CATALOG_REFRESH_MS = 6 * 3600_000;
 
 /**
  * 누가 부른 AI 호출인지 — HTTP 요청이면 로그인한 사람, 예약·이벤트로 돈 에이전트면 실행 주인.
@@ -86,6 +102,7 @@ export interface AiSettingView {
 
 export interface UserPolicy {
   access: AiAccess;
+  builderAccess: AiAccess;
   models: string[];
   monthlyTokenLimit: number | null;
 }
@@ -107,6 +124,8 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
   private readonly policies = new Map<string, { at: number; value: UserPolicy | null }>();
   private readonly monthUsed = new Map<string, { at: number; month: number; tokens: number }>();
   private timer: NodeJS.Timeout | null = null;
+  private catalogTimer: NodeJS.Timeout | null = null;
+  private catalogAt: Date | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -118,10 +137,19 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
     // 오래된 사용 기록 지우기 — 부팅 1분 뒤 한 번, 그다음 하루에 한 번
     this.timer = setInterval(() => void this.prune(), 24 * 3600_000);
     setTimeout(() => void this.prune(), 60_000).unref();
+    // 모델 목록 — 받은 지 오래됐으면 부팅 20초 뒤, 그다음 6시간마다 Claude에서 다시 받는다
+    const stale = !this.catalogAt || Date.now() - this.catalogAt.getTime() > CATALOG_REFRESH_MS;
+    if (stale) setTimeout(() => void this.refreshCatalog().catch(() => undefined), 20_000).unref();
+    this.catalogTimer = setInterval(
+      () => void this.refreshCatalog().catch(() => undefined),
+      CATALOG_REFRESH_MS,
+    );
+    this.catalogTimer.unref();
   }
 
   onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
+    if (this.catalogTimer) clearInterval(this.catalogTimer);
     if (instance === this) register(null);
   }
 
@@ -130,6 +158,11 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
   private async loadSetting(): Promise<AiSettingView | null> {
     const row = await this.prisma.aiSetting.findUnique({ where: { id: 1 } });
     this.settingAt = Date.now();
+    // 받아 둔 모델 목록을 먼저 — 열린 모델은 이 목록 안에서만 남는다
+    if (row) {
+      this.catalogAt = row.catalogAt;
+      setCatalog(parseCatalog(row.catalog));
+    }
     this.setting = row
       ? {
           allowed: row.allowed,
@@ -161,6 +194,60 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
     return this.loadSetting();
   }
 
+  // ── 모델 목록(Claude Models API) ──
+
+  get catalogFetchedAt() {
+    return this.catalogAt?.toISOString() ?? null;
+  }
+
+  /**
+   * Claude에 지금 쓸 수 있는 모델 목록을 물어 저장한다 — 새 모델이 나오면 목록에 생기고(관리자가 켜야 쓰임),
+   * 은퇴한 모델은 목록·열린 모델에서 빠진다. 키가 없으면 아무것도 안 한다.
+   */
+  async refreshCatalog(): Promise<{ count: number; fetchedAt: string } | null> {
+    const client = createClaude();
+    if (!client) return null;
+    const list: AiModelDef[] = [];
+    for await (const m of client.models.list({ limit: 100 })) {
+      if (m.lifecycle === 'retired') continue;
+      const created =
+        m.created_at && !m.created_at.startsWith('1970') ? m.created_at.slice(0, 10) : null;
+      const small = m.line === 'haiku';
+      list.push({
+        id: m.id,
+        label: m.display_name || m.id,
+        hint: [
+          small ? '짧은 분류·요약' : '대화·에이전트',
+          m.lifecycle === 'deprecated' ? '곧 종료' : null,
+          created ? `${created.slice(0, 7)} 출시` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        chat: !small,
+        lifecycle: m.lifecycle === 'deprecated' ? 'deprecated' : 'active',
+        createdAt: created,
+      });
+    }
+    if (!list.length) return null;
+    const now = new Date();
+    const catalog = list as unknown as Prisma.InputJsonValue;
+    // 설정 줄이 아직 없으면 지금 쓰는 값(환경변수 기본)으로 만들어 둔다
+    await this.prisma.aiSetting.upsert({
+      where: { id: 1 },
+      create: {
+        id: 1,
+        allowed: allowedModels(),
+        defaultModel: defaultModel(),
+        catalog,
+        catalogAt: now,
+      },
+      update: { catalog, catalogAt: now },
+    });
+    await this.loadSetting();
+    this.logger.log(`Claude 모델 목록 ${list.length}개 받음`);
+    return { count: list.length, fetchedAt: now.toISOString() };
+  }
+
   // ── 사용자별 권한 ──
 
   async policy(userId: string): Promise<UserPolicy | null> {
@@ -170,6 +257,7 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
     const value = row
       ? {
           access: row.access as AiAccess,
+          builderAccess: row.builderAccess as AiAccess,
           models: row.models,
           monthlyTokenLimit: row.monthlyTokenLimit,
         }
@@ -272,4 +360,22 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`AI 사용 기록 정리 실패: ${String(e)}`);
     }
   }
+}
+
+/** 저장된 모델 목록 읽기 — 모양이 틀린 줄은 버린다 */
+function parseCatalog(v: Prisma.JsonValue): AiModelDef[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((x) => {
+    if (!x || typeof x !== 'object' || Array.isArray(x) || typeof x.id !== 'string') return [];
+    return [
+      {
+        id: x.id,
+        label: typeof x.label === 'string' ? x.label : x.id,
+        hint: typeof x.hint === 'string' ? x.hint : '',
+        chat: x.chat !== false,
+        lifecycle: x.lifecycle === 'deprecated' ? ('deprecated' as const) : ('active' as const),
+        createdAt: typeof x.createdAt === 'string' ? x.createdAt : null,
+      },
+    ];
+  });
 }

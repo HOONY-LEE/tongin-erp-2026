@@ -1687,15 +1687,18 @@ model ApprovalForm {
 
 // AI 설정(회사 전체 한 줄) — 쓸 모델·기본 모델·모델별 단가(달러/100만 토큰, 비우면 비용을 계산하지 않음)
 model AiSetting {
-  id                Int      @id @default(1)
+  id                Int       @id @default(1)
   allowed           String[] // 열린 모델 id
-  defaultModel      String   @map("default_model")
+  defaultModel      String    @map("default_model")
   // { "<모델 id>": { "input": 3, "output": 15 } }
-  prices            Json     @default("{}")
+  prices            Json      @default("{}")
   // 사용자 한도를 따로 안 정한 사람의 월 한도(토큰). NULL이면 무제한
-  monthlyTokenLimit Int?     @map("monthly_token_limit")
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?  @map("updated_by") @db.Uuid
+  monthlyTokenLimit Int?      @map("monthly_token_limit")
+  // Claude Models API에서 받아 둔 모델 목록 [{ id, label, hint, chat, lifecycle, createdAt }] — 몇 시간마다·관리자가 누르면 새로
+  catalog           Json      @default("[]")
+  catalogAt         DateTime? @map("catalog_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?   @map("updated_by") @db.Uuid
 
   @@map("ai_setting")
 }
@@ -1705,6 +1708,8 @@ model AiUserPolicy {
   userId            String   @id @map("user_id") @db.Uuid
   // DEFAULT(권한 그룹의 'AI 비서 사용'을 따름) | ALLOW(그룹과 상관없이 허용) | BLOCK(막음)
   access            String   @default("DEFAULT")
+  // 에이전트 빌더(AI.MANAGE) — DEFAULT(권한 그룹을 따름) | ALLOW | BLOCK
+  builderAccess     String   @default("DEFAULT") @map("builder_access")
   // 쓸 수 있는 모델(비면 회사에 열린 모델 전부)
   models            String[] @default([])
   // 월 한도(토큰). NULL이면 회사 기본 한도를 따른다

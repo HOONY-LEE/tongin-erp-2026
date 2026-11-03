@@ -2,7 +2,6 @@ import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import type Anthropic from '@anthropic-ai/sdk';
 import {
   AGENT_DEFAULT_MODEL,
-  AGENT_MODELS,
   AGENT_NODE_DESC,
   AGENT_NODE_LABEL,
   AGENT_NODE_TYPES,
@@ -92,7 +91,8 @@ const CONFIG_SCHEMA: Record<AgentNodeType, unknown> = {
     ),
   }),
   llm: obj({
-    model: enumOf(AGENT_MODELS.map((m) => m.id)),
+    // 모델 목록은 Claude에서 받아 바뀌므로 고정 목록으로 묶지 않는다(실행할 때 열린 모델로 맞춤)
+    model: str,
     effort: enumOf(['low', 'medium', 'high']),
     instructions: str,
     prompt: str,

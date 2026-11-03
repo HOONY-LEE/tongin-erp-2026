@@ -187,3 +187,30 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   max-width: 760px;
 }
+
+/* 쓸 모델 머리 — 제목 · 받은 시각 · 새로 받기 */
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sectionHead > :last-child {
+  margin-left: auto;
+}
+
+/* 사용자 권한 표 — 체크 칸(편집 모드에서만 고침) */
+.checkCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.checkChanged {
+  background: color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 16%, transparent);
+}
+.ownMark {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(11px * var(--font-scale, 1));
+}

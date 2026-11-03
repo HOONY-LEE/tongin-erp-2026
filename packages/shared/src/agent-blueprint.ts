@@ -87,6 +87,22 @@ export const AI_MODELS = [
   },
 ] as const;
 export type AiModelId = (typeof AI_MODELS)[number]['id'];
+/**
+ * 모델 한 줄 — 서버가 Claude Models API에서 받아 온 목록(받기 전에는 위 AI_MODELS).
+ * chat=false는 대화·에이전트 만들기에는 안 쓰는 작은 모델(Haiku 계열).
+ */
+export interface AiModelDef {
+  id: string;
+  label: string;
+  hint: string;
+  chat: boolean;
+  /** active | deprecated(곧 종료) */
+  lifecycle: 'active' | 'deprecated';
+  /** 출시일(YYYY-MM-DD) — 모르면 null */
+  createdAt: string | null;
+  /** 화면용 — 이 사용자·회사에 열려 있는지 */
+  enabled?: boolean;
+}
 export const AI_DEFAULT_MODEL: AiModelId = 'claude-sonnet-5-5';
 /** 에이전트 AI 단계에서 고를 모델(같은 목록) */
 export const AGENT_MODELS = AI_MODELS;
