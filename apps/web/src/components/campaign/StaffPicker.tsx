@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import { useAuth } from '../../auth/AuthContext';
-import { Badge, Button, Checkbox, Input, useToast } from '../ui';
+import { Badge, Button, Checkbox, Input, PhoneInput, useToast } from '../ui';
 import styles from '../../pages/campaign.module.css';
 
 /** 받는 직원(이름·번호는 담을 때 화면에 보여 줄 값 — 서버는 직원 원장에서 다시 읽는다) */
@@ -131,7 +131,7 @@ export function StaffPicker({
       onToggleExtra({ name: saved.name, phone: saved.phone }, true);
       setNewName('');
       setNewPhone('');
-      toast({ type: 'success', title: `${saved.name}(${saved.phone})을 담았습니다` });
+      toast({ type: 'success', title: `${saved.name}(${formatPhone(saved.phone)})을 담았습니다` });
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '추가하지 못했습니다' });
     } finally {
@@ -151,7 +151,7 @@ export function StaffPicker({
   const removeDemo = async (d: DemoNumber) => {
     if (
       !window.confirm(
-        `시연 번호 ${d.name}(${d.phone})을 지울까요? 이 번호로는 문자가 나가지 않습니다.`,
+        `시연 번호 ${d.name}(${formatPhone(d.phone)})을 지울까요? 이 번호로는 문자가 나가지 않습니다.`,
       )
     )
       return;
@@ -302,7 +302,7 @@ export function StaffPicker({
                         />
                       </td>
                       <td>{d.name}</td>
-                      <td>{d.phone}</td>
+                      <td>{formatPhone(d.phone)}</td>
                       <td style={{ width: 60 }}>
                         {canWrite && (
                           <Button
@@ -335,12 +335,10 @@ export function StaffPicker({
               />
             </div>
             <div style={{ width: 180 }}>
-              <Input
+              <PhoneInput
                 value={newPhone}
-                onChange={(e) => setNewPhone(formatPhone(e.target.value))}
-                onKeyDown={(e) => e.key === 'Enter' && void addNumber()}
-                placeholder="010-1234-5678"
-                inputMode="tel"
+                onChange={setNewPhone}
+                onKeyUp={(e) => e.key === 'Enter' && void addNumber()}
                 aria-label="추가할 전화번호"
               />
             </div>

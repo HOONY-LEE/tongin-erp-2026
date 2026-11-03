@@ -127,8 +127,8 @@
   background: var(--ark-color-bg);
 }
 .unitField:focus-within {
-  border-color: var(--ark-color-info-500);
-  box-shadow: 0 0 0 1px var(--ark-color-info-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .unitField input {
   flex: 1;
@@ -142,7 +142,8 @@
   color: var(--ark-color-text);
 }
 /* 전역 입력 포커스 링이 안쪽 input에도 걸리면 링이 이중으로 보인다 */
-.unitField input:focus {
+.unitField input:focus,
+.unitField input:focus:not([readonly]) {
   border: none;
   box-shadow: none;
 }

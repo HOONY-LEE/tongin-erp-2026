@@ -18,6 +18,7 @@ import {
   type FormField,
   type Row,
 } from '../components/ui';
+import { formatPhone } from '../lib/phone';
 
 const ACTIVE_FIELD: FormField = {
   name: 'isActive',
@@ -157,7 +158,7 @@ export default function Employees({ view = 'list', branch }: Props) {
     },
     { title: '사번', render: (r) => String(r.empNo ?? '-') },
     { title: '입사일', render: (r) => (r.hireDate ? String(r.hireDate).slice(0, 10) : '-') },
-    { title: '연락처', render: (r) => String(r.phone ?? '-') },
+    { title: '연락처', render: (r) => (r.phone ? formatPhone(String(r.phone)) : '-') },
     // 지점 상세 안에선 모두 같은 지점이라 칸을 뺀다
     ...(branch
       ? []

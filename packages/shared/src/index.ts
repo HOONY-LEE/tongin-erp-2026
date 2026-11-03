@@ -638,10 +638,10 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   },
   {
     key: 'TASK',
-    label: '팀 업무',
+    label: '작업관리',
     group: '공통',
     actions: ALL_CRUD,
-    hint: '조회 = 데이터 범위 안 팀 업무 열람. 내가 담당·요청한 업무는 권한 없이 보고 상태를 바꿀 수 있습니다',
+    hint: '조회 = 데이터 범위 안 작업관리 열람. 내가 담당·요청한 업무는 권한 없이 보고 상태를 바꿀 수 있습니다',
   },
   // 관리
   { key: 'CUSTOMER', label: '고객', group: '관리', actions: ALL_CRUD },
@@ -688,7 +688,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   // 정산
   { key: 'SETTLEMENT', label: '정산', group: '정산', actions: ALL_CRUD },
   { key: 'BILLING', label: '청구', group: '정산', actions: ALL_CRUD },
-  { key: 'HR', label: '인사·평가', group: '정산', actions: ALL_CRUD },
+  {
+    key: 'HR',
+    label: '인사·평가',
+    group: '정산',
+    actions: ALL_CRUD,
+    hint: '성과 평가: 조회 = 조직·직원 지표·점수 보기, 수정 = 지표 구성·목표·실적 입력',
+  },
   { key: 'MATERIAL', label: '자재', group: '정산', actions: ALL_CRUD },
   { key: 'MATERIAL_ORDER', label: '자재 발주', group: '정산', actions: ALL_CRUD },
   // 시스템
@@ -715,6 +721,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     hint: '팀(소속)·권한 그룹·직책별 사이드바 메뉴 구성을 정합니다. 내 메뉴 순서 바꾸기는 권한 없이 됩니다',
   },
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
+  {
+    key: 'DUTY',
+    label: '업무분장',
+    group: '공통',
+    actions: [],
+    specials: [{ action: 'MANAGE', label: '조직 역할·업무분장 정하기' }],
+    hint: '업무분장 보기는 권한 없이 됩니다. 이 권한은 조직의 역할과 업무 항목·담당자를 정합니다',
+  },
   {
     key: 'SPACE',
     label: '공간 예약',
@@ -790,7 +804,7 @@ export interface AuthPrincipal {
   employeeId: string | null; // 직원 계정이면 연결된 직원(현장 배정 조회에 사용). 외부인·에이전트는 null
   employeeName: string | null; // 연결된 직원 이름(담당자 기본값 표시용). employeeId가 null이면 null
   employeeOrgUnitId: string | null; // 연결된 직원의 소속 조직(접수 지점 기본값)
-  /** 겸직(추가 소속) 조직 — 메뉴·공지·팀 업무는 주 소속과 함께 따른다. 결재선·데이터 범위는 주 소속·권한 기준 */
+  /** 겸직(추가 소속) 조직 — 메뉴·공지·작업관리는 주 소속과 함께 따른다. 결재선·데이터 범위는 주 소속·권한 기준 */
   concurrentOrgUnitIds?: string[];
   partnerId: string | null; // 외부 전속/제휴 소속(있으면 partner 범위로 제한, OPS-04)
   permissions: string[]; // 평탄화된 permission code (또는 '*')
@@ -889,9 +903,11 @@ export * from './agent-blueprint';
 export * from './drive';
 export * from './dashboard';
 export * from './hr';
+export * from './performance';
+export * from './phone';
 export * from './menu';
 
-// ── 공통 업무: 공지사항 · 팀 업무 · 계약·자산 · 지점 관리 기록 ──
+// ── 공통 업무: 공지사항 · 작업관리 · 계약·자산 · 지점 관리 기록 ──
 
 /** 공지 대상 — 전사 또는 고른 조직(+하위 조직이 본다) */
 export const NOTICE_AUDIENCE = ['ALL', 'ORG'] as const;

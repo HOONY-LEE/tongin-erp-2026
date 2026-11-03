@@ -680,8 +680,8 @@
 .textarea:focus,
 .select:focus {
   outline: none;
-  border-color: var(--ark-color-primary-500);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ark-color-primary-500) 20%, transparent);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .row {
   display: flex;
@@ -1300,8 +1300,8 @@
   background: var(--ark-color-bg);
 }
 .composer:focus-within {
-  border-color: var(--ark-color-primary-500);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .composerFiles {
   display: flex;
@@ -1331,6 +1331,7 @@
   field-sizing: content;
 }
 .composerInput:focus,
+.composerInput:focus:not([readonly]),
 .composerInput:focus-visible {
   outline: none;
   border: none;

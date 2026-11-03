@@ -413,7 +413,7 @@
 }
 .searchBox:focus-within {
   border-color: var(--focus-ring);
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .searchInput {
   flex: 1;

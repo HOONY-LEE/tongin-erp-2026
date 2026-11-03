@@ -16,6 +16,7 @@ import {
 } from 'class-validator';
 import { DATA_SCOPES, type DataScope } from '@tongin/shared';
 import { RoleAssignmentDto } from '../../access/dto/access.dto';
+import { PhoneDigits } from '../../../common/phone';
 
 /** 아이디 규칙 — 영문·숫자·. _ - 만, 3~50자 */
 export const LOGIN_ID_PATTERN = /^[A-Za-z0-9._-]{3,50}$/;
@@ -39,6 +40,7 @@ export class AccountEmployeeDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @PhoneDigits()
   phone?: string;
 
   /** 사번 — 비우면 입사연도+일련번호로 자동 */

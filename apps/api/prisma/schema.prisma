@@ -28,8 +28,11 @@ model OrgUnit {
   lat             Float?
   lng             Float?
   isActive        Boolean    @default(true) @map("is_active")
+  // 업무 분장 — 이 조직이 맡는 역할(한두 문장)
+  mission         String?
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   employees       Employee[]
+  duties          Duty[]
   customers       Customer[]
   userRoleScopes  UserRole[] @relation("UserRoleOrgScope")
   brandedProducts Product[]  @relation("ProductBrand")
@@ -92,6 +95,8 @@ model Employee {
 
   estimatorEstimates Estimate[]
   assignments        WorkAssignment[]
+  dutiesOwned        Duty[]                  @relation("DutyOwner")
+  dutiesBackup       Duty[]                  @relation("DutyBackup")
   campaignRecipients CampaignRecipient[]
   agentShares        AgentBlueprintShare[]
   approvalDocs       ApprovalDoc[]
@@ -1523,13 +1528,15 @@ model TeamTask {
   id              String            @id @default(uuid()) @db.Uuid
   title           String
   description     String?
-  teamOrgId       String            @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프)
-  team            OrgUnit           @relation("TeamTasks", fields: [teamOrgId], references: [id])
+  teamOrgId       String?           @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프) — 비우면 개인 업무(담당·요청·만든 사람만)
+  team            OrgUnit?          @relation("TeamTasks", fields: [teamOrgId], references: [id])
   assigneeEmpId   String?           @map("assignee_emp_id") @db.Uuid
   assignee        Employee?         @relation("TaskAssignee", fields: [assigneeEmpId], references: [id], onDelete: SetNull)
   requesterEmpId  String?           @map("requester_emp_id") @db.Uuid
   requester       Employee?         @relation("TaskRequester", fields: [requesterEmpId], references: [id], onDelete: SetNull)
   project         String? // 사업·프로젝트 태그(예: 무브제 컨시어지)
+  dutyId          String?           @map("duty_id") @db.Uuid // 업무 분장 항목(어느 맡은 일의 하나인지)
+  duty            Duty?             @relation(fields: [dutyId], references: [id], onDelete: SetNull)
   status          String            @default("TODO") // TODO | IN_PROGRESS | HOLD | DONE
   priority        String            @default("B") // A | B | C
   dueDate         DateTime?         @map("due_date") @db.Date
@@ -1538,9 +1545,11 @@ model TeamTask {
   createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
   comments        TeamTaskComment[]
+  events          TeamTaskEvent[]
 
   @@index([teamOrgId, status])
   @@index([assigneeEmpId])
+  @@index([dutyId])
   @@index([requesterEmpId])
   @@map("team_task")
 }
@@ -1675,15 +1684,15 @@ model ApprovalForm {
 
 // AI 설정(회사 전체 한 줄) — 쓸 모델·기본 모델·모델별 단가(달러/100만 토큰, 비우면 비용을 계산하지 않음)
 model AiSetting {
-  id           Int      @id @default(1)
-  allowed      String[] // 열린 모델 id
-  defaultModel String   @map("default_model")
+  id                Int      @id @default(1)
+  allowed           String[] // 열린 모델 id
+  defaultModel      String   @map("default_model")
   // { "<모델 id>": { "input": 3, "output": 15 } }
-  prices       Json     @default("{}")
+  prices            Json     @default("{}")
   // 사용자 한도를 따로 안 정한 사람의 월 한도(토큰). NULL이면 무제한
-  monthlyTokenLimit Int? @map("monthly_token_limit")
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy    String?  @map("updated_by") @db.Uuid
+  monthlyTokenLimit Int?     @map("monthly_token_limit")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?  @map("updated_by") @db.Uuid
 
   @@map("ai_setting")
 }
@@ -1918,4 +1927,65 @@ model GoogleDriveLink {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("google_drive_link")
+}
+
+// ── 업무 분장 · 성과 평가 ──
+
+/// 업무 분장 한 줄 — 조직이 맡는 일과 주·부 담당자. 팀 업무(칸반)는 dutyId로 이어 '지금 하는 일'을 센다
+model Duty {
+  id          String     @id @default(uuid()) @db.Uuid
+  orgUnitId   String     @map("org_unit_id") @db.Uuid
+  orgUnit     OrgUnit    @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  ownerEmpId  String?    @map("owner_emp_id") @db.Uuid
+  owner       Employee?  @relation("DutyOwner", fields: [ownerEmpId], references: [id], onDelete: SetNull)
+  backupEmpId String?    @map("backup_emp_id") @db.Uuid
+  backup      Employee?  @relation("DutyBackup", fields: [backupEmpId], references: [id], onDelete: SetNull)
+  cycle       String     @default("ALWAYS") // ALWAYS | DAILY | WEEKLY | MONTHLY | QUARTERLY | ADHOC
+  tool        String? // 쓰는 도구·에이전트(예: 재계약 Agent, 수기)
+  linkUrl     String?    @map("link_url")
+  sortOrder   Int        @default(100) @map("sort_order")
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  tasks       TeamTask[]
+
+  @@index([orgUnitId])
+  @@index([ownerEmpId])
+  @@map("duty")
+}
+
+/// 성과 지표 구성 — 조직(ORG) 또는 직원(EMPLOYEE)의 한 기간(분기) 지표·목표·직접 실적
+model KpiSet {
+  id              String   @id @default(uuid()) @db.Uuid
+  scope           String // ORG | EMPLOYEE
+  scopeId         String   @map("scope_id") @db.Uuid
+  period          String // 'YYYY-Qn'
+  metrics         Json     @default("[]") // [{ key, label?, unit?, target, weight }]
+  actuals         Json     @default("{}") // 직접 지표 실적 { key: number }
+  note            String?
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([scope, scopeId, period])
+  @@map("kpi_set")
+}
+
+/// 작업관리 이력 — 만들기·담당 넘기기·상태·팀 바뀜. 업무 상세에 '누가 누구에게 언제' 시간순으로 보인다
+model TeamTaskEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  taskId      String   @map("task_id") @db.Uuid
+  task        TeamTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  kind        String // CREATED | ASSIGNED | STATUS | TEAM
+  fromValue   String?  @map("from_value") // ASSIGNED: 직원 id · STATUS: 상태 · TEAM: 조직 id
+  toValue     String?  @map("to_value")
+  note        String? // 넘길 때 남긴 말
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorName   String?  @map("actor_name")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([taskId, createdAt])
+  @@map("team_task_event")
 }

@@ -16,7 +16,7 @@ const approvalLink = (box: 'todo' | 'mine' | 'cc', id: string) =>
 
 /**
  * 업무 이벤트 → 내 알림. 결재(요청·진행·승인·반려·회수), 접수 담당 지정, 작업 배정.
- * 팀 업무·댓글 멘션·공지는 해당 서비스가 InboxService를 바로 부른다(이벤트 없이 화면에서만 생기는 일).
+ * 작업관리·댓글 멘션·공지는 해당 서비스가 InboxService를 바로 부른다(이벤트 없이 화면에서만 생기는 일).
  */
 @Injectable()
 export class InboxListener {

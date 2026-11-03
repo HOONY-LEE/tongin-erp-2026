@@ -29,6 +29,8 @@ interface Props {
   headerActions?: ReactNode;
   /** 서버가 준 목록 중 이 화면에 보일 행만 남긴다(예: 조직관리는 본사 조직만, 지점은 지점관리로) */
   rowFilter?: (row: Row) => boolean;
+  /** 상세 화면 아래에 더 그릴 것(예: 조직의 역할·목표·업무분장) */
+  detailExtra?: (row: Row) => ReactNode;
 }
 
 /** 행 값을 폼 초기값(문자열)으로 — 주소 칸은 우편번호·주소·좌표 등 여러 키로 나뉜다 */
@@ -70,6 +72,7 @@ export default function CrudTable({
   rowActions,
   headerActions,
   rowFilter,
+  detailExtra,
 }: Props) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -203,7 +206,9 @@ export default function CrudTable({
             ) : undefined
           }
           sections={[{ items }]}
-        />
+        >
+          {row && detailExtra?.(row)}
+        </RecordDetail>
         {editModal}
       </>
     );

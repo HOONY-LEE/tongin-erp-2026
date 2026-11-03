@@ -31,6 +31,7 @@ import type { AuthPrincipal } from '@tongin/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { SpaceService } from './space.service';
+import { PhoneDigits } from '../../common/phone';
 
 class SpaceDto {
   @IsOptional()
@@ -142,6 +143,7 @@ class ReservationDto {
   @ValidateIf((_, v) => v !== null)
   @IsString()
   @MaxLength(30)
+  @PhoneDigits()
   customerPhone?: string | null;
 
   @IsOptional()

@@ -40,6 +40,7 @@ import { PhonePreview } from '../components/PhonePreview';
 import { FilterMenu, FilterPopover } from '../components/campaign/FilterMenu';
 import fstyles from '../components/campaign/filterMenu.module.css';
 import styles from './campaign.module.css';
+import { formatPhone } from '../lib/phone';
 
 const SIDO = [
   '서울',
@@ -602,7 +603,7 @@ export default function CampaignEditor() {
                           </Badge>
                         </td>
                         <td>{r.name}</td>
-                        <td>{r.phone}</td>
+                        <td>{formatPhone(r.phone)}</td>
                         <td>
                           <StatusBadge
                             value={r.status}
@@ -1045,7 +1046,7 @@ export default function CampaignEditor() {
                                   />
                                 </td>
                                 <td>{r.name}</td>
-                                <td>{r.phone}</td>
+                                <td>{formatPhone(r.phone)}</td>
                                 <td className={styles.addr} title={r.addr ?? ''}>
                                   {r.addr ?? '-'}
                                 </td>

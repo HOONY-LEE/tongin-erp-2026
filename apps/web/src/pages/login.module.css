@@ -179,8 +179,8 @@
     box-shadow 0.15s;
 }
 .shell:focus-within {
-  border-color: var(--brand);
-  box-shadow: 0 0 0 2px rgba(255, 127, 59, 0.25);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .shell input {
   width: 100%;
@@ -197,7 +197,9 @@
   color: var(--muted);
 }
 /* 전역 입력 포커스 링과 겹치지 않게 */
-.shell input:focus {
+.shell input:focus,
+.shell input:focus:not([readonly]) {
+  border-color: transparent;
   box-shadow: none;
 }
 

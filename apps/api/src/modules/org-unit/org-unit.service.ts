@@ -7,6 +7,16 @@ import { ScopeService } from '../../scope/scope.service';
 import { CreateOrgUnitDto } from './dto/create-org-unit.dto';
 import { UpdateOrgUnitDto } from './dto/update-org-unit.dto';
 
+/** 목록 순서 — 본사(그룹·법인·부서·TF)가 먼저, 지점, 외부업체 */
+const ORG_TYPE_ORDER: Record<string, number> = {
+  GROUP: 0,
+  COMPANY: 1,
+  DEPT: 2,
+  TF: 2,
+  BRANCH: 10,
+  PARTNER: 20,
+};
+
 @Injectable()
 export class OrgUnitService {
   constructor(
@@ -15,8 +25,18 @@ export class OrgUnitService {
     private readonly scope: ScopeService,
   ) {}
 
-  findAll() {
-    return this.prisma.orgUnit.findMany({ orderBy: { code: 'asc' } });
+  /**
+   * 조직 목록 — 고르는 칸(소속 등)에서 본사가 먼저 나오게: 그룹 → 법인 → 부서·TF(코드순, 조직도 순서) →
+   * 지점(이름순) → 외부업체
+   */
+  async findAll() {
+    const rows = await this.prisma.orgUnit.findMany({ orderBy: { code: 'asc' } });
+    const rank = (t: string) => ORG_TYPE_ORDER[t] ?? 50;
+    return rows.sort(
+      (a, b) =>
+        rank(a.type) - rank(b.type) ||
+        (a.type === 'BRANCH' ? a.name.localeCompare(b.name, 'ko') : 0),
+    );
   }
 
   async findOne(id: string) {

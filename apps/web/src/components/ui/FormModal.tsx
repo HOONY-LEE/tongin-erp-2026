@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Button, Input, Modal, Select, Textarea, useToast } from '@sunghoon_lee/akron-ui';
+import { Button, Combobox, Input, Modal, Select, Textarea, useToast } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
 import type { FormField } from './types';
 import { AddressField } from './AddressField';
+import { PhoneInput } from './PhoneInput';
 import { ADDRESS_PARTS, addrKey } from './address';
-import { formatPhone } from '../../lib/phone';
 import { fs } from '../../lib/fontScale';
 
 /** akron Input/Select 기본 라벨 스타일과 맞춘 커스텀 라벨(필수 표시는 테마색 *). */
@@ -206,7 +206,38 @@ function renderField(
   return (
     <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <FieldLabel label={f.label} required={f.required} />
-      {f.type === 'select' || f.type === 'boolean' ? (
+      {f.type === 'chips' ? (
+        <div className="form-chips" role="radiogroup" aria-label={f.label}>
+          {(f.options ?? []).map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={values[f.name] === o.value}
+              disabled={f.disabled || o.disabled}
+              className={`form-chip${values[f.name] === o.value ? ' form-chip-on' : ''}`}
+              onClick={() => setField(f.name, o.value)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      ) : f.type === 'select' && f.searchable ? (
+        <Combobox
+          value={values[f.name] || null}
+          onChange={(v) => setField(f.name, v ?? '')}
+          options={
+            f.optionGroups
+              ? f.optionGroups.flatMap((g) => g.options.map((o) => ({ ...o, group: g.label })))
+              : (f.options ?? [])
+          }
+          placeholder={f.placeholder ?? '이름으로 찾기'}
+          searchPlaceholder="찾기"
+          emptyMessage="찾는 항목이 없습니다"
+          clearable
+          disabled={f.disabled}
+        />
+      ) : f.type === 'select' || f.type === 'boolean' ? (
         <Select
           value={values[f.name] ?? ''}
           onValueChange={(v) => setField(f.name, v)}
@@ -231,14 +262,19 @@ function renderField(
           onChange={(e) => setField(f.name, e.target.value)}
           disabled={f.disabled}
         />
+      ) : f.type === 'tel' ? (
+        // 연락처 — 보일 때만 하이픈, 값은 숫자만
+        <PhoneInput
+          value={values[f.name] ?? ''}
+          onChange={(v) => setField(f.name, v)}
+          disabled={f.disabled}
+        />
       ) : (
         <Input
           type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
           value={values[f.name] ?? ''}
-          placeholder={f.type === 'tel' ? '010-0000-0000' : f.placeholder}
-          onChange={(e) =>
-            setField(f.name, f.type === 'tel' ? formatPhone(e.target.value) : e.target.value)
-          }
+          placeholder={f.placeholder}
+          onChange={(e) => setField(f.name, e.target.value)}
           disabled={f.disabled}
         />
       )}

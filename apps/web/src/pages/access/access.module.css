@@ -225,3 +225,14 @@
 .okField + * {
   color: var(--ark-color-success, #16a34a);
 }
+
+/* 연락처 칸(PhoneInput) — 위 akron Input의 라벨과 같은 모양 */
+.phoneField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ark-color-text);
+  font-size: var(--ark-font-size-sm);
+  font-weight: 500;
+}

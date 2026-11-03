@@ -48,9 +48,9 @@ const SPECS: Spec[] = [
     layout: {
       groups: [
         { label: '경영 현황', items: ['dashboard', 'ai', 'notices'] },
-        { label: '결재·업무', items: ['approvals', 'drive', 'tasks', 'spaces'] },
+        { label: '결재·업무', items: ['approvals', 'drive', 'tasks', 'duties', 'spaces'] },
         { label: '영업 현황', items: ['leads', 'calendar', 'payments-confirm', 'support'] },
-        { label: '경영관리', items: ['settlements', 'billing', 'hr', 'assets'] },
+        { label: '경영관리', items: ['settlements', 'billing', 'hr', 'performance', 'assets'] },
         {
           label: '조직·지점',
           items: ['branches', 'branch-cases', 'org-mgmt', 'accounts'],
@@ -66,14 +66,23 @@ const SPECS: Spec[] = [
     orgs: ['경영관리'],
     layout: {
       groups: [
-        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks'] },
+        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         {
           label: '정산·회계',
           items: ['settlements', 'payments-confirm', 'billing', 'material-orders', 'materials'],
         },
         {
           label: '인사·총무',
-          items: ['hr', 'assets', 'spaces', 'approvals', 'drive', 'leave', 'attendance'],
+          items: [
+            'hr',
+            'performance',
+            'assets',
+            'spaces',
+            'approvals',
+            'drive',
+            'leave',
+            'attendance',
+          ],
         },
         {
           label: '관리',
@@ -97,7 +106,7 @@ const SPECS: Spec[] = [
     orgs: ['고객관리부'],
     layout: {
       groups: [
-        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks'] },
+        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         {
           label: '고객 응대',
           items: ['leads', 'support', 'service-orders', 'customers', 'calendar'],
@@ -116,7 +125,7 @@ const SPECS: Spec[] = [
     users: ['minkeun_shin'], // 부동산사업부 신민근 소장 — 기업 영업도 함께 본다
     layout: {
       groups: [
-        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks'] },
+        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         {
           label: '기업 영업',
           items: ['leads', 'customers', 'calendar', 'payments-confirm', 'support'],
@@ -134,7 +143,7 @@ const SPECS: Spec[] = [
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices'] },
-        { label: '사업 추진', items: ['tasks', 'leads', 'service-orders', 'campaigns'] },
+        { label: '사업 추진', items: ['tasks', 'duties', 'leads', 'service-orders', 'campaigns'] },
         { label: '제휴', items: ['partner-mgmt', 'customers'] },
         MY,
       ],
@@ -147,7 +156,7 @@ const SPECS: Spec[] = [
     orgs: ['가맹'],
     layout: {
       groups: [
-        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks'] },
+        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         {
           label: '가맹 관리',
           items: ['branches', 'branch-cases', 'material-orders', 'materials', 'settlements'],
@@ -166,7 +175,7 @@ const SPECS: Spec[] = [
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices'] },
-        { label: '디자인·홍보', items: ['tasks', 'campaigns', 'branches'] },
+        { label: '디자인·홍보', items: ['tasks', 'duties', 'campaigns', 'branches'] },
         MY,
       ],
     },
@@ -179,7 +188,7 @@ const SPECS: Spec[] = [
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices'] },
-        { label: '마케팅·홍보', items: ['campaigns', 'tasks', 'branches'] },
+        { label: '마케팅·홍보', items: ['campaigns', 'tasks', 'duties', 'branches'] },
         MY,
       ],
     },
@@ -191,7 +200,7 @@ const SPECS: Spec[] = [
     orgs: ['홈플래너'],
     layout: {
       groups: [
-        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks'] },
+        { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         { label: '상담·견적', items: ['leads', 'calendar', 'customers', 'payments-confirm'] },
         { label: '서비스', items: ['service-orders', 'support'] },
         MY,
@@ -218,7 +227,7 @@ const SPECS: Spec[] = [
           ],
         },
         { label: '자재', items: ['materials', 'material-orders'] },
-        { label: '본사 소통', items: ['notices', 'tasks'] },
+        { label: '본사 소통', items: ['notices', 'tasks', 'duties'] },
       ],
     },
   },

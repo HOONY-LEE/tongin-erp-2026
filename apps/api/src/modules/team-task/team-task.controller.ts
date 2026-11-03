@@ -18,12 +18,13 @@ import {
   CreateTeamTaskCommentDto,
   CreateTeamTaskDto,
   UpdateTeamTaskDto,
+  AssignTeamTaskDto,
 } from './dto/team-task.dto';
 
 const SCOPES: TaskScope[] = ['mine', 'team', 'all'];
 
 /**
- * 팀 업무 — 내 업무(담당·요청)는 로그인만으로 보고 고친다.
+ * 작업관리 — 내 업무(담당·요청)는 로그인만으로 보고 고친다.
  * 우리 팀·전체 보기는 TASK.READ, 남의 업무 수정은 TASK.UPDATE, 등록·삭제는 TASK.CREATE·DELETE.
  */
 @Controller('tasks')
@@ -65,6 +66,21 @@ export class TeamTaskController {
     @Param('commentId', ParseUUIDPipe) commentId: string,
   ) {
     return this.tasks.removeComment(p, id, commentId);
+  }
+
+  @Get(':id/history')
+  history(@CurrentUser() p: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.tasks.history(p, id);
+  }
+
+  /** 담당 넘기기 — 다른 사람에게 맡긴다(이력·알림) */
+  @Post(':id/assign')
+  assign(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignTeamTaskDto,
+  ) {
+    return this.tasks.assign(p, id, dto.assigneeEmpId || null, dto.note);
   }
 
   @Get(':id')

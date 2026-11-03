@@ -51,6 +51,8 @@ const OrgUnits = lazy(() => import('./pages/OrgUnits'));
 const ProductMgmt = lazy(() => import('./pages/ProductMgmt'));
 const OrgMgmt = lazy(() => import('./pages/OrgMgmt'));
 const PaymentConfirm = lazy(() => import('./pages/PaymentConfirm'));
+const Duties = lazy(() => import('./pages/Duties'));
+const Performance = lazy(() => import('./pages/Performance'));
 const Branches = lazy(() => import('./pages/Branches'));
 const Approvals = lazy(() => import('./pages/Approvals'));
 const Leave = lazy(() => import('./pages/Leave'));
@@ -150,6 +152,8 @@ function Shell() {
         <Route path="/campaigns" element={page(<Campaigns />)} />
         <Route path="/campaigns/:id" element={page(<CampaignEditor />)} />
         <Route path="/hr" element={page(<HrPolicies />)} />
+        <Route path="/performance" element={page(<Performance />)} />
+        <Route path="/duties" element={page(<Duties />)} />
         <Route path="/org-units" element={page(<OrgUnits />)} />
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}
         <Route path="/product-mgmt" element={page(<ProductMgmt />)} />
@@ -161,7 +165,7 @@ function Shell() {
         <Route path="/leave" element={page(<Leave />)} />
         <Route path="/attendance" element={page(<Attendance />)} />
         <Route path="/accounts" element={page(<Accounts />)} />
-        {/* 공통 업무 — 공지사항·팀 업무·계약/자산·지점 관리 기록 */}
+        {/* 공통 업무 — 공지사항·작업관리·계약/자산·지점 관리 기록 */}
         <Route path="/notices" element={page(<Notices />)} />
         <Route path="/tasks" element={page(<Tasks />)} />
         <Route path="/assets" element={page(<Assets />)} />

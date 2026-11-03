@@ -3,6 +3,7 @@ import { ORG_UNIT_TYPE_LABEL } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { OrgChart } from '../components/OrgChart';
+import { OrgGoalsPanel } from '../components/performance/OrgGoalsPanel';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
 import { isHqUnit, useOrgUnits } from '../lib/orgUnits';
@@ -72,6 +73,8 @@ export default function OrgUnits({ view = 'list' }: { view?: 'list' | 'chart' })
       columns={columns}
       fields={fields}
       rowFilter={isHqUnit}
+      // 조직 상세 아래 — 역할·이번 분기 목표·업무분장(업무분장·성과 평가로 이어짐)
+      detailExtra={(row) => <OrgGoalsPanel orgId={String(row.id)} />}
       editable
       deletable
       hideHeader

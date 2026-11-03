@@ -242,7 +242,7 @@ export class EmployeeService {
           },
         });
     });
-    this.principals.invalidateAll(); // 메뉴·공지·팀 업무가 겸직 조직을 따른다
+    this.principals.invalidateAll(); // 메뉴·공지·작업관리가 겸직 조직을 따른다
     return this.hrRecord(id);
   }
 

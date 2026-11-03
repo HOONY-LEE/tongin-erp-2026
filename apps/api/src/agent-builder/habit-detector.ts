@@ -58,7 +58,7 @@ const RESOURCE: Record<string, string> = {
   campaigns: '문자 캠페인',
   notifications: '문자',
   calendar: '일정',
-  tasks: '팀 업무',
+  tasks: '작업관리',
   notices: '공지',
   settlements: '정산',
   billing: '청구',

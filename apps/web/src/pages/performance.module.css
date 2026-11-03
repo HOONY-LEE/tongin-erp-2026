@@ -1,0 +1,419 @@
+/* 성과 평가 */
+.muted {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 400;
+}
+.hint {
+  margin: 8px 0 0;
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+  line-height: 1.5;
+}
+
+/* ── 조직 카드 ── */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 16px;
+}
+.orgCard {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.orgCard:hover {
+  border-color: var(--ark-color-border-strong, var(--ark-color-border));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+.orgInfo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  align-self: stretch;
+}
+.orgHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.orgName {
+  font-size: calc(17px * var(--font-scale, 1));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.members {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.sourceText {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.orgFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--ark-color-border);
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.empty {
+  padding: 40px;
+  color: var(--ark-color-text-tertiary);
+  text-align: center;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chip {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 10%, transparent);
+  color: var(--ark-color-primary-700, var(--ark-color-primary-500));
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 500;
+  white-space: nowrap;
+}
+.chipManual {
+  background: color-mix(in srgb, #0ea5e9 12%, transparent);
+  color: #0369a1;
+}
+.gradeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.score {
+  font-size: calc(15px * var(--font-scale, 1));
+}
+
+/* ── 상세 ── */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.detailTop {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.radarCard,
+.tableCard,
+.block {
+  padding: 18px 20px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+}
+.radarCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.legend {
+  display: flex;
+  gap: 16px;
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legendTarget {
+  display: inline-block;
+  width: 16px;
+  border-top: 1.5px dashed var(--ark-color-text-tertiary);
+}
+.legendActual {
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  border: 1.5px solid var(--ark-color-primary-500);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  color: var(--ark-color-text-secondary);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  white-space: nowrap;
+}
+.table tr:last-child td {
+  border-bottom: 0;
+}
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+.barRow b {
+  width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-subtle, #f1f3f4);
+  overflow: hidden;
+}
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ark-color-primary-500);
+}
+.barOk {
+  background: #16a34a;
+}
+.barLow {
+  background: #dc2626;
+}
+.insight {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 7%, transparent);
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.5;
+}
+.blockTitle {
+  margin: 0 0 12px;
+  font-size: calc(15px * var(--font-scale, 1));
+}
+.memberGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.member:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.dutyList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dutyList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ark-color-border);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.dutyList li:last-child {
+  border-bottom: 0;
+}
+.dutyTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 지표 구성 창 ── */
+.cfg {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cfgRow {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) 120px minmax(0, 1.2fr) 32px;
+  align-items: center;
+  gap: 8px;
+}
+.cfgHead {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.cfgName {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cfgCustom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 6px;
+}
+.cfgAdd {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cfgNote {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 500;
+}
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-tertiary);
+  cursor: pointer;
+}
+.iconBtn:hover:not(:disabled) {
+  background: var(--ark-color-bg-subtle);
+  color: var(--ark-color-text);
+}
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .cardGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .detailTop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tableCard {
+    overflow-x: auto;
+  }
+}
+
+.cfgWeight {
+  display: grid;
+  grid-template-columns: 56px auto;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 한꺼번에 정하기 — 대상 고르기 */
+.bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pickList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+.pickGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pickPeople {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 10px;
+  padding-left: 24px;
+}
+
+/* 조직관리 상세 아래 — 역할·목표·업무분장 */
+.goalPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.goalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.goalHead .blockTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.goalLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+  text-decoration: none;
+  white-space: nowrap;
+}
+.goalLink:hover {
+  color: var(--ark-color-text);
+  text-decoration: underline;
+}
+.goalText {
+  margin: 0;
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.55;
+}

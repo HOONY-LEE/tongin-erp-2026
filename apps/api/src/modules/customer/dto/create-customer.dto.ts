@@ -1,5 +1,6 @@
 import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { SingleAddressDto } from '../../../common/dto/address-fields.dto';
+import { PhoneDigits } from '../../../common/phone';
 
 export class CreateCustomerDto extends SingleAddressDto {
   @IsString()
@@ -9,6 +10,7 @@ export class CreateCustomerDto extends SingleAddressDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @PhoneDigits()
   phonePrimary?: string;
 
   @IsOptional()

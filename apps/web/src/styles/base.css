@@ -331,7 +331,8 @@ html[data-font-size='lg'] {
 .dt-wrap .sft-export__trigger,
 .dt-wrap .sft-toolbar__right button:not([role='checkbox']),
 .dt-wrap .dt-toolbar-filters button:not([role='checkbox']),
-.dt-wrap .dt-toolbar-filters [role='combobox'] {
+.dt-wrap .dt-toolbar-filters [role='combobox'],
+.dt-wrap .dt-toolbar-tabs [role='combobox'] {
   height: 38px;
   box-sizing: border-box;
 }
@@ -379,9 +380,11 @@ textarea:focus:not([readonly]) {
   border-color: var(--focus-ring);
   box-shadow: 0 0 0 1px var(--focus-ring);
 }
-/* 테두리 없는 검색칸(직원·조직 찾기 드롭다운 안의 검색, 설정 창 검색 등)은 위 링을 그리지 않는다 —
+/* 테두리 없는 검색칸(직원·조직 찾기 드롭다운 안의 검색, 설정 창 검색 등)과 비밀번호 칸처럼 바깥 상자(_inputWrap_)가
+   링을 그리는 입력은 위 링을 그리지 않는다 —
    바깥 상자가 이미 열려 있음을 보여 줘서 안쪽에 링이 하나 더 생기면 이중 테두리가 된다 */
 [class*='_searchWrapper_'] input:focus:not([readonly]),
+[class*='_inputWrap_'] input:focus:not([readonly]),
 input.no-focus-ring:focus:not([readonly]) {
   border-color: transparent;
   box-shadow: none;
@@ -510,7 +513,7 @@ input[placeholder*='찾기'] {
   --ark-spacing-2-5: 10px;
 }
 
-/* ── 칸반(akron KanbanBoard) — 팀 업무. 칸은 옅은 회색 영역·둥근 모서리, 상태는 점,
+/* ── 칸반(akron KanbanBoard) — 작업관리. 칸은 옅은 회색 영역·둥근 모서리, 상태는 점,
    카드는 부드러운 모서리·옅은 그림자. 칸은 화면 높이를 채우고 카드가 많으면 칸 안에서 스크롤 ── */
 .task-kanban [class*='_root_'][class*='_sj7t4_'],
 .task-kanban > div:first-child {
@@ -563,6 +566,43 @@ input[placeholder*='찾기'] {
 .task-kanban [class*='_cardFooter_sj7t4'] {
   margin-top: 8px !important;
   padding-top: 8px !important;
+}
+/* 칸 아래 '+ 업무 추가' — 마지막 카드 바로 밑(새 카드가 생길 자리)에 점선 카드로, 칸에 마우스를 올렸을 때만.
+   카드 목록이 칸 높이를 다 먹지 않게(내용만큼) 두고, 남는 아래 빈 곳은 칸이 그대로 채운다 */
+.task-kanban [class*='_cardList_sj7t4'] {
+  flex: 0 1 auto !important;
+}
+.task-kanban [class*='_addButton_sj7t4'] {
+  margin-top: 8px !important;
+  /* 실제 업무 카드와 같은 높이(제목·상태 줄·기한·담당 네 줄) — 글자 크기 설정을 따라간다 */
+  min-height: calc(123px * var(--font-scale, 1));
+  border: 1.5px dashed var(--ark-color-border-strong, var(--ark-color-border)) !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--ark-color-text-tertiary) !important;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.task-kanban [class*='_column_sj7t4']:hover [class*='_addButton_sj7t4'],
+.task-kanban [class*='_addButton_sj7t4']:focus-visible {
+  opacity: 1;
+}
+.task-kanban [class*='_addButton_sj7t4']:hover {
+  border-color: var(--ark-color-text-tertiary) !important;
+  color: var(--ark-color-text) !important;
+  background: var(--ark-color-bg) !important;
+}
+/* 카드가 칸을 꽉 채운 칸은 '+ 업무 추가'를 숨긴다(Tasks의 Board가 kanban-col-full을 붙임) */
+.task-kanban .kanban-col-full [class*='_addButton_sj7t4'] {
+  display: none !important;
+}
+/* 글자는 '카드 추가' 대신 '업무 추가' */
+.task-kanban [class*='_addButton_sj7t4'] > span {
+  font-size: 0;
+}
+.task-kanban [class*='_addButton_sj7t4'] > span::after {
+  content: '업무 추가';
+  font-size: var(--ark-font-size-sm);
 }
 
 /* ── 입력칸 포커스 = 검은 테두리(다크 모드는 흰색), 앱 전체 ──
@@ -724,4 +764,39 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
 [class*='_sidebarContent_']:hover,
 [class*='_sidebarContent_']:focus-within {
   scrollbar-color: color-mix(in srgb, var(--ark-color-text) 22%, transparent) transparent;
+}
+/* 펼친 사이드바 — 메뉴와 스크롤바 사이 빈 칸을 줄인다(오른쪽 여백 12px → 4px).
+   스크롤바 자리는 늘 비워 둬(stable) 스크롤이 생겨도 메뉴 폭이 흔들리지 않는다. 접힌 사이드바는 그대로 */
+[class*='_sidebar_']:not([class*='_sidebarCollapsed_']) > [class*='_sidebarContent_'],
+[class*='_sidebarContent_']:not([class*='_sidebarCollapsed_'] *) {
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+/* 입력 창(FormModal)의 칩 고르기 — 결재 양식 칩과 같은 모양(고른 것 검정, 다크 모드 흰색) */
+.form-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.form-chip {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: var(--ark-font-size-sm);
+  cursor: pointer;
+}
+.form-chip:hover {
+  border-color: var(--ark-color-border-strong);
+  color: var(--ark-color-text);
+}
+.form-chip-on,
+.form-chip-on:hover {
+  border-color: var(--chip-on-bg);
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
 }
