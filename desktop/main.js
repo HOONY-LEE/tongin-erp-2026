@@ -79,21 +79,39 @@ function createWindow() {
 
   win.once('ready-to-show', () => win.show());
 
-  // 새 창 — blob(미리보기·문서)은 앱 안 새 창, 그 밖의 바깥 주소는 기본 브라우저로
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('blob:') || url.startsWith(APP_ORIGIN)) return { action: 'allow' };
+  win.loadURL(APP_URL);
+  win.on('closed', () => {
+    win = null;
+    mode = 'login';
+  });
+}
+
+// 앱이 띄우는 모든 창(본 창·'새 창으로 열기' 창·미리보기 창)에 같은 규칙
+app.on('web-contents-created', (_e, wc) => {
+  // 새 창 — 앱 주소('새 창으로 열기' 작업 화면)·blob(미리보기·문서)은 앱 창으로, 바깥 주소는 기본 브라우저로
+  wc.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('blob:') || url.startsWith(APP_ORIGIN))
+      return {
+        action: 'allow',
+        // 새 창은 맥에서도 일반 제목 표시줄 — 화면이 사이드바·헤더 없이 꽉 차므로 창 버튼 자리를 비워 두지 않는다
+        overrideBrowserWindowOptions: {
+          minWidth: 800,
+          minHeight: 560,
+          titleBarStyle: 'default',
+          backgroundColor: '#ffffff',
+          icon: path.join(__dirname, 'assets', 'icon.png'),
+        },
+      };
     if (/^https?:/.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
   // 창 자체가 모르는 곳으로 가지 않게 — 앱·구글 로그인 밖은 브라우저로
-  win.webContents.on('will-navigate', (e, url) => {
+  wc.on('will-navigate', (e, url) => {
     if (isAllowed(url)) return;
     e.preventDefault();
     if (/^https?:/.test(url)) shell.openExternal(url);
   });
-
   // 브라우저처럼 확대·축소(⌘/Ctrl +, -, 0)
-  const wc = win.webContents;
   wc.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' || !(isMac ? input.meta : input.control)) return;
     const z = wc.getZoomLevel();
@@ -103,13 +121,7 @@ function createWindow() {
     else return;
     event.preventDefault();
   });
-
-  win.loadURL(APP_URL);
-  win.on('closed', () => {
-    win = null;
-    mode = 'login';
-  });
-}
+});
 
 // 화면(로그인 여부)이 창 크기를 정한다 — preload의 setWindowMode
 ipcMain.on('window-mode', (event, next) => {

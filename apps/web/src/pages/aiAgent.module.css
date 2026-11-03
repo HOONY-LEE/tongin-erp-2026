@@ -181,6 +181,7 @@
 
 /* ── 가운데 ── */
 .main {
+  position: relative; /* 새 창으로 열기 버튼(floating) 기준 */
   display: flex;
   flex-direction: column;
   min-height: 0;

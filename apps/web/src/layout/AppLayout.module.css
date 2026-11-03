@@ -338,6 +338,14 @@
     padding: 20px 16px 28px;
   }
 }
+/* 새 창으로 띄운 작업 화면(lib/popout) — 창 전체가 콘텐츠 */
+.popout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+}
+
 /* AI 에이전트 — 대화 화면이 콘텐츠 영역 전체를 쓴다(여백·스크롤은 페이지가 직접) */
 .contentInner.contentInnerFlush {
   padding: 0;

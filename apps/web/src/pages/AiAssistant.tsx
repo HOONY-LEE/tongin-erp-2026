@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { pokeAiActivity, reportAiRows } from '../lib/aiActivity';
-import { Button, useToast } from '../components/ui';
+import { Button, PopoutButton, useToast } from '../components/ui';
 import { Markdown } from '../components/ai/Markdown';
 import { ApprovalCard, CodeRow, FileCard, ToolRow } from '../components/ai/ChatParts';
 import { AgentCallPanel, type CallableAgent } from '../components/ai/AgentCallPanel';
@@ -663,6 +663,7 @@ export default function AiAssistant() {
       </aside>
 
       <section className={styles.main}>
+        <PopoutButton floating />
         {/* 좁은 화면 — 왼쪽 목록 대신 위에 새 채팅·최근 대화 고르기 */}
         <div className={styles.mobileBar}>
           <select

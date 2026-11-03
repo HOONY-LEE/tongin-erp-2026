@@ -449,12 +449,20 @@ function RequestModal({
             <span>
               시간대 <span className={styles.over}>*</span>
             </span>
-            <SegmentedControl
-              size="sm"
-              value={slot}
-              onChange={(v) => setSlot(v as LeaveSlot)}
-              options={slots.map((x) => ({ value: x, label: LEAVE_SLOT_LABEL[x] }))}
-            />
+            <div className={astyles.choiceChips} role="radiogroup" aria-label="시간대">
+              {slots.map((x) => (
+                <button
+                  key={x}
+                  type="button"
+                  role="radio"
+                  aria-checked={slot === x}
+                  className={`${astyles.choiceChip} ${slot === x ? astyles.choiceChipOn : ''}`}
+                  onClick={() => setSlot(x)}
+                >
+                  {LEAVE_SLOT_LABEL[x]}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <label className={astyles.fieldLabel}>
