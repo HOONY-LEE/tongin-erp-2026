@@ -10,7 +10,9 @@
     "dev": "electron .",
     "pack": "electron-builder --dir",
     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
   },
   "devDependencies": {
     "electron": "36.4.0",
@@ -37,7 +39,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "artifactName": "TonginAIWorks-mac-${arch}.${ext}"
     },
     "dmg": {
       "title": "통인 AI Works 설치"
@@ -45,8 +48,14 @@
     "win": {
       "icon": "assets/icon.png",
       "target": [
-        "nsis"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "TonginAIWorks-win-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -55,6 +64,7 @@
         "ko_KR"
       ],
       "language": "1042"
-    }
+    },
+    "publish": null
   }
 }

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Loader2, Settings } from 'lucide-react';
+import { Download, Loader2, Settings } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -24,10 +24,15 @@ import { HeaderTabs } from './HeaderTabs';
 import { ProfileMenu } from './ProfileMenu';
 import settingsStyles from './settings.module.css';
 import { fs } from '../lib/fontScale';
-import { isMacDesktop } from '../lib/desktop';
+import { isDesktop, isMacDesktop } from '../lib/desktop';
 
 // 설정 창은 누를 때만 읽는다(인사·결재 설정 화면까지 들어 있어 무겁다)
 const SettingsModal = lazy(() => import('./SettingsModal'));
+const DesktopDownloadModal = lazy(() =>
+  import('../components/desktop/DesktopDownloadModal').then((m) => ({
+    default: m.DesktopDownloadModal,
+  })),
+);
 
 type NavItem = {
   to: string;
@@ -92,6 +97,7 @@ export default function AppLayout() {
   const menuLabel = useMenuLabel();
   const [menuEditOpen, setMenuEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const canSeeMenu = (key: string) =>
     filterLayout({ groups: [{ label: '', items: [key] }] }, can, !!user?.employeeId).groups.length >
     0;
@@ -279,6 +285,18 @@ export default function AppLayout() {
                   <Settings size={16} />
                   {!collapsed && <span>앱 설정</span>}
                 </button>
+                {/* 웹에서만 — 데스크톱 앱 설치(이 컴퓨터 OS에 맞는 설치 파일) */}
+                {!isDesktop && (
+                  <button
+                    type="button"
+                    className={settingsStyles.footIcon}
+                    title="데스크톱 앱 설치"
+                    aria-label="데스크톱 앱 설치"
+                    onClick={() => setDownloadOpen(true)}
+                  >
+                    <Download size={16} />
+                  </button>
+                )}
               </div>
             }
             header={
@@ -336,6 +354,11 @@ export default function AppLayout() {
               </SidebarGroup>
             ))}
           </LayoutSidebar>
+          {downloadOpen && (
+            <Suspense fallback={null}>
+              <DesktopDownloadModal onClose={() => setDownloadOpen(false)} />
+            </Suspense>
+          )}
           {settingsOpen && (
             <Suspense fallback={null}>
               <SettingsModal

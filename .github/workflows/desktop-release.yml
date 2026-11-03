@@ -1,0 +1,72 @@
+# 데스크톱 앱(Electron, desktop/) 설치 파일을 만들어 GitHub Releases에 올린다.
+# 웹의 '데스크톱 앱 설치'(사이드바 아래 다운로드 아이콘)가
+#   https://github.com/<저장소>/releases/latest/download/TonginAIWorks-<os>-<arch>.<ext>
+# 로 받으므로 파일 이름은 버전 없이 고정이다(desktop/package.json build.*.artifactName).
+#
+# 새 버전 올리기: desktop/package.json version을 올리고
+#   git tag desktop-v0.1.1 && git push origin desktop-v0.1.1
+# 화면은 웹(Vercel)에서 받으므로 main.js·preload.js·아이콘을 바꿨을 때만 새로 올리면 된다.
+name: Desktop release
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            script: dist:mac
+          - os: windows-latest
+            script: dist:win
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      # 애플 개발자 인증서가 없어 서명하지 않는다(처음 열 때 우클릭 → 열기)
+      - run: npm run ${{ matrix.script }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: |
+            desktop/dist/TonginAIWorks-*.dmg
+            desktop/dist/TonginAIWorks-*.exe
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: GitHub 릴리스에 올리기(태그가 없으면 desktop-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest' }}
+          name: 통인 AI Works 데스크톱 ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          make_latest: true
+          files: out/*
+          body: |
+            통인 AI Works 데스크톱 앱 설치 파일
+            - 맥(애플 실리콘 M1~): TonginAIWorks-mac-arm64.dmg
+            - 맥(인텔): TonginAIWorks-mac-x64.dmg
+            - 윈도우: TonginAIWorks-win-x64.exe
+            서명하지 않은 설치 파일입니다 — 맥은 처음 열 때 앱을 우클릭 → 열기, 윈도우는 '추가 정보 → 실행'.

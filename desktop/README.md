@@ -19,3 +19,11 @@ npm run build:win                           # Windows 설치 파일(.exe)
 ```
 
 브라우저에서 데스크톱 화면을 미리 보려면(개발 서버만) 주소에 `?desktop=1`, 끄기는 `?desktop=0`.
+
+## 설치 파일 배포(GitHub Releases)
+
+웹 사이드바 아래 다운로드 아이콘(데스크톱 앱 설치)은 공개 저장소의 최신 릴리스에서 OS에 맞는 파일을 받는다.
+
+- 맥 애플 실리콘 `TonginAIWorks-mac-arm64.dmg` · 맥 인텔 `TonginAIWorks-mac-x64.dmg` · 윈도우 `TonginAIWorks-win-x64.exe`
+- 만들고 올리기: `.github/workflows/desktop-release.yml` — `desktop/package.json` version을 올리고 `git tag desktop-vX.Y.Z && git push origin desktop-vX.Y.Z`
+- 서명하지 않은 설치 파일(맥: 처음 한 번 우클릭 → 열기, 윈도우: 추가 정보 → 실행). 정식 배포 전에는 애플 개발자 서명·공증, 윈도우 코드 서명을 권한다.

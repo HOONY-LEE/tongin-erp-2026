@@ -1,0 +1,99 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.lead {
+  margin: 0;
+  font-size: calc(14px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+.main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg-subtle);
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.mainIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+  border: 1px solid var(--ark-color-border);
+}
+.mainText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.mainText b {
+  font-size: calc(16px * var(--font-scale, 1));
+}
+.mainText span {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.others {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.othersTitle {
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--ark-color-text-tertiary);
+  margin-bottom: 2px;
+}
+.other {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(14px * var(--font-scale, 1));
+  text-align: left;
+  cursor: pointer;
+}
+.other:hover {
+  background: var(--ark-color-bg-subtle);
+}
+.otherLabel {
+  font-weight: 500;
+}
+.otherHint {
+  flex: 1;
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.otherDl {
+  color: var(--ark-color-text-tertiary);
+}
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ark-color-warning-500, #f59e0b) 8%, var(--ark-color-bg));
+  font-size: calc(12.5px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+  line-height: 1.55;
+}
+.note > b {
+  color: var(--ark-color-text);
+  font-size: calc(13px * var(--font-scale, 1));
+}
