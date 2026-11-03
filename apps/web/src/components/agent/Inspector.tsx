@@ -2,7 +2,6 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
 import { SegmentedControl } from '@sunghoon_lee/akron-ui';
 import {
-  AGENT_MODELS,
   AGENT_NODE_DESC,
   AGENT_NODE_LABEL,
   FIELD_TYPES,
@@ -33,6 +32,7 @@ import { Modal } from '../ui';
 import { TemplateInput, VarChips } from './TemplateInput';
 import { ModeBadge, SchemaPreview, ToolExplorer } from './ToolExplorer';
 import { NODE_COLOR } from './meta';
+import { useAiModels } from '../../lib/aiModels';
 import styles from '../../pages/agentBuilder.module.css';
 import { fs } from '../../lib/fontScale';
 
@@ -340,19 +340,24 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
 }
 
 function ModelSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const cur = AGENT_MODELS.find((m) => m.id === value);
+  // Claude에서 받아 둔 모델 목록(이 계정에 열린 것만 고를 수 있음)
+  const models = useAiModels();
+  const cur = models.find((m) => m.id === value);
+  const fallback = models.find((m) => m.enabled && m.chat) ?? models.find((m) => m.enabled);
   return (
     <>
       <select className={styles.select} value={value} onChange={(e) => onChange(e.target.value)}>
-        {AGENT_MODELS.map((m) => (
+        {!cur && value && <option value={value}>{value}</option>}
+        {models.map((m) => (
           <option key={m.id} value={m.id} disabled={!m.enabled}>
             {m.label} — {m.hint}
           </option>
         ))}
       </select>
-      {cur && !cur.enabled && (
+      {(!cur || !cur.enabled) && fallback && (
         <span className={styles.hint}>
-          {cur.label}은(는) 아직 닫혀 있어 실행할 때는 {AGENT_MODELS[0].label}로 돕니다.
+          {cur?.label ?? value}은(는) 지금 쓸 수 없어 실행할 때는 기본 모델({fallback.label})로
+          돕니다.
         </span>
       )}
     </>

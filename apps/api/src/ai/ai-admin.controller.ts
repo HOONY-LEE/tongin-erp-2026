@@ -6,12 +6,16 @@ import {
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Post,
   Put,
   Query,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsObject,
@@ -20,11 +24,12 @@ import {
   Max,
   Min,
   ValidateIf,
+  ValidateNested,
+  IsUUID,
 } from 'class-validator';
 import {
   AI_ACCESS,
   AI_FEATURES,
-  AI_MODELS,
   PERMISSION_WILDCARD,
   aiBilledTokens,
   aiCost,
@@ -35,10 +40,18 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PrincipalCache } from '../auth/principal-cache.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { allowedModels, defaultModel } from './ai-models';
+import {
+  allowedModels,
+  catalogIsLive,
+  defaultModel,
+  isChatModel,
+  isKnownModel,
+  modelCatalog,
+} from './ai-models';
 import { AiUsageService, kstMonthStart } from './ai-usage.service';
 
-const MODEL_IDS = AI_MODELS.map((m) => m.id);
+/** 모델 id 개수 상한 — 목록은 Claude에서 받아 오므로 값 검사는 처리에서(isKnownModel) */
+const MODELS_MAX = 100;
 /** 월 한도 최댓값(토큰) — 20억(정수 칸 한계 안) */
 const LIMIT_MAX = 2_000_000_000;
 /** 사용 기록 한 번에 보내는 최대 줄 수 */
@@ -46,11 +59,11 @@ const USAGE_ROWS_MAX = 2000;
 
 class SaveSettingDto {
   @IsArray()
-  @ArrayMaxSize(MODEL_IDS.length)
-  @IsIn(MODEL_IDS, { each: true })
+  @ArrayMaxSize(MODELS_MAX)
+  @IsString({ each: true })
   allowed!: string[];
 
-  @IsIn(MODEL_IDS)
+  @IsString()
   defaultModel!: string;
 
   /** { 모델 id: { input, output } } 달러 / 100만 토큰 */
@@ -68,9 +81,13 @@ class SavePolicyDto {
   @IsIn(Object.keys(AI_ACCESS))
   access!: keyof typeof AI_ACCESS;
 
+  @IsOptional()
+  @IsIn(Object.keys(AI_ACCESS))
+  builderAccess?: keyof typeof AI_ACCESS;
+
   @IsArray()
-  @ArrayMaxSize(MODEL_IDS.length)
-  @IsIn(MODEL_IDS, { each: true })
+  @ArrayMaxSize(MODELS_MAX)
+  @IsString({ each: true })
   models!: string[];
 
   @ValidateIf((_, v) => v !== null)
@@ -78,6 +95,27 @@ class SavePolicyDto {
   @Min(0)
   @Max(LIMIT_MAX)
   monthlyTokenLimit!: number | null;
+}
+
+/** 사용자 권한 표에서 체크한 것 — 켠/끈 결과만 보낸다(그룹과 같으면 서버가 '그룹 따름'으로 되돌림) */
+class AccessChangeDto {
+  @IsUUID()
+  userId!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  use?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  builder?: boolean;
+}
+class AccessBatchDto {
+  @IsArray()
+  @ArrayMaxSize(1000)
+  @ValidateNested({ each: true })
+  @Type(() => AccessChangeDto)
+  changes!: AccessChangeDto[];
 }
 
 class UsageQuery {
@@ -115,7 +153,7 @@ function monthRange(month?: string): [Date, Date] {
 function cleanPrices(raw: SaveSettingDto['prices']): AiPrices {
   const out: AiPrices = {};
   for (const [id, p] of Object.entries(raw ?? {})) {
-    if (!MODEL_IDS.includes(id as (typeof MODEL_IDS)[number])) continue;
+    if (!isKnownModel(id)) continue;
     const input = Number(p?.input);
     const output = Number(p?.output);
     if (!Number.isFinite(input) || !Number.isFinite(output) || input < 0 || output < 0) continue;
@@ -144,7 +182,9 @@ export class AiAdminController {
     const s = await this.usage.getSetting();
     return {
       configured: !!process.env.ANTHROPIC_API_KEY,
-      models: AI_MODELS,
+      models: modelCatalog(),
+      // 목록을 Claude에서 받아 왔는지·언제 — 못 받았으면 코드의 기본 목록
+      catalog: { live: catalogIsLive(), fetchedAt: this.usage.catalogFetchedAt },
       setting: {
         allowed: s?.allowed ?? allowedModels(),
         defaultModel: s?.defaultModel ?? defaultModel(),
@@ -157,11 +197,11 @@ export class AiAdminController {
 
   @Put('settings')
   async saveSettings(@CurrentUser() user: AuthPrincipal, @Body() dto: SaveSettingDto) {
-    const allowed = [...new Set(dto.allowed)];
+    const allowed = [...new Set(dto.allowed)].filter(isKnownModel);
     if (!allowed.length) throw new BadRequestException('모델을 하나 이상 열어 두어야 합니다.');
     if (!allowed.includes(dto.defaultModel))
       throw new BadRequestException('기본 모델은 열어 둔 모델 중에서 골라 주세요.');
-    if (!AI_MODELS.some((m) => m.id === dto.defaultModel && m.chat))
+    if (!isChatModel(dto.defaultModel))
       throw new BadRequestException('기본 모델은 대화에 쓸 수 있는 모델이어야 합니다.');
     await this.usage.saveSetting(
       {
@@ -172,6 +212,23 @@ export class AiAdminController {
       },
       user.userId,
     );
+    return this.settings();
+  }
+
+  /** Claude에서 모델 목록 새로 받기 */
+  @Post('models/refresh')
+  async refreshModels() {
+    if (!process.env.ANTHROPIC_API_KEY)
+      throw new ServiceUnavailableException(
+        '서버에 Claude API 키가 없어 모델 목록을 받을 수 없습니다.',
+      );
+    try {
+      await this.usage.refreshCatalog();
+    } catch (e) {
+      throw new ServiceUnavailableException(
+        `Claude에서 모델 목록을 받지 못했습니다: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
     return this.settings();
   }
 
@@ -242,9 +299,12 @@ export class AiAdminController {
       const perms = new Set(
         u.userRoles.flatMap((r) => r.role.rolePerms.map((rp) => rp.permission.code)),
       );
-      const roleAllows = perms.has(PERMISSION_WILDCARD) || perms.has('AI.USE');
+      const all = perms.has(PERMISSION_WILDCARD);
+      const roleAllows = all || perms.has('AI.USE');
+      const roleAllowsBuilder = all || perms.has('AI.MANAGE');
       const p = byPolicy.get(u.id);
       const access = (p?.access ?? 'DEFAULT') as keyof typeof AI_ACCESS;
+      const builderAccess = (p?.builderAccess ?? 'DEFAULT') as keyof typeof AI_ACCESS;
       const used = byUser.get(u.id);
       return {
         userId: u.id,
@@ -256,7 +316,13 @@ export class AiAdminController {
         isExternal: u.isExternal,
         roleAllows,
         access,
-        canUse: access === 'ALLOW' || (access === 'DEFAULT' && roleAllows),
+        // 전체 권한(*) 계정은 막아도 막히지 않는다(관리자)
+        canUse: all || access === 'ALLOW' || (access === 'DEFAULT' && roleAllows),
+        roleAllowsBuilder,
+        builderAccess,
+        canBuild:
+          all || builderAccess === 'ALLOW' || (builderAccess === 'DEFAULT' && roleAllowsBuilder),
+        superUser: all,
         models: p?.models ?? [],
         monthlyTokenLimit: p?.monthlyTokenLimit ?? null,
         calls: used?.calls ?? 0,
@@ -273,13 +339,84 @@ export class AiAdminController {
       select: { id: true },
     });
     if (!user) throw new NotFoundException('계정을 찾을 수 없습니다.');
+    const cur = await this.prisma.aiUserPolicy.findUnique({ where: { userId } });
     const data = {
       access: dto.access,
-      models: [...new Set(dto.models)],
+      builderAccess: dto.builderAccess ?? cur?.builderAccess ?? 'DEFAULT',
+      models: [...new Set(dto.models)].filter(isKnownModel),
       monthlyTokenLimit: dto.monthlyTokenLimit,
     };
+    await this.writePolicy(userId, data);
+    return { ok: true };
+  }
+
+  /**
+   * 사용자 권한 표의 체크 저장 — 'AI 사용'·'에이전트 빌더'를 켜고 끈 결과.
+   * 권한 그룹이 주는 것과 같으면 '그룹 따름'(DEFAULT), 다르면 허용·막음으로 남긴다.
+   */
+  @Put('users-access')
+  async saveAccess(@Body() dto: AccessBatchDto) {
+    const ids = [...new Set(dto.changes.map((c) => c.userId))];
+    const [users, policies] = await Promise.all([
+      this.prisma.appUser.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          userRoles: {
+            select: {
+              role: {
+                select: { rolePerms: { select: { permission: { select: { code: true } } } } },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.aiUserPolicy.findMany({ where: { userId: { in: ids } } }),
+    ]);
+    const byId = new Map(users.map((u) => [u.id, u]));
+    const byPolicy = new Map(policies.map((p) => [p.userId, p]));
+    const pick = (want: boolean, roleHas: boolean) =>
+      want === roleHas ? 'DEFAULT' : want ? 'ALLOW' : 'BLOCK';
+    let saved = 0;
+    for (const c of dto.changes) {
+      const u = byId.get(c.userId);
+      if (!u) continue;
+      const perms = new Set(
+        u.userRoles.flatMap((r) => r.role.rolePerms.map((rp) => rp.permission.code)),
+      );
+      const all = perms.has(PERMISSION_WILDCARD);
+      const p = byPolicy.get(c.userId);
+      await this.writePolicy(c.userId, {
+        access:
+          c.use === undefined ? (p?.access ?? 'DEFAULT') : pick(c.use, all || perms.has('AI.USE')),
+        builderAccess:
+          c.builder === undefined
+            ? (p?.builderAccess ?? 'DEFAULT')
+            : pick(c.builder, all || perms.has('AI.MANAGE')),
+        models: p?.models ?? [],
+        monthlyTokenLimit: p?.monthlyTokenLimit ?? null,
+      });
+      saved++;
+    }
+    return { ok: true, saved };
+  }
+
+  private async writePolicy(
+    userId: string,
+    data: {
+      access: string;
+      builderAccess: string;
+      models: string[];
+      monthlyTokenLimit: number | null;
+    },
+  ) {
     // 모두 기본값이면 줄을 지운다(회사 기본을 따르게)
-    if (data.access === 'DEFAULT' && !data.models.length && data.monthlyTokenLimit == null) {
+    if (
+      data.access === 'DEFAULT' &&
+      data.builderAccess === 'DEFAULT' &&
+      !data.models.length &&
+      data.monthlyTokenLimit == null
+    ) {
       await this.prisma.aiUserPolicy.deleteMany({ where: { userId } });
     } else {
       await this.prisma.aiUserPolicy.upsert({
@@ -289,9 +426,8 @@ export class AiAdminController {
       });
     }
     this.usage.forgetPolicy(userId);
-    // 허용·막음은 'AI 비서 사용' 권한에 바로 반영된다(메뉴·화면)
+    // 허용·막음은 'AI 비서 사용'·'에이전트 빌더' 권한에 바로 반영된다(메뉴·화면)
     this.principals.invalidateUser(userId);
-    return { ok: true };
   }
 
   /** 그달 요약 — 합계, 모델별, 기능별, 날짜별 */

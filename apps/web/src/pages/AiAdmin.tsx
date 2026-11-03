@@ -30,6 +30,8 @@ interface ModelDef {
   label: string;
   hint: string;
   chat: boolean;
+  lifecycle?: 'active' | 'deprecated';
+  createdAt?: string | null;
 }
 interface Setting {
   allowed: string[];
@@ -41,6 +43,8 @@ interface Setting {
 interface SettingsRes {
   configured: boolean;
   models: ModelDef[];
+  /** 모델 목록을 Claude에서 받아 왔는지(live)·언제 */
+  catalog: { live: boolean; fetchedAt: string | null };
   setting: Setting;
 }
 interface UserRow {
@@ -54,6 +58,11 @@ interface UserRow {
   roleAllows: boolean;
   access: AiAccess;
   canUse: boolean;
+  roleAllowsBuilder: boolean;
+  builderAccess: AiAccess;
+  canBuild: boolean;
+  /** 전체 권한(*) 계정 — 막을 수 없다 */
+  superUser: boolean;
   models: string[];
   monthlyTokenLimit: number | null;
   calls: number;
@@ -341,6 +350,10 @@ function Users({ settings }: { settings: SettingsRes | null }) {
   const [loading, setLoading] = useState(false);
   const [onlyActive, setOnlyActive] = useState(true);
   const [editing, setEditing] = useState<UserRow | null>(null);
+  // 표 편집 모드 — 'AI 사용'·'에이전트 빌더'를 체크박스로 고치고 저장해야 적용된다
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState<Map<string, { use?: boolean; builder?: boolean }>>(new Map());
+  const [savingDraft, setSavingDraft] = useState(false);
   const { id: detailId, open, close } = useDetailParam('user');
   const models = settings?.models ?? [];
   const companyLimit = settings?.setting.monthlyTokenLimit ?? null;
@@ -364,8 +377,74 @@ function Users({ settings }: { settings: SettingsRes | null }) {
     const l = limitOf(r);
     return l == null ? '무제한' : `${num(l)}${r.monthlyTokenLimit == null ? ' (회사 기본)' : ''}`;
   };
+  // 따로 고르지 않았으면 회사에 열린 모델 — 어느 모델인지 이름으로
+  const companyModels = settings?.setting.allowed ?? [];
   const modelsText = (r: UserRow) =>
-    r.models.length ? r.models.map((m) => modelName(models, m)).join(', ') : '회사 설정 전부';
+    (r.models.length ? r.models : companyModels).map((m) => modelName(models, m)).join(', ') || '—';
+
+  const useOf = (r: UserRow) => draft.get(r.userId)?.use ?? r.canUse;
+  const buildOf = (r: UserRow) => draft.get(r.userId)?.builder ?? r.canBuild;
+  const setDraftOf = (r: UserRow, patch: { use?: boolean; builder?: boolean }) =>
+    setDraft((d) => {
+      const n = new Map(d);
+      const next = { ...n.get(r.userId), ...patch };
+      // 원래 값으로 돌아오면 고친 목록에서 뺀다
+      if (next.use === r.canUse) delete next.use;
+      if (next.builder === r.canBuild) delete next.builder;
+      if (next.use === undefined && next.builder === undefined) n.delete(r.userId);
+      else n.set(r.userId, next);
+      return n;
+    });
+  const saveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      await api('/ai-admin/users-access', {
+        method: 'PUT',
+        body: JSON.stringify({
+          changes: [...draft.entries()].map(([userId, c]) => ({ userId, ...c })),
+        }),
+      });
+      toast({ type: 'success', title: `${draft.size}명의 권한을 저장했습니다` });
+      setDraft(new Map());
+      setEditMode(false);
+      await load();
+    } catch (e) {
+      toast({ type: 'error', title: errText(e, '저장하지 못했습니다') });
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+  const checkCell = (r: UserRow, kind: 'use' | 'builder') => {
+    const on = kind === 'use' ? useOf(r) : buildOf(r);
+    const changed =
+      kind === 'use'
+        ? draft.get(r.userId)?.use !== undefined
+        : draft.get(r.userId)?.builder !== undefined;
+    const how = kind === 'use' ? r.access : r.builderAccess;
+    return (
+      <span
+        className={`${styles.checkCell} ${changed ? styles.checkChanged : ''}`}
+        title={
+          r.superUser
+            ? '전체 권한 계정이라 끌 수 없습니다'
+            : how === 'DEFAULT'
+              ? '권한 그룹을 따름'
+              : `개인 설정(${AI_ACCESS[how]})`
+        }
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Checkbox
+          checked={on}
+          disabled={!editMode || r.superUser}
+          aria-label={kind === 'use' ? 'AI 비서 사용' : '에이전트 빌더 사용'}
+          onCheckedChange={(c) =>
+            setDraftOf(r, kind === 'use' ? { use: c === true } : { builder: c === true })
+          }
+        />
+        {how !== 'DEFAULT' && !changed && <span className={styles.ownMark}>개인</span>}
+      </span>
+    );
+  };
 
   // 많이 쓴 사람 먼저, 같으면 이름순
   const shown = rows
@@ -380,7 +459,8 @@ function Users({ settings }: { settings: SettingsRes | null }) {
     who: r.name ?? r.loginId,
     org: r.isExternal ? '외부 업체' : (r.orgUnitName ?? ''),
     position: r.positionName ?? '',
-    accessText: r.access === 'BLOCK' ? '막음' : r.canUse ? '사용 가능' : '권한 없음',
+    accessText: r.canUse ? '사용' : '안 씀',
+    builderText: r.canBuild ? '사용' : '안 씀',
     modelsText: modelsText(r),
     limitText: limitText(r),
   }));
@@ -391,10 +471,16 @@ function Users({ settings }: { settings: SettingsRes | null }) {
     { title: '소속', dataIndex: 'org', minWidth: 120, flex: 1 },
     { title: '직책', dataIndex: 'position', width: 80 },
     {
-      title: 'AI 사용',
+      title: 'AI 비서',
       dataIndex: 'accessText',
-      width: 110,
-      render: (r) => accessBadge(r as unknown as UserRow),
+      width: 90,
+      render: (r) => checkCell(r as unknown as UserRow, 'use'),
+    },
+    {
+      title: '에이전트 빌더',
+      dataIndex: 'builderText',
+      width: 130,
+      render: (r) => checkCell(r as unknown as UserRow, 'builder'),
     },
     { title: '쓸 수 있는 모델', dataIndex: 'modelsText', minWidth: 140, flex: 1 },
     { title: '월 한도(토큰)', dataIndex: 'limitText', width: 170 },
@@ -464,11 +550,25 @@ function Users({ settings }: { settings: SettingsRes | null }) {
                   {
                     title: 'AI 권한',
                     items: [
-                      { label: 'AI 사용', value: accessBadge(detail) },
+                      { label: 'AI 비서', value: accessBadge(detail) },
                       { label: '정하는 방법', value: AI_ACCESS[detail.access] },
                       {
+                        label: '에이전트 빌더',
+                        value: (
+                          <Badge variant="subtle" color={detail.canBuild ? 'success' : 'neutral'}>
+                            {detail.canBuild ? '사용 가능' : '권한 없음'}
+                          </Badge>
+                        ),
+                      },
+                      { label: '정하는 방법', value: AI_ACCESS[detail.builderAccess] },
+                      {
                         label: '권한 그룹',
-                        value: detail.roleAllows ? "'AI 비서 사용' 있음" : "'AI 비서 사용' 없음",
+                        value: [
+                          detail.roleAllows ? "'AI 비서 사용' 있음" : "'AI 비서 사용' 없음",
+                          detail.roleAllowsBuilder
+                            ? "'에이전트 빌더' 있음"
+                            : "'에이전트 빌더' 없음",
+                        ].join(' · '),
                       },
                       { label: '쓸 수 있는 모델', value: modelsText(detail) },
                       { label: '월 한도(토큰)', value: limitText(detail) },
@@ -507,9 +607,38 @@ function Users({ settings }: { settings: SettingsRes | null }) {
         columns={columns}
         rows={tableRows as unknown as Row[]}
         loading={loading}
-        onRowClick={(r) => open(String(r.id))}
+        onRowClick={editMode ? undefined : (r) => open(String(r.id))}
         exportable
         exportFileName={`AI-사용자-${month}`}
+        toolbarActions={
+          editMode ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDraft(new Map());
+                  setEditMode(false);
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={savingDraft}
+                disabled={!draft.size}
+                onClick={() => void saveDraft()}
+              >
+                저장{draft.size ? ` (${draft.size}명)` : ''}
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+              편집
+            </Button>
+          )
+        }
         filters={
           <>
             <div className={styles.monthSelect}>
@@ -548,6 +677,7 @@ function PolicyModal({
 }) {
   const toast = useToast();
   const [access, setAccess] = useState<AiAccess>(user.access);
+  const [builderAccess, setBuilderAccess] = useState<AiAccess>(user.builderAccess);
   const [allModels, setAllModels] = useState(user.models.length === 0);
   const [picked, setPicked] = useState<string[]>(user.models);
   const [limitMode, setLimitMode] = useState(user.monthlyTokenLimit == null ? 'company' : 'own');
@@ -565,6 +695,7 @@ function PolicyModal({
         method: 'PUT',
         body: JSON.stringify({
           access,
+          builderAccess,
           models: allModels ? [] : picked,
           monthlyTokenLimit: limitMode === 'company' ? null : limitNum,
         }),
@@ -616,6 +747,24 @@ function PolicyModal({
               : access === 'ALLOW'
                 ? '권한 그룹과 상관없이 AI 비서를 쓸 수 있습니다'
                 : 'AI 비서·에이전트 AI 단계를 쓸 수 없습니다'}
+          </p>
+        </div>
+        <div className={styles.field}>
+          에이전트 빌더
+          <ChoiceChips
+            value={builderAccess}
+            onChange={(v) => setBuilderAccess(v as AiAccess)}
+            options={(Object.keys(AI_ACCESS) as AiAccess[]).map((k) => ({
+              value: k,
+              label: AI_ACCESS[k],
+            }))}
+          />
+          <p className={styles.hint}>
+            {builderAccess === 'DEFAULT'
+              ? `권한 그룹의 '에이전트 빌더'를 따릅니다 — 지금 ${user.roleAllowsBuilder ? '있음(만들 수 있음)' : '없음(만들 수 없음)'}`
+              : builderAccess === 'ALLOW'
+                ? '권한 그룹과 상관없이 에이전트를 만들고 고칠 수 있습니다'
+                : '에이전트를 만들거나 고칠 수 없습니다(쓰기만)'}
           </p>
         </div>
         <div className={styles.field}>
@@ -889,8 +1038,29 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
   );
   const [limit, setLimit] = useState(String(data.setting.monthlyTokenLimit ?? ''));
   const [busy, setBusy] = useState(false);
+  const [fetching, setFetching] = useState(false);
 
   const chatModels = data.models.filter((m) => m.chat && allowed.includes(m.id));
+  // Claude에서 지금 쓸 수 있는 모델 목록을 다시 받는다(새 모델은 켜야 쓰임)
+  const refreshModels = async () => {
+    setFetching(true);
+    try {
+      const res = await api<SettingsRes>('/ai-admin/models/refresh', {
+        method: 'POST',
+        body: '{}',
+      });
+      const added = res.models.filter((m) => !data.models.some((x) => x.id === m.id)).length;
+      toast({
+        type: 'success',
+        title: `모델 ${res.models.length}개를 받았습니다${added ? ` — 새 모델 ${added}개(켜야 쓸 수 있음)` : ''}`,
+      });
+      onSaved(res);
+    } catch (e) {
+      toast({ type: 'error', title: errText(e, '모델 목록을 받지 못했습니다') });
+    } finally {
+      setFetching(false);
+    }
+  };
   const limitNum = Number(limit.replace(/,/g, ''));
   const limitOk = limitMode === 'none' || (limit.trim() !== '' && Number.isInteger(limitNum));
   const defOk = chatModels.some((m) => m.id === def);
@@ -927,10 +1097,28 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
   return (
     <div className={styles.form}>
       <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>쓸 모델</h3>
+        <div className={styles.sectionHead}>
+          <h3 className={styles.sectionTitle}>쓸 모델</h3>
+          <span className={styles.muted}>
+            {data.catalog.live
+              ? `Claude에서 받은 목록 · ${data.catalog.fetchedAt ? when(data.catalog.fetchedAt) : ''}`
+              : '기본 목록(아직 Claude에서 받지 못함)'}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            loading={fetching}
+            disabled={!data.configured}
+            onClick={() => void refreshModels()}
+          >
+            모델 목록 새로 받기
+          </Button>
+        </div>
         <p className={styles.hint}>
-          켠 모델만 AI 비서·에이전트에서 고를 수 있습니다. 단가(달러 / 100만 토큰)를 넣으면 사용
-          현황에 예상 비용이 나옵니다 — Anthropic 콘솔 요금표의 값을 넣으세요.
+          목록은 Claude(Models API)에서 6시간마다 자동으로 받습니다 — 새 모델이 나오면 여기에
+          생기고(켜야 쓰임), 은퇴한 모델은 빠집니다. 켠 모델만 AI 비서·에이전트에서 고를 수
+          있습니다. 단가(달러 / 100만 토큰)를 넣으면 사용 현황에 예상 비용이 나옵니다 — Anthropic
+          콘솔 요금표의 값을 넣으세요.
         </p>
         <div className={`${styles.modelRow} ${styles.modelHead}`}>
           <span>모델</span>
@@ -948,8 +1136,13 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
                 label={m.label}
               />
               <span className={styles.modelHint}>
-                {m.chat ? '대화·에이전트' : '짧은 분류·요약'}
+                {m.hint || (m.chat ? '대화·에이전트' : '짧은 분류·요약')}
               </span>
+              {m.lifecycle === 'deprecated' && (
+                <Badge variant="subtle" color="warning" size="sm">
+                  곧 종료
+                </Badge>
+              )}
             </div>
             <Input
               inputMode="decimal"

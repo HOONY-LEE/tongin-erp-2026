@@ -16,14 +16,14 @@ import type {
   BetaToolResultBlockParam,
   BetaToolUnion,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { AI_MODELS, PERMISSION_WILDCARD, type AuthPrincipal, AI_TITLE_MAX } from '@tongin/shared';
+import { PERMISSION_WILDCARD, type AuthPrincipal, AI_TITLE_MAX } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiCatalog } from './api-catalog';
 import { DomainTools } from './domain-tools';
 import { SYSTEM_PROMPT, contextBlock } from './prompt';
 import { ToolError, type AiTool, type ToolContext } from './ai-tool.types';
 import { AiFiles, type AiFileMeta } from './ai-files.service';
-import { defaultModel, modelOptions, resolveChatModel } from './ai-models';
+import { defaultModel, isChatModel, modelOptions, resolveChatModel } from './ai-models';
 import { AiUsageService, aiCaller, trackClaude } from './ai-usage.service';
 
 /** 대화 제목 요약용 — 작고 싼 모델로 따로 한 번 부른다(본 답변을 늦추지 않게 비동기) */
@@ -298,7 +298,7 @@ export class AiService implements OnModuleInit {
     const client = this.requireClient();
     await this.usage.assertCanUse(ctx.principal.userId);
     const allowed = await this.usage.modelsFor(ctx.principal.userId);
-    if (!AI_MODELS.some((m) => m.chat && allowed.has(m.id)))
+    if (![...allowed].some(isChatModel))
       throw new ForbiddenException(
         '이 계정에 대화에 쓸 수 있는 AI 모델이 없습니다. 관리자에게 모델을 열어 달라고 요청하세요.',
       );
