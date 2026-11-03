@@ -45,7 +45,7 @@ export class CreateTeamTaskDto {
   @MaxLength(100)
   project?: string | null;
 
-  /** 업무 분장 항목(어느 맡은 일의 하나인지) */
+  /** 업무분장 항목(어느 맡은 일의 하나인지) */
   @IsOptional()
   @ValidateIf((_, v) => v !== null && v !== '')
   @IsUUID()

@@ -1,10 +1,10 @@
 /**
- * 업무 분장 — 가맹팀(부서 '가맹') 41개 업무와 주 담당자, 쓰는 도구.
+ * 업무분장 — 가맹팀(부서 '가맹') 41개 업무와 주 담당자, 쓰는 도구.
  * 가맹팀이 따로 만들어 쓰던 '가맹팀 업무 통합 대시보드'의 업무분장 표를 그대로 옮겼다.
  *
  *   pnpm --filter @tongin/api exec tsx prisma/seed-demo-duties.ts
  *
- * - '가맹' 부서에 업무 분장이 하나라도 있으면 건드리지 않는다(관리자가 고친 내용 보존).
+ * - '가맹' 부서에 업무분장이 하나라도 있으면 건드리지 않는다(관리자가 고친 내용 보존).
  * - 담당자는 이름으로 찾는다(가맹 부서 직원). 없으면 담당자 없이 넣는다.
  * - 성과 평가 예시: 가맹 부서의 이번 분기 지표(직접 지표 3 + 자동 지표 2) — 실적은 그 대시보드 수치(2026.10.30 기준)
  */
@@ -61,9 +61,9 @@ const DUTIES: [string, string, string, Cycle?][] = [
 
 async function main() {
   const org = await prisma.orgUnit.findFirst({ where: { name: '가맹', type: 'DEPT' } });
-  if (!org) return console.log("업무 분장: '가맹' 부서가 없어 건너뜀");
+  if (!org) return console.log("업무분장: '가맹' 부서가 없어 건너뜀");
   if (await prisma.duty.count({ where: { orgUnitId: org.id } }))
-    return console.log('업무 분장: 가맹 부서에 이미 있어 건너뜀');
+    return console.log('업무분장: 가맹 부서에 이미 있어 건너뜀');
   const people = await prisma.employee.findMany({
     where: { orgUnitId: org.id, isActive: true },
     select: { id: true, name: true },
@@ -87,7 +87,7 @@ async function main() {
       sortOrder: (i + 1) * 10,
     })),
   });
-  console.log(`업무 분장: 가맹 부서에 ${DUTIES.length}개 넣음`);
+  console.log(`업무분장: 가맹 부서에 ${DUTIES.length}개 넣음`);
 
   const period = kpiPeriodOf();
   const where = { scope_scopeId_period: { scope: 'ORG', scopeId: org.id, period } };

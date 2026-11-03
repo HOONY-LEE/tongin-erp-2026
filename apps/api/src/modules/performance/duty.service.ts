@@ -13,8 +13,8 @@ import {
 } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
-/** 업무 분장을 두는 조직 — 본사 부서·TF(지점·외부업체 제외) */
-export const DUTY_ORG_TYPES = ['DEPT', 'TF'];
+/** 업무분장을 두는 조직 — 외부업체(PARTNER)만 빼고 모두(그룹·법인·부서·TF·지점) */
+export const DUTY_ORG_TYPES = ['GROUP', 'COMPANY', 'DEPT', 'TF', 'BRANCH'];
 
 export interface DutyInput {
   orgUnitId?: string;
@@ -31,7 +31,7 @@ export interface DutyInput {
 const OPEN = ['TODO', 'IN_PROGRESS', 'HOLD'];
 
 /**
- * 업무 분장 — 조직마다 맡는 일(업무 항목)과 주·부 담당자, 조직의 역할(미션).
+ * 업무분장 — 조직마다 맡는 일(업무 항목)과 주·부 담당자, 조직의 역할(미션).
  * 보기는 누구나, 정하기는 DUTY.MANAGE. 작업관리가 dutyId로 이어지면 그 항목의 '지금 하는 일'을 센다.
  */
 @Injectable()
@@ -42,10 +42,10 @@ export class DutyService {
     return p.permissions.includes(PERMISSION_WILDCARD) || p.permissions.includes('DUTY.MANAGE');
   }
   private assertManage(p: AuthPrincipal) {
-    if (!this.canManage(p)) throw new ForbiddenException('업무 분장을 정할 권한이 없습니다.');
+    if (!this.canManage(p)) throw new ForbiddenException('업무분장을 정할 권한이 없습니다.');
   }
 
-  /** 업무 분장 화면 첫 자료 — 조직(역할·인원)과 업무 항목 전부 */
+  /** 업무분장 화면 첫 자료 — 조직(역할·인원)과 업무 항목 전부 */
   async overview(p: AuthPrincipal) {
     const [orgs, duties] = await Promise.all([
       this.prisma.orgUnit.findMany({
@@ -54,10 +54,12 @@ export class DutyService {
           id: true,
           name: true,
           type: true,
+          parentId: true,
+          code: true,
           mission: true,
           _count: { select: { employees: { where: { isActive: true } } } },
         },
-        orderBy: { name: 'asc' },
+        orderBy: { code: 'asc' },
       }),
       this.list(),
     ]);
@@ -67,6 +69,7 @@ export class DutyService {
         id: o.id,
         name: o.name,
         type: o.type,
+        parentId: o.parentId,
         mission: o.mission,
         memberCount: o._count.employees,
       })),
@@ -150,7 +153,7 @@ export class DutyService {
 
   private async get(id: string) {
     const d = await this.prisma.duty.findUnique({ where: { id } });
-    if (!d || !d.isActive) throw new NotFoundException('업무 분장 항목을 찾을 수 없습니다.');
+    if (!d || !d.isActive) throw new NotFoundException('업무분장 항목을 찾을 수 없습니다.');
     return d;
   }
 

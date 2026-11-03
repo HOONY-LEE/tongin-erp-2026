@@ -192,7 +192,7 @@ class KpiBulkResetDto {
 
 const periodOr = (p?: string) => (p && /^\d{4}-Q[1-4]$/.test(p) ? p : kpiPeriodOf());
 
-/** 업무 분장 — 보기는 누구나, 정하기는 DUTY.MANAGE(서비스에서 확인) */
+/** 업무분장 — 보기는 누구나, 정하기는 DUTY.MANAGE(서비스에서 확인) */
 @Controller('duties')
 export class DutyController {
   constructor(private readonly duties: DutyService) {}

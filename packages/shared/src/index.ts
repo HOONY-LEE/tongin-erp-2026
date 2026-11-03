@@ -723,11 +723,11 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   { key: 'AUDIT', label: '변경 이력', group: '시스템', actions: ['READ'] },
   {
     key: 'DUTY',
-    label: '업무 분장',
+    label: '업무분장',
     group: '공통',
     actions: [],
-    specials: [{ action: 'MANAGE', label: '조직 역할·업무 분장 정하기' }],
-    hint: '업무 분장 보기는 권한 없이 됩니다. 이 권한은 조직의 역할과 업무 항목·담당자를 정합니다',
+    specials: [{ action: 'MANAGE', label: '조직 역할·업무분장 정하기' }],
+    hint: '업무분장 보기는 권한 없이 됩니다. 이 권한은 조직의 역할과 업무 항목·담당자를 정합니다',
   },
   {
     key: 'SPACE',

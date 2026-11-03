@@ -13,6 +13,7 @@ import {
 } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { fmtKpi } from '../lib/kpiFormat';
 import {
   Badge,
   Button,
@@ -62,12 +63,6 @@ const GRADE_COLOR: Record<KpiGrade, 'success' | 'primary' | 'info' | 'warning' |
 };
 const SOURCE_LABEL = { OWN: '직접 구성', ORG: '조직 구성', DEFAULT: '기본 구성' } as const;
 
-export const fmtKpi = (v: number | null, unit: string) => {
-  if (v === null) return '—';
-  if (unit === '원') return `${Math.round(v).toLocaleString('ko-KR')}원`;
-  if (unit === '%') return `${v.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}%`;
-  return `${v.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}${unit ? ` ${unit}` : ''}`;
-};
 const radarOf = (metrics: KpiResolved[]): RadarDatum[] =>
   metrics.map((m) => ({
     key: m.key,
@@ -102,7 +97,7 @@ function MetricChips({ metrics }: { metrics: KpiResolved[] }) {
 
 /**
  * 성과 평가 — 조직·개인 지표를 다각형(레이더)으로.
- * 조직별: 본사 부서·TF(또는 지점) 카드 · 개인별: 직원 표(내보내기) · 상세: 다각형 + 지표별 달성률 + 업무 분장.
+ * 조직별: 본사 부서·TF(또는 지점) 카드 · 개인별: 직원 표(내보내기) · 상세: 다각형 + 지표별 달성률 + 업무분장.
  * 주소: ?tab=org|person &group=HQ|BRANCH &period=2026-Q4 &scope=ORG|EMPLOYEE&id=…(상세)
  */
 export default function Performance() {
@@ -672,7 +667,7 @@ function PerformanceDetail({
 
       <section className={styles.block}>
         <h3 className={styles.blockTitle}>
-          {scope === 'EMPLOYEE' ? '맡은 업무(업무 분장)' : '조직 업무 분장'} {d.duties.length}개
+          {scope === 'EMPLOYEE' ? '맡은 업무(업무분장)' : '조직 업무분장'} {d.duties.length}개
         </h3>
         {d.duties.length ? (
           <ul className={styles.dutyList}>
@@ -701,9 +696,7 @@ function PerformanceDetail({
             ))}
           </ul>
         ) : (
-          <p className={styles.muted}>
-            아직 정한 업무 분장이 없습니다(업무 분장 메뉴에서 정합니다).
-          </p>
+          <p className={styles.muted}>아직 정한 업무분장이 없습니다(업무분장 메뉴에서 정합니다).</p>
         )}
       </section>
 

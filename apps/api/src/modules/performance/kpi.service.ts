@@ -486,7 +486,7 @@ export class KpiService {
     };
   }
 
-  /** 한 조직·직원 — 상세 화면(직원이면 업무 분장도 함께) */
+  /** 한 조직·직원 — 상세 화면(직원이면 업무분장도 함께) */
   async one(p: AuthPrincipal, scope: KpiScope, id: string, period: string) {
     let group: 'HQ' | 'BRANCH' = 'HQ';
     if (scope === 'ORG') {

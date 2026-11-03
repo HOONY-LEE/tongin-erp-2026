@@ -83,7 +83,7 @@ export const MENU_CATALOG: readonly MenuDef[] = [
   {
     key: 'duties',
     path: '/duties',
-    label: '업무 분장',
+    label: '업무분장',
     i18n: 'duties',
     icon: 'ClipboardList',
     selfService: true,

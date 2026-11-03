@@ -101,7 +101,7 @@ export default function Tasks() {
   const { tab: view, setTab: setView } = useTabParam<View>('board', 'view');
   const { updatedAt, touch } = useUpdatedAt();
   const dir = useWorkDirectory();
-  // 업무 분장 항목(조직별 묶음) — 업무를 맡은 일에 이을 때 고른다
+  // 업무분장 항목(조직별 묶음) — 업무를 맡은 일에 이을 때 고른다
   const [dutyGroups, setDutyGroups] = useState<
     { label: string; options: { value: string; label: string }[] }[]
   >([]);
@@ -214,10 +214,10 @@ export default function Tasks() {
         alwaysShow: true,
       },
       { name: 'project', label: '사업·프로젝트', placeholder: '예: 무브제 컨시어지' },
-      // 업무 분장 항목 — 고르면 그 항목의 '진행 중'에 센다
+      // 업무분장 항목 — 고르면 그 항목의 '진행 중'에 센다
       {
         name: 'dutyId',
-        label: '업무 분장',
+        label: '업무분장',
         type: 'select',
         optionGroups: dutyGroups,
         placeholder: '맡은 업무 중 하나라면 고르세요',
@@ -372,7 +372,7 @@ export default function Tasks() {
                           : null,
                       },
                       { label: '사업·프로젝트', value: d.project },
-                      { label: '업무 분장', value: d.duty?.title },
+                      { label: '업무분장', value: d.duty?.title },
                       { label: '기한', value: d.dueDate ? <Due t={d} /> : null },
                       { label: '등록일', value: shortDate(d.createdAt) },
                       { label: '완료일', value: d.doneAt ? shortDate(d.doneAt) : null },

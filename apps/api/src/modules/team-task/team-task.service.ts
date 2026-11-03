@@ -152,7 +152,7 @@ export class TeamTaskService {
     }
     if (dto.dutyId) {
       const d = await this.prisma.duty.findUnique({ where: { id: dto.dutyId } });
-      if (!d || !d.isActive) throw new BadRequestException('없는 업무 분장 항목입니다.');
+      if (!d || !d.isActive) throw new BadRequestException('없는 업무분장 항목입니다.');
     }
   }
 

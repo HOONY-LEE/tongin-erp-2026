@@ -380,3 +380,40 @@
   gap: 6px 10px;
   padding-left: 24px;
 }
+
+/* 조직관리 상세 아래 — 역할·목표·업무분장 */
+.goalPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.goalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.goalHead .blockTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.goalLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+  text-decoration: none;
+  white-space: nowrap;
+}
+.goalLink:hover {
+  color: var(--ark-color-text);
+  text-decoration: underline;
+}
+.goalText {
+  margin: 0;
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.55;
+}

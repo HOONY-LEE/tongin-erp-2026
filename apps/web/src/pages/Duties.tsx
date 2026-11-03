@@ -33,6 +33,7 @@ interface DutyOrg {
   id: string;
   name: string;
   type: string;
+  parentId: string | null;
   mission: string | null;
   memberCount: number;
 }
@@ -45,7 +46,7 @@ type Tab = 'org' | 'person' | 'mine';
 const NONE = '__none__';
 
 /**
- * 업무 분장 — 조직마다 맡는 역할(미션)과 업무 항목·주/부 담당자·주기·쓰는 도구.
+ * 업무분장 — 조직마다 맡는 역할(미션)과 업무 항목·주/부 담당자·주기·쓰는 도구.
  * 조직별(표) · 사람별(카드) · 내 업무. 작업관리(칸반)를 항목에 이으면 '진행 중'이 실제로 센다.
  * 보기는 누구나, 정하기는 DUTY.MANAGE.
  */
@@ -93,7 +94,7 @@ export default function Duties() {
   const orgs = data?.orgs ?? [];
   const duties = data?.duties ?? [];
   const canManage = !!data?.canManage;
-  // 처음 고른 조직 — 주소에 있으면 그것, 아니면 내 조직(업무 분장이 있으면), 아니면 업무 분장이 있는 첫 조직
+  // 처음 고른 조직 — 주소에 있으면 그것, 아니면 내 조직(업무분장이 있으면), 아니면 업무분장이 있는 첫 조직
   const myOrg = user?.employeeOrgUnitId ?? null;
   const orgId =
     orgParam && orgs.some((o) => o.id === orgParam)
@@ -111,7 +112,7 @@ export default function Duties() {
       onChange={(v) => setParam('tab', v)}
       options={[
         { value: 'org', label: '조직별' },
-        { value: 'person', label: '사람별' },
+        { value: 'person', label: '개인별' },
         { value: 'mine', label: '내 업무' },
       ]}
     />
@@ -229,15 +230,37 @@ export default function Duties() {
   return (
     <div className={`list-page ${tab === 'person' ? '' : 'fit'}`}>
       <PageHeader
-        title="업무 분장"
+        title="업무분장"
+        footer={tabs}
         subtitle="조직마다 맡는 역할과 업무 항목·주/부 담당자·주기·쓰는 도구를 정해 둡니다. 작업관리(칸반)의 업무를 이 항목에 이으면 '진행 중'에 실제로 하고 있는 일이 셉니다."
         onRefresh={load}
         updatedAt={updatedAt}
       />
 
-      {tab !== 'mine' && org && <MissionBox org={org} canManage={canManage} onSaved={load} />}
-
-      {tab === 'person' ? (
+      {tab === 'org' ? (
+        <div className={styles.orgLayout}>
+          <OrgTree
+            orgs={orgs}
+            duties={duties}
+            selected={orgId}
+            onSelect={(id) => setParam('org', id)}
+          />
+          <div className={styles.orgMain}>
+            {org && <MissionBox org={org} canManage={canManage} onSaved={load} />}
+            <DataTable
+              columns={orgColumns}
+              rows={duties.filter((d) => d.orgUnitId === orgId).filter(match) as unknown as Row[]}
+              loading={loading}
+              fit
+              pageSize={0}
+              exportable
+              exportFileName={`업무분장_${org?.name ?? ''}`}
+              toolbarActions={addButton}
+              onRowClick={(r) => setOpen(r as unknown as DutyView)}
+            />
+          </div>
+        </div>
+      ) : tab === 'person' ? (
         <>
           <div className="dt-wrap">
             <ListToolbar
@@ -257,7 +280,6 @@ export default function Duties() {
                 </div>
               }
               filters={orgSelect}
-              tabs={tabs}
               actions={addButton}
             />
           </div>
@@ -320,7 +342,7 @@ export default function Duties() {
             )}
             {!personCards.list.length && !personCards.unassigned.length && !loading && (
               <div className={styles.empty}>
-                이 조직에 정한 업무 분장이 없습니다
+                이 조직에 정한 업무분장이 없습니다
                 {canManage ? ' — 「+ 업무 추가」로 정하세요.' : '.'}
               </div>
             )}
@@ -328,23 +350,19 @@ export default function Duties() {
         </>
       ) : (
         <DataTable
-          columns={tab === 'mine' ? mineColumns : orgColumns}
+          columns={mineColumns}
           rows={
-            (tab === 'mine'
-              ? duties.filter(
-                  (d) => d.ownerEmpId === user?.employeeId || d.backupEmpId === user?.employeeId,
-                )
-              : duties.filter((d) => d.orgUnitId === orgId)
-            ).filter(match) as unknown as Row[]
+            duties
+              .filter(
+                (d) => d.ownerEmpId === user?.employeeId || d.backupEmpId === user?.employeeId,
+              )
+              .filter(match) as unknown as Row[]
           }
           loading={loading}
           fit
           pageSize={0}
           exportable
-          exportFileName={tab === 'mine' ? '내_업무분장' : `업무분장_${org?.name ?? ''}`}
-          filters={tab === 'org' ? orgSelect : undefined}
-          tabs={tabs}
-          toolbarActions={tab === 'org' ? addButton : undefined}
+          exportFileName="내_업무분장"
           onRowClick={(r) => setOpen(r as unknown as DutyView)}
         />
       )}
@@ -363,6 +381,112 @@ export default function Duties() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * 조직도(나무) — 그룹 → 법인 → 부서·TF, 지점은 상위 조직 밑 'N곳'으로 접어 둔다.
+ * 조직 옆 숫자 = 정해 둔 업무분장 수. 누르면 오른쪽에 그 조직 역할·업무
+ */
+function OrgTree({
+  orgs,
+  duties,
+  selected,
+  onSelect,
+}: {
+  orgs: DutyOrg[];
+  duties: DutyView[];
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [openBranches, setOpenBranches] = useState<Set<string>>(new Set());
+  const [closed, setClosed] = useState<Set<string>>(new Set());
+  const count = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const d of duties) m.set(d.orgUnitId, (m.get(d.orgUnitId) ?? 0) + 1);
+    return m;
+  }, [duties]);
+  const ids = new Set(orgs.map((o) => o.id));
+  const kids = (id: string | null) =>
+    orgs.filter((o) => (id === null ? !o.parentId || !ids.has(o.parentId) : o.parentId === id));
+  // 고른 조직이 접힌 지점 묶음 안에 있으면 펼쳐 둔다
+  const selOrg = orgs.find((o) => o.id === selected);
+  const branchOpen = (parent: string) =>
+    openBranches.has(parent) || (selOrg?.type === 'BRANCH' && selOrg.parentId === parent);
+
+  const item = (o: DutyOrg, depth: number) => {
+    const children = kids(o.id);
+    const hq = children.filter((c) => c.type !== 'BRANCH');
+    const branches = children.filter((c) => c.type === 'BRANCH');
+    const hasKids = hq.length + branches.length > 0;
+    const isOpen = !closed.has(o.id);
+    return (
+      <li key={o.id}>
+        <div className={styles.treeRow} style={{ paddingLeft: 6 + depth * 14 }}>
+          <button
+            type="button"
+            className={`${styles.treeToggle} ${hasKids ? '' : styles.treeToggleHidden}`}
+            aria-label={isOpen ? '접기' : '펼치기'}
+            onClick={() =>
+              setClosed((s) => {
+                const n = new Set(s);
+                if (n.has(o.id)) n.delete(o.id);
+                else n.add(o.id);
+                return n;
+              })
+            }
+          >
+            {isOpen ? '▾' : '▸'}
+          </button>
+          <button
+            type="button"
+            className={`${styles.treeItem} ${selected === o.id ? styles.treeItemOn : ''}`}
+            onClick={() => onSelect(o.id)}
+          >
+            <span className={styles.treeName}>{o.name}</span>
+            {(count.get(o.id) ?? 0) > 0 && (
+              <span className={styles.treeCount}>{count.get(o.id)}</span>
+            )}
+          </button>
+        </div>
+        {hasKids && isOpen && (
+          <ul className={styles.tree}>
+            {hq.map((c) => item(c, depth + 1))}
+            {branches.length > 0 && (
+              <li>
+                <div className={styles.treeRow} style={{ paddingLeft: 6 + (depth + 1) * 14 }}>
+                  <button
+                    type="button"
+                    className={styles.treeToggle}
+                    aria-label="지점 펼치기"
+                    onClick={() =>
+                      setOpenBranches((s) => {
+                        const n = new Set(s);
+                        if (n.has(o.id)) n.delete(o.id);
+                        else n.add(o.id);
+                        return n;
+                      })
+                    }
+                  >
+                    {branchOpen(o.id) ? '▾' : '▸'}
+                  </button>
+                  <span className={styles.treeGroup}>지점 {branches.length}곳</span>
+                </div>
+                {branchOpen(o.id) && (
+                  <ul className={styles.tree}>{branches.map((b) => item(b, depth + 2))}</ul>
+                )}
+              </li>
+            )}
+          </ul>
+        )}
+      </li>
+    );
+  };
+  return (
+    <nav className={styles.treePanel} aria-label="조직도">
+      <div className={styles.treeTitle}>조직도</div>
+      <ul className={styles.tree}>{kids(null).map((o) => item(o, 0))}</ul>
+    </nav>
   );
 }
 
@@ -514,7 +638,7 @@ function DutyModal({
       });
       if (duty) await api(`/duties/${duty.id}`, { method: 'PATCH', body });
       else await api('/duties', { method: 'POST', body });
-      toast({ type: 'success', title: duty ? '업무 분장을 고쳤습니다' : '업무를 추가했습니다' });
+      toast({ type: 'success', title: duty ? '업무분장을 고쳤습니다' : '업무를 추가했습니다' });
       onSaved();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
@@ -527,7 +651,7 @@ function DutyModal({
     setBusy(true);
     try {
       await api(`/duties/${duty.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '업무 분장을 지웠습니다(이어진 작업관리 업무는 그대로)' });
+      toast({ type: 'success', title: '업무분장을 지웠습니다(이어진 작업관리 업무는 그대로)' });
       onSaved();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
@@ -542,7 +666,7 @@ function DutyModal({
       open
       onOpenChange={(o) => !o && onClose()}
       size="md"
-      title={duty ? (ro ? duty.title : '업무 분장 고치기') : '업무 추가'}
+      title={duty ? (ro ? duty.title : '업무분장 고치기') : '업무 추가'}
       footer={
         ro ? (
           <Button variant="ghost" onClick={onClose}>
@@ -708,7 +832,7 @@ function DutyModal({
               </ul>
             ) : (
               <span className={styles.muted}>
-                없습니다 — 작업관리에서 업무를 만들 때 「업무 분장」에서 이 항목을 고르면 여기에
+                없습니다 — 작업관리에서 업무를 만들 때 「업무분장」에서 이 항목을 고르면 여기에
                 모입니다.
               </span>
             )}
