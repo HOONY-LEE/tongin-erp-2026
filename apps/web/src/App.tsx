@@ -6,6 +6,8 @@ import { ThemeProvider } from './theme/ThemeProvider';
 import { AuthProvider, isFieldUser, useAuth } from './auth/AuthContext';
 import AppLayout from './layout/AppLayout';
 import Login from './pages/Login';
+import DesktopLogin from './pages/DesktopLogin';
+import { isDesktop, setWindowMode } from './lib/desktop';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // 화면별로 따로 받는다(라우트 코드 분할) — 첫 화면은 로그인·레이아웃만 받고,
@@ -78,6 +80,10 @@ function Shell() {
       navigate('/', { replace: true });
     }
   }, [user, navigate]);
+  // 데스크톱 앱 — 로그인 전엔 작은 창, 로그인하면 큰 창
+  useEffect(() => {
+    if (!loading) setWindowMode(user ? 'app' : 'login');
+  }, [user, loading]);
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', padding: 24, boxSizing: 'border-box' }}>
@@ -85,7 +91,7 @@ function Shell() {
       </div>
     );
   }
-  if (!user) return <Login />;
+  if (!user) return isDesktop ? <DesktopLogin /> : <Login />;
 
   // 전속업체·현장 작업팀은 관리자 ERP를 쓸 일이 없다 — 라우트 트리 자체를 분리한다.
   // (같은 트리에 두고 catch-all 리다이렉트를 넣으면, 라우터가 "/" 같은 구체적 경로를

@@ -8,3 +8,7 @@ legacy-inventory.csv
 *.md
 # 시군구 경계 — 스크립트로 만든 압축 JSON(지도 확대용)
 apps/web/public/maps
+# 데스크톱 앱(npm으로 따로 설치)
+desktop/node_modules
+desktop/dist
+desktop/package-lock.json

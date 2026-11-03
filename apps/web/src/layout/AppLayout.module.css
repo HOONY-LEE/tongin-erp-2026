@@ -11,8 +11,8 @@
 .topHeader {
   display: flex;
   align-items: stretch;
-  height: 46px;
-  min-height: 46px;
+  height: 38px;
+  min-height: 38px;
   padding: 0 16px 0 0;
   background: rgba(255, 255, 255, 0.92);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -67,11 +67,19 @@
   height: 100% !important;
   border-radius: 0 !important;
   background: transparent !important;
-  padding-left: 24px !important;
-  padding-right: 24px !important;
-  max-width: 260px;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  max-width: 220px;
   min-width: 0;
   flex: 0 1 auto !important;
+  font-size: calc(12.5px * var(--font-scale, 1)) !important;
+}
+/* 지금 탭 — 아주 옅은 바탕(맥 앱 탭처럼) */
+.headerTabs button[role='tab'][data-state='active'] {
+  background: rgba(0, 0, 0, 0.035) !important;
+}
+:global([data-theme='dark']) .headerTabs button[role='tab'][data-state='active'] {
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 .headerTabs button[role='tab'] > span:not([aria-hidden]):not([aria-label]) {
   min-width: 0;
@@ -200,7 +208,7 @@
   padding-left: 64px;
 }
 
-/* 사이드바 — 화면 최상단부터 전체 높이 고정(헤더 위로), 카드형 */
+/* 사이드바 — 화면 최상단부터 전체 높이 고정(헤더 위로), 떠 있는 둥근 카드(맥 앱 사이드바처럼) */
 .sidebarWrap {
   position: fixed;
   top: 0;
@@ -209,6 +217,7 @@
   z-index: 200;
   width: 240px;
   flex-shrink: 0;
+  padding: 6px 4px 6px 6px;
   box-sizing: border-box;
   transition: width 0.2s ease;
 }
@@ -217,10 +226,12 @@
 }
 
 .sidebarWrap > div {
-  border-radius: 0;
-  box-shadow: none;
-  border-right: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.78) !important;
+  border-radius: 12px;
+  border-right: 0 !important;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    0 2px 10px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.72) !important;
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   overflow: hidden;
@@ -228,11 +239,19 @@
   box-sizing: border-box;
 }
 :global([data-theme='dark']) .sidebarWrap > div {
-  background: rgba(44, 44, 48, 0.7) !important;
-  border-right-color: rgba(255, 255, 255, 0.06);
+  background: rgba(44, 44, 48, 0.65) !important;
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.06),
+    0 2px 10px rgba(0, 0, 0, 0.2);
+}
+/* 사이드바 머리(로고) 아래 선은 옅게 */
+.sidebarWrap > div > div:first-child {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+:global([data-theme='dark']) .sidebarWrap > div > div:first-child {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 사이드바 헤더 높이를 상단 헤더(46px)와 맞춰 경계선이 일직선으로 이어지도록 */
 /* 메뉴 묶음 사이 간격(기본 24px)을 줄이고, 묶음 이름은 본문보다 한 단계 작고 덜 굵게 */
 .sidebarWrap [class*='_group_'] {
   margin-bottom: 12px;
@@ -255,9 +274,33 @@
   padding: 6px 12px;
 }
 .sidebarWrap [class*='sidebarHeader'] {
-  height: 46px !important;
-  min-height: 46px !important;
+  height: 48px !important;
+  min-height: 48px !important;
   box-sizing: border-box;
+}
+
+/* ── 데스크톱 앱(맥) — 창 버튼(빨강·노랑·초록)이 헤더 왼쪽에 들어간다 ──
+   헤더가 창 맨 위 전체를 쓰고(끌어서 창 옮기기), 사이드바는 그 아래 카드로 */
+.native .sidebarWrap {
+  position: static;
+  height: 100%;
+  overflow: hidden;
+}
+.native .mainArea,
+.native.collapsed .mainArea {
+  padding-left: 0;
+}
+.native .topHeader {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.native .topHeader button,
+.native .topHeader a,
+.native .topHeader input,
+.native .topHeader [role='tablist'],
+.native .topHeader [role='tab'] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 /* ── 콘텐츠 ── */
@@ -442,4 +485,8 @@
   font-weight: 700;
   line-height: 20px;
   text-align: center;
+}
+/* 접힌 사이드바라도 창 버튼(약 70px) 자리는 비워 둔다 */
+.native.collapsed .headerLeft {
+  width: 80px;
 }

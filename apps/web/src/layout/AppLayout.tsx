@@ -24,6 +24,7 @@ import { HeaderTabs } from './HeaderTabs';
 import { ProfileMenu } from './ProfileMenu';
 import settingsStyles from './settings.module.css';
 import { fs } from '../lib/fontScale';
+import { isMacDesktop } from '../lib/desktop';
 
 // 설정 창은 누를 때만 읽는다(인사·결재 설정 화면까지 들어 있어 무겁다)
 const SettingsModal = lazy(() => import('./SettingsModal'));
@@ -211,7 +212,15 @@ export default function AppLayout() {
   }));
 
   return (
-    <div className={`${styles.desktopLayout} ${collapsed ? styles.collapsed : ''}`}>
+    <div
+      className={[
+        styles.desktopLayout,
+        collapsed ? styles.collapsed : '',
+        isMacDesktop ? styles.native : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       {/* 상단 풀폭 헤더 */}
       <header className={styles.topHeader}>
         <div className={styles.headerLeft} />
