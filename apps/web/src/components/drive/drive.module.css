@@ -149,7 +149,7 @@
   max-width: 640px;
   height: 44px;
   padding: 0 16px;
-  border-radius: 999px;
+  border-radius: var(--search-radius, 12px);
   background: var(--ark-color-bg-subtle, #f1f3f4);
   color: var(--ark-color-text-secondary);
 }
