@@ -11,7 +11,9 @@ import {
   Query,
   type PipeTransform,
 } from '@nestjs/common';
+import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsISO8601,
   IsNumber,
@@ -22,6 +24,7 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import {
   CRM_ACTIVITY_KINDS,
@@ -35,6 +38,7 @@ import {
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { PhoneDigits } from '../../common/phone';
 import { CrmService } from './crm.service';
+import { CrmImportService } from './crm-import.service';
 
 /** :pipeline — FRANCHISE(가맹 영업) | B2B(기업영업), 소문자도 받는다 */
 class PipelinePipe implements PipeTransform<string, CrmPipelineKey> {
@@ -74,6 +78,17 @@ class CrmLeadDto {
   @IsOptional() @nullable() @IsUUID() linkId?: string | null;
 }
 
+class ImportFileDto {
+  @IsString() @MaxLength(200) name!: string;
+  @IsString() @MaxLength(14_000_000) dataBase64!: string;
+}
+
+class ImportDto {
+  @IsOptional() @IsString() @MaxLength(2_000_000) text?: string;
+  @IsOptional() @ValidateNested() @Type(() => ImportFileDto) file?: ImportFileDto;
+  @IsOptional() @IsBoolean() dryRun?: boolean;
+}
+
 class ActivityDto {
   @IsIn(CRM_ACTIVITY_KINDS) kind!: CrmActivityKind;
   @IsString() @MaxLength(3000) content!: string;
@@ -93,7 +108,31 @@ const dateOr = (s?: string) => {
  */
 @Controller('crm/:pipeline')
 export class CrmController {
-  constructor(private readonly crm: CrmService) {}
+  constructor(
+    private readonly crm: CrmService,
+    private readonly importer: CrmImportService,
+  ) {}
+
+  /**
+   * 가져오기 — 엑셀·구글 시트에서 복사한 표(text) 또는 CSV·xlsx(file). dryRun이면 미리보기만.
+   * 머리글로 항목을 맞추고, 같은 업체(연락처·업체명)는 건너뛴다
+   */
+  @Post('import')
+  import(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('pipeline', PipelinePipe) pipeline: CrmPipelineKey,
+    @Body() dto: ImportDto,
+  ) {
+    return this.importer.run(
+      user,
+      pipeline,
+      {
+        text: dto.text,
+        file: dto.file ? { name: dto.file.name, dataBase64: dto.file.dataBase64 } : undefined,
+      },
+      dto.dryRun !== false,
+    );
+  }
 
   @Get('leads')
   list(

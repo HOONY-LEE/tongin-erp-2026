@@ -14,6 +14,11 @@ export function formatPhone(raw: string | null | undefined): string {
     if (v.length <= 9) return `${v.slice(0, 2)}-${v.slice(2, 5)}-${v.slice(5)}`;
     return `${v.slice(0, 2)}-${v.slice(2, 6)}-${v.slice(6, 10)}`;
   }
+  // 전국 대표번호(1577·1588·1600 …) — 8자리, 4-4
+  if (/^1[5-9]\d{2}/.test(digits)) {
+    const v = digits.slice(0, 8);
+    return v.length <= 4 ? v : `${v.slice(0, 4)}-${v.slice(4)}`;
+  }
   if (/^01[016789]/.test(digits)) {
     const v = digits.slice(0, 11);
     if (v.length <= 3) return v;

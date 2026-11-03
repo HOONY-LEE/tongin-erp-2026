@@ -259,3 +259,86 @@
   color: #dc2626;
   background: color-mix(in srgb, #dc2626 8%, transparent);
 }
+
+/* ── 가져오기 ── */
+.importForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.importFile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.linkBtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.importCounts {
+  display: flex;
+  gap: 16px;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.importCounts b {
+  margin-left: 4px;
+  font-size: calc(16px * var(--font-scale, 1));
+}
+.ok {
+  color: #16a34a;
+}
+.importCols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.colOn,
+.colOff {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.colOn {
+  background: var(--ark-color-bg-muted);
+}
+.colOff {
+  color: var(--ark-color-text-tertiary);
+  text-decoration: line-through;
+}
+.warn {
+  margin: 0;
+  color: #d97706;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.importTable {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+}
+.importTable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.importTable th,
+.importTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ark-color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+.importTable th {
+  position: sticky;
+  top: 0;
+  background: var(--ark-color-bg-muted);
+  font-weight: 600;
+}
+.rowDim {
+  color: var(--ark-color-text-tertiary);
+}
