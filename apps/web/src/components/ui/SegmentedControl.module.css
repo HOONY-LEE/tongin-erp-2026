@@ -1,7 +1,16 @@
-/* akron-ui SegmentedControl의 최대 크기(lg)보다 더 큰 세그먼트가 필요할 때 사용.
-   내부 세그먼트 버튼은 클래스 해시가 붙어 있어 부분일치 속성 선택자로 지정한다. */
+/* 세그먼트 탭 크기 — 앱 전체 하나: 트랙 38px(검색칸·드롭다운과 같은 높이), 안쪽 칸 30px.
+   제목 아래 화면 탭·표 위 상태 탭·보기 전환 모두 같다(akron 기본 lg는 더 높아 섞여 보였다).
+   내부 클래스는 해시가 붙어 있어 부분일치 속성 선택자로 지정한다. */
+.large [class*='_track_'] {
+  height: 38px;
+  box-sizing: border-box;
+}
 .large [class*='_segment_'] {
-  padding: 8px 16px;
-  min-height: 36px;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 14px;
   font-size: var(--ark-font-size-sm);
+}
+.large [class*='_indicator_'] {
+  height: 30px;
 }

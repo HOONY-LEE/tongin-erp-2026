@@ -329,8 +329,8 @@ html[data-font-size='lg'] {
 }
 .dt-wrap .sft-toolbar__search,
 .dt-wrap .sft-export__trigger,
-.dt-wrap .sft-toolbar__right button,
-.dt-wrap .dt-toolbar-filters button,
+.dt-wrap .sft-toolbar__right button:not([role='checkbox']),
+.dt-wrap .dt-toolbar-filters button:not([role='checkbox']),
 .dt-wrap .dt-toolbar-filters [role='combobox'] {
   height: 38px;
   box-sizing: border-box;
@@ -696,4 +696,12 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   font-size: calc(15px * var(--font-scale, 1));
   font-weight: 600;
   border-radius: var(--control-radius);
+}
+
+/* 툴바 체크박스(예: '쓰는 계정만') — 상자와 글자를 가운데 줄에 */
+.dt-wrap .dt-toolbar-filters label,
+.list-toolbar .lt-filters label {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }

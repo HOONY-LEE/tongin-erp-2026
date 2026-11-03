@@ -61,6 +61,7 @@ export function DataTable({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // 한 쪽뿐이라도 페이지 표시를 늘 보인다 — softium은 1쪽이면 가운데를 비워 둔다(그 자리에 같은 모양으로 그림)
+  const row3 = !!(tabs || toolbarActions);
   const [pagerSlot, setPagerSlot] = useState<Element | null>(null);
   useLayoutEffect(() => {
     const el = containerRef.current?.querySelector('.sft-tfoot__center') ?? null;
@@ -154,6 +155,11 @@ export function DataTable({
       }
     : undefined;
 
+  // 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다)
+  const exportMenu = exportable ? (
+    <ExportMenu table={table} fileName={exportFileName ?? 'table'} />
+  ) : null;
+
   return (
     <div
       ref={containerRef}
@@ -165,7 +171,7 @@ export function DataTable({
         multiline ? 'dt-multiline' : '',
         fit ? 'dt-fit' : '',
         // 셋째 줄(탭·생성 버튼)이 없으면 그 줄을 비우지 않고 접는다
-        tabs || exportable || toolbarActions ? '' : 'dt-no-row3',
+        row3 ? '' : 'dt-no-row3',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -182,12 +188,17 @@ export function DataTable({
           //   세그먼트 탭 ……… 내보내기 · 생성 버튼
           <>
             {filters && <div className="dt-toolbar-filters">{filters}</div>}
-            {viewSwitch && <div className="dt-toolbar-view">{viewSwitch}</div>}
+            {/* 탭·생성 버튼이 없으면 셋째 줄을 만들지 않고 내보내기를 검색 줄 오른쪽 끝에 둔다 */}
+            {(viewSwitch || (exportable && !row3)) && (
+              <div className="dt-toolbar-view">
+                {viewSwitch}
+                {exportable && !row3 && exportMenu}
+              </div>
+            )}
             {tabs && <div className="dt-toolbar-tabs">{tabs}</div>}
-            {(exportable || toolbarActions) && (
+            {row3 && (exportable || toolbarActions) && (
               <div className="dt-toolbar-actions">
-                {/* 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다) */}
-                {exportable && <ExportMenu table={table} fileName={exportFileName ?? 'table'} />}
+                {exportable && exportMenu}
                 {toolbarActions}
               </div>
             )}
