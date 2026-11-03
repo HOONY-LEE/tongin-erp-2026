@@ -1,4 +1,6 @@
-import { useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
@@ -58,6 +60,12 @@ export function DataTable({
   viewSwitch,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // 한 쪽뿐이라도 페이지 표시를 늘 보인다 — softium은 1쪽이면 가운데를 비워 둔다(그 자리에 같은 모양으로 그림)
+  const [pagerSlot, setPagerSlot] = useState<Element | null>(null);
+  useLayoutEffect(() => {
+    const el = containerRef.current?.querySelector('.sft-tfoot__center') ?? null;
+    if (el !== pagerSlot) setPagerSlot(el);
+  });
   const wasLoading = useRef(false);
   // 여러 줄 셀이 있는 표 — 행 높이를 내용에 맞춰 늘린다(고정 행 높이 전제의 가상 스크롤은 끈다)
   const multiline = columns.some((c) => c.multiline);
@@ -187,6 +195,28 @@ export function DataTable({
         }
         disableVirtualization={multiline}
       />
+      {pagerSlot &&
+        createPortal(
+          <nav className="sft-pager dt-pager-single" aria-label="pagination">
+            <button type="button" className="sft-pager__btn sft-pager__btn--nav" disabled>
+              <ChevronLeft size={14} aria-hidden />
+              <span className="sft-pager__navlabel">이전</span>
+            </button>
+            <button
+              type="button"
+              className="sft-pager__btn sft-pager__btn--page"
+              data-active="true"
+              aria-current="page"
+            >
+              1
+            </button>
+            <button type="button" className="sft-pager__btn sft-pager__btn--nav" disabled>
+              <span className="sft-pager__navlabel">다음</span>
+              <ChevronRight size={14} aria-hidden />
+            </button>
+          </nav>,
+          pagerSlot,
+        )}
     </div>
   );
 }

@@ -661,3 +661,39 @@ select:focus {
 [class*='_track_b4708_'] [class*='_indicator_'] {
   border-radius: calc(var(--control-radius) - 4px) !important;
 }
+
+/* ── 표 아래 페이지 표시 — 한 쪽뿐이어도 보인다(DataTable이 1쪽 표시를 그려 둠, 여러 쪽이면 softium 것만) ── */
+.sft-tfoot__center:has(.sft-pager:not(.dt-pager-single)) .dt-pager-single {
+  display: none;
+}
+/* 지금 쪽 = 검정 바탕·흰 글자(다크 모드 반대) — 칩 선택색과 같게 */
+.sft-pager__btn[data-active='true'],
+.sft-pager__btn[data-active='true']:hover {
+  background: var(--chip-on-bg) !important;
+  border-color: var(--chip-on-bg) !important;
+  color: var(--chip-on-fg) !important;
+}
+
+/* ── 버튼 — 둥글기·글자 통일, 주요(primary) 버튼은 검정(다크 모드 흰색) ──
+   글자: akron 기본은 작은 버튼 14px·보통 16px(이 앱 글자 크기 기준)로 섞여 보여 15px 하나로, 굵기는 한 단계(500→600) */
+:root {
+  --ark-btn-radius: var(--control-radius);
+  --ark-btn-font-size-sm: calc(15px * var(--font-scale, 1));
+  --ark-btn-font-size-md: calc(15px * var(--font-scale, 1));
+}
+button[class*='_button_wkrzh_'] {
+  font-weight: 600;
+}
+button[class*='_button_wkrzh_'][class*='_primary_'] {
+  background-color: var(--chip-on-bg);
+  color: var(--chip-on-fg);
+}
+button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--chip-on-bg) 82%, var(--chip-on-fg));
+}
+/* 표 툴바 내보내기 버튼도 같은 글자 */
+.dt-wrap .sft-export__trigger {
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+  border-radius: var(--control-radius);
+}
