@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutTemplate, Pencil, RotateCcw } from 'lucide-react';
+import { LayoutTemplate, Pencil, RotateCcw, Settings } from 'lucide-react';
+import { Menu } from '@sunghoon_lee/akron-ui';
 import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { openDashboardEditor, useDashEditorMessages } from '../lib/dashboardWindow';
 import { useAuth } from '../auth/AuthContext';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
-import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
+import { Badge, PageHeader, PageSkeleton, useToast } from '../components/ui';
 import { DashboardView } from '../components/dashboard/builder/DashboardView';
 import { DashColorScope } from '../components/dashboard/DashColorScope';
-import { fs } from '../lib/fontScale';
 
 export interface MyDashboard {
   source: 'PERSONAL' | 'USER' | 'ROLE' | 'DEFAULT' | 'BUILTIN';
@@ -88,52 +88,51 @@ export default function Dashboard() {
         }
         onRefresh={load}
         updatedAt={updatedAt}
-        actions={
+        trailing={
           me && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {can('DASHBOARD.READ') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<LayoutTemplate size={14} />}
-                  onClick={() => navigate('/dashboard-admin')}
+            <Menu
+              placement="bottom-end"
+              items={[
+                ...(can('DASHBOARD.READ')
+                  ? [
+                      {
+                        label: '대시보드 관리',
+                        icon: <LayoutTemplate size={15} />,
+                        onClick: () => navigate('/dashboard-admin'),
+                      },
+                    ]
+                  : []),
+                {
+                  label: me.canCustomize
+                    ? '대시보드 편집'
+                    : '대시보드 편집 (관리자가 정한 대시보드)',
+                  icon: <Pencil size={15} />,
+                  disabled: !me.canCustomize,
+                  onClick: () =>
+                    openDashboardEditor('/dashboard/edit', 'mine') || navigate('/dashboard/edit'),
+                },
+                ...(me.hasPersonal && me.canCustomize
+                  ? [
+                      { type: 'separator' as const },
+                      {
+                        label: '기본 대시보드로 되돌리기',
+                        icon: <RotateCcw size={15} />,
+                        onClick: () => void reset(),
+                      },
+                    ]
+                  : []),
+              ]}
+              trigger={
+                <button
+                  type="button"
+                  className="header-icon-btn"
+                  aria-label="대시보드 설정"
+                  title="대시보드 설정"
                 >
-                  대시보드 관리
-                </Button>
-              )}
-              {me.hasPersonal && me.canCustomize && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<RotateCcw size={14} />}
-                  onClick={() => void reset()}
-                >
-                  기본으로
-                </Button>
-              )}
-              {me.canCustomize ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Pencil size={14} />}
-                  onClick={() =>
-                    openDashboardEditor('/dashboard/edit', 'mine') || navigate('/dashboard/edit')
-                  }
-                >
-                  편집
-                </Button>
-              ) : (
-                <span
-                  style={{
-                    fontSize: fs(12),
-                    color: 'var(--ark-color-text-tertiary)',
-                    alignSelf: 'center',
-                  }}
-                >
-                  관리자가 정한 대시보드입니다
-                </span>
-              )}
-            </div>
+                  <Settings size={14} />
+                </button>
+              }
+            />
           )
         }
       />

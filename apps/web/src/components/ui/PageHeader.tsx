@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, RefreshCw } from 'lucide-react';
 import {
   PageHeader as AkronPageHeader,
@@ -13,6 +13,8 @@ export interface PageHeaderProps extends AkronPageHeaderProps {
   updatedAt?: Date | null;
   /** 제목 위 작은 경로 글자는 숨기고 '<' 돌아가기 버튼만 둔다 */
   hideBreadcrumbs?: boolean;
+  /** 새로고침 버튼 오른쪽(맨 끝) — 설정 아이콘 같은 작은 버튼 */
+  trailing?: ReactNode;
 }
 
 function formatUpdatedAt(d: Date) {
@@ -36,6 +38,7 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
     icon,
     breadcrumbs,
     hideBreadcrumbs,
+    trailing,
     ...props
   },
   ref,
@@ -110,6 +113,7 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
       >
         <RefreshCw size={14} className={refreshing ? 'ark-spin' : undefined} />
       </button>
+      {trailing}
     </div>
   ) : (
     actions

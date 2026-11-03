@@ -600,3 +600,23 @@ select:focus {
 [class*='_badge_'][class*='_pulse_'] {
   background-color: var(--ark-color-primary-500) !important;
 }
+
+/* 머리글 새로고침 옆 작은 아이콘 버튼(대시보드 설정 등) — 새로고침 버튼과 같은 모양 */
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.header-icon-btn:hover,
+.header-icon-btn[data-state='open'] {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+}
