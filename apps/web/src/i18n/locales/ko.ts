@@ -50,6 +50,7 @@ export default {
     approvals: '결재함',
     spaces: '공간 예약',
     duties: '업무분장',
+    knowledge: '지식베이스',
     franchise: '가맹점 현황',
     franchiseLeads: '가맹 영업',
     b2bCrm: '기업영업 CRM',

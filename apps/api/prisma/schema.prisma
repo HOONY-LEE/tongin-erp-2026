@@ -2075,3 +2075,65 @@ model CrmActivity {
   @@index([leadId, at])
   @@map("crm_activity")
 }
+
+/// 지식베이스 문서 — 회사 지침·원칙·규정. 올리거나 직접 쓰면 AI가 요약·키워드·개념을 뽑는다
+model KnowledgeDoc {
+  id              String              @id @default(uuid()) @db.Uuid
+  title           String
+  category        String              @default("ETC") // POLICY | HR | SALES | OPERATION | CS | COMPANY | ETC
+  content         String // 마크다운 본문
+  summary         String?
+  keywords        String[]            @default([])
+  sourceName      String?             @map("source_name") // 올린 파일 이름
+  analyzeStatus   String              @default("PENDING") @map("analyze_status") // PENDING | DONE | ERROR
+  analyzeError    String?             @map("analyze_error")
+  analyzedAt      DateTime?           @map("analyzed_at") @db.Timestamptz(6)
+  createdByUserId String?             @map("created_by_user_id") @db.Uuid
+  updatedByName   String?             @map("updated_by_name")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  mentions        KnowledgeMention[]
+  relations       KnowledgeRelation[]
+
+  @@map("knowledge_doc")
+}
+
+/// 지식 개념(온톨로지 노드) — 문서들 사이에서 이름으로 하나로 묶인다
+model KnowledgeConcept {
+  id          String              @id @default(uuid()) @db.Uuid
+  name        String              @unique
+  kind        String              @default("TOPIC") // TERM | RULE | ROLE | PROCESS | TOPIC
+  description String?
+  mentions    KnowledgeMention[]
+  outLinks    KnowledgeRelation[] @relation("KnowledgeRelFrom")
+  inLinks     KnowledgeRelation[] @relation("KnowledgeRelTo")
+
+  @@map("knowledge_concept")
+}
+
+/// 문서가 다루는 개념
+model KnowledgeMention {
+  docId     String           @map("doc_id") @db.Uuid
+  doc       KnowledgeDoc     @relation(fields: [docId], references: [id], onDelete: Cascade)
+  conceptId String           @map("concept_id") @db.Uuid
+  concept   KnowledgeConcept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+
+  @@id([docId, conceptId])
+  @@index([conceptId])
+  @@map("knowledge_mention")
+}
+
+/// 개념 사이 관계(온톨로지 엣지) — 어느 문서에서 나온 관계인지 함께 둔다
+model KnowledgeRelation {
+  id     String           @id @default(uuid()) @db.Uuid
+  docId  String           @map("doc_id") @db.Uuid
+  doc    KnowledgeDoc     @relation(fields: [docId], references: [id], onDelete: Cascade)
+  fromId String           @map("from_id") @db.Uuid
+  from   KnowledgeConcept @relation("KnowledgeRelFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId   String           @map("to_id") @db.Uuid
+  to     KnowledgeConcept @relation("KnowledgeRelTo", fields: [toId], references: [id], onDelete: Cascade)
+  label  String
+
+  @@index([docId])
+  @@map("knowledge_relation")
+}

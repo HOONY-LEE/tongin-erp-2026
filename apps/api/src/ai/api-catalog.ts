@@ -141,7 +141,15 @@ const OVERRIDE: Record<string, string> = {
 };
 
 /** AI에게 열지 않는 라우트 — 로그인·OAuth 콜백·파일 내보내기·AI 자기 자신 */
-const EXCLUDED_CONTROLLERS = new Set(['auth', 'ai', 'agent-blueprints', 'agent-runs', '']);
+// knowledge: AI는 search_knowledge · read_knowledge(업무 도구)로 쓴다
+const EXCLUDED_CONTROLLERS = new Set([
+  'auth',
+  'ai',
+  'agent-blueprints',
+  'agent-runs',
+  'knowledge',
+  '',
+]);
 const EXCLUDED_ROUTES = new Set([
   'calendar.googleAuthUrl',
   'calendar.googleCallback',

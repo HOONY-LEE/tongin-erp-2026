@@ -50,6 +50,7 @@ export default {
     approvals: 'Approvals',
     spaces: 'Space Booking',
     duties: 'Duties',
+    knowledge: 'Knowledge Base',
     franchise: 'Franchisees',
     franchiseLeads: 'Franchise Sales',
     b2bCrm: 'B2B CRM',

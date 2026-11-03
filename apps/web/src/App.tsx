@@ -54,6 +54,7 @@ const PaymentConfirm = lazy(() => import('./pages/PaymentConfirm'));
 const Duties = lazy(() => import('./pages/Duties'));
 const Franchise = lazy(() => import('./pages/Franchise'));
 const Crm = lazy(() => import('./pages/Crm'));
+const Knowledge = lazy(() => import('./pages/Knowledge'));
 const Performance = lazy(() => import('./pages/Performance'));
 const Branches = lazy(() => import('./pages/Branches'));
 const Approvals = lazy(() => import('./pages/Approvals'));
@@ -161,6 +162,7 @@ function Shell() {
           path="/franchise-leads"
           element={page(<Crm key="FRANCHISE" pipeline="FRANCHISE" />)}
         />
+        <Route path="/knowledge" element={page(<Knowledge />)} />
         <Route path="/b2b-crm" element={page(<Crm key="B2B" pipeline="B2B" />)} />
         <Route path="/org-units" element={page(<OrgUnits />)} />
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}

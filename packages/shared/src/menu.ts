@@ -91,6 +91,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     desc: '조직·직원별 역할과 맡은 업무 범위',
   },
   {
+    key: 'knowledge',
+    path: '/knowledge',
+    label: '지식베이스',
+    i18n: 'knowledge',
+    icon: 'Network',
+    selfService: true,
+    category: '공통',
+    desc: '회사 문서·지침·원칙 — AI가 일할 때 근거로 읽는다',
+  },
+  {
     key: 'spaces',
     path: '/spaces',
     label: '공간 예약',
@@ -451,7 +461,17 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
     },
     {
       label: '내 업무',
-      items: ['notices', 'tasks', 'duties', 'approvals', 'drive', 'spaces', 'leave', 'attendance'],
+      items: [
+        'notices',
+        'tasks',
+        'duties',
+        'knowledge',
+        'approvals',
+        'drive',
+        'spaces',
+        'leave',
+        'attendance',
+      ],
     },
     {
       label: '관리',
