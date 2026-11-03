@@ -650,3 +650,47 @@
 .thread > :not(.userTurn) {
   max-width: 86%;
 }
+
+/* 왼쪽 아래 — 이번 달 AI 사용량 */
+.quota {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto; /* 목록이 짧아도 늘 사이드바 맨 아래 */
+  padding: 10px 10px 4px;
+  border-top: 1px solid var(--ark-color-border);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.quotaHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ark-color-text-secondary);
+}
+.quotaHead b {
+  color: var(--ark-color-text);
+}
+.quotaHot {
+  color: #dc2626 !important;
+}
+.quotaBar {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ark-color-text) 10%, transparent);
+  overflow: hidden;
+}
+.quotaFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--chip-on-bg, #111827);
+}
+.quotaFillWarm {
+  background: #f59e0b;
+}
+.quotaFillHot {
+  background: #dc2626;
+}
+.quotaText {
+  color: var(--ark-color-text-tertiary);
+}

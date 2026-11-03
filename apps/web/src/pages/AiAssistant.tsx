@@ -214,6 +214,13 @@ export default function AiAssistant() {
   // 에이전트가 일하는 동안 대화를 다시 읽어 진행(도구 실행·답변)을 따라간다
   const convId = conv?.id;
   const convRunning = conv?.status === 'RUNNING';
+  // 답이 끝날 때마다 사용량 막대를 다시 읽는다
+  useEffect(() => {
+    if (convRunning) return;
+    api<AiStatus>('/ai/status')
+      .then((st) => setStatus((cur) => (cur ? { ...cur, quota: st.quota } : st)))
+      .catch(() => undefined);
+  }, [convRunning, conv?.id]);
   // 대화를 열면 그 대화가 쓰던 모델로 맞춘다(thinking은 모델에 묶여 있어 같은 모델로 이어 가는 게 좋다)
   useEffect(() => {
     if (conv?.model) setModel(conv.model);
@@ -660,6 +667,7 @@ export default function AiAssistant() {
             </div>
           ))}
         </nav>
+        {status?.quota && <QuotaBar quota={status.quota} />}
       </aside>
 
       <section className={styles.main}>
@@ -861,6 +869,43 @@ export default function AiAssistant() {
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+/** 이번 달 AI 사용량 — 한도가 있으면 막대·%·남은 토큰, 없으면 쓴 토큰만 */
+function QuotaBar({ quota }: { quota: { limit: number | null; used: number } }) {
+  const n = (x: number) => x.toLocaleString('ko-KR');
+  const { limit, used } = quota;
+  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : null;
+  return (
+    <div
+      className={styles.quota}
+      title="입력 + 출력 토큰(캐시 읽기 제외) · 매달 1일 다시 채워집니다"
+    >
+      <div className={styles.quotaHead}>
+        <span>이번 달 사용량</span>
+        <b className={pct !== null && pct >= 90 ? styles.quotaHot : undefined}>
+          {pct === null ? '한도 없음' : `${pct}%`}
+        </b>
+      </div>
+      {pct !== null && (
+        <div
+          className={styles.quotaBar}
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span
+            className={`${styles.quotaFill} ${pct >= 90 ? styles.quotaFillHot : pct >= 70 ? styles.quotaFillWarm : ''}`}
+            style={{ width: `${Math.max(pct, used ? 2 : 0)}%` }}
+          />
+        </div>
+      )}
+      <span className={styles.quotaText}>
+        {limit ? `남은 ${n(Math.max(0, limit - used))} / ${n(limit)} 토큰` : `${n(used)} 토큰 사용`}
+      </span>
     </div>
   );
 }
