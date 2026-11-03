@@ -1,7 +1,7 @@
 {
   "name": "tongin-ai-works-desktop",
   "productName": "통인 AI Works",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "통인 AI Works 데스크톱 앱(Electron) — 웹 앱을 창으로 감싼다",
   "main": "main.js",
