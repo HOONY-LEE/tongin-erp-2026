@@ -1140,6 +1140,9 @@
   align-items: flex-start;
   gap: 12px;
 }
+.chatHeadPopout {
+  margin-left: auto;
+}
 .chatLog {
   flex: 1;
   min-height: 0;

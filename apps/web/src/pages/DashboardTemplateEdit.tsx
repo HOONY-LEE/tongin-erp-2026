@@ -6,7 +6,7 @@ import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { leaveDashboardEditor, postDashEditorMessage } from '../lib/dashboardWindow';
 import { useAuth } from '../auth/AuthContext';
-import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
+import { Badge, Button, PageHeader, PageSkeleton, PopoutButton, useToast } from '../components/ui';
 import { DashboardEditor } from '../components/dashboard/builder/DashboardEditor';
 import styles from '../components/dashboard/builder/builder.module.css';
 import { DashColorScope } from '../components/dashboard/DashColorScope';
@@ -132,54 +132,53 @@ export default function DashboardTemplateEdit() {
           </>
         }
         actions={
-          (editable || canDelete) && (
-            <>
-              {canDelete && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<Trash2 size={14} />}
-                  onClick={() => void remove()}
-                >
-                  삭제
-                </Button>
-              )}
-              {editable && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<Settings2 size={14} />}
-                  onClick={openSettings}
-                >
-                  설정
-                </Button>
-              )}
-              {editable && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  loading={saving}
-                  disabled={!tpl.name.trim() || saving}
-                  leftIcon={<Save size={14} />}
-                  onClick={() => void save(false)}
-                >
-                  저장
-                </Button>
-              )}
-              {editable && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={saving}
-                  disabled={!tpl.name.trim() || saving}
-                  rightIcon={<ArrowRight size={14} />}
-                  onClick={() => void save(true)}
-                >
-                  저장하고 다음
-                </Button>
-              )}
-            </>
-          )
+          <>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<Trash2 size={14} />}
+                onClick={() => void remove()}
+              >
+                삭제
+              </Button>
+            )}
+            {editable && (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Settings2 size={14} />}
+                onClick={openSettings}
+              >
+                설정
+              </Button>
+            )}
+            {editable && (
+              <Button
+                variant="outline"
+                size="sm"
+                loading={saving}
+                disabled={!tpl.name.trim() || saving}
+                leftIcon={<Save size={14} />}
+                onClick={() => void save(false)}
+              >
+                저장
+              </Button>
+            )}
+            {editable && (
+              <Button
+                variant="primary"
+                size="sm"
+                loading={saving}
+                disabled={!tpl.name.trim() || saving}
+                rightIcon={<ArrowRight size={14} />}
+                onClick={() => void save(true)}
+              >
+                저장하고 다음
+              </Button>
+            )}
+            <PopoutButton />
+          </>
         }
         heading={
           <PageHeader

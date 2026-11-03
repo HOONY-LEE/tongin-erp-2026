@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileSpreadsheet, Paperclip, SendHorizontal, Sparkles, X } from 'lucide-react';
 import type { AgentGraph } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
-import { Button, useToast } from '../components/ui';
+import { Button, PopoutButton, useToast } from '../components/ui';
 import styles from './agentBuilder.module.css';
 
 const EXAMPLES = [
@@ -222,6 +222,7 @@ export default function AgentCreate() {
             AI와 대화로 만들고, 만든 뒤에는 편집 화면에서 노드로 세부 내용을 고칠 수 있습니다.
           </p>
         </div>
+        <PopoutButton className={styles.chatHeadPopout} />
       </div>
 
       {aiConfigured === false ? (

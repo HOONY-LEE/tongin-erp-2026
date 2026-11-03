@@ -1,6 +1,12 @@
 /* 세그먼트 탭 크기 — 앱 전체 하나: 트랙 38px(검색칸·드롭다운과 같은 높이), 안쪽 칸 30px.
    제목 아래 화면 탭·표 위 상태 탭·보기 전환 모두 같다(akron 기본 lg는 더 높아 섞여 보였다).
    내부 클래스는 해시가 붙어 있어 부분일치 속성 선택자로 지정한다. */
+/* 칸 내용만큼만 — 세로로 쌓는 폼(flex column) 안에서도 줄 전체로 늘어나지 않는다 */
+.large {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+}
 .large [class*='_track_'] {
   height: 38px;
   box-sizing: border-box;

@@ -58,7 +58,7 @@ import {
 } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useTheme } from '../theme/ThemeProvider';
-import { Button, Modal, Spinner, useToast, PageSkeleton } from '../components/ui';
+import { Button, Modal, PopoutButton, Spinner, useToast, PageSkeleton } from '../components/ui';
 import AgentNodeView, { type AgentFlowNode, type RunMark } from '../components/agent/AgentNodeView';
 import { Inspector } from '../components/agent/Inspector';
 import { DND_MIME, ToolExplorer } from '../components/agent/ToolExplorer';
@@ -953,6 +953,7 @@ function Editor() {
         >
           저장
         </Button>
+        <PopoutButton />
       </div>
       {!meta.canEdit && (
         <div className={styles.readonlyBar}>

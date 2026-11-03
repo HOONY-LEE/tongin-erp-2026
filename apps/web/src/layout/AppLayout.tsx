@@ -25,6 +25,7 @@ import { ProfileMenu } from './ProfileMenu';
 import settingsStyles from './settings.module.css';
 import { fs } from '../lib/fontScale';
 import { isDesktop, isMacDesktop } from '../lib/desktop';
+import { isPopoutWindow } from '../lib/popout';
 
 // 설정 창은 누를 때만 읽는다(인사·결재 설정 화면까지 들어 있어 무겁다)
 const SettingsModal = lazy(() => import('./SettingsModal'));
@@ -217,6 +218,23 @@ export default function AppLayout() {
     },
   }));
 
+  // 화면 전체를 쓰는 작업 화면 — AI 비서 대화, 에이전트 만들기·편집(캔버스), 드라이브
+  const flush = under('/ai') || under('/drive') || pathname.startsWith('/agent-builder/');
+
+  // 새 창으로 띄운 작업 화면 — 사이드바·헤더 없이 화면만
+  if (isPopoutWindow())
+    return (
+      <div className={styles.popout}>
+        <div
+          className={[styles.contentInner, flush ? styles.contentInnerFlush : '']
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <ErrorBoundary key={pathname}>{outlet}</ErrorBoundary>
+        </div>
+      </div>
+    );
+
   return (
     <div
       className={[
@@ -380,10 +398,7 @@ export default function AppLayout() {
             className={[
               styles.contentInner,
               pathname.startsWith('/calendar') ? styles.contentInnerTight : '',
-              // 화면 전체를 쓰는 작업 화면 — AI 비서 대화, 에이전트 만들기·편집(캔버스)
-              under('/ai') || pathname.startsWith('/agent-builder/')
-                ? styles.contentInnerFlush
-                : '',
+              flush ? styles.contentInnerFlush : '',
             ]
               .filter(Boolean)
               .join(' ')}

@@ -48,7 +48,7 @@ import {
   previewKind,
   uploadDriveFile,
 } from '../lib/drive';
-import { Button, useToast } from '../components/ui';
+import { Button, PopoutButton, useToast } from '../components/ui';
 import {
   MoveModal,
   NameModal,
@@ -861,6 +861,7 @@ export default function Drive() {
               </button>
             )}
           </form>
+          <PopoutButton className={styles.popout} />
         </div>
 
         {view === 'google' ? (

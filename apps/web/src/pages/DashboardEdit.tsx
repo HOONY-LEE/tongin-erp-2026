@@ -6,7 +6,7 @@ import type { DashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { leaveDashboardEditor, postDashEditorMessage } from '../lib/dashboardWindow';
 import { useAuth } from '../auth/AuthContext';
-import { Badge, Button, PageHeader, PageSkeleton, useToast } from '../components/ui';
+import { Badge, Button, PageHeader, PageSkeleton, PopoutButton, useToast } from '../components/ui';
 import styles from '../components/dashboard/builder/builder.module.css';
 import { DashboardEditor } from '../components/dashboard/builder/DashboardEditor';
 import type { MyDashboard } from './Dashboard';
@@ -104,6 +104,7 @@ export default function DashboardEdit() {
             >
               저장
             </Button>
+            <PopoutButton />
           </>
         }
         heading={
