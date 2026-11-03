@@ -92,8 +92,9 @@ export function DesktopDownloadModal({ onClose }: { onClose: () => void }) {
         <div className={styles.note}>
           <b>처음 설치할 때</b>
           <span>
-            맥: dmg를 열어 앱을 응용 프로그램 폴더로 끈 뒤, 처음 한 번은 앱을 <b>우클릭 → 열기</b>로
-            엽니다.
+            맥: dmg를 열어 앱을 응용 프로그램 폴더로 끈 뒤 엽니다. &lsquo;확인되지 않은
+            개발자&rsquo; 창이 뜨면 <b>시스템 설정 → 개인정보 보호 및 보안</b> 아래쪽의{' '}
+            <b>그래도 열기</b>를 한 번 누릅니다.
           </span>
           <span>
             윈도우: 설치 파일 실행 후 &lsquo;Windows의 PC 보호&rsquo; 창이 뜨면{' '}
