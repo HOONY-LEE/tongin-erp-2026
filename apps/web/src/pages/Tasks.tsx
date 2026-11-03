@@ -471,18 +471,21 @@ export default function Tasks() {
           rows={listRows as unknown as Row[]}
           loading={loading}
           onRowClick={(r) => detail.open(String(r.id))}
-          filters={
-            <div className={styles.statusFilter}>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
-                options={statusOptions}
-                aria-label="상태"
-              />
-            </div>
-          }
           viewSwitch={viewSwitch}
-          tabs={scopeTabs}
+          // 범위 탭(내 업무·우리 팀·전체) 바로 오른쪽에 상태 고르기
+          tabs={
+            <>
+              {scopeTabs}
+              <div className={styles.statusFilter}>
+                <Select
+                  value={status}
+                  onValueChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
+                  options={statusOptions}
+                  aria-label="상태"
+                />
+              </div>
+            </>
+          }
           toolbarActions={addButton}
           exportable
           exportFileName="팀업무"

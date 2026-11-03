@@ -331,7 +331,8 @@ html[data-font-size='lg'] {
 .dt-wrap .sft-export__trigger,
 .dt-wrap .sft-toolbar__right button:not([role='checkbox']),
 .dt-wrap .dt-toolbar-filters button:not([role='checkbox']),
-.dt-wrap .dt-toolbar-filters [role='combobox'] {
+.dt-wrap .dt-toolbar-filters [role='combobox'],
+.dt-wrap .dt-toolbar-tabs [role='combobox'] {
   height: 38px;
   box-sizing: border-box;
 }
