@@ -146,8 +146,7 @@ export function KnowledgeGraphView({
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      const showLabel =
-        isFocus || isNear || match || n.type === 'doc' || scale > 2.4;
+      const showLabel = isFocus || isNear || match || n.type === 'doc' || scale > 2.4;
       if (showLabel) {
         const size = (isFocus ? 13 : n.type === 'doc' ? 12 : 11) / scale;
         ctx.font = `${isFocus || n.type === 'doc' ? 600 : 500} ${size}px system-ui, -apple-system, sans-serif`;
