@@ -705,3 +705,12 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   align-items: center;
   white-space: nowrap;
 }
+
+/* ── 화면 머리글(akron PageHeader) — '<' 돌아가기·아이콘, 제목, 오른쪽 버튼을 한 줄 가운데에 ──
+   akron 기본은 위쪽 맞춤이라 아이콘 칸(40px)과 제목 줄 높이가 달라 '<'가 제목보다 위·아래로 어긋났다 */
+[class*='_mainRow_bs28e_'] {
+  align-items: center !important;
+}
+[class*='_mainRow_bs28e_'] > [class*='_iconSlot_'] {
+  align-self: center;
+}
