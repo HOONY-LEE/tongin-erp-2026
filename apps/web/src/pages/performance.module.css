@@ -281,7 +281,7 @@
 }
 .cfgRow {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) 70px minmax(0, 1.2fr) 32px;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) 120px minmax(0, 1.2fr) 32px;
   align-items: center;
   gap: 8px;
 }
@@ -346,4 +346,37 @@
   .tableCard {
     overflow-x: auto;
   }
+}
+
+.cfgWeight {
+  display: grid;
+  grid-template-columns: 56px auto;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 한꺼번에 정하기 — 대상 고르기 */
+.bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pickList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+.pickGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pickPeople {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 10px;
+  padding-left: 24px;
 }

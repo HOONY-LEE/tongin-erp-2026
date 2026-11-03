@@ -16,8 +16,11 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   Button,
+  Checkbox,
   DataTable,
+  Input,
   ListToolbar,
+  Modal,
   PageHeader,
   PageSkeleton,
   SegmentedControl,
@@ -126,6 +129,11 @@ export default function Performance() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
+  // 여러 명에게 한꺼번에 — 대상 고르기(조직·직접) → 지표 구성 창
+  const [bulkPick, setBulkPick] = useState(false);
+  const [bulk, setBulk] = useState<{ ids: string[]; label: string; template: KpiResult } | null>(
+    null,
+  );
   const { updatedAt, touch } = useUpdatedAt();
 
   const load = useCallback(async () => {
@@ -311,10 +319,172 @@ export default function Performance() {
           exportFileName={`성과평가_${period}`}
           filters={groupSwitch}
           tabs={tabs}
+          toolbarActions={
+            data?.canEdit ? (
+              <Button variant="primary" size="sm" onClick={() => setBulkPick(true)}>
+                지표 한꺼번에 정하기
+              </Button>
+            ) : undefined
+          }
           onRowClick={(r) => setParam({ scope: 'EMPLOYEE', id: String(r.id) })}
         />
       )}
+      {bulkPick && data && (
+        <BulkTargetModal
+          orgs={data.orgs}
+          people={people}
+          onClose={() => setBulkPick(false)}
+          onNext={(ids, label) => {
+            const template = people.find((x) => x.id === ids[0]);
+            setBulkPick(false);
+            if (template) setBulk({ ids, label, template });
+          }}
+        />
+      )}
+      {bulk && (
+        <KpiConfigModal
+          scope="EMPLOYEE"
+          scopeId={bulk.ids[0]}
+          name={bulk.label}
+          period={period}
+          catalog={KPI_CATALOG}
+          current={bulk.template}
+          bulk={{ scopeIds: bulk.ids }}
+          onClose={() => setBulk(null)}
+          onSaved={() => {
+            setBulk(null);
+            void load();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** 한꺼번에 정할 직원 고르기 — 소속 조직 전체 또는 직접(조직별 묶음 체크) */
+function BulkTargetModal({
+  orgs,
+  people,
+  onClose,
+  onNext,
+}: {
+  orgs: KpiResult[];
+  people: KpiResult[];
+  onClose: () => void;
+  onNext: (ids: string[], label: string) => void;
+}) {
+  const [mode, setMode] = useState<'org' | 'pick'>('org');
+  const [orgId, setOrgId] = useState(orgs[0]?.id ?? '');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [q, setQ] = useState('');
+  const orgMembers = people.filter((p) => p.orgUnitId === orgId);
+  const groups = useMemo(() => {
+    const by = new Map<string, KpiResult[]>();
+    for (const p of people) {
+      if (q.trim() && !p.name.includes(q.trim()) && !(p.orgUnitName ?? '').includes(q.trim()))
+        continue;
+      const k = p.orgUnitName ?? '소속 없음';
+      by.set(k, [...(by.get(k) ?? []), p]);
+    }
+    return [...by.entries()];
+  }, [people, q]);
+  const toggle = (ids: string[], on: boolean) =>
+    setPicked((s) => {
+      const n = new Set(s);
+      for (const id of ids) {
+        if (on) n.add(id);
+        else n.delete(id);
+      }
+      return n;
+    });
+  const ids = mode === 'org' ? orgMembers.map((p) => p.id) : [...picked];
+  const label =
+    mode === 'org'
+      ? `${orgs.find((o) => o.id === orgId)?.name ?? ''} 구성원 ${ids.length}명`
+      : `고른 ${ids.length}명`;
+
+  return (
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      size="md"
+      title="지표 한꺼번에 정하기 — 대상 고르기"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            취소
+          </Button>
+          <Button variant="primary" disabled={!ids.length} onClick={() => onNext(ids, label)}>
+            다음 ({ids.length}명)
+          </Button>
+        </>
+      }
+    >
+      <div className={styles.bulk}>
+        <SegmentedControl
+          value={mode}
+          onChange={(v) => setMode(v as 'org' | 'pick')}
+          options={[
+            { value: 'org', label: '소속 조직 전체' },
+            { value: 'pick', label: '직접 고르기' },
+          ]}
+        />
+        {mode === 'org' ? (
+          <>
+            <Select
+              value={orgId}
+              onValueChange={setOrgId}
+              options={orgs.map((o) => ({
+                value: o.id,
+                label: `${o.name} (${people.filter((p) => p.orgUnitId === o.id).length}명)`,
+              }))}
+            />
+            <p className={styles.hint}>
+              {orgMembers.length
+                ? orgMembers.map((p) => p.name).join(', ')
+                : '이 조직에 바로 속한 직원이 없습니다.'}
+            </p>
+          </>
+        ) : (
+          <>
+            <Input value={q} placeholder="이름·조직 찾기" onChange={(e) => setQ(e.target.value)} />
+            <div className={styles.pickList}>
+              {groups.map(([org, list]) => {
+                const all = list.every((p) => picked.has(p.id));
+                return (
+                  <div key={org} className={styles.pickGroup}>
+                    <Checkbox
+                      checked={all}
+                      label={`${org} (${list.length})`}
+                      onCheckedChange={(c) =>
+                        toggle(
+                          list.map((p) => p.id),
+                          c === true,
+                        )
+                      }
+                    />
+                    <div className={styles.pickPeople}>
+                      {list.map((p) => (
+                        <Checkbox
+                          key={p.id}
+                          checked={picked.has(p.id)}
+                          label={`${p.name}${p.sub ? ` ${p.sub}` : ''}`}
+                          onCheckedChange={(c) => toggle([p.id], c === true)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+        <p className={styles.hint}>
+          고른 사람 모두에게 같은 지표·목표·반영 비율을 정합니다. 처음 값은 첫 사람의 지금 구성이고,
+          직접 지표 실적은 사람마다 상세에서 넣습니다.
+        </p>
+      </div>
+    </Modal>
   );
 }
 

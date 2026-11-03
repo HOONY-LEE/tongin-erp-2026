@@ -32,6 +32,7 @@ export function KpiConfigModal({
   period,
   catalog,
   current,
+  bulk,
   onClose,
   onSaved,
 }: {
@@ -41,6 +42,8 @@ export function KpiConfigModal({
   period: string;
   catalog: KpiCatalogItem[];
   current: KpiResult;
+  /** 여러 명(조직)에 한꺼번에 — 실적은 사람마다 넣은 것을 그대로 둔다 */
+  bulk?: { scopeIds: string[] };
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -70,30 +73,53 @@ export function KpiConfigModal({
       (l) => !(num(l.target) > 0) || !(num(l.weight) >= 1) || (!l.auto && !l.label.trim()),
     );
 
+  // 가중치 → 종합 점수 반영 비율(%)
+  const wsum = lines.reduce((t, l) => t + (num(l.weight) >= 1 ? num(l.weight) : 0), 0);
+  const share = (l: Line) =>
+    wsum && num(l.weight) >= 1 ? `${Math.round((num(l.weight) / wsum) * 100)}%` : '—';
+
   const save = async () => {
     setBusy(true);
+    const metrics = lines.map((l) => ({
+      key: l.key,
+      ...(l.auto ? {} : { label: l.label.trim(), unit: l.unit.trim() }),
+      target: num(l.target),
+      weight: Math.min(10, Math.max(1, Math.round(num(l.weight)))),
+    }));
     try {
-      await api('/kpi', {
-        method: 'PUT',
-        body: JSON.stringify({
-          scope,
-          scopeId,
-          period,
-          metrics: lines.map((l) => ({
-            key: l.key,
-            ...(l.auto ? {} : { label: l.label.trim(), unit: l.unit.trim() }),
-            target: num(l.target),
-            weight: Math.min(10, Math.max(1, Math.round(num(l.weight)))),
-          })),
-          actuals: Object.fromEntries(
-            lines
-              .filter((l) => !l.auto && l.actual.trim() !== '' && Number.isFinite(num(l.actual)))
-              .map((l) => [l.key, num(l.actual)]),
-          ),
-          note: note.trim() || null,
-        }),
+      if (bulk)
+        await api('/kpi/bulk', {
+          method: 'PUT',
+          body: JSON.stringify({
+            scope,
+            scopeIds: bulk.scopeIds,
+            period,
+            metrics,
+            note: note.trim() || null,
+          }),
+        });
+      else
+        await api('/kpi', {
+          method: 'PUT',
+          body: JSON.stringify({
+            scope,
+            scopeId,
+            period,
+            metrics,
+            actuals: Object.fromEntries(
+              lines
+                .filter((l) => !l.auto && l.actual.trim() !== '' && Number.isFinite(num(l.actual)))
+                .map((l) => [l.key, num(l.actual)]),
+            ),
+            note: note.trim() || null,
+          }),
+        });
+      toast({
+        type: 'success',
+        title: bulk
+          ? `${bulk.scopeIds.length}명에게 지표를 정했습니다`
+          : '성과 지표를 저장했습니다',
       });
-      toast({ type: 'success', title: '성과 지표를 저장했습니다' });
       onSaved();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
@@ -105,7 +131,12 @@ export function KpiConfigModal({
   const reset = async () => {
     setBusy(true);
     try {
-      await api(`/kpi/${scope}/${scopeId}?period=${period}`, { method: 'DELETE' });
+      if (bulk)
+        await api('/kpi/bulk-reset', {
+          method: 'POST',
+          body: JSON.stringify({ scope, scopeIds: bulk.scopeIds, period }),
+        });
+      else await api(`/kpi/${scope}/${scopeId}?period=${period}`, { method: 'DELETE' });
       toast({
         type: 'success',
         title: scope === 'ORG' ? '기본 구성으로 되돌렸습니다' : '소속 조직 구성을 따르게 했습니다',
@@ -123,12 +154,16 @@ export function KpiConfigModal({
       open
       onOpenChange={(o) => !o && onClose()}
       size="lg"
-      title={`${name} · 지표 구성·실적 입력 (${period.replace('-Q', '년 ')}분기)`}
+      title={`${name} · ${bulk ? '지표 한꺼번에 정하기' : '지표 구성·실적 입력'} (${period.replace('-Q', '년 ')}분기)`}
       footer={
         <>
-          {current.source === 'OWN' && (
+          {(bulk || current.source === 'OWN') && (
             <Button variant="ghost" onClick={() => void reset()} style={{ marginRight: 'auto' }}>
-              {scope === 'ORG' ? '기본 구성으로 되돌리기' : '조직 구성 따르기'}
+              {scope === 'ORG'
+                ? '기본 구성으로 되돌리기'
+                : bulk
+                  ? '모두 조직 구성 따르기'
+                  : '조직 구성 따르기'}
             </Button>
           )}
           <Button variant="ghost" onClick={onClose}>
@@ -144,7 +179,7 @@ export function KpiConfigModal({
         <div className={`${styles.cfgRow} ${styles.cfgHead}`}>
           <span>지표</span>
           <span>목표</span>
-          <span>가중치</span>
+          <span>가중치(반영 비율)</span>
           <span>실적(직접 지표)</span>
           <span />
         </div>
@@ -177,14 +212,19 @@ export function KpiConfigModal({
               aria-label={`${l.label} 목표`}
               onChange={(e) => set(i, { target: e.target.value })}
             />
-            <Input
-              inputMode="numeric"
-              value={l.weight}
-              aria-label={`${l.label} 가중치`}
-              onChange={(e) => set(i, { weight: e.target.value })}
-            />
+            <span className={styles.cfgWeight}>
+              <Input
+                inputMode="numeric"
+                value={l.weight}
+                aria-label={`${l.label} 가중치`}
+                onChange={(e) => set(i, { weight: e.target.value })}
+              />
+              <span className={styles.muted}>{share(l)}</span>
+            </span>
             {l.auto ? (
               <span className={styles.muted}>ERP 기록에서 계산</span>
+            ) : bulk ? (
+              <span className={styles.muted}>사람마다 상세에서 입력</span>
             ) : (
               <Input
                 inputMode="decimal"

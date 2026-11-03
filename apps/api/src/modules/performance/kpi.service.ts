@@ -563,7 +563,24 @@ export class KpiService {
   }
 
   async save(p: AuthPrincipal, input: KpiSaveInput) {
+    const { scopeId, ...rest } = input;
+    return this.saveMany(p, { ...rest, scopeIds: [scopeId] });
+  }
+
+  /**
+   * 여러 조직·직원에 같은 지표 구성을 한 번에 — 소속 조직 직원 전체나 고른 사람들.
+   * actuals를 안 보내면(한꺼번에 정할 때) 사람마다 이미 넣어 둔 직접 지표 실적은 그대로 둔다.
+   */
+  async saveMany(
+    p: AuthPrincipal,
+    input: Omit<KpiSaveInput, 'scopeId' | 'actuals'> & {
+      scopeIds: string[];
+      actuals?: Record<string, number | null>;
+    },
+  ) {
     if (!this.canEdit(p)) throw new ForbiddenException('성과 지표를 정할 권한이 없습니다.');
+    const ids = [...new Set(input.scopeIds)];
+    if (!ids.length) throw new BadRequestException('적용할 대상을 골라 주세요.');
     this.range(input.period);
     const metrics = input.metrics.map((m) => ({
       key: m.key,
@@ -584,31 +601,53 @@ export class KpiService {
         throw new BadRequestException('직접 지표는 이름을 넣어 주세요.');
       if (!(m.target > 0)) throw new BadRequestException('목표는 0보다 커야 합니다.');
     }
-    if (input.scope === 'ORG') {
-      if (!(await this.prisma.orgUnit.findUnique({ where: { id: input.scopeId } })))
-        throw new NotFoundException('조직을 찾을 수 없습니다.');
-    } else if (!(await this.prisma.employee.findUnique({ where: { id: input.scopeId } })))
-      throw new NotFoundException('직원을 찾을 수 없습니다.');
+    const found =
+      input.scope === 'ORG'
+        ? await this.prisma.orgUnit.count({ where: { id: { in: ids } } })
+        : await this.prisma.employee.count({ where: { id: { in: ids } } });
+    if (found !== ids.length)
+      throw new NotFoundException(
+        input.scope === 'ORG' ? '조직을 찾을 수 없습니다.' : '직원을 찾을 수 없습니다.',
+      );
     const keys = new Set(metrics.filter((m) => !isKpiAutoKey(m.key)).map((m) => m.key));
-    const actuals = Object.fromEntries(
-      Object.entries(input.actuals ?? {}).filter(
-        ([k, v]) => keys.has(k) && typeof v === 'number' && Number.isFinite(v),
-      ),
+    const clean = (a: Record<string, unknown> | null | undefined) =>
+      Object.fromEntries(
+        Object.entries(a ?? {}).filter(
+          ([k, v]) => keys.has(k) && typeof v === 'number' && Number.isFinite(v),
+        ),
+      );
+    const existing = input.actuals
+      ? []
+      : await this.prisma.kpiSet.findMany({
+          where: { scope: input.scope, scopeId: { in: ids }, period: input.period },
+          select: { scopeId: true, actuals: true },
+        });
+    const keep = new Map(existing.map((e) => [e.scopeId, this.parseActuals(e.actuals)]));
+    await this.prisma.$transaction(
+      ids.map((scopeId) => {
+        const data = {
+          metrics: metrics as unknown as Prisma.InputJsonValue,
+          actuals: clean(input.actuals ?? keep.get(scopeId)) as Prisma.InputJsonValue,
+          note: input.note?.trim() || null,
+          updatedByUserId: p.userId,
+        };
+        return this.prisma.kpiSet.upsert({
+          where: { scope_scopeId_period: { scope: input.scope, scopeId, period: input.period } },
+          create: { scope: input.scope, scopeId, period: input.period, ...data },
+          update: data,
+        });
+      }),
     );
-    const data = {
-      metrics: metrics as unknown as Prisma.InputJsonValue,
-      actuals: actuals as Prisma.InputJsonValue,
-      note: input.note?.trim() || null,
-      updatedByUserId: p.userId,
-    };
-    await this.prisma.kpiSet.upsert({
-      where: {
-        scope_scopeId_period: { scope: input.scope, scopeId: input.scopeId, period: input.period },
-      },
-      create: { scope: input.scope, scopeId: input.scopeId, period: input.period, ...data },
-      update: data,
+    return { ok: true, saved: ids.length };
+  }
+
+  /** 여러 대상 한꺼번에 되돌리기 — 직원은 다시 소속 조직 구성을 따른다 */
+  async resetMany(p: AuthPrincipal, scope: KpiScope, scopeIds: string[], period: string) {
+    if (!this.canEdit(p)) throw new ForbiddenException('성과 지표를 정할 권한이 없습니다.');
+    const r = await this.prisma.kpiSet.deleteMany({
+      where: { scope, scopeId: { in: [...new Set(scopeIds)] }, period },
     });
-    return { ok: true };
+    return { ok: true, reset: r.count };
   }
 
   /** 직접 정한 구성 지우기 — 다시 기본(조직) / 소속 조직 구성(직원)을 따른다 */

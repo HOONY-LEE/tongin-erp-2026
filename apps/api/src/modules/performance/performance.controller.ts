@@ -152,6 +152,44 @@ class KpiSaveDto {
   note?: string | null;
 }
 
+/** 여러 조직·직원에 같은 지표 구성 — 실적(actuals)은 안 받는다(사람마다 넣은 것 유지) */
+class KpiBulkDto {
+  @IsIn(KPI_SCOPES)
+  scope!: KpiScope;
+
+  @IsArray()
+  @ArrayMaxSize(1000)
+  @IsUUID('all', { each: true })
+  scopeIds!: string[];
+
+  @Matches(/^\d{4}-Q[1-4]$/)
+  period!: string;
+
+  @IsArray()
+  @ArrayMaxSize(KPI_MAX_METRICS)
+  @ValidateNested({ each: true })
+  @Type(() => KpiMetricDto)
+  metrics!: KpiMetricDto[];
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MaxLength(1000)
+  note?: string | null;
+}
+class KpiBulkResetDto {
+  @IsIn(KPI_SCOPES)
+  scope!: KpiScope;
+
+  @IsArray()
+  @ArrayMaxSize(1000)
+  @IsUUID('all', { each: true })
+  scopeIds!: string[];
+
+  @Matches(/^\d{4}-Q[1-4]$/)
+  period!: string;
+}
+
 const periodOr = (p?: string) => (p && /^\d{4}-Q[1-4]$/.test(p) ? p : kpiPeriodOf());
 
 /** 업무 분장 — 보기는 누구나, 정하기는 DUTY.MANAGE(서비스에서 확인) */
@@ -234,6 +272,19 @@ export class KpiController {
   @RequirePermissions('HR.UPDATE')
   save(@CurrentUser() u: AuthPrincipal, @Body() dto: KpiSaveDto) {
     return this.kpi.save(u, dto);
+  }
+
+  /** 소속 조직 직원 전체·고른 사람들에게 한 번에 */
+  @Put('bulk')
+  @RequirePermissions('HR.UPDATE')
+  saveBulk(@CurrentUser() u: AuthPrincipal, @Body() dto: KpiBulkDto) {
+    return this.kpi.saveMany(u, dto);
+  }
+
+  @Post('bulk-reset')
+  @RequirePermissions('HR.UPDATE')
+  resetBulk(@CurrentUser() u: AuthPrincipal, @Body() dto: KpiBulkResetDto) {
+    return this.kpi.resetMany(u, dto.scope, dto.scopeIds, dto.period);
   }
 
   @Delete(':scope/:id')
