@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { ArrowRight, CalendarClock, Search } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
@@ -26,22 +34,27 @@ import {
   RecordDetail,
   SegmentedControl,
   Select,
-  StatusBadge,
   useToast,
   type Column,
   type FormField,
   type Row,
-  type StatusMap,
 } from '../components/ui';
 import { TaskComments } from '../components/work/TaskComments';
+import { AssignModal, TaskHistory } from '../components/work/TaskHistory';
+import {
+  TASK_PRIORITY_META,
+  TASK_STATUS_COLOR,
+  TaskPriorityLabel,
+  TaskStatusLabel,
+} from '../components/work/TaskIcons';
 import styles from './work.module.css';
 
 interface Task {
   id: string;
   title: string;
   description: string | null;
-  teamOrgId: string;
-  team: OrgRef;
+  teamOrgId: string | null;
+  team: OrgRef | null;
   assigneeEmpId: string | null;
   assignee: PersonRef | null;
   requesterEmpId: string | null;
@@ -56,33 +69,11 @@ interface Task {
   createdAt: string;
 }
 
-const STATUS: StatusMap = {
-  TODO: { label: TASK_STATUS_LABEL.TODO, color: 'neutral' },
-  IN_PROGRESS: { label: TASK_STATUS_LABEL.IN_PROGRESS, color: 'info' },
-  HOLD: { label: TASK_STATUS_LABEL.HOLD, color: 'warning' },
-  DONE: { label: TASK_STATUS_LABEL.DONE, color: 'success' },
-};
-const PRIORITY: StatusMap = {
-  A: { label: 'A 긴급', color: 'error' },
-  B: { label: 'B 보통', color: 'info' },
-  C: { label: 'C 낮음', color: 'neutral' },
-};
-
 type Scope = 'mine' | 'team' | 'all';
 type View = 'list' | 'board';
 
-/** 칸반 칸 색(상태 점) — 할 일 회색 · 진행 중 파랑 · 완료 초록 · 보류 주황 */
-const STATUS_COLOR: Record<TaskStatus, string> = {
-  TODO: '#9ca3af',
-  IN_PROGRESS: '#3b82f6',
-  DONE: '#22c55e',
-  HOLD: '#f59e0b',
-};
-const PRIORITY_DOT: Record<Task['priority'], { label: string; color: string }> = {
-  A: { label: '긴급', color: '#ef4444' },
-  B: { label: '보통', color: '#3b82f6' },
-  C: { label: '낮음', color: '#9ca3af' },
-};
+/** 칸반 칸 색(상태 점) — 리니어처럼: 할 일 회색 · 진행 중 노랑 · 완료 보라 · 보류 주황 */
+const STATUS_COLOR = TASK_STATUS_COLOR;
 
 /** 기한 — 끝나지 않은 일만 지남·임박을 색으로 */
 function Due({ t }: { t: Task }) {
@@ -141,6 +132,9 @@ export default function Tasks() {
   const [editing, setEditing] = useState<Task | 'new' | null>(null);
   // 칸반 칸 아래 '+ 업무 추가'로 열면 그 칸의 상태로 시작한다
   const [newStatus, setNewStatus] = useState<TaskStatus>('TODO');
+  // 담당 넘기기 창 · 이력 다시 읽기 신호
+  const [assigning, setAssigning] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
 
   const canTeam = can('TASK.READ');
   const effScope: Scope = canTeam ? scope : 'mine';
@@ -179,12 +173,15 @@ export default function Tasks() {
   const fields: FormField[] = useMemo(
     () => [
       { name: 'title', label: '업무', required: true },
+      // 팀과 담당자는 따로 — 담당자가 그 팀 사람이 아니어도 된다(다른 팀에 맡기는 일 등)
       {
         name: 'teamOrgId',
         label: '팀',
-        required: true,
         type: 'select',
         options: dir.teamOptions,
+        searchable: true,
+        placeholder: '팀 찾기(선택)',
+        alwaysShow: true,
         pairWithNext: true,
       },
       {
@@ -192,17 +189,18 @@ export default function Tasks() {
         label: '담당자',
         type: 'select',
         optionGroups: dir.peopleGroups,
+        searchable: true,
+        placeholder: '이름으로 찾기',
         alwaysShow: true,
       },
       {
         name: 'priority',
         label: '우선순위',
         type: 'select',
-        options: [
-          { value: 'A', label: 'A 긴급' },
-          { value: 'B', label: 'B 보통' },
-          { value: 'C', label: 'C 낮음' },
-        ],
+        options: (['A', 'B', 'C'] as const).map((v) => ({
+          value: v,
+          label: TASK_PRIORITY_META[v].label,
+        })),
         alwaysShow: true,
         pairWithNext: true,
       },
@@ -210,7 +208,7 @@ export default function Tasks() {
       {
         name: 'status',
         label: '상태',
-        type: 'select',
+        type: 'chips',
         options: TASK_STATUS.map((s) => ({ value: s, label: TASK_STATUS_LABEL[s] })),
         // 칸반 칸에서 '+ 업무 추가'로 열면 그 칸 상태로 채워져 있다 — 바로 보이게
         alwaysShow: true,
@@ -229,6 +227,7 @@ export default function Tasks() {
         label: '요청자(다른 팀이 맡긴 일)',
         type: 'select',
         optionGroups: dir.peopleGroups,
+        searchable: true,
       },
       { name: 'description', label: '내용', type: 'textarea' },
     ],
@@ -287,7 +286,8 @@ export default function Tasks() {
       initialValues={
         editing === 'new'
           ? {
-              teamOrgId: user?.employeeOrgUnitId ?? '',
+              // 팀은 골라야 들어간다(선택) — 담당자 소속과 상관없이
+              teamOrgId: '',
               assigneeEmpId: user?.employeeId ?? '',
               priority: 'B',
               status: newStatus,
@@ -331,6 +331,11 @@ export default function Tasks() {
                   </Button>
                 )}
                 {canEdit && (
+                  <Button variant="secondary" size="sm" onClick={() => setAssigning(true)}>
+                    담당 넘기기
+                  </Button>
+                )}
+                {canEdit && (
                   <Button variant="secondary" size="sm" onClick={() => setEditing(d)}>
                     수정
                   </Button>
@@ -351,10 +356,10 @@ export default function Tasks() {
               ? [
                   {
                     items: [
-                      { label: '상태', value: <StatusBadge value={d.status} map={STATUS} /> },
+                      { label: '상태', value: <TaskStatusLabel status={d.status} /> },
                       {
                         label: '우선순위',
-                        value: <StatusBadge value={d.priority} map={PRIORITY} />,
+                        value: <TaskPriorityLabel priority={d.priority} />,
                       },
                       { label: '팀', value: d.team?.name },
                       { label: '담당자', value: d.assignee?.name },
@@ -389,9 +394,29 @@ export default function Tasks() {
               : []
           }
         >
+          {d && (
+            <TaskHistory
+              taskId={d.id}
+              reloadKey={`${historyKey}:${d.status}:${d.assigneeEmpId}:${d.teamOrgId}`}
+            />
+          )}
           {d && <TaskComments taskId={d.id} />}
         </RecordDetail>
         {formModal}
+        {assigning && d && (
+          <AssignModal
+            taskId={d.id}
+            currentEmpId={d.assigneeEmpId}
+            onClose={() => setAssigning(false)}
+            onDone={() => {
+              setAssigning(false);
+              setHistoryKey((k) => k + 1);
+              // 넘긴 뒤 내 목록에서 빠질 수 있어 상세는 따로 다시 읽는다
+              setSingle(null);
+              void load();
+            }}
+          />
+        )}
       </>
     );
   }
@@ -408,13 +433,15 @@ export default function Tasks() {
     {
       title: '상태',
       width: 100,
-      render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
+      render: (r) => <TaskStatusLabel status={r.status as TaskStatus} />,
+      exportValue: (r) => TASK_STATUS_LABEL[r.status as TaskStatus],
     },
     {
-      title: '순위',
+      title: '우선순위',
       width: 100,
       dataIndex: 'priority',
-      render: (r) => <StatusBadge value={String(r.priority)} map={PRIORITY} />,
+      render: (r) => <TaskPriorityLabel priority={(r as unknown as Task).priority} />,
+      exportValue: (r) => TASK_PRIORITY_META[(r as unknown as Task).priority]?.label ?? '',
     },
     { title: '업무', dataIndex: 'title', flex: 1, minWidth: 240 },
     { title: '사업', dataIndex: 'project', minWidth: 130 },
@@ -542,14 +569,12 @@ function Avatar({ name }: { name: string }) {
 
 /** 칸반 카드 아래 — 우선순위·사업 / 기한·등록일 / 요청 → 담당 */
 function CardFooter({ task }: { task: Task }) {
-  const p = PRIORITY_DOT[task.priority];
   const info = task.dueDate && task.status !== 'DONE' ? ddayInfo(task.dueDate, 3) : null;
   return (
     <div className={styles.kFooter}>
       <div className={styles.kRow}>
-        <span className={styles.kPriority} style={{ color: p.color }}>
-          <span className={styles.kDot} style={{ background: p.color }} />
-          {p.label}
+        <span className={styles.kPriority}>
+          <TaskPriorityLabel priority={task.priority} size={12} />
         </span>
         <span className={styles.kChip}>{task.project || task.team?.name}</span>
       </div>
@@ -635,6 +660,29 @@ function Board({
         .map((r): KanbanCard => ({ id: r.id, title: r.title, footer: <CardFooter task={r} /> })),
     }));
   const [cols, setCols] = useState<KanbanColumn[]>(() => make(shown));
+  // 카드가 칸을 꽉 채워 스크롤이 생긴 칸은 '+ 업무 추가'를 숨긴다(억지로 자리를 남기지 않게)
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const mark = () => {
+      for (const col of wrap.querySelectorAll<HTMLElement>("[class*='_column_sj7t4']")) {
+        const list = col.querySelector<HTMLElement>("[class*='_cardList_sj7t4']");
+        const add = col.querySelector<HTMLElement>("[class*='_addButton_sj7t4']");
+        if (!list) continue;
+        // 버튼 높이만큼 남는 자리가 없으면(목록이 스크롤되거나 버튼이 칸 밖으로 밀리면) 숨김
+        const colBox = col.getBoundingClientRect();
+        const full =
+          list.scrollHeight > list.clientHeight + 1 ||
+          (!!add && list.getBoundingClientRect().bottom + 8 + add.offsetHeight > colBox.bottom);
+        col.classList.toggle('kanban-col-full', full);
+      }
+    };
+    mark();
+    const ro = new ResizeObserver(mark);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [cols]);
   const key = shown.map((r) => `${r.id}:${r.status}:${r.priority}:${r.dueDate}`).join('|');
   useEffect(() => {
     setCols(make(shown));
@@ -677,7 +725,7 @@ function Board({
       {loading && !rows.length ? (
         <div className={styles.empty}>불러오는 중…</div>
       ) : (
-        <div className={`task-kanban ${styles.kanbanWrap}`}>
+        <div ref={wrapRef} className={`task-kanban ${styles.kanbanWrap}`}>
           <KanbanBoard
             columns={cols}
             onChange={onChange}

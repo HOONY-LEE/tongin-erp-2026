@@ -18,6 +18,7 @@ import {
   CreateTeamTaskCommentDto,
   CreateTeamTaskDto,
   UpdateTeamTaskDto,
+  AssignTeamTaskDto,
 } from './dto/team-task.dto';
 
 const SCOPES: TaskScope[] = ['mine', 'team', 'all'];
@@ -65,6 +66,21 @@ export class TeamTaskController {
     @Param('commentId', ParseUUIDPipe) commentId: string,
   ) {
     return this.tasks.removeComment(p, id, commentId);
+  }
+
+  @Get(':id/history')
+  history(@CurrentUser() p: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.tasks.history(p, id);
+  }
+
+  /** 담당 넘기기 — 다른 사람에게 맡긴다(이력·알림) */
+  @Post(':id/assign')
+  assign(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignTeamTaskDto,
+  ) {
+    return this.tasks.assign(p, id, dto.assigneeEmpId || null, dto.note);
   }
 
   @Get(':id')

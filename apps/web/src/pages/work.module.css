@@ -262,3 +262,91 @@
 .statusFilter {
   width: 160px;
 }
+
+/* ── 작업관리 이력(누가 누구에게 언제 넘겼는지) ── */
+.history {
+  margin-top: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.historyTitle {
+  margin: 0 0 12px;
+  font-size: calc(15px * var(--font-scale, 1));
+}
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 11px;
+  width: 1px;
+  background: var(--ark-color-border);
+}
+.timeline li {
+  position: relative;
+  display: flex;
+  gap: 12px;
+}
+.tlIcon {
+  z-index: 1;
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 50%;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-tertiary);
+}
+.tlAssign {
+  border-color: color-mix(in srgb, var(--ark-color-primary-500) 50%, transparent);
+  color: var(--ark-color-primary-500);
+}
+.tlBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.5;
+}
+.tlArrow {
+  margin: 0 4px;
+  vertical-align: -1px;
+  color: var(--ark-color-text-tertiary);
+}
+.tlNote {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+  color: var(--ark-color-text-secondary);
+}
+.tlTime {
+  margin: 0;
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.assignForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.assignField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 500;
+}

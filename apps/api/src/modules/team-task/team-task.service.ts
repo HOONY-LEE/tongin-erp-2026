@@ -41,8 +41,15 @@ export class TeamTaskService {
   private link = (id: string) => `/tasks?detail=${id}`;
 
   private mine(p: AuthPrincipal): Prisma.TeamTaskWhereInput | null {
-    if (!p.employeeId) return null;
-    return { OR: [{ assigneeEmpId: p.employeeId }, { requesterEmpId: p.employeeId }] };
+    // 팀 없이 만든 개인 업무도 만든 사람에게는 보인다
+    if (!p.employeeId) return { createdByUserId: p.userId };
+    return {
+      OR: [
+        { assigneeEmpId: p.employeeId },
+        { requesterEmpId: p.employeeId },
+        { createdByUserId: p.userId },
+      ],
+    };
   }
 
   private isMine(
@@ -122,7 +129,7 @@ export class TeamTaskService {
     if (!t) throw new NotFoundException('업무를 찾을 수 없습니다.');
     if (this.isMine(p, t)) return { task: t, mine: true };
     const ids = await this.scope.orgScopeIds(p);
-    const inScope = ids === null || ids.includes(t.teamOrgId);
+    const inScope = ids === null || (!!t.teamOrgId && ids.includes(t.teamOrgId));
     if (!hasPerm(p, 'TASK.READ') || !inScope) {
       throw new ForbiddenException('이 업무를 볼 권한이 없습니다.');
     }
@@ -153,9 +160,9 @@ export class TeamTaskService {
     return {
       title: dto.title?.trim(),
       description: dto.description,
-      teamOrgId: dto.teamOrgId,
-      assigneeEmpId: dto.assigneeEmpId,
-      requesterEmpId: dto.requesterEmpId,
+      teamOrgId: dto.teamOrgId === undefined ? undefined : dto.teamOrgId || null,
+      assigneeEmpId: dto.assigneeEmpId === undefined ? undefined : dto.assigneeEmpId || null,
+      requesterEmpId: dto.requesterEmpId === undefined ? undefined : dto.requesterEmpId || null,
       project: dto.project === undefined ? undefined : dto.project?.trim() || null,
       dutyId: dto.dutyId === undefined ? undefined : dto.dutyId || null,
       status: dto.status,
@@ -171,17 +178,17 @@ export class TeamTaskService {
       data: {
         ...this.data(dto),
         title: dto.title.trim(),
-        teamOrgId: dto.teamOrgId,
         doneAt: dto.status === 'DONE' ? new Date() : null,
         createdByUserId: p.userId,
       },
       include,
     });
+    await this.log(p, created.id, [{ kind: 'CREATED', toValue: created.assigneeEmpId }]);
     if (created.assigneeEmpId) {
       await this.inbox.toEmployees([created.assigneeEmpId], {
         kind: 'TASK_ASSIGNED',
         title: `업무 배정 · ${created.title}`,
-        body: `${created.team.name} 업무를 맡게 되었습니다${created.dueDate ? ` · 기한 ${created.dueDate.toISOString().slice(0, 10)}` : ''}.`,
+        body: `${created.team ? `${created.team.name} ` : ''}업무를 맡게 되었습니다${created.dueDate ? ` · 기한 ${created.dueDate.toISOString().slice(0, 10)}` : ''}.`,
         link: this.link(created.id),
         entityType: 'team_task',
         entityId: created.id,
@@ -210,8 +217,128 @@ export class TeamTaskService {
       data: { ...this.data(dto), doneAt },
       include,
     });
+    await this.log(p, id, this.diff(task, updated));
     await this.notifyChanges(p, task, updated);
     return updated;
+  }
+
+  /**
+   * 담당 넘기기 — 다른 사람에게 이 업무를 맡긴다(말 한마디 남길 수 있음).
+   * 담당자·요청자·만든 사람이거나 TASK.UPDATE가 있으면 된다. 새 담당자에게 알림, 이력에 '누가 누구에게 언제'
+   */
+  async assign(p: AuthPrincipal, id: string, assigneeEmpId: string | null, note?: string | null) {
+    const { task, mine } = await this.load(p, id);
+    if (!mine && !hasPerm(p, 'TASK.UPDATE'))
+      throw new ForbiddenException(
+        '이 업무를 넘길 권한이 없습니다 — 담당자·요청자만 넘길 수 있습니다.',
+      );
+    if ((task.assigneeEmpId ?? null) === (assigneeEmpId ?? null))
+      throw new BadRequestException('지금 담당자와 같습니다.');
+    if (assigneeEmpId) await this.checkRefs({ assigneeEmpId });
+    const updated = await this.prisma.teamTask.update({
+      where: { id },
+      data: { assigneeEmpId },
+      include,
+    });
+    await this.log(p, id, [
+      {
+        kind: 'ASSIGNED',
+        fromValue: task.assigneeEmpId,
+        toValue: assigneeEmpId,
+        note: note?.trim() || null,
+      },
+    ]);
+    await this.notifyChanges(p, task, updated, note?.trim() || null);
+    return updated;
+  }
+
+  /** 이력 — 오래된 것부터, 사람·팀 이름을 붙여서 */
+  async history(p: AuthPrincipal, id: string) {
+    await this.load(p, id);
+    const rows = await this.prisma.teamTaskEvent.findMany({
+      where: { taskId: id },
+      orderBy: { createdAt: 'asc' },
+      take: 500,
+    });
+    const empIds = new Set<string>();
+    const orgIds = new Set<string>();
+    for (const r of rows) {
+      const target = r.kind === 'TEAM' ? orgIds : r.kind === 'STATUS' ? null : empIds;
+      for (const v of [r.fromValue, r.toValue]) if (target && v) target.add(v);
+    }
+    const [emps, orgs, users] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: { id: { in: [...empIds] } },
+        select: { id: true, name: true },
+      }),
+      this.prisma.orgUnit.findMany({
+        where: { id: { in: [...orgIds] } },
+        select: { id: true, name: true },
+      }),
+      this.prisma.appUser.findMany({
+        where: { id: { in: rows.map((r) => r.actorUserId).filter((x): x is string => !!x) } },
+        select: { id: true, loginId: true, employee: { select: { name: true } } },
+      }),
+    ]);
+    const empName = new Map(emps.map((e) => [e.id, e.name]));
+    const orgName = new Map(orgs.map((o) => [o.id, o.name]));
+    const userName = new Map(users.map((u) => [u.id, u.employee?.name ?? u.loginId]));
+    const name = (kind: string, v: string | null) =>
+      v === null
+        ? null
+        : kind === 'TEAM'
+          ? (orgName.get(v) ?? '(지운 조직)')
+          : kind === 'STATUS'
+            ? (TASK_STATUS_LABEL[v as TaskStatus] ?? v)
+            : (empName.get(v) ?? '(퇴사·삭제)');
+    return rows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      from: name(r.kind, r.fromValue),
+      to: name(r.kind, r.toValue),
+      note: r.note,
+      actor: (r.actorUserId && userName.get(r.actorUserId)) || r.actorName || null,
+      at: r.createdAt.toISOString(),
+    }));
+  }
+
+  /** 고치기 전·후를 비교해 이력 줄로 */
+  private diff(
+    before: { assigneeEmpId: string | null; status: string; teamOrgId: string | null },
+    after: { assigneeEmpId: string | null; status: string; teamOrgId: string | null },
+  ) {
+    const out: { kind: string; fromValue: string | null; toValue: string | null }[] = [];
+    if (before.assigneeEmpId !== after.assigneeEmpId)
+      out.push({ kind: 'ASSIGNED', fromValue: before.assigneeEmpId, toValue: after.assigneeEmpId });
+    if (before.status !== after.status)
+      out.push({ kind: 'STATUS', fromValue: before.status, toValue: after.status });
+    if (before.teamOrgId !== after.teamOrgId)
+      out.push({ kind: 'TEAM', fromValue: before.teamOrgId, toValue: after.teamOrgId });
+    return out;
+  }
+
+  private async log(
+    p: AuthPrincipal,
+    taskId: string,
+    events: {
+      kind: string;
+      fromValue?: string | null;
+      toValue?: string | null;
+      note?: string | null;
+    }[],
+  ) {
+    if (!events.length) return;
+    await this.prisma.teamTaskEvent.createMany({
+      data: events.map((e) => ({
+        taskId,
+        kind: e.kind,
+        fromValue: e.fromValue ?? null,
+        toValue: e.toValue ?? null,
+        note: e.note ?? null,
+        actorUserId: p.userId,
+        actorName: p.employeeName ?? p.loginId,
+      })),
+    });
   }
 
   /** 담당자가 바뀌면 새 담당자에게, 상태가 바뀌면 담당자·요청자(바꾼 사람 빼고)에게 알린다 */
@@ -226,6 +353,7 @@ export class TeamTaskService {
       requesterEmpId: string | null;
       dueDate: Date | null;
     },
+    note?: string | null,
   ) {
     const base = { entityType: 'team_task', entityId: after.id, actorUserId: p.userId };
     if (after.assigneeEmpId && after.assigneeEmpId !== before.assigneeEmpId) {
@@ -233,7 +361,7 @@ export class TeamTaskService {
         ...base,
         kind: 'TASK_ASSIGNED',
         title: `업무 배정 · ${after.title}`,
-        body: `이 업무의 담당자로 지정되었습니다${after.dueDate ? ` · 기한 ${after.dueDate.toISOString().slice(0, 10)}` : ''}.`,
+        body: `${p.employeeName ?? '누군가'}님이 이 업무를 넘겼습니다${after.dueDate ? ` · 기한 ${after.dueDate.toISOString().slice(0, 10)}` : ''}.${note ? ` "${note}"` : ''}`,
         link: this.link(after.id),
       });
     }

@@ -30,7 +30,17 @@ export interface FormField {
   name: string;
   label: string;
   required?: boolean;
-  type?: 'text' | 'number' | 'select' | 'address' | 'date' | 'tel' | 'boolean' | 'textarea';
+  /** chips = 몇 개 안 되는 선택지를 칩으로 한 번에 보이기(상태 등) */
+  type?:
+    | 'text'
+    | 'number'
+    | 'select'
+    | 'chips'
+    | 'address'
+    | 'date'
+    | 'tel'
+    | 'boolean'
+    | 'textarea';
   /** disabled=true인 항목은 목록에 보이되 선택할 수 없다(권한 밖 선택지를 감추는 대신 흐리게). */
   options?: { value: string; label: string; disabled?: boolean }[];
   /** select를 묶음으로 보여 줄 때(예: 직원을 소속 팀별로) — 주면 options 대신 쓴다 */
@@ -41,6 +51,8 @@ export interface FormField {
   placeholder?: string;
   /** type='address'일 때 저장 키 접두('' | 'from' | 'to'). 미지정 시 ''. */
   addrPrefix?: string;
+  /** select를 글자로 찾아 고르는 칸으로(직원처럼 고를 것이 많을 때). 비우기(×)도 된다 */
+  searchable?: boolean;
   /** true면 입력 불가(값은 유지). 예: 일반 직원의 담당 지점 자동고정. */
   disabled?: boolean;
   /** 필수는 아니지만 "더보기" 뒤로 숨기지 않고 항상 노출. */

@@ -23,16 +23,20 @@ export class CreateTeamTaskDto {
   @MaxLength(5000)
   description?: string | null;
 
-  /** 맡은 팀(조직) */
+  /** 맡은 팀(조직) — 비우면 개인 업무(담당·요청·만든 사람만 봄). 담당자 소속과 상관없다 */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
   @IsUUID()
-  teamOrgId!: string;
+  teamOrgId?: string | null;
 
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
   @IsUUID()
   assigneeEmpId?: string | null;
 
   /** 다른 팀이 요청해 올린 일이면 요청한 사람 */
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
   @IsUUID()
   requesterEmpId?: string | null;
 
@@ -74,4 +78,17 @@ export class CreateTeamTaskCommentDto {
   @ArrayMaxSize(20)
   @IsUUID('all', { each: true })
   mentionEmpIds?: string[];
+}
+
+/** 담당 넘기기 — 비우면 담당자 없음으로 */
+export class AssignTeamTaskDto {
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== '')
+  @IsUUID()
+  assigneeEmpId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string | null;
 }

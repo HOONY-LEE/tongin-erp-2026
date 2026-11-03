@@ -592,6 +592,10 @@ input[placeholder*='찾기'] {
   color: var(--ark-color-text) !important;
   background: var(--ark-color-bg) !important;
 }
+/* 카드가 칸을 꽉 채운 칸은 '+ 업무 추가'를 숨긴다(Tasks의 Board가 kanban-col-full을 붙임) */
+.task-kanban .kanban-col-full [class*='_addButton_sj7t4'] {
+  display: none !important;
+}
 /* 글자는 '카드 추가' 대신 '업무 추가' */
 .task-kanban [class*='_addButton_sj7t4'] > span {
   font-size: 0;
@@ -767,4 +771,32 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
 [class*='_sidebarContent_']:not([class*='_sidebarCollapsed_'] *) {
   padding-right: 4px;
   scrollbar-gutter: stable;
+}
+
+/* 입력 창(FormModal)의 칩 고르기 — 결재 양식 칩과 같은 모양(고른 것 검정, 다크 모드 흰색) */
+.form-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.form-chip {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: var(--ark-font-size-sm);
+  cursor: pointer;
+}
+.form-chip:hover {
+  border-color: var(--ark-color-border-strong);
+  color: var(--ark-color-text);
+}
+.form-chip-on,
+.form-chip-on:hover {
+  border-color: var(--chip-on-bg);
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
 }

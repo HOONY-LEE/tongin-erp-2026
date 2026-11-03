@@ -95,8 +95,8 @@ model Employee {
 
   estimatorEstimates Estimate[]
   assignments        WorkAssignment[]
-  dutiesOwned        Duty[]           @relation("DutyOwner")
-  dutiesBackup       Duty[]           @relation("DutyBackup")
+  dutiesOwned        Duty[]                  @relation("DutyOwner")
+  dutiesBackup       Duty[]                  @relation("DutyBackup")
   campaignRecipients CampaignRecipient[]
   agentShares        AgentBlueprintShare[]
   approvalDocs       ApprovalDoc[]
@@ -1528,8 +1528,8 @@ model TeamTask {
   id              String            @id @default(uuid()) @db.Uuid
   title           String
   description     String?
-  teamOrgId       String            @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프)
-  team            OrgUnit           @relation("TeamTasks", fields: [teamOrgId], references: [id])
+  teamOrgId       String?           @map("team_org_id") @db.Uuid // 맡은 팀(데이터범위 스코프) — 비우면 개인 업무(담당·요청·만든 사람만)
+  team            OrgUnit?          @relation("TeamTasks", fields: [teamOrgId], references: [id])
   assigneeEmpId   String?           @map("assignee_emp_id") @db.Uuid
   assignee        Employee?         @relation("TaskAssignee", fields: [assigneeEmpId], references: [id], onDelete: SetNull)
   requesterEmpId  String?           @map("requester_emp_id") @db.Uuid
@@ -1545,6 +1545,7 @@ model TeamTask {
   createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
   comments        TeamTaskComment[]
+  events          TeamTaskEvent[]
 
   @@index([teamOrgId, status])
   @@index([assigneeEmpId])
@@ -1683,15 +1684,15 @@ model ApprovalForm {
 
 // AI 설정(회사 전체 한 줄) — 쓸 모델·기본 모델·모델별 단가(달러/100만 토큰, 비우면 비용을 계산하지 않음)
 model AiSetting {
-  id           Int      @id @default(1)
-  allowed      String[] // 열린 모델 id
-  defaultModel String   @map("default_model")
+  id                Int      @id @default(1)
+  allowed           String[] // 열린 모델 id
+  defaultModel      String   @map("default_model")
   // { "<모델 id>": { "input": 3, "output": 15 } }
-  prices       Json     @default("{}")
+  prices            Json     @default("{}")
   // 사용자 한도를 따로 안 정한 사람의 월 한도(토큰). NULL이면 무제한
-  monthlyTokenLimit Int? @map("monthly_token_limit")
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy    String?  @map("updated_by") @db.Uuid
+  monthlyTokenLimit Int?     @map("monthly_token_limit")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy         String?  @map("updated_by") @db.Uuid
 
   @@map("ai_setting")
 }
@@ -1970,4 +1971,21 @@ model KpiSet {
 
   @@unique([scope, scopeId, period])
   @@map("kpi_set")
+}
+
+/// 작업관리 이력 — 만들기·담당 넘기기·상태·팀 바뀜. 업무 상세에 '누가 누구에게 언제' 시간순으로 보인다
+model TeamTaskEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  taskId      String   @map("task_id") @db.Uuid
+  task        TeamTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  kind        String // CREATED | ASSIGNED | STATUS | TEAM
+  fromValue   String?  @map("from_value") // ASSIGNED: 직원 id · STATUS: 상태 · TEAM: 조직 id
+  toValue     String?  @map("to_value")
+  note        String? // 넘길 때 남긴 말
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorName   String?  @map("actor_name")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([taskId, createdAt])
+  @@map("team_task_event")
 }
