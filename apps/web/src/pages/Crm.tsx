@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarClock, Mail, MessageSquare, Phone, Search, StickyNote, Users } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import {
@@ -9,6 +9,7 @@ import {
   CRM_PIPELINES,
   crmPhaseOf,
   type CrmPhase,
+  type CrmImportPreview,
   type CrmActivityKind,
   type CrmActivityView,
   type CrmInterest,
@@ -32,6 +33,7 @@ import {
   RecordDetail,
   SegmentedControl,
   Textarea,
+  Modal,
   Input,
   useToast,
   type Column,
@@ -116,6 +118,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const [mineOnly, setMineOnly] = useState(false);
   const [editing, setEditing] = useState<CrmLeadView | 'new' | null>(null);
   const [links, setLinks] = useState<{ value: string; label: string }[]>([]);
+  const [importing, setImporting] = useState(false);
   const { tab: view, setTab: setView } = useTabParam<View>('list', 'view');
   // 위 탭 — 리드 · 상담 진행(영업 기회) · 계약(수주) · 보류·실패 · 전체
   const { tab: phase, setTab: setPhase } = useTabParam<CrmPhase | 'all'>('lead', 'phase');
@@ -349,9 +352,14 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     />
   );
   const addButton = can(`${def.perm}.CREATE`) ? (
-    <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-      + 영업 대상 등록
-    </Button>
+    <>
+      <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
+        가져오기
+      </Button>
+      <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
+        + 영업 대상 등록
+      </Button>
+    </>
   ) : undefined;
 
   if (detail.id) {
@@ -625,6 +633,16 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
         />
       )}
       {modal}
+      {importing && (
+        <ImportModal
+          def={def}
+          onClose={() => setImporting(false)}
+          onDone={() => {
+            setImporting(false);
+            void load();
+          }}
+        />
+      )}
     </ListPage>
   );
 }
@@ -986,5 +1004,207 @@ function LeadDetail({
         </>
       )}
     </RecordDetail>
+  );
+}
+
+const readBase64 = (f: File) =>
+  new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+    r.onerror = () => reject(new Error('파일을 읽지 못했습니다'));
+    r.readAsDataURL(f);
+  });
+
+const IMPORT_STATUS: Record<CrmImportPreview['rows'][number]['status'], string> = {
+  create: '새로 넣음',
+  duplicate: '이미 있음',
+  invalid: '업체명 없음',
+};
+
+/**
+ * 가져오기 — 엑셀·구글 시트에서 표를 복사해 붙여넣거나 CSV·xlsx 파일을 고른다.
+ * 머리글(업체명·대표자·연락처·지역·진행상태·관심도·담당자 …)로 항목을 맞춰 미리 보여 주고, 확인하면 넣는다.
+ */
+function ImportModal({
+  def,
+  onClose,
+  onDone,
+}: {
+  def: CrmPipelineDef;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const toast = useToast();
+  const [text, setText] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<CrmImportPreview | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const send = async (dryRun: boolean) => {
+    setBusy(true);
+    try {
+      const r = await api<CrmImportPreview>(`/crm/${def.key}/import`, {
+        method: 'POST',
+        body: JSON.stringify({
+          dryRun,
+          ...(file ? { file: { name: file.name, dataBase64: await readBase64(file) } } : { text }),
+        }),
+      });
+      if (dryRun) setPreview(r);
+      else {
+        toast({ type: 'success', title: `${r.imported ?? 0}건을 가져왔습니다` });
+        onDone();
+      }
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '가져오지 못했습니다' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={`${def.label} 가져오기`}
+      size="lg"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            취소
+          </Button>
+          {preview ? (
+            <>
+              <Button variant="outline" onClick={() => setPreview(null)}>
+                다시 고르기
+              </Button>
+              <Button
+                variant="primary"
+                loading={busy}
+                disabled={!preview.create}
+                onClick={() => void send(false)}
+              >
+                {preview.create}건 가져오기
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              loading={busy}
+              disabled={!file && !text.trim()}
+              onClick={() => void send(true)}
+            >
+              미리보기
+            </Button>
+          )}
+        </>
+      }
+    >
+      {!preview ? (
+        <div className={styles.importForm}>
+          <p className={styles.muted}>
+            엑셀·구글 시트에서 머리글 줄까지 표를 복사해 붙여넣거나, CSV·엑셀(.xlsx) 파일을
+            고르세요. 머리글(업체명·대표자·연락처·지역·진행상태·관심도·담당자·등록일 …)을 보고 칸을
+            맞춥니다. 같은 업체(업체명·연락처)가 이미 있으면 건너뜁니다.
+          </p>
+          <Textarea
+            rows={10}
+            value={text}
+            disabled={!!file}
+            placeholder={
+              '업체명\t대표자\t연락처\t지역\t진행상태\n○○익스프레스\t홍길동\t010-1234-5678\t수원\t상담대기'
+            }
+            onChange={(e) => setText(e.target.value)}
+          />
+          <div className={styles.importFile}>
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+              파일 고르기
+            </Button>
+            {file ? (
+              <span>
+                {file.name}{' '}
+                <button type="button" className={styles.linkBtn} onClick={() => setFile(null)}>
+                  빼기
+                </button>
+              </span>
+            ) : (
+              <span className={styles.muted}>CSV · xlsx</span>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              accept=".csv,.tsv,.txt,.xlsx"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className={styles.importForm}>
+          <div className={styles.importCounts}>
+            <span>
+              전체 <b>{preview.total}</b>
+            </span>
+            <span className={styles.ok}>
+              새로 넣음 <b>{preview.create}</b>
+            </span>
+            <span>
+              이미 있음 <b>{preview.duplicate}</b>
+            </span>
+            {preview.invalid > 0 && (
+              <span className={styles.over}>
+                업체명 없음 <b>{preview.invalid}</b>
+              </span>
+            )}
+          </div>
+          <div className={styles.importCols}>
+            {preview.columns.map((c, i) => (
+              <span key={i} className={c.field ? styles.colOn : styles.colOff}>
+                {c.header}
+                {c.label && c.label !== c.header ? ` → ${c.label}` : ''}
+              </span>
+            ))}
+          </div>
+          {preview.warnings.map((w) => (
+            <p key={w} className={styles.warn}>
+              {w}
+            </p>
+          ))}
+          <div className={styles.importTable}>
+            <table>
+              <thead>
+                <tr>
+                  <th>결과</th>
+                  <th>{def.companyLabel.replace(/\(.*\)/, '')}</th>
+                  <th>{def.contactLabel.replace(/\(.*\)/, '')}</th>
+                  <th>연락처</th>
+                  <th>지역</th>
+                  <th>단계</th>
+                  <th>관심도</th>
+                  <th>영업 담당</th>
+                  <th>등록일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.rows.map((r, i) => (
+                  <tr key={i} className={r.status === 'create' ? '' : styles.rowDim}>
+                    <td>{IMPORT_STATUS[r.status]}</td>
+                    <td>{r.companyName}</td>
+                    <td>{r.contactName ?? '—'}</td>
+                    <td>{r.phone ? formatPhone(r.phone) : '—'}</td>
+                    <td>{r.region ?? '—'}</td>
+                    <td>{r.stage}</td>
+                    <td>{CRM_INTEREST_LABEL[r.interest as CrmInterest]}</td>
+                    <td>{r.ownerName ?? '—'}</td>
+                    <td>{r.createdAt ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }

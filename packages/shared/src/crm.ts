@@ -138,10 +138,13 @@ export const CRM_PIPELINES: Record<CrmPipelineKey, CrmPipelineDef> = {
       { key: 'BID', label: '입찰·공고' },
       { key: 'EXISTING', label: '기존 고객' },
       { key: 'PARTNER', label: '제휴사' },
+      { key: 'DB', label: 'DB 발굴' },
       { key: 'ETC', label: '기타' },
     ],
     fields: [
+      { key: 'segment', label: 'DB 구분', type: 'text', placeholder: '예: 강남구 상장사' },
       { key: 'industry', label: '업종', type: 'text', placeholder: '예: IT, 제조, 공공기관' },
+      { key: 'homepage', label: '홈페이지', type: 'text' },
       { key: 'employees', label: '직원 수', type: 'number', unit: '명' },
       { key: 'area', label: '면적', type: 'number', unit: '평' },
       {
@@ -310,4 +313,28 @@ export interface SalesStats {
     conversion: number | null;
   };
   rows: SalesStatsRow[];
+}
+
+// ── 가져오기(엑셀·구글 시트 붙여넣기 · CSV · xlsx) ──
+export interface CrmImportPreview {
+  /** 원본 칸 → 맞춘 항목(못 맞춘 칸은 null) */
+  columns: { header: string; field: string | null; label: string | null }[];
+  total: number;
+  /** 새로 넣을 것 · 이미 있어 건너뛸 것 · 업체명이 없어 못 넣는 것 */
+  create: number;
+  duplicate: number;
+  invalid: number;
+  warnings: string[];
+  rows: {
+    status: 'create' | 'duplicate' | 'invalid';
+    companyName: string;
+    contactName: string | null;
+    phone: string | null;
+    region: string | null;
+    stage: string;
+    interest: string;
+    ownerName: string | null;
+    createdAt: string | null;
+  }[];
+  imported?: number;
 }
