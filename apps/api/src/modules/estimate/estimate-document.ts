@@ -1,5 +1,6 @@
 import {
   ACCESS_LABEL,
+  formatPhone,
   summarizeVolume,
   type AccessMethod,
   type EstimateMeta,
@@ -397,7 +398,7 @@ table{width:100%;border-collapse:collapse}
 <section class="page">
 ${header('계약서 • 견적서')}
 <table class="info">
-<tr><th>고객명</th><td>${dash(m.customerName)}</td><th>이사종류</th><td>${dash(m.productName)}</td><th>전화번호</th><td>${dash(m.customerPhone)}</td></tr>
+<tr><th>고객명</th><td>${dash(m.customerName)}</td><th>이사종류</th><td>${dash(m.productName)}</td><th>전화번호</th><td>${dash(m.customerPhone ? formatPhone(m.customerPhone) : null)}</td></tr>
 <tr><th>담당자</th><td>${manager}</td><th>지점명</th><td>${dash(m.orgUnitName)}</td><th>담당자 연락처</th><td>${dash(m.estimatorPhone)}</td></tr>
 </table>
 <table class="info">

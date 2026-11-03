@@ -18,6 +18,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CAMPAIGN_CHANNELS, type CampaignChannel } from '@tongin/shared';
+import { PhoneDigits } from '../../../common/phone';
 
 export class CampaignButtonInput {
   @IsString()
@@ -41,6 +42,7 @@ export class ExtraRecipientInput {
 
   @IsString()
   @Matches(PHONE_PATTERN, { message: PHONE_MESSAGE })
+  @PhoneDigits()
   phone!: string;
 }
 

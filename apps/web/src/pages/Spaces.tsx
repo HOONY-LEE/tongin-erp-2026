@@ -19,10 +19,12 @@ import {
   useToast,
   type Column,
   type Row,
+  PhoneInput,
 } from '../components/ui';
 import { ChoiceChips } from '../components/approval/FormsAdmin';
 import { PersonPicker } from '../components/approval/FormFields';
 import styles from './spaces.module.css';
+import { formatPhone } from '../lib/phone';
 
 interface Space {
   id: string;
@@ -189,7 +191,9 @@ export default function Spaces() {
       day: dateLabel(kstDate(new Date(r.startAt))),
       time: `${hm(kstHour(r.startAt))}~${hm(kstHour(r.endAt) || 24)}`,
       spaceName: s?.name ?? '(사용 중지된 공간)',
-      customer: [r.customerName, r.customerPhone].filter(Boolean).join(' · '),
+      customer: [r.customerName, r.customerPhone && formatPhone(r.customerPhone)]
+        .filter(Boolean)
+        .join(' · '),
       feeText: rental && r.fee != null ? won(r.fee) : '',
       paidText: rental && r.paid != null && r.customerName ? (r.paid ? '입금' : '미입금') : '',
     };
@@ -596,7 +600,13 @@ function DetailModal({
         {item('예약한 사람', [res.bookedByName, res.bookedByOrg].filter(Boolean).join(' · '))}
         {item('참석자', res.attendees.map((a) => a.name).join(', '))}
         {item('인원', res.headcount ? `${res.headcount}명` : null)}
-        {rental && item('고객', [res.customerName, res.customerPhone].filter(Boolean).join(' · '))}
+        {rental &&
+          item(
+            '고객',
+            [res.customerName, res.customerPhone && formatPhone(res.customerPhone)]
+              .filter(Boolean)
+              .join(' · '),
+          )}
         {rental && res.fee != null && item('대여료', won(res.fee))}
         {rental &&
           res.paid != null &&
@@ -816,13 +826,7 @@ function EditModal({
               </label>
               <label className={styles.field}>
                 연락처
-                <Input
-                  value={customerPhone}
-                  inputMode="tel"
-                  maxLength={30}
-                  placeholder="010-0000-0000"
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                />
+                <PhoneInput value={customerPhone} onChange={setCustomerPhone} />
               </label>
               <label className={styles.field}>
                 대여료(원)

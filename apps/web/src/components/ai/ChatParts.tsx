@@ -28,6 +28,7 @@ import {
   type SmsPreview,
 } from './types';
 import styles from './ai.module.css';
+import { formatPhone } from '../../lib/phone';
 
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>;
 type CodeItem = Extract<ChatItem, { kind: 'code' }>;
@@ -467,7 +468,7 @@ function RecipientEditor({
               checked={on.has(r.customerId)}
               onCheckedChange={(v) => toggle(r, v === true)}
               label={r.name}
-              description={r.phone}
+              description={r.phone ? formatPhone(r.phone) : undefined}
               disabled={disabled || readOnly}
             />
           </li>
@@ -491,7 +492,7 @@ function RecipientEditor({
             <li key={r.customerId}>
               <button type="button" onClick={() => add(r)} disabled={on.has(r.customerId)}>
                 <span>{r.name}</span>
-                <span className={styles.sub}>{r.phone}</span>
+                <span className={styles.sub}>{r.phone ? formatPhone(r.phone) : ''}</span>
                 <span className={styles.sub}>{on.has(r.customerId) ? '이미 있음' : '더하기'}</span>
               </button>
             </li>

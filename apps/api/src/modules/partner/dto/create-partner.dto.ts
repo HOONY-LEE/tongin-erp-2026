@@ -1,5 +1,6 @@
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PARTNER_TYPES, type PartnerType } from '@tongin/shared';
+import { PhoneDigits } from '../../../common/phone';
 
 /** 코드는 서버가 발급한다(PTN-0001) — 입력받지 않는다 */
 export class CreatePartnerDto {
@@ -14,6 +15,7 @@ export class CreatePartnerDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @PhoneDigits()
   phone?: string;
 
   @IsOptional()

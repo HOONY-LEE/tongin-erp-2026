@@ -4,8 +4,8 @@ import { Button, Combobox, Input, Modal, Select, Textarea, useToast } from '@sun
 import { useTranslation } from 'react-i18next';
 import type { FormField } from './types';
 import { AddressField } from './AddressField';
+import { PhoneInput } from './PhoneInput';
 import { ADDRESS_PARTS, addrKey } from './address';
-import { formatPhone } from '../../lib/phone';
 import { fs } from '../../lib/fontScale';
 
 /** akron Input/Select 기본 라벨 스타일과 맞춘 커스텀 라벨(필수 표시는 테마색 *). */
@@ -262,14 +262,19 @@ function renderField(
           onChange={(e) => setField(f.name, e.target.value)}
           disabled={f.disabled}
         />
+      ) : f.type === 'tel' ? (
+        // 연락처 — 보일 때만 하이픈, 값은 숫자만
+        <PhoneInput
+          value={values[f.name] ?? ''}
+          onChange={(v) => setField(f.name, v)}
+          disabled={f.disabled}
+        />
       ) : (
         <Input
           type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
           value={values[f.name] ?? ''}
-          placeholder={f.type === 'tel' ? '010-0000-0000' : f.placeholder}
-          onChange={(e) =>
-            setField(f.name, f.type === 'tel' ? formatPhone(e.target.value) : e.target.value)
-          }
+          placeholder={f.placeholder}
+          onChange={(e) => setField(f.name, e.target.value)}
           disabled={f.disabled}
         />
       )}

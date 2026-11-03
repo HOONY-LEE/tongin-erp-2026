@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LEAD_STATUS_LABEL } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
-import { formatPhone } from '../../lib/phone';
 import { useAuth } from '../../auth/AuthContext';
-import { Input, Select, useToast } from '../ui';
+import { Input, PhoneInput, Select, useToast } from '../ui';
 import { AddressField } from '../ui/AddressField';
 import { ADDRESS_PARTS, addrKey } from '../ui/address';
 import { SaveBar } from './parts';
@@ -160,10 +159,9 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         </label>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>전화번호</span>
-          <Input
+          <PhoneInput
             value={form.customerPhone}
-            onChange={(e) => set('customerPhone', formatPhone(e.target.value))}
-            placeholder="010-0000-0000"
+            onChange={(v) => set('customerPhone', v)}
             disabled={!canEditCustomer}
           />
         </label>

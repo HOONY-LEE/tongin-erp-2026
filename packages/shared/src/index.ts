@@ -904,6 +904,7 @@ export * from './drive';
 export * from './dashboard';
 export * from './hr';
 export * from './performance';
+export * from './phone';
 export * from './menu';
 
 // ── 공통 업무: 공지사항 · 작업관리 · 계약·자산 · 지점 관리 기록 ──

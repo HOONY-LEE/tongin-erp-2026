@@ -603,7 +603,8 @@
 }
 .smsEdit:focus {
   outline: none;
-  border-color: var(--ark-color-info-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .smsEditActions {
   display: flex;

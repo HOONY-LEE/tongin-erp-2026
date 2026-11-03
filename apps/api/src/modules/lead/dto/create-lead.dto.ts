@@ -1,6 +1,7 @@
 import { IsDateString, IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { SERVICE_LINES, type ServiceLine } from '@tongin/shared';
 import { MoveAddressDto } from '../../../common/dto/address-fields.dto';
+import { PhoneDigits } from '../../../common/phone';
 
 export class CreateLeadDto extends MoveAddressDto {
   @IsUUID()
@@ -18,6 +19,7 @@ export class CreateLeadDto extends MoveAddressDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @PhoneDigits()
   customerPhone?: string;
 
   @IsOptional()

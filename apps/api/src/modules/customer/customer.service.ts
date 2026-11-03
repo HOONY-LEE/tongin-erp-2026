@@ -44,7 +44,7 @@ export class CustomerService {
     const scoped = await this.scopeWhere(principal);
     return this.prisma.customer.findMany({
       where: {
-        ...(phone ? { phonePrimary: phone } : {}),
+        ...(phone ? { phonePrimary: phone.replace(/\D/g, '') } : {}),
         ...(scoped ?? {}),
       },
       orderBy: { createdAt: 'desc' },

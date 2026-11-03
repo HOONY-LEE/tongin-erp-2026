@@ -20,8 +20,8 @@
 .trigger:focus-visible,
 .trigger[data-state='open'] {
   outline: none;
-  border-color: var(--ark-color-info-500);
-  box-shadow: 0 0 0 2px var(--ark-color-info-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 /* 고른 조건이 있으면 강조 */
 .on {

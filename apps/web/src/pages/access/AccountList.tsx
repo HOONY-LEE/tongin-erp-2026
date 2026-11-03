@@ -16,8 +16,10 @@ import {
   useToast,
   type Column,
   type Row,
+  PhoneInput,
 } from '../../components/ui';
 import styles from './access.module.css';
+import { formatPhone } from '../../lib/phone';
 
 interface AccountRole {
   roleId: string;
@@ -241,7 +243,10 @@ export default function AccountList() {
                           { label: '사번', value: detail.empNo },
                           { label: '소속', value: detail.orgUnitName },
                           { label: '직책', value: detail.positionName },
-                          { label: '연락처', value: detail.phone },
+                          {
+                            label: '연락처',
+                            value: detail.phone ? formatPhone(detail.phone) : null,
+                          },
                           { label: '입사일', value: detail.hireDate },
                           { label: '상태', value: statusText(detail) },
                         ],
@@ -582,13 +587,10 @@ function AccountModal({
                 }}
                 options={positionOptions}
               />
-              <Input
-                label="연락처"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="010-0000-0000"
-              />
+              <label className={styles.phoneField}>
+                연락처
+                <PhoneInput value={phone} onChange={setPhone} />
+              </label>
               <Input
                 label="입사일"
                 type="date"

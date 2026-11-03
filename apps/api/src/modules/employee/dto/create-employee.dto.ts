@@ -11,6 +11,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { EMPLOYMENT_TYPES, type EmploymentType } from '@tongin/shared';
+import { PhoneDigits } from '../../../common/phone';
 
 export class CreateEmployeeDto {
   @IsUUID()
@@ -35,6 +36,7 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @PhoneDigits()
   phone?: string;
 
   /** 직책·직급(권한과 별개) — 비우려면 null */
@@ -86,6 +88,7 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @PhoneDigits()
   emergencyPhone?: string | null;
 
   @IsOptional()

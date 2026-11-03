@@ -104,8 +104,9 @@
   font-size: calc(15px * var(--font-scale, 1));
 }
 .input:focus {
-  outline: 2px solid color-mix(in srgb, var(--ark-color-primary-500) 40%, transparent);
-  border-color: var(--ark-color-primary-500);
+  outline: none;
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 .check {
   display: flex;
