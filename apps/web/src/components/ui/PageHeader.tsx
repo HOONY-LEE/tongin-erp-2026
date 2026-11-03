@@ -1,7 +1,8 @@
 import { forwardRef, useState, type ReactNode } from 'react';
-import { ChevronLeft, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Info, RefreshCw } from 'lucide-react';
 import {
   PageHeader as AkronPageHeader,
+  Tooltip,
   type PageHeaderProps as AkronPageHeaderProps,
 } from '@sunghoon_lee/akron-ui';
 import { fs } from '../../lib/fontScale';
@@ -39,10 +40,36 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
     breadcrumbs,
     hideBreadcrumbs,
     trailing,
+    subtitle,
+    tags,
     ...props
   },
   ref,
 ) {
+  // 제목 아래 설명 줄은 두지 않는다 — 설명은 제목 옆 (i)에 올리면 보인다
+  const info = subtitle ? (
+    <Tooltip content={<span style={{ display: 'block', maxWidth: 320 }}>{subtitle}</span>}>
+      <button
+        type="button"
+        aria-label={subtitle}
+        style={{
+          display: 'inline-grid',
+          placeItems: 'center',
+          width: 22,
+          height: 22,
+          padding: 0,
+          border: 'none',
+          borderRadius: 6,
+          background: 'transparent',
+          color: 'var(--ark-color-text-tertiary)',
+          cursor: 'help',
+        }}
+      >
+        <Info size={16} />
+      </button>
+    </Tooltip>
+  ) : null;
+
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -94,6 +121,7 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
         type="button"
         onClick={handleRefresh}
         disabled={refreshing}
+        data-pdf-skip
         aria-label="새로고침"
         title="새로고침"
         style={{
@@ -127,6 +155,16 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
       actions={refreshSlot}
       breadcrumbs={hideBreadcrumbs ? undefined : breadcrumbs}
       icon={icon ?? backButton}
+      tags={
+        info && tags ? (
+          <>
+            {info}
+            {tags}
+          </>
+        ) : (
+          (info ?? tags)
+        )
+      }
       {...props}
     />
   );

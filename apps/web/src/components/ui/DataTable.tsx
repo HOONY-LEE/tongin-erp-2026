@@ -61,7 +61,8 @@ export function DataTable({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // 한 쪽뿐이라도 페이지 표시를 늘 보인다 — softium은 1쪽이면 가운데를 비워 둔다(그 자리에 같은 모양으로 그림)
-  const row3 = !!(tabs || toolbarActions);
+  // 셋째 줄은 세그먼트 탭이 있을 때만 — 탭이 없으면 내보내기·생성 버튼은 검색 줄 오른쪽 끝으로
+  const row3 = !!tabs;
   const [pagerSlot, setPagerSlot] = useState<Element | null>(null);
   useLayoutEffect(() => {
     const el = containerRef.current?.querySelector('.sft-tfoot__center') ?? null;
@@ -170,7 +171,7 @@ export function DataTable({
         showSkeleton ? 'dt-loading' : '',
         multiline ? 'dt-multiline' : '',
         fit ? 'dt-fit' : '',
-        // 셋째 줄(탭·생성 버튼)이 없으면 그 줄을 비우지 않고 접는다
+        // 셋째 줄(탭)이 없으면 그 줄을 비우지 않고 접는다
         row3 ? '' : 'dt-no-row3',
       ]
         .filter(Boolean)
@@ -188,11 +189,12 @@ export function DataTable({
           //   세그먼트 탭 ……… 내보내기 · 생성 버튼
           <>
             {filters && <div className="dt-toolbar-filters">{filters}</div>}
-            {/* 탭·생성 버튼이 없으면 셋째 줄을 만들지 않고 내보내기를 검색 줄 오른쪽 끝에 둔다 */}
-            {(viewSwitch || (exportable && !row3)) && (
+            {/* 탭이 없으면 셋째 줄을 만들지 않고 내보내기·생성 버튼을 검색 줄 오른쪽 끝에 둔다 */}
+            {(viewSwitch || (!row3 && (exportable || toolbarActions))) && (
               <div className="dt-toolbar-view">
                 {viewSwitch}
-                {exportable && !row3 && exportMenu}
+                {!row3 && exportable && exportMenu}
+                {!row3 && toolbarActions}
               </div>
             )}
             {tabs && <div className="dt-toolbar-tabs">{tabs}</div>}

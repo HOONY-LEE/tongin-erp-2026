@@ -13,6 +13,7 @@ import {
   PageCard,
   PageHeader,
   RecordDetail,
+  SegmentedControl,
   Select,
   StatusBadge,
   useToast,
@@ -300,18 +301,22 @@ export default function Settlement() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.settlement')} onRefresh={loadAll} updatedAt={updatedAt} />
-      <PageCard
-        title={t('settlement.receivables')}
-        count={recv.length}
-        actions={
-          <Button variant="outline" size="sm" onClick={() => setOnlyOut((v) => !v)}>
-            {onlyOut ? t('settlement.showAll') : t('settlement.onlyOutstanding')}
-          </Button>
+      {/* 고객별 미수금 — 페이지 첫 표라 따로 제목 없이, 검색 줄 오른쪽에서 미수금만/전체를 고른다 */}
+      <DataTable
+        columns={recvCols}
+        rows={recv}
+        rowKey="customerId"
+        viewSwitch={
+          <SegmentedControl
+            value={onlyOut ? 'out' : 'all'}
+            onChange={(v) => setOnlyOut(v === 'out')}
+            options={[
+              { value: 'out', label: t('settlement.onlyOutstanding') },
+              { value: 'all', label: t('settlement.showAll').replace(' 보기', '') },
+            ]}
+          />
         }
-        plain
-      >
-        <DataTable columns={recvCols} rows={recv} rowKey="customerId" />
-      </PageCard>
+      />
 
       <PageCard title={t('settlement.monthlyInflow')} count={monthly.length} plain>
         <DataTable columns={monthlyCols} rows={monthly} rowKey="month" />
