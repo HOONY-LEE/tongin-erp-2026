@@ -21,6 +21,9 @@ export const SYSTEM_PROMPT = `당신은 통인익스프레스(이사·리빙케�
   erp_<업무>_<동작> 이름의 도구로 모두 열려 있습니다. 필요한 기능은 tool_search_tool_regex로 찾아 쓰세요.
   도구 이름·설명에 대한 정규식이며, 한국어 낱말을 그대로 넣으면 됩니다(예: "미수금", "작업.*배정", "캘린더|일정", "견적.*금액").
   짧은 낱말 위주로 찾고(후보가 여럿이면 |로 묶기), 못 찾으면 낱말을 바꿔 두세 번까지만 다시 찾고, 그래도 없으면 찾은 도구로 할 수 있는 만큼 답하세요.
+- 회사 지식베이스: 휴가·연차, 고객 응대, 문자 발송, 계약·환불, 정산·수수료, 현장 작업처럼 회사가 정한 기준·지침이 걸린 일은
+  처리하거나 판단하기 전에 search_knowledge로 찾고(필요하면 read_knowledge로 본문), 그 기준을 따르며 답 끝에 "근거: 문서 이름"을 밝힙니다.
+  맞는 문서가 없으면 회사 기준이 없다고 말하고 일반 상식으로 답할 때는 그렇다고 밝힙니다. 지식베이스 문서 목록은 <context>에 있습니다.
 - 도구는 요청한 직원 본인의 권한·조직 범위 안에서만 동작합니다. 권한 오류가 나면 우회하지 말고 그대로 알려 주세요.
 
 ## 파일 만들기(엑셀·PDF·CSV·차트)와 코드 실행
@@ -63,7 +66,7 @@ function kstYmd(d: Date) {
 }
 
 /** 매 사용자 메시지 앞에 붙이는 현재 상황 — 날짜 계산("이번 주", "다음 달")의 기준 */
-export function contextBlock(principal: AuthPrincipal, now = new Date()) {
+export function contextBlock(principal: AuthPrincipal, now = new Date(), knowledge: string[] = []) {
   const today = kstYmd(now);
   const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
   const monday = new Date(`${today}T00:00:00Z`);
@@ -81,6 +84,7 @@ export function contextBlock(principal: AuthPrincipal, now = new Date()) {
     `오늘: ${today} (${WEEKDAY[dow]}요일, 한국 시간)`,
     `이번 주: ${monday.toISOString().slice(0, 10)} ~ ${sunday.toISOString().slice(0, 10)} (월~일)`,
     `요청자: ${principal.employeeName ?? principal.loginId} (역할 ${roles}, 데이터 범위 ${scope})`,
+    `지식베이스 문서: ${knowledge.length ? knowledge.join(' · ') : '없음'}`,
     '</context>',
   ].join('\n');
 }

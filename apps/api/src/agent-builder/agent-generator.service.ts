@@ -29,6 +29,7 @@ import {
   type GuardrailRule,
   type ToolConfig,
 } from '@tongin/shared';
+import { PrismaService } from '../prisma/prisma.service';
 import { AgentBlueprintService } from './agent-blueprint.service';
 import type { ReferenceMeta } from './agent-reference.service';
 import { trackClaude } from '../ai/ai-usage.service';
@@ -252,6 +253,7 @@ ${TRIGGER_EVENTS.map((e) => `- ${e}: ${TRIGGER_EVENT_LABEL[e]} — ${TRIGGER_EVE
 - llm 노드는 진짜 판단·작문이 필요할 때만 둡니다(예: 고객 문의 내용을 읽고 답장 초안 쓰기, 여러 자료를 보고 원인 분석). 하나로 충분하면 하나만, loop 본문 안에 llm을 넣는 것은 항목마다 꼭 따로 판단해야 할 때만입니다.
 - 보고서 문장(요약·코멘트)이 꼭 필요하지 않으면 output 템플릿에 {{변수}}로 숫자를 그대로 넣습니다.
 - summary에 이 에이전트가 실행마다 AI를 몇 번 부르는지(예: "AI 호출 0곳 — 도구와 규칙만으로 돕니다")를 적습니다.
+- 회사 지침·규정(휴가, 고객 응대, 문자 문구, 환불·위약금, 정산 기준 등)을 따라야 하는 판단이 있으면, 그 판단(llm·classify) 앞에 search_knowledge(또는 read_knowledge) 도구 노드를 두고 결과를 llm 노드 prompt에 {{변수}}로 넣어 "이 기준에 따라" 판단하게 합니다. 지식베이스 문서 목록은 요청 앞 <knowledge_docs>에 있습니다.
 - 도구는 아래 목록에 있는 이름만 그대로 씁니다. 지어내지 마세요. 필수 인자(*)는 반드시 채웁니다.
 - 데이터를 바꾸는 쓰기(WRITE) 도구 앞에는 반드시 approval 노드(사람 승인)를 둡니다. 문자 발송이 있으면 guardrail로 maxRecipients 같은 한도도 겁니다.
 - 고객 문자(send_sms)는 customerIds(고객 id 배열)와 message가 필요합니다. 본문은 [통인익스프레스]로 시작하고 {고객명}을 쓰면 고객마다 이름이 들어갑니다.
@@ -331,7 +333,10 @@ export class AgentGeneratorService {
   private readonly logger = new Logger('AgentGenerator');
   private readonly client: Anthropic | null = createClaude();
 
-  constructor(private readonly blueprints: AgentBlueprintService) {}
+  constructor(
+    private readonly blueprints: AgentBlueprintService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   get configured() {
     return !!this.client;
@@ -353,10 +358,19 @@ export class AgentGeneratorService {
       .map((t) => `- ${t.name}: ${t.description}\n  스키마: ${JSON.stringify(t.inputSchema)}`)
       .join('\n');
 
-    const refText = references.length
+    const kb = await this.prisma.knowledgeDoc.findMany({
+      select: { id: true, title: true, summary: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 40,
+    });
+    const kbText = kb.length
+      ? `<knowledge_docs>\n${kb.map((k) => `- ${k.title} (docId ${k.id})${k.summary ? `: ${k.summary.slice(0, 120)}` : ''}`).join('\n')}\n</knowledge_docs>\n\n`
+      : '';
+    const refText0 = references.length
       ? `<reference_files>\n${references.map((r) => `- 양식 id: ${r.id}\n${r.summary}`).join('\n\n')}\n</reference_files>\n` +
         '위 참고 양식 그대로 파일을 만들어야 하면 create_file_from_template 노드에 이 양식 id를 templateId로 넣습니다.\n\n'
       : '';
+    const refText = kbText + refText0;
     const userText = current
       ? `${refText}<current_blueprint>\n${JSON.stringify(compactGraph(current))}\n</current_blueprint>\n\n<request>\n${prompt}\n</request>\n\n위 블루프린트를 요청대로 고친 전체 그래프를 돌려주세요.`
       : `${refText}<request>\n${prompt}\n</request>\n\n이 일을 하는 에이전트 블루프린트를 새로 설계해 주세요.`;

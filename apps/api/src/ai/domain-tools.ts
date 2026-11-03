@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ScopeService } from '../scope/scope.service';
 import { StubNotificationProvider } from '../notifications/notification.provider';
 import { BranchAnomalyService } from '../modules/stats/branch-anomaly.service';
+import { KnowledgeService } from '../modules/knowledge/knowledge.service';
 import { ToolError, type AiTool } from './ai-tool.types';
 import { AiFiles } from './ai-files.service';
 import { REPORT_LIMITS, buildReport, normalizeReport } from './report-file';
@@ -49,7 +50,10 @@ export class DomainTools {
   ) {
     // AiModule을 건드리지 않으려고 직접 만든다(같은 Prisma·Scope 서비스를 쓴다)
     this.anomaly = new BranchAnomalyService(prisma, scope);
+    this.knowledge = new KnowledgeService(prisma);
   }
+
+  private readonly knowledge: KnowledgeService;
 
   /**
    * 조회 결과의 고객 명단 — AI가 고객 id 수십 개를 옮겨 적다 틀리지 않게, 짧은 목록 id로 넘긴다.
@@ -86,7 +90,58 @@ export class DomainTools {
       this.sendSms(),
       this.createReportFile(),
       this.findSuspiciousBranches(),
+      this.searchKnowledge(),
+      this.readKnowledge(),
     ];
+  }
+
+  /** 지식베이스 — 회사 지침·규정·원칙을 찾아 근거로 쓴다(누구나 읽기) */
+  private searchKnowledge(): AiTool {
+    return {
+      name: 'search_knowledge',
+      description:
+        '회사 지식베이스(지침·규정·원칙·매뉴얼) 검색 — 휴가·연차, 고객 응대, 문자 발송, 계약·환불, 정산·수수료, 현장 작업 기준처럼 ' +
+        '"회사에서 정한 방식"이 걸린 일을 처리하거나 판단하기 전에 먼저 찾는다. 낱말 몇 개로 찾으면 맞는 문서의 요약·규칙·본문 일부를 준다. ' +
+        '정확한 조건이 필요하면 read_knowledge로 본문을 읽는다. 찾은 기준을 따르고 답에 근거 문서 이름을 밝힌다.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '찾을 낱말(예: "반차 연차 신청", "환불 위약금")' },
+          limit: { type: 'integer', minimum: 1, maximum: 10, description: '문서 수(기본 5)' },
+        },
+        required: ['query'],
+      },
+      mode: 'READ',
+      permissions: [],
+      deferred: false,
+      run: async (input) => {
+        const q = typeof input.query === 'string' ? input.query : '';
+        if (!q.trim()) throw new ToolError('query(찾을 낱말)를 넣어 주세요.');
+        return this.knowledge.search(q, typeof input.limit === 'number' ? input.limit : 5);
+      },
+    };
+  }
+
+  private readKnowledge(): AiTool {
+    return {
+      name: 'read_knowledge',
+      description:
+        '지식베이스 문서 한 건의 본문 전체와 개념(용어·규칙·역할·절차) — search_knowledge로 찾은 문서 id(docId)로 읽는다.',
+      inputSchema: {
+        type: 'object',
+        properties: { docId: { type: 'string', description: 'search_knowledge 결과의 문서 id' } },
+        required: ['docId'],
+      },
+      mode: 'READ',
+      permissions: [],
+      deferred: false,
+      run: async (input) => {
+        const id = typeof input.docId === 'string' ? input.docId.trim() : '';
+        if (!UUID_RE.test(id))
+          throw new ToolError('docId는 search_knowledge 결과의 문서 id여야 합니다.');
+        return this.knowledge.read(id);
+      },
+    };
   }
 
   /**

@@ -50,6 +50,7 @@ export default {
     approvals: '审批',
     spaces: '空间预约',
     duties: '职责分工',
+    knowledge: '知识库',
     franchise: '加盟店现况',
     franchiseLeads: '加盟招商',
     b2bCrm: '企业销售 CRM',

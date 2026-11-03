@@ -736,6 +736,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     hint: '기업 이전 영업 — 리드·현장 실사·견적·수주 단계와 상담 기록',
   },
   {
+    key: 'KNOWLEDGE',
+    label: '지식베이스',
+    group: '공통',
+    actions: ['CREATE', 'UPDATE', 'DELETE'],
+    hint: '지식베이스 보기는 권한 없이 됩니다. 이 권한은 회사 문서·지침을 올리고 고칩니다',
+  },
+  {
     key: 'DUTY',
     label: '업무분장',
     group: '공통',
@@ -921,6 +928,7 @@ export * from './performance';
 export * from './phone';
 export * from './franchise';
 export * from './crm';
+export * from './knowledge';
 export * from './menu';
 
 // ── 공통 업무: 공지사항 · 작업관리 · 계약·자산 · 지점 관리 기록 ──

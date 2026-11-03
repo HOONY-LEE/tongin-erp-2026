@@ -325,9 +325,18 @@ export class AiService implements OnModuleInit {
       }
       // 첨부는 질문보다 앞에 둔다(문서를 먼저 읽고 질문에 답하게)
       for (const a of attachments) blocks.push(attachmentBlock(a));
+      const kb = await this.prisma.knowledgeDoc.findMany({
+        select: { title: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 60,
+      });
       blocks.push({
         type: 'text',
-        text: `${contextBlock(ctx.principal)}\n\n${text.trim() || '첨부한 파일을 확인해 주세요.'}`,
+        text: `${contextBlock(
+          ctx.principal,
+          new Date(),
+          kb.map((k) => k.title),
+        )}\n\n${text.trim() || '첨부한 파일을 확인해 주세요.'}`,
       });
       appendUser(messages, blocks);
 
