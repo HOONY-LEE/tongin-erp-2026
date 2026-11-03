@@ -495,7 +495,7 @@ svg.lucide {
    표 위 검색(softium), 검색·찾기 입력(akron Input — 테두리가 input 자체), type=search.
    직접 만든 검색 상자(드라이브·설정 창 등)는 각 모듈 CSS에서 var(--search-radius)를 쓴다. */
 :root {
-  --search-radius: var(--ark-radius-xl, 12px);
+  --search-radius: var(--control-radius);
 }
 .sft-toolbar__search,
 input[type='search'],
@@ -619,4 +619,45 @@ select:focus {
 .header-icon-btn[data-state='open'] {
   background: var(--ark-color-bg-muted);
   color: var(--ark-color-text);
+}
+
+/* ── 입력·선택 컨트롤과 세그먼트 탭 둥글기 통일(앱 전체) ──
+   세그먼트 탭(akron 기본 --ark-radius-xl 12px)보다 한 단계 작은 10px 하나로 — 입력칸·텍스트 상자·
+   드롭다운(Select·Combobox)·검색칸·날짜칸·세그먼트 탭. 버튼·카드·메뉴는 그대로(--ark-radius-md 등).
+   akron 토큰으로 바뀌는 것은 토큰으로, 토큰 없이 radius를 직접 쓰는 컴포넌트는 접두어 선택자로 덮는다. */
+:root {
+  --control-radius: 10px;
+  --ark-input-radius: var(--control-radius);
+  --ark-select-radius: var(--control-radius);
+  --ark-textarea-radius: var(--control-radius);
+}
+/* 직접 만든 입력칸(모듈 CSS에서 둥글기를 정한 곳은 그쪽이 이긴다 — :where로 특이도 0) */
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  textarea,
+  select
+) {
+  border-radius: var(--control-radius);
+}
+/* 드롭다운 열기 버튼(Select·Combobox)·표 아래 'N개씩 보기' */
+.dt-wrap .sft-tfoot__pagesize,
+[role='combobox']:not(input) {
+  border-radius: var(--control-radius) !important;
+}
+/* 테두리를 바깥 상자에 그리는 akron 입력(아이콘 붙은 입력·자동 높이 글상자·입력 묶음) */
+[class*='_inputWrapper_'],
+[class*='_inputGroup_'],
+[class*='_wrapper_1oa1d_'],
+[class*='_wrapper_r2ieu_'],
+[class*='_group_rkg7l_'],
+[class*='_inputWrap_'] {
+  border-radius: var(--control-radius) !important;
+}
+/* 세그먼트 탭 — 바깥 트랙은 10px, 안쪽 칸·움직이는 표시는 트랙 안쪽 여백(4px)만큼 작게 */
+[class*='_track_b4708_'] {
+  border-radius: var(--control-radius) !important;
+}
+[class*='_track_b4708_'] [class*='_segment_'],
+[class*='_track_b4708_'] [class*='_indicator_'] {
+  border-radius: calc(var(--control-radius) - 4px) !important;
 }

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { CalendarOff, FileText, Search } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { ArrowUpRight, CalendarOff, FileText, Search } from 'lucide-react';
 import { useApprovalForms, type ApprovalFormDef } from '../../lib/approvals';
 import { api, ApiError } from '../../lib/api';
 import { toLinePayload, type ApprovalDocView, type LineEntry } from '../../lib/approvals';
@@ -109,31 +109,72 @@ export function QuickApply({
   onPickForm: (form: ApprovalFormDef) => void;
 }) {
   const { forms } = useApprovalForms();
+  const cards: { key: string; name: string; desc: string; icon: ReactNode; onClick: () => void }[] =
+    [
+      {
+        key: 'general',
+        name: '일반 품의',
+        desc: '제목·내용을 자유롭게',
+        icon: <FileText size={20} aria-hidden />,
+        onClick: onGeneral,
+      },
+      {
+        key: 'leave',
+        name: '휴가 신청',
+        desc: '연차·반차·반반차',
+        icon: <CalendarOff size={20} aria-hidden />,
+        onClick: onLeave,
+      },
+      ...forms.map((f) => {
+        const Icon = formIcon(f.icon);
+        return {
+          key: f.id,
+          name: f.name,
+          desc: f.description || `${f.category || '결재 양식'} · 항목 ${f.fields.length}개`,
+          icon: <Icon size={20} aria-hidden />,
+          onClick: () => onPickForm(f),
+        };
+      }),
+    ];
   return (
-    <div className={styles.quick} aria-label="바로 신청하기">
-      <button type="button" className={styles.quickCard} onClick={onGeneral}>
-        <FileText size={18} aria-hidden />
-        <b>일반 품의</b>
-      </button>
-      <button type="button" className={styles.quickCard} onClick={onLeave}>
-        <CalendarOff size={18} aria-hidden />
-        <b>휴가 신청</b>
-      </button>
-      {forms.map((f) => (
+    <div
+      className={styles.quick}
+      aria-label="바로 신청하기"
+      // 한 줄에 다 놓는다(8개까지) — 더 많으면 두 줄로 고르게
+      style={{ ['--n' as string]: cards.length <= 8 ? cards.length : Math.ceil(cards.length / 2) }}
+    >
+      {cards.map((c, i) => (
         <button
-          key={f.id}
+          key={c.key}
           type="button"
           className={styles.quickCard}
-          title={f.description ?? undefined}
-          onClick={() => onPickForm(f)}
+          style={{ ['--qc' as string]: QUICK_COLORS[i % QUICK_COLORS.length] }}
+          title={c.desc}
+          onClick={c.onClick}
         >
-          <FormIconView name={f.icon} />
-          <b>{f.name}</b>
+          <span className={styles.quickIcon}>{c.icon}</span>
+          <span className={styles.quickText}>
+            <b>{c.name}</b>
+            <span>{c.desc}</span>
+          </span>
+          <ArrowUpRight size={15} className={styles.quickArrow} aria-hidden />
         </button>
       ))}
     </div>
   );
 }
+
+/** 바로 신청하기 카드 아이콘 색(차례대로) — 통인 주황부터 */
+const QUICK_COLORS = [
+  '#f97316',
+  '#10b981',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+  '#0ea5e9',
+  '#eab308',
+  '#ef4444',
+];
 
 /** 결재 양식 작성 — 항목 채우기 + 결재선 → 상신. 제목은 따로 받지 않는다(「양식 이름 — 올린 사람」으로 서버가 붙인다) */
 export function FormDraftModal({
