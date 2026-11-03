@@ -407,7 +407,7 @@
   height: 38px;
   padding: 0 10px;
   border: 1px solid var(--ark-color-border);
-  border-radius: 8px;
+  border-radius: var(--search-radius);
   background: var(--ark-color-bg);
   color: var(--ark-color-text-tertiary);
 }

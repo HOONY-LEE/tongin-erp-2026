@@ -211,6 +211,7 @@ export default function Notices() {
         rows={filtered as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => detail.open(String(r.id))}
+        filtersFirst
         filters={
           <SegmentedControl
             value={filter}

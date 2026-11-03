@@ -37,7 +37,7 @@
   margin-bottom: 8px;
   padding: 0 12px;
   border: 1px solid var(--ark-color-border);
-  border-radius: 999px;
+  border-radius: var(--search-radius);
   background: var(--ark-color-bg);
   color: var(--ark-color-text-tertiary);
 }

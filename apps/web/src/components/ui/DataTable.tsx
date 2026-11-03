@@ -27,6 +27,8 @@ interface Props {
    * 행 수를 늘려 넘치면 표 본문만 스크롤된다(머리글·풋터는 그대로).
    */
   fit?: boolean;
+  /** 필터(세그먼트 등)를 검색창 앞(왼쪽)에 둔다 — 기본은 검색창 뒤 */
+  filtersFirst?: boolean;
 }
 
 /** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
@@ -50,6 +52,7 @@ export function DataTable({
   exportFileName,
   pageSize,
   fit,
+  filtersFirst,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const wasLoading = useRef(false);
@@ -150,6 +153,7 @@ export function DataTable({
         showSkeleton ? 'dt-loading' : '',
         multiline ? 'dt-multiline' : '',
         fit ? 'dt-fit' : '',
+        filtersFirst && filters ? 'dt-filters-first' : '',
       ]
         .filter(Boolean)
         .join(' ')}

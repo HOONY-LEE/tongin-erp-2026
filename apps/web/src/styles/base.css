@@ -434,3 +434,37 @@ input.no-focus-ring:focus:not([readonly]) {
 svg.lucide {
   zoom: var(--font-scale);
 }
+
+/* ── 헤더 알림 벨 숫자 — akron 기본은 1.5초마다 커졌다 작아진다(_pulse_). 크기를 고정한다 ── */
+[class*='_badge_'][class*='_pulse_'] {
+  animation: none !important;
+}
+
+/* ── 검색칸 둥글기 = 세그먼트 탭(--ark-radius-xl)과 같게, 앱 전체 ──
+   표 위 검색(softium), 검색·찾기 입력(akron Input — 테두리가 input 자체), type=search.
+   직접 만든 검색 상자(드라이브·설정 창 등)는 각 모듈 CSS에서 var(--search-radius)를 쓴다. */
+:root {
+  --search-radius: var(--ark-radius-xl, 12px);
+}
+.sft-toolbar__search,
+input[type='search'],
+input[placeholder*='검색'],
+input[placeholder*='찾기'] {
+  border-radius: var(--search-radius) !important;
+}
+
+/* 표 툴바 — 필터를 검색창 앞에(DataTable filtersFirst): [세그먼트][검색] ……… [내보내기][+ 등록] */
+.dt-filters-first .sft-toolbar__right {
+  display: contents;
+}
+.dt-filters-first .dt-toolbar-filters {
+  order: -2;
+  /* 툴바 간격(12px)보다 바짝 — 세그먼트 바로 옆에 검색창 */
+  margin-right: -4px;
+}
+.dt-filters-first .sft-toolbar__left {
+  order: -1;
+  flex: 0 1 520px;
+  min-width: 200px;
+  margin-right: auto;
+}
