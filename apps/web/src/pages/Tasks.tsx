@@ -25,6 +25,7 @@ import {
   ListToolbar,
   RecordDetail,
   SegmentedControl,
+  Select,
   StatusBadge,
   useToast,
   type Column,
@@ -359,7 +360,7 @@ export default function Tasks() {
   const count = (s: 'ALL' | TaskStatus) =>
     s === 'ALL' ? rows.length : rows.filter((r) => r.status === s).length;
   const statusOptions = [
-    { value: 'ALL', label: `전체 ${count('ALL')}` },
+    { value: 'ALL', label: `모든 상태 ${count('ALL')}` },
     ...TASK_STATUS.map((s) => ({ value: s, label: `${TASK_STATUS_LABEL[s]} ${count(s)}` })),
   ];
   const listRows = status === 'ALL' ? rows : rows.filter((r) => r.status === status);
@@ -435,11 +436,14 @@ export default function Tasks() {
           loading={loading}
           onRowClick={(r) => detail.open(String(r.id))}
           filters={
-            <SegmentedControl
-              value={status}
-              onChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
-              options={statusOptions}
-            />
+            <div className={styles.statusFilter}>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
+                options={statusOptions}
+                aria-label="상태"
+              />
+            </div>
           }
           viewSwitch={viewSwitch}
           tabs={scopeTabs}

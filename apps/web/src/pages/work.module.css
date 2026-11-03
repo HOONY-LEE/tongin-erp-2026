@@ -258,3 +258,7 @@
   font-weight: 700;
   flex-shrink: 0;
 }
+/* 리스트 보기 상태 드롭다운 */
+.statusFilter {
+  width: 160px;
+}
