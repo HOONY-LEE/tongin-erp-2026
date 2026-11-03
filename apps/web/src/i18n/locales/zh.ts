@@ -52,6 +52,7 @@ export default {
     duties: '职责分工',
     franchise: '加盟店现况',
     franchiseLeads: '加盟招商',
+    b2bCrm: '企业销售 CRM',
     performance: '绩效评估',
     drive: '云盘',
     leave: '休假',

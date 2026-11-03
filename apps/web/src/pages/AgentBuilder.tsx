@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Background,
   BackgroundVariant,
@@ -63,6 +63,8 @@ import AgentNodeView, { type AgentFlowNode, type RunMark } from '../components/a
 import { Inspector } from '../components/agent/Inspector';
 import { DND_MIME, ToolExplorer } from '../components/agent/ToolExplorer';
 import { RunPanel, type AgentRunView } from '../components/agent/RunPanel';
+import { NlWorkspace, callsLlm, type NlTurn } from '../components/agent/NlWorkspace';
+import { useTabParam } from '../lib/useDetailParam';
 import type { ReferenceOpt } from '../components/agent/Inspector';
 import { SharePicker, VISIBILITY_ICON, type ShareCandidate } from '../components/agent/SharePicker';
 import { NODE_COLOR, NODE_HEX, NODE_ICON, nodeSummary } from '../components/agent/meta';
@@ -161,6 +163,11 @@ function Editor() {
   const [run, setRun] = useState<AgentRunView | null>(null);
   const [running, setRunning] = useState(false);
   const [references, setReferences] = useState<ReferenceOpt[]>([]);
+  // 큰 탭 — 자연어(말로 고치고 시험 실행) | 블루프린트(노드 캔버스). 같은 그래프를 본다
+  const { tab: mode, setTab: setMode } = useTabParam<'nl' | 'blueprint'>('nl', 'mode');
+  const [turns, setTurns] = useState<NlTurn[]>([]);
+  const [working, setWorking] = useState<string | null>(null);
+  const location = useLocation();
 
   // 참고 양식(대화로 만들 때 올린 엑셀·CSV) — '양식으로 파일 만들기' 노드에서 고른다
   useEffect(() => {
@@ -773,6 +780,179 @@ function Editor() {
     }
   };
 
+  // ── 자연어 모드: 말로 고치기 → 바로 적용 → 시험 실행 → 오류면 AI가 다시 고치기 ──
+  const say = (t: NlTurn) => setTurns((p) => [...p, t]);
+  const requestFix = async (prompt: string, base: AgentGraph) => {
+    const res = await api<GenerateResult>('/agent-blueprints/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt,
+        ...(base.nodes.length ? { blueprintId: id, graph: base } : {}),
+      }),
+    });
+    commit(res.graph);
+    setMeta((m) =>
+      m && (m.name === '새 에이전트' || !base.nodes.length)
+        ? { ...m, name: res.name || m.name, description: res.description || m.description }
+        : m,
+    );
+    return res;
+  };
+  /** 쓰기는 하지 않고(시험) AI 노드는 흉내만 내서(비용 없음) 처음부터 끝까지 돌려 본다 */
+  const testGraph = async (g: AgentGraph) => {
+    const t = g.nodes.find((n) => n.type === 'trigger')?.config as TriggerConfig | undefined;
+    const need = (t?.inputFields ?? []).filter((f) => f.required);
+    if (need.length) return { skipped: need.map((f) => f.name) } as const;
+    const r = await api<AgentRunView>(`/agent-blueprints/${id}/run`, {
+      method: 'POST',
+      body: JSON.stringify({ input: {}, dryRun: true, mockLlm: true, graph: g }),
+    });
+    setRun(r);
+    const bad = r.trace.filter((x) => x.status === 'error' || x.status === 'blocked');
+    const failed = r.status === 'ERROR' || r.status === 'BLOCKED' || bad.length > 0;
+    return {
+      run: r,
+      failed,
+      problems: [
+        ...(r.error ? [r.error] : []),
+        ...bad.map((x) => `'${x.label}': ${x.message ?? x.status}`),
+      ].filter((v, i, a) => a.indexOf(v) === i),
+    } as const;
+  };
+  const verify = async (g: AgentGraph, issuesOf: AgentIssue[], autoSave: boolean) => {
+    let cur = g;
+    let errs = issuesOf.filter((i) => i.level === 'error');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (errs.length) {
+        say({
+          role: 'assistant',
+          test: 'fail',
+          text: `검사 오류 ${errs.length}개가 남아 있어 다시 고칩니다:\n${errs.map((e) => `- ${e.message}`).join('\n')}`,
+        });
+        setWorking('검사 오류를 고치는 중…');
+        const res = await requestFix(
+          `검사에서 이런 오류가 났습니다. 모두 고쳐 주세요:\n${errs.map((e) => `- ${e.message}`).join('\n')}`,
+          cur,
+        );
+        cur = res.graph;
+        errs = res.issues.filter((i) => i.level === 'error');
+        continue;
+      }
+      setWorking('시험 실행 중(쓰기 안 함 · AI는 흉내)…');
+      const t = await testGraph(cur);
+      if ('skipped' in t) {
+        say({
+          role: 'assistant',
+          text: `꼭 넣어야 하는 입력값(${t.skipped!.join(', ')})이 있어 자동 시험은 건너뛰었습니다. 오른쪽 **입력값·실제 실행 옵션**에서 값을 넣고 시험해 보세요.`,
+        });
+        return cur;
+      }
+      if (!t.failed) {
+        const llm = cur.nodes.filter(callsLlm).length;
+        say({
+          role: 'assistant',
+          test: 'ok',
+          text: `시험 실행 통과 — ${t.run.trace.length}단계를 끝까지 돌았습니다. 실행할 때마다 AI 호출 ${llm}곳${llm ? '' : '(AI 없이 도구·규칙만으로 돕니다)'}.`,
+        });
+        if (autoSave && meta?.canEdit) {
+          const b = await api<Blueprint>(`/agent-blueprints/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ graph: cur }),
+          });
+          const ng = normalizeAgentGraph(b.graph);
+          setSaved(JSON.stringify({ m: [b.name, b.description, b.status], g: ng }));
+        }
+        return cur;
+      }
+      if (attempt === 1) break;
+      say({
+        role: 'assistant',
+        test: 'fail',
+        text: `시험 실행에서 문제가 났습니다 — 스스로 고쳐 볼게요:\n${t.problems.map((x) => `- ${x}`).join('\n')}`,
+      });
+      setWorking('시험 오류를 고치는 중…');
+      const res = await requestFix(
+        `시험 실행(쓰기 안 함)에서 이런 오류가 났습니다. 원인을 고친 그래프를 주세요:\n${t.problems.map((x) => `- ${x}`).join('\n')}`,
+        cur,
+      );
+      cur = res.graph;
+      errs = res.issues.filter((i) => i.level === 'error');
+    }
+    say({
+      role: 'assistant',
+      test: 'fail',
+      text: '두 번 고쳐도 문제가 남았습니다. 무엇이 필요한지 말씀해 주시거나 **블루프린트**에서 해당 노드를 직접 고쳐 주세요.',
+    });
+    return cur;
+  };
+  const nlSend = async (text: string) => {
+    say({ role: 'user', text });
+    setWorking(graph.nodes.length ? 'AI가 고치는 중(30초 안팎)…' : 'AI가 설계하는 중(30초~1분)…');
+    try {
+      const res = await requestFix(text, graph);
+      setMeta((m) => (m ? { ...m, prompt: text } : m));
+      const ch = res.changes;
+      const llm = res.graph.nodes.filter(callsLlm).length;
+      say({
+        role: 'assistant',
+        text:
+          `${res.summary}\n\n` +
+          `추가 ${ch.added.length} · 변경 ${ch.changed.length} · 삭제 ${ch.removed.length} · AI 호출 ${llm}곳` +
+          (res.fixes.length ? `\n${res.fixes.map((f) => `- ${f}`).join('\n')}` : '') +
+          '\n\n바뀐 내용은 아직 저장 전입니다(⌘Z로 되돌리기).',
+      });
+      await verify(res.graph, res.issues, false);
+    } catch (e) {
+      say({
+        role: 'assistant',
+        test: 'fail',
+        text: e instanceof ApiError ? e.message : '고치지 못했습니다',
+      });
+    } finally {
+      setWorking(null);
+    }
+  };
+  const nlTest = async () => {
+    setRunning(true);
+    try {
+      await verify(graph, issues, false);
+    } catch (e) {
+      say({
+        role: 'assistant',
+        test: 'fail',
+        text: e instanceof ApiError ? e.message : '시험하지 못했습니다',
+      });
+    } finally {
+      setRunning(false);
+      setWorking(null);
+    }
+  };
+  // 대화로 막 만들고 왔으면 시험 실행·자가 수정까지 돌려 완성한다(한 번만)
+  const autoTested = useRef(false);
+  useEffect(() => {
+    const st = location.state as { autoTest?: boolean } | null;
+    if (!st?.autoTest || autoTested.current || loading || !meta || !tools) return;
+    autoTested.current = true;
+    navigate('.', { replace: true, state: null });
+    say({
+      role: 'assistant',
+      text: `**${meta.name}** 에이전트를 만들었습니다. 저장하기 전에 시험 실행을 돌려 볼게요.`,
+    });
+    setRunning(true);
+    void verify(graph, issues, true)
+      .catch((e) =>
+        say({
+          role: 'assistant',
+          test: 'fail',
+          text: e instanceof ApiError ? e.message : '시험하지 못했습니다',
+        }),
+      )
+      .finally(() => {
+        setRunning(false);
+        setWorking(null);
+      });
+  }, [loading, meta, tools]);
+
   if (loading || !meta) {
     return (
       <div style={{ padding: 4 }}>
@@ -805,6 +985,19 @@ function Editor() {
           aria-label="에이전트 이름"
         />
         <SegmentedControl
+          className={styles.modeTabs}
+          value={mode}
+          onChange={(v) => {
+            setMode(v as 'nl' | 'blueprint');
+            if (v === 'blueprint')
+              setTimeout(() => rf.fitView({ padding: 0.2, duration: 200 }), 60);
+          }}
+          options={[
+            { value: 'nl', label: '자연어' },
+            { value: 'blueprint', label: '블루프린트' },
+          ]}
+        />
+        <SegmentedControl
           size="sm"
           value={meta.status}
           onChange={(v) => meta.canEdit && setMeta({ ...meta, status: v as 'DRAFT' | 'ACTIVE' })}
@@ -815,107 +1008,111 @@ function Editor() {
         />
         {dirty && <span className={styles.dirty}>저장 안 됨</span>}
         <span className={styles.spacer} />
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${leftOpen ? styles.iconBtnActive : ''}`}
-          onClick={() => setLeftOpen((v) => !v)}
-          title="노드·도구 패널 접기/펴기"
-        >
-          <PanelLeft size={14} />
-        </button>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={undo}
-          disabled={!past.length}
-          title="되돌리기(⌘Z)"
-        >
-          <Undo2 size={14} />
-        </button>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={redo}
-          disabled={!future.length}
-          title="다시하기(⇧⌘Z)"
-        >
-          <Redo2 size={14} />
-        </button>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          title="자동 정렬"
-          onClick={() => {
-            commit((g) => autoLayout(g));
-            setTimeout(() => rf.fitView({ padding: 0.2, duration: 300 }), 30);
-          }}
-        >
-          <LayoutGrid size={14} /> 정렬
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${showData ? styles.iconBtnActive : ''}`}
-          title="데이터선({{변수}} 참조) 보이기"
-          onClick={() => setShowData((v) => !v)}
-        >
-          <Spline size={14} /> 데이터선
-        </button>
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className={`${styles.iconBtn} ${showIssues ? styles.iconBtnActive : ''}`}
-            onClick={() => setShowIssues((v) => !v)}
-            title="검사 결과"
-          >
-            <CircleAlert size={14} />
-            <span className={styles.issueCount}>
-              검사 {errorCount > 0 && <span className={styles.errDot}>{errorCount}</span>}
-              {warnCount > 0 && <span className={styles.warnDot}>{warnCount}</span>}
-              {!issues.length && '✓'}
-            </span>
-          </button>
-          {showIssues && (
-            <div
-              className={styles.suggest}
-              style={{ width: 380, right: 0, left: 'auto', maxHeight: 360, padding: 6 }}
+        {mode === 'blueprint' && (
+          <>
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${leftOpen ? styles.iconBtnActive : ''}`}
+              onClick={() => setLeftOpen((v) => !v)}
+              title="노드·도구 패널 접기/펴기"
             >
-              {!issues.length && (
-                <div className={styles.note} style={{ padding: 6 }}>
-                  문제가 없습니다.
+              <PanelLeft size={14} />
+            </button>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={undo}
+              disabled={!past.length}
+              title="되돌리기(⌘Z)"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={redo}
+              disabled={!future.length}
+              title="다시하기(⇧⌘Z)"
+            >
+              <Redo2 size={14} />
+            </button>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              title="자동 정렬"
+              onClick={() => {
+                commit((g) => autoLayout(g));
+                setTimeout(() => rf.fitView({ padding: 0.2, duration: 300 }), 30);
+              }}
+            >
+              <LayoutGrid size={14} /> 정렬
+            </button>
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${showData ? styles.iconBtnActive : ''}`}
+              title="데이터선({{변수}} 참조) 보이기"
+              onClick={() => setShowData((v) => !v)}
+            >
+              <Spline size={14} /> 데이터선
+            </button>
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`${styles.iconBtn} ${showIssues ? styles.iconBtnActive : ''}`}
+                onClick={() => setShowIssues((v) => !v)}
+                title="검사 결과"
+              >
+                <CircleAlert size={14} />
+                <span className={styles.issueCount}>
+                  검사 {errorCount > 0 && <span className={styles.errDot}>{errorCount}</span>}
+                  {warnCount > 0 && <span className={styles.warnDot}>{warnCount}</span>}
+                  {!issues.length && '✓'}
+                </span>
+              </button>
+              {showIssues && (
+                <div
+                  className={styles.suggest}
+                  style={{ width: 380, right: 0, left: 'auto', maxHeight: 360, padding: 6 }}
+                >
+                  {!issues.length && (
+                    <div className={styles.note} style={{ padding: 6 }}>
+                      문제가 없습니다.
+                    </div>
+                  )}
+                  <div className={styles.issueList}>
+                    {issues.map((i, k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        className={styles.issueItem}
+                        onClick={() => i.nodeId && focusNode(i.nodeId)}
+                      >
+                        <span className={i.level === 'error' ? styles.errDot : styles.warnDot}>
+                          {i.level === 'error' ? '오류' : '경고'}
+                        </span>
+                        <span>{i.message}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              <div className={styles.issueList}>
-                {issues.map((i, k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className={styles.issueItem}
-                    onClick={() => i.nodeId && focusNode(i.nodeId)}
-                  >
-                    <span className={i.level === 'error' ? styles.errDot : styles.warnDot}>
-                      {i.level === 'error' ? '오류' : '경고'}
-                    </span>
-                    <span>{i.message}</span>
-                  </button>
-                ))}
-              </div>
             </div>
-          )}
-        </div>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${nlOpen ? styles.iconBtnActive : ''}`}
-          onClick={() => setNlOpen((v) => !v)}
-        >
-          <Sparkles size={14} /> 자연어로 {graph.nodes.length ? '수정하기' : '만들기'}
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${runOpen ? styles.iconBtnActive : ''}`}
-          onClick={() => setRunOpen((v) => !v)}
-        >
-          <Play size={14} /> 테스트 실행
-        </button>
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${nlOpen ? styles.iconBtnActive : ''}`}
+              onClick={() => setNlOpen((v) => !v)}
+            >
+              <Sparkles size={14} /> 자연어로 {graph.nodes.length ? '수정하기' : '만들기'}
+            </button>
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${runOpen ? styles.iconBtnActive : ''}`}
+              onClick={() => setRunOpen((v) => !v)}
+            >
+              <Play size={14} /> 테스트 실행
+            </button>
+          </>
+        )}
         <button
           type="button"
           className={styles.iconBtn}
@@ -963,7 +1160,30 @@ function Editor() {
       )}
 
       {/* ── 자연어 바 ── */}
-      {nlOpen && (
+      {mode === 'nl' && (
+        <NlWorkspace
+          graph={graph}
+          description={meta.description}
+          toolMap={toolMap}
+          issues={issues}
+          trigger={trigger}
+          aiConfigured={aiConfigured}
+          canEdit={meta.canEdit}
+          turns={turns}
+          working={working}
+          run={run}
+          running={running}
+          onSend={(t) => void nlSend(t)}
+          onTest={() => void nlTest()}
+          onRun={(o) => void startRun(o)}
+          onDecide={(a) => void decide(a)}
+          onOpenNode={(nid) => {
+            setMode('blueprint');
+            setTimeout(() => focusNode(nid), 80);
+          }}
+        />
+      )}
+      {mode === 'blueprint' && nlOpen && (
         <div className={styles.nlBar}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <textarea
@@ -1011,7 +1231,9 @@ function Editor() {
         </div>
       )}
 
-      <div className={`${styles.body} ${leftOpen ? '' : styles.bodyNoLeft}`}>
+      <div
+        className={`${styles.body} ${leftOpen ? '' : styles.bodyNoLeft} ${mode === 'nl' ? styles.bodyHidden : ''}`}
+      >
         {/* ── 왼쪽: 노드 팔레트 + 도구 탐색기 ── */}
         <aside className={styles.left} hidden={!leftOpen}>
           <div className={styles.sectionTitle}>노드 — 끌어다 놓거나 누르기</div>

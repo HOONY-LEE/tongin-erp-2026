@@ -128,7 +128,7 @@ const SPECS: Spec[] = [
         { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         {
           label: '기업 영업',
-          items: ['leads', 'customers', 'calendar', 'payments-confirm', 'support'],
+          items: ['b2b-crm', 'leads', 'customers', 'calendar', 'payments-confirm', 'support'],
         },
         { label: '파트너·기준', items: ['partner-mgmt', 'product-mgmt'] },
         MY,
@@ -276,6 +276,13 @@ const TEAM_ROLES = [
       'NOTICE.DELETE',
       'SPACE.MANAGE',
     ],
+  },
+  {
+    code: 'TEAM_B2B',
+    name: '기업영업팀 업무',
+    description: '기업영업 CRM(리드·실사·견적·수주)',
+    orgs: ['기업영업'],
+    perms: ['B2B_CRM.READ', 'B2B_CRM.CREATE', 'B2B_CRM.UPDATE', 'B2B_CRM.DELETE'],
   },
   {
     code: 'TEAM_FRANCHISE',

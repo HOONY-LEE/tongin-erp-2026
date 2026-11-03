@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { StatsService } from './stats.service';
 import { BranchAnomalyService } from './branch-anomaly.service';
+import { SalesStatsService } from './sales-stats.service';
 import { BranchAnomalyQueryDto } from './dto/branch-anomaly-query.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -11,7 +12,35 @@ export class StatsController {
   constructor(
     private readonly service: StatsService,
     private readonly anomaly: BranchAnomalyService,
+    private readonly salesStats: SalesStatsService,
   ) {}
+
+  /**
+   * 매출 통계(필터) — from·to(YYYY-MM-DD), serviceLine(MOVING 가정이사 · B2B_MOVING 기업이전 …),
+   * orgUnitId(지점), partnerId(거래처), source(접수 경로), groupBy(day·week·month·branch·partner·serviceLine·source·region)
+   */
+  @Get('sales')
+  @RequirePermissions('STATS.READ')
+  sales(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('serviceLine') serviceLine?: string,
+    @Query('orgUnitId') orgUnitId?: string,
+    @Query('partnerId') partnerId?: string,
+    @Query('source') source?: string,
+    @Query('groupBy') groupBy?: string,
+  ) {
+    return this.salesStats.sales(user, {
+      from,
+      to,
+      serviceLine,
+      orgUnitId,
+      partnerId,
+      source,
+      groupBy,
+    });
+  }
 
   @Get('overview')
   @RequirePermissions('STATS.READ')

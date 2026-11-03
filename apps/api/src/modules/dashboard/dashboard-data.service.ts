@@ -3,6 +3,7 @@ import {
   ATTENDANCE_STATUS_LABEL,
   DASH_WIDGET_MAP,
   LEAD_STATUS,
+  LEAD_SOURCE_LABEL,
   LEAD_STATUS_LABEL,
   SERVICE_LINE_LABEL,
   addDaysYmd,
@@ -22,6 +23,7 @@ import { ApprovalService } from '../approval/approval.service';
 import { AttendanceService } from '../attendance/attendance.service';
 import { LeaveService } from '../leave/leave.service';
 import { BranchAnomalyService } from '../stats/branch-anomaly.service';
+import { CrmService } from '../crm/crm.service';
 
 const DAY = 86400_000;
 const KST = 9 * 3600_000;
@@ -33,17 +35,7 @@ const ym = (d: Date) => ymd(d).slice(0, 7);
 const CONTRACTED: string[] = ['CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS', 'DONE'];
 const OPEN_LEAD = { notIn: ['DONE', 'CANCELED'] };
 
-const SOURCE_LABEL: Record<string, string> = {
-  SYSTEM: '시스템',
-  HOMEPAGE: '홈페이지',
-  AIBOT: 'AI상담봇',
-  PHONE: '전화상담',
-  NAVER: '네이버',
-  INSTAGRAM: '인스타그램',
-  PARTNER: '제휴사',
-  WALK_IN: '방문접수',
-  ETC: '기타',
-};
+const SOURCE_LABEL = LEAD_SOURCE_LABEL;
 const WORK_STATUS_LABEL: Record<string, string> = {
   ASSIGNED: '배정',
   IN_PROGRESS: '작업중',
@@ -143,6 +135,7 @@ export class DashboardDataService {
     private readonly approvals: ApprovalService,
     private readonly leave: LeaveService,
     private readonly attendance: AttendanceService,
+    private readonly crm: CrmService,
   ) {}
 
   async many(items: Pick<DashItem, 'id' | 'widget' | 'period' | 'metric'>[], p: AuthPrincipal) {
@@ -192,7 +185,73 @@ export class DashboardDataService {
     const prevWin = (field: string) =>
       r.from && r.prevFrom ? { [field]: { gte: r.prevFrom, lt: r.from } } : null;
 
+    if (key.startsWith('crm.')) return this.crmWidget(key, r, p);
+
     switch (key) {
+      // ── 기업영업(기업이전) ──
+      case 'b2b.kpiRevenue':
+      case 'b2b.kpiContracts': {
+        const where = { ...org, status: 'SIGNED', lead: { serviceLine: 'B2B_MOVING' } };
+        const sum = async (w: object | null) => {
+          if (!w) return null;
+          const a = await this.prisma.contract.aggregate({
+            where: { ...where, ...w },
+            _sum: { totalAmount: true },
+            _count: true,
+          });
+          return key === 'b2b.kpiRevenue' ? num(a._sum.totalAmount) : a._count;
+        };
+        const [value, previous] = await Promise.all([
+          sum(since('signedAt')),
+          sum(prevWin('signedAt')),
+        ]);
+        return {
+          shape: 'value',
+          format: key === 'b2b.kpiRevenue' ? 'won' : 'count',
+          value: value ?? 0,
+          previous,
+        };
+      }
+      case 'b2b.revenueTrend':
+        return this.series(
+          await this.prisma.contract.findMany({
+            where: {
+              ...org,
+              status: 'SIGNED',
+              lead: { serviceLine: 'B2B_MOVING' },
+              signedAt: { not: null, ...(r.from ? { gte: r.from } : {}) },
+            },
+            select: { signedAt: true, totalAmount: true },
+          }),
+          (x) => x.signedAt!,
+          (x) => num(x.totalAmount),
+          r,
+          'won',
+        );
+      case 'b2b.byPartner': {
+        const rows = await this.prisma.contract.findMany({
+          where: {
+            ...org,
+            status: 'SIGNED',
+            lead: { serviceLine: 'B2B_MOVING' },
+            ...since('signedAt'),
+          },
+          select: {
+            totalAmount: true,
+            lead: { select: { partner: { select: { id: true, name: true } } } },
+          },
+        });
+        const m = new Map<string, { key: string; label: string; value: number }>();
+        for (const c of rows) {
+          const pt = c.lead.partner;
+          const k = pt?.id ?? 'NONE';
+          const cur = m.get(k) ?? { key: k, label: pt?.name ?? '거래처 없음', value: 0 };
+          cur.value += num(c.totalAmount);
+          m.set(k, cur);
+        }
+        return this.category([...m.values()], 'won', 10, true);
+      }
+
       // ── 핵심 지표 ──
       case 'kpi.leads': {
         const [value, previous] = await Promise.all([
@@ -1111,6 +1170,65 @@ export class DashboardDataService {
   }
 
   // ── 도우미 ──
+
+  /** 영업 CRM 위젯 — crm.<fran|b2b>.<kpiOpen|kpiWon|kpiPipeline|kpiWinRate|funnel|bySource|byOwner> */
+  private async crmWidget(key: string, r: Range, p: AuthPrincipal): Promise<DashData> {
+    const [, short, what] = key.split('.');
+    const pipeline = short === 'b2b' ? 'B2B' : 'FRANCHISE';
+    const ymd = (d: Date) => new Date(d.getTime() + 9 * 3600_000).toISOString().slice(0, 10);
+    // 진행 중 건수·금액은 기간과 상관없이 지금 기준
+    const live = what === 'kpiOpen' || what === 'kpiPipeline' || what === 'funnel';
+    const s = await this.crm.stats(p, pipeline, live || !r.from ? {} : { from: ymd(r.from) });
+    switch (what) {
+      case 'kpiOpen':
+        return { shape: 'value', format: 'count', value: s.open };
+      case 'kpiWon':
+        return { shape: 'value', format: 'count', value: s.won };
+      case 'kpiPipeline':
+        return {
+          shape: 'value',
+          format: 'won',
+          value: s.pipelineAmount,
+          hint: `진행 중 ${s.open.toLocaleString()}건`,
+        };
+      case 'kpiWinRate':
+        return {
+          shape: 'value',
+          format: 'percent',
+          value: s.winRate ?? 0,
+          max: 1,
+          hint: `수주 ${s.won}건 · 실패 ${s.lost}건`,
+        };
+      case 'funnel':
+        return {
+          shape: 'category',
+          format: 'count',
+          items: s.byStage.map((x) => ({ key: x.key, label: x.label, value: x.count })),
+        };
+      case 'bySource':
+        return this.category(
+          s.bySource.map((x) => ({ key: x.key, label: x.label, value: x.count })),
+          'count',
+          8,
+        );
+      case 'byOwner':
+        return pipeline === 'B2B'
+          ? this.category(
+              s.byOwner.map((x) => ({ key: x.empId ?? 'NONE', label: x.name, value: x.wonAmount })),
+              'won',
+              10,
+              true,
+            )
+          : this.category(
+              s.byOwner.map((x) => ({ key: x.empId ?? 'NONE', label: x.name, value: x.count })),
+              'count',
+              10,
+              true,
+            );
+      default:
+        throw new Error('알 수 없는 위젯입니다');
+    }
+  }
 
   private series<T>(
     rows: T[],

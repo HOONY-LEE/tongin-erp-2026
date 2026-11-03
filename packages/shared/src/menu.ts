@@ -212,6 +212,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     desc: '가맹점 계약·가맹비·보증금·재계약 대상',
   },
   {
+    key: 'b2b-crm',
+    path: '/b2b-crm',
+    label: '기업영업 CRM',
+    i18n: 'b2bCrm',
+    icon: 'Briefcase',
+    perm: 'B2B_CRM.READ',
+    category: '운영',
+    desc: '기업 이전 영업 — 리드·실사·견적·수주',
+  },
+  {
     key: 'franchise-leads',
     path: '/franchise-leads',
     label: '가맹 영업',
