@@ -31,15 +31,7 @@
     "mac": {
       "category": "public.app-category.business",
       "icon": "assets/icon.icns",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
-      ],
+      "target": "dmg",
       "artifactName": "TonginAIWorks-mac-${arch}.${ext}"
     },
     "dmg": {

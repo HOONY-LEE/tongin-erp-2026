@@ -38,6 +38,9 @@ jobs:
           cache: npm
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
+      # 맥 러너에서 XProtect가 dmg 볼륨을 붙잡아 hdiutil detach가 '사용 중'으로 실패하는 일을 막는다
+      - if: runner.os == 'macOS'
+        run: sudo pkill -9 XProtect || true
       # 애플 개발자 인증서가 없어 서명하지 않는다(처음 열 때 우클릭 → 열기)
       - run: npm run ${{ matrix.script }}
         env:
