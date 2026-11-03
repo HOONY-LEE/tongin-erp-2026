@@ -1,0 +1,2 @@
+# 웹 배포(vercel deploy)에 데스크톱 앱 폴더를 올리지 않는다 — 설치 파일(dmg 약 110MB)·node_modules가 업로드 한도를 넘는다
+/desktop/
