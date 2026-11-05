@@ -104,6 +104,14 @@ export class UpdateAccountDto {
   isActive?: boolean;
 }
 
+/** 관리자가 남의 비밀번호를 다시 정한다 — 규칙은 계정 만들 때와 같다(6~100자) */
+export class ResetAccountPasswordDto {
+  @IsString()
+  @MinLength(6)
+  @MaxLength(100)
+  password!: string;
+}
+
 export class SetAccountRolesDto {
   @IsArray()
   @ArrayMaxSize(20)

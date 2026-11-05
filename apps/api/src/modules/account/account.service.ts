@@ -302,6 +302,31 @@ export class AccountService {
   }
 
   /**
+   * 비밀번호 재설정(관리자) — 비밀번호를 잊은 직원, 공개된 기본 비밀번호를 쓰던 시드 계정을 새 비밀번호로.
+   * 고칠 수 있는 계정 기준은 다른 계정 수정과 같다(범위 안, 전체관리자 계정은 전체관리자만).
+   * 본인 비밀번호는 지금 비밀번호를 확인하는 '내 비밀번호 바꾸기'(POST /auth/password)로만.
+   * 새 비밀번호는 감사 기록에 남지 않는다(응답은 id뿐).
+   */
+  async resetPassword(id: string, password: string, actor: AuthPrincipal) {
+    if (actor.userId === id) {
+      throw new BadRequestException("본인 비밀번호는 '내 비밀번호 바꾸기'에서 바꿔 주세요.");
+    }
+    const user = await this.prisma.appUser.findUnique({ where: { id }, select: { id: true } });
+    if (!user) throw new NotFoundException('계정을 찾을 수 없습니다.');
+    await this.assertCanManage(id, actor);
+    if (PUBLIC_DEFAULT_PASSWORDS.includes(password)) {
+      throw new BadRequestException(
+        '누구나 아는 기본 비밀번호는 쓸 수 없습니다. 다른 비밀번호로 해 주세요.',
+      );
+    }
+    await this.prisma.appUser.update({
+      where: { id },
+      data: { passwordHash: await bcrypt.hash(password, 10) },
+    });
+    return { id };
+  }
+
+  /**
    * 활성/비활성 전환. 비활성화는 두 경우를 막는다 —
    *  1) 본인 계정: 지금 쓰고 있는 관리자가 스스로를 잠가 버린다.
    *  2) 마지막 전체관리자('*'): 다시 켜 줄 사람이 아무도 남지 않는다.

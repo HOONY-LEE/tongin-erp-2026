@@ -86,6 +86,7 @@ export default function AccountList() {
   const [positions, setPositions] = useState<PositionOpt[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
+  const [resetting, setResetting] = useState<Account | null>(null);
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
   const orgs = useOptions('/org-units', 'name');
   const isWildcard = user?.permissions.includes('*') ?? false;
@@ -221,9 +222,14 @@ export default function AccountList() {
             detail && can('USER.UPDATE') ? (
               <>
                 {detail.id !== user?.userId && (
-                  <Button variant="outline" size="sm" onClick={() => void toggleActive(detail)}>
-                    {detail.isActive ? '비활성화' : '활성화'}
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => setResetting(detail)}>
+                      비밀번호 재설정
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void toggleActive(detail)}>
+                      {detail.isActive ? '비활성화' : '활성화'}
+                    </Button>
+                  </>
                 )}
                 <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
                   편집
@@ -279,6 +285,7 @@ export default function AccountList() {
           }
         />
         {modal}
+        {resetting && <ResetPasswordModal account={resetting} onClose={() => setResetting(null)} />}
       </>
     );
   }
@@ -300,6 +307,86 @@ export default function AccountList() {
       />
       {modal}
     </>
+  );
+}
+
+/**
+ * 비밀번호 재설정(관리자) — 비밀번호를 잊은 직원 계정에 새 비밀번호를 정한다.
+ * 새 비밀번호는 화면에서 본인에게 따로 알려 주고, 받은 사람은 '내 비밀번호 바꾸기'로 다시 바꾼다.
+ */
+function ResetPasswordModal({ account, onClose }: { account: Account; onClose: () => void }) {
+  const toast = useToast();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const short = password.length > 0 && password.length < 6;
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const canSubmit = password.length >= 6 && confirm === password;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api(`/accounts/${account.id}/password`, {
+        method: 'PUT',
+        body: JSON.stringify({ password }),
+      });
+      toast({
+        type: 'success',
+        title: '비밀번호를 다시 정했습니다 — 새 비밀번호를 본인에게 따로 알려 주세요',
+      });
+      onClose();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={`비밀번호 재설정 — ${account.employeeName ?? account.partnerName ?? account.loginId}`}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            취소
+          </Button>
+          <Button
+            variant="primary"
+            loading={saving}
+            disabled={!canSubmit || saving}
+            onClick={() => void save()}
+          >
+            재설정
+          </Button>
+        </>
+      }
+    >
+      <div className={styles.section}>
+        <span className={styles.hint}>
+          {account.loginId} 계정의 비밀번호를 새로 정합니다. 지금 비밀번호는 몰라도 됩니다.
+        </span>
+        <PasswordInput
+          label="새 비밀번호 *"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="6자 이상"
+          autoComplete="new-password"
+          showToggle
+          fullWidth
+          error={short ? '6자 이상 입력해 주세요' : undefined}
+        />
+        <PasswordInput
+          label="새 비밀번호 확인 *"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          autoComplete="new-password"
+          showToggle
+          fullWidth
+          error={mismatch ? '위와 같은 비밀번호를 넣어 주세요' : undefined}
+        />
+      </div>
+    </Modal>
   );
 }
 
