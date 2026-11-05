@@ -55,6 +55,8 @@ export class SupportService {
     if (ids !== null && !ids.includes(dto.orgUnitId)) {
       throw new ForbiddenException('소속 조직으로만 접수할 수 있습니다.');
     }
+    await this.scope.assertCustomer(dto.customerId, principal);
+    await this.scope.assertContract(dto.contractId, principal);
     const created = await this.prisma.supportTicket.create({
       data: { ticketNo: this.genNo(dto.kind), ...dto },
     });
@@ -76,6 +78,8 @@ export class SupportService {
         throw new ForbiddenException('소속 조직으로만 옮길 수 있습니다.');
       }
     }
+    await this.scope.assertCustomer(dto.customerId, principal);
+    await this.scope.assertContract(dto.contractId, principal);
     return this.prisma.supportTicket.update({ where: { id }, data: dto });
   }
 

@@ -110,18 +110,20 @@ export class CalendarEventService {
     const dateFilter = from || to ? { gte: from, lte: to } : undefined;
 
     const orgIds = await this.scope.orgScopeIds(principal); // null = 무제한
+    // 조직 뷰에서 고른 조직 — 범위 밖 조직을 골라도 그 조직 일정·작업·휴가는 보이지 않는다
+    const orgFilter: string | { in: string[] } | undefined = query.orgUnitId
+      ? orgIds === null || orgIds.includes(query.orgUnitId)
+        ? query.orgUnitId
+        : { in: [] }
+      : orgIds !== null
+        ? { in: orgIds }
+        : undefined;
 
     // ── 자체 일정 ──
     const orConditions: Prisma.CalendarEventWhereInput[] = [{ ownerUserId: principal.userId }];
     if (scopeKind === 'ORG') {
       const orgShared: Prisma.CalendarEventWhereInput = { visibility: 'ORG' };
-      if (query.orgUnitId) {
-        // 범위 밖 조직을 골라도 그 조직 일정은 보이지 않는다
-        orgShared.orgUnitId =
-          orgIds === null || orgIds.includes(query.orgUnitId) ? query.orgUnitId : { in: [] };
-      } else if (orgIds !== null) {
-        orgShared.orgUnitId = { in: orgIds };
-      }
+      if (orgFilter) orgShared.orgUnitId = orgFilter;
       orConditions.push(orgShared);
     }
 
@@ -171,8 +173,7 @@ export class CalendarEventService {
         scheduledDate: dateFilter ? { ...dateFilter, not: null } : { not: null },
         status: { not: 'CANCELED' },
       };
-      if (query.orgUnitId) where.orgUnitId = query.orgUnitId;
-      else if (orgIds !== null) where.orgUnitId = { in: orgIds };
+      if (orgFilter) where.orgUnitId = orgFilter;
 
       const orders = await this.prisma.workOrder.findMany({
         where,
@@ -215,11 +216,9 @@ export class CalendarEventService {
     if (query.includeLeave !== false && (scopeKind === 'ORG' || principal.employeeId)) {
       const empWhere: Prisma.EmployeeWhereInput =
         scopeKind === 'ORG'
-          ? query.orgUnitId
-            ? { orgUnitId: query.orgUnitId }
-            : orgIds !== null
-              ? { orgUnitId: { in: orgIds } }
-              : {}
+          ? orgFilter
+            ? { orgUnitId: orgFilter }
+            : {}
           : { id: principal.employeeId! };
       const leaves = await this.prisma.leaveRequest.findMany({
         where: {

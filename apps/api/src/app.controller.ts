@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import type { HealthResponse } from '@tongin/shared';
 import { PrismaService } from './prisma/prisma.service';
 import { Public } from './auth/decorators/public.decorator';
+import { isDemoMode } from './common/util/demo-mode';
 
 @Controller()
 export class AppController {
@@ -14,6 +15,7 @@ export class AppController {
       status: 'ok',
       service: 'tongin-api',
       timestamp: new Date().toISOString(),
+      demo: isDemoMode(),
     };
   }
 

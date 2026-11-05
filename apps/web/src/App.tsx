@@ -18,6 +18,7 @@ const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
 const MenuMgmt = lazy(() => import('./pages/MenuMgmt'));
 const AiAdmin = lazy(() => import('./pages/AiAdmin'));
 const SystemLogs = lazy(() => import('./pages/SystemLogs'));
+const AccessLogs = lazy(() => import('./pages/AccessLogs'));
 const Spaces = lazy(() => import('./pages/Spaces'));
 const Drive = lazy(() => import('./pages/Drive'));
 const DashboardTemplateEdit = lazy(() => import('./pages/DashboardTemplateEdit'));
@@ -128,6 +129,7 @@ function Shell() {
         <Route path="/menu-mgmt" element={page(<MenuMgmt />)} />
         <Route path="/ai-admin" element={page(<AiAdmin />)} />
         <Route path="/system-logs" element={page(<SystemLogs />)} />
+        <Route path="/access-logs" element={page(<AccessLogs />)} />
         <Route path="/spaces" element={page(<Spaces />)} />
         <Route path="/drive" element={page(<Drive />)} />
         <Route path="/dashboard-admin/:id" element={page(<DashboardTemplateEdit />)} />

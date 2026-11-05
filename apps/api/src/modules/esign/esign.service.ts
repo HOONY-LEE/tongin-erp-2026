@@ -84,9 +84,14 @@ export class EsignService {
     const { contract, transition } = await this.prisma.$transaction(async (tx) => {
       await tx.estimate.update({ where: { id: e.id }, data: { status: 'QUOTED' } });
       const t = await this.leads.advanceInTx(tx, e.leadId, 'QUOTED');
-      let c = await tx.contract.findUnique({ where: { estimateId: e.id } });
+      // 서명 링크 토큰은 기본으로 안 읽는다(prisma.service PRISMA_OMIT) — 문자에 넣어야 해서 여기서만 읽는다
+      let c = await tx.contract.findUnique({
+        where: { estimateId: e.id },
+        omit: { signToken: false },
+      });
       if (!c) {
         c = await tx.contract.create({
+          omit: { signToken: false },
           data: {
             contractNo: this.genContractNo(),
             estimateId: e.id,
@@ -104,6 +109,7 @@ export class EsignService {
       } else if (c.status === 'DRAFT') {
         c = await tx.contract.update({
           where: { id: c.id },
+          omit: { signToken: false },
           data: {
             totalAmount: total,
             depositAmount: deposit,
@@ -283,7 +289,10 @@ export class EsignService {
   /** 토스 DEPOSIT_CALLBACK — orderId로 결제를 찾고 secret이 맞을 때만 반영 */
   async tossDepositCallback(body: { orderId?: string; secret?: string; status?: string }) {
     if (!body.orderId) return { ok: true };
-    const pay = await this.prisma.payment.findFirst({ where: { pgRef: body.orderId } });
+    const pay = await this.prisma.payment.findFirst({
+      where: { pgRef: body.orderId },
+      omit: { pgSecret: false },
+    });
     if (!pay) {
       this.logger.warn(`[토스 웹훅] 모르는 주문 ${body.orderId}`);
       return { ok: true };

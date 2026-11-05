@@ -13,6 +13,7 @@ import type { AuthPrincipal } from '@tongin/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { HTML_DOC_CSP } from '../../common/util/html-doc-csp';
 import { EsignService } from './esign.service';
 
 export class PublicSignDto {
@@ -70,6 +71,7 @@ export class PublicSignController {
   @Public()
   @Get('sign/:token/document')
   @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Content-Security-Policy', HTML_DOC_CSP)
   document(@Param('token') token: string) {
     return this.esign.publicDocument(token);
   }

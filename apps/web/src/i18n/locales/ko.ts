@@ -45,6 +45,7 @@ export default {
     aiAgents: 'Agent Builder',
     aiAdmin: 'AI 관리',
     systemLogs: '시스템 로그',
+    accessLogs: '접근 기록',
     dashboardAdmin: '대시보드 관리',
     employees: '직원',
     approvals: '결재함',

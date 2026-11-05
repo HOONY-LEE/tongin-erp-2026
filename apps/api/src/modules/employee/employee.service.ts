@@ -114,6 +114,9 @@ export class EmployeeService {
             hireDate: dto.hireDate === undefined ? undefined : toDate(dto.hireDate),
           },
         });
+        // 직원을 '비활성'으로 바꾸면 그 사람 계정도 로그인 못 하게(퇴사 처리와 같게)
+        if (dto.isActive === false && before.isActive)
+          await tx.appUser.updateMany({ where: { employeeId: id }, data: { isActive: false } });
         // 겸직하던 조직이 주 소속이 되면 겸직 줄은 지운다
         if (row.orgUnitId !== before.orgUnitId)
           await tx.employeeConcurrentOrg.deleteMany({

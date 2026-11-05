@@ -57,8 +57,12 @@ export function cronMatches(cron: string, kst: Date): boolean {
 const MAX_EVENT_CHAIN = 3;
 /** 한 에이전트가 1분 동안 이벤트로 시작할 수 있는 최대 횟수(폭주 방지) */
 const MAX_EVENT_RUNS_PER_MINUTE = 20;
-/** 자동 실행을 하려면 만든 사람이 지금도 갖고 있어야 하는 권한(에이전트 부르기와 같은 기준) */
-const REQUIRED_PERMISSION = 'AI.USE';
+/**
+ * 자동 실행을 하려면 만든 사람이 지금도 갖고 있어야 하는 권한 — 에이전트 부르기(AI.USE)와
+ * 빌더(AI.MANAGE). 빌더 권한을 회수당했는데 예전에 켜 둔 예약·이벤트 에이전트가 계속 돌면 안 된다
+ */
+const REQUIRED_PERMISSIONS = ['AI.USE', 'AI.MANAGE'];
+const REQUIRED_PERMISSION = REQUIRED_PERMISSIONS.join('·');
 
 type AutoBlueprint = { id: string; name: string; createdBy: string | null };
 
@@ -206,7 +210,7 @@ export class AgentSchedulerService implements OnModuleInit, OnModuleDestroy {
       // 권한을 회수당한 사람의 에이전트가 계속 돌지 않게 — 실행 때마다 다시 확인한다
       if (
         !principal.permissions.includes(PERMISSION_WILDCARD) &&
-        !principal.permissions.includes(REQUIRED_PERMISSION)
+        !REQUIRED_PERMISSIONS.every((code) => principal.permissions.includes(code))
       ) {
         this.logger.warn(
           `'${b.name}' ${why} 실행 건너뜀 — 만든 사람(${principal.loginId})에게 ${REQUIRED_PERMISSION} 권한이 없습니다.`,

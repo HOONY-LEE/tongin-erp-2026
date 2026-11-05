@@ -14,6 +14,7 @@ import {
   AccountEmployeeDto,
   CheckLoginIdDto,
   CreateAccountDto,
+  ResetAccountPasswordDto,
   SetAccountEmployeeDto,
   SetAccountRolesDto,
   UpdateAccountDto,
@@ -62,14 +63,33 @@ export class AccountController {
 
   @Put(':id/employee')
   @RequirePermissions('USER.UPDATE')
-  setEmployee(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetAccountEmployeeDto) {
-    return this.accountService.setEmployee(id, dto.employeeId);
+  setEmployee(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetAccountEmployeeDto,
+  ) {
+    return this.accountService.setEmployee(id, dto.employeeId, user);
   }
 
   @Put(':id/profile')
   @RequirePermissions('USER.UPDATE')
-  setProfile(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AccountEmployeeDto) {
-    return this.accountService.setProfile(id, dto);
+  setProfile(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AccountEmployeeDto,
+  ) {
+    return this.accountService.setProfile(id, dto, user);
+  }
+
+  /** 비밀번호 재설정(관리자) — 본인 계정은 '내 비밀번호 바꾸기'로 */
+  @Put(':id/password')
+  @RequirePermissions('USER.UPDATE')
+  resetPassword(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ResetAccountPasswordDto,
+  ) {
+    return this.accountService.resetPassword(id, dto.password, user);
   }
 
   @Patch(':id')

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -27,6 +27,39 @@ export class ScopeService {
     if (!base.length) return [];
 
     return this.withDescendants(base);
+  }
+
+  /**
+   * 본문으로 받은 고객 id가 내 범위인지 — 접수·A/S·주문에 다른 지점 고객을 잇고 목록에서 이름·번호를 읽지 못하게.
+   * 고객관리와 같은 기준: 담당 지점이 범위 안이거나 아직 담당 지점이 없는 고객(null)만.
+   */
+  async assertCustomer(customerId: string | null | undefined, principal?: AuthPrincipal) {
+    if (!customerId) return;
+    const ids = await this.orgScopeIds(principal);
+    if (ids === null) return;
+    const c = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { ownerOrgId: true },
+    });
+    if (!c) throw new BadRequestException('고객을 목록에서 다시 골라 주세요.');
+    if (c.ownerOrgId && !ids.includes(c.ownerOrgId)) {
+      throw new ForbiddenException('소속 지점의 고객만 다룰 수 있습니다.');
+    }
+  }
+
+  /** 본문으로 받은 계약 id가 내 범위 조직의 계약인지 */
+  async assertContract(contractId: string | null | undefined, principal?: AuthPrincipal) {
+    if (!contractId) return;
+    const ids = await this.orgScopeIds(principal);
+    if (ids === null) return;
+    const c = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { orgUnitId: true },
+    });
+    if (!c) throw new BadRequestException('계약을 목록에서 다시 골라 주세요.');
+    if (!ids.includes(c.orgUnitId)) {
+      throw new ForbiddenException('소속 조직의 계약만 다룰 수 있습니다.');
+    }
   }
 
   /** 주어진 조직들 + 모든 하위 조직 id (BFS). 조직 트리는 한 번 읽어 메모리에서 돈다. */

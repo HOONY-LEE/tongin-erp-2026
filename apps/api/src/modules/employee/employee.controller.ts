@@ -22,17 +22,20 @@ import {
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { AccessLog } from '../../audit/access-log';
 
 @Controller('employees')
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) {}
 
+  @AccessLog('employee', 'LIST')
   @Get()
   @RequirePermissions('EMPLOYEE.READ')
   findAll(@Query('orgUnitId') orgUnitId?: string) {
     return this.employeeService.findAll(orgUnitId);
   }
 
+  @AccessLog('employee', 'VIEW')
   @Get(':id')
   @RequirePermissions('EMPLOYEE.READ')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -56,6 +59,7 @@ export class EmployeeController {
   }
 
   /** 인사기록 카드 — 인사 정보·입퇴사 체크리스트·발령 이력 */
+  @AccessLog('employee-hr', 'VIEW')
   @Get(':id/hr')
   @RequirePermissions('EMPLOYEE.READ')
   hr(@Param('id', ParseUUIDPipe) id: string) {

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { MaskKind } from '../../lib/mask';
 
 export type Row = Record<string, unknown>;
 
@@ -18,6 +19,11 @@ export interface Column {
    * dataIndex 원본 값을 쓴다. 화면 글자를 뽑지 못하는 칸(라우터 링크 등)이나 숫자로 내보내고 싶은 칸에 쓴다.
    */
   exportValue?: (row: Row) => string | number | null;
+  /**
+   * 개인정보 가리기 종류. 지정하지 않으면 칸 제목으로 짐작한다(전화·연락처 → phone, 주소·출발지 → address,
+   * 고객명·이름 → name). 짐작이 틀린 칸은 false로 끈다. 가리기는 표 툴바 '가리기'·내보내기 '가려서 받기'에서 고른다.
+   */
+  mask?: MaskKind | false;
   /**
    * 셀 안에 여러 줄을 정말로 쌓아야 할 때만(예: 줄 수가 정해지지 않은 산출 내역).
    * 켜면 이 표의 행이 내용 높이만큼 늘어난다(고정 높이에 잘리지 않게) — 단순히 다른 필드를

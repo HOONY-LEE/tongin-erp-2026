@@ -45,6 +45,7 @@ export default {
     aiAgents: 'Agent Builder',
     aiAdmin: 'AI Admin',
     systemLogs: 'System Logs',
+    accessLogs: 'Access Logs',
     dashboardAdmin: 'Dashboards',
     employees: 'Employees',
     approvals: 'Approvals',

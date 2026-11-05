@@ -11,6 +11,7 @@ import {
   DEMO_GROUPS,
   REMEMBER_KEY,
   readRemembered,
+  useDemoLogin,
   type DemoAccount,
 } from '../lib/demoAccounts';
 import styles from './login.module.css';
@@ -109,6 +110,7 @@ export default function Login() {
   const [remember, setRemember] = useState(remembered !== null);
   const [loading, setLoading] = useState(false);
   const [demo, setDemo] = useState<string | null>(null);
+  const showDemo = useDemoLogin();
 
   const active = loginId.trim().length > 1 && password.length > 1;
 
@@ -227,20 +229,24 @@ export default function Login() {
             )}
           </button>
 
-          <div className={styles.divider}>
-            <span>또는</span>
-          </div>
+          {showDemo && (
+            <>
+              <div className={styles.divider}>
+                <span>또는</span>
+              </div>
 
-          <DemoAccountMenu
-            disabled={loading}
-            selected={demo}
-            onPick={(a) => {
-              setDemo(a.loginId);
-              setLoginId(a.loginId);
-              setPassword(a.password);
-              void doLogin(a.loginId, a.password);
-            }}
-          />
+              <DemoAccountMenu
+                disabled={loading}
+                selected={demo}
+                onPick={(a) => {
+                  setDemo(a.loginId);
+                  setLoginId(a.loginId);
+                  setPassword(a.password);
+                  void doLogin(a.loginId, a.password);
+                }}
+              />
+            </>
+          )}
 
           <div className={styles.copyright}>© 통인익스프레스. All rights reserved.</div>
         </form>

@@ -38,6 +38,8 @@ export interface DriveActor {
   admin: boolean;
   /** 내 조직(겸직 포함)과 그 상위 조직 */
   orgIds: Set<string>;
+  /** 그중 편집할 수 있는 조직 — 지점보다 위(회사·그룹)는 빠진다 */
+  editOrgIds: Set<string>;
 }
 
 const maxRole = (...roles: (DriveRole | null | undefined)[]): DriveRole | null =>
@@ -68,7 +70,11 @@ export function cleanName(raw: string): string {
 @Injectable()
 export class DriveService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger('Drive');
-  private orgTree: { at: number; parent: Map<string, string | null> } | null = null;
+  private orgTree: {
+    at: number;
+    parent: Map<string, string | null>;
+    branch: Set<string>;
+  } | null = null;
   private timer: NodeJS.Timeout | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
@@ -85,20 +91,31 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
 
   // ── 누가 ──
 
-  private async parentMap() {
-    if (this.orgTree && Date.now() - this.orgTree.at < ORG_CACHE_MS) return this.orgTree.parent;
-    const rows = await this.prisma.orgUnit.findMany({ select: { id: true, parentId: true } });
-    this.orgTree = { at: Date.now(), parent: new Map(rows.map((r) => [r.id, r.parentId])) };
-    return this.orgTree.parent;
+  private async orgTreeCache() {
+    if (this.orgTree && Date.now() - this.orgTree.at < ORG_CACHE_MS) return this.orgTree;
+    const rows = await this.prisma.orgUnit.findMany({
+      select: { id: true, parentId: true, type: true },
+    });
+    this.orgTree = {
+      at: Date.now(),
+      parent: new Map(rows.map((r) => [r.id, r.parentId])),
+      branch: new Set(rows.filter((r) => r.type === 'BRANCH').map((r) => r.id)),
+    };
+    return this.orgTree;
   }
 
   async actor(p: AuthPrincipal): Promise<DriveActor> {
-    const parent = await this.parentMap();
+    const { parent, branch } = await this.orgTreeCache();
     const orgIds = new Set<string>();
+    const editOrgIds = new Set<string>();
     for (const start of [p.employeeOrgUnitId, ...(p.concurrentOrgUnitIds ?? [])]) {
       let cur: string | null | undefined = start;
-      for (let i = 0; cur && i < 20 && !orgIds.has(cur); i++) {
+      // 지점(가맹점)을 지나 올라간 회사·그룹 드라이브는 보기만 — 지점 사람이 본사 파일을 지우거나 비우지 못하게
+      let passedBranch = false;
+      for (let i = 0; cur && i < 20; i++) {
         orgIds.add(cur);
+        if (!passedBranch) editOrgIds.add(cur);
+        if (branch.has(cur)) passedBranch = true;
         cur = parent.get(cur) ?? null;
       }
     }
@@ -107,6 +124,7 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
       employeeId: p.employeeId,
       admin: p.permissions.includes(PERMISSION_WILDCARD) || p.permissions.includes('DRIVE.MANAGE'),
       orgIds,
+      editOrgIds,
     };
   }
 
@@ -123,7 +141,11 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
       : null;
     return maxRole(
       member?.role as DriveRole | undefined,
-      space.kind === 'ORG' && space.orgUnitId && a.orgIds.has(space.orgUnitId) ? 'EDITOR' : null,
+      space.kind === 'ORG' && space.orgUnitId && a.orgIds.has(space.orgUnitId)
+        ? a.editOrgIds.has(space.orgUnitId)
+          ? 'EDITOR'
+          : 'VIEWER'
+        : null,
       a.admin ? 'MANAGER' : null,
     );
   }
@@ -662,7 +684,10 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
         parentId: t.parentId,
         kind: 'FILE',
         name: cleanName(name),
-        mimeType: (mimeType || 'application/octet-stream').slice(0, 150),
+        // 받을 때 Content-Type 헤더로 그대로 나간다 — '종류/세부' 모양이 아니면(개행 등) 바이너리로
+        mimeType: /^[\w.+-]+\/[\w.+-]+$/.test(mimeType ?? '')
+          ? mimeType.slice(0, 150)
+          : 'application/octet-stream',
         size: bytes.length,
         createdBy: a.userId,
         updatedBy: a.userId,

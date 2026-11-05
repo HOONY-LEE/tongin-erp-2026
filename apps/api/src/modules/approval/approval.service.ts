@@ -251,20 +251,24 @@ export class ApprovalService {
     });
     if (!requester?.isActive) throw new BadRequestException('재직 중인 직원만 상신할 수 있습니다.');
 
+    const lineKey = input.lineKey ?? (input.docType as Exclude<ApprovalDocType, 'FORM'>);
     let line = input.line ?? null;
     if (line) {
       const ids = [...new Set(line.map((l) => l.employeeId))];
       const found = await tx.employee.count({ where: { id: { in: ids }, isActive: true } });
       if (found !== ids.length)
         throw new BadRequestException('결재선에 재직하지 않는 직원이 있습니다.');
+      // 신청자가 고친 결재선에 결재할 사람(본인 말고)이 없으면 바로 승인되어 버린다 — 빈 결재선·본인만·참조만으로
+      // 자기 휴가·근태 정정을 스스로 승인하지 못하게, 기본 결재선에 결재자가 있으면 한 명 이상 넣게 한다
+      const hasApprover = line.some((l) => l.kind === 'APPROVER' && l.employeeId !== requester.id);
+      if (!hasApprover) {
+        const fallback = (await this.defaultLine(lineKey, requester.id, tx)).entries;
+        if (fallback.some((l) => l.kind === 'APPROVER' && l.employeeId !== requester.id)) {
+          throw new BadRequestException('결재선에 결재할 사람을 한 명 이상 넣어 주세요.');
+        }
+      }
     } else {
-      line = (
-        await this.defaultLine(
-          input.lineKey ?? (input.docType as Exclude<ApprovalDocType, 'FORM'>),
-          requester.id,
-          tx,
-        )
-      ).entries;
+      line = (await this.defaultLine(lineKey, requester.id, tx)).entries;
     }
 
     // 결재 단계: 신청자 본인·중복은 건너뜀. 참조는 순서와 무관하게 뒤에 붙는다

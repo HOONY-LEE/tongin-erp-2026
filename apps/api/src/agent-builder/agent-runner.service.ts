@@ -55,6 +55,8 @@ function isMessagingTool(tool: AiTool): boolean {
   return (
     tool.name === 'send_sms' ||
     tool.name === 'erp_campaigns_send' ||
+    // 견적서 보내기도 고객에게 문자(서명 링크·계좌)가 나간다(권한은 ESTIMATE.UPDATE라 아래 검사에 안 걸린다)
+    tool.name === 'erp_estimates_send' ||
     tool.permissions.includes('NOTIFICATION.SEND')
   );
 }
@@ -120,6 +122,12 @@ interface RunState {
   llmCalls: number;
   /** 사람 승인을 받았는지 — 다음 쓰기 도구 한 번만 실행을 허락한다 */
   approved: boolean;
+  /**
+   * 만든 사람 본인이 돌리는 실행인지. 남이 만든(공유) 에이전트는 승인 노드 문구를 만든 사람이 쓰므로
+   * ('보고서를 저장할까요?' 뒤에 권한 바꾸기 같은) 쓰기 도구를 승인 노드만으로 통과시키지 않고,
+   * 쓰기마다 실제 도구·인자를 보여 주고 승인받는다. 예전 실행(값 없음)도 남의 실행처럼 다룬다.
+   */
+  ownBlueprint?: boolean;
   guards: Guards;
   output: unknown;
   pending: Pending | null;
@@ -216,6 +224,7 @@ export class AgentRunnerService {
       steps: 0,
       llmCalls: 0,
       approved: false,
+      ownBlueprint: bp.createdBy === ctx.principal.userId,
       guards: {
         strictApproval: true,
         allowTools: null,
@@ -598,7 +607,7 @@ export class AgentRunnerService {
           }
           // 승인 한 번은 바로 다음 쓰기 한 번만 허락한다(반복 안의 다음 호출은 다시 승인).
           // 문자 발송 도구는 승인 노드를 지났어도 실제 받는 사람·본문을 보여 주고 매번 승인받는다
-          if (!state.approved || isMessagingTool(tool)) {
+          if (!state.approved || !state.ownBlueprint || isMessagingTool(tool)) {
             let preview: unknown;
             if (tool.preview) {
               try {

@@ -6,11 +6,13 @@ import { CreateServiceOrderDto } from './dto/create-service-order.dto';
 import { UpdateServiceOrderDto } from './dto/update-service-order.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AccessLog } from '../../audit/access-log';
 
 @Controller('service-orders')
 export class ServiceOrderController {
   constructor(private readonly service: ServiceOrderService) {}
 
+  @AccessLog('service-order', 'LIST')
   @Get()
   @RequirePermissions('SERVICE_ORDER.READ')
   findAll(
@@ -21,6 +23,7 @@ export class ServiceOrderController {
     return this.service.findAll(serviceLine, status, user);
   }
 
+  @AccessLog('service-order', 'VIEW')
   @Get(':id')
   @RequirePermissions('SERVICE_ORDER.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {

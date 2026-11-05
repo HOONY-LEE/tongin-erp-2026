@@ -71,7 +71,18 @@ export class MaterialOrderService {
     });
   }
 
+  /**
+   * 승인·출고는 본사(전체 범위)만 — 지점 계정도 발주 쓰기 권한(MATERIAL_ORDER.UPDATE)이 있어
+   * 자기 발주를 스스로 승인·출고해 본사 재고를 빼 갈 수 있었다
+   */
+  private async assertHq(principal?: AuthPrincipal) {
+    if ((await this.scope.orgScopeIds(principal)) !== null) {
+      throw new ForbiddenException('발주 승인·출고는 본사에서만 할 수 있습니다.');
+    }
+  }
+
   async approve(id: string, principal?: AuthPrincipal) {
+    await this.assertHq(principal);
     const order = await this.findOne(id, principal);
     if (order.status !== 'REQUESTED')
       throw new BadRequestException(`승인 불가 상태: ${order.status}`);
@@ -88,6 +99,7 @@ export class MaterialOrderService {
 
   /** 출고: 승인된 발주의 자재를 본사 재고에서 일괄 OUT(전표). 트랜잭션·재고부족 방지. */
   async ship(id: string, principal?: AuthPrincipal) {
+    await this.assertHq(principal);
     const order = await this.prisma.materialOrder.findUnique({
       where: { id },
       include: { lines: { include: { material: true } } },

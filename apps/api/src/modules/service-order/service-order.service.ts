@@ -55,6 +55,7 @@ export class ServiceOrderService {
     if (ids !== null && !ids.includes(dto.orgUnitId)) {
       throw new ForbiddenException('소속 조직으로만 등록할 수 있습니다.');
     }
+    await this.scope.assertCustomer(dto.customerId, principal);
     const created = await this.prisma.serviceOrder.create({
       data: {
         orderNo: this.genNo(),
@@ -87,6 +88,7 @@ export class ServiceOrderService {
         throw new ForbiddenException('소속 조직으로만 옮길 수 있습니다.');
       }
     }
+    await this.scope.assertCustomer(dto.customerId, principal);
     return this.prisma.serviceOrder.update({
       where: { id },
       data: {

@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import compression from 'compression';
-import { raw } from 'express';
+import { raw, type NextFunction, type Request, type Response } from 'express';
 import { DRIVE_FILE_MAX_BYTES } from '@tongin/shared';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
@@ -15,6 +15,18 @@ async function bootstrap() {
   // 부팅 중 로그도 놓치지 않게 모아 두었다가 시스템 로거로 넘긴다(경고·오류는 DB 시스템 로그에도)
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(new SystemLogger());
+  // 보안 헤더 — 서버 종류를 알리지 않고, 남의 사이트가 화면을 iframe에 넣어 누르게 하거나(클릭재킹)
+  // 파일 종류를 추측해 HTML로 실행하는(MIME 스니핑) 일을 막는다. 주소(서명 링크 토큰)는 다른 사이트로 넘기지 않는다
+  app.disable('x-powered-by');
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    }
+    next();
+  });
   // AI 에이전트 첨부(이미지·PDF를 base64로)가 기본 100KB를 넘는다
   app.useBodyParser('json', { limit: '30mb' });
   // 응답 압축(gzip) — 목록 JSON이 3~5배 작아진다. 1KB 미만은 그대로 보낸다(compression 기본값)

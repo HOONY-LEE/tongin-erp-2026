@@ -16,11 +16,13 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { AuthPrincipal } from '@tongin/shared';
+import { AccessLog } from '../../audit/access-log';
 
 @Controller('customers')
 export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
+  @AccessLog('customer', 'LIST')
   @Get()
   @RequirePermissions('CUSTOMER.READ')
   findAll(@CurrentUser() user: AuthPrincipal, @Query('phone') phone?: string) {
@@ -34,6 +36,7 @@ export class CustomerController {
     return this.customerService.grades();
   }
 
+  @AccessLog('customer', 'VIEW')
   @Get(':id')
   @RequirePermissions('CUSTOMER.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {

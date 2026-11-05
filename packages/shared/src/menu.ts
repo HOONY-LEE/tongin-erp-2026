@@ -406,6 +406,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     desc: '오류·경고 기록(오류 번호로 찾기)',
   },
   {
+    key: 'access-logs',
+    path: '/access-logs',
+    label: '접근 기록',
+    i18n: 'accessLogs',
+    icon: 'ShieldCheck',
+    perm: 'AUDIT.READ',
+    category: '시스템',
+    desc: '누가 어떤 고객 정보를 열람·내려받았는지',
+  },
+  {
     key: 'dashboard-admin',
     path: '/dashboard-admin',
     label: '대시보드 관리',
@@ -486,6 +496,7 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
         'ai-admin',
         'dashboard-admin',
         'system-logs',
+        'access-logs',
       ],
     },
     {
