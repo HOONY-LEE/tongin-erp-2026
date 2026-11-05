@@ -37,6 +37,8 @@ interface Spec {
   users?: string[];
   isDefault?: boolean;
   layout: MenuLayout;
+  /** 나중에 생긴 메뉴 — 이미 있는 구성에도 없으면 after 다음에 끼워 넣는다(관리자가 지운 게 아니라 원래 없던 것) */
+  addIfMissing?: { key: string; after: string }[];
 }
 
 const SPECS: Spec[] = [
@@ -104,12 +106,13 @@ const SPECS: Spec[] = [
     description: '접수 상담·클레임/A/S·리빙케어·고객 문자',
     priority: 50,
     orgs: ['고객관리부'],
+    addIfMissing: [{ key: 'calls', after: 'leads' }],
     layout: {
       groups: [
         { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         {
           label: '고객 응대',
-          items: ['leads', 'support', 'service-orders', 'customers', 'calendar'],
+          items: ['leads', 'calls', 'support', 'service-orders', 'customers', 'calendar'],
         },
         { label: '입금·안내', items: ['payments-confirm', 'campaigns'] },
         { label: '기준정보', items: ['product-mgmt', 'partner-mgmt'], collapsed: true },
@@ -251,6 +254,13 @@ const SPECS: Spec[] = [
 /** 팀 전용 업무 권한 그룹 — 본사 직원 그룹(공통)에 더해 그 부서 계정에만 준다 */
 const TEAM_ROLES = [
   {
+    code: 'TEAM_CS',
+    name: '고객관리팀 업무',
+    description: '전화 수신 콜팝업·수신 기록',
+    orgs: ['고객관리부'],
+    perms: ['CALL.READ'],
+  },
+  {
     code: 'TEAM_MGMT',
     name: '경영관리팀 업무',
     description:
@@ -332,6 +342,30 @@ async function seedTeamRoles(orgId: Map<string, string>) {
   }
 }
 
+async function addMissingMenus(
+  id: string,
+  layout: Prisma.JsonValue,
+  adds: Spec['addIfMissing'],
+): Promise<number> {
+  if (!adds?.length) return 0;
+  const l = normalizeLayout(layout as unknown as MenuLayout);
+  let n = 0;
+  for (const a of adds) {
+    if (l.groups.some((g) => g.items.includes(a.key))) continue;
+    const g = l.groups.find((x) => x.items.includes(a.after)) ?? l.groups[0];
+    if (!g) continue;
+    const i = g.items.indexOf(a.after);
+    g.items.splice(i < 0 ? g.items.length : i + 1, 0, a.key);
+    n++;
+  }
+  if (n)
+    await prisma.menuProfile.update({
+      where: { id },
+      data: { layout: l as unknown as Prisma.InputJsonValue },
+    });
+  return n;
+}
+
 async function main() {
   const [orgs, positions, roles, users] = await Promise.all([
     prisma.orgUnit.findMany({
@@ -368,6 +402,8 @@ async function main() {
       include: { targets: true },
     });
     if (existing) {
+      const added = await addMissingMenus(existing.id, existing.layout, s.addIfMissing);
+      if (added) console.log(`메뉴 구성 '${s.name}' — 새 메뉴 ${added}개 덧붙임`);
       if (!existing.targets.length && targets.length) {
         await prisma.menuProfileTarget.createMany({
           data: targets.map((t) => ({ ...t, profileId: existing.id })),

@@ -42,6 +42,7 @@ const Billing = lazy(() => import('./pages/Billing'));
 const MaterialOrders = lazy(() => import('./pages/MaterialOrders'));
 const ServiceOrders = lazy(() => import('./pages/ServiceOrders'));
 const Support = lazy(() => import('./pages/Support'));
+const Calls = lazy(() => import('./pages/Calls'));
 const AiAssistant = lazy(() => import('./pages/AiAssistant'));
 const AgentBlueprints = lazy(() => import('./pages/AgentBlueprints'));
 const AgentBuilder = lazy(() => import('./pages/AgentBuilder'));
@@ -152,6 +153,7 @@ function Shell() {
         <Route path="/material-orders" element={page(<MaterialOrders />)} />
         <Route path="/service-orders" element={page(<ServiceOrders />)} />
         <Route path="/support" element={page(<Support />)} />
+        <Route path="/calls" element={page(<Calls />)} />
         <Route path="/campaigns" element={page(<Campaigns />)} />
         <Route path="/campaigns/:id" element={page(<CampaignEditor />)} />
         <Route path="/hr" element={page(<HrPolicies />)} />

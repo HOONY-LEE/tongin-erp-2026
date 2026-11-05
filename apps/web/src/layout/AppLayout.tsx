@@ -16,6 +16,7 @@ import { useAiRunning } from '../lib/aiActivity';
 import { usePendingApprovals } from '../lib/approvals';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { MyMenuModal } from '../components/menu/MyMenuModal';
+import { CallPopup } from '../components/call/CallPopup';
 import { menuIcon, useMenuLabel, useMyMenu } from '../lib/menu';
 import { useInbox } from '../lib/inbox';
 import { MENU_CATALOG, PRODUCT_NAME, filterLayout, menuDef } from '@tongin/shared';
@@ -392,6 +393,8 @@ export default function AppLayout() {
             visible={canSeeMenu}
           />
         </aside>
+        {/* 전화가 오면 어느 화면에서든 오른쪽 아래에 */}
+        <CallPopup />
 
         <main className={styles.contentArea}>
           <div

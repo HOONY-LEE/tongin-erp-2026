@@ -33,6 +33,7 @@ export default {
     materialOrders: '加盟店订货',
     serviceOrders: '生活·护理',
     support: '客户售后',
+    calls: '来电',
     campaigns: '营销',
     hr: '人事·绩效',
     orgUnits: '组织',

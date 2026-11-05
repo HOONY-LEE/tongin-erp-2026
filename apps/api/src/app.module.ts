@@ -40,6 +40,7 @@ import { HrModule } from './modules/hr/hr.module';
 import { ApprovalModule } from './modules/approval/approval.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { LeaveModule } from './modules/leave/leave.module';
+import { TelephonyModule } from './modules/telephony/telephony.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { PaymentConfirmationModule } from './modules/payment-confirmation/payment-confirmation.module';
 import { BranchModule } from './modules/branch/branch.module';
@@ -108,6 +109,7 @@ import { BranchCaseModule } from './modules/branch-case/branch-case.module';
     ApprovalModule,
     MenuModule,
     LeaveModule,
+    TelephonyModule,
     AttendanceModule,
     PaymentConfirmationModule,
     BranchModule,

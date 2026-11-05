@@ -33,6 +33,7 @@ export default {
     materialOrders: 'Branch Orders',
     serviceOrders: 'Living·Care',
     support: 'Customer A/S',
+    calls: 'Incoming calls',
     campaigns: 'Marketing',
     hr: 'HR·Incentive',
     orgUnits: 'Organizations',

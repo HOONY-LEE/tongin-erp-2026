@@ -156,6 +156,7 @@ model Customer {
   leads        Lead[]
   estimates    Estimate[]
   contracts    Contract[]
+  calls        CallLog[]
 
   @@index([phonePrimary])
   @@map("customer")
@@ -2138,4 +2139,45 @@ model KnowledgeRelation {
 
   @@index([docId])
   @@map("knowledge_relation")
+}
+
+// ── 전화 수신(콜팝업) ──
+
+/// 전화 회선 — 대표번호·테스트 회선마다 하나. 통신사·교환기·안드로이드 앱이 token이 든 주소로 수신 알림을 보낸다
+model TelephonyLine {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String // 대표번호, 테스트(내 폰) …
+  number    String? // 회선 번호(숫자만, 표시용)
+  token     String    @unique // 웹훅 주소에 들어가는 비밀값 — 새로 만들면 예전 주소는 바로 막힌다
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  calls     CallLog[]
+
+  @@map("telephony_line")
+}
+
+/// 수신 전화 한 통 — 울림·응대·끝남 상태와 누가 받았는지, 이 전화로 만든 접수
+model CallLog {
+  id               String         @id @default(uuid()) @db.Uuid
+  lineId           String?        @map("line_id") @db.Uuid
+  line             TelephonyLine? @relation(fields: [lineId], references: [id], onDelete: SetNull)
+  provider         String // GENERIC | TWILIO | TEST
+  externalId       String?        @map("external_id") // 연동처의 통화 ID(같은 통화의 이후 알림을 잇는다)
+  fromNumber       String         @map("from_number") // 건 사람(숫자만, 발신번호 표시 제한이면 빈 값)
+  toNumber         String?        @map("to_number")
+  extension        String? // 내선
+  status           String         @default("RINGING") // RINGING | ANSWERED | MISSED | ENDED
+  customerId       String?        @map("customer_id") @db.Uuid // 수신 때 번호로 찾은 고객(가장 먼저 등록된 사람)
+  customer         Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  answeredByUserId String?        @map("answered_by_user_id") @db.Uuid
+  leadId           String?        @map("lead_id") @db.Uuid // 이 전화로 등록한 접수
+  memo             String?
+  startedAt        DateTime       @default(now()) @map("started_at") @db.Timestamptz(6)
+  answeredAt       DateTime?      @map("answered_at") @db.Timestamptz(6)
+  endedAt          DateTime?      @map("ended_at") @db.Timestamptz(6)
+
+  @@unique([provider, externalId])
+  @@index([startedAt])
+  @@index([fromNumber])
+  @@map("call_log")
 }

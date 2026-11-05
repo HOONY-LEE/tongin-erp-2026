@@ -18,7 +18,13 @@ async function bootstrap() {
   // AI 에이전트 첨부(이미지·PDF를 base64로)가 기본 100KB를 넘는다
   app.useBodyParser('json', { limit: '30mb' });
   // 응답 압축(gzip) — 목록 JSON이 3~5배 작아진다. 1KB 미만은 그대로 보낸다(compression 기본값)
-  app.use(compression());
+  // 콜팝업 스트림(SSE)은 압축하면 버퍼에 쌓여 실시간으로 안 간다 — 빼고 압축
+  app.use(
+    compression({
+      filter: (req, res) =>
+        !req.url.startsWith('/api/telephony/stream') && compression.filter(req, res),
+    }),
+  );
   // 드라이브 파일 올리기 — 본문을 바이트 그대로(이름은 헤더). 다른 요청은 JSON만
   app.use('/api/drive/upload', raw({ type: () => true, limit: DRIVE_FILE_MAX_BYTES + 1024 }));
   app.setGlobalPrefix('api');

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
@@ -53,6 +53,32 @@ export default function Leads() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  // 콜팝업 '접수 등록' — ?new=1&phone=&name=&callId= 로 들어오면 등록 창을 채워 연다
+  const [params, setParams] = useSearchParams();
+  const fromCall =
+    params.get('new') === '1'
+      ? {
+          phone: params.get('phone') ?? '',
+          name: params.get('name') ?? '',
+          callId: params.get('callId'),
+        }
+      : null;
+  useEffect(() => {
+    if (params.get('new') === '1') setCreateOpen(true);
+  }, [params]);
+  const closeCreate = (open: boolean) => {
+    setCreateOpen(open);
+    // 저장하고 접수 상세로 넘어간 뒤에는 주소를 건드리지 않는다(목록으로 되돌아가 버린다)
+    if (!open && params.get('new') && window.location.pathname === '/leads')
+      setParams(
+        (p) => {
+          const n = new URLSearchParams(p);
+          ['new', 'phone', 'name', 'callId'].forEach((k) => n.delete(k));
+          return n;
+        },
+        { replace: true },
+      );
+  };
   const [stage, setStage] = useState('ALL');
   const partners = useOptions('/partners', 'name');
   const { updatedAt, touch } = useUpdatedAt();
@@ -146,6 +172,11 @@ export default function Leads() {
   const defaultOrg = ownOrgId || user?.employeeOrgUnitId || '';
   if (defaultOrg) createInitial.orgUnitId = defaultOrg;
   if (user?.employeeId) createInitial.ownerEmpId = user.employeeId;
+  if (fromCall) {
+    createInitial.customerPhone = fromCall.phone;
+    if (fromCall.name) createInitial.customerName = fromCall.name;
+    createInitial.source = 'PHONE';
+  }
 
   const onCreate = async (values: Record<string, unknown>) => {
     try {
@@ -154,6 +185,12 @@ export default function Leads() {
         body: JSON.stringify(values),
       });
       toast({ type: 'success', title: t('common.created') });
+      // 걸려 온 전화에 이 접수를 잇는다(수신 기록에서 '등록한 접수'로 바로 간다)
+      if (fromCall?.callId)
+        await api(`/telephony/calls/${fromCall.callId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ leadId: created.id }),
+        }).catch(() => undefined);
       // 접수 상세(= 견적서 화면)로 바로 — 견적은 상세를 열 때 자동으로 만들어진다
       navigate(`/leads/${created.id}`);
     } catch (e) {
@@ -257,7 +294,7 @@ export default function Leads() {
 
       <FormModal
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={closeCreate}
         title={t('lead.register')}
         size="md"
         fields={createFields}

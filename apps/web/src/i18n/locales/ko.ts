@@ -33,6 +33,7 @@ export default {
     materialOrders: '가맹점발주',
     serviceOrders: '리빙·케어',
     support: '고객A/S',
+    calls: '전화 수신',
     campaigns: '마케팅',
     hr: '인사·성과',
     orgUnits: '조직',

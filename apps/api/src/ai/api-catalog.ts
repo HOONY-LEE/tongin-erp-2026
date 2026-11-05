@@ -160,6 +160,13 @@ const EXCLUDED_ROUTES = new Set([
   'drive.googleAuthUrl',
   'drive.googleDisconnect',
   'drive.emptyTrash',
+  // 전화 수신: 실시간 스트림과 회선(웹훅 토큰이 든다)·가상 수신은 사람만
+  'telephony.stream',
+  'telephony.lines',
+  'telephony.createLine',
+  'telephony.updateLine',
+  'telephony.deleteLine',
+  'telephony.test',
 ]);
 /** GET이 아니어도 데이터를 바꾸지 않는 라우트 */
 const READ_ONLY_POSTS = new Set(['geo.geocode']);

@@ -619,6 +619,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   { key: 'WORK_ORDER', label: '작업', group: '운영', actions: ALL_CRUD },
   { key: 'SERVICE_ORDER', label: '리빙·케어', group: '운영', actions: ALL_CRUD },
   { key: 'SUPPORT', label: '고객지원', group: '운영', actions: ALL_CRUD },
+  {
+    key: 'CALL',
+    label: '전화 수신(콜팝업)',
+    group: '운영',
+    actions: ['READ'],
+    specials: [{ action: 'MANAGE', label: '회선·연동 설정' }],
+    hint: '조회 = 전화가 오면 콜팝업을 받고 수신 기록을 봅니다. 고객 정보는 고객 데이터 범위 안에서만 보입니다',
+  },
   { key: 'MARKETING', label: '캠페인', group: '운영', actions: ALL_CRUD },
   {
     key: 'NOTIFICATION',

@@ -1,0 +1,108 @@
+.dim {
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--ark-color-text-tertiary);
+}
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+
+/* 회선·연동 설정 */
+.setup {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.setup section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.setup h4 {
+  margin: 0;
+  font-size: calc(14px * var(--font-scale, 1));
+  color: var(--ark-color-text);
+}
+.setup p {
+  margin: 0;
+}
+.lineRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+}
+.lineHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.off {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--ark-color-bg-muted);
+  font-size: calc(11px * var(--font-scale, 1));
+  color: var(--ark-color-text-tertiary);
+}
+.url {
+  min-width: 0;
+}
+.url code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(12px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+.lineActions {
+  display: flex;
+  gap: 4px;
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.inline > :first-child {
+  flex: 1;
+  min-width: 200px;
+}
+.select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+}
+.guide {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+  line-height: 1.55;
+}
+.guide code,
+.setup p code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--ark-color-bg-muted);
+  font-size: 0.92em;
+}
