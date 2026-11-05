@@ -21,6 +21,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApiCatalog } from './api-catalog';
 import { DomainTools } from './domain-tools';
 import { SYSTEM_PROMPT, contextBlock } from './prompt';
+import { PiiVault, PSEUDONYM_GUIDE } from './pii-vault';
 import { ToolError, type AiTool, type ToolContext } from './ai-tool.types';
 import { AiFiles, type AiFileMeta } from './ai-files.service';
 import { defaultModel, isChatModel, modelOptions, resolveChatModel } from './ai-models';
@@ -125,6 +126,7 @@ export class AiService implements OnModuleInit {
     private readonly domain: DomainTools,
     private readonly files: AiFiles,
     private readonly usage: AiUsageService,
+    private readonly vault: PiiVault,
   ) {
     const key = process.env.ANTHROPIC_API_KEY;
     // 워크스페이스에 묶이지 않은 키(sk-ant-usr-…)는 어느 워크스페이스로 쓸지 헤더로 알려야 한다
@@ -219,13 +221,8 @@ export class AiService implements OnModuleInit {
       }),
       this.files.list(id),
     ]);
-    return {
-      id: c.id,
-      title: c.title,
-      model: resolveChatModel(c.model),
-      status: c.status,
-      lastError: c.lastError,
-      updatedAt: c.updatedAt,
+    // AI와 주고받은 대화에는 가명이 들어 있다 — 대화 주인에게 보여 줄 때만 실제 값으로 바꾼다
+    const shown = await this.vault.reveal(userId, {
       items: toItems(
         c.messages as unknown as Messages,
         new Map(calls.map((x) => [x.toolUseId, x.status])),
@@ -234,6 +231,15 @@ export class AiService implements OnModuleInit {
       // 마지막 답이 제안한 이어서 할 일(1·2·3 버튼, 입력칸 미리보기) — 답이 끝난 상태에서만
       suggestions: c.status === 'IDLE' ? lastSuggestions(c.messages as unknown as Messages) : [],
       pending: (c.pending as unknown as PendingCall[] | null) ?? [],
+    });
+    return {
+      id: c.id,
+      title: c.title,
+      model: resolveChatModel(c.model),
+      status: c.status,
+      lastError: c.lastError,
+      updatedAt: c.updatedAt,
+      ...shown,
     };
   }
 
@@ -241,7 +247,7 @@ export class AiService implements OnModuleInit {
    * 첫 질문을 작은 모델로 요약해 대화 제목으로 저장한다. 실패하면 앞부분 자른 제목을 그대로 둔다.
    * 그 사이 사용자가 제목을 직접 바꿨으면 덮어쓰지 않는다(titleManual 조건).
    */
-  private async summarizeTitle(id: string, question: string, fallback: string) {
+  private async summarizeTitle(id: string, userId: string, question: string, fallback: string) {
     if (!this.client) return;
     try {
       const client = this.client;
@@ -265,7 +271,7 @@ export class AiService implements OnModuleInit {
         .map((b) => (b.type === 'text' ? b.text : ''))
         .join('')
         .trim();
-      const title = cleanTitle(raw);
+      const title = cleanTitle(await this.vault.reveal(userId, raw));
       if (!title || title === fallback) return;
       await this.prisma.aiConversation.updateMany({
         where: { id, titleManual: false },
@@ -325,6 +331,8 @@ export class AiService implements OnModuleInit {
       }
       // 첨부는 질문보다 앞에 둔다(문서를 먼저 읽고 질문에 답하게)
       for (const a of attachments) blocks.push(attachmentBlock(a));
+      // 질문 속 전화번호·이메일은 가명으로 보낸다(화면에는 실제 값으로 보인다)
+      const asked = await this.vault.hideText(ctx.principal.userId, text.trim());
       const kb = await this.prisma.knowledgeDoc.findMany({
         select: { title: true },
         orderBy: { updatedAt: 'desc' },
@@ -336,7 +344,7 @@ export class AiService implements OnModuleInit {
           ctx.principal,
           new Date(),
           kb.map((k) => k.title),
-        )}\n\n${text.trim() || '첨부한 파일을 확인해 주세요.'}`,
+        )}\n\n${asked || '첨부한 파일을 확인해 주세요.'}`,
       });
       appendUser(messages, blocks);
 
@@ -353,7 +361,8 @@ export class AiService implements OnModuleInit {
         },
       });
       // 제목 요약은 기다리지 않는다 — 본 답변과 나란히 돌고, 끝나면 제목만 바꾼다
-      if (firstQuestion && text.trim()) void this.summarizeTitle(id, text.trim(), fallbackTitle);
+      if (firstQuestion && asked)
+        void this.summarizeTitle(id, ctx.principal.userId, asked, fallbackTitle);
       return () => this.loop(client, id, messages, ctx);
     });
   }
@@ -423,7 +432,11 @@ export class AiService implements OnModuleInit {
             ...(edited && !sameList
               ? [`받는 사람을 고쳤습니다(처음 ${before}명 → ${edited.length}명)`]
               : []),
-            ...(newMessage ? [`문자 본문을 고쳤습니다(보낸 본문: ${newMessage})`] : []),
+            ...(newMessage
+              ? [
+                  `문자 본문을 고쳤습니다(보낸 본문: ${await this.vault.rehide(ctx.principal.userId, newMessage, origMessage)})`,
+                ]
+              : []),
           ];
           result.content = `직원이 ${notes.join(', ')}. 그대로 승인했습니다. 결과: ${String(result.content)}`;
         }
@@ -490,7 +503,8 @@ export class AiService implements OnModuleInit {
             output_config: { effort: 'medium' },
             // 대화가 길어져도 앞부분(도구 정의·시스템·이전 턴)은 캐시에서 읽는다
             cache_control: { type: 'ephemeral' },
-            system: SYSTEM_PROMPT,
+            // 가명 규칙(개인정보는 [[전화:…]] 같은 가명으로 받는다)
+            system: this.vault.enabled ? `${SYSTEM_PROMPT}\n\n${PSEUDONYM_GUIDE}` : SYSTEM_PROMPT,
             tools: apiTools,
             messages,
             ...(containerId ? { container: containerId } : {}),
@@ -563,7 +577,10 @@ export class AiService implements OnModuleInit {
           const tool = byName.get(c.name);
           if (c.mode === 'WRITE' && tool?.preview) {
             try {
-              c.preview = await tool.preview(c.input, ctx);
+              c.preview = await tool.preview(
+                await this.vault.reveal(ctx.principal.userId, c.input),
+                ctx,
+              );
             } catch (e) {
               c.preview = { error: e instanceof Error ? e.message : String(e) };
             }
@@ -601,11 +618,14 @@ export class AiService implements OnModuleInit {
       );
     }
     try {
-      const out = await tool.run(call.input, {
+      // AI가 넣은 가명은 서버에서 실제 값으로 바꿔 실행하고, 결과는 다시 가명으로 바꿔 AI에 돌려준다
+      const uid = ctx.principal.userId;
+      const raw = await tool.run(await this.vault.reveal(uid, call.input), {
         ...ctx,
         conversationId: id,
         toolUseId: call.toolUseId,
       });
+      const out = await this.vault.hide(uid, raw, tool.name);
       const text = clip(JSON.stringify(out ?? null));
       await this.logCall(id, call, 'DONE', clipJson(out), approvedBy);
       return toolResult(call.toolUseId, text, false);

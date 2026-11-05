@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { basename, extname } from 'path';
 import type Anthropic from '@anthropic-ai/sdk';
 import { PrismaService } from '../prisma/prisma.service';
+import { PiiVault } from './pii-vault';
 
 /** 파일 하나 최대 크기 — 데모라 DB(bytea)에 두므로 너무 큰 파일은 받지 않는다 */
 export const AI_FILE_MAX_BYTES = 20 * 1024 * 1024;
@@ -41,7 +42,10 @@ const EXT_TYPES: Record<string, string> = {
 export class AiFiles {
   private readonly logger = new Logger('AiFiles');
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vault: PiiVault,
+  ) {}
 
   async save(data: {
     /** AI 비서 대화 또는 에이전트 실행 — 둘 중 하나 */
@@ -96,7 +100,11 @@ export class AiFiles {
     if (!f || (!isAdmin && owner !== userId)) {
       throw new NotFoundException('파일을 찾을 수 없습니다.');
     }
-    return { name: f.name, mediaType: f.mediaType, bytes: Buffer.from(f.bytes) };
+    // 코드 실행 샌드박스는 가명만 받아 파일을 만든다 — 내려받을 때 만든 사람의 가명을 실제 값으로
+    const bytes = owner
+      ? await this.vault.revealFile(owner, f.name, f.mediaType, Buffer.from(f.bytes))
+      : Buffer.from(f.bytes);
+    return { name: f.name, mediaType: f.mediaType, bytes };
   }
 
   /**

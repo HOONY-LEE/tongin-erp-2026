@@ -30,6 +30,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ToolError, type AiTool, type ToolContext } from '../ai/ai-tool.types';
 import { resolveModel } from '../ai/ai-models';
 import { AiUsageService, aiCaller, trackClaude } from '../ai/ai-usage.service';
+import { PiiVault, PSEUDONYM_GUIDE } from '../ai/pii-vault';
 import { AgentBlueprintService } from './agent-blueprint.service';
 import {
   FALLBACK_BETA,
@@ -186,6 +187,7 @@ export class AgentRunnerService {
     private readonly prisma: PrismaService,
     private readonly blueprints: AgentBlueprintService,
     private readonly usage: AiUsageService,
+    private readonly vault: PiiVault,
   ) {}
 
   async start(blueprintId: string, opts: RunOptions, ctx: ToolContext) {
@@ -496,8 +498,16 @@ export class AgentRunnerService {
 
       case 'llm': {
         const cfg = node.config as LlmConfig;
-        const prompt = this.mask(String(renderTemplate(cfg.prompt, v)), state);
-        const system = this.mask(String(renderTemplate(cfg.instructions, v)), state);
+        // AI에는 가명으로 — 변수(도구 결과 등) 속 이름·전화·주소를 가명으로 바꾼 뒤 프롬프트를 만든다.
+        // 받은 답의 가명은 실제 값으로 되돌려 다음 노드(문자 보내기·결과)는 실제 값을 쓴다
+        const uid = ctx.principal.userId;
+        const hidden = await this.vault.hide(uid, v, 'vars');
+        const prompt = this.mask(String(renderTemplate(cfg.prompt, hidden)), state);
+        const instructions = this.mask(String(renderTemplate(cfg.instructions, hidden)), state);
+        const system =
+          this.vault.enabled && prompt.includes('[[')
+            ? `${instructions}\n\n${PSEUDONYM_GUIDE}`.trim()
+            : instructions;
         if (state.mockLlm) {
           const fake =
             cfg.outputFormat === 'json'
@@ -548,6 +558,7 @@ export class AgentRunnerService {
             };
           }
         }
+        output = await this.vault.reveal(uid, output);
         v[cfg.outputVar] = output;
         return {
           port: 'out',
