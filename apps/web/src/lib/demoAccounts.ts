@@ -1,4 +1,26 @@
 /** 로그인 화면(웹·데스크톱)이 같이 쓰는 데모 계정 목록과 '아이디 기억하기' */
+import { useEffect, useState } from 'react';
+import type { HealthResponse } from '@tongin/shared';
+import { api } from './api';
+
+/**
+ * 데모 계정 목록을 보여 줄지 — 서버가 시연 모드(/api/health demo:true)일 때만.
+ * 실고객을 받는 서버(DEMO_SEED=off)에서는 계정 이름·비밀번호를 로그인 화면에 띄우지 않는다.
+ * 서버 답을 받기 전·못 받으면 감춘다.
+ */
+export function useDemoLogin(): boolean {
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    api<HealthResponse>('/health')
+      .then((h) => alive && setDemo(h.demo === true))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return demo;
+}
 
 // apps/api/prisma/seed-demo.ts가 만드는 실제 계정 중 몇 개(시연용 바로 로그인).
 // 비밀번호는 시드의 DEMO_PASSWORD 기본값('tongin1234!' — 모든 계정 공통). env로 바꿔 시드했다면 이 목록도 맞춰야 한다.

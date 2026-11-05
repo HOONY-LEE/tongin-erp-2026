@@ -304,6 +304,21 @@ export class EstimateService {
     if (ids !== null && !ids.includes(dto.orgUnitId)) {
       throw new ForbiddenException('소속 조직으로만 견적을 만들 수 있습니다.');
     }
+    // 접수·고객도 내 범위의 것이고 서로 짝이 맞아야 한다 — 다른 지점 접수에 견적을 붙여
+    // 그 고객 정보를 읽거나(견적서) 접수 주소·상태를 덮어쓰지 못하게
+    if (ids !== null) {
+      const lead = await this.prisma.lead.findUnique({
+        where: { id: dto.leadId },
+        select: { orgUnitId: true, customerId: true },
+      });
+      if (!lead) throw new BadRequestException('접수를 목록에서 다시 골라 주세요.');
+      if (!ids.includes(lead.orgUnitId)) {
+        throw new ForbiddenException('소속 조직의 접수에만 견적을 만들 수 있습니다.');
+      }
+      if (lead.customerId !== dto.customerId) {
+        throw new BadRequestException('접수의 고객과 견적의 고객이 다릅니다.');
+      }
+    }
     try {
       const created = await this.prisma.estimate.create({
         data: {

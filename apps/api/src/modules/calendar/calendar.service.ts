@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 
 const STATUS_LABEL: Record<string, string> = {
   ASSIGNED: '배정',
@@ -11,12 +13,25 @@ const STATUS_LABEL: Record<string, string> = {
 /** 작업(이사) 일정을 iCalendar(.ics)로 내보내기 — 캘린더 앱 구독/가져오기용 (INT-03). */
 @Injectable()
 export class CalendarService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+  ) {}
 
-  async workOrdersIcs(): Promise<string> {
+  /**
+   * 작업오더 목록과 같은 범위만 — 전속업체는 자기 업체 작업, 그 밖에는 데이터범위 조직.
+   * (예전엔 범위 없이 전 지점 고객 이름·주소가 나갔다)
+   */
+  async workOrdersIcs(principal: AuthPrincipal): Promise<string> {
+    const ids = principal.partnerId ? null : await this.scope.orgScopeIds(principal);
     const orders = await this.prisma.workOrder.findMany({
-      where: { scheduledDate: { not: null }, status: { not: 'CANCELED' } },
-      include: { lead: { include: { customer: true } } },
+      where: {
+        scheduledDate: { not: null },
+        status: { not: 'CANCELED' },
+        ...(principal.partnerId ? { partnerId: principal.partnerId } : {}),
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+      },
+      include: { lead: { include: { customer: { select: { name: true } } } } },
       orderBy: { scheduledDate: 'asc' },
       take: 1000,
     });

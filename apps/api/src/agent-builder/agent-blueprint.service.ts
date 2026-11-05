@@ -283,10 +283,14 @@ export class AgentBlueprintService {
     await this.prisma.agentBlueprint.delete({ where: { id } });
   }
 
-  /** 실행 기록 — 고칠 수 있는 사람은 전부, 공유받은 사람은 내 실행만 */
+  /**
+   * 실행 기록 — 고칠 수 있는 사람은 전부, 공유받은 사람은 내 실행만.
+   * 남이 돌린 실행은 상태·시간만 — 입력·결과·단계 기록에는 그 사람 권한·범위로 읽은 고객 정보가 담겨,
+   * 만든 사람이 공유 에이전트를 미끼로 다른 사람(관리자 등) 범위의 데이터를 받아 볼 수 있었다
+   */
   async runs(blueprintId: string, p: AuthPrincipal) {
     const b = await this.get(blueprintId, p);
-    return this.prisma.agentRun.findMany({
+    const rows = await this.prisma.agentRun.findMany({
       where: { blueprintId, ...(b.canEdit ? {} : { createdBy: p.userId }) },
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -299,8 +303,15 @@ export class AgentBlueprintService {
         error: true,
         trace: true,
         createdAt: true,
+        createdBy: true,
       },
     });
+    const all = p.permissions.includes(PERMISSION_WILDCARD);
+    return rows.map(({ createdBy, ...r }) =>
+      all || createdBy === p.userId
+        ? r
+        : { ...r, input: null, output: null, error: null, trace: null, hidden: true },
+    );
   }
 
   /** AI 에이전트 화면에서 부를 수 있는 에이전트 — 사용중(ACTIVE)이고 내가 볼 수 있는 것 */

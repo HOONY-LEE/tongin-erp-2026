@@ -62,14 +62,22 @@ export class AccountController {
 
   @Put(':id/employee')
   @RequirePermissions('USER.UPDATE')
-  setEmployee(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetAccountEmployeeDto) {
-    return this.accountService.setEmployee(id, dto.employeeId);
+  setEmployee(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetAccountEmployeeDto,
+  ) {
+    return this.accountService.setEmployee(id, dto.employeeId, user);
   }
 
   @Put(':id/profile')
   @RequirePermissions('USER.UPDATE')
-  setProfile(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AccountEmployeeDto) {
-    return this.accountService.setProfile(id, dto);
+  setProfile(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AccountEmployeeDto,
+  ) {
+    return this.accountService.setProfile(id, dto, user);
   }
 
   @Patch(':id')

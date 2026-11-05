@@ -29,6 +29,7 @@ import { SaveBasicDto, SaveItemsDto, SaveOptionsDto } from './dto/estimate-tabs.
 import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { HTML_DOC_CSP } from '../../common/util/html-doc-csp';
 
 class DistanceRuleDto {
   @IsInt()
@@ -244,6 +245,7 @@ export class EstimateController {
   @Get(':id/document')
   @RequirePermissions('ESTIMATE.READ')
   @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Content-Security-Policy', HTML_DOC_CSP)
   document(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.estimateService.document(id, user);
   }
@@ -270,6 +272,7 @@ export class EstimateController {
   @Get(':id/documents/:kind')
   @RequirePermissions('ESTIMATE.READ')
   @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Content-Security-Policy', HTML_DOC_CSP)
   b2bDocument(
     @CurrentUser() user: AuthPrincipal,
     @Param('id', ParseUUIDPipe) id: string,

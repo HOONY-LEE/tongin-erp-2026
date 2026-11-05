@@ -162,11 +162,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (!message || isDefaultEnglish(message)) message = DEFAULT_MESSAGE[status] ?? '';
 
     const userId = (req as { user?: { userId?: string } }).user?.userId ?? null;
+    // 시스템 로그에 남기는 주소 — 검색어로 온 전화번호(?phone=010…, ?q=…)는 가린다
+    const path = req.originalUrl.replace(
+      /(?:\+?82-?|0)1\d(?:[-.\s]|%2D|%20)?\d{3,4}(?:[-.\s]|%2D|%20)?\d{4}/gi,
+      '***',
+    );
     if (code === 'INTERNAL') {
       ref = randomBytes(3).toString('hex').toUpperCase();
       message = `서버에서 오류가 났습니다. 같은 문제가 계속되면 오류 번호 ${ref}를 알려 주세요.`;
       const stack = exception instanceof Error ? exception.stack : String(exception);
-      this.logger.error(`[${ref}] ${req.method} ${req.originalUrl}`, stack);
+      this.logger.error(`[${ref}] ${req.method} ${path}`, stack);
       logSystem({
         level: 'ERROR',
         source: 'API',
@@ -174,20 +179,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message: exception instanceof Error ? exception.message : String(exception),
         detail: stack ?? null,
         method: req.method,
-        path: req.originalUrl,
+        path,
         status,
         userId,
         ref,
       });
     } else if (status >= 500) {
-      this.logger.warn(`${req.method} ${req.originalUrl} → ${status} ${code}: ${message}`);
+      this.logger.warn(`${req.method} ${path} → ${status} ${code}: ${message}`);
       logSystem({
         level: 'WARN',
         source: 'API',
         context: HTTP_ERROR_CONTEXT,
         message: `${code}: ${message}`,
         method: req.method,
-        path: req.originalUrl,
+        path,
         status,
         userId,
       });

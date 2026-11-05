@@ -61,6 +61,7 @@ export class LeadService {
   /** 케이스 뷰: 한 접수의 전체 여정(고객 + 견적·계약·결제·작업 문서흐름 + CS·AS 이력)을 한 번에. */
   async caseView(id: string, principal?: AuthPrincipal) {
     await this.findOne(id, principal); // 존재 + 조직 스코프 검증
+    const ids = await this.scope.orgScopeIds(principal);
     const lead = await this.prisma.lead.findUnique({
       where: { id },
       include: {
@@ -100,10 +101,13 @@ export class LeadService {
         },
       },
     });
-    // CS·AS 이력은 고객 기준(접수에 직접 FK 없음)
+    // CS·AS 이력은 고객 기준(접수에 직접 FK 없음) — 다른 지점이 받은 건은 내 범위 밖이라 뺀다
     const supportTickets = lead?.customerId
       ? await this.prisma.supportTicket.findMany({
-          where: { customerId: lead.customerId },
+          where: {
+            customerId: lead.customerId,
+            ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+          },
           select: {
             id: true,
             kind: true,
@@ -142,9 +146,12 @@ export class LeadService {
     // 신규 접수: 고객명 입력 시 고객 자동 생성·연결(드롭다운 선택은 customerId).
     // 같은 전화번호의 고객이 이미 있으면 새로 만들지 않고 그 고객에 잇는다(같은 사람이 두 번 생기면
     // 문자가 두 번 가고 이력이 갈라진다). 번호는 하이픈·공백을 빼고 비교한다.
+    // 고른 고객도, 번호로 찾는 고객도 내 범위 안에서만 — 다른 지점 고객 번호를 넣어 이름·이력을 알아내지 못하게
+    // (범위 밖 같은 번호 고객이 있어도 알려 주지 않고 내 지점 고객을 새로 만든다)
+    await this.scope.assertCustomer(dto.customerId, principal);
     let customerId = dto.customerId;
     if (!customerId && dto.customerPhone?.trim()) {
-      const existing = await this.findCustomerByPhone(dto.customerPhone);
+      const existing = await this.findCustomerByPhone(dto.customerPhone, ids);
       if (existing) customerId = existing.id;
     }
     if (!customerId && dto.customerName?.trim()) {
@@ -207,13 +214,21 @@ export class LeadService {
     }
   }
 
-  /** 전화번호(숫자만 비교)로 고객 찾기 — 가장 먼저 등록된 고객 */
-  private async findCustomerByPhone(phone: string) {
+  /** 전화번호(숫자만 비교)로 고객 찾기 — 가장 먼저 등록된 고객. ids(데이터 범위)가 있으면 그 안(+담당 지점 없음)에서만 */
+  private async findCustomerByPhone(phone: string, ids: string[] | null) {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 9) return null;
-    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+    const rows =
+      ids === null
+        ? await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM customer
       WHERE regexp_replace(coalesce(phone_primary, ''), '[^0-9]', '', 'g') = ${digits}
+      ORDER BY created_at ASC
+      LIMIT 1`
+        : await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM customer
+      WHERE regexp_replace(coalesce(phone_primary, ''), '[^0-9]', '', 'g') = ${digits}
+        AND (owner_org_id IS NULL OR owner_org_id = ANY(${ids}::uuid[]))
       ORDER BY created_at ASC
       LIMIT 1`;
     return rows[0] ?? null;
@@ -221,6 +236,7 @@ export class LeadService {
 
   async update(id: string, dto: UpdateLeadDto, principal?: AuthPrincipal) {
     const before = await this.findOne(id, principal);
+    await this.scope.assertCustomer(dto.customerId, principal);
     let updated;
     try {
       updated = await this.prisma.lead.update({

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ScopeService } from '../../scope/scope.service';
 
 interface BranchOverviewRow {
   orgUnitId: string;
@@ -22,10 +24,21 @@ interface BranchOverviewRow {
  */
 @Injectable()
 export class BranchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+  ) {}
 
-  /** from·to(YYYY-MM-DD, 한국 날짜, 포함) — 주면 접수·계약·완료 작업을 그 기간으로 센다 */
-  async overview(from?: string, to?: string): Promise<BranchOverviewRow[]> {
+  /**
+   * from·to(YYYY-MM-DD, 한국 날짜, 포함) — 주면 접수·계약·완료 작업을 그 기간으로 센다.
+   * 데이터범위 안 지점만 — 지점 계정(ORG_UNIT.READ)이 다른 지점 매출을 보지 못하게
+   */
+  async overview(
+    from?: string,
+    to?: string,
+    principal?: AuthPrincipal,
+  ): Promise<BranchOverviewRow[]> {
+    const scopeIds = await this.scope.orgScopeIds(principal);
     const tsFrom = from ? new Date(`${from}T00:00:00+09:00`) : undefined;
     const tsTo = to ? new Date(Date.parse(`${to}T00:00:00+09:00`) + 86_400_000) : undefined;
     const tsRange =
@@ -38,7 +51,7 @@ export class BranchService {
           }
         : undefined;
     const branches = await this.prisma.orgUnit.findMany({
-      where: { type: 'BRANCH' },
+      where: { type: 'BRANCH', ...(scopeIds === null ? {} : { id: { in: scopeIds } }) },
       select: { id: true, name: true, code: true, isActive: true, sido: true, sigungu: true },
       orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
     });

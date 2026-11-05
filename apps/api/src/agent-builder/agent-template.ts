@@ -256,9 +256,14 @@ export async function fillTemplate(
   if (kind === 'csv') {
     const head = parseCsv(bytes.toString('utf8').replace(/^\uFEFF/, ''))[0] ?? [];
     const rows = spec.sheets.flatMap((s) => s.tables.flatMap((t) => t.rows));
-    const esc = (x: string) => (/[",\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x);
-    const text = [head, ...rows]
-      .map((r) => r.map((x) => esc(String(x ?? ''))).join(','))
+    const quote = (x: string) => (/[",\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x);
+    // 수식 주입 방지(report-file buildCsv와 같게) — 고객명 등 글자 칸이 = + - @로 시작하면 엑셀이 수식으로 실행한다
+    const cell = (v: unknown) => {
+      const x = String(v ?? '');
+      return quote(typeof v === 'string' && /^[=+\-@\t\r]/.test(x) ? `'${x}` : x);
+    };
+    const text = [head.map((x) => quote(String(x ?? ''))), ...rows.map((r) => r.map(cell))]
+      .map((r) => r.join(','))
       .join('\r\n');
     return Buffer.from(`\uFEFF${text}\r\n`, 'utf8');
   }

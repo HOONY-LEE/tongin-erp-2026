@@ -451,6 +451,8 @@ export interface HealthResponse {
   status: 'ok';
   service: string;
   timestamp: string;
+  /** 시연 서버인지 — 로그인 화면이 데모 계정 목록을 이때만 보여 준다(실운영 DEMO_SEED=off면 false) */
+  demo: boolean;
 }
 
 // ── CRM-01: 대시보드 통계 (전환율 퍼널 + KPI + 가맹점별 매출) ──

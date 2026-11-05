@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,6 +10,8 @@ import { Prisma } from '@prisma/client';
 import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PrincipalCache } from '../../auth/principal-cache.service';
+import { ScopeService } from '../../scope/scope.service';
+import { PUBLIC_DEFAULT_PASSWORDS } from '../../common/util/demo-mode';
 import { AccessService } from '../access/access.service';
 import { nextEmpNo, withEmpNoRetry } from '../employee/emp-no';
 import { toDate } from '../employee/employee.service';
@@ -22,7 +25,44 @@ export class AccountService {
     private readonly prisma: PrismaService,
     private readonly access: AccessService,
     private readonly principals: PrincipalCache,
+    private readonly scope: ScopeService,
   ) {}
+
+  /**
+   * 계정을 고칠 수 있는 사람인지 — 권한 그룹 바꾸기(setUserRoles)와 같은 기준을 직원 연결·직원 정보·활성 전환에도.
+   *  - 전체관리자('*') 계정은 전체관리자만 고친다
+   *  - 데이터 범위가 조직이면 그 안 조직의 계정만, 옮기는 조직도 그 안으로만(orgUnitIds)
+   */
+  private async assertCanManage(userId: string, actor: AuthPrincipal, orgUnitIds: string[] = []) {
+    if (actor.permissions.includes(PERMISSION_WILDCARD)) return;
+    const target = await this.prisma.appUser.findUnique({
+      where: { id: userId },
+      select: {
+        employee: { select: { orgUnitId: true } },
+        userRoles: {
+          select: {
+            role: {
+              select: { rolePerms: { where: { permission: { code: PERMISSION_WILDCARD } } } },
+            },
+          },
+        },
+      },
+    });
+    if (!target) throw new NotFoundException('계정을 찾을 수 없습니다.');
+    if (target.userRoles.some((ur) => ur.role.rolePerms.length > 0)) {
+      throw new ForbiddenException('전체관리자 계정은 전체관리자만 고칠 수 있습니다.');
+    }
+    const myOrgIds = await this.scope.orgScopeIds(actor);
+    if (myOrgIds === null) return;
+    const targetOrg = target.employee?.orgUnitId ?? null;
+    if (
+      !targetOrg ||
+      !myOrgIds.includes(targetOrg) ||
+      orgUnitIds.some((o) => !myOrgIds.includes(o))
+    ) {
+      throw new ForbiddenException('내 데이터 범위 밖 조직의 계정은 고칠 수 없습니다.');
+    }
+  }
 
   /** 권한 그룹 목록(계정 생성·권한 부여 폼용). */
   roles() {
@@ -127,6 +167,15 @@ export class AccountService {
     if (!dto.employee && dto.employeeId) {
       const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId } });
       if (!emp) throw new BadRequestException('직원을 목록에서 다시 골라 주세요.');
+      // 이미 계정이 있는 직원에 계정을 하나 더 만들어 그 사람으로 결재·인사 화면을 여는 일을 막는다
+      if (await this.prisma.appUser.count({ where: { employeeId: dto.employeeId } })) {
+        throw new ConflictException('이미 계정이 있는 직원입니다.');
+      }
+    }
+    if (PUBLIC_DEFAULT_PASSWORDS.includes(dto.password)) {
+      throw new BadRequestException(
+        '누구나 아는 기본 비밀번호는 쓸 수 없습니다. 다른 비밀번호로 해 주세요.',
+      );
     }
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { user, createdEmployeeId } = await withEmpNoRetry(() =>
@@ -156,9 +205,11 @@ export class AccountService {
   }
 
   /** 계정의 직원 정보 고치기 — 연결된 직원이 없으면(예전 계정) 새로 만들어 붙인다. */
-  async setProfile(id: string, dto: AccountEmployeeDto) {
+  async setProfile(id: string, dto: AccountEmployeeDto, actor: AuthPrincipal) {
     const user = await this.prisma.appUser.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('계정을 찾을 수 없습니다.');
+    // 소속을 내 범위로 끌어와 권한을 바꾸는 우회도 막는다(옮길 조직도 범위 안이어야)
+    await this.assertCanManage(id, actor, [dto.orgUnitId]);
     const data = this.employeeData(dto);
     try {
       if (user.employeeId) {
@@ -220,13 +271,27 @@ export class AccountService {
   }
 
   /** 계정에 연결할 직원 바꾸기(직책·소속은 직원 정보를 따른다). */
-  async setEmployee(id: string, employeeId: string | null) {
+  async setEmployee(id: string, employeeId: string | null, actor: AuthPrincipal) {
     const user = await this.prisma.appUser.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('계정을 찾을 수 없습니다.');
+    // 내 계정을 다른 직원(예: 대표)에 다시 이어 그 사람 결재·인사 화면을 여는 일을 막는다
+    if (actor.userId === id && !actor.permissions.includes(PERMISSION_WILDCARD)) {
+      throw new ForbiddenException('본인 계정의 연결 직원은 바꿀 수 없습니다.');
+    }
+    let empOrg: string[] = [];
     if (employeeId) {
       const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
       if (!emp) throw new BadRequestException('직원을 목록에서 다시 골라 주세요.');
+      if (!emp.isActive || emp.resignDate) {
+        throw new BadRequestException('퇴사·비활성 직원에는 계정을 이을 수 없습니다.');
+      }
+      const taken = await this.prisma.appUser.count({
+        where: { employeeId, id: { not: id } },
+      });
+      if (taken) throw new ConflictException('이미 다른 계정과 이어진 직원입니다.');
+      empOrg = [emp.orgUnitId];
     }
+    await this.assertCanManage(id, actor, empOrg);
     const row = await this.prisma.appUser.update({
       where: { id },
       data: { employeeId },
@@ -243,8 +308,18 @@ export class AccountService {
    * 화면에서 버튼을 숨기는 것만으로는 API·다른 클라이언트 호출을 못 막아 서버에서 판정한다.
    */
   async setActive(id: string, isActive: boolean, actor?: AuthPrincipal) {
-    const user = await this.prisma.appUser.findUnique({ where: { id } });
+    const user = await this.prisma.appUser.findUnique({
+      where: { id },
+      include: { employee: { select: { isActive: true, resignDate: true } } },
+    });
     if (!user) throw new NotFoundException('계정을 찾을 수 없습니다.');
+    if (actor) await this.assertCanManage(id, actor);
+    // 퇴사자 계정을 다시 켜 로그인하게 두지 않는다 — 다시 쓰려면 직원부터 재직으로 되돌린다
+    if (isActive && user.employee && (!user.employee.isActive || user.employee.resignDate)) {
+      throw new BadRequestException(
+        '퇴사·비활성 직원의 계정은 켤 수 없습니다. 직원 정보를 먼저 고쳐 주세요.',
+      );
+    }
     if (!isActive) {
       if (actor && actor.userId === id) {
         throw new BadRequestException('본인 계정은 비활성화할 수 없습니다.');

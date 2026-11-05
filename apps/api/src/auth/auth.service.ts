@@ -9,6 +9,7 @@ import {
   type PrincipalType,
 } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { PUBLIC_DEFAULT_PASSWORDS } from '../common/util/demo-mode';
 import { LoginDto } from './dto/login.dto';
 import { PrincipalCache } from './principal-cache.service';
 
@@ -38,6 +39,11 @@ export class AuthService {
       throw new BadRequestException('지금 비밀번호가 맞지 않습니다.');
     }
     if (current === next) throw new BadRequestException('새 비밀번호가 지금과 같습니다.');
+    if (PUBLIC_DEFAULT_PASSWORDS.includes(next)) {
+      throw new BadRequestException(
+        '누구나 아는 기본 비밀번호는 쓸 수 없습니다. 다른 비밀번호로 해 주세요.',
+      );
+    }
     await this.prisma.appUser.update({
       where: { id: userId },
       data: { passwordHash: await bcrypt.hash(next, 10) },

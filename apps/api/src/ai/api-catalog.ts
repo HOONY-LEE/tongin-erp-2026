@@ -364,9 +364,12 @@ function keywords(...parts: string[]) {
 }
 
 function fillPath(path: string, input: Record<string, unknown>) {
-  return path.replace(/:([A-Za-z0-9_]+)/g, (_, p: string) =>
-    encodeURIComponent(String(input[p] ?? '')),
-  );
+  return path.replace(/:([A-Za-z0-9_]+)/g, (_, p: string) => {
+    const v = String(input[p] ?? '');
+    // '..'·'.'·빈 값은 주소를 거슬러 올라가 AI에 열지 않은 API(인증·AI 관리 등)에 닿는다
+    if (!v || v === '.' || v === '..') throw new Error(`${p} 값이 올바르지 않습니다.`);
+    return encodeURIComponent(v);
+  });
 }
 
 function pick(input: Record<string, unknown>, keys: string[]) {

@@ -3,7 +3,13 @@ import { ChevronRight } from 'lucide-react';
 import { PRODUCT_NAME } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../lib/api';
-import { DEMO_ACCOUNTS, DEMO_GROUPS, REMEMBER_KEY, readRemembered } from '../lib/demoAccounts';
+import {
+  DEMO_ACCOUNTS,
+  DEMO_GROUPS,
+  REMEMBER_KEY,
+  readRemembered,
+  useDemoLogin,
+} from '../lib/demoAccounts';
 import styles from './desktopLogin.module.css';
 
 const REMEMBER_NAME_KEY = 'tongin.rememberName';
@@ -148,6 +154,7 @@ export default function DesktopLogin() {
   const [remember, setRemember] = useState(remembered !== null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const showDemo = useDemoLogin();
 
   const doLogin = async (id: string, pw: string, name?: string) => {
     if (loading || !id || !pw) return;
@@ -283,38 +290,42 @@ export default function DesktopLogin() {
           </label>
         </form>
 
-        <div className={styles.listWrap}>
-          <div className={styles.list} role="list" aria-label="데모 계정">
-            {DEMO_GROUPS.map((g) => (
-              <div key={g} role="group" aria-label={g}>
-                <div className={styles.group}>{g}</div>
-                {DEMO_ACCOUNTS.filter((a) => a.group === g).map((a) => (
-                  <button
-                    key={a.loginId}
-                    type="button"
-                    className={styles.row}
-                    onClick={() =>
-                      pick({
-                        loginId: a.loginId,
-                        name: a.name,
-                        desc: `${a.group} · ${a.desc}`,
-                        password: a.password,
-                      })
-                    }
-                  >
-                    <span className={styles.rowAvatar}>{a.name.slice(0, 1)}</span>
-                    <span className={styles.rowText}>
-                      <span className={styles.rowName}>{a.name}</span>
-                      <span className={styles.rowDesc}>{a.desc}</span>
-                    </span>
-                    <ChevronRight size={16} className={styles.chev} aria-hidden />
-                  </button>
+        {showDemo && (
+          <>
+            <div className={styles.listWrap}>
+              <div className={styles.list} role="list" aria-label="데모 계정">
+                {DEMO_GROUPS.map((g) => (
+                  <div key={g} role="group" aria-label={g}>
+                    <div className={styles.group}>{g}</div>
+                    {DEMO_ACCOUNTS.filter((a) => a.group === g).map((a) => (
+                      <button
+                        key={a.loginId}
+                        type="button"
+                        className={styles.row}
+                        onClick={() =>
+                          pick({
+                            loginId: a.loginId,
+                            name: a.name,
+                            desc: `${a.group} · ${a.desc}`,
+                            password: a.password,
+                          })
+                        }
+                      >
+                        <span className={styles.rowAvatar}>{a.name.slice(0, 1)}</span>
+                        <span className={styles.rowText}>
+                          <span className={styles.rowName}>{a.name}</span>
+                          <span className={styles.rowDesc}>{a.desc}</span>
+                        </span>
+                        <ChevronRight size={16} className={styles.chev} aria-hidden />
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
-          </div>
-        </div>
-        <p className={styles.hint}>데모 계정을 고르면 바로 로그인할 수 있습니다</p>
+            </div>
+            <p className={styles.hint}>데모 계정을 고르면 바로 로그인할 수 있습니다</p>
+          </>
+        )}
       </div>
     </div>
   );

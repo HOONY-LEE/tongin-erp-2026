@@ -233,11 +233,9 @@ export class AgentBlueprintController {
 
   @Post('generate')
   async generate(@CurrentUser() user: AuthPrincipal, @Body() dto: GenerateDto) {
-    const current = dto.graph
-      ? normalizeAgentGraph(dto.graph)
-      : dto.blueprintId
-        ? (await this.blueprints.get(dto.blueprintId, user)).graph
-        : null;
+    // graph를 같이 보내도 blueprintId가 있으면 볼 수 있는 에이전트인지 먼저 확인한다(남의 참고 양식이 새지 않게)
+    const bp = dto.blueprintId ? await this.blueprints.get(dto.blueprintId, user) : null;
+    const current = dto.graph ? normalizeAgentGraph(dto.graph) : (bp?.graph ?? null);
     const refs = [
       ...(dto.blueprintId ? await this.references.listFor(dto.blueprintId) : []),
       ...(await this.references.describe(dto.referenceFileIds ?? [], user)),

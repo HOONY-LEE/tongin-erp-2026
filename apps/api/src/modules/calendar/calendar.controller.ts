@@ -145,7 +145,7 @@ export class CalendarController {
   @RequirePermissions('WORK_ORDER.READ')
   @Header('Content-Type', 'text/calendar; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="tongin-schedule.ics"')
-  workOrders() {
-    return this.calendar.workOrdersIcs();
+  workOrders(@CurrentUser() user: AuthPrincipal) {
+    return this.calendar.workOrdersIcs(user);
   }
 }
