@@ -13,6 +13,7 @@ import { WorkPhotoService } from './work-photo.service';
 import { WorkOrderService } from '../work-order/work-order.service';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AccessLog } from '../../audit/access-log';
 
 /**
  * 현장(태블릿·폰) 전용 API.
@@ -28,6 +29,7 @@ export class FieldController {
   ) {}
 
   /** 내 작업 목록. from/to 없으면 전체(최근순 200건). */
+  @AccessLog('work-order', 'LIST')
   @Get('work-orders')
   @RequirePermissions('WORK_ORDER.READ')
   list(@CurrentUser() user: AuthPrincipal, @Query('from') from?: string, @Query('to') to?: string) {
@@ -35,6 +37,7 @@ export class FieldController {
   }
 
   /** 작업지시서 — 고객·주소·품목·작업지시 메모·배정까지 한 번에. */
+  @AccessLog('work-order', 'VIEW')
   @Get('work-orders/:id')
   @RequirePermissions('WORK_ORDER.READ')
   detail(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {

@@ -39,6 +39,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { PhoneDigits } from '../../common/phone';
 import { CrmService } from './crm.service';
 import { CrmImportService } from './crm-import.service';
+import { AccessLog } from '../../audit/access-log';
 
 /** :pipeline — FRANCHISE(가맹 영업) | B2B(기업영업), 소문자도 받는다 */
 class PipelinePipe implements PipeTransform<string, CrmPipelineKey> {
@@ -134,6 +135,7 @@ export class CrmController {
     );
   }
 
+  @AccessLog('crm-lead', 'LIST')
   @Get('leads')
   list(
     @CurrentUser() u: AuthPrincipal,
@@ -167,6 +169,7 @@ export class CrmController {
     return this.crm.stats(u, pipeline, { from: dateOr(from), to: dateOr(to), ownerEmpId, source });
   }
 
+  @AccessLog('crm-lead', 'VIEW')
   @Get('leads/:id')
   one(
     @CurrentUser() u: AuthPrincipal,

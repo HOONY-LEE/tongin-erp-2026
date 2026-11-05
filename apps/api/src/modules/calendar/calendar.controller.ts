@@ -26,6 +26,7 @@ import {
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
+import { AccessLog } from '../../audit/access-log';
 
 const WEB_APP_URL = process.env.WEB_APP_URL ?? 'http://localhost:3002';
 
@@ -141,6 +142,7 @@ export class CalendarController {
   }
 
   /** 작업(이사) 일정 iCalendar 내보내기. 캘린더 앱에서 가져오기/구독. */
+  @AccessLog('work-order-ics', 'EXPORT')
   @Get('work-orders.ics')
   @RequirePermissions('WORK_ORDER.READ')
   @Header('Content-Type', 'text/calendar; charset=utf-8')

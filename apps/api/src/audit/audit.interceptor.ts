@@ -56,7 +56,9 @@ export class AuditInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request & { user?: AuthPrincipal }>();
     const action = ACTION_BY_METHOD[req.method];
-    if (!action || req.path.startsWith('/api/auth')) return next.handle();
+    // 내려받기 기록(/api/access-logs)은 접근 기록으로 따로 남는다 — 변경 기록에 한 번 더 쌓지 않는다
+    if (!action || req.path.startsWith('/api/auth') || req.path.startsWith('/api/access-logs'))
+      return next.handle();
 
     return next.handle().pipe(
       tap((body) => {

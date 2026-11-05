@@ -36,6 +36,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AiService, ATTACHMENT_TYPES, TITLE_INPUT_MAX } from './ai.service';
 import { AiFiles, contentDisposition } from './ai-files.service';
+import { AccessLog } from '../audit/access-log';
 
 /** 첨부 — 이미지(png·jpg·gif·webp), PDF, 텍스트(txt·csv·json·md). 내용은 base64 */
 class AttachmentInput {
@@ -202,6 +203,7 @@ export class AiController {
   }
 
   /** AI가 만든 파일 내려받기(엑셀·PDF·CSV·차트) — 내 대화의 파일만 */
+  @AccessLog('ai-file', 'EXPORT')
   @Get('files/:id')
   async file(
     @CurrentUser() user: AuthPrincipal,

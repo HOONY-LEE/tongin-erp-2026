@@ -45,6 +45,7 @@ export default {
     aiAgents: 'Agent Builder',
     aiAdmin: 'AI 管理',
     systemLogs: '系统日志',
+    accessLogs: '访问记录',
     dashboardAdmin: '仪表板管理',
     employees: '员工',
     approvals: '审批',

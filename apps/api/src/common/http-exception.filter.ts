@@ -1,5 +1,6 @@
 import { logSystem } from '../system-log/system-log.sink';
 import { HTTP_ERROR_CONTEXT } from '../system-log/system-logger';
+import { maskPhonesInText } from './util/mask';
 import { randomBytes } from 'node:crypto';
 import {
   type ArgumentsHost,
@@ -163,10 +164,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const userId = (req as { user?: { userId?: string } }).user?.userId ?? null;
     // 시스템 로그에 남기는 주소 — 검색어로 온 전화번호(?phone=010…, ?q=…)는 가린다
-    const path = req.originalUrl.replace(
-      /(?:\+?82-?|0)1\d(?:[-.\s]|%2D|%20)?\d{3,4}(?:[-.\s]|%2D|%20)?\d{4}/gi,
-      '***',
-    );
+    const path = maskPhonesInText(req.originalUrl);
     if (code === 'INTERNAL') {
       ref = randomBytes(3).toString('hex').toUpperCase();
       message = `서버에서 오류가 났습니다. 같은 문제가 계속되면 오류 번호 ${ref}를 알려 주세요.`;

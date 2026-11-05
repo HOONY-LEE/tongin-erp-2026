@@ -18,7 +18,7 @@ export interface JwtPayload {
   loginId: string;
 }
 
-export const TOKEN_TTL_SECONDS = 12 * 60 * 60; // 12h
+export const TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24h — 로그인 유지 시간(하루)
 
 @Injectable()
 export class AuthService {

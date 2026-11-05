@@ -34,6 +34,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { contentDisposition } from '../../ai/ai-files.service';
 import { DriveService } from './drive.service';
 import { GoogleDriveService } from './google-drive.service';
+import { AccessLog } from '../../audit/access-log';
 
 const ROLES = Object.keys(DRIVE_ROLE);
 
@@ -253,6 +254,7 @@ export class DriveController {
     return this.drive.itemView(id, u);
   }
 
+  @AccessLog('drive-file', 'EXPORT')
   @Get('items/:id/content')
   async content(
     @CurrentUser() u: AuthPrincipal,

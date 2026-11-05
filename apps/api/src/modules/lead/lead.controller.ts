@@ -17,11 +17,13 @@ import { TransitionLeadDto } from './dto/transition-lead.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { AuthPrincipal } from '@tongin/shared';
+import { AccessLog } from '../../audit/access-log';
 
 @Controller('leads')
 export class LeadController {
   constructor(private readonly leadService: LeadService) {}
 
+  @AccessLog('lead', 'LIST')
   @Get()
   @RequirePermissions('LEAD.READ')
   findAll(
@@ -33,12 +35,14 @@ export class LeadController {
     return this.leadService.findAll({ status, source, orgUnitId }, user);
   }
 
+  @AccessLog('lead', 'VIEW')
   @Get(':id')
   @RequirePermissions('LEAD.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.leadService.findOne(id, user);
   }
 
+  @AccessLog('lead', 'VIEW')
   @Get(':id/case')
   @RequirePermissions('LEAD.READ')
   caseView(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {

@@ -4,17 +4,20 @@ import { WorkOrderService } from './work-order.service';
 import { CreateAssignmentDto, CreateWorkOrderDto } from './dto/work-order.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AccessLog } from '../../audit/access-log';
 
 @Controller('work-orders')
 export class WorkOrderController {
   constructor(private readonly workOrderService: WorkOrderService) {}
 
+  @AccessLog('work-order', 'LIST')
   @Get()
   @RequirePermissions('WORK_ORDER.READ')
   findAll(@CurrentUser() user: AuthPrincipal, @Query('status') status?: string) {
     return this.workOrderService.findAll(status, user);
   }
 
+  @AccessLog('work-order', 'VIEW')
   @Get(':id')
   @RequirePermissions('WORK_ORDER.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {

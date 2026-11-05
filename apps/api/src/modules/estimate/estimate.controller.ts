@@ -30,6 +30,7 @@ import { UpsertCostBuildupDto } from './dto/cost-buildup.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { HTML_DOC_CSP } from '../../common/util/html-doc-csp';
+import { AccessLog } from '../../audit/access-log';
 
 class DistanceRuleDto {
   @IsInt()
@@ -50,6 +51,7 @@ export class EstimateController {
     private readonly b2bService: EstimateB2bService,
   ) {}
 
+  @AccessLog('estimate', 'LIST')
   @Get()
   @RequirePermissions('ESTIMATE.READ')
   findAll(@CurrentUser() user: AuthPrincipal, @Query('leadId') leadId?: string) {
@@ -76,6 +78,7 @@ export class EstimateController {
     return this.estimateService.route(id, user);
   }
 
+  @AccessLog('estimate', 'VIEW')
   @Get(':id')
   @RequirePermissions('ESTIMATE.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
@@ -242,6 +245,7 @@ export class EstimateController {
     return this.estimateService.forLead(leadId, user);
   }
 
+  @AccessLog('estimate', 'VIEW')
   @Get(':id/document')
   @RequirePermissions('ESTIMATE.READ')
   @Header('Content-Type', 'text/html; charset=utf-8')
@@ -269,6 +273,7 @@ export class EstimateController {
   }
 
   /** 기업이전 3종 문서: kind = quote(견적서) | items(물품내역서) | cost(산출내역서). */
+  @AccessLog('estimate', 'VIEW')
   @Get(':id/documents/:kind')
   @RequirePermissions('ESTIMATE.READ')
   @Header('Content-Type', 'text/html; charset=utf-8')

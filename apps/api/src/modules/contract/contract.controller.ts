@@ -4,17 +4,20 @@ import { ContractService } from './contract.service';
 import { CreateContractDto, CreatePaymentDto } from './dto/contract.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AccessLog } from '../../audit/access-log';
 
 @Controller('contracts')
 export class ContractController {
   constructor(private readonly contractService: ContractService) {}
 
+  @AccessLog('contract', 'LIST')
   @Get()
   @RequirePermissions('CONTRACT.READ')
   findAll(@CurrentUser() user: AuthPrincipal) {
     return this.contractService.findAll(user);
   }
 
+  @AccessLog('contract', 'VIEW')
   @Get(':id')
   @RequirePermissions('CONTRACT.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {

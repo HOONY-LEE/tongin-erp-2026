@@ -18,11 +18,13 @@ import { SupportService } from './support.service';
 import { CreateTicketDto, UpdateTicketDto } from './dto/support.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AccessLog } from '../../audit/access-log';
 
 @Controller('support-tickets')
 export class SupportController {
   constructor(private readonly service: SupportService) {}
 
+  @AccessLog('support', 'LIST')
   @Get()
   @RequirePermissions('SUPPORT.READ')
   findAll(
@@ -33,6 +35,7 @@ export class SupportController {
     return this.service.findAll(kind, status, user);
   }
 
+  @AccessLog('support', 'VIEW')
   @Get(':id')
   @RequirePermissions('SUPPORT.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {

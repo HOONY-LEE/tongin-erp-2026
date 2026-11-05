@@ -5,7 +5,27 @@ import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
 import type { Column, Row } from './types';
-import { ExportMenu, nodeText } from './tableExport';
+import { ExportMenu, MaskMenu, nodeText, type MaskableColumn } from './tableExport';
+import { guessMaskKind, maskValue, type MaskKind } from '../../lib/mask';
+
+const colKey = (c: Column, i: number) => c.dataIndex ?? `__col_${i}`;
+const titleOf = (c: Column) => (typeof c.title === 'string' ? c.title : nodeText(c.title));
+/** 이 칸을 가릴 수 있으면 종류(전화·주소·이름) — 지정값 > 제목으로 짐작 */
+const maskKindOf = (c: Column): MaskKind | null =>
+  c.mask === false ? null : (c.mask ?? guessMaskKind(titleOf(c)));
+/** 화면에 그린 글자(가릴 때 씀) */
+const cellText = (c: Column, data: Row) =>
+  c.render ? nodeText(c.render(data)) : String(data[c.dataIndex ?? ''] ?? '');
+
+/** 화면에서 가린 칸은 화면(주소)마다 기억한다 — 기본은 다 보임 */
+const maskStoreKey = () => `tongin.mask:${window.location.pathname}`;
+function readMasked(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(maskStoreKey()) ?? '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+}
 
 interface Props {
   columns: Column[];
@@ -72,36 +92,70 @@ export function DataTable({
   // 여러 줄 셀이 있는 표 — 행 높이를 내용에 맞춰 늘린다(고정 행 높이 전제의 가상 스크롤은 끈다)
   const multiline = columns.some((c) => c.multiline);
 
+  // 개인정보 가리기 — 화면에서 가린 칸(masked)과, 내려받는 동안만 가릴 칸(exportMask)
+  const [masked, setMaskedState] = useState<Set<string>>(readMasked);
+  const setMasked = (next: Set<string>) => {
+    setMaskedState(next);
+    try {
+      localStorage.setItem(maskStoreKey(), JSON.stringify([...next]));
+    } catch {
+      /* 기억만 못 한다 */
+    }
+  };
+  const exportMask = useRef<Set<string> | null>(null);
+  const maskable: MaskableColumn[] = useMemo(
+    () =>
+      columns
+        .map((c, i) => ({ key: colKey(c, i), label: titleOf(c), kind: maskKindOf(c) }))
+        .filter((c) => c.kind)
+        .map(({ key, label }) => ({ key, label })),
+    [columns],
+  );
+
   const softiumColumns: ReactColumnDef<Row>[] = useMemo(() => {
-    const mapped: ReactColumnDef<Row>[] = columns.map((c, i) => ({
-      key: c.dataIndex ?? `__col_${i}`,
-      label: typeof c.title === 'string' ? c.title : String(c.title ?? ''),
-      align: c.numeric ? 'right' : 'left',
-      sortable: !!c.dataIndex,
-      width: c.width,
-      minWidth: c.minWidth,
-      flex: c.flex,
-      // 내보내기 값 — 지정값 > 화면에 그린 글자 > 원본 필드 (원본만 읽으면 render로 그리는 칸이 비거나 코드로 나간다)
-      exportValue: (data: Row) => {
-        if (c.exportValue) return c.exportValue(data);
-        if (c.render) return nodeText(c.render(data)) || null;
-        const v = data[c.dataIndex ?? ''];
-        return v === null || v === undefined || v === '' ? null : (v as string | number);
-      },
-      renderCell: ({ row }) =>
-        row.data.__sk ? (
-          <Skeleton width={36 + ((i * 23 + Number(row.data.__sk) * 11) % 64)} height={12} />
-        ) : c.multiline ? (
-          // 여러 줄 셀 — 줄마다 한 줄 말줄임, 행은 내용 높이만큼 늘어난다(base.css .dt-multiline)
-          <div className="dt-cell-multiline">
-            {c.render ? c.render(row.data) : String(row.data[c.dataIndex ?? ''] ?? '')}
-          </div>
-        ) : c.render ? (
-          c.render(row.data)
-        ) : (
-          String(row.data[c.dataIndex ?? ''] ?? '')
-        ),
-    }));
+    const mapped: ReactColumnDef<Row>[] = columns.map((c, i) => {
+      const key = colKey(c, i);
+      const kind = maskKindOf(c);
+      const hide = !!kind && masked.has(key);
+      return {
+        key,
+        label: typeof c.title === 'string' ? c.title : String(c.title ?? ''),
+        align: c.numeric ? 'right' : 'left',
+        sortable: !!c.dataIndex,
+        width: c.width,
+        minWidth: c.minWidth,
+        flex: c.flex,
+        // 내보내기 값 — 지정값 > 화면에 그린 글자 > 원본 필드 (원본만 읽으면 render로 그리는 칸이 비거나 코드로 나간다)
+        exportValue: (data: Row) => {
+          const v = c.exportValue
+            ? c.exportValue(data)
+            : c.render
+              ? nodeText(c.render(data)) || null
+              : (data[c.dataIndex ?? ''] as string | number | null | undefined);
+          const out = v === null || v === undefined || v === '' ? null : v;
+          // '가려서 받기'로 고른 칸
+          return kind && out !== null && exportMask.current?.has(key)
+            ? maskValue(kind, String(out))
+            : out;
+        },
+        renderCell: ({ row }) =>
+          row.data.__sk ? (
+            <Skeleton width={36 + ((i * 23 + Number(row.data.__sk) * 11) % 64)} height={12} />
+          ) : hide && kind ? (
+            // 화면에서 가린 칸 — 그린 글자를 가린 글자로
+            maskValue(kind, cellText(c, row.data))
+          ) : c.multiline ? (
+            // 여러 줄 셀 — 줄마다 한 줄 말줄임, 행은 내용 높이만큼 늘어난다(base.css .dt-multiline)
+            <div className="dt-cell-multiline">
+              {c.render ? c.render(row.data) : String(row.data[c.dataIndex ?? ''] ?? '')}
+            </div>
+          ) : c.render ? (
+            c.render(row.data)
+          ) : (
+            String(row.data[c.dataIndex ?? ''] ?? '')
+          ),
+      };
+    });
     // 컬럼 폭 합이 컨테이너보다 좁으면(softium Table은 넘칠 때만 줄여주고 남을 때 안 늘려줌)
     // 오른쪽에 남는 여백이 생긴다. 실제 컬럼들을 억지로 늘리는 대신, 보이지 않는 여백 컬럼 하나를
     // 끝에 붙여 그 컬럼이 남는 폭을 가져가게 한다 — 단, 페이지가 이미 flex를 직접 지정했다면
@@ -119,7 +173,7 @@ export function DataTable({
       });
     }
     return mapped;
-  }, [columns]);
+  }, [columns, masked]);
 
   // 처음 불러오기가 끝나기 전에는 '데이터가 없습니다' 대신 표 안에 자리표시 행을 깐다
   // (검색창·내보내기·등록 버튼 같은 툴바는 그대로 보인다).
@@ -158,8 +212,20 @@ export function DataTable({
 
   // 내보내기 — 라이브러리 메뉴 대신(그쪽 CSV는 BOM이 없어 엑셀에서 한글이 깨진다)
   const exportMenu = exportable ? (
-    <ExportMenu table={table} fileName={exportFileName ?? 'table'} />
+    <ExportMenu
+      table={table}
+      fileName={exportFileName ?? 'table'}
+      maskable={maskable}
+      screenMasked={masked}
+      exportMask={exportMask}
+    />
   ) : null;
+  // 전화·주소·이름 칸이 있는 표에만 — 내보내기 버튼 앞
+  const maskMenu =
+    maskable.length > 0 ? (
+      <MaskMenu maskable={maskable} masked={masked} onChange={setMasked} />
+    ) : null;
+  const hasActions = !!(maskMenu || exportable || toolbarActions);
 
   return (
     <div
@@ -190,16 +256,18 @@ export function DataTable({
           <>
             {filters && <div className="dt-toolbar-filters">{filters}</div>}
             {/* 탭이 없으면 셋째 줄을 만들지 않고 내보내기·생성 버튼을 검색 줄 오른쪽 끝에 둔다 */}
-            {(viewSwitch || (!row3 && (exportable || toolbarActions))) && (
+            {(viewSwitch || (!row3 && hasActions)) && (
               <div className="dt-toolbar-view">
                 {viewSwitch}
+                {!row3 && maskMenu}
                 {!row3 && exportable && exportMenu}
                 {!row3 && toolbarActions}
               </div>
             )}
             {tabs && <div className="dt-toolbar-tabs">{tabs}</div>}
-            {row3 && (exportable || toolbarActions) && (
+            {row3 && hasActions && (
               <div className="dt-toolbar-actions">
+                {maskMenu}
                 {exportable && exportMenu}
                 {toolbarActions}
               </div>
