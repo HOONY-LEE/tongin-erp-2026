@@ -5,7 +5,15 @@ import { LEAD_STATUS_LABEL, type LeadStatus } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import { Badge, Button, ListPage, SegmentedControl, Textarea, useToast } from '../components/ui';
+import {
+  Badge,
+  Button,
+  Input,
+  ListPage,
+  SegmentedControl,
+  Textarea,
+  useToast,
+} from '../components/ui';
 import styles from './callcenter.module.css';
 
 interface CallView {
@@ -70,6 +78,7 @@ export default function CallCenter() {
   const [now, setNow] = useState(Date.now());
   const [memo, setMemo] = useState('');
   const [busy, setBusy] = useState(false);
+  const [simPhone, setSimPhone] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -348,6 +357,15 @@ export default function CallCenter() {
                 전화 시스템 연동 전 시험 — 대표번호로 콜이 들어온 것처럼 만듭니다.
               </span>
               <div className={styles.actions}>
+                <Input
+                  value={simPhone}
+                  placeholder="번호(비우면 아무 번호)"
+                  onChange={(e) => setSimPhone(e.target.value)}
+                  style={{ width: 170 }}
+                  aria-label="시험 콜 번호"
+                />
+              </div>
+              <div className={styles.actions}>
                 {[1, 5, 10].map((n) => (
                   <Button
                     key={n}
@@ -360,7 +378,10 @@ export default function CallCenter() {
                           '/cs-calls/simulate',
                           {
                             method: 'POST',
-                            body: JSON.stringify({ count: n }),
+                            body: JSON.stringify({
+                              count: n,
+                              ...(simPhone.trim() && { phone: simPhone.trim() }),
+                            }),
                           },
                         );
                         toast({

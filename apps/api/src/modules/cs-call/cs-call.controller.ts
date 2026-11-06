@@ -30,6 +30,8 @@ class AvailableDto {
 }
 class SimulateDto {
   @IsInt() @Min(1) @Max(20) count!: number;
+  /** 시험할 번호(비우면 아무 번호) — 내 휴대폰으로 받아 보기 */
+  @IsOptional() @IsString() @MaxLength(30) phone?: string;
 }
 class FinishDto {
   @IsIn(['DONE', 'RETRY']) result!: 'DONE' | 'RETRY';
@@ -81,7 +83,7 @@ export class CsCallController {
   @Post('simulate')
   @RequirePermissions('LEAD.CREATE')
   simulate(@Body() dto: SimulateDto) {
-    return this.calls.simulate(dto.count);
+    return this.calls.simulate(dto.count, dto.phone);
   }
 
   /**

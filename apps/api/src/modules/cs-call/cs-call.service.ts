@@ -79,12 +79,12 @@ export class CsCallService {
   }
 
   /** 시험 전화 — 실제 전화 시스템이 붙기 전 배분·아웃콜 흐름 확인용 */
-  async simulate(count: number) {
+  async simulate(count: number, phone?: string) {
     const n = Math.max(1, Math.min(20, Math.floor(count) || 1));
     const out = [];
     for (let i = 0; i < n; i++) {
       const tail = String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
-      out.push(await this.inbound(`010${tail}`, '시험 전화'));
+      out.push(await this.inbound(phone?.trim() ? phone : `010${tail}`, '시험 전화'));
     }
     return {
       created: out.length,
