@@ -1,0 +1,219 @@
+/* 상담 콘솔 — 위 숫자 | 내 콜 · 아웃콜 대기 · 상담원 */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.stats span {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.stats b {
+  font-size: calc(22px * var(--font-scale, 1));
+}
+.stats > .warnStat {
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 8%, var(--ark-color-bg));
+}
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(320px, 1.2fr) minmax(240px, 0.8fr);
+  gap: 12px;
+}
+.card {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.muted {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.empty,
+.emptyQ {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.myCall {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.callHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.phone {
+  font-size: calc(28px * var(--font-scale, 1));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ark-color-text);
+  text-decoration: none;
+}
+.customer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.leads {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+}
+.leads button {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--ark-color-border);
+  background: none;
+  color: inherit;
+  text-align: left;
+  font-size: calc(13px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.leads li:last-child button {
+  border-bottom: 0;
+}
+.leads button:hover {
+  background: var(--ark-color-bg-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.idle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 8px;
+  color: var(--ark-color-text-secondary);
+  text-align: center;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.queue li {
+  display: grid;
+  grid-template-columns: 24px 140px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.qNo {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+  text-align: right;
+}
+.qPhone {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.qInfo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.agents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agents li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.agents i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.agents i.busy {
+  background: #ef4444;
+}
+.agents i.ready {
+  background: #16a34a;
+}
+.agents i.off {
+  background: var(--ark-color-border);
+}
+.aName {
+  flex: 1;
+  min-width: 0;
+}
+.aState {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  white-space: nowrap;
+}
+.sim {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--ark-color-border);
+}
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

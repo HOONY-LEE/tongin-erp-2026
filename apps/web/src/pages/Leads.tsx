@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
@@ -54,6 +54,15 @@ export default function Leads() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  // 상담 콘솔에서 콜백·콜 받기로 왔으면(?new=1&phone=…&call=…) 그 번호가 들어간 접수 창을 바로 연다
+  const [params, setParams] = useSearchParams();
+  const fromCall = params.get('new') === '1';
+  const callId = params.get('call');
+  // 접수를 등록해 상세로 가는 중에는 창이 닫혀도 주소를 건드리지 않는다(목록으로 되돌아가지 않게)
+  const leaving = useRef(false);
+  useEffect(() => {
+    if (fromCall) setCreateOpen(true);
+  }, [fromCall]);
   const [stage, setStage] = useState('ALL');
   // 제휴·전속 업체 — 지점 직원도 고를 수 있게 접수 권한으로 받는 목록
   const [partners, setPartners] = useState<{ value: string; label: string; type: string }[]>([]);
@@ -168,6 +177,13 @@ export default function Leads() {
   const defaultOrg = ownOrgId || user?.employeeOrgUnitId || '';
   if (defaultOrg) createInitial.orgUnitId = defaultOrg;
   if (user?.employeeId) createInitial.ownerEmpId = user.employeeId;
+  if (fromCall) {
+    const phone = params.get('phone');
+    const name = params.get('name');
+    if (phone) createInitial.customerPhone = phone;
+    if (name) createInitial.customerName = name;
+    createInitial.source = 'PHONE';
+  }
 
   const onCreate = async (values: Record<string, unknown>) => {
     try {
@@ -176,7 +192,19 @@ export default function Leads() {
         body: JSON.stringify(values),
       });
       toast({ type: 'success', title: t('common.created') });
+      // 콜에서 온 접수면 그 콜을 끝내고 접수와 잇는다(실패해도 접수는 남아 있으니 알리기만)
+      if (callId)
+        await api(`/cs-calls/${callId}/finish`, {
+          method: 'POST',
+          body: JSON.stringify({ result: 'DONE', leadId: created.id }),
+        }).catch(() =>
+          toast({
+            type: 'warning',
+            title: '접수는 등록했지만 콜을 끝내지 못했습니다 — 상담 콘솔에서 끝내 주세요',
+          }),
+        );
       // 접수 상세(= 견적서 화면)로 바로 — 견적은 상세를 열 때 자동으로 만들어진다
+      leaving.current = true;
       navigate(`/leads/${created.id}`);
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -299,8 +327,12 @@ export default function Leads() {
 
       <FormModal
         open={createOpen}
-        onOpenChange={setCreateOpen}
-        title={t('lead.register')}
+        onOpenChange={(o) => {
+          setCreateOpen(o);
+          // 콜에서 온 창을 닫으면 주소의 번호를 지운다(새로고침해도 다시 뜨지 않게)
+          if (!o && fromCall && !leaving.current) setParams({}, { replace: true });
+        }}
+        title={fromCall ? `${t('lead.register')} — 상담 콜` : t('lead.register')}
         size="md"
         fields={createFields}
         initialValues={createInitial}
