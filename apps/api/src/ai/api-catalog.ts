@@ -149,6 +149,8 @@ const EXCLUDED_CONTROLLERS = new Set([
   'agent-blueprints',
   'agent-runs',
   'knowledge',
+  // 상담 콘솔(콜 받기·콜백)은 사람이 전화로 하는 일
+  'cs-calls',
   '',
 ]);
 const EXCLUDED_ROUTES = new Set([

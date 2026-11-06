@@ -25,6 +25,7 @@ export default {
     contracts: '계약',
     workOrders: '작업',
     customers: '고객관리',
+    callcenter: '상담 콘솔',
     alliances: '제휴·전속',
     products: '상품',
     cbmItems: '품목사전',

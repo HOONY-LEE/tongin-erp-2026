@@ -2162,3 +2162,33 @@ model KnowledgeRelation {
   @@index([docId])
   @@map("knowledge_relation")
 }
+
+/// 고객관리부(콜센터) 상담 콜 — 대표번호로 들어온 전화. 빈 상담원에게 자동 배분하고, 모두 통화 중이면 아웃콜(콜백 대기)로 남긴다
+model CsCall {
+  id         String    @id @default(uuid()) @db.Uuid
+  phone      String // 숫자만
+  status     String    @default("OUTCALL") // ASSIGNED 상담 중 | OUTCALL 콜백 대기 | CALLBACK 콜백 중 | DONE 끝 | CANCELED 취소
+  agentEmpId String?   @map("agent_emp_id") @db.Uuid
+  customerId String?   @map("customer_id") @db.Uuid // 같은 번호의 기존 고객
+  leadId     String?   @map("lead_id") @db.Uuid // 이 콜로 등록한 접수
+  channel    String? // 들어온 번호·채널(대표번호 등)
+  memo       String?
+  attempts   Int       @default(0) // 콜백 시도 횟수
+  receivedAt DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  assignedAt DateTime? @map("assigned_at") @db.Timestamptz(6)
+  doneAt     DateTime? @map("done_at") @db.Timestamptz(6)
+
+  @@index([status, receivedAt])
+  @@index([agentEmpId, status])
+  @@map("cs_call")
+}
+
+/// 상담원 상태 — 상담 가능(available)인 상담원 중 통화 중이 아니고 가장 오래 쉰 사람에게 배분
+model CsAgent {
+  employeeId String   @id @map("employee_id") @db.Uuid
+  available  Boolean  @default(false)
+  lastFreeAt DateTime @default(now()) @map("last_free_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("cs_agent")
+}

@@ -4,6 +4,7 @@ import { PerformanceModule } from './modules/performance/performance.module';
 import { FranchiseModule } from './modules/franchise/franchise.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { CsCallModule } from './modules/cs-call/cs-call.module';
 import { DriveModule } from './modules/drive/drive.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -75,6 +76,7 @@ import { BranchCaseModule } from './modules/branch-case/branch-case.module';
     FranchiseModule,
     CrmModule,
     KnowledgeModule,
+    CsCallModule,
     DriveModule,
     NotificationsModule,
     AuthModule,

@@ -142,6 +142,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
   },
   // 이사·고객 운영
   {
+    key: 'callcenter',
+    path: '/callcenter',
+    label: '상담 콘솔',
+    i18n: 'callcenter',
+    icon: 'Headphones',
+    perm: 'LEAD.CREATE',
+    category: '운영',
+    desc: '고객관리부 콜 상담 — 자동 배분·아웃콜 콜백·바로 접수',
+  },
+  {
     key: 'leads',
     path: '/leads',
     label: '접수',
@@ -471,6 +481,7 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
       items: [
         'dashboard',
         'ai',
+        'callcenter',
         'leads',
         'calendar',
         'payments-confirm',
