@@ -201,6 +201,16 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     category: '운영',
   },
   {
+    key: 'alliances',
+    path: '/alliances',
+    label: '제휴·전속',
+    i18n: 'alliances',
+    icon: 'Handshake',
+    perm: 'PARTNER.READ',
+    category: '운영',
+    desc: '제휴사(회원 이사·가맹점 배정)·전속 계약사(임직원 이사·본사 배정) 목록과 혜택',
+  },
+  {
     key: 'campaigns',
     path: '/campaigns',
     label: '마케팅',
@@ -487,6 +497,7 @@ export const DEFAULT_MENU_LAYOUT: MenuLayout = {
       label: '관리',
       items: [
         'customers',
+        'alliances',
         'product-mgmt',
         'partner-mgmt',
         'org-mgmt',

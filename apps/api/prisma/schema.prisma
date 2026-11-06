@@ -275,11 +275,15 @@ model ApiToken {
 
 model Partner {
   id              String           @id @default(uuid()) @db.Uuid
-  type            String // AFFILIATE(제휴) | OUTSOURCE(전속) | B2B_CLIENT
+  type            String // AFFILIATE(제휴사 — 회원 이사, 가맹점까지 배정) | EXCLUSIVE(전속 계약사 — 임직원 이사, 본사만 배정) | OUTSOURCE(외주 — 작업을 맡기는 전속 용역업체) | B2B_CLIENT
   code            String           @unique
   name            String
-  phone           String? // 담당자 연락처 — 전속 작업 배정 알림톡 수신처
+  phone           String? // 담당자 연락처 — 외주 작업 배정 알림톡 수신처
   isActive        Boolean          @default(true) @map("is_active")
+  contractStatus  String?          @map("contract_status") // 제휴·전속 계약 상태: ACTIVE 진행중 | AUTO_RENEW 자동연장 | NEW 신규 | ENDED 종료
+  benefit         String? // 제휴·전속 내용(대상·혜택·할인·할증·사은품)
+  intake          String? // 접수 방식(예: 어플(CS 연동), 온라인/전화접수)
+  memo            String?
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   priceConditions PriceCondition[]
   leads           Lead[]

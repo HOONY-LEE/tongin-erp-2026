@@ -64,6 +64,7 @@ const Attendance = lazy(() => import('./pages/Attendance'));
 const Accounts = lazy(() => import('./pages/Accounts'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const PartnerMgmt = lazy(() => import('./pages/PartnerMgmt'));
+const Alliances = lazy(() => import('./pages/Alliances'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
 const Notices = lazy(() => import('./pages/Notices'));
 const Tasks = lazy(() => import('./pages/Tasks'));
@@ -170,6 +171,7 @@ function Shell() {
         {/* 새 메뉴 구조 (CASE: 메뉴 재편) */}
         <Route path="/product-mgmt" element={page(<ProductMgmt />)} />
         <Route path="/partner-mgmt" element={page(<PartnerMgmt />)} />
+        <Route path="/alliances" element={page(<Alliances />)} />
         <Route path="/org-mgmt" element={page(<OrgMgmt />)} />
         <Route path="/payments-confirm" element={page(<PaymentConfirm />)} />
         <Route path="/branches" element={page(<Branches />)} />

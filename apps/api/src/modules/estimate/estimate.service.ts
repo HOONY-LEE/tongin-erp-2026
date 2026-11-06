@@ -93,7 +93,13 @@ export class EstimateService {
     const [lead, product] = await Promise.all([
       this.prisma.lead.findUnique({
         where: { id: estimate.leadId },
-        select: { id: true, leadNo: true, visitDate: true, moveDate: true },
+        select: {
+          id: true,
+          leadNo: true,
+          visitDate: true,
+          moveDate: true,
+          partner: { select: { id: true, name: true, type: true, benefit: true, intake: true } },
+        },
       }),
       this.prisma.product.findUnique({
         where: { id: estimate.productId },

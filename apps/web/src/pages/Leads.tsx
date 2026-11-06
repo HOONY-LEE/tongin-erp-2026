@@ -20,6 +20,7 @@ import {
   type Row,
 } from '../components/ui';
 import { LEAD_STATUS, RECEIPT_SOURCES, SERVICE_LINES, codeLabel } from '../lib/leadCodes';
+import { MOVE_KIND_LABEL, PARTNER_TYPE_LABEL, moveKindOf, type PartnerType } from '@tongin/shared';
 import { Chip, Phone, type ChipTone } from 'softium-ui/table';
 
 const STATUS = LEAD_STATUS;
@@ -54,7 +55,21 @@ export default function Leads() {
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [stage, setStage] = useState('ALL');
-  const partners = useOptions('/partners', 'name');
+  // 제휴·전속 업체 — 지점 직원도 고를 수 있게 접수 권한으로 받는 목록
+  const [partners, setPartners] = useState<{ value: string; label: string; type: string }[]>([]);
+  useEffect(() => {
+    void api<{ id: string; name: string; type: string }[]>('/partners/options')
+      .then((r) =>
+        setPartners(
+          r.map((p) => ({
+            value: p.id,
+            label: `[${PARTNER_TYPE_LABEL[p.type as PartnerType] ?? p.type}] ${p.name}`,
+            type: p.type,
+          })),
+        ),
+      )
+      .catch(() => setPartners([]));
+  }, []);
   const { updatedAt, touch } = useUpdatedAt();
 
   // 담당 지점 — 목록은 전체를 보여주고, 권한 밖 지점만 흐리게(선택 불가) 처리한다.
@@ -138,7 +153,14 @@ export default function Leads() {
     },
     { name: 'fromAddress', label: '출발지', alwaysShow: true, type: 'address', addrPrefix: 'from' },
     { name: 'toAddress', label: '도착지', alwaysShow: true, type: 'address', addrPrefix: 'to' },
-    { name: 'partnerId', label: '거래처(제휴·B2B)', type: 'select', options: partners },
+    {
+      name: 'partnerId',
+      label: '제휴·전속 업체(제휴이사·전속이사) — 전속이사는 본사 부서로만 배정',
+      type: 'select',
+      searchable: true,
+      alwaysShow: true,
+      options: partners,
+    },
   ];
   // ERP 화면에서 직원이 직접 등록하는 접수라 경로는 '시스템'이 기본이다.
   const createInitial: Record<string, string> = { serviceLine: 'MOVING', source: 'SYSTEM' };
@@ -191,6 +213,26 @@ export default function Leads() {
     },
     { title: '접수경로', render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string) },
     { title: '상품', render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string) },
+    {
+      title: '이사 구분',
+      render: (r) => {
+        const p = r.partner as { name: string; type: string } | null;
+        const kind = moveKindOf(p?.type);
+        if (kind === 'GENERAL')
+          return <span style={{ color: 'var(--ark-color-text-tertiary)' }}>일반</span>;
+        return (
+          <span title={p?.name}>
+            <Chip tone={kind === 'EXCLUSIVE' ? 'warning' : 'info'}>{MOVE_KIND_LABEL[kind]}</Chip>{' '}
+            {p?.name}
+          </span>
+        );
+      },
+      exportValue: (r) => {
+        const p = r.partner as { name: string; type: string } | null;
+        const kind = moveKindOf(p?.type);
+        return kind === 'GENERAL' ? '일반이사' : `${MOVE_KIND_LABEL[kind]} · ${p?.name}`;
+      },
+    },
     {
       title: '출발',
       flex: 1,

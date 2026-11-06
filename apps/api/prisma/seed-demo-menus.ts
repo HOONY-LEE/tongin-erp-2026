@@ -109,7 +109,7 @@ const SPECS: Spec[] = [
         { label: '홈', items: ['dashboard', 'ai', 'notices', 'tasks', 'duties'] },
         {
           label: '고객 응대',
-          items: ['leads', 'support', 'service-orders', 'customers', 'calendar'],
+          items: ['leads', 'support', 'service-orders', 'customers', 'alliances', 'calendar'],
         },
         { label: '입금·안내', items: ['payments-confirm', 'campaigns'] },
         { label: '기준정보', items: ['product-mgmt', 'partner-mgmt'], collapsed: true },

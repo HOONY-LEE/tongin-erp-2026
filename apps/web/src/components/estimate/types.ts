@@ -87,7 +87,20 @@ export interface EstimateDetailData {
   optionCatalog: EstimateOptionDef[];
   /** 2단계 물품정보 — 방 틀·이사물품·처리방법 */
   moveCatalog: MoveCatalog;
-  lead: { id: string; leadNo: string; visitDate: string | null; moveDate: string | null } | null;
+  lead: {
+    id: string;
+    leadNo: string;
+    visitDate: string | null;
+    moveDate: string | null;
+    /** 제휴·전속 업체(제휴이사·전속이사) — 혜택을 견적 위에 띄운다 */
+    partner: {
+      id: string;
+      name: string;
+      type: string;
+      benefit: string | null;
+      intake: string | null;
+    } | null;
+  } | null;
   meta: EstimateMeta;
 }
 

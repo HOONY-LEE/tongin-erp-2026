@@ -25,6 +25,7 @@ export default {
     contracts: '合同',
     workOrders: '作业',
     customers: '客户管理',
+    alliances: '合作·专属',
     products: '商品',
     cbmItems: 'CBM 物品',
     materials: '物料·库存',
