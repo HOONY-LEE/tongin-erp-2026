@@ -3,10 +3,13 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Header,
   Headers,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   IsBoolean,
@@ -90,6 +93,34 @@ export class CsCallController {
    * 전화 시스템(CTI) 웹훅 — 대표번호로 전화가 오면 부른다. 헤더 x-cti-secret이 서버 환경변수
    * CTI_WEBHOOK_SECRET과 같아야 한다(설정하지 않으면 닫혀 있다).
    */
+  /**
+   * 한국AI통신(ClawOps) 수신 웹훅 — 070 번호로 전화가 오면 From(발신 번호)을 form으로 보낸다.
+   * 번호 설정의 웹훅 URL: https://<API>/api/cs-calls/voice?key=<CTI_WEBHOOK_SECRET>
+   * 콜을 배분(또는 아웃콜)하고, 고객에게는 VoiceML(XML)로 안내 멘트를 들려준 뒤 끊는다 — 상담원이 콘솔에서 전화한다.
+   */
+  @Public()
+  @Post('voice')
+  @HttpCode(200)
+  @Header('Content-Type', 'application/xml; charset=utf-8')
+  async voice(@Query('key') key: string | undefined, @Body() body: Record<string, string>) {
+    const want = process.env.CTI_WEBHOOK_SECRET;
+    const say = (text: string) =>
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Say language="ko">${text}</Say><Hangup/></Response>`;
+    if (!want || key !== want) return say('연결할 수 없는 번호입니다.');
+    const from = body?.From ?? '';
+    if (body?.Direction && body.Direction !== 'inbound') return say('');
+    try {
+      const call = await this.calls.inbound(from, body?.ForwardedFrom || body?.To || '대표번호');
+      return say(
+        call.status === 'ASSIGNED'
+          ? '통인익스프레스입니다. 전화 주셔서 감사합니다. 상담원이 바로 전화드리겠습니다.'
+          : '통인익스프레스입니다. 지금 모든 상담원이 상담 중입니다. 순서대로 곧 다시 전화드리겠습니다.',
+      );
+    } catch {
+      return say('통인익스프레스입니다. 잠시 후 다시 걸어 주세요.');
+    }
+  }
+
   @Public()
   @Post('inbound')
   inbound(@Headers('x-cti-secret') secret: string | undefined, @Body() dto: InboundDto) {
