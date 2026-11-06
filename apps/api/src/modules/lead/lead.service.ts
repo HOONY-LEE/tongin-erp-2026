@@ -42,7 +42,10 @@ export class LeadService {
         source: filter.source,
         orgUnitId: ids === null ? filter.orgUnitId : { in: ids },
       },
-      include: { customer: { select: { id: true, name: true, phonePrimary: true } } },
+      include: {
+        customer: { select: { id: true, name: true, phonePrimary: true } },
+        partner: { select: { id: true, name: true, type: true } },
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
@@ -68,7 +71,7 @@ export class LeadService {
         customer: { select: { id: true, name: true, phonePrimary: true } },
         orgUnit: { select: { id: true, name: true } },
         ownerEmp: { select: { id: true, name: true } },
-        partner: { select: { id: true, name: true } },
+        partner: { select: { id: true, name: true, type: true, benefit: true, intake: true } },
         estimates: {
           select: {
             id: true,
@@ -134,6 +137,7 @@ export class LeadService {
       select: { id: true },
     });
     if (!org) throw new BadRequestException('담당 지점을 목록에서 다시 골라 주세요.');
+    await this.assertPartnerAssignable(dto.partnerId, dto.orgUnitId);
     if (dto.customerPhone?.trim()) {
       const digits = dto.customerPhone.replace(/\D/g, '');
       if (digits.length < 9 || digits.length > 11) {
@@ -214,6 +218,29 @@ export class LeadService {
     }
   }
 
+  /**
+   * 전속이사(전속 계약사 임직원 이사)는 본사에서만 배정한다 — 지점(가맹·직영)에는 걸 수 없다.
+   * 제휴이사는 가맹점에도 배정할 수 있다.
+   */
+  private async assertPartnerAssignable(partnerId: string | null | undefined, orgUnitId: string) {
+    if (!partnerId) return;
+    const [partner, org] = await Promise.all([
+      this.prisma.partner.findUnique({
+        where: { id: partnerId },
+        select: { type: true, name: true },
+      }),
+      this.prisma.orgUnit.findUnique({
+        where: { id: orgUnitId },
+        select: { type: true, name: true },
+      }),
+    ]);
+    if (!partner) throw new BadRequestException('제휴·전속 업체를 목록에서 다시 골라 주세요.');
+    if (partner.type === 'EXCLUSIVE' && (org?.type === 'BRANCH' || org?.type === 'PARTNER'))
+      throw new BadRequestException(
+        `전속이사(${partner.name})는 본사에서만 배정합니다. 담당을 본사 부서로 바꿔 주세요(지금: ${org?.name ?? '지점'}).`,
+      );
+  }
+
   /** 전화번호(숫자만 비교)로 고객 찾기 — 가장 먼저 등록된 고객. ids(데이터 범위)가 있으면 그 안(+담당 지점 없음)에서만 */
   private async findCustomerByPhone(phone: string, ids: string[] | null) {
     const digits = phone.replace(/\D/g, '');
@@ -236,6 +263,7 @@ export class LeadService {
 
   async update(id: string, dto: UpdateLeadDto, principal?: AuthPrincipal) {
     const before = await this.findOne(id, principal);
+    if (dto.partnerId) await this.assertPartnerAssignable(dto.partnerId, before.orgUnitId);
     await this.scope.assertCustomer(dto.customerId, principal);
     let updated;
     try {

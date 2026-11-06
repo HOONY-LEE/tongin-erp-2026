@@ -36,7 +36,8 @@ const DOMAIN: Record<string, string> = {
   'org-units': '조직 — 본사·지점·가맹점 조직도',
   branches: '지점 현황 — 지점별 실적 요약',
   accounts: '사용자 계정 — 로그인 계정·역할(권한) 관리',
-  partners: '파트너 — 제휴사·전속(외주)업체·B2B 고객사',
+  partners:
+    '파트너 — 제휴사(회원 이사, 가맹점까지 배정)·전속 계약사(임직원 이사, 본사만 배정)·외주 작업업체·B2B 고객사. type=AFFILIATE·EXCLUSIVE·OUTSOURCE·B2B_CLIENT',
   products:
     '상품구성 — 가정이사·기업이전처럼 견적서에 대표로 보이는 묶음. 구성 상품(필수·기본선택·선택)과 구성별 단가',
   'addon-services':

@@ -25,6 +25,7 @@ export default {
     contracts: 'Contracts',
     workOrders: 'Work Orders',
     customers: 'Customers',
+    alliances: 'Alliances',
     products: 'Products',
     cbmItems: 'CBM Items',
     materials: 'Materials',

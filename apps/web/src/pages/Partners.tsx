@@ -1,14 +1,12 @@
+import { PARTNER_TYPES, PARTNER_TYPE_LABEL } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import { formatPhone } from '../lib/phone';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 
-const TYPE: Record<string, string> = {
-  AFFILIATE: '제휴',
-  OUTSOURCE: '전속외주',
-  B2B_CLIENT: 'B2B고객',
-};
-const TYPE_COLOR: Record<string, 'primary' | 'info' | 'warning'> = {
+const TYPE: Record<string, string> = PARTNER_TYPE_LABEL;
+const TYPE_COLOR: Record<string, 'primary' | 'info' | 'warning' | 'success'> = {
   AFFILIATE: 'primary',
+  EXCLUSIVE: 'success',
   OUTSOURCE: 'info',
   B2B_CLIENT: 'warning',
 };
@@ -40,19 +38,15 @@ const fields: FormField[] = [
     label: '유형',
     required: true,
     type: 'select',
-    options: [
-      { value: 'AFFILIATE', label: '제휴' },
-      { value: 'OUTSOURCE', label: '전속외주' },
-      { value: 'B2B_CLIENT', label: 'B2B고객' },
-    ],
+    options: PARTNER_TYPES.map((v) => ({ value: v, label: PARTNER_TYPE_LABEL[v] })),
   },
   { name: 'name', label: '거래처명', required: true, placeholder: '예: 홈케어파트너스' },
-  // 전속 작업 배정 알림톡 수신처
+  // 외주 작업 배정 알림톡 수신처
   { name: 'phone', label: '담당자 연락처', alwaysShow: true, type: 'tel' },
   { name: 'isActive', label: '사용 여부', type: 'boolean' },
 ];
 
-/** 거래처 — 코드는 서버 발급(PTN-0001), 이름 중복 불가 */
+/** 거래처 — 코드는 서버 발급(PTN-0001), 같은 유형 안에서 이름 중복 불가. 제휴·전속 내용은 제휴·전속 메뉴에서 */
 export default function Partners() {
   return (
     <CrudTable

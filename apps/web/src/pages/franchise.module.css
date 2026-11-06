@@ -342,3 +342,42 @@
 .rowDim {
   color: var(--ark-color-text-tertiary);
 }
+
+/* ── 제휴·전속 ── */
+.clip2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: pre-line;
+  line-height: 1.45;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.pre {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.miniTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.miniTable th,
+.miniTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+.miniTable th {
+  color: var(--ark-color-text-secondary);
+  font-weight: 500;
+}
+.miniTable tbody tr {
+  cursor: pointer;
+}
+.miniTable tbody tr:hover {
+  background: var(--ark-color-bg-muted);
+}

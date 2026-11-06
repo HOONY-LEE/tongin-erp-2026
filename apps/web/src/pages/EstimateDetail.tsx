@@ -17,6 +17,8 @@ import {
 import { SendEstimateModal } from '../components/estimate/SendEstimate';
 import { LEAD_STATUS } from '../lib/leadCodes';
 import { formatPhone } from '../lib/phone';
+import { fs } from '../lib/fontScale';
+import { MOVE_KIND_LABEL, moveKindOf } from '@tongin/shared';
 import estStyles from '../components/estimate/estimate.module.css';
 import { StepTabs, type StepDef } from '../components/estimate/parts';
 import { BasicTab } from '../components/estimate/BasicTab';
@@ -284,6 +286,12 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
 
       <FlowBar data={data} />
 
+      {/* 제휴이사·전속이사면 그 업체의 혜택·조건을 견적 위에 — 할인·할증을 빠뜨리지 않게 */}
+      {data.lead?.partner &&
+        (data.lead.partner.type === 'AFFILIATE' || data.lead.partner.type === 'EXCLUSIVE') && (
+          <PartnerNotice partner={data.lead.partner} />
+        )}
+
       <StepTabs steps={STEPS} value={tab} onChange={setTab} dirty={dirty} />
 
       {/* 탭을 옮겨도 입력하던 내용이 남도록 네 탭을 모두 띄워 두고 보이는 것만 바꾼다 */}
@@ -343,6 +351,64 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         dirty={anyDirty}
         onSent={() => void load()}
       />
+    </div>
+  );
+}
+
+function PartnerNotice({
+  partner,
+}: {
+  partner: { name: string; type: string; benefit: string | null; intake: string | null };
+}) {
+  const [open, setOpen] = useState(false);
+  const kind = MOVE_KIND_LABEL[moveKindOf(partner.type)];
+  const text = partner.benefit?.trim() ?? '';
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        padding: '12px 16px',
+        border: '1px solid var(--ark-color-border)',
+        borderRadius: 10,
+        background: 'var(--ark-color-bg-muted)',
+        fontSize: fs(13),
+      }}
+    >
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Badge variant="subtle" color={partner.type === 'EXCLUSIVE' ? 'warning' : 'primary'}>
+          {kind}
+        </Badge>
+        <b>{partner.name}</b>
+        {partner.type === 'EXCLUSIVE' && (
+          <span style={{ color: 'var(--ark-color-text-secondary)' }}>본사에서만 배정</span>
+        )}
+        {partner.intake && (
+          <span style={{ color: 'var(--ark-color-text-secondary)' }}>· 접수 {partner.intake}</span>
+        )}
+        {text.length > 120 && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            style={{
+              marginLeft: 'auto',
+              border: 0,
+              background: 'none',
+              color: 'var(--ark-color-text-secondary)',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+            }}
+          >
+            {open ? '접기' : '내용 모두 보기'}
+          </button>
+        )}
+      </div>
+      {text && (
+        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+          {open || text.length <= 120 ? text : `${text.slice(0, 120)}…`}
+        </div>
+      )}
     </div>
   );
 }

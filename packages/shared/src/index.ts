@@ -36,8 +36,38 @@ export const PRICING_METHOD_LABEL: Record<PricingMethod, string> = {
 };
 
 // 거래처 유형 / 가격조건 할인 유형 (FND-09 카탈로그)
-export const PARTNER_TYPES = ['AFFILIATE', 'OUTSOURCE', 'B2B_CLIENT'] as const;
+export const PARTNER_TYPES = ['AFFILIATE', 'EXCLUSIVE', 'OUTSOURCE', 'B2B_CLIENT'] as const;
 export type PartnerType = (typeof PARTNER_TYPES)[number];
+export const PARTNER_TYPE_LABEL: Record<PartnerType, string> = {
+  AFFILIATE: '제휴',
+  EXCLUSIVE: '전속',
+  OUTSOURCE: '외주(작업)',
+  B2B_CLIENT: 'B2B 고객',
+};
+
+/** 제휴·전속 계약 상태 */
+export const PARTNER_CONTRACT_STATUSES = ['ACTIVE', 'AUTO_RENEW', 'NEW', 'ENDED'] as const;
+export type PartnerContractStatus = (typeof PARTNER_CONTRACT_STATUSES)[number];
+export const PARTNER_CONTRACT_STATUS_LABEL: Record<PartnerContractStatus, string> = {
+  ACTIVE: '진행중',
+  AUTO_RENEW: '자동연장',
+  NEW: '신규',
+  ENDED: '종료',
+};
+
+/**
+ * 이사 구분 — 접수에 걸린 업체로 정해진다.
+ * 제휴이사: 제휴사 회원(공제회·복지몰 등) — 본사·가맹점 모두 배정. 전속이사: 전속 계약사 임직원 — 본사에서만 배정.
+ */
+export const MOVE_KINDS = ['GENERAL', 'AFFILIATE', 'EXCLUSIVE'] as const;
+export type MoveKind = (typeof MOVE_KINDS)[number];
+export const MOVE_KIND_LABEL: Record<MoveKind, string> = {
+  GENERAL: '일반이사',
+  AFFILIATE: '제휴이사',
+  EXCLUSIVE: '전속이사',
+};
+export const moveKindOf = (partnerType: string | null | undefined): MoveKind =>
+  partnerType === 'AFFILIATE' ? 'AFFILIATE' : partnerType === 'EXCLUSIVE' ? 'EXCLUSIVE' : 'GENERAL';
 
 export const DISCOUNT_TYPES = ['RATE', 'AMOUNT', 'FIXED_PRICE'] as const;
 export type DiscountType = (typeof DISCOUNT_TYPES)[number];
