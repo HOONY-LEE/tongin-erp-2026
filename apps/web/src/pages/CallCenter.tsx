@@ -34,6 +34,8 @@ interface Console {
   me: {
     employeeId: string;
     available: boolean;
+    /** 착신 연결 번호 — 대표번호 전화가 이 전화로 바로 울린다 */
+    ringTo: string | null;
     call: CallView | null;
     recentLeads: {
       id: string;
@@ -50,6 +52,7 @@ interface Console {
     position: string | null;
     state: 'BUSY' | 'READY' | 'OFF';
     call: CallView | null;
+    forwarding: boolean;
   }[];
   outcalls: CallView[];
   today: { received: number; active: number; outcall: number; done: number };
@@ -114,6 +117,15 @@ export default function CallCenter() {
   };
   const setAvailable = (available: boolean) =>
     act(() => api('/cs-calls/agent', { method: 'POST', body: JSON.stringify({ available }) }));
+  const saveRingTo = (ringTo: string) =>
+    act(
+      () =>
+        api('/cs-calls/agent/ring-to', {
+          method: 'POST',
+          body: JSON.stringify({ ringTo: ringTo.trim() || null }),
+        }),
+      ringTo.trim() ? '착신 번호를 저장했습니다' : '착신 연결을 껐습니다',
+    );
   /** 콜의 번호를 넣은 새 접수 창으로(접수 화면을 그대로 쓴다). 접수를 등록하면 콜이 끝난다 */
   const openLeadForm = (c: CallView) => {
     const q = new URLSearchParams({ new: '1', phone: c.phone, call: c.id });
@@ -152,14 +164,17 @@ export default function CallCenter() {
       onRefresh={load}
       actions={
         me ? (
-          <SegmentedControl
-            value={me.available ? 'on' : 'off'}
-            onChange={(v) => void setAvailable(v === 'on')}
-            options={[
-              { value: 'on', label: '상담 가능' },
-              { value: 'off', label: '자리 비움' },
-            ]}
-          />
+          <div className={styles.actions}>
+            <RingTo value={me.ringTo} busy={busy} onSave={saveRingTo} />
+            <SegmentedControl
+              value={me.available ? 'on' : 'off'}
+              onChange={(v) => void setAvailable(v === 'on')}
+              options={[
+                { value: 'on', label: '상담 가능' },
+                { value: 'off', label: '자리 비움' },
+              ]}
+            />
+          </div>
         ) : undefined
       }
     >
@@ -280,7 +295,10 @@ export default function CallCenter() {
               <PhoneCall size={22} />
               {me.available ? (
                 <p>
-                  대기 중입니다. 콜이 들어오면 자동으로 여기에 붙습니다.
+                  대기 중입니다.{' '}
+                  {me.ringTo
+                    ? `콜이 들어오면 ${formatPhone(me.ringTo)} 전화가 바로 울립니다. 20초 안에 안 받으면 다음 상담원에게 넘어가고 자리 비움으로 바뀝니다.`
+                    : '콜이 들어오면 자동으로 여기에 붙습니다. 착신 번호를 넣으면 전화가 바로 울립니다.'}
                   {data.outcalls.length > 0 && ' 지금은 아웃콜부터 콜백하세요.'}
                 </p>
               ) : (
@@ -344,6 +362,7 @@ export default function CallCenter() {
                   {a.name}
                   {a.position ? ` ${a.position}` : ''}
                   {a.employeeId === me?.employeeId && <span className={styles.muted}> (나)</span>}
+                  {a.forwarding && <span className={styles.muted}> · 착신</span>}
                 </span>
                 <span className={styles.aState}>
                   {STATE[a.state].label}
@@ -438,6 +457,37 @@ function Integration() {
             웹훅 주소 보기
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** 착신 번호 — 내 휴대폰이나 자리 전화의 직통번호. 비우고 저장하면 착신 연결을 끈다 */
+function RingTo({
+  value,
+  busy,
+  onSave,
+}: {
+  value: string | null;
+  busy: boolean;
+  onSave: (v: string) => Promise<unknown> | void;
+}) {
+  const [v, setV] = useState(value ?? '');
+  useEffect(() => setV(value ?? ''), [value]);
+  const changed = v.replace(/\D/g, '') !== (value ?? '');
+  return (
+    <div className={styles.actions} title="대표번호로 온 전화를 이 번호로 바로 울립니다(착신 연결). 비우면 콘솔에서 콜백합니다.">
+      <Input
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        placeholder="받을 전화번호(착신)"
+        inputMode="tel"
+        style={{ width: 170 }}
+      />
+      {changed && (
+        <Button size="sm" disabled={busy} onClick={() => void onSave(v)}>
+          {v.trim() ? '저장' : '착신 끄기'}
+        </Button>
       )}
     </div>
   );
