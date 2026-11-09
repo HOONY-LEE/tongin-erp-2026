@@ -92,7 +92,8 @@ export class CsCallService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${DISPATCH_LOCK})`;
       const call = await tx.csCall.findUnique({ where: { id: callId } });
-      if (!call || call.status !== 'ASSIGNED') return { status: call?.status ?? 'NONE', ringTo: null };
+      if (!call || call.status !== 'ASSIGNED')
+        return { status: call?.status ?? 'NONE', ringTo: null };
       if (call.agentEmpId)
         await tx.csAgent.updateMany({
           where: { employeeId: call.agentEmpId },

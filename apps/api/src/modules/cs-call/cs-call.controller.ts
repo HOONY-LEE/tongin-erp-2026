@@ -52,7 +52,8 @@ class InboundDto {
   @IsOptional() @IsString() @MaxLength(50) channel?: string;
 }
 
-const MSG_CALLBACK = '통인익스프레스입니다. 전화 주셔서 감사합니다. 상담원이 바로 전화드리겠습니다.';
+const MSG_CALLBACK =
+  '통인익스프레스입니다. 전화 주셔서 감사합니다. 상담원이 바로 전화드리겠습니다.';
 const MSG_BUSY =
   '통인익스프레스입니다. 지금 모든 상담원이 상담 중입니다. 순서대로 곧 다시 전화드리겠습니다.';
 const HANGUP = '<Hangup/>';
@@ -146,7 +147,8 @@ export class CsCallController {
     @Body() body: Record<string, string>,
     @Req() req: Request,
   ) {
-    if (!(await this.calls.checkSecret(key))) return vxml(say('연결할 수 없는 번호입니다.'), HANGUP);
+    if (!(await this.calls.checkSecret(key)))
+      return vxml(say('연결할 수 없는 번호입니다.'), HANGUP);
     if (body?.Direction && body.Direction !== 'inbound') return vxml(HANGUP);
     try {
       const call = await this.calls.inbound(
@@ -155,7 +157,10 @@ export class CsCallController {
       );
       if (call.status !== 'ASSIGNED') return vxml(say(MSG_BUSY), HANGUP);
       if (call.ringTo)
-        return vxml(say('통인익스프레스입니다. 상담원에게 연결해 드리겠습니다.'), dial(call.ringTo, afterUrl(req, key!, call.id)));
+        return vxml(
+          say('통인익스프레스입니다. 상담원에게 연결해 드리겠습니다.'),
+          dial(call.ringTo, afterUrl(req, key!, call.id)),
+        );
       return vxml(say(MSG_CALLBACK), HANGUP);
     } catch {
       return vxml(say('통인익스프레스입니다. 잠시 후 다시 걸어 주세요.'), HANGUP);
@@ -178,7 +183,10 @@ export class CsCallController {
     try {
       const next = await this.calls.ringFailed(callId);
       if (next.status === 'ASSIGNED' && next.ringTo)
-        return vxml(say('다른 상담원에게 연결해 드리겠습니다.'), dial(next.ringTo, afterUrl(req, key!, callId)));
+        return vxml(
+          say('다른 상담원에게 연결해 드리겠습니다.'),
+          dial(next.ringTo, afterUrl(req, key!, callId)),
+        );
       if (next.status === 'ASSIGNED') return vxml(say(MSG_CALLBACK), HANGUP);
       return vxml(say(MSG_BUSY), HANGUP);
     } catch {

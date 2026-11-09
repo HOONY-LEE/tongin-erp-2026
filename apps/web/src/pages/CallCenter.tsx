@@ -476,7 +476,10 @@ function RingTo({
   useEffect(() => setV(value ?? ''), [value]);
   const changed = v.replace(/\D/g, '') !== (value ?? '');
   return (
-    <div className={styles.actions} title="대표번호로 온 전화를 이 번호로 바로 울립니다(착신 연결). 비우면 콘솔에서 콜백합니다.">
+    <div
+      className={styles.actions}
+      title="대표번호로 온 전화를 이 번호로 바로 울립니다(착신 연결). 비우면 콘솔에서 콜백합니다."
+    >
       <Input
         value={v}
         onChange={(e) => setV(e.target.value)}
