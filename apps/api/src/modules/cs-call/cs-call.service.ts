@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { Prisma } from '@prisma/client';
+import { Prisma, type CsCall } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -61,41 +61,74 @@ export class CsCallService {
     return { voiceWebhook: base ? `${base}${path}` : null, path };
   }
 
-  /** 콜 하나를 넣고 바로 배분한다 */
-  async inbound(phone: string, channel?: string) {
+  /** 콜 하나를 넣고 바로 배분한다. ringTo — 배분된 상담원의 착신 번호(있으면 전화 시스템이 바로 울린다) */
+  async inbound(phone: string, channel?: string): Promise<CsCall & { ringTo: string | null }> {
     const d = digits(phone);
     if (d.length < 8 || d.length > 12)
       throw new BadRequestException('전화번호가 올바르지 않습니다.');
     const customer = await this.customerByPhone(d);
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${DISPATCH_LOCK})`;
-      const agent = await this.freeAgent(tx);
-      return tx.csCall.create({
+      const agent = await this.freeAgent(tx, d);
+      const call = await tx.csCall.create({
         data: {
           phone: d,
           channel: channel?.slice(0, 50) || '대표번호',
           customerId: customer?.id ?? null,
           ...(agent
-            ? { status: 'ASSIGNED', agentEmpId: agent, assignedAt: new Date() }
+            ? { status: 'ASSIGNED', agentEmpId: agent.id, assignedAt: new Date() }
             : { status: 'OUTCALL' }),
         },
       });
+      return { ...call, ringTo: agent?.ringTo ?? null };
     });
   }
 
-  /** 상담 가능 · 통화 중 아님 · 가장 오래 쉰 상담원 */
-  private async freeAgent(tx: Prisma.TransactionClient): Promise<string | null> {
-    const rows = await tx.$queryRaw<{ employee_id: string }[]>`
-      SELECT a.employee_id FROM cs_agent a
+  /**
+   * 착신 연결이 안 됐을 때(상담원이 안 받음·통화 중·연결 실패) — 그 상담원은 자리 비움으로 돌리고
+   * 다음 빈 상담원에게 다시 배분한다. 없으면 아웃콜로 남긴다.
+   */
+  async ringFailed(callId: string): Promise<{ status: string; ringTo: string | null }> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${DISPATCH_LOCK})`;
+      const call = await tx.csCall.findUnique({ where: { id: callId } });
+      if (!call || call.status !== 'ASSIGNED') return { status: call?.status ?? 'NONE', ringTo: null };
+      if (call.agentEmpId)
+        await tx.csAgent.updateMany({
+          where: { employeeId: call.agentEmpId },
+          data: { available: false, lastFreeAt: new Date() },
+        });
+      const agent = await this.freeAgent(tx, call.phone);
+      await tx.csCall.update({
+        where: { id: callId },
+        data: agent
+          ? { agentEmpId: agent.id, assignedAt: new Date() }
+          : { status: 'OUTCALL', agentEmpId: null, assignedAt: null },
+      });
+      return { status: agent ? 'ASSIGNED' : 'OUTCALL', ringTo: agent?.ringTo ?? null };
+    });
+  }
+
+  /**
+   * 상담 가능 · 통화 중 아님 · 가장 오래 쉰 상담원.
+   * 착신 번호가 거는 사람 번호와 같은 상담원은 뺀다(같은 폰으로 걸고 받을 수는 없다 — 시험할 때).
+   */
+  private async freeAgent(
+    tx: Prisma.TransactionClient,
+    callerDigits?: string,
+  ): Promise<{ id: string; ringTo: string | null } | null> {
+    const rows = await tx.$queryRaw<{ employee_id: string; ring_to: string | null }[]>`
+      SELECT a.employee_id, a.ring_to FROM cs_agent a
       JOIN employee e ON e.id = a.employee_id AND e.is_active = true
       WHERE a.available = true
+        AND (a.ring_to IS NULL OR regexp_replace(a.ring_to, '[^0-9]', '', 'g') <> ${callerDigits ?? ''})
         AND NOT EXISTS (
           SELECT 1 FROM cs_call c
           WHERE c.agent_emp_id = a.employee_id AND c.status IN ('ASSIGNED', 'CALLBACK')
         )
       ORDER BY a.last_free_at ASC
       LIMIT 1`;
-    return rows[0]?.employee_id ?? null;
+    return rows[0] ? { id: rows[0].employee_id, ringTo: rows[0].ring_to } : null;
   }
 
   private async customerByPhone(d: string) {
@@ -130,6 +163,20 @@ export class CsCallService {
       update: { available, ...(available && { lastFreeAt: new Date() }) },
     });
     return { available };
+  }
+
+  /** 착신 번호(내 휴대폰·자리 전화 직통번호) — 비우면 착신 연결 없이 콘솔에서 콜백 */
+  async setRingTo(p: AuthPrincipal, ringTo: string | null | undefined) {
+    const id = this.me(p);
+    const d = ringTo ? digits(ringTo) : '';
+    if (d && (d.length < 8 || d.length > 12))
+      throw new BadRequestException('받을 전화번호가 올바르지 않습니다.');
+    await this.prisma.csAgent.upsert({
+      where: { employeeId: id },
+      create: { employeeId: id, available: false, ringTo: d || null },
+      update: { ringTo: d || null },
+    });
+    return { ringTo: d || null };
   }
 
   /** 아웃콜을 눌러 콜백 — 내가 통화 중이 아닐 때만. 다른 상담원이 먼저 잡았으면 409 */
@@ -258,6 +305,7 @@ export class CsCallService {
           state: call ? 'BUSY' : a?.available ? 'READY' : 'OFF',
           call: call ? view(call) : null,
           lastFreeAt: a?.lastFreeAt.toISOString() ?? null,
+          forwarding: !!a?.ringTo,
         };
       })
       .sort(
@@ -288,6 +336,7 @@ export class CsCallService {
         ? {
             employeeId: me,
             available: agentRows.find((a) => a.employeeId === me)?.available ?? false,
+            ringTo: agentRows.find((a) => a.employeeId === me)?.ringTo ?? null,
             call: mine ? view(mine) : null,
             recentLeads: recentLeads.map((l) => ({
               ...l,

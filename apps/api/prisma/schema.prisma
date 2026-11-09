@@ -2188,6 +2188,8 @@ model CsAgent {
   employeeId String   @id @map("employee_id") @db.Uuid
   available  Boolean  @default(false)
   lastFreeAt DateTime @default(now()) @map("last_free_at") @db.Timestamptz(6)
+  /// 착신 연결 — 대표번호로 온 전화를 이 번호(휴대폰·자리 전화 직통번호)로 바로 울린다. 비우면 콘솔에서 콜백
+  ringTo     String?  @map("ring_to")
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("cs_agent")
