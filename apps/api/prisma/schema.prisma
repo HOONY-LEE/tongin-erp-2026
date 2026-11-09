@@ -2192,3 +2192,12 @@ model CsAgent {
 
   @@map("cs_agent")
 }
+
+/// 서버가 스스로 만들어 보관하는 비밀값(외부 연동 웹훅 키 등) — 화면·공통코드에 나오지 않는다
+model AppSecret {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("app_secret")
+}

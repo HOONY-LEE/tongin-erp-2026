@@ -8,6 +8,7 @@ import { formatPhone } from '../lib/phone';
 import {
   Badge,
   Button,
+  CopyText,
   Input,
   ListPage,
   SegmentedControl,
@@ -73,7 +74,8 @@ const STATE: Record<Console['agents'][number]['state'], { label: string; cls: st
 export default function CallCenter() {
   const toast = useToast();
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
+  const isSysAdmin = !!user?.permissions.includes('*');
   const [data, setData] = useState<Console | null>(null);
   const [now, setNow] = useState(Date.now());
   const [memo, setMemo] = useState('');
@@ -351,6 +353,7 @@ export default function CallCenter() {
               </li>
             ))}
           </ul>
+          {isSysAdmin && <Integration />}
           {can('LEAD.CREATE') && (
             <div className={styles.sim}>
               <span className={styles.muted}>
@@ -400,5 +403,42 @@ export default function CallCenter() {
         </section>
       </div>
     </ListPage>
+  );
+}
+
+/**
+ * 전화 연동(시스템 관리자) — 한국AI통신 번호 설정의 '웹훅 URL'에 넣을 주소.
+ * 키가 들어 있으니 다른 곳에 공유하지 않는다.
+ */
+function Integration() {
+  const [info, setInfo] = useState<{ voiceWebhook: string | null; path: string } | null>(null);
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (!show || info) return;
+    void api<{ voiceWebhook: string | null; path: string }>('/cs-calls/integration')
+      .then(setInfo)
+      .catch(() => undefined);
+  }, [show, info]);
+  const url = info ? (info.voiceWebhook ?? `${window.location.origin}${info.path}`) : '';
+  return (
+    <div className={styles.sim}>
+      <span className={styles.muted}>
+        전화 연동 — 한국AI통신 번호 설정의 웹훅 URL(POST)에 이 주소를 넣으면, 그 번호로 온 전화가
+        여기 뜹니다. 키가 들어 있어 관리자만 봅니다.
+      </span>
+      {show ? (
+        url ? (
+          <CopyText value={url} />
+        ) : (
+          <span className={styles.muted}>불러오는 중…</span>
+        )
+      ) : (
+        <div className={styles.actions}>
+          <Button variant="outline" size="sm" onClick={() => setShow(true)}>
+            웹훅 주소 보기
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
