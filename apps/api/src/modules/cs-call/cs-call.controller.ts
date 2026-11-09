@@ -60,6 +60,15 @@ export class CsCallController {
     return this.calls.console(user);
   }
 
+  /** 전화 연동 설정 — 웹훅 주소(키 포함). 시스템 관리자만 */
+  @Get('integration')
+  @RequirePermissions('LEAD.CREATE')
+  integration(@CurrentUser() user: AuthPrincipal) {
+    if (!user.permissions.includes('*'))
+      throw new ForbiddenException('전화 연동 설정은 시스템 관리자만 볼 수 있습니다.');
+    return this.calls.integration();
+  }
+
   @Post('agent')
   @RequirePermissions('LEAD.CREATE')
   setAvailable(@CurrentUser() user: AuthPrincipal, @Body() dto: AvailableDto) {
@@ -90,12 +99,11 @@ export class CsCallController {
   }
 
   /**
-   * 전화 시스템(CTI) 웹훅 — 대표번호로 전화가 오면 부른다. 헤더 x-cti-secret이 서버 환경변수
-   * CTI_WEBHOOK_SECRET과 같아야 한다(설정하지 않으면 닫혀 있다).
+   * 전화 시스템(CTI) 웹훅 — 대표번호로 전화가 오면 부른다. 헤더 x-cti-secret이 연동 키와 같아야 한다.
    */
   /**
    * 한국AI통신(ClawOps) 수신 웹훅 — 070 번호로 전화가 오면 From(발신 번호)을 form으로 보낸다.
-   * 번호 설정의 웹훅 URL: https://<API>/api/cs-calls/voice?key=<CTI_WEBHOOK_SECRET>
+   * 번호 설정의 웹훅 URL: 상담 콘솔의 '전화 연동'(시스템 관리자)에 나오는 주소 — /api/cs-calls/voice?key=<연동 키>
    * 콜을 배분(또는 아웃콜)하고, 고객에게는 VoiceML(XML)로 안내 멘트를 들려준 뒤 끊는다 — 상담원이 콘솔에서 전화한다.
    */
   @Public()
@@ -103,10 +111,9 @@ export class CsCallController {
   @HttpCode(200)
   @Header('Content-Type', 'application/xml; charset=utf-8')
   async voice(@Query('key') key: string | undefined, @Body() body: Record<string, string>) {
-    const want = process.env.CTI_WEBHOOK_SECRET;
     const say = (text: string) =>
       `<?xml version="1.0" encoding="UTF-8"?><Response><Say language="ko">${text}</Say><Hangup/></Response>`;
-    if (!want || key !== want) return say('연결할 수 없는 번호입니다.');
+    if (!(await this.calls.checkSecret(key))) return say('연결할 수 없는 번호입니다.');
     const from = body?.From ?? '';
     if (body?.Direction && body.Direction !== 'inbound') return say('');
     try {

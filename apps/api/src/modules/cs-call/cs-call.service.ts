@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -31,6 +32,33 @@ export class CsCallService {
   private me(p: AuthPrincipal) {
     if (!p.employeeId) throw new ForbiddenException('직원과 연결된 계정만 상담할 수 있습니다.');
     return p.employeeId;
+  }
+
+  /**
+   * 전화 연동 웹훅 키 — 환경변수 CTI_WEBHOOK_SECRET이 있으면 그것, 없으면 처음 한 번 만들어 DB(app_secret)에 둔다.
+   * 그래서 서버 설정을 바꾸지 않고도 관리자가 상담 콘솔에서 웹훅 주소를 받아 전화 서비스에 넣을 수 있다.
+   */
+  async ctiSecret(): Promise<string> {
+    if (process.env.CTI_WEBHOOK_SECRET) return process.env.CTI_WEBHOOK_SECRET;
+    const key = 'CTI_WEBHOOK_SECRET';
+    const found = await this.prisma.appSecret.findUnique({ where: { key } });
+    if (found) return found.value;
+    const value = randomBytes(24).toString('hex');
+    await this.prisma.appSecret.createMany({ data: [{ key, value }], skipDuplicates: true });
+    return (await this.prisma.appSecret.findUniqueOrThrow({ where: { key } })).value;
+  }
+
+  async checkSecret(given: string | undefined) {
+    const want = Buffer.from(await this.ctiSecret());
+    const got = Buffer.from(given ?? '');
+    return got.length === want.length && timingSafeEqual(got, want);
+  }
+
+  /** 관리자에게 보여 줄 웹훅 주소(운영은 Render가 주는 공개 주소, 로컬은 경로만) */
+  async integration() {
+    const path = `/api/cs-calls/voice?key=${await this.ctiSecret()}`;
+    const base = process.env.RENDER_EXTERNAL_URL ?? process.env.API_PUBLIC_URL ?? null;
+    return { voiceWebhook: base ? `${base}${path}` : null, path };
   }
 
   /** 콜 하나를 넣고 바로 배분한다 */
