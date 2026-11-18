@@ -217,3 +217,10 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* PC 전화 켜기/끄기 */
+.pcPhone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

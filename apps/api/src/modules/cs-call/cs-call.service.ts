@@ -1,9 +1,11 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Prisma, type CsCall } from '@prisma/client';
@@ -15,6 +17,13 @@ const ACTIVE = ['ASSIGNED', 'CALLBACK'];
 /** 배분 순서가 겹치지 않게 — 두 콜이 동시에 들어와도 한 상담원에게 둘이 가지 않는다 */
 const DISPATCH_LOCK = 7_202_611;
 const digits = (s: string) => s.replace(/\D/g, '');
+/** PC 전화 토큰 수명 — 화면이 만료 10분 전에 새로 받아 다시 등록한다 */
+const PHONE_TOKEN_TTL_S = 3600;
+/** 배분 결과 — 이 상담원을 어디로 울릴지. sipUri(PC 전화)가 착신 번호보다 먼저 */
+export interface RingTarget {
+  sipUri: string | null;
+  ringTo: string | null;
+}
 const startOfToday = () =>
   new Date(`${new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)}T00:00:00+09:00`);
 
@@ -61,8 +70,8 @@ export class CsCallService {
     return { voiceWebhook: base ? `${base}${path}` : null, path };
   }
 
-  /** 콜 하나를 넣고 바로 배분한다. ringTo — 배분된 상담원의 착신 번호(있으면 전화 시스템이 바로 울린다) */
-  async inbound(phone: string, channel?: string): Promise<CsCall & { ringTo: string | null }> {
+  /** 콜 하나를 넣고 바로 배분한다. sipUri·ringTo — 배분된 상담원의 PC 전화·착신 번호(있으면 전화 시스템이 바로 울린다) */
+  async inbound(phone: string, channel?: string): Promise<CsCall & RingTarget> {
     const d = digits(phone);
     if (d.length < 8 || d.length > 12)
       throw new BadRequestException('전화번호가 올바르지 않습니다.');
@@ -80,7 +89,7 @@ export class CsCallService {
             : { status: 'OUTCALL' }),
         },
       });
-      return { ...call, ringTo: agent?.ringTo ?? null };
+      return { ...call, sipUri: agent?.sipUri ?? null, ringTo: agent?.ringTo ?? null };
     });
   }
 
@@ -88,12 +97,12 @@ export class CsCallService {
    * 착신 연결이 안 됐을 때(상담원이 안 받음·통화 중·연결 실패) — 그 상담원은 자리 비움으로 돌리고
    * 다음 빈 상담원에게 다시 배분한다. 없으면 아웃콜로 남긴다.
    */
-  async ringFailed(callId: string): Promise<{ status: string; ringTo: string | null }> {
+  async ringFailed(callId: string): Promise<{ status: string } & RingTarget> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${DISPATCH_LOCK})`;
       const call = await tx.csCall.findUnique({ where: { id: callId } });
       if (!call || call.status !== 'ASSIGNED')
-        return { status: call?.status ?? 'NONE', ringTo: null };
+        return { status: call?.status ?? 'NONE', sipUri: null, ringTo: null };
       if (call.agentEmpId)
         await tx.csAgent.updateMany({
           where: { employeeId: call.agentEmpId },
@@ -106,7 +115,11 @@ export class CsCallService {
           ? { agentEmpId: agent.id, assignedAt: new Date() }
           : { status: 'OUTCALL', agentEmpId: null, assignedAt: null },
       });
-      return { status: agent ? 'ASSIGNED' : 'OUTCALL', ringTo: agent?.ringTo ?? null };
+      return {
+        status: agent ? 'ASSIGNED' : 'OUTCALL',
+        sipUri: agent?.sipUri ?? null,
+        ringTo: agent?.ringTo ?? null,
+      };
     });
   }
 
@@ -117,9 +130,13 @@ export class CsCallService {
   private async freeAgent(
     tx: Prisma.TransactionClient,
     callerDigits?: string,
-  ): Promise<{ id: string; ringTo: string | null } | null> {
-    const rows = await tx.$queryRaw<{ employee_id: string; ring_to: string | null }[]>`
-      SELECT a.employee_id, a.ring_to FROM cs_agent a
+  ): Promise<({ id: string } & RingTarget) | null> {
+    const rows = await tx.$queryRaw<
+      { employee_id: string; ring_to: string | null; sip_uri: string | null }[]
+    >`
+      SELECT a.employee_id, a.ring_to,
+        CASE WHEN a.sip_until > now() THEN a.sip_uri END AS sip_uri
+      FROM cs_agent a
       JOIN employee e ON e.id = a.employee_id AND e.is_active = true
       WHERE a.available = true
         AND (a.ring_to IS NULL OR regexp_replace(a.ring_to, '[^0-9]', '', 'g') <> ${callerDigits ?? ''})
@@ -129,7 +146,9 @@ export class CsCallService {
         )
       ORDER BY a.last_free_at ASC
       LIMIT 1`;
-    return rows[0] ? { id: rows[0].employee_id, ringTo: rows[0].ring_to } : null;
+    return rows[0]
+      ? { id: rows[0].employee_id, sipUri: rows[0].sip_uri, ringTo: rows[0].ring_to }
+      : null;
   }
 
   private async customerByPhone(d: string) {
@@ -178,6 +197,59 @@ export class CsCallService {
       update: { ringTo: d || null },
     });
     return { ringTo: d || null };
+  }
+
+  /**
+   * PC 전화 켜기 — 한국AI통신에서 이 상담원 브라우저용 단기 SIP 토큰과 ICE(STUN/TURN) 정보를 받아 넘긴다.
+   * 브라우저는 토큰으로 SIP 등록하고, 받은 sip_uri를 저장해 두면 배분된 전화가 그 브라우저로 울린다.
+   * API 키는 서버에만 둔다(KAT_API_KEY). 토큰은 1시간짜리라 화면이 만료 전에 다시 부른다.
+   */
+  async phoneToken(p: AuthPrincipal) {
+    const id = this.me(p);
+    const base = process.env.KAT_API_BASE || 'https://api.koreaaitel.com';
+    const account = process.env.KAT_ACCOUNT_ID;
+    const credential = process.env.KAT_SIP_CREDENTIAL_ID;
+    const key = process.env.KAT_API_KEY;
+    if (!account || !credential || !key)
+      throw new ServiceUnavailableException(
+        'PC 전화가 아직 설정되지 않았습니다. 관리자에게 문의해 주세요.',
+      );
+    const headers = { Authorization: `Bearer ${key}`, 'content-type': 'application/json' };
+    const acct = `${base}/v1/accounts/${encodeURIComponent(account)}`;
+    const [tokRes, iceRes] = await Promise.all([
+      fetch(`${acct}/sip-credentials/${encodeURIComponent(credential)}/tokens`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ttl_seconds: PHONE_TOKEN_TTL_S, subject: `employee:${id}` }),
+        signal: AbortSignal.timeout(10_000),
+      }),
+      fetch(`${acct}/ice-servers`, { headers, signal: AbortSignal.timeout(10_000) }),
+    ]).catch(() => {
+      throw new BadGatewayException(
+        '전화 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    });
+    if (!tokRes.ok || !iceRes.ok)
+      throw new BadGatewayException('전화 서비스에서 PC 전화 토큰을 받지 못했습니다.');
+    const tok = (await tokRes.json()) as { token: string; expires_at: string; sip_uri: string };
+    const ice = (await iceRes.json()) as { ice_servers?: unknown[] };
+    const sipUntil = new Date(tok.expires_at);
+    await this.prisma.csAgent.upsert({
+      where: { employeeId: id },
+      create: { employeeId: id, available: false, sipUri: `sip:${tok.sip_uri}`, sipUntil },
+      update: { sipUri: `sip:${tok.sip_uri}`, sipUntil },
+    });
+    return { token: tok.token, iceServers: ice.ice_servers ?? [], expiresAt: tok.expires_at };
+  }
+
+  /** PC 전화 끄기 — 이 브라우저로는 더 이상 울리지 않는다(착신 번호가 있으면 그쪽으로) */
+  async phoneOff(p: AuthPrincipal) {
+    const id = this.me(p);
+    await this.prisma.csAgent.updateMany({
+      where: { employeeId: id },
+      data: { sipUri: null, sipUntil: null },
+    });
+    return { ok: true };
   }
 
   /** 아웃콜을 눌러 콜백 — 내가 통화 중이 아닐 때만. 다른 상담원이 먼저 잡았으면 409 */
@@ -307,6 +379,7 @@ export class CsCallService {
           call: call ? view(call) : null,
           lastFreeAt: a?.lastFreeAt.toISOString() ?? null,
           forwarding: !!a?.ringTo,
+          pcPhone: !!a?.sipUri && !!a.sipUntil && a.sipUntil > new Date(),
         };
       })
       .sort(

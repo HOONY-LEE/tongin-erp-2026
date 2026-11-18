@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Headphones, PhoneCall, PhoneIncoming, PhoneOutgoing, UserRound } from 'lucide-react';
+import {
+  Headphones,
+  Laptop,
+  PhoneCall,
+  PhoneIncoming,
+  PhoneOutgoing,
+  UserRound,
+} from 'lucide-react';
 import { LEAD_STATUS_LABEL, type LeadStatus } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
+import { dial, disablePhone, enablePhone, usePhone } from '../lib/softphone';
 import {
   Badge,
   Button,
@@ -53,6 +61,8 @@ interface Console {
     state: 'BUSY' | 'READY' | 'OFF';
     call: CallView | null;
     forwarding: boolean;
+    /** PC 전화(브라우저)를 켜 둠 */
+    pcPhone: boolean;
   }[];
   outcalls: CallView[];
   today: { received: number; active: number; outcall: number; done: number };
@@ -84,6 +94,8 @@ export default function CallCenter() {
   const [memo, setMemo] = useState('');
   const [busy, setBusy] = useState(false);
   const [simPhone, setSimPhone] = useState('');
+  const phone = usePhone();
+  const pcReady = phone.status === 'ready';
 
   const load = useCallback(async () => {
     try {
@@ -135,6 +147,8 @@ export default function CallCenter() {
   const callback = (c: CallView) =>
     act(async () => {
       const r = await api<CallView>(`/cs-calls/${c.id}/callback`, { method: 'POST' });
+      // PC 전화가 켜져 있으면 바로 건다(통화는 화면을 옮겨도 이어진다)
+      if (pcReady) dial(c.phone);
       openLeadForm({ ...c, ...r, customerName: c.customerName });
     });
   const finish = (c: CallView, result: 'DONE' | 'RETRY') =>
@@ -165,6 +179,7 @@ export default function CallCenter() {
       actions={
         me ? (
           <div className={styles.actions}>
+            <PcPhone />
             <RingTo value={me.ringTo} busy={busy} onSave={saveRingTo} />
             <SegmentedControl
               value={me.available ? 'on' : 'off'}
@@ -230,9 +245,16 @@ export default function CallCenter() {
                   {mine.channel ?? '대표번호'} · {since(mine.assignedAt ?? mine.receivedAt, now)} 전
                 </span>
               </div>
-              <a className={styles.phone} href={`tel:${mine.phone}`}>
-                {formatPhone(mine.phone)}
-              </a>
+              <div className={styles.callHead}>
+                <a className={styles.phone} href={`tel:${mine.phone}`}>
+                  {formatPhone(mine.phone)}
+                </a>
+                {pcReady && !phone.call && (
+                  <Button variant="outline" size="sm" onClick={() => dial(mine.phone)}>
+                    <PhoneOutgoing size={14} /> PC로 걸기
+                  </Button>
+                )}
+              </div>
               <div className={styles.customer}>
                 <UserRound size={14} />
                 {mine.customerName ? (
@@ -296,9 +318,11 @@ export default function CallCenter() {
               {me.available ? (
                 <p>
                   대기 중입니다.{' '}
-                  {me.ringTo
-                    ? `콜이 들어오면 ${formatPhone(me.ringTo)} 전화가 바로 울립니다. 20초 안에 안 받으면 다음 상담원에게 넘어가고 자리 비움으로 바뀝니다.`
-                    : '콜이 들어오면 자동으로 여기에 붙습니다. 착신 번호를 넣으면 전화가 바로 울립니다.'}
+                  {pcReady
+                    ? '콜이 들어오면 이 PC가 울립니다. 화면 아래 [받기]를 누르고 헤드셋으로 통화하세요. 20초 안에 안 받으면 다음 상담원에게 넘어가고 자리 비움으로 바뀝니다.'
+                    : me.ringTo
+                      ? `콜이 들어오면 ${formatPhone(me.ringTo)} 전화가 바로 울립니다. 20초 안에 안 받으면 다음 상담원에게 넘어가고 자리 비움으로 바뀝니다.`
+                      : '콜이 들어오면 자동으로 여기에 붙습니다. PC 전화를 켜면 이 PC가 바로 울립니다.'}
                   {data.outcalls.length > 0 && ' 지금은 아웃콜부터 콜백하세요.'}
                 </p>
               ) : (
@@ -362,7 +386,11 @@ export default function CallCenter() {
                   {a.name}
                   {a.position ? ` ${a.position}` : ''}
                   {a.employeeId === me?.employeeId && <span className={styles.muted}> (나)</span>}
-                  {a.forwarding && <span className={styles.muted}> · 착신</span>}
+                  {a.pcPhone ? (
+                    <span className={styles.muted}> · PC 전화</span>
+                  ) : (
+                    a.forwarding && <span className={styles.muted}> · 착신</span>
+                  )}
                 </span>
                 <span className={styles.aState}>
                   {STATE[a.state].label}
@@ -459,6 +487,62 @@ function Integration() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * PC 전화 — 전화기 없이 이 브라우저(헤드셋)로 받고 건다. 켜 두면 배분된 전화가 이 PC로 울린다.
+ * 화면을 옮겨도 켜진 채로 있고, 새로고침해도 다시 켜진다.
+ */
+function PcPhone() {
+  const phone = usePhone();
+  const toast = useToast();
+  const [working, setWorking] = useState(false);
+  // 켜지 못한 이유(마이크 권한·연결 실패)는 알림으로
+  useEffect(() => {
+    if (phone.status === 'error' && phone.error) toast({ type: 'error', title: phone.error });
+  }, [phone.status, phone.error, toast]);
+  const run = async (fn: () => Promise<void>) => {
+    setWorking(true);
+    try {
+      await fn();
+    } finally {
+      setWorking(false);
+    }
+  };
+  if (phone.status === 'ready')
+    return (
+      <span className={styles.pcPhone}>
+        <Badge variant="subtle" color="success">
+          <Laptop size={12} /> PC 전화 켜짐
+        </Badge>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={working || !!phone.call}
+          onClick={() => void run(disablePhone)}
+        >
+          끄기
+        </Button>
+      </span>
+    );
+  return (
+    <span className={styles.pcPhone}>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={working || phone.status === 'connecting'}
+        onClick={() => void run(enablePhone)}
+        title="전화기 없이 이 PC(헤드셋)로 전화를 받고 겁니다"
+      >
+        <Laptop size={14} />{' '}
+        {phone.status === 'connecting'
+          ? '연결 중…'
+          : phone.status === 'error'
+            ? 'PC 전화 다시 켜기'
+            : 'PC 전화 켜기'}
+      </Button>
+    </span>
   );
 }
 

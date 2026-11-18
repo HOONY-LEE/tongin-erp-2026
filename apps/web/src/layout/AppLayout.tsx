@@ -15,6 +15,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useAiRunning } from '../lib/aiActivity';
 import { usePendingApprovals } from '../lib/approvals';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { SoftphoneBar } from '../components/SoftphoneBar';
 import { MyMenuModal } from '../components/menu/MyMenuModal';
 import { menuIcon, useMenuLabel, useMyMenu } from '../lib/menu';
 import { useInbox } from '../lib/inbox';
@@ -419,6 +420,8 @@ export default function AppLayout() {
           </div>
         </main>
       </div>
+      {/* PC 전화 — 울림·통화 중 막대(어느 화면에서든). 새 창(팝아웃)에는 두지 않는다 */}
+      <SoftphoneBar />
     </div>
   );
 }
