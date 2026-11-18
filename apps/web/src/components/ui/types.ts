@@ -46,7 +46,8 @@ export interface FormField {
     | 'date'
     | 'tel'
     | 'boolean'
-    | 'textarea';
+    | 'textarea'
+    | 'segment';
   /** disabled=true인 항목은 목록에 보이되 선택할 수 없다(권한 밖 선택지를 감추는 대신 흐리게). */
   options?: { value: string; label: string; disabled?: boolean }[];
   /** select를 묶음으로 보여 줄 때(예: 직원을 소속 팀별로) — 주면 options 대신 쓴다 */
@@ -65,6 +66,14 @@ export interface FormField {
   alwaysShow?: boolean;
   /** true면 이 필드와 바로 다음 필드를 한 줄에 절반씩 배치. */
   pairWithNext?: boolean;
+  /** 다른 칸 값이 이 중 하나일 때만 보인다(안 보이면 필수 확인·저장에서 빠진다) */
+  showWhen?: { field: string; in: string[] };
+  /** 다른 칸 값에 따라 선택지를 바꾼다(예: 일반/제휴/전속 → 상품 목록) */
+  optionsBy?: { field: string; map: Record<string, { value: string; label: string }[]> };
+  /** 화면에서만 쓰는 칸 — 저장할 때 보내지 않는다(예: 상품 종류 탭) */
+  virtual?: boolean;
+  /** 이 칸을 바꾸면 비울 다른 칸들 */
+  resets?: string[];
 }
 
 export type BadgeColor = 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral';

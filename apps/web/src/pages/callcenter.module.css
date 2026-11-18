@@ -1302,3 +1302,178 @@ textarea.memoBox {
   color: var(--ark-color-text-secondary);
   font-size: 12px;
 }
+
+/* ── 이사일 마감 작은 달력(콘솔 오른쪽 위) ── */
+.sideCol > .miniCal {
+  flex: none;
+  overflow: visible;
+}
+.miniCal .cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.miniNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  font-size: 13px;
+}
+.miniNav button,
+.miniMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.miniNav button:hover,
+.miniMore:hover {
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.05));
+  color: var(--ark-color-text);
+}
+.miniMore {
+  margin-left: auto;
+}
+.miniGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  text-align: center;
+}
+.miniDow {
+  color: var(--ark-color-text-secondary);
+  font-size: 11px;
+  padding-bottom: 2px;
+}
+.miniDay {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.miniOut {
+  opacity: 0.35;
+}
+.miniToday {
+  box-shadow: inset 0 0 0 1.5px var(--ark-color-text);
+  font-weight: 700;
+}
+.miniBusy {
+  background: color-mix(in srgb, #3b82f6 14%, var(--ark-color-bg));
+  font-weight: 600;
+}
+.miniClosed {
+  background: #ef4444;
+  color: #fff !important;
+  font-weight: 700;
+}
+.miniDot {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+.miniLegend {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  color: var(--ark-color-text-secondary);
+  font-size: 11px;
+}
+.miniLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.miniLegend .miniDot {
+  position: static;
+  margin: 0;
+}
+.miniAll,
+.miniBusyKey {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: #ef4444;
+}
+.miniBusyKey {
+  background: color-mix(in srgb, #3b82f6 30%, var(--ark-color-bg));
+}
+.sun {
+  color: #dc2626;
+}
+
+/* ── 이사 확인콜 · 해피콜 ── */
+.fuDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.fuDate input {
+  width: 150px;
+}
+.fuState {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.05));
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+.fuDone {
+  background: #dcfce7;
+  color: #15803d;
+}
+.fuMiss {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.fuModal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fuInfo {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 14px;
+}
+.fuInfo dt {
+  color: var(--ark-color-text-secondary);
+}
+.fuInfo dd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.fuGuide {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.04));
+  font-size: 13px;
+  line-height: 1.6;
+}

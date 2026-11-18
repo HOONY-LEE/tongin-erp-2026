@@ -22,6 +22,8 @@ import {
 import styles from './callcenter.module.css';
 import { IntakePanel, type ReadOnlyInfo } from './callcenter/IntakePanel';
 import { CallList, type CallRow } from './callcenter/CallList';
+import { FollowupList } from './callcenter/FollowupList';
+import { MiniCalendar } from './callcenter/MiniCalendar';
 import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
 import { ScriptCard } from './callcenter/ScriptCard';
 
@@ -219,6 +221,19 @@ export default function CallCenter() {
       setTurningOn(false);
     }
   };
+  /** 왼쪽 목록 — 상담 콜 / 이사 확인콜 / 해피콜 */
+  const [view, setView] = useState<'calls' | 'CONFIRM' | 'HAPPY'>('calls');
+  const [fuCounts, setFuCounts] = useState<{ confirm: number; happy: number } | null>(null);
+  const loadFuCounts = useCallback(() => {
+    void api<{ confirm: number; happy: number }>('/cs-followups/counts')
+      .then(setFuCounts)
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    loadFuCounts();
+    const t = setInterval(() => !document.hidden && loadFuCounts(), 60_000);
+    return () => clearInterval(t);
+  }, [loadFuCounts]);
   /** 아웃콜 정리 확인 창 */
   const [cancelTarget, setCancelTarget] = useState<CallView | null>(null);
   /** 콜이 끝나면 콜 목록도 다시 읽는다 */
@@ -370,37 +385,57 @@ export default function CallCenter() {
                 </Button>
               </div>
             )}
-            <CallList
-              refreshKey={listKey}
-              onOpen={go}
-              stats={
-                <div className={styles.stats}>
-                  <div>
-                    <span>오늘 들어온 콜</span>
-                    <b>{data.today.received}</b>
-                  </div>
-                  <div>
-                    <span>상담 중</span>
-                    <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
-                  </div>
-                  <div className={data.outcalls.length ? styles.warnStat : ''}>
-                    <span>아웃콜 대기</span>
-                    <b>{data.outcalls.length}</b>
-                  </div>
-                  <div>
-                    <span>오늘 끝낸 콜</span>
-                    <b>{data.today.done}</b>
-                  </div>
-                </div>
-              }
+            {/* 상담 콜 / 이사 확인콜(2일 전) / 해피콜(다음 날) */}
+            <SegmentedControl
+              value={view}
+              onChange={(v) => setView(v as typeof view)}
+              options={[
+                { value: 'calls', label: '상담 콜' },
+                {
+                  value: 'CONFIRM',
+                  label: `이사 확인콜${fuCounts?.confirm ? ` ${fuCounts.confirm}` : ''}`,
+                },
+                { value: 'HAPPY', label: `해피콜${fuCounts?.happy ? ` ${fuCounts.happy}` : ''}` },
+              ]}
             />
+            {view === 'calls' ? (
+              <CallList
+                refreshKey={listKey}
+                onOpen={go}
+                stats={
+                  <div className={styles.stats}>
+                    <div>
+                      <span>오늘 들어온 콜</span>
+                      <b>{data.today.received}</b>
+                    </div>
+                    <div>
+                      <span>상담 중</span>
+                      <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
+                    </div>
+                    <div className={data.outcalls.length ? styles.warnStat : ''}>
+                      <span>아웃콜 대기</span>
+                      <b>{data.outcalls.length}</b>
+                    </div>
+                    <div>
+                      <span>오늘 끝낸 콜</span>
+                      <b>{data.today.done}</b>
+                    </div>
+                  </div>
+                }
+              />
+            ) : (
+              <section className={`${styles.card} ${styles.listCard}`}>
+                <FollowupList key={view} kind={view} onChanged={loadFuCounts} />
+              </section>
+            )}
           </div>
         )}
 
         {/* 오른쪽 — 상담 메모(대본) 위, 아웃콜 대기 아래 */}
         <div className={styles.sideCol}>
           {/* 상담원 현황 — 지금 상태와 오늘 받은 콜·콜백·접수 */}
-          {/* 콘솔(목록)에서는 상담원 현황, 상담 화면에서는 상담 메모 */}
+          {/* 콘솔(목록)에서는 마감 달력 + 상담원 현황, 상담 화면에서는 상담 메모 */}
+          {listView && <MiniCalendar />}
           {listView ? (
             <section className={`${styles.card} ${styles.agentsCard}`}>
               <h3 className={styles.cardTitle}>
