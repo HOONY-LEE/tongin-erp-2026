@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone, PhoneOff, Check } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -53,7 +53,16 @@ const RESULT: Record<string, string> = { DONE: '통화 완료', NO_ANSWER: '부�
  * 이사 확인콜(이사 2일 전)·해피콜(이사 다음 날) 목록 — 날짜를 바꿔 볼 수 있다.
  * 행을 누르면 통화 창: 전화 걸기, 결과(통화 완료·부재)와 메모를 남긴다.
  */
-export function FollowupList({ kind, onChanged }: { kind: FollowupKind; onChanged?: () => void }) {
+export function FollowupList({
+  kind,
+  onChanged,
+  viewSwitch,
+}: {
+  kind: FollowupKind;
+  onChanged?: () => void;
+  /** 검색 줄 오른쪽 끝(목록 바꾸는 탭) */
+  viewSwitch?: ReactNode;
+}) {
   const toast = useToast();
   const navigate = useNavigate();
   const phone = usePhone();
@@ -148,6 +157,7 @@ export function FollowupList({ kind, onChanged }: { kind: FollowupKind; onChange
   return (
     <>
       <DataTable
+        viewSwitch={viewSwitch}
         tabs={
           <span className={styles.fuDate}>
             <b>

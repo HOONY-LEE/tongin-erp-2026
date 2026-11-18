@@ -62,7 +62,7 @@ export function CallList({
   onOpen: (id: string) => void;
   /** 카드 위 오늘 숫자(오늘 들어온 콜·상담 중·아웃콜 대기·오늘 끝낸 콜) */
   stats?: ReactNode;
-  /** 카드 맨 위(목록 바꾸는 탭) */
+  /** 검색 줄 오른쪽 끝(목록 바꾸는 탭) */
   head?: ReactNode;
 }) {
   const toast = useToast();
@@ -146,9 +146,9 @@ export function CallList({
 
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
-      {head}
       {stats}
       <DataTable
+        viewSwitch={head}
         tabs={
           <SegmentedControl
             value={scope}

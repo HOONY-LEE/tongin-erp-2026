@@ -305,7 +305,28 @@ export default function CallCenter() {
   const onCall = !!phone.call && phone.call.state !== 'ringing';
   /** 목록 화면(상담 화면이 아닐 때) */
   const listView = !pendingCall && !viewId;
-  /** 목록 카드 맨 위 — 상담 콜 / 이사 확인콜(2일 전) / 해피콜(다음 날) */
+  /** 오늘 숫자 — 상담 콜·확인콜·해피콜 목록 위에 똑같이 */
+  const statsEl = (
+    <div className={styles.stats}>
+      <div>
+        <span>오늘 들어온 콜</span>
+        <b>{data.today.received}</b>
+      </div>
+      <div>
+        <span>상담 중</span>
+        <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
+      </div>
+      <div className={data.outcalls.length ? styles.warnStat : ''}>
+        <span>아웃콜 대기</span>
+        <b>{data.outcalls.length}</b>
+      </div>
+      <div>
+        <span>오늘 끝낸 콜</span>
+        <b>{data.today.done}</b>
+      </div>
+    </div>
+  );
+  /** 검색 줄 오른쪽 끝 — 상담 콜 / 이사 확인콜(2일 전) / 해피콜(다음 날) */
   const viewTabs = (
     <SegmentedControl
       value={view}
@@ -400,35 +421,16 @@ export default function CallCenter() {
               </div>
             )}
             {view === 'calls' ? (
-              <CallList
-                head={viewTabs}
-                refreshKey={listKey}
-                onOpen={go}
-                stats={
-                  <div className={styles.stats}>
-                    <div>
-                      <span>오늘 들어온 콜</span>
-                      <b>{data.today.received}</b>
-                    </div>
-                    <div>
-                      <span>상담 중</span>
-                      <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
-                    </div>
-                    <div className={data.outcalls.length ? styles.warnStat : ''}>
-                      <span>아웃콜 대기</span>
-                      <b>{data.outcalls.length}</b>
-                    </div>
-                    <div>
-                      <span>오늘 끝낸 콜</span>
-                      <b>{data.today.done}</b>
-                    </div>
-                  </div>
-                }
-              />
+              <CallList head={viewTabs} refreshKey={listKey} onOpen={go} stats={statsEl} />
             ) : (
               <section className={`${styles.card} ${styles.listCard}`}>
-                {viewTabs}
-                <FollowupList key={view} kind={view} onChanged={loadFuCounts} />
+                {statsEl}
+                <FollowupList
+                  key={view}
+                  kind={view}
+                  onChanged={loadFuCounts}
+                  viewSwitch={viewTabs}
+                />
               </section>
             )}
           </div>
