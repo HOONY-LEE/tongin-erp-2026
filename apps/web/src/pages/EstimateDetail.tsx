@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Send } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { api, ApiError, openDocument } from '../lib/api';
+import { api, ApiError, cachedApi, openDocument } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -18,6 +18,10 @@ import { SendEstimateModal } from '../components/estimate/SendEstimate';
 import { LEAD_STATUS } from '../lib/leadCodes';
 import { formatPhone } from '../lib/phone';
 import { fs } from '../lib/fontScale';
+
+/** 지점 반려 형태·접수 취소 형태 — 서버(dto/reject-lead.dto.ts)와 같은 목록 */
+const REJECT_KINDS = ['지점 마감', '지점 견적 거부', '서비스 지역 아님', '일정 불가', '기타'];
+const CANCEL_KINDS = ['중복 접수', '고객 취소', '이사일 마감', '타사 계약', '연락 불가', '기타'];
 import { MOVE_KIND_LABEL, moveKindOf } from '@tongin/shared';
 import estStyles from '../components/estimate/estimate.module.css';
 import { StepTabs, type StepDef } from '../components/estimate/parts';
@@ -100,6 +104,16 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
   const [loading, setLoading] = useState(true);
   const [sendOpen, setSendOpen] = useState(false);
   const [woOpen, setWoOpen] = useState(false);
+  /** 지점 반려·접수 취소 창 */
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  /** 조직 이름·본사 id — 반려 버튼(지점 접수만)과 반려 안내에 쓴다 */
+  const [orgs, setOrgs] = useState<{ id: string; code: string; name: string; type?: string }[]>([]);
+  useEffect(() => {
+    void cachedApi<{ id: string; code: string; name: string; type?: string }[]>('/org-units')
+      .then(setOrgs)
+      .catch(() => setOrgs([]));
+  }, []);
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   const { updatedAt, touch } = useUpdatedAt();
 
@@ -171,19 +185,41 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
 
   const leadStatus = data.meta.leadStatus;
   const closed = leadStatus === 'DONE' || leadStatus === 'CANCELED';
-  const cancelLead = async () => {
-    if (!data.lead || !window.confirm('이 접수를 취소할까요? 취소하면 되돌릴 수 없습니다.')) return;
+  /** 접수 취소 — 형태·사유를 남긴다 */
+  const cancelLead = async (values: Record<string, unknown>) => {
+    if (!data.lead) return;
     try {
-      await api(`/leads/${data.lead.id}/transition`, {
-        method: 'POST',
-        body: JSON.stringify({ to: 'CANCELED' }),
-      });
+      await api(`/leads/${data.lead.id}/cancel`, { method: 'POST', body: JSON.stringify(values) });
       toast({ type: 'success', title: '접수를 취소했습니다' });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
+      throw e;
     }
   };
+  /** 지점 반려 — 본사로 되돌린다(형태·사유) */
+  const rejectLead = async (values: Record<string, unknown>) => {
+    if (!data.lead) return;
+    try {
+      await api(`/leads/${data.lead.id}/reject`, { method: 'POST', body: JSON.stringify(values) });
+      toast({ type: 'success', title: '본사로 반려했습니다' });
+      await load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
+      throw e;
+    }
+  };
+  const hqId = orgs.find((o) => o.code === 'CO-MOVING')?.id;
+  const orgName = (id?: string | null) => (id ? (orgs.find((o) => o.id === id)?.name ?? '') : '');
+  // 반려는 지점에 배정된 접수만, 계약 전까지
+  const canReject =
+    canEdit &&
+    !closed &&
+    !!data.lead?.orgUnitId &&
+    !!hqId &&
+    data.lead.orgUnitId !== hqId &&
+    ['BRANCH', 'PARTNER'].includes(orgs.find((o) => o.id === data.lead!.orgUnitId)?.type ?? '') &&
+    !['CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS', 'DONE', 'CANCELED'].includes(leadStatus ?? '');
 
   // 계약이 성립했으면(서명 또는 계약금 입금) 작업을 잡는다 — 접수 화면에서 바로
   const contractReady = !!data.meta.signedAt || !!data.meta.depositPaidAt;
@@ -205,8 +241,13 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
   const flowActions = (
     <>
       {canEdit && !closed && data.lead && (
-        <Button variant="ghost" size="sm" onClick={() => void cancelLead()}>
+        <Button variant="ghost" size="sm" onClick={() => setCancelOpen(true)}>
           접수 취소
+        </Button>
+      )}
+      {canReject && (
+        <Button variant="outline" size="sm" onClick={() => setRejectOpen(true)}>
+          반려
         </Button>
       )}
       <Button variant="outline" size="sm" onClick={openDoc}>
@@ -292,6 +333,31 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           <PartnerNotice partner={data.lead.partner} note={data.lead.productNote} />
         )}
 
+      {/* 지점 반려 안내 — 본사에서 다시 배정할 때 사유를 보게 */}
+      {data.lead?.rejectedAt && data.lead.orgUnitId === hqId && !closed && (
+        <div className={estStyles.rejectNote}>
+          <b>지점 반려</b>
+          <span>
+            {orgName(data.lead.rejectedFromOrgId) || '지점'} · {data.lead.rejectKind} ·{' '}
+            {new Date(data.lead.rejectedAt).toLocaleString('ko-KR', {
+              month: 'numeric',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+          {data.lead.rejectReason && <p>{data.lead.rejectReason}</p>}
+        </div>
+      )}
+      {/* 취소 사유 */}
+      {leadStatus === 'CANCELED' && data.lead?.cancelKind && (
+        <div className={estStyles.cancelNote}>
+          <b>접수 취소</b>
+          <span>{data.lead.cancelKind}</span>
+          {data.lead.cancelReason && <p>{data.lead.cancelReason}</p>}
+        </div>
+      )}
+
       {/* 상담 때 받은 고객 요청사항 — 견적·작업에서 빠뜨리지 않게 */}
       {data.lead?.customerRequest && (
         <div
@@ -343,6 +409,54 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         <SummaryTab {...priceProps} onDirtyChange={dirtyHandlers.summary} />
       </div>
 
+      <FormModal
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        title="상담 반려 — 본사로 되돌리기"
+        size="sm"
+        fields={[
+          {
+            name: 'kind',
+            label: '반려 형태',
+            type: 'select',
+            required: true,
+            alwaysShow: true,
+            options: REJECT_KINDS.map((k) => ({ value: k, label: k })),
+          },
+          {
+            name: 'reason',
+            label: '반려 사유(본사에서 다시 배정할 때 봅니다)',
+            type: 'textarea',
+            required: true,
+            alwaysShow: true,
+          },
+        ]}
+        onSubmit={rejectLead}
+      />
+      <FormModal
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        title="접수 취소"
+        size="sm"
+        fields={[
+          {
+            name: 'kind',
+            label: '취소 형태',
+            type: 'select',
+            required: true,
+            alwaysShow: true,
+            options: CANCEL_KINDS.map((k) => ({ value: k, label: k })),
+          },
+          {
+            name: 'reason',
+            label: '취소 사유(취소하면 되돌릴 수 없습니다)',
+            type: 'textarea',
+            required: true,
+            alwaysShow: true,
+          },
+        ]}
+        onSubmit={cancelLead}
+      />
       <FormModal
         open={woOpen}
         onOpenChange={setWoOpen}

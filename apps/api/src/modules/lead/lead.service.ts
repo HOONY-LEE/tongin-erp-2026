@@ -424,6 +424,86 @@ export class LeadService {
     });
   }
 
+  /**
+   * 지점 반려 — 지점에서 처리할 수 없거나 마감이라 본사로 되돌린다.
+   * 담당 지점은 본사(CO-MOVING), 담당자는 비우고 상태는 '접수'로. 형태·사유·반려한 지점을 남긴다.
+   * 계약 이후(계약·작업)에는 반려할 수 없다.
+   */
+  async reject(id: string, input: { kind: string; reason: string }, principal?: AuthPrincipal) {
+    const lead = await this.findOne(id, principal);
+    const hq = await this.prisma.orgUnit.findFirst({
+      where: { code: 'CO-MOVING' },
+      select: { id: true },
+    });
+    if (!hq) throw new BadRequestException('본사 조직(CO-MOVING)을 찾지 못했습니다.');
+    const org = await this.prisma.orgUnit.findUnique({
+      where: { id: lead.orgUnitId },
+      select: { type: true },
+    });
+    if (lead.orgUnitId === hq.id || (org?.type !== 'BRANCH' && org?.type !== 'PARTNER'))
+      throw new BadRequestException('지점(가맹점)에 배정된 접수만 반려할 수 있습니다.');
+    const from = lead.status as LeadStatus;
+    if (LEAD_STATUS.indexOf(from) >= LEAD_STATUS.indexOf('CONTRACTED'))
+      throw new BadRequestException(
+        `${LEAD_STATUS_LABEL[from]} 단계의 접수는 반려할 수 없습니다(계약 이후).`,
+      );
+    const reason = input.reason.trim();
+    const updated = await this.prisma.lead.update({
+      where: { id },
+      data: {
+        orgUnitId: hq.id,
+        ownerEmpId: null,
+        status: 'RECEIVED',
+        rejectKind: input.kind,
+        rejectReason: reason,
+        rejectedAt: new Date(),
+        rejectedFromOrgId: lead.orgUnitId,
+      },
+    });
+    // 견적도 본사로 — 다음에 배정받는 지점이 이어서 보게(계약 전이라 문서는 아직 견적뿐)
+    await this.prisma.estimate.updateMany({ where: { leadId: id }, data: { orgUnitId: hq.id } });
+    await this.eventBus.record({
+      aggregateType: 'lead',
+      aggregateId: id,
+      eventType: 'lead.rejected',
+      payload: {
+        leadNo: lead.leadNo,
+        fromOrgUnitId: lead.orgUnitId,
+        orgUnitId: hq.id,
+        fromOwnerEmpId: lead.ownerEmpId,
+        fromStatus: from,
+        kind: input.kind,
+        reason,
+        by: principal?.employeeId ?? null,
+      },
+    });
+    return updated;
+  }
+
+  /** 접수 취소 — 형태·사유를 남긴다 */
+  async cancel(id: string, input: { kind: string; reason: string }, principal?: AuthPrincipal) {
+    await this.findOne(id, principal);
+    const result = await this.transitionInTx(this.prisma, id, 'CANCELED');
+    const reason = input.reason.trim();
+    const updated = await this.prisma.lead.update({
+      where: { id },
+      data: { cancelKind: input.kind, cancelReason: reason },
+    });
+    await this.emitTransition(result, 'CANCELED', principal?.employeeId);
+    await this.eventBus.record({
+      aggregateType: 'lead',
+      aggregateId: id,
+      eventType: 'lead.canceled',
+      payload: {
+        leadNo: updated.leadNo,
+        kind: input.kind,
+        reason,
+        by: principal?.employeeId ?? null,
+      },
+    });
+    return updated;
+  }
+
   async remove(id: string, principal?: AuthPrincipal) {
     await this.findOne(id, principal);
     return this.prisma.lead.delete({ where: { id } });

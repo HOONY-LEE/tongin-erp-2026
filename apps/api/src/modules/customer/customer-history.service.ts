@@ -258,6 +258,24 @@ export class CustomerHistoryService {
             link: `/leads/${e.aggregateId}`,
           });
           break;
+        case 'lead.rejected':
+          push(at, {
+            kind: 'owner',
+            title: `지점 반려 ${org(p.fromOrgUnitId) ?? '-'} → 본사`,
+            detail: [leadNo.get(e.aggregateId), p.kind, p.reason].filter(Boolean).join(' · '),
+            actor: by,
+            link: `/leads/${e.aggregateId}`,
+          });
+          break;
+        case 'lead.canceled':
+          push(at, {
+            kind: 'lead',
+            title: `접수 취소 (${String(p.kind ?? '')})`,
+            detail: [leadNo.get(e.aggregateId), p.reason].filter(Boolean).join(' · '),
+            actor: by,
+            link: `/leads/${e.aggregateId}`,
+          });
+          break;
         case 'lead.status_changed':
           push(at, {
             kind: 'lead',

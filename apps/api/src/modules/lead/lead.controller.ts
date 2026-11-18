@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { LeadService } from './lead.service';
+import { CancelLeadDto, RejectLeadDto } from './dto/reject-lead.dto';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { TransitionLeadDto } from './dto/transition-lead.dto';
@@ -73,6 +74,28 @@ export class LeadController {
     @Body() dto: TransitionLeadDto,
   ) {
     return this.leadService.transitionTo(id, dto.to, user);
+  }
+
+  /** 지점 반려 — 본사로 되돌린다(형태·사유) */
+  @Post(':id/reject')
+  @RequirePermissions('LEAD.UPDATE')
+  reject(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RejectLeadDto,
+  ) {
+    return this.leadService.reject(id, dto, user);
+  }
+
+  /** 접수 취소 — 형태·사유 */
+  @Post(':id/cancel')
+  @RequirePermissions('LEAD.UPDATE')
+  cancel(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CancelLeadDto,
+  ) {
+    return this.leadService.cancel(id, dto, user);
   }
 
   @Delete(':id')

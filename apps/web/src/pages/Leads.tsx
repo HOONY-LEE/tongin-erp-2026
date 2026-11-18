@@ -141,7 +141,18 @@ export default function Leads() {
       dataIndex: 'status',
       render: (r) => {
         const s = STATUS[String(r.status)];
-        return <Chip tone={CHIP_TONE[s?.color ?? 'neutral']}>{s?.label ?? String(r.status)}</Chip>;
+        const chip = (
+          <Chip tone={CHIP_TONE[s?.color ?? 'neutral']}>{s?.label ?? String(r.status)}</Chip>
+        );
+        // 지점에서 반려돼 본사로 돌아온 접수 — 다시 배정해야 한다
+        return r.rejectedAt && r.status === 'RECEIVED' ? (
+          <span style={{ display: 'inline-flex', gap: 4 }}>
+            {chip}
+            <Chip tone={CHIP_TONE.warning}>반려</Chip>
+          </span>
+        ) : (
+          chip
+        );
       },
     },
     { title: '접수경로', render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string) },
