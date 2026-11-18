@@ -112,6 +112,11 @@ export function IntakePanel({
       setV((x) => (x.customerName ? x : { ...x, customerName: call.customerName! }));
   }, [call.customerName]);
   const setField = (name: string, value: string) => setV((x) => ({ ...x, [name]: value }));
+  // 담당 지점 목록은 늦게 올 수 있다 — 비어 있으면 내 지점이 정해졌을 때 채운다
+  const myOrg = ownOrgId || user?.employeeOrgUnitId || '';
+  useEffect(() => {
+    if (myOrg) setV((x) => (x.orgUnitId ? x : { ...x, orgUnitId: myOrg }));
+  }, [myOrg, call.id]);
 
   useEffect(() => {
     void api<PartnerOption[]>('/partners/options')

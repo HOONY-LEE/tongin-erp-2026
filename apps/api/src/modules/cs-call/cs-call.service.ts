@@ -417,7 +417,10 @@ export class CsCallService {
   /**
    * 콜 목록 — 검색(전화번호·고객명) + 내 전화/전체 전화. 최근 순, 50개씩.
    */
-  async list(p: AuthPrincipal, opts: { scope: 'mine' | 'all'; q?: string; page?: number }) {
+  async list(
+    p: AuthPrincipal,
+    opts: { scope: 'mine' | 'all'; q?: string; page?: number; limit?: number },
+  ) {
     const me = p.employeeId ?? null;
     const q = opts.q?.trim() ?? '';
     const d = digits(q);
@@ -431,7 +434,8 @@ export class CsCallService {
       }),
     };
     if (q && Array.isArray(where.OR) && where.OR.length === 0) return { total: 0, rows: [] };
-    const PAGE = 50;
+    // 콘솔 표는 최근 콜을 한 번에 받아 표 안에서 찾고 넘긴다(최대 500)
+    const PAGE = Math.min(500, Math.max(1, opts.limit ?? 50));
     const page = Math.max(0, opts.page ?? 0);
     const [total, calls] = await Promise.all([
       this.prisma.csCall.count({ where }),
