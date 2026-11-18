@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
+import { CustomerHistoryService } from './customer-history.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
@@ -20,7 +21,10 @@ import { AccessLog } from '../../audit/access-log';
 
 @Controller('customers')
 export class CustomerController {
-  constructor(private readonly customerService: CustomerService) {}
+  constructor(
+    private readonly customerService: CustomerService,
+    private readonly historyService: CustomerHistoryService,
+  ) {}
 
   @AccessLog('customer', 'LIST')
   @Get()
@@ -41,6 +45,15 @@ export class CustomerController {
   @RequirePermissions('CUSTOMER.READ')
   findOne(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.customerService.findOne(id, user);
+  }
+
+  /** 고객 이력(CRM) — 처음 유입·통화·접수·담당자 변경·견적·계약·입금·작업을 시간순으로 */
+  @AccessLog('customer', 'VIEW')
+  @Get(':id/history')
+  @RequirePermissions('CUSTOMER.READ')
+  async history(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    await this.customerService.findOne(id, user);
+    return this.historyService.history(id);
   }
 
   @Post()

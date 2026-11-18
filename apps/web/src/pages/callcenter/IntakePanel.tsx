@@ -35,6 +35,7 @@ import {
 import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
+import { Recording } from './Recording';
 
 export interface IntakeCall {
   id: string;
@@ -51,6 +52,40 @@ export interface IntakeCall {
   leadId?: string | null;
   leadNo?: string | null;
 }
+/** 끝난 콜을 읽기 모드로 — 통화 중 상담 화면과 같은 모양, 입력은 잠금 */
+export interface ReadOnlyInfo {
+  agentName: string | null;
+  durationSec: number | null;
+  hasRecording: boolean;
+  /** 이 콜로 등록한 접수 내용(있으면 입력 칸을 그대로 채운다) */
+  lead: {
+    serviceLine: string | null;
+    partnerId: string | null;
+    moveKind: string;
+    orgUnitId: string;
+    moveDate: string | null;
+    customerRequest: string | null;
+    fromZipcode: string | null;
+    fromAddr: string | null;
+    fromAddrDetail: string | null;
+    toZipcode: string | null;
+    toAddr: string | null;
+    toAddrDetail: string | null;
+  } | null;
+}
+const CALL_STATUS: Record<string, string> = {
+  DONE: '상담 끝',
+  CANCELED: '취소',
+  OUTCALL: '아웃콜 대기',
+  ASSIGNED: '상담 중',
+  CALLBACK: '콜백 중',
+};
+const durText = (s: number | null) =>
+  s == null
+    ? '-'
+    : s < 60
+      ? `${s}초`
+      : `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초`;
 interface RecentLead {
   id: string;
   leadNo: string;
@@ -93,6 +128,7 @@ export function IntakePanel({
   onDone,
   onBack,
   onSaved,
+  readOnly,
 }: {
   call: IntakeCall;
   recentLeads: RecentLead[];
@@ -103,6 +139,8 @@ export function IntakePanel({
   onBack?: () => void;
   /** 접수 등록처럼 콜은 그대로 두고 내용만 바뀌었을 때 — 상담 화면에 머문다 */
   onSaved?: () => Promise<void> | void;
+  /** 끝난 콜 — 같은 모양의 읽기 화면(버튼·입력 잠금, 녹취 듣기) */
+  readOnly?: ReadOnlyInfo;
 }) {
   const toast = useToast();
   const navigate = useNavigate();
@@ -124,7 +162,27 @@ export function IntakePanel({
       partnerId: '',
       moveDate: '',
       // 메모는 하나 — 고객 요청사항과 상담 메모를 함께 적는다(콜·접수의 요청사항으로 남는다)
-      memo: call.request ?? call.memo ?? '',
+      memo: call.request ?? readOnly?.lead?.customerRequest ?? call.memo ?? '',
+      // 읽기 모드 — 이 콜로 등록한 접수 내용으로 채운다
+      ...(readOnly?.lead && {
+        serviceLine: readOnly.lead.serviceLine ?? 'MOVING',
+        moveKind: readOnly.lead.moveKind,
+        partnerId: readOnly.lead.partnerId ?? '',
+        orgUnitId: readOnly.lead.orgUnitId,
+        moveDate: readOnly.lead.moveDate ?? '',
+        ...Object.fromEntries(
+          (
+            [
+              'fromZipcode',
+              'fromAddr',
+              'fromAddrDetail',
+              'toZipcode',
+              'toAddr',
+              'toAddrDetail',
+            ] as const
+          ).map((k) => [k, readOnly.lead![k] ?? '']),
+        ),
+      }),
     }),
     // 콜이 바뀔 때만 새로 채운다(입력 중에 3초마다 새로 읽어도, 받기 직후 임시 콜 → 실제 콜로 바뀌어도 지우지 않게)
     [call.phone, call.receivedAt.slice(0, 16)],
@@ -289,52 +347,75 @@ export function IntakePanel({
           )}
         </Badge>
         <span className={styles.muted}>{call.channel ?? '대표번호'}</span>
-        <span className={styles.headActions}>
-          {call.status === 'CALLBACK' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => void run(() => finish('RETRY'), '아웃콜로 돌렸습니다')}
-            >
-              안 받음 — 다시 아웃콜로
-            </Button>
-          )}
-          {pending && <span className={styles.muted}>연결 중…</span>}
-          {/* 전화가 끊겨 있으면 — 다시 걸기(통화 중 표시·음소거·끊기는 화면 아래 통화 막대에) */}
-          {!pending && !phone.call && phone.status === 'ready' && (
-            <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
-              <Phone size={14} /> 전화하기
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy || pending}
-            onClick={() => setEndOpen(true)}
-          >
-            상담 종료
-          </Button>
-          {call.leadId ? (
-            <button
-              type="button"
-              className={styles.leadDone}
-              onClick={() => navigate(`/leads/${call.leadId}`)}
-              title="등록한 접수 열기"
-            >
-              접수 완료{call.leadNo ? ` · ${call.leadNo}` : ''}
-            </button>
-          ) : (
-            can('LEAD.CREATE') && (
-              <Button variant="primary" size="sm" disabled={busy || pending} onClick={openConfirm}>
-                접수 등록
+        {readOnly ? (
+          <span className={styles.headActions}>
+            <span className={styles.muted}>{CALL_STATUS[call.status] ?? call.status}</span>
+            {call.leadId ? (
+              <button
+                type="button"
+                className={styles.leadDone}
+                onClick={() => navigate(`/leads/${call.leadId}`)}
+                title="등록한 접수 열기"
+              >
+                접수 완료{call.leadNo ? ` · ${call.leadNo}` : ''}
+              </button>
+            ) : (
+              <span className={styles.noLead}>접수 없음</span>
+            )}
+          </span>
+        ) : (
+          <span className={styles.headActions}>
+            {call.status === 'CALLBACK' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => void run(() => finish('RETRY'), '아웃콜로 돌렸습니다')}
+              >
+                안 받음 — 다시 아웃콜로
               </Button>
-            )
-          )}
-        </span>
+            )}
+            {pending && <span className={styles.muted}>연결 중…</span>}
+            {/* 전화가 끊겨 있으면 — 다시 걸기(통화 중 표시·음소거·끊기는 화면 아래 통화 막대에) */}
+            {!pending && !phone.call && phone.status === 'ready' && (
+              <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
+                <Phone size={14} /> 전화하기
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || pending}
+              onClick={() => setEndOpen(true)}
+            >
+              상담 종료
+            </Button>
+            {call.leadId ? (
+              <button
+                type="button"
+                className={styles.leadDone}
+                onClick={() => navigate(`/leads/${call.leadId}`)}
+                title="등록한 접수 열기"
+              >
+                접수 완료{call.leadNo ? ` · ${call.leadNo}` : ''}
+              </button>
+            ) : (
+              can('LEAD.CREATE') && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={busy || pending}
+                  onClick={openConfirm}
+                >
+                  접수 등록
+                </Button>
+              )
+            )}
+          </span>
+        )}
       </div>
 
-      {stale && (
+      {stale && !readOnly && (
         <div className={styles.staleWarn} role="alert">
           <b>끝나지 않은 콜이 있어 새 전화가 배정되지 않습니다.</b>
           <span>
@@ -352,17 +433,29 @@ export function IntakePanel({
         </div>
         <div>
           <dt>상담원</dt>
-          <dd>{user?.employeeName ?? '-'}</dd>
+          <dd>{readOnly ? (readOnly.agentName ?? '-') : (user?.employeeName ?? '-')}</dd>
         </div>
         <div>
           <dt>통화시각</dt>
-          <dd>{hhmm(startedAt)}</dd>
+          <dd>
+            {readOnly
+              ? new Date(startedAt).toLocaleString('ko-KR', {
+                  month: 'numeric',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : hhmm(startedAt)}
+          </dd>
         </div>
         <div>
-          <dt>{onPcCall ? '통화시간' : '배정 후'}</dt>
-          <dd>{onPcCall ? mmss(talking) : elapsed(talking)}</dd>
+          <dt>{readOnly || onPcCall ? '통화시간' : '배정 후'}</dt>
+          <dd>
+            {readOnly ? durText(readOnly.durationSec) : onPcCall ? mmss(talking) : elapsed(talking)}
+          </dd>
         </div>
       </dl>
+      {readOnly && call.id && <Recording callId={call.id} available={readOnly.hasRecording} />}
       {call.customerId && (
         <div className={styles.customer}>
           <UserRound size={14} />
@@ -383,8 +476,8 @@ export function IntakePanel({
         </div>
       )}
 
-      {/* 접수 입력 */}
-      <div className={styles.form}>
+      {/* 접수 입력 — 읽기 모드면 통째로 잠근다 */}
+      <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
         <label className={styles.field}>
           <span>
             고객명 <i>*</i>
@@ -483,7 +576,7 @@ export function IntakePanel({
             onChange={(e) => setField('memo', e.target.value)}
           />
         </label>
-      </div>
+      </fieldset>
 
       <FormModal
         open={confirmOpen}

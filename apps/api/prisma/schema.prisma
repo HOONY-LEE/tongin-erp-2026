@@ -141,7 +141,7 @@ model Customer {
   name         String
   phonePrimary String?    @map("phone_primary")
   legacyId     String?    @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
-  grade        String?
+  grade        String?    @default("NORMAL")
   status       String?
   zipcode      String? // 카카오/다음 우편번호
   addr         String? // 도로명주소
