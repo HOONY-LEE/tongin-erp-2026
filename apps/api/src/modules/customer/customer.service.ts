@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -78,9 +79,27 @@ export class CustomerService {
     return found;
   }
 
+  /**
+   * 전화번호는 고객 한 명에게만 — 같은 번호가 이미 있으면 409.
+   * 하이픈·공백을 빼고 비교한다. 다른 지점 고객이어도 막되, 이름 등은 알려 주지 않는다.
+   */
+  private async assertPhoneFree(phone: string | null | undefined, exceptId?: string) {
+    const d = (phone ?? '').replace(/\D/g, '');
+    if (d.length < 9) return;
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM customer
+      WHERE regexp_replace(coalesce(phone_primary, ''), '[^0-9]', '', 'g') = ${d}
+      LIMIT 2`;
+    if (rows.some((r) => r.id !== exceptId))
+      throw new ConflictException(
+        '이미 등록된 전화번호입니다. 고객 목록에서 그 번호로 찾아 주세요(다른 지점 고객이면 본사에 문의).',
+      );
+  }
+
   async create(dto: CreateCustomerDto, principal?: AuthPrincipal) {
     await this.assertScope(dto.ownerOrgId ?? null, principal);
     await this.assertGrade(dto.grade);
+    await this.assertPhoneFree(dto.phonePrimary);
     let created;
     try {
       created = await this.prisma.customer.create({ data: dto });
@@ -98,9 +117,13 @@ export class CustomerService {
   }
 
   async update(id: string, dto: UpdateCustomerDto, principal?: AuthPrincipal) {
-    await this.findOne(id, principal);
+    const cur = await this.findOne(id, principal);
     if (dto.ownerOrgId !== undefined) await this.assertScope(dto.ownerOrgId ?? null, principal);
     if (dto.grade !== undefined) await this.assertGrade(dto.grade);
+    // 번호를 바꿀 때만 확인(예전부터 겹쳐 있던 고객도 이름·등급은 고칠 수 있게)
+    const digitsOf = (x: string | null | undefined) => (x ?? '').replace(/\D/g, '');
+    if (dto.phonePrimary && digitsOf(dto.phonePrimary) !== digitsOf(cur.phonePrimary))
+      await this.assertPhoneFree(dto.phonePrimary, id);
     try {
       return await this.prisma.customer.update({ where: { id }, data: dto });
     } catch (e) {
