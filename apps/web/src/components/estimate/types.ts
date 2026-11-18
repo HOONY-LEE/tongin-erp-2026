@@ -96,6 +96,16 @@ export interface EstimateDetailData {
     customerRequest: string | null;
     /** 상품 특이사항 — 접수 때 업체 혜택·메모를 옮겨 둔 것(고칠 수 있음) */
     productNote?: string | null;
+    /** 접수의 담당 지점 */
+    orgUnitId?: string;
+    /** 지점 반려(마지막) — 형태·사유·일시·반려한 지점 */
+    rejectKind?: string | null;
+    rejectReason?: string | null;
+    rejectedAt?: string | null;
+    rejectedFromOrgId?: string | null;
+    /** 접수 취소 형태·사유 */
+    cancelKind?: string | null;
+    cancelReason?: string | null;
     /** 제휴·전속 업체(제휴이사·전속이사) — 혜택을 견적 위에 띄운다 */
     partner: {
       id: string;

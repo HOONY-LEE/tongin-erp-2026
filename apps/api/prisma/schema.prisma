@@ -467,45 +467,53 @@ model PriceCondition {
 
 // ── Phase 1: 리드(접수) — 이사 프로세스의 출발점 (DB스키마 §5) ──
 model Lead {
-  id              String      @id @default(uuid()) @db.Uuid
-  leadNo          String      @unique @map("lead_no") // 접수번호 R...
-  customerId      String?     @map("customer_id") @db.Uuid
-  customer        Customer?   @relation(fields: [customerId], references: [id])
-  orgUnitId       String      @map("org_unit_id") @db.Uuid // 담당 지점
-  orgUnit         OrgUnit     @relation(fields: [orgUnitId], references: [id])
-  ownerEmpId      String?     @map("owner_emp_id") @db.Uuid
-  ownerEmp        Employee?   @relation(fields: [ownerEmpId], references: [id])
-  partnerId       String?     @map("partner_id") @db.Uuid // 제휴/전속 출처
-  partner         Partner?    @relation(fields: [partnerId], references: [id])
-  source          String? // common_code: RECEIPT_PATH
-  serviceLine     String?     @map("service_line")
-  status          String      @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
-  fromZipcode     String?     @map("from_zipcode")
-  fromAddr        String?     @map("from_addr") // 도로명주소(카카오/다음 우편번호)
-  fromAddrDetail  String?     @map("from_addr_detail") // 상세주소
-  fromSido        String?     @map("from_sido")
-  fromSigungu     String?     @map("from_sigungu")
-  fromLat         Float?      @map("from_lat") // 위도(카카오 Local geocode)
-  fromLng         Float?      @map("from_lng") // 경도
-  toZipcode       String?     @map("to_zipcode")
-  toAddr          String?     @map("to_addr")
-  toAddrDetail    String?     @map("to_addr_detail")
-  toSido          String?     @map("to_sido")
-  toSigungu       String?     @map("to_sigungu")
-  toLat           Float?      @map("to_lat")
-  toLng           Float?      @map("to_lng")
-  moveDate        DateTime?   @map("move_date") @db.Date
-  visitDate       DateTime?   @map("visit_date") @db.Date
-  expectedAmount  Decimal?    @map("expected_amount") @db.Decimal(14, 2)
+  id                String      @id @default(uuid()) @db.Uuid
+  leadNo            String      @unique @map("lead_no") // 접수번호 R...
+  customerId        String?     @map("customer_id") @db.Uuid
+  customer          Customer?   @relation(fields: [customerId], references: [id])
+  orgUnitId         String      @map("org_unit_id") @db.Uuid // 담당 지점
+  orgUnit           OrgUnit     @relation(fields: [orgUnitId], references: [id])
+  ownerEmpId        String?     @map("owner_emp_id") @db.Uuid
+  ownerEmp          Employee?   @relation(fields: [ownerEmpId], references: [id])
+  partnerId         String?     @map("partner_id") @db.Uuid // 제휴/전속 출처
+  partner           Partner?    @relation(fields: [partnerId], references: [id])
+  source            String? // common_code: RECEIPT_PATH
+  serviceLine       String?     @map("service_line")
+  status            String      @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
+  fromZipcode       String?     @map("from_zipcode")
+  fromAddr          String?     @map("from_addr") // 도로명주소(카카오/다음 우편번호)
+  fromAddrDetail    String?     @map("from_addr_detail") // 상세주소
+  fromSido          String?     @map("from_sido")
+  fromSigungu       String?     @map("from_sigungu")
+  fromLat           Float?      @map("from_lat") // 위도(카카오 Local geocode)
+  fromLng           Float?      @map("from_lng") // 경도
+  toZipcode         String?     @map("to_zipcode")
+  toAddr            String?     @map("to_addr")
+  toAddrDetail      String?     @map("to_addr_detail")
+  toSido            String?     @map("to_sido")
+  toSigungu         String?     @map("to_sigungu")
+  toLat             Float?      @map("to_lat")
+  toLng             Float?      @map("to_lng")
+  moveDate          DateTime?   @map("move_date") @db.Date
+  visitDate         DateTime?   @map("visit_date") @db.Date
+  expectedAmount    Decimal?    @map("expected_amount") @db.Decimal(14, 2)
   /// 고객 요청사항(상담 중 받은 요청) — 상담 콘솔에서 접수할 때 함께 저장
-  customerRequest String?     @map("customer_request")
-  productNote     String?     @map("product_note") // 상품 특이사항(제휴·전속 혜택·조건) — 접수 때 업체 내용을 옮겨 둔다
-  attributes      Json?
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  estimates       Estimate[]
-  contracts       Contract[]
-  workOrders      WorkOrder[]
+  customerRequest   String?     @map("customer_request")
+  productNote       String?     @map("product_note") // 상품 특이사항(제휴·전속 혜택·조건) — 접수 때 업체 내용을 옮겨 둔다
+  /// 지점 반려(마지막) — 지점이 처리할 수 없어 본사로 되돌린 형태·사유·지점
+  rejectKind        String?     @map("reject_kind")
+  rejectReason      String?     @map("reject_reason")
+  rejectedAt        DateTime?   @map("rejected_at") @db.Timestamptz(6)
+  rejectedFromOrgId String?     @map("rejected_from_org_id") @db.Uuid
+  /// 접수 취소 형태·사유
+  cancelKind        String?     @map("cancel_kind")
+  cancelReason      String?     @map("cancel_reason")
+  attributes        Json?
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  estimates         Estimate[]
+  contracts         Contract[]
+  workOrders        WorkOrder[]
 
   @@index([status])
   @@index([orgUnitId])
