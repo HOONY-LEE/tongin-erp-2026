@@ -262,7 +262,7 @@
   margin: 0;
 }
 .callInfo > div {
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-radius: 8px;
   background: var(--ark-color-bg-muted);
 }
@@ -900,13 +900,13 @@
 
 /* 내 콜 카드 — 좌우 여백을 넓혀 입력칸이 너무 길지 않게, 입력칸 사이 간격도 넉넉히 */
 .intakeCard {
-  padding: 20px 40px;
+  padding: 12px 28px;
 }
 .intake .form {
-  gap: 18px 28px;
+  gap: 8px 24px;
 }
 .intake {
-  gap: 16px;
+  gap: 8px;
 }
 
 /* PC 전화 켜짐/꺼짐 — 버튼 하나(스위치) */
@@ -1036,7 +1036,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 10px 14px;
+  padding: 6px 12px;
   border: 1px solid var(--ark-color-border);
   border-radius: 10px;
 }
@@ -1061,9 +1061,9 @@
 /* 고객 요청사항 · 상담 메모 — 높이 고정(akron Textarea는 바깥 상자에 클래스가 붙는다) */
 .memoBox textarea,
 textarea.memoBox {
-  height: 160px !important;
-  min-height: 160px !important;
-  max-height: 160px;
+  height: 60px !important;
+  min-height: 60px !important;
+  max-height: 60px;
   resize: none;
 }
 /* 상품 종류 고르기 — 제휴·전속(검색 선택)을 일반(선택)과 같은 크기(36px)로 */
@@ -1803,9 +1803,16 @@ textarea.memoBox {
   min-height: 0;
   overflow-y: auto;
 }
+/* 상담 화면 — 아래 줄(고객 이력 · 아웃콜 목록)은 같은 높이, 위 줄(상담 카드 · 달력+메모)도 같은 높이 */
+.grid {
+  --bottom-h: 25%;
+}
 .leftCol > .historyCard {
-  flex: 0 0 auto;
-  max-height: 34%;
+  flex: 0 0 var(--bottom-h);
+  min-height: 0;
+}
+.sideDetail > .paneCard:last-child {
+  flex: 0 0 var(--bottom-h);
 }
 .historyCard .historyHead {
   display: flex;
@@ -1814,4 +1821,23 @@ textarea.memoBox {
 }
 .historyCard .paneBody {
   padding: 8px 12px 12px;
+}
+
+/* 상담 메모 보기 — < 제목 ……… 수정 */
+.scriptViewHead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-height: 34px;
+}
+.scriptViewHead .scriptTitle {
+  flex: 1;
+}
+.scriptViewHead .scriptEditBtn {
+  position: static;
+  flex-shrink: 0;
+}
+.scriptPaperView {
+  padding-top: 12px !important;
 }

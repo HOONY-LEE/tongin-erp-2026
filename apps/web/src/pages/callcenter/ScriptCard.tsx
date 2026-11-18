@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { NotebookPen, Pencil, Plus, Trash2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { NotebookPen, Pencil, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { Button, ConfirmModal, Input, SegmentedControl, useToast } from '../../components/ui';
 import styles from '../callcenter.module.css';
@@ -172,8 +172,8 @@ export function ScriptCard() {
         <>
           {current ? (
             <>
-              {/* 고른 메모 — 위에 '목록으로'와 제목 */}
-              <div className={styles.scriptHead}>
+              {/* 고른 메모 — < 제목 ……… 수정 / 아래 내용 */}
+              <div className={styles.scriptViewHead}>
                 <button
                   type="button"
                   className={styles.scriptBack}
@@ -182,29 +182,24 @@ export function ScriptCard() {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <b className={styles.scriptTitle}>
-                  {current.shared && <Users size={13} aria-label="공유" />}
-                  {current.title}
-                </b>
+                <b className={styles.scriptTitle}>{current.title}</b>
+                <button
+                  type="button"
+                  className={styles.scriptEditBtn}
+                  onClick={() =>
+                    setEdit({
+                      id: current.id,
+                      title: current.title,
+                      body: current.body,
+                      shared: current.shared,
+                    })
+                  }
+                >
+                  <Pencil size={13} /> 수정
+                </button>
               </div>
               <div className={styles.scriptBody}>
-                <span className={styles.scriptBtns}>
-                  <button
-                    type="button"
-                    className={styles.scriptEditBtn}
-                    onClick={() =>
-                      setEdit({
-                        id: current.id,
-                        title: current.title,
-                        body: current.body,
-                        shared: current.shared,
-                      })
-                    }
-                  >
-                    <Pencil size={13} /> 수정
-                  </button>
-                </span>
-                <div className={styles.scriptPaper}>
+                <div className={`${styles.scriptPaper} ${styles.scriptPaperView}`}>
                   {current.body || <span className={styles.muted}>내용이 없습니다.</span>}
                 </div>
               </div>

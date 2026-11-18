@@ -438,7 +438,7 @@ export default function CallCenter() {
         )}
 
         {/* 오른쪽 — 상담 메모(대본) 위, 아웃콜 대기 아래 */}
-        <div className={styles.sideCol}>
+        <div className={`${styles.sideCol} ${listView ? '' : styles.sideDetail}`}>
           {/* 상담원 현황 — 지금 상태와 오늘 받은 콜·콜백·접수 */}
           {/* 콘솔(목록)에서는 마감 달력 + 상담원 현황, 상담 화면에서는 상담 메모 */}
           <MiniCalendar />
