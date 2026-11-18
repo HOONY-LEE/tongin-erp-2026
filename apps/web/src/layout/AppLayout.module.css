@@ -511,3 +511,21 @@
 .native.collapsed .headerLeft {
   width: 80px;
 }
+
+/* 사이드바 머리 오른쪽 끝 접기 버튼('<') */
+.sideToggle {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.sideToggle:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text-primary);
+}

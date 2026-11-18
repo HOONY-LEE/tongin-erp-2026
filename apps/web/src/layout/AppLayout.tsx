@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Download, Loader2, Settings, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Download, Loader2, Settings, ChevronLeft } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -302,16 +302,6 @@ export default function AppLayout() {
                   <Settings size={16} />
                   {!collapsed && <span>앱 설정</span>}
                 </button>
-                {/* 사이드바 접기·펴기 — 한국AI통신 콘솔처럼 맨 아래에 */}
-                <button
-                  type="button"
-                  className={settingsStyles.footIcon}
-                  title={collapsed ? '사이드바 펴기' : '사이드바 접기'}
-                  aria-label={collapsed ? '사이드바 펴기' : '사이드바 접기'}
-                  onClick={() => setCol(!collapsed)}
-                >
-                  {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-                </button>
                 {/* 웹에서만 — 데스크톱 앱 설치(이 컴퓨터 OS에 맞는 설치 파일) */}
                 {!isDesktop && (
                   <button
@@ -327,14 +317,20 @@ export default function AppLayout() {
               </div>
             }
             header={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
                 {/* 색 있는 통인 호랑이 로고만(배경 상자 없이). 흰색은 /brand/tongin-logo-white.png */}
                 <img
+                  onClick={collapsed ? () => setCol(false) : undefined}
+                  title={collapsed ? '사이드바 펴기' : undefined}
                   src="/brand/tongin-logo-color.png"
                   alt="통인익스프레스"
                   width={22}
                   height={22}
-                  style={{ display: 'block', flexShrink: 0 }}
+                  style={{
+                    display: 'block',
+                    flexShrink: 0,
+                    cursor: collapsed ? 'pointer' : undefined,
+                  }}
                 />
                 {/* 한국AI통신 'KAT | 한국AI통신'처럼 — 굵은 이름 | 작은 부제 */}
                 {!collapsed && (
@@ -357,6 +353,18 @@ export default function AppLayout() {
                       Works AI
                     </span>
                   </span>
+                )}
+                {/* 사이드바 접기 — 머리 오른쪽 끝 '<' (접힌 상태에서는 로고를 누르면 편다) */}
+                {!collapsed && (
+                  <button
+                    type="button"
+                    className={styles.sideToggle}
+                    title="사이드바 접기"
+                    aria-label="사이드바 접기"
+                    onClick={() => setCol(true)}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
                 )}
               </div>
             }
