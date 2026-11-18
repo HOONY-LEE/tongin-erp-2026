@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Laptop, PhoneCall, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -91,12 +91,17 @@ export default function CallCenter() {
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   const [simPhone, setSimPhone] = useState('');
+  /** 상담 가능 상태를 저장하는 중 — 그 사이 폴링이 화면을 되돌리지 않게 */
+  const pendingAvail = useRef<boolean | null>(null);
   const phone = usePhone();
   const pcReady = phone.status === 'ready';
 
   const load = useCallback(async () => {
     try {
-      setData(await api<Console>('/cs-calls/console'));
+      const r = await api<Console>('/cs-calls/console');
+      // 상태를 바꾸는 중이면(서버 저장 전) 화면에 먼저 바꾼 값을 그대로 둔다 — 폴링이 되돌리지 않게
+      const pending = pendingAvail.current;
+      setData(pending !== null && r.me ? { ...r, me: { ...r.me, available: pending } } : r);
       setNow(Date.now());
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
@@ -124,8 +129,26 @@ export default function CallCenter() {
       setBusy(false);
     }
   };
-  const setAvailable = (available: boolean) =>
-    act(() => api('/cs-calls/agent', { method: 'POST', body: JSON.stringify({ available }) }));
+  /**
+   * 상담 가능/자리 비움 — 누르는 즉시 화면을 바꾸고(낙관적 갱신) 서버 저장은 뒤에서.
+   * 실패하면 되돌리고 알린다.
+   */
+  const setAvailable = async (available: boolean) => {
+    pendingAvail.current = available;
+    setData((d) => (d?.me ? { ...d, me: { ...d.me, available } } : d));
+    try {
+      await api('/cs-calls/agent', { method: 'POST', body: JSON.stringify({ available }) });
+    } catch (e) {
+      setData((d) => (d?.me ? { ...d, me: { ...d.me, available: !available } } : d));
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : '상태를 바꾸지 못했습니다',
+      });
+    } finally {
+      pendingAvail.current = null;
+      void load();
+    }
+  };
   const saveRingTo = (ringTo: string) =>
     act(
       () =>
@@ -196,7 +219,16 @@ export default function CallCenter() {
                 void setAvailable(v === 'on');
               }}
               options={[
-                { value: 'on', label: '상담 가능', disabled: !!mine },
+                {
+                  value: 'on',
+                  label: (
+                    <span className={styles.availLabel}>
+                      {me.available && !mine && <i className={styles.availDot} aria-hidden />}
+                      상담 가능
+                    </span>
+                  ),
+                  disabled: !!mine,
+                },
                 { value: 'off', label: mine ? '상담 중' : '자리 비움' },
               ]}
             />
