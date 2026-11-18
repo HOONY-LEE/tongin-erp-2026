@@ -19,9 +19,7 @@ export const SegmentedControl = forwardRef<HTMLDivElement, AkronSegmentedControl
       <AkronSegmentedControl
         ref={ref}
         size="md"
-        className={[styles.seg, small ? styles.sm : styles.md, className]
-          .filter(Boolean)
-          .join(' ')}
+        className={[styles.seg, small ? styles.sm : styles.md, className].filter(Boolean).join(' ')}
         {...props}
       />
     );
