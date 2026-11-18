@@ -409,14 +409,18 @@
 
 /* 이사 구분 — 일반/제휴/전속 + 업체 고르기 */
 .kindRow {
+  /* 상품 종류 탭과 드롭다운은 늘 한 줄 — 좁으면 드롭다운이 줄어든다 */
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
 }
+.kindRow > :first-child {
+  flex-shrink: 0;
+}
 .kindPick {
   flex: 1;
-  min-width: 220px;
+  min-width: 0;
 }
 
 /* 오래 열린 콜 경고 */
