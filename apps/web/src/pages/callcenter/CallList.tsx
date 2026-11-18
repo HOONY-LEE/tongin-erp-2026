@@ -1,10 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { List, Play } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { api, ApiError, getToken } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
-import { Button, Input, Modal, SegmentedControl, Textarea, useToast } from '../../components/ui';
+import {
+  Button,
+  DataTable,
+  Modal,
+  SegmentedControl,
+  Textarea,
+  useToast,
+  type Column,
+  type Row,
+} from '../../components/ui';
+import { Phone } from 'softium-ui/table';
 import styles from '../callcenter.module.css';
 
 interface CallRow {
@@ -33,13 +43,12 @@ const STATUS_LABEL: Record<string, string> = {
   DONE: '끝',
   CANCELED: '취소',
 };
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/** 11.18 10:05 */
+const when = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 const dur = (s: number | null) =>
   s == null
     ? '-'
@@ -50,154 +59,108 @@ const dur = (s: number | null) =>
 const shortId = (id: string) => id.slice(0, 8).toUpperCase();
 
 /**
- * 상담 콜 목록 — 전화번호·고객명 검색, 내 전화/전체 전화. 행을 누르면 상세(녹취 듣기·메모·요청사항).
+ * 상담 콜 목록 — 다른 목록 화면과 같은 표(검색·정렬·페이지·칸 설정). 내 전화/전체 전화.
+ * 최근 콜 500개를 받아 표 안에서 찾는다. 행을 누르면 상세(녹취 듣기·메모·요청사항).
  * refreshKey가 바뀌면(콜이 끝나면) 다시 읽는다.
  */
 export function CallList({ refreshKey }: { refreshKey: number }) {
   const toast = useToast();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
-  const [q, setQ] = useState('');
-  const [page, setPage] = useState(0);
-  const [data, setData] = useState<{ total: number; rows: CallRow[] } | null>(null);
+  const [rows, setRows] = useState<CallRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<CallRow | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(
-    async (query: string, sc: 'mine' | 'all', pg: number) => {
+    async (sc: 'mine' | 'all') => {
+      setLoading(true);
       try {
-        const p = new URLSearchParams({ scope: sc, page: String(pg) });
-        if (query.trim()) p.set('q', query.trim());
-        setData(await api(`/cs-calls?${p.toString()}`));
+        const r = await api<{ total: number; rows: CallRow[] }>(`/cs-calls?scope=${sc}&limit=500`);
+        setRows(r.rows);
       } catch (e) {
         toast({
           type: 'error',
           title: e instanceof ApiError ? e.message : '콜 목록을 불러오지 못했습니다',
         });
+      } finally {
+        setLoading(false);
       }
     },
     [toast],
   );
-  // 검색어는 잠깐 멈췄을 때 찾는다
   useEffect(() => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void load(q, scope, page), q ? 300 : 0);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [q, scope, page, refreshKey, load]);
+    void load(scope);
+  }, [scope, refreshKey, load]);
 
-  const pages = data ? Math.max(1, Math.ceil(data.total / 50)) : 1;
+  const columns: Column[] = [
+    { title: '콜ID', render: (r) => shortId(r.id as string), width: 78 },
+    {
+      title: '고객명',
+      dataIndex: 'customerName',
+      render: (r) => (r.customerName as string | null) ?? '새 번호',
+      width: 80,
+    },
+    {
+      title: '전화번호',
+      dataIndex: 'phone',
+      render: (r) => <Phone value={r.phone as string} link={false} />,
+      width: 124,
+    },
+    {
+      title: '상담원',
+      dataIndex: 'agentName',
+      render: (r) =>
+        (r.agentName as string | null) ?? STATUS_LABEL[r.status as string] ?? (r.status as string),
+      width: 72,
+    },
+    {
+      title: '통화시각',
+      dataIndex: 'receivedAt',
+      render: (r) => when(r.receivedAt as string),
+      width: 104,
+    },
+    {
+      title: '통화시간',
+      dataIndex: 'durationSec',
+      render: (r) => dur(r.durationSec as number | null),
+      width: 76,
+    },
+    {
+      title: '녹취',
+      render: (r) => (r.hasRecording ? <Play size={14} aria-label="녹취 있음" /> : '-'),
+      width: 52,
+      mask: false,
+    },
+    { title: '고객 요청사항', dataIndex: 'request', flex: 1, minWidth: 90 },
+    { title: '통화 메모', dataIndex: 'memo', flex: 1, minWidth: 70 },
+    { title: '접수', dataIndex: 'leadNo', width: 124 },
+  ];
 
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
-      <div className={styles.listHead}>
-        <h3 className={styles.cardTitle}>
-          <List size={15} /> 상담 콜 목록 <span className={styles.count}>{data?.total ?? 0}</span>
-        </h3>
-        <div className={styles.actions}>
-          <Input
-            value={q}
-            placeholder="전화번호·고객명으로 찾기"
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(0);
-            }}
-            style={{ width: 220 }}
-            aria-label="콜 검색"
-          />
+      <h3 className={styles.cardTitle}>
+        <List size={15} /> 상담 콜 목록
+      </h3>
+      <DataTable
+        tabs={
           <SegmentedControl
             value={scope}
-            onChange={(x) => {
-              setScope(x as 'mine' | 'all');
-              setPage(0);
-            }}
+            onChange={(x) => setScope(x as 'mine' | 'all')}
             options={[
               { value: 'mine', label: '내 전화' },
               { value: 'all', label: '전체 전화' },
             ]}
           />
-        </div>
-      </div>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>콜ID</th>
-              <th>고객명</th>
-              <th>전화번호</th>
-              <th>상담원</th>
-              <th>통화시각</th>
-              <th>통화시간</th>
-              <th>녹취</th>
-              <th>고객 요청사항</th>
-              <th>통화 메모</th>
-              <th>접수</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.rows.map((r) => (
-              <tr
-                key={r.id}
-                onClick={() => setOpen(r)}
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && setOpen(r)}
-              >
-                <td className={styles.mono}>{shortId(r.id)}</td>
-                <td>{r.customerName ?? <span className={styles.muted}>새 번호</span>}</td>
-                <td className={styles.mono}>{formatPhone(r.phone)}</td>
-                <td>
-                  {r.agentName ?? (
-                    <span className={styles.muted}>{STATUS_LABEL[r.status] ?? r.status}</span>
-                  )}
-                </td>
-                <td className={styles.mono}>{when(r.receivedAt)}</td>
-                <td className={styles.mono}>{dur(r.durationSec)}</td>
-                <td>
-                  {r.hasRecording ? (
-                    <Play size={14} aria-label="녹취 있음" />
-                  ) : (
-                    <span className={styles.muted}>-</span>
-                  )}
-                </td>
-                <td className={styles.clip}>{r.request ?? ''}</td>
-                <td className={styles.clip}>{r.memo ?? ''}</td>
-                <td>{r.leadNo ?? ''}</td>
-              </tr>
-            ))}
-            {data && data.rows.length === 0 && (
-              <tr>
-                <td colSpan={10} className={styles.emptyQ}>
-                  {q ? '찾는 콜이 없습니다.' : '아직 콜이 없습니다.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {pages > 1 && (
-        <div className={styles.pager}>
-          <Button variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            이전
-          </Button>
-          <span className={styles.muted}>
-            {page + 1} / {pages}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={page + 1 >= pages}
-            onClick={() => setPage(page + 1)}
-          >
-            다음
-          </Button>
-        </div>
-      )}
+        }
+        pageSize={10}
+        columns={columns}
+        rows={rows as unknown as Row[]}
+        loading={loading}
+        onRowClick={(r) => setOpen(r as unknown as CallRow)}
+        exportable
+        exportFileName="상담콜"
+      />
       {open && (
-        <CallDetail
-          call={open}
-          onClose={() => setOpen(null)}
-          onSaved={() => void load(q, scope, page)}
-        />
+        <CallDetail call={open} onClose={() => setOpen(null)} onSaved={() => void load(scope)} />
       )}
     </section>
   );

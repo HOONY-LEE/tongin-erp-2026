@@ -190,36 +190,39 @@ export default function CallCenter() {
       }
     >
       <div className={styles.grid}>
-        {/* 내 콜 — 통화하면서 바로 접수 */}
-        <section className={`${styles.card} ${mine ? styles.intakeCard : ''}`}>
-          <h3 className={styles.cardTitle}>
-            <Headphones size={15} /> 내 콜
-          </h3>
-          {!me ? (
-            <p className={styles.muted}>직원과 연결된 계정만 상담할 수 있습니다.</p>
-          ) : mine ? (
+        {/* 왼쪽 — 통화 중이면 접수 패널, 아니면 상담 콜 목록 */}
+        {me && mine ? (
+          <section className={`${styles.card} ${styles.intakeCard}`}>
+            <h3 className={styles.cardTitle}>
+              <Headphones size={15} /> 내 콜
+            </h3>
             <IntakePanel call={mine} recentLeads={me.recentLeads} onDone={afterIntake} />
-          ) : (
-            <div className={styles.idle}>
-              <PhoneCall size={22} />
-              {me.available ? (
-                <p>
-                  대기 중입니다.{' '}
+          </section>
+        ) : (
+          <div className={styles.mainCol}>
+            <div className={styles.idleBar}>
+              <PhoneCall size={15} />
+              {!me ? (
+                <span>직원과 연결된 계정만 상담할 수 있습니다.</span>
+              ) : me.available ? (
+                <span>
+                  <b>대기 중</b> —{' '}
                   {pcReady
-                    ? '콜이 들어오면 이 PC가 울립니다. 화면 아래 [받기]를 누르고 헤드셋으로 통화하세요. 20초 안에 안 받으면 다음 상담원에게 넘어가고 자리 비움으로 바뀝니다.'
+                    ? '전화가 오면 이 PC가 울립니다. 20초 안에 안 받으면 다음 상담원에게 넘어갑니다.'
                     : me.ringTo
-                      ? `콜이 들어오면 ${formatPhone(me.ringTo)} 전화가 바로 울립니다. 20초 안에 안 받으면 다음 상담원에게 넘어가고 자리 비움으로 바뀝니다.`
-                      : '콜이 들어오면 자동으로 여기에 붙습니다. PC 전화를 켜면 이 PC가 바로 울립니다.'}
-                  {data.outcalls.length > 0 && ' 지금은 아웃콜부터 콜백하세요.'}
-                </p>
+                      ? `전화가 오면 ${formatPhone(me.ringTo)}로 울립니다.`
+                      : 'PC 전화를 켜면 이 PC로 전화를 받습니다.'}
+                  {data.outcalls.length > 0 && ' 아웃콜부터 콜백하세요.'}
+                </span>
               ) : (
-                <p>
-                  자리 비움 상태입니다. 위에서 <b>상담 가능</b>으로 바꾸면 콜을 받습니다.
-                </p>
+                <span>
+                  <b>자리 비움</b> — 상담 준비가 끝나면 위에서 <b>상담 가능</b>을 눌러 주세요.
+                </span>
               )}
             </div>
-          )}
-        </section>
+            <CallList refreshKey={listKey} />
+          </div>
+        )}
 
         {/* 오른쪽 — 상담 메모(대본) 위, 아웃콜 대기 아래 */}
         <div className={styles.sideCol}>
@@ -274,7 +277,38 @@ export default function CallCenter() {
             )}
           </section>
         </div>
+      </div>
 
+      {/* 통화 중에는 콜 목록을 접수 패널 아래로 */}
+      {me && mine && <CallList refreshKey={listKey} />}
+
+      {/* 아래 — 오늘 숫자와 상담원 현황 */}
+      <div className={styles.stats}>
+        <div>
+          <span>오늘 들어온 콜</span>
+          <b>{data.today.received}</b>
+        </div>
+        <div>
+          <span>상담 중</span>
+          <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
+        </div>
+        <div className={data.outcalls.length ? styles.warnStat : ''}>
+          <span>아웃콜 대기</span>
+          <b>{data.outcalls.length}</b>
+        </div>
+        <div>
+          <span>상담 가능 상담원</span>
+          <b>
+            {data.agents.filter((a) => a.state === 'READY').length} / {data.agents.length}
+          </b>
+        </div>
+        <div>
+          <span>오늘 끝낸 콜</span>
+          <b>{data.today.done}</b>
+        </div>
+      </div>
+
+      <div className={styles.bottomGrid}>
         {/* 상담원 현황 */}
         <section className={styles.card}>
           <h3 className={styles.cardTitle}>
@@ -351,8 +385,6 @@ export default function CallCenter() {
           )}
         </section>
       </div>
-
-      <CallList refreshKey={listKey} />
 
       <ConfirmModal
         open={!!cancelTarget}

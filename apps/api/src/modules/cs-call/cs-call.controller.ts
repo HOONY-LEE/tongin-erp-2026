@@ -68,6 +68,7 @@ class ListQuery {
   @IsOptional() @IsIn(['mine', 'all']) scope?: 'mine' | 'all';
   @IsOptional() @IsString() @MaxLength(50) q?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000) page?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(500) limit?: number;
 }
 class InboundDto {
   @IsString() @MaxLength(30) phone!: string;
@@ -149,7 +150,12 @@ export class CsCallController {
   @Get()
   @RequirePermissions('LEAD.CREATE')
   list(@CurrentUser() user: AuthPrincipal, @Query() q: ListQuery) {
-    return this.calls.list(user, { scope: q.scope ?? 'mine', q: q.q, page: q.page });
+    return this.calls.list(user, {
+      scope: q.scope ?? 'mine',
+      q: q.q,
+      page: q.page,
+      limit: q.limit,
+    });
   }
 
   /** 전화 연동 설정 — 웹훅 주소(키 포함). 시스템 관리자만 */
