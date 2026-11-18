@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 export interface HistoryItem {
   at: string;
   kind:
+    | 'sms'
     | 'customer'
     | 'call'
     | 'lead'
@@ -52,6 +53,11 @@ export class CustomerHistoryService {
     const customer = await this.prisma.customer.findUniqueOrThrow({ where: { id: customerId } });
     const phone = digits(customer.phonePrimary);
 
+    const smsLogs = await this.prisma.csSms.findMany({
+      where: { OR: [{ customerId }, ...(phone.length >= 9 ? [{ phone }] : [])] },
+      orderBy: { at: 'asc' },
+      take: 300,
+    });
     const [calls, leads, estimates, contracts, services, tickets] = await Promise.all([
       // 고객이 붙기 전(새 번호로 받은 첫 통화)도 같은 번호면 이 고객의 통화
       this.prisma.csCall.findMany({
@@ -126,6 +132,7 @@ export class CustomerHistoryService {
     const orgIds = new Set<string>();
     const partnerIds = new Set<string>();
     for (const c of calls) if (c.agentEmpId) empIds.add(c.agentEmpId);
+    for (const m of smsLogs) if (m.employeeId) empIds.add(m.employeeId);
     for (const s of services) if (s.assignedEmpId) empIds.add(s.assignedEmpId);
     for (const t of tickets) if (t.assigneeEmpId) empIds.add(t.assigneeEmpId);
     for (const e of events) {
@@ -210,6 +217,16 @@ export class CustomerHistoryService {
         link: `/callcenter/${c.id}`,
       });
     }
+
+    for (const m of smsLogs)
+      push(m.at, {
+        kind: 'sms',
+        title: m.ok ? '문자 보냄' : '문자 실패',
+        detail: [m.title, m.body.replace(/\s+/g, ' ').slice(0, 80), m.ok ? null : m.reason]
+          .filter(Boolean)
+          .join(' · '),
+        actor: emp(m.employeeId),
+      });
 
     for (const l of leads) {
       push(l.createdAt, {

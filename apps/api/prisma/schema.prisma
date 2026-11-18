@@ -2275,3 +2275,36 @@ model CsFollowup {
   @@index([leadId, kind])
   @@map("cs_followup")
 }
+
+/// 상담 콘솔 문자 템플릿 — 공유(모든 상담 직원) / 개인
+model CsSmsTemplate {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeeId String?  @map("employee_id") @db.Uuid
+  shared     Boolean  @default(true)
+  title      String
+  body       String
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([shared, sortOrder])
+  @@map("cs_sms_template")
+}
+
+/// 상담 콘솔에서 보낸 문자 기록 — 고객 이력에 남는다
+model CsSms {
+  id         String   @id @default(uuid()) @db.Uuid
+  phone      String
+  customerId String?  @map("customer_id") @db.Uuid
+  callId     String?  @map("call_id") @db.Uuid
+  title      String?
+  body       String
+  ok         Boolean
+  reason     String?
+  vendor     String?
+  employeeId String?  @map("employee_id") @db.Uuid
+  at         DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([customerId, at])
+  @@index([phone, at])
+  @@map("cs_sms")
+}

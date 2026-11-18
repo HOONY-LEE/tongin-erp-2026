@@ -1275,6 +1275,7 @@ textarea.memoBox {
   background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.05));
   font-size: 12px;
 }
+.k_sms,
 .k_call {
   background: #dcfce7;
   color: #15803d;
