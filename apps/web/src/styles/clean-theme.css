@@ -74,6 +74,11 @@ h1 {
 }
 
 /* ── 검색·입력칸 — 36px, 14px, 둥글기 10px ── */
+/* 공용 검색칸(SearchInput·표 위 검색)은 어디서나 38px */
+.sft-toolbar__search-wrap .sft-toolbar__search {
+  box-sizing: border-box;
+  height: 38px;
+}
 .sft-toolbar__search,
 input[placeholder*='검색'],
 input[placeholder*='찾기'] {

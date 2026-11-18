@@ -18,6 +18,9 @@ import {
   ListPage,
   SegmentedControl,
   useToast,
+  Skeleton,
+  SkeletonText,
+  TableSkeleton,
 } from '../components/ui';
 import styles from './callcenter.module.css';
 import { IntakePanel, type ReadOnlyInfo } from './callcenter/IntakePanel';
@@ -281,8 +284,8 @@ export default function CallCenter() {
 
   if (!data)
     return (
-      <ListPage title="상담 콘솔">
-        <div className={styles.empty}>불러오는 중…</div>
+      <ListPage fit title="상담 콘솔">
+        <ConsoleSkeleton />
       </ListPage>
     );
   const me = data.me;
@@ -347,7 +350,7 @@ export default function CallCenter() {
     <ListPage
       fit
       title="상담 콘솔"
-      subtitle="대표번호로 들어온 콜은 '상담 가능'인 상담원에게 자동으로 배분되고, 모두 통화 중이면 아웃콜로 쌓입니다. 전화를 받으면 '내 콜'에서 통화하면서 바로 접수하세요."
+      subtitle="대표번호(임시): 070-5236-9711 — 대표번호로 들어온 전화는 '상담 가능'인 상담원 PC가 함께 울리고, 받을 사람이 없으면 아웃콜로 쌓입니다. 전화를 받으면 상담 화면에서 통화하면서 바로 접수하세요."
       actions={
         me ? (
           <div className={styles.actions}>
@@ -678,7 +681,7 @@ function PcPhone() {
         {phone.status === 'connecting'
           ? 'PC 전화 연결 중…'
           : on
-            ? `PC 전화 켜짐${phone.ringable ? ' · 울림 대기' : ''}`
+            ? 'PC 전화 켜짐'
             : phone.status === 'error'
               ? 'PC 전화 꺼짐 · 다시 켜기'
               : 'PC 전화 꺼짐'}
@@ -729,7 +732,15 @@ function CallPage({
   if (!d)
     return (
       <section className={`${styles.card} ${styles.intakeCard}`}>
-        <p className={styles.muted}>불러오는 중…</p>
+        <div role="status" aria-label="불러오는 중" className={styles.skelCol}>
+          <Skeleton width={220} height={22} />
+          <div className={styles.skelRow4}>
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} height={46} radius={8} />
+            ))}
+          </div>
+          <SkeletonText lines={6} gap={14} />
+        </div>
       </section>
     );
   const open = ['ASSIGNED', 'CALLBACK'].includes(d.call.status);
@@ -771,6 +782,37 @@ function CallColumn({
       {call.customerId && call.id && (
         <CallerHistory customerId={call.customerId} callId={call.id} />
       )}
+    </div>
+  );
+}
+
+/** 상담 콘솔 첫 화면을 불러오는 동안 — 실제 배치(왼쪽 숫자·표, 오른쪽 달력·상담원·아웃콜) 그대로 */
+function ConsoleSkeleton() {
+  return (
+    <div className={styles.grid} role="status" aria-label="불러오는 중">
+      <section className={`${styles.card} ${styles.listCard}`}>
+        <div className={styles.skelRow4}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} height={58} radius={12} />
+          ))}
+        </div>
+        <Skeleton height={38} radius={10} />
+        <TableSkeleton rows={10} cols={7} />
+      </section>
+      <div className={styles.sideCol}>
+        <section className={styles.card}>
+          <Skeleton width={140} height={18} />
+          <Skeleton height={150} radius={8} />
+        </section>
+        <section className={styles.card}>
+          <Skeleton width={110} height={18} />
+          <SkeletonText lines={4} gap={12} />
+        </section>
+        <section className={styles.card}>
+          <Skeleton width={100} height={18} />
+          <SkeletonText lines={2} gap={12} />
+        </section>
+      </div>
     </div>
   );
 }

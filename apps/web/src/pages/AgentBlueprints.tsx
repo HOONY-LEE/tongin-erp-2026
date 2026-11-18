@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, List, Search } from 'lucide-react';
+import { LayoutGrid, List } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   AGENT_VISIBILITY_LABEL,
@@ -22,6 +22,7 @@ import {
   type Column,
   type Row,
   type StatusMap,
+  SearchInput,
 } from '../components/ui';
 import { VISIBILITY_ICON } from '../components/agent/SharePicker';
 import { HabitSuggestions } from '../components/agent/HabitSuggestions';
@@ -225,21 +226,7 @@ export default function AgentBlueprints() {
           {/* 표 툴바와 같은 자리(ListToolbar) — 검색칸은 표 검색과 같은 모양(.dt-wrap 아래 softium 클래스) */}
           <div className="dt-wrap">
             <ListToolbar
-              search={
-                <div className="sft-toolbar__search-wrap">
-                  <span className="sft-toolbar__search-icon" aria-hidden="true">
-                    <Search size={15} />
-                  </span>
-                  <input
-                    className="sft-toolbar__search"
-                    type="search"
-                    value={query}
-                    placeholder="검색"
-                    aria-label="에이전트 검색"
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </div>
-              }
+              search={<SearchInput value={query} onChange={setQuery} ariaLabel="에이전트 검색" />}
               viewSwitch={viewSwitch}
               tabs={tabs}
               actions={actions}

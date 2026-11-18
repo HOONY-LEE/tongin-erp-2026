@@ -1927,3 +1927,15 @@ textarea.memoBox {
   flex: 1 1 auto;
   min-height: 56px;
 }
+
+/* 불러오는 동안 자리표시 */
+.skelCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.skelRow4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}

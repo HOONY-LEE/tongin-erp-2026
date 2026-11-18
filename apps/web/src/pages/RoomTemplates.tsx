@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
-import { Badge, Button, Checkbox, Input, Modal, useToast } from '../components/ui';
+import { Badge, Button, Checkbox, Modal, useToast, SearchInput } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { fs } from '../lib/fontScale';
 
@@ -134,7 +134,7 @@ function RoomItemsModal({
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="물품·분류 검색" />
+          <SearchInput value={q} onChange={setQ} placeholder="물품·분류 검색" />
           <div
             style={{
               maxHeight: 380,
