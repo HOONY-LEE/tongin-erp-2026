@@ -3,7 +3,7 @@ import { Laptop, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import { dial, disablePhone, enablePhone, usePhone } from '../lib/softphone';
+import { dial, disablePhone, enablePhone, setRingable, usePhone } from '../lib/softphone';
 import {
   Badge,
   Button,
@@ -106,6 +106,12 @@ export default function CallCenter() {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
     }
   }, [toast]);
+  // PC로 전화를 받으면 바로 다시 읽어 상담 화면을 연다
+  useEffect(() => {
+    const on = () => void load();
+    window.addEventListener('tongin:cs-call-changed', on);
+    return () => window.removeEventListener('tongin:cs-call-changed', on);
+  }, [load]);
   // 새 콜·배분이 바로 보이게 몇 초마다 다시 읽는다(창이 안 보일 때는 쉰다)
   useEffect(() => {
     void load();
@@ -172,6 +178,11 @@ export default function CallCenter() {
     setListKey((k) => k + 1);
   };
 
+  // 동시 울림 — 상담 가능이고 열린 콜이 없을 때만 이 PC가 울리게(등록) 바로 반영
+  const ringOk = !!data?.me?.available && !data?.me?.call;
+  useEffect(() => {
+    if (data) setRingable(ringOk);
+  }, [data, ringOk]);
   // PC가 울리는 동안(아직 [받기] 전)은 상담 화면으로 넘어가지 않는다 — 받으면 그때 연다
   const ringingIn = phone.call?.state === 'ringing' && phone.call.direction === 'in';
   const activeId = ringingIn ? null : (data?.me?.call?.id ?? null);
@@ -522,7 +533,7 @@ function PcPhone() {
     return (
       <span className={styles.pcPhone}>
         <Badge variant="subtle" color="success">
-          <Laptop size={12} /> PC 전화 켜짐
+          <Laptop size={12} /> PC 전화 켜짐{phone.ringable ? ' · 울림 대기' : ''}
         </Badge>
         <Button
           variant="ghost"

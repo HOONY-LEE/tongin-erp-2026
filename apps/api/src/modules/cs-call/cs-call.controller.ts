@@ -66,6 +66,10 @@ class ScriptDto {
   @IsOptional() @IsString() @MaxLength(40) title?: string;
   @IsOptional() @IsString() @MaxLength(5000) body?: string;
 }
+class AnswerDto {
+  @IsString() @MaxLength(30) phone!: string;
+  @IsOptional() @IsString() @MaxLength(100) katCallSid?: string;
+}
 class ListQuery {
   @IsOptional() @IsIn(['mine', 'all']) scope?: 'mine' | 'all';
   @IsOptional() @IsString() @MaxLength(50) q?: string;
@@ -186,6 +190,27 @@ export class CsCallController {
   @RequirePermissions('LEAD.CREATE')
   phoneToken(@CurrentUser() user: AuthPrincipal) {
     return this.calls.phoneToken(user);
+  }
+
+  /** PC 전화가 울려도 되는지(상담 가능 · 열린 콜 없음) — 브라우저가 등록/해제를 정한다 */
+  @Get('agent/state')
+  @RequirePermissions('LEAD.CREATE')
+  agentState(@CurrentUser() user: AuthPrincipal) {
+    return this.calls.agentState(user);
+  }
+
+  /** 소프트폰(동시 울림) — [받기]를 누른 상담원에게 콜을 만든다 */
+  @Post('answer')
+  @RequirePermissions('LEAD.CREATE')
+  answer(@CurrentUser() user: AuthPrincipal, @Body() dto: AnswerDto) {
+    return this.calls.answer(user, dto);
+  }
+
+  /** 울리는 전화의 고객(신규/기존) */
+  @Get('caller')
+  @RequirePermissions('LEAD.CREATE')
+  caller(@Query('phone') phone: string | undefined) {
+    return this.calls.callerInfo(phone ?? '');
   }
 
   @Post('agent/phone-off')

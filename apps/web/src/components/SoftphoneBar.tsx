@@ -58,22 +58,12 @@ export function SoftphoneBar() {
     }
     answerRef.current?.focus();
     let alive = true;
-    void api<{
-      me: {
-        call: { customerId: string | null; customerName: string | null } | null;
-        recentLeads: unknown[];
-      } | null;
-    }>('/cs-calls/console')
-      .then(
-        (r) =>
-          alive &&
-          setCaller({
-            existing: !!r.me?.call?.customerId,
-            name: r.me?.call?.customerName ?? null,
-            leads: r.me?.recentLeads.length ?? 0,
-          }),
-      )
-      .catch(() => undefined);
+    // 동시 울림 방식이라 받기 전에는 콜이 없다 — 번호로 고객을 찾는다
+    void api<{ existing: boolean; name: string | null; leads: number }>(
+      `/cs-calls/caller?phone=${encodeURIComponent(call?.number ?? '')}`,
+    )
+      .then((r) => alive && setCaller(r))
+      .catch(() => alive && setCaller({ existing: false, name: null, leads: 0 }));
     // 다른 창을 보고 있어도 알아차리게 탭 제목을 깜박인다
     const title = document.title;
     let on = false;
