@@ -4,7 +4,14 @@ import { Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing } from 'luci
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import { answer, hangup, resumePhoneIfEnabled, toggleMute, usePhone } from '../lib/softphone';
+import {
+  answer,
+  hangup,
+  resumeAudio,
+  resumePhoneIfEnabled,
+  toggleMute,
+  usePhone,
+} from '../lib/softphone';
 import styles from './SoftphoneBar.module.css';
 
 const mmss = (ms: number) => {
@@ -139,7 +146,17 @@ export function SoftphoneBar() {
       <span className={styles.text}>
         <b>{who}</b>
         <small>{label}</small>
+        {call.audioIssue === 'no-media' && (
+          <small className={styles.warn}>
+            고객 음성이 PC로 들어오지 않습니다 — 네트워크(방화벽) 문제일 수 있습니다
+          </small>
+        )}
       </span>
+      {call.audioIssue === 'blocked' && (
+        <button type="button" className={styles.answer} onClick={resumeAudio}>
+          소리 켜기
+        </button>
+      )}
       {call.state === 'ringing' ? (
         <>
           <button type="button" className={styles.answer} onClick={answer}>

@@ -277,6 +277,20 @@ export class CsCallService {
     return this.prisma.csCall.findUniqueOrThrow({ where: { id } });
   }
 
+  /** 아웃콜 정리 — 잘못 들어온 콜·시험 콜을 콜백 없이 목록에서 뺀다(취소로 남는다) */
+  async cancelOutcall(id: string, memo?: string) {
+    const r = await this.prisma.csCall.updateMany({
+      where: { id, status: 'OUTCALL' },
+      data: {
+        status: 'CANCELED',
+        doneAt: new Date(),
+        ...(memo?.trim() && { memo: memo.trim().slice(0, 1000) }),
+      },
+    });
+    if (!r.count) throw new ConflictException('이미 콜백했거나 끝난 콜입니다.');
+    return { ok: true };
+  }
+
   /**
    * 콜 끝내기 — result DONE(상담 끝, 접수를 등록했으면 leadId) | RETRY(부재·통화 실패 → 다시 아웃콜로).
    * 끝나면 상담원의 쉰 시각을 지금으로(다음 배분 순서 뒤로).

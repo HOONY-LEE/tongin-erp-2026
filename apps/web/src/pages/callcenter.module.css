@@ -156,7 +156,7 @@
 }
 .queue li {
   display: grid;
-  grid-template-columns: 24px 140px minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   padding: 8px 4px;
@@ -409,4 +409,29 @@
 .kindPick {
   flex: 1;
   min-width: 220px;
+}
+
+/* 오래 열린 콜 경고 */
+.staleWarn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: color-mix(in srgb, #f59e0b 10%, var(--ark-color-bg));
+  font-size: calc(13px * var(--font-scale, 1));
+}
+
+/* 아웃콜 한 줄 — 번호·버튼 / 아래 줄에 정보 */
+.queue li .qInfo {
+  grid-column: 2 / -1;
+  grid-row: 2;
+}
+.qActions {
+  display: inline-flex;
+  gap: 4px;
+}
+.qPhone {
+  white-space: nowrap;
 }

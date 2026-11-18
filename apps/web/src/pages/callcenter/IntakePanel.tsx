@@ -55,6 +55,11 @@ interface PartnerOption {
 
 const hhmm = (iso: string) =>
   new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+/** 배정 후 지난 시간 — '방금' · '12분' · '2시간 19분' */
+const elapsed = (ms: number) => {
+  const m = Math.max(0, Math.floor(ms / 60_000));
+  return m < 1 ? '방금' : m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간 ${m % 60}분`;
+};
 const mmss = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초`;
@@ -119,11 +124,13 @@ export function IntakePanel({
   const partner = partners.find((p) => p.id === v.partnerId) ?? null;
   const exclusive = partner?.type === 'EXCLUSIVE';
   const startedAt = call.assignedAt ?? call.receivedAt;
-  // PC 전화로 통화 중이면 실제 통화 시간, 아니면 배분된 뒤 지난 시간
-  const talking =
-    phone.call?.state === 'active' && phone.call.startedAt
-      ? Date.now() - phone.call.startedAt
-      : Date.now() - Date.parse(startedAt);
+  // PC 전화로 통화 중일 때만 '통화시간'(실제 통화). 아니면 '배정 후' 지난 시간
+  const onPcCall = phone.call?.state === 'active' && !!phone.call.startedAt;
+  const talking = onPcCall
+    ? Date.now() - phone.call!.startedAt!
+    : Date.now() - Date.parse(startedAt);
+  // 30분 넘게 끝나지 않은 콜 — 이 콜이 열려 있으면 새 전화가 배정되지 않는다
+  const stale = !onPcCall && talking > 30 * 60_000;
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -211,6 +218,16 @@ export function IntakePanel({
         )}
       </div>
 
+      {stale && (
+        <div className={styles.staleWarn} role="alert">
+          <b>끝나지 않은 콜이 있어 새 전화가 배정되지 않습니다.</b>
+          <span>
+            {elapsed(talking)} 전에 배정된 콜입니다. 상담이 끝났으면 아래 [접수 등록] 또는 [접수
+            없이 상담 끝]을 눌러 마무리해 주세요.
+          </span>
+        </div>
+      )}
+
       {/* 통화 정보 — 자동 */}
       <dl className={styles.callInfo}>
         <div>
@@ -226,8 +243,8 @@ export function IntakePanel({
           <dd>{hhmm(startedAt)}</dd>
         </div>
         <div>
-          <dt>통화시간</dt>
-          <dd>{mmss(talking)}</dd>
+          <dt>{onPcCall ? '통화시간' : '배정 후'}</dt>
+          <dd>{onPcCall ? mmss(talking) : elapsed(talking)}</dd>
         </div>
       </dl>
       <div className={styles.customer}>
