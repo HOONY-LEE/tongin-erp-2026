@@ -28,7 +28,7 @@ import type { AuthPrincipal } from '@tongin/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
-import { CsCallService } from './cs-call.service';
+import { CsCallService, type RingTarget } from './cs-call.service';
 
 class AvailableDto {
   @IsBoolean() available!: boolean;
@@ -62,9 +62,16 @@ const esc = (s: string) =>
 const say = (text: string) => `<Say language="ko">${esc(text)}</Say>`;
 const vxml = (...verbs: string[]) =>
   `<?xml version="1.0" encoding="UTF-8"?><Response>${verbs.join('')}</Response>`;
-/** 착신 연결 — 20초 안에 안 받으면 action으로 다음 상담원 */
-const dial = (to: string, action: string) =>
-  `<Dial timeout="20" action="${esc(action)}"><Number>${esc(to.replace(/\D/g, ''))}</Number></Dial>`;
+/** 통화 한 건 최대 길이(초) — 요금 안전망 */
+const DIAL_TIME_LIMIT_S = 3600;
+/** 착신 연결 — PC 전화(브라우저 SIP)가 켜져 있으면 그 브라우저를, 아니면 착신 번호를 울린다. 20초 안에 안 받으면 action으로 다음 상담원 */
+const dial = (t: RingTarget, action: string) =>
+  `<Dial timeout="20" timeLimit="${DIAL_TIME_LIMIT_S}" action="${esc(action)}">${
+    t.sipUri
+      ? `<Sip>${esc(t.sipUri)}</Sip>`
+      : `<Number>${esc((t.ringTo ?? '').replace(/\D/g, ''))}</Number>`
+  }</Dial>`;
+const canRing = (t: RingTarget) => !!(t.sipUri || t.ringTo);
 /** action 주소 — 전화 서비스가 부른 주소(터널·Render)와 같은 호스트로 */
 const afterUrl = (req: Request, key: string, callId: string) => {
   const proto = String(req.headers['x-forwarded-proto'] ?? req.protocol).split(',')[0];
@@ -107,6 +114,19 @@ export class CsCallController {
     return this.calls.setRingTo(user, dto.ringTo);
   }
 
+  /** PC 전화 켜기 — 이 브라우저용 단기 SIP 토큰(+ICE). 켜 두는 동안 배분된 전화가 이 브라우저로 울린다 */
+  @Post('agent/phone-token')
+  @RequirePermissions('LEAD.CREATE')
+  phoneToken(@CurrentUser() user: AuthPrincipal) {
+    return this.calls.phoneToken(user);
+  }
+
+  @Post('agent/phone-off')
+  @RequirePermissions('LEAD.CREATE')
+  phoneOff(@CurrentUser() user: AuthPrincipal) {
+    return this.calls.phoneOff(user);
+  }
+
   @Post(':id/callback')
   @RequirePermissions('LEAD.CREATE')
   callback(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
@@ -134,7 +154,7 @@ export class CsCallController {
    * 한국AI통신(ClawOps) 수신 웹훅 — 070 번호로 전화가 오면 From(발신 번호)을 form으로 보낸다.
    * 번호 설정의 웹훅 URL: 상담 콘솔의 '전화 연동'(시스템 관리자)에 나오는 주소 — /api/cs-calls/voice?key=<연동 키>
    * 콜을 배분하고 VoiceML(XML)로 답한다.
-   * - 배분된 상담원에게 착신 번호가 있으면 <Dial>로 그 전화를 바로 울린다(착신 연결).
+   * - 배분된 상담원이 PC 전화를 켜 두었으면 <Dial><Sip>로 그 브라우저를, 착신 번호가 있으면 그 전화를 바로 울린다.
    *   안 받으면 action(/voice/after)으로 다음 상담원 → 없으면 아웃콜 안내.
    * - 착신 번호가 없으면 안내 멘트 후 끊고, 상담원이 콘솔에서 콜백한다.
    */
@@ -156,10 +176,10 @@ export class CsCallController {
         body?.ForwardedFrom || body?.To || '대표번호',
       );
       if (call.status !== 'ASSIGNED') return vxml(say(MSG_BUSY), HANGUP);
-      if (call.ringTo)
+      if (canRing(call))
         return vxml(
           say('통인익스프레스입니다. 상담원에게 연결해 드리겠습니다.'),
-          dial(call.ringTo, afterUrl(req, key!, call.id)),
+          dial(call, afterUrl(req, key!, call.id)),
         );
       return vxml(say(MSG_CALLBACK), HANGUP);
     } catch {
@@ -182,10 +202,10 @@ export class CsCallController {
     if (body?.DialCallStatus === 'completed') return vxml(HANGUP);
     try {
       const next = await this.calls.ringFailed(callId);
-      if (next.status === 'ASSIGNED' && next.ringTo)
+      if (next.status === 'ASSIGNED' && canRing(next))
         return vxml(
           say('다른 상담원에게 연결해 드리겠습니다.'),
-          dial(next.ringTo, afterUrl(req, key!, callId)),
+          dial(next, afterUrl(req, key!, callId)),
         );
       if (next.status === 'ASSIGNED') return vxml(say(MSG_CALLBACK), HANGUP);
       return vxml(say(MSG_BUSY), HANGUP);

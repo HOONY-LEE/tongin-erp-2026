@@ -14,6 +14,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       # DATABASE_URL, ADMIN_PASSWORD 는 여기에 두지 않는다.
+      # PC 전화(한국AI통신) KAT_ACCOUNT_ID · KAT_SIP_CREDENTIAL_ID · KAT_API_KEY 도 대시보드에서 직접 넣는다(.env.example 참고).
       # sync:false 로 선언하면 Blueprint 생성 화면에서 입력을 받는데, 그 값이
       # 저장되지 않는 경우가 있어 배포가 빈 값으로 떨어졌다.
       # 두 값은 대시보드 Environment 에서 직접 추가한다(가이드 참고).
