@@ -29,6 +29,7 @@ import {
   Max,
   MaxLength,
   Min,
+  Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { AuthPrincipal } from '@tongin/shared';
@@ -77,6 +78,9 @@ class ListQuery {
   @IsOptional() @IsString() @MaxLength(50) q?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000) page?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(500) limit?: number;
+  /** 통화 날짜 범위(YYYY-MM-DD, 한국 시간) */
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) from?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) to?: string;
 }
 class InboundDto {
   @IsString() @MaxLength(30) phone!: string;
@@ -167,6 +171,8 @@ export class CsCallController {
       q: q.q,
       page: q.page,
       limit: q.limit,
+      from: q.from,
+      to: q.to,
     });
   }
 
@@ -242,6 +248,13 @@ export class CsCallController {
   }
 
   /** 아웃콜 정리 — 콜백하지 않고 목록에서 뺀다 */
+  /** 끝난 상담에서 다시 걸기 — 새 콜(콜백)을 만든다 */
+  @Post(':id/recall')
+  @RequirePermissions('LEAD.CREATE')
+  recall(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.calls.recall(user, id);
+  }
+
   @Post(':id/cancel')
   @RequirePermissions('LEAD.CREATE')
   cancel(@Param('id', ParseUUIDPipe) id: string) {

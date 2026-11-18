@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { List, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
+import { DateFilter, type DateRange } from './DateFilter';
 import { api, ApiError } from '../../lib/api';
 import { DataTable, SegmentedControl, useToast, type Column, type Row } from '../../components/ui';
 import { Phone as PhoneCell } from 'softium-ui/table';
@@ -65,12 +66,16 @@ export function CallList({
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<DateRange>({ from: '', to: '' });
 
   const load = useCallback(
-    async (sc: 'mine' | 'all') => {
+    async (sc: 'mine' | 'all', rg: DateRange) => {
       setLoading(true);
       try {
-        const r = await api<{ total: number; rows: CallRow[] }>(`/cs-calls?scope=${sc}&limit=500`);
+        const qs = new URLSearchParams({ scope: sc, limit: '500' });
+        if (rg.from) qs.set('from', rg.from);
+        if (rg.to) qs.set('to', rg.to);
+        const r = await api<{ total: number; rows: CallRow[] }>(`/cs-calls?${qs}`);
         setRows(r.rows);
       } catch (e) {
         toast({
@@ -84,8 +89,8 @@ export function CallList({
     [toast],
   );
   useEffect(() => {
-    void load(scope);
-  }, [scope, refreshKey, load]);
+    void load(scope, range);
+  }, [scope, range, refreshKey, load]);
 
   const columns: Column[] = [
     { title: '콜ID', render: (r) => shortId(r.id as string), width: 78 },
@@ -138,9 +143,6 @@ export function CallList({
 
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
-      <h3 className={styles.cardTitle}>
-        <List size={15} /> 상담 콜 목록
-      </h3>
       {stats}
       <DataTable
         tabs={
@@ -153,7 +155,9 @@ export function CallList({
             ]}
           />
         }
+        filters={<DateFilter value={range} onChange={setRange} />}
         fit
+        pageSize={20}
         columns={columns}
         rows={rows as unknown as Row[]}
         loading={loading}

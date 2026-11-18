@@ -7,23 +7,16 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   RotateCcw,
-  UserRound,
 } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
-import {
-  LEAD_STATUS_LABEL,
-  PARTNER_TYPE_LABEL,
-  type LeadStatus,
-  type PartnerType,
-} from '@tongin/shared';
+import { PARTNER_TYPE_LABEL, type PartnerType } from '@tongin/shared';
 import { useAuth } from '../../auth/AuthContext';
 import { api, ApiError, cachedApi } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import { SERVICE_LINES } from '../../lib/leadCodes';
 import { useOrgScope } from '../../lib/useOrgScope';
-import { dial, hangup, usePhone } from '../../lib/softphone';
+import { dial, enablePhone, getPhoneState, hangup, usePhone } from '../../lib/softphone';
 import {
-  Badge,
   Button,
   ConfirmModal,
   FormModal,
@@ -37,6 +30,7 @@ import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
 import { Recording } from './Recording';
+import { CallerHistory } from './CallerHistory';
 
 export interface IntakeCall {
   id: string;
@@ -124,7 +118,6 @@ const mmss = (ms: number) => {
  */
 export function IntakePanel({
   call,
-  recentLeads,
   pending = false,
   onDone,
   onBack,
@@ -132,7 +125,8 @@ export function IntakePanel({
   readOnly,
 }: {
   call: IntakeCall;
-  recentLeads: RecentLead[];
+  /** (예전) 이전 접수 — 지금은 아래 고객 이력이 대신한다 */
+  recentLeads?: RecentLead[];
   /** 서버가 콜을 만들기 전(받기 직후 잠깐) — 입력은 되고 접수 등록·상담 종료만 잠시 막는다 */
   pending?: boolean;
   onDone: () => Promise<void> | void;
@@ -152,6 +146,27 @@ export function IntakePanel({
   const [hqId, setHqId] = useState('');
   const [busy, setBusy] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
+  /** 끝난 상담에서 다시 걸기 — 확인 창 */
+  const [recallOpen, setRecallOpen] = useState(false);
+  const recall = async () => {
+    setBusy(true);
+    try {
+      // PC 전화가 꺼져 있으면 먼저 켠다(마이크 허용)
+      if (getPhoneState().status !== 'ready') {
+        await enablePhone();
+        if (getPhoneState().status === 'error') return;
+      }
+      const next = await api<{ id: string }>(`/cs-calls/${call.id}/recall`, { method: 'POST' });
+      dial(call.phone, next.id);
+      setRecallOpen(false);
+      // 콘솔이 새 콜을 읽으면 그 상담 화면으로 넘어간다
+      window.dispatchEvent(new CustomEvent('tongin:cs-call-changed'));
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '전화를 걸지 못했습니다' });
+    } finally {
+      setBusy(false);
+    }
+  };
   const [, tick] = useState(0);
 
   const initial = useMemo(
@@ -346,21 +361,21 @@ export function IntakePanel({
           <Headphones size={15} />{' '}
           {call.id ? `콜 ${call.id.slice(0, 8).toUpperCase()}` : '콜 만드는 중…'}
         </h3>
-        <Badge variant="subtle" color={call.status === 'CALLBACK' ? 'warning' : 'success'}>
-          {call.status === 'CALLBACK' ? (
-            <>
-              <PhoneOutgoing size={12} /> 콜백
-            </>
-          ) : (
-            <>
-              <PhoneIncoming size={12} /> 받은 콜
-            </>
-          )}
-        </Badge>
-        <span className={styles.muted}>{call.channel ?? '대표번호'}</span>
+        <span
+          className={`${styles.kindPill} ${call.status === 'CALLBACK' ? styles.kindOut : styles.kindIn}`}
+        >
+          {call.status === 'CALLBACK' ? <PhoneOutgoing size={13} /> : <PhoneIncoming size={13} />}
+          {call.status === 'CALLBACK' ? '콜백' : '받은 콜'}
+        </span>
+        <span className={styles.channel}>{call.channel ?? '대표번호'}</span>
         {readOnly ? (
           <span className={styles.headActions}>
-            <span className={styles.muted}>{CALL_STATUS[call.status] ?? call.status}</span>
+            <span className={styles.statePill}>{CALL_STATUS[call.status] ?? call.status}</span>
+            {can('LEAD.CREATE') && !phone.call && (
+              <Button variant="outline" size="sm" onClick={() => setRecallOpen(true)}>
+                <Phone size={14} /> 전화하기
+              </Button>
+            )}
             {call.leadId ? (
               <button
                 type="button"
@@ -468,26 +483,6 @@ export function IntakePanel({
         </div>
       </dl>
       {readOnly && call.id && <Recording callId={call.id} available={readOnly.hasRecording} />}
-      {call.customerId && (
-        <div className={styles.customer}>
-          <UserRound size={14} />
-          <span>
-            기존 고객 <b>{call.customerName}</b> — 이전 접수 {recentLeads.length}건
-          </span>
-          {recentLeads.slice(0, 3).map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              className={styles.leadChip}
-              onClick={() => navigate(`/leads/${l.id}`)}
-              title={`${l.orgUnit?.name ?? ''} · 이사 ${l.moveDate ?? '미정'}`}
-            >
-              {l.leadNo} · {LEAD_STATUS_LABEL[l.status as LeadStatus] ?? l.status}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* 접수 입력 — 읽기 모드면 통째로 잠근다 */}
       <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
         <label className={styles.field}>
@@ -600,6 +595,11 @@ export function IntakePanel({
         </label>
       </fieldset>
 
+      {/* 이 고객의 이력 — 이전 통화·접수·견적·계약 */}
+      {call.customerId && call.id && (
+        <CallerHistory customerId={call.customerId} callId={call.id} />
+      )}
+
       <FormModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -609,6 +609,24 @@ export function IntakePanel({
         initialValues={confirmOpen ? formInitial() : undefined}
         onSubmit={submitLead}
       />
+      <ConfirmModal
+        open={recallOpen}
+        title="고객에게 전화하기"
+        confirmLabel={phone.status === 'ready' ? '전화 걸기' : 'PC 전화 켜고 걸기'}
+        busy={busy}
+        onClose={() => setRecallOpen(false)}
+        onConfirm={() => void recall()}
+      >
+        <p style={{ margin: 0, lineHeight: 1.6 }}>
+          <b>{formatPhone(call.phone)}</b>
+          {call.customerName ? ` (${call.customerName})` : ''}에게 전화할까요?
+          <br />
+          <span className={styles.muted}>
+            새 상담(콜백)으로 열리고, 이번 통화는 새 콜에 기록됩니다.
+            {phone.status !== 'ready' && ' PC 전화가 꺼져 있어 먼저 켭니다(마이크 허용).'}
+          </span>
+        </p>
+      </ConfirmModal>
       <ConfirmModal
         open={endOpen}
         title="상담 종료"
