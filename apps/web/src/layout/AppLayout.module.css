@@ -529,3 +529,9 @@
   background: var(--ark-color-bg-muted);
   color: var(--ark-color-text-primary);
 }
+/* 접힌 사이드바 — akron은 머리 내용을 숨기는데, 펴기 '>' 버튼은 보이게 */
+.collapsed .sidebarWrap [class*='_headerContent_'] {
+  display: flex !important;
+  justify-content: center;
+  width: 100%;
+}

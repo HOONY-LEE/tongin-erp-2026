@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import {
   monthGrid,
   shiftMonth,
@@ -13,45 +13,45 @@ import styles from '../callcenter.module.css';
 const BUSY = 5;
 
 /**
- * 상담 콘솔 오른쪽 위 — 아주 작은 이사일 마감 달력.
- * 마감한 날은 빨간 점(전체 마감은 칸 전체), 이사가 많은 날은 진하게. [자세히]는 마감 캘린더를 새 창으로.
+ * 상담 콘솔 오른쪽 위 — 아주 작은 이사일 마감 달력(늘 6주라 높이가 바뀌지 않는다).
+ * 지점 마감은 빨간 점, 전체 마감은 빨간 칸, 이사가 많은 날은 진하게. 날짜에 마우스를 올리면 자세히.
+ * 오른쪽 위 아이콘은 마감 캘린더를 새 창으로.
  */
 export function MiniCalendar() {
   const [ym, setYm] = useState(thisMonth);
   const { data } = useClosures(ym);
   const t = today();
-  const cells = monthGrid(ym);
-  // 마지막 주가 모두 다음 달이면 줄인다(5주 달력)
-  const shown = cells.slice(35).every((c) => !c.inMonth) ? cells.slice(0, 35) : cells;
+  const [y, m] = ym.split('-').map(Number);
 
   return (
-    <section className={`${styles.card} ${styles.miniCal}`}>
-      <h3 className={styles.cardTitle}>
-        <CalendarDays size={15} /> 이사일 마감
-        <span className={styles.miniNav}>
-          <button type="button" aria-label="지난달" onClick={() => setYm(shiftMonth(ym, -1))}>
-            <ChevronLeft size={14} />
-          </button>
-          <b>{Number(ym.slice(5))}월</b>
-          <button type="button" aria-label="다음 달" onClick={() => setYm(shiftMonth(ym, 1))}>
-            <ChevronRight size={14} />
-          </button>
-        </span>
+    <section className={`${styles.card} ${styles.paneCard} ${styles.miniCal}`}>
+      <div className={`${styles.paneHead} ${styles.miniHead}`}>
+        <b>
+          {y}년 {m}월
+        </b>
+        <button type="button" aria-label="지난달" onClick={() => setYm(shiftMonth(ym, -1))}>
+          <ChevronLeft size={15} />
+        </button>
+        <button type="button" aria-label="다음 달" onClick={() => setYm(shiftMonth(ym, 1))}>
+          <ChevronRight size={15} />
+        </button>
         <button
           type="button"
           className={styles.miniMore}
+          aria-label="이사일 마감 캘린더 새 창으로 열기"
+          title="이사일 마감 캘린더(새 창)"
           onClick={() => window.open('/move-closures', '_blank', 'noopener')}
         >
-          자세히 <ExternalLink size={12} />
+          <ExternalLink size={14} />
         </button>
-      </h3>
+      </div>
       <div className={styles.miniGrid}>
         {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
           <span key={d} className={`${styles.miniDow} ${i === 0 ? styles.sun : ''}`}>
             {d}
           </span>
         ))}
-        {shown.map((c) => {
+        {monthGrid(ym).map((c) => {
           const closed = data?.closures.filter((x) => x.date === c.date) ?? [];
           const all = closed.some((x) => !x.orgUnitId);
           const leads = data?.counts.find((x) => x.date === c.date)?.leads ?? 0;
@@ -79,17 +79,6 @@ export function MiniCalendar() {
             </span>
           );
         })}
-      </div>
-      <div className={styles.miniLegend}>
-        <span>
-          <i className={styles.miniDot} /> 지점 마감
-        </span>
-        <span>
-          <i className={styles.miniAll} /> 전체 마감
-        </span>
-        <span>
-          <i className={styles.miniBusyKey} /> 이사 {BUSY}건 이상
-        </span>
       </div>
     </section>
   );
