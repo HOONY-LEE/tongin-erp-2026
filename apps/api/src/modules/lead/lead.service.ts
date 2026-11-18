@@ -158,6 +158,15 @@ export class LeadService {
       const existing = await this.findCustomerByPhone(dto.customerPhone, ids);
       if (existing) customerId = existing.id;
     }
+    // 기존 고객(고른 고객·같은 번호 고객)인데 접수 화면에서 이름을 고쳐 적었으면 고객 이름도 바꾼다
+    // (예: 예전에 '테스트'로 저장된 번호 → 이번에 '홍길동'으로 접수). 견적서·통화 기록이 고객 이름을 따라간다
+    const typedName = dto.customerName?.trim();
+    if (customerId && typedName) {
+      await this.prisma.customer.updateMany({
+        where: { id: customerId, NOT: { name: typedName } },
+        data: { name: typedName },
+      });
+    }
     if (!customerId && dto.customerName?.trim()) {
       const customer = await this.prisma.customer.create({
         data: {
