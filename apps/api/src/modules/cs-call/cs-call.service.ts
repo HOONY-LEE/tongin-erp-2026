@@ -217,19 +217,60 @@ export class CsCallService {
     if (d.length < 8 || d.length > 12)
       throw new BadRequestException('전화번호가 올바르지 않습니다.');
     const customer = await this.customerByPhone(d);
-    const call = await this.prisma.csCall.create({
-      data: {
-        phone: d,
-        status: 'ASSIGNED',
-        agentEmpId: me,
-        assignedAt: new Date(),
-        channel: '대표번호',
-        customerId: customer?.id ?? null,
-        katCallSid: input.katCallSid?.slice(0, 100) || null,
+    // 콜 만들기 · 상담 가능 해제 · 이전 접수를 한 번에(왕복을 줄여 상담 화면이 빨리 뜨게)
+    const [call, , recentLeads] = await Promise.all([
+      this.prisma.csCall.create({
+        data: {
+          phone: d,
+          status: 'ASSIGNED',
+          agentEmpId: me,
+          assignedAt: new Date(),
+          channel: '대표번호',
+          customerId: customer?.id ?? null,
+          katCallSid: input.katCallSid?.slice(0, 100) || null,
+        },
+      }),
+      this.holdAgent(this.prisma, me),
+      customer
+        ? this.prisma.lead.findMany({
+            where: { customerId: customer.id },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: {
+              id: true,
+              leadNo: true,
+              status: true,
+              createdAt: true,
+              moveDate: true,
+              orgUnit: { select: { name: true } },
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+    // 상담 콘솔의 내 콜과 같은 모양으로 돌려준다 — 화면이 콘솔을 다시 읽지 않고 바로 연다
+    return {
+      call: {
+        id: call.id,
+        phone: call.phone,
+        status: call.status,
+        channel: call.channel,
+        attempts: call.attempts,
+        memo: call.memo,
+        request: call.request,
+        leadId: null,
+        leadNo: null,
+        customerId: call.customerId,
+        customerName: customer?.name ?? null,
+        agentEmpId: call.agentEmpId,
+        receivedAt: call.receivedAt.toISOString(),
+        assignedAt: call.assignedAt?.toISOString() ?? null,
       },
-    });
-    await this.holdAgent(this.prisma, me);
-    return call;
+      recentLeads: recentLeads.map((l) => ({
+        ...l,
+        createdAt: l.createdAt.toISOString(),
+        moveDate: l.moveDate?.toISOString().slice(0, 10) ?? null,
+      })),
+    };
   }
 
   /** 울리는 전화의 고객 — 수신 창에 신규/기존 고객 표시용 */

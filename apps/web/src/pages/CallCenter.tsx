@@ -106,12 +106,51 @@ export default function CallCenter() {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
     }
   }, [toast]);
-  // PC로 전화를 받으면 바로 다시 읽어 상담 화면을 연다
+  // PC로 전화를 받으면 — 서버를 기다리지 않고 상담 화면을 바로 연다(pending),
+  // 서버가 만든 콜이 오면 콘솔을 다시 읽지 않고 그대로 끼운다
+  const [pending, setPending] = useState<{
+    phone: string;
+    name?: string | null;
+    existing?: boolean;
+    at: string;
+  } | null>(null);
   useEffect(() => {
-    const on = () => void load();
-    window.addEventListener('tongin:cs-call-changed', on);
-    return () => window.removeEventListener('tongin:cs-call-changed', on);
+    const onAnswering = (e: Event) => {
+      const d = (e as CustomEvent<{ phone: string; name?: string | null; existing?: boolean }>)
+        .detail;
+      if (d?.phone) setPending({ ...d, at: new Date().toISOString() });
+    };
+    const onChanged = (e: Event) => {
+      const d = (
+        e as CustomEvent<
+          { call: CallView; recentLeads: NonNullable<Console['me']>['recentLeads'] } | undefined
+        >
+      ).detail;
+      setPending(null);
+      if (d?.call)
+        setData((cur) =>
+          cur?.me
+            ? {
+                ...cur,
+                me: { ...cur.me, available: false, call: d.call, recentLeads: d.recentLeads },
+              }
+            : cur,
+        );
+      else void load();
+    };
+    window.addEventListener('tongin:cs-call-answering', onAnswering);
+    window.addEventListener('tongin:cs-call-changed', onChanged);
+    return () => {
+      window.removeEventListener('tongin:cs-call-answering', onAnswering);
+      window.removeEventListener('tongin:cs-call-changed', onChanged);
+    };
   }, [load]);
+  // 서버가 끝내 답하지 않으면(오류) 15초 뒤 임시 화면을 접는다
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(() => setPending(null), 15_000);
+    return () => clearTimeout(t);
+  }, [pending]);
   // 새 콜·배분이 바로 보이게 몇 초마다 다시 읽는다(창이 안 보일 때는 쉰다)
   useEffect(() => {
     void load();
@@ -202,7 +241,25 @@ export default function CallCenter() {
       </ListPage>
     );
   const me = data.me;
-  const mine = ringingIn ? null : (me?.call ?? null);
+  // 서버 콜이 오기 전 잠깐은 임시 콜로 상담 화면을 연다(접수 등록·상담 종료는 잠시 막힘)
+  const pendingCall: CallView | null =
+    pending && !me?.call
+      ? {
+          id: '',
+          phone: pending.phone,
+          status: 'ASSIGNED',
+          channel: '대표번호',
+          attempts: 0,
+          memo: null,
+          request: null,
+          customerId: null,
+          customerName: pending.name ?? null,
+          agentEmpId: me?.employeeId ?? null,
+          receivedAt: pending.at,
+          assignedAt: pending.at,
+        }
+      : null;
+  const mine = ringingIn ? null : (me?.call ?? pendingCall);
 
   return (
     <ListPage
@@ -251,7 +308,12 @@ export default function CallCenter() {
         {/* 왼쪽 — 통화 중이면 접수 패널, 아니면 상담 콜 목록 */}
         {me && mine ? (
           <section className={`${styles.card} ${styles.intakeCard}`}>
-            <IntakePanel call={mine} recentLeads={me.recentLeads} onDone={afterIntake} />
+            <IntakePanel
+              call={mine}
+              recentLeads={me.call ? me.recentLeads : []}
+              pending={!mine.id}
+              onDone={afterIntake}
+            />
           </section>
         ) : (
           <div className={styles.mainCol}>
