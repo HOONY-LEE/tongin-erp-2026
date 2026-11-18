@@ -186,3 +186,6 @@
   margin-top: 8px;
   color: var(--ark-color-text-secondary);
 }
+.warn {
+  color: #dc2626 !important;
+}

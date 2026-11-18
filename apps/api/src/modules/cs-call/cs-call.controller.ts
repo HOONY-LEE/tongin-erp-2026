@@ -168,6 +168,13 @@ export class CsCallController {
     return this.calls.finish(user, id, dto);
   }
 
+  /** 아웃콜 정리 — 콜백하지 않고 목록에서 뺀다 */
+  @Post(':id/cancel')
+  @RequirePermissions('LEAD.CREATE')
+  cancel(@Param('id', ParseUUIDPipe) id: string) {
+    return this.calls.cancelOutcall(id, '아웃콜 정리');
+  }
+
   @Patch(':id')
   @RequirePermissions('LEAD.CREATE')
   update(

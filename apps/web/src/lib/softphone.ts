@@ -22,6 +22,8 @@ export interface PhoneCall {
   state: 'ringing' | 'connecting' | 'active';
   startedAt: number | null;
   muted: boolean;
+  /** 고객 소리 문제 — null이면 정상. 'blocked'(브라우저가 재생을 막음) | 'no-media'(고객 음성이 들어오지 않음) */
+  audioIssue: 'blocked' | 'no-media' | null;
 }
 export interface PhoneState {
   status: PhoneStatus;
@@ -254,25 +256,40 @@ function attachSession(s: RTCSession, direction: 'in' | 'out', number: string) {
       state: direction === 'in' ? 'ringing' : 'connecting',
       startedAt: null,
       muted: false,
+      audioIssue: null,
     },
   });
   if (direction === 'in') startRingtone();
-  const playRemote = () => {
+  /** 고객 음성 재생 — 트랙이 오면 바로 붙이고 명시적으로 재생한다(브라우저 자동재생 정책 대비) */
+  const playRemote = (ev?: RTCTrackEvent) => {
     const pc = s.connection;
     if (!pc) return;
-    const tracks = pc
-      .getReceivers()
-      .map((r) => r.track)
-      .filter((t): t is MediaStreamTrack => !!t);
-    remoteAudio().srcObject = new MediaStream(tracks);
+    const el = remoteAudio();
+    const stream =
+      ev?.streams?.[0] ??
+      new MediaStream(
+        pc
+          .getReceivers()
+          .map((r) => r.track)
+          .filter((t): t is MediaStreamTrack => !!t && t.kind === 'audio'),
+      );
+    if (el.srcObject !== stream) el.srcObject = stream;
+    el.muted = false;
+    el.volume = 1;
+    el.play().then(
+      () => state.call?.audioIssue === 'blocked' && setCall({ audioIssue: null }),
+      () => setCall({ audioIssue: 'blocked' }),
+    );
   };
   s.on('peerconnection', (e: { peerconnection: RTCPeerConnection }) => {
-    e.peerconnection.addEventListener('track', playRemote);
+    e.peerconnection.addEventListener('track', (ev) => playRemote(ev));
   });
   s.on('confirmed', () => {
     stopRingtone();
     playRemote();
     setCall({ state: 'active', startedAt: Date.now() });
+    // 4초 뒤 고객 음성이 실제로 들어오는지 확인 — 안 들어오면 화면에 알린다(네트워크·방화벽 문제 진단용)
+    setTimeout(() => void checkInbound(s), 4000);
   });
   const end = () => {
     stopRingtone();
@@ -286,6 +303,35 @@ function attachSession(s: RTCSession, direction: 'in' | 'out', number: string) {
   };
   s.on('ended', end);
   s.on('failed', end);
+}
+
+/** 받은 음성 바이트 — 0이면 고객 소리가 PC까지 오지 않는 것(네트워크), 오는데 안 들리면 재생 문제 */
+async function checkInbound(s: RTCSession) {
+  if (session !== s || !s.connection) return;
+  let bytes = 0;
+  try {
+    const stats = await s.connection.getStats();
+    stats.forEach(
+      (r: { type?: string; kind?: string; mediaType?: string; bytesReceived?: number }) => {
+        if (r.type === 'inbound-rtp' && (r.kind ?? r.mediaType) === 'audio')
+          bytes += r.bytesReceived ?? 0;
+      },
+    );
+  } catch {
+    return;
+  }
+  console.info('[PC 전화] 받은 음성 바이트', bytes, '재생 중', audioEl ? !audioEl.paused : false);
+  if (bytes === 0) setCall({ audioIssue: 'no-media' });
+  else if (audioEl?.paused) setCall({ audioIssue: 'blocked' });
+}
+
+/** '소리 다시 연결' — 사용자가 누르면(클릭) 브라우저가 재생을 허락한다 */
+export function resumeAudio() {
+  if (!audioEl) return;
+  void audioEl.play().then(
+    () => setCall({ audioIssue: null }),
+    () => setCall({ audioIssue: 'blocked' }),
+  );
 }
 
 function scheduleRefresh(expiresAt: string) {
@@ -403,6 +449,10 @@ export function resumePhoneIfEnabled() {
 export function answer() {
   if (!session || state.call?.state !== 'ringing') return;
   stopRingtone();
+  // 클릭한 이 순간에 재생 장치를 열어 둔다 — 나중에 고객 음성이 와도 브라우저가 막지 않게
+  void remoteAudio()
+    .play()
+    .catch(() => undefined);
   setCall({ state: 'connecting' });
   session.answer({
     mediaConstraints: { audio: micConstraint(), video: false },
@@ -425,6 +475,9 @@ export function toggleMute() {
 export function dial(number: string, callId?: string) {
   const to = number.replace(/\D/g, '');
   if (!ua || state.status !== 'ready' || session || !to) return false;
+  void remoteAudio()
+    .play()
+    .catch(() => undefined);
   const s = ua.call(`sip:${to}@${realm}`, {
     mediaConstraints: { audio: micConstraint(), video: false },
     pcConfig: { iceServers },

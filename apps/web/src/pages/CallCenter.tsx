@@ -254,15 +254,36 @@ export default function CallCenter() {
                     {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
                     {c.memo && ` · ${c.memo}`}
                   </span>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={busy || !me || !!mine}
-                    title={mine ? '지금 콜을 먼저 끝내 주세요' : undefined}
-                    onClick={() => void callback(c)}
-                  >
-                    콜백
-                  </Button>
+                  <span className={styles.qActions}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={busy || !me || !!mine}
+                      title={mine ? '지금 콜을 먼저 끝내 주세요' : undefined}
+                      onClick={() => void callback(c)}
+                    >
+                      콜백
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `${formatPhone(c.phone)} 아웃콜을 콜백하지 않고 정리할까요?`,
+                          )
+                        )
+                          void act(
+                            () => api(`/cs-calls/${c.id}/cancel`, { method: 'POST' }),
+                            '아웃콜을 정리했습니다',
+                          );
+                      }}
+                    >
+                      정리
+                    </Button>
+                  </span>
                 </li>
               ))}
             </ol>
