@@ -174,6 +174,7 @@ function Shell() {
         <Route path="/partner-mgmt" element={page(<PartnerMgmt />)} />
         <Route path="/alliances" element={page(<Alliances />)} />
         <Route path="/callcenter" element={page(<CallCenter />)} />
+        <Route path="/callcenter/:callId" element={page(<CallCenter />)} />
         <Route path="/org-mgmt" element={page(<OrgMgmt />)} />
         <Route path="/payments-confirm" element={page(<PaymentConfirm />)} />
         <Route path="/branches" element={page(<Branches />)} />

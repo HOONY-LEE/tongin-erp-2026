@@ -44,7 +44,11 @@ export function SoftphoneBar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   // 울리는 전화의 고객 — 서버가 이미 이 상담원에게 배분해 둔 콜에서 이름을 찾는다
-  const [caller, setCaller] = useState<{ name: string | null; leads: number } | null>(null);
+  const [caller, setCaller] = useState<{
+    existing: boolean;
+    name: string | null;
+    leads: number;
+  } | null>(null);
   const answerRef = useRef<HTMLButtonElement>(null);
   const ringing = call?.state === 'ringing' && call.direction === 'in';
   useEffect(() => {
@@ -55,12 +59,16 @@ export function SoftphoneBar() {
     answerRef.current?.focus();
     let alive = true;
     void api<{
-      me: { call: { customerName: string | null } | null; recentLeads: unknown[] } | null;
+      me: {
+        call: { customerId: string | null; customerName: string | null } | null;
+        recentLeads: unknown[];
+      } | null;
     }>('/cs-calls/console')
       .then(
         (r) =>
           alive &&
           setCaller({
+            existing: !!r.me?.call?.customerId,
             name: r.me?.call?.customerName ?? null,
             leads: r.me?.recentLeads.length ?? 0,
           }),
@@ -83,7 +91,7 @@ export function SoftphoneBar() {
   /** 받기 → 통화 연결 + 상담 콘솔(접수 패널)로 */
   const take = () => {
     answer();
-    if (pathname !== '/callcenter') navigate('/callcenter');
+    if (!pathname.startsWith('/callcenter')) navigate('/callcenter');
   };
 
   if (!call) return null;
@@ -106,13 +114,20 @@ export function SoftphoneBar() {
           </span>
           <h2 id="incoming-title">전화가 왔습니다</h2>
           <b className={styles.inNumber}>{who}</b>
-          <p className={styles.inWho}>
-            {caller === null
-              ? '고객 정보를 찾는 중…'
-              : caller.name
-                ? `기존 고객 ${caller.name}${caller.leads ? ` · 이전 접수 ${caller.leads}건` : ''}`
-                : '처음 전화한 번호'}
-          </p>
+          {caller === null ? (
+            <p className={styles.inWho}>고객 정보를 찾는 중…</p>
+          ) : caller.existing ? (
+            <p className={styles.inWho}>
+              <span className={`${styles.custTag} ${styles.custOld}`}>기존 고객</span>
+              <b>{caller.name}</b>
+              {caller.leads ? ` · 이전 접수 ${caller.leads}건` : ''}
+            </p>
+          ) : (
+            <p className={styles.inWho}>
+              <span className={`${styles.custTag} ${styles.custNew}`}>신규 고객</span>
+              처음 전화한 번호입니다
+            </p>
+          )}
           <div className={styles.inActions}>
             <button type="button" className={styles.hangBig} onClick={hangup}>
               <PhoneOff size={18} /> 거절

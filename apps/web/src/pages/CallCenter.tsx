@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Headphones, Laptop, PhoneCall, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Laptop, PhoneCall, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -82,6 +83,8 @@ const STATE: Record<Console['agents'][number]['state'], { label: string; cls: st
  */
 export default function CallCenter() {
   const toast = useToast();
+  const navigate = useNavigate();
+  const { callId: routeCallId } = useParams<{ callId?: string }>();
   const { can, user } = useAuth();
   const isSysAdmin = !!user?.permissions.includes('*');
   const [data, setData] = useState<Console | null>(null);
@@ -147,6 +150,17 @@ export default function CallCenter() {
     setListKey((k) => k + 1);
   };
 
+  // 상담 화면 주소 — 상담 중이면 /callcenter/<콜 id>, 끝나면 /callcenter (새로고침해도 같은 상담)
+  // PC가 울리는 동안(아직 [받기] 전)은 상담 화면으로 넘어가지 않는다 — 받으면 그때 연다
+  const ringingIn = phone.call?.state === 'ringing' && phone.call.direction === 'in';
+  const activeId = ringingIn ? null : (data?.me?.call?.id ?? null);
+  useEffect(() => {
+    if (!data) return;
+    if (activeId && routeCallId !== activeId)
+      navigate(`/callcenter/${activeId}`, { replace: true });
+    else if (!activeId && routeCallId) navigate('/callcenter', { replace: true });
+  }, [data, activeId, routeCallId, navigate]);
+
   if (!data)
     return (
       <ListPage title="상담 콘솔">
@@ -154,10 +168,11 @@ export default function CallCenter() {
       </ListPage>
     );
   const me = data.me;
-  const mine = me?.call ?? null;
+  const mine = ringingIn ? null : (me?.call ?? null);
 
   return (
     <ListPage
+      fit
       title="상담 콘솔"
       subtitle="대표번호로 들어온 콜은 '상담 가능'인 상담원에게 자동으로 배분되고, 모두 통화 중이면 아웃콜로 쌓입니다. 전화를 받으면 '내 콜'에서 통화하면서 바로 접수하세요."
       onRefresh={load}
@@ -193,9 +208,6 @@ export default function CallCenter() {
         {/* 왼쪽 — 통화 중이면 접수 패널, 아니면 상담 콜 목록 */}
         {me && mine ? (
           <section className={`${styles.card} ${styles.intakeCard}`}>
-            <h3 className={styles.cardTitle}>
-              <Headphones size={15} /> 내 콜
-            </h3>
             <IntakePanel call={mine} recentLeads={me.recentLeads} onDone={afterIntake} />
           </section>
         ) : (
@@ -279,112 +291,115 @@ export default function CallCenter() {
         </div>
       </div>
 
-      {/* 통화 중에는 콜 목록을 접수 패널 아래로 */}
-      {me && mine && <CallList refreshKey={listKey} />}
-
-      {/* 아래 — 오늘 숫자와 상담원 현황 */}
-      <div className={styles.stats}>
-        <div>
-          <span>오늘 들어온 콜</span>
-          <b>{data.today.received}</b>
-        </div>
-        <div>
-          <span>상담 중</span>
-          <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
-        </div>
-        <div className={data.outcalls.length ? styles.warnStat : ''}>
-          <span>아웃콜 대기</span>
-          <b>{data.outcalls.length}</b>
-        </div>
-        <div>
-          <span>상담 가능 상담원</span>
-          <b>
-            {data.agents.filter((a) => a.state === 'READY').length} / {data.agents.length}
-          </b>
-        </div>
-        <div>
-          <span>오늘 끝낸 콜</span>
-          <b>{data.today.done}</b>
-        </div>
-      </div>
-
-      <div className={styles.bottomGrid}>
-        {/* 상담원 현황 */}
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>
-            <UserRound size={15} /> 상담원
-          </h3>
-          <ul className={styles.agents}>
-            {data.agents.map((a) => (
-              <li key={a.employeeId}>
-                <i className={styles[STATE[a.state].cls]} />
-                <span className={styles.aName}>
-                  {a.name}
-                  {a.position ? ` ${a.position}` : ''}
-                  {a.employeeId === me?.employeeId && <span className={styles.muted}> (나)</span>}
-                  {a.pcPhone ? (
-                    <span className={styles.muted}> · PC 전화</span>
-                  ) : (
-                    a.forwarding && <span className={styles.muted}> · 착신</span>
-                  )}
-                </span>
-                <span className={styles.aState}>
-                  {STATE[a.state].label}
-                  {a.call &&
-                    ` · ${formatPhone(a.call.phone)} · ${since(a.call.assignedAt ?? a.call.receivedAt, now)}`}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {isSysAdmin && <Integration />}
-          {can('LEAD.CREATE') && (
-            <div className={styles.sim}>
-              <span className={styles.muted}>
-                전화 시스템 연동 전 시험 — 대표번호로 콜이 들어온 것처럼 만듭니다.
-              </span>
-              <div className={styles.actions}>
-                <Input
-                  value={simPhone}
-                  placeholder="번호(비우면 아무 번호)"
-                  onChange={(e) => setSimPhone(e.target.value)}
-                  style={{ width: 170 }}
-                  aria-label="시험 콜 번호"
-                />
-              </div>
-              <div className={styles.actions}>
-                {[1, 5, 10].map((n) => (
-                  <Button
-                    key={n}
-                    variant="outline"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() =>
-                      void act(async () => {
-                        const r = await api<{ assigned: number; outcall: number }>(
-                          '/cs-calls/simulate',
-                          {
-                            method: 'POST',
-                            body: JSON.stringify({
-                              count: n,
-                              ...(simPhone.trim() && { phone: simPhone.trim() }),
-                            }),
-                          },
-                        );
-                        toast({
-                          type: 'success',
-                          title: `시험 콜 ${n}건 — 배분 ${r.assigned} · 아웃콜 ${r.outcall}`,
-                        });
-                      })
-                    }
-                  >
-                    시험 콜 {n}건
-                  </Button>
-                ))}
-              </div>
+      {/* 아래 — 오늘 숫자와 상담원 현황(상담 중에는 화면을 꽉 채우게 숨긴다) */}
+      {!(me && mine) && (
+        <>
+          <div className={styles.stats}>
+            <div>
+              <span>오늘 들어온 콜</span>
+              <b>{data.today.received}</b>
             </div>
-          )}
-        </section>
-      </div>
+            <div>
+              <span>상담 중</span>
+              <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
+            </div>
+            <div className={data.outcalls.length ? styles.warnStat : ''}>
+              <span>아웃콜 대기</span>
+              <b>{data.outcalls.length}</b>
+            </div>
+            <div>
+              <span>상담 가능 상담원</span>
+              <b>
+                {data.agents.filter((a) => a.state === 'READY').length} / {data.agents.length}
+              </b>
+            </div>
+            <div>
+              <span>오늘 끝낸 콜</span>
+              <b>{data.today.done}</b>
+            </div>
+          </div>
+
+          <div className={styles.bottomGrid}>
+            {/* 상담원 현황 */}
+            <section className={styles.card}>
+              <h3 className={styles.cardTitle}>
+                <UserRound size={15} /> 상담원
+              </h3>
+              <ul className={styles.agents}>
+                {data.agents.map((a) => (
+                  <li key={a.employeeId}>
+                    <i className={styles[STATE[a.state].cls]} />
+                    <span className={styles.aName}>
+                      {a.name}
+                      {a.position ? ` ${a.position}` : ''}
+                      {a.employeeId === me?.employeeId && (
+                        <span className={styles.muted}> (나)</span>
+                      )}
+                      {a.pcPhone ? (
+                        <span className={styles.muted}> · PC 전화</span>
+                      ) : (
+                        a.forwarding && <span className={styles.muted}> · 착신</span>
+                      )}
+                    </span>
+                    <span className={styles.aState}>
+                      {STATE[a.state].label}
+                      {a.call &&
+                        ` · ${formatPhone(a.call.phone)} · ${since(a.call.assignedAt ?? a.call.receivedAt, now)}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {isSysAdmin && <Integration />}
+              {can('LEAD.CREATE') && (
+                <div className={styles.sim}>
+                  <span className={styles.muted}>
+                    전화 시스템 연동 전 시험 — 대표번호로 콜이 들어온 것처럼 만듭니다.
+                  </span>
+                  <div className={styles.actions}>
+                    <Input
+                      value={simPhone}
+                      placeholder="번호(비우면 아무 번호)"
+                      onChange={(e) => setSimPhone(e.target.value)}
+                      style={{ width: 170 }}
+                      aria-label="시험 콜 번호"
+                    />
+                  </div>
+                  <div className={styles.actions}>
+                    {[1, 5, 10].map((n) => (
+                      <Button
+                        key={n}
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() =>
+                          void act(async () => {
+                            const r = await api<{ assigned: number; outcall: number }>(
+                              '/cs-calls/simulate',
+                              {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                  count: n,
+                                  ...(simPhone.trim() && { phone: simPhone.trim() }),
+                                }),
+                              },
+                            );
+                            toast({
+                              type: 'success',
+                              title: `시험 콜 ${n}건 — 배분 ${r.assigned} · 아웃콜 ${r.outcall}`,
+                            });
+                          })
+                        }
+                      >
+                        시험 콜 {n}건
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+        </>
+      )}
 
       <ConfirmModal
         open={!!cancelTarget}
