@@ -6,9 +6,9 @@
 }
 .wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 270px;
   gap: 24px;
-  min-height: 560px;
+  height: min(520px, calc(100vh - 230px));
 }
 .left {
   display: flex;
@@ -19,10 +19,8 @@
 .right {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 12px 0;
-  border-radius: 14px;
-  background: var(--ark-color-bg-muted);
+  align-items: center;
+  min-height: 0;
 }
 .section {
   display: flex;
@@ -31,6 +29,7 @@
 }
 .grow {
   flex: 1;
+  min-height: 0;
 }
 .label {
   display: flex;
@@ -48,10 +47,13 @@
 .over {
   color: #dc2626;
 }
+.left {
+  min-height: 0;
+}
 .text,
 .text textarea {
-  min-height: 260px !important;
-  height: 100%;
+  min-height: 0 !important;
+  height: 100% !important;
   resize: none;
   font-size: 14px;
   line-height: 1.6;

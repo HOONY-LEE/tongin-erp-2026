@@ -1,0 +1,64 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.muted {
+  margin: 0;
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+}
+.list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+.list li + li {
+  border-top: 1px solid var(--ark-color-border);
+}
+.memo {
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+}
+.closed,
+.soon {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.closed {
+  background: #ececef;
+  color: #6e6e73;
+}
+.soon {
+  background: #fef3d7;
+  color: #b45309;
+}
+.list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.addRow {
+  display: grid;
+  grid-template-columns: 160px 110px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { NotebookPen, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { NotebookPen, Pencil, Plus, Trash2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { Button, ConfirmModal, Input, SegmentedControl, useToast } from '../../components/ui';
 import styles from '../callcenter.module.css';
@@ -17,7 +17,6 @@ interface Draft {
   body: string;
   shared: boolean;
 }
-const LAST_KEY = 'tongin_cs_script_last';
 
 /**
  * 상담 메모(대본) — 공유 메모(상담 콘솔 모든 직원이 보고 고침)와 개인 메모.
@@ -27,13 +26,8 @@ const LAST_KEY = 'tongin_cs_script_last';
 export function ScriptCard() {
   const toast = useToast();
   const [items, setItems] = useState<Script[] | null>(null);
-  const [active, setActive] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(LAST_KEY);
-    } catch {
-      return null;
-    }
-  });
+  // 처음엔 목록 — 메모를 고르면 그 메모를 펼친다
+  const [active, setActive] = useState<string | null>(null);
   const [edit, setEdit] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [delTarget, setDelTarget] = useState<Script | null>(null);
@@ -56,13 +50,8 @@ export function ScriptCard() {
   const pick = (id: string) => {
     setActive(id);
     setEdit(null);
-    try {
-      localStorage.setItem(LAST_KEY, id);
-    } catch {
-      /* 무시 */
-    }
   };
-  const current = items?.find((x) => x.id === active) ?? items?.[0] ?? null;
+  const current = items?.find((x) => x.id === active) ?? null;
 
   const save = async () => {
     if (!edit) return;
@@ -181,51 +170,65 @@ export function ScriptCard() {
         </>
       ) : (
         <>
-          {items.length > 0 && (
-            <div className={styles.scriptTabs} role="tablist" aria-label="상담 메모">
-              {items.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={current?.id === s.id}
-                  className={[
-                    s.shared ? styles.scriptTabShared : '',
-                    current?.id === s.id ? styles.scriptTabOn : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  title={s.shared ? '공유 메모 — 상담 콘솔 모든 직원이 봅니다' : '내 개인 메모'}
-                  onClick={() => pick(s.id)}
-                >
-                  {s.shared && <Users size={11} aria-label="공유" />}
-                  {s.title}
-                </button>
-              ))}
-            </div>
-          )}
           {current ? (
-            <div className={styles.scriptBody}>
-              <span className={styles.scriptBtns}>
+            <>
+              {/* 고른 메모 — 위에 '목록으로'와 제목 */}
+              <div className={styles.scriptHead}>
                 <button
                   type="button"
-                  className={styles.scriptEditBtn}
-                  onClick={() =>
-                    setEdit({
-                      id: current.id,
-                      title: current.title,
-                      body: current.body,
-                      shared: current.shared,
-                    })
-                  }
+                  className={styles.scriptBack}
+                  onClick={() => setActive(null)}
+                  aria-label="메모 목록으로"
                 >
-                  <Pencil size={13} /> 수정
+                  <ChevronLeft size={16} />
                 </button>
-              </span>
-              <div className={styles.scriptPaper}>
-                {current.body || <span className={styles.muted}>내용이 없습니다.</span>}
+                <b className={styles.scriptTitle}>
+                  {current.shared && <Users size={13} aria-label="공유" />}
+                  {current.title}
+                </b>
               </div>
-            </div>
+              <div className={styles.scriptBody}>
+                <span className={styles.scriptBtns}>
+                  <button
+                    type="button"
+                    className={styles.scriptEditBtn}
+                    onClick={() =>
+                      setEdit({
+                        id: current.id,
+                        title: current.title,
+                        body: current.body,
+                        shared: current.shared,
+                      })
+                    }
+                  >
+                    <Pencil size={13} /> 수정
+                  </button>
+                </span>
+                <div className={styles.scriptPaper}>
+                  {current.body || <span className={styles.muted}>내용이 없습니다.</span>}
+                </div>
+              </div>
+            </>
+          ) : items.length ? (
+            /* 메모 목록 — 눌러서 펼친다 */
+            <ul className={styles.scriptList}>
+              {items.map((s) => (
+                <li key={s.id}>
+                  <button type="button" onClick={() => pick(s.id)}>
+                    <span className={styles.scriptListTitle}>
+                      <b>{s.title}</b>
+                      <span className={s.shared ? styles.scriptKindShared : styles.scriptKindMine}>
+                        {s.shared ? '공유' : '개인'}
+                      </span>
+                    </span>
+                    <span className={styles.scriptListBody}>
+                      {s.body.replace(/\s+/g, ' ').slice(0, 60) || '내용 없음'}
+                    </span>
+                    <ChevronRight size={15} className={styles.scriptListGo} />
+                  </button>
+                </li>
+              ))}
+            </ul>
           ) : (
             <p className={styles.muted}>메모가 없습니다. [새 메모]를 눌러 대본을 적어 두세요.</p>
           )}

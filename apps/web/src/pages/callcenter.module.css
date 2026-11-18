@@ -895,7 +895,7 @@
 }
 
 /* 내 콜 카드 — 좌우 여백을 넓혀 입력칸이 너무 길지 않게, 입력칸 사이 간격도 넉넉히 */
-.grid > .intakeCard {
+.intakeCard {
   padding: 20px 40px;
 }
 .intake .form {
@@ -1684,4 +1684,130 @@ textarea.memoBox {
 :global([data-theme='dark']) .st_BUSY {
   background: rgba(249, 115, 22, 0.18);
   color: #fdba74;
+}
+
+/* 상담 메모 — 목록(눌러서 펼침) */
+.scriptList {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+}
+.scriptList li + li {
+  border-top: 1px solid var(--ark-color-border);
+}
+.scriptList button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 34px 10px 12px;
+  border: 0;
+  background: var(--ark-color-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.scriptList button:hover {
+  background: var(--ark-color-bg-muted);
+}
+.scriptListTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(13.5px * var(--font-scale, 1));
+}
+.scriptListBody {
+  overflow: hidden;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scriptListGo {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  color: var(--ark-color-text-secondary);
+}
+.scriptKindShared,
+.scriptKindMine {
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.scriptKindShared {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.scriptKindMine {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text-secondary);
+}
+.scriptBack {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.scriptBack:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text-primary);
+}
+.scriptTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  font-size: calc(14px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 작은 달력 — 맨 아래 줄 양 끝 칸을 카드 둥글기에 맞춘다(모서리에 칸이 삐져나오지 않게) */
+.miniGrid > :nth-last-child(7) {
+  border-bottom-left-radius: 11px;
+}
+.miniGrid > :last-child {
+  border-bottom-right-radius: 11px;
+}
+
+/* 상담 화면 왼쪽 — 상담 카드(남은 높이) + 고객 이력 카드(아래, 최대 높이) */
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+.leftCol > .intakeCard {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.leftCol > .historyCard {
+  flex: 0 0 auto;
+  max-height: 34%;
+}
+.historyCard .historyHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.historyCard .paneBody {
+  padding: 8px 12px 12px;
 }
