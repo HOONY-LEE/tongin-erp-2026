@@ -311,22 +311,7 @@ html[data-font-size='lg'] {
   flex: none;
 }
 
-/* 툴바 세그먼트 탭(단계·범위) — 검색창 높이(38px)에 맞춘다 */
-.sft-toolbar [class*='_track_'],
-.list-toolbar [class*='_track_'] {
-  height: 38px;
-  box-sizing: border-box;
-}
-.sft-toolbar [class*='_track_'] [class*='_segment_'],
-.list-toolbar [class*='_track_'] [class*='_segment_'] {
-  min-height: 30px;
-  height: 30px;
-  padding: 0 14px;
-}
-.sft-toolbar [class*='_track_'] [class*='_indicator_'],
-.list-toolbar [class*='_track_'] [class*='_indicator_'] {
-  height: 30px;
-}
+/* 툴바 세그먼트 탭 높이(38px)는 공용 SegmentedControl이 맞춘다 */
 .dt-wrap .sft-toolbar__search,
 .dt-wrap .sft-export__trigger,
 .dt-wrap .sft-toolbar__right button:not([role='checkbox']),
@@ -694,6 +679,10 @@ select:focus {
 [class*='_wrapper_r2ieu_'],
 [class*='_group_rkg7l_'],
 [class*='_inputWrap_'] {
+  border-radius: var(--control-radius) !important;
+}
+/* 검색해서 고르는 드롭다운(Combobox) — 일반 드롭다운(Select)과 같은 둥글기 */
+button[class*='_trigger_15c7g_'] {
   border-radius: var(--control-radius) !important;
 }
 /* 세그먼트 탭 — 바깥 트랙은 10px, 안쪽 칸·움직이는 표시는 트랙 안쪽 여백(4px)만큼 작게 */

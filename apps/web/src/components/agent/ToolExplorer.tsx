@@ -1,7 +1,7 @@
 import { useMemo, useState, type DragEvent } from 'react';
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 // 좁은 패널용 작은 세그먼트 — 공용 래퍼(components/ui)는 큰 크기로 고정돼 있어 원본을 쓴다
-import { SegmentedControl } from '@sunghoon_lee/akron-ui';
+import { SegmentedControl } from '../ui';
 import type { AgentJsonSchema, AgentToolInfo } from '@tongin/shared';
 import styles from '../../pages/agentBuilder.module.css';
 

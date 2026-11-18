@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { CsCallController } from './cs-call.controller';
 import { CsCallService } from './cs-call.service';
+import { CtiRoutingService } from './cti-routing.service';
 
 /** 고객관리부 상담 콘솔 — 콜 자동 배분·아웃콜·콜백 */
-@Module({ controllers: [CsCallController], providers: [CsCallService] })
+@Module({ controllers: [CsCallController], providers: [CsCallService, CtiRoutingService] })
 export class CsCallModule {}

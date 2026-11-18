@@ -1048,3 +1048,21 @@
   color: var(--ark-color-text-secondary);
   font-size: 12px;
 }
+
+/* 고객 요청사항 · 상담 메모 — 높이 고정(akron Textarea는 바깥 상자에 클래스가 붙는다) */
+.memoBox textarea,
+textarea.memoBox {
+  height: 160px !important;
+  min-height: 160px !important;
+  max-height: 160px;
+  resize: none;
+}
+/* 상품 종류 고르기 — 제휴·전속(검색 선택)을 일반(선택)과 같은 크기(36px)로 */
+.kindPick > * {
+  width: 100%;
+}
+.kindPick button[class*='_trigger_'] {
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+}
