@@ -208,6 +208,7 @@ export class LeadService {
       moveDate: dto.moveDate ? new Date(dto.moveDate) : undefined,
       visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
       customerRequest: dto.customerRequest?.trim() || undefined,
+      productNote: dto.productNote?.trim() || (await this.partnerNote(dto.partnerId)) || undefined,
     };
     try {
       const created = await this.prisma.lead.create({ data });
@@ -254,6 +255,17 @@ export class LeadService {
   }
 
   /** 전화번호(숫자만 비교)로 고객 찾기 — 가장 먼저 등록된 고객. ids(데이터 범위)가 있으면 그 안(+담당 지점 없음)에서만 */
+  /** 제휴·전속 업체의 혜택·메모 → 접수의 상품 특이사항 */
+  private async partnerNote(partnerId?: string | null) {
+    if (!partnerId) return null;
+    const p = await this.prisma.partner.findUnique({
+      where: { id: partnerId },
+      select: { benefit: true, memo: true },
+    });
+    const text = [p?.benefit?.trim(), p?.memo?.trim()].filter(Boolean).join('\n\n');
+    return text || null;
+  }
+
   private async findCustomerByPhone(phone: string, ids: string[] | null) {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 9) return null;
@@ -306,6 +318,13 @@ export class LeadService {
           visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
           customerRequest:
             dto.customerRequest === undefined ? undefined : dto.customerRequest.trim() || null,
+          // 업체를 바꾸면(적어 준 내용이 없을 때) 새 업체의 혜택·메모로 바꾼다
+          productNote:
+            dto.productNote !== undefined
+              ? dto.productNote.trim() || null
+              : dto.partnerId !== undefined && dto.partnerId !== before.partnerId
+                ? await this.partnerNote(dto.partnerId)
+                : undefined,
         },
       });
     } catch (e) {

@@ -1066,3 +1066,24 @@ textarea.memoBox {
   height: 36px;
   min-height: 36px;
 }
+
+/* 상담원 현황(오른쪽 맨 위) — 내용만큼, 많으면 안에서 스크롤 */
+.sideCol > .agentsCard {
+  flex: 0 1 auto;
+  max-height: 36%;
+}
+.agentsCard .cardTitle .count {
+  margin-left: auto;
+  font-weight: 500;
+}
+.aMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.aToday {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+}

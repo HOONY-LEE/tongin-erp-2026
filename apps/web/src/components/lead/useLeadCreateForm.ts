@@ -100,6 +100,12 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
       ? ([
           { name: 'moveDate', label: '이사 희망일', type: 'date', alwaysShow: true },
           { name: 'customerRequest', label: '고객 요청사항', type: 'textarea', alwaysShow: true },
+          {
+            name: 'productNote',
+            label: '상품 특이사항(제휴·전속 혜택·조건)',
+            type: 'textarea',
+            alwaysShow: true,
+          },
         ] satisfies FormField[])
       : []),
   ];

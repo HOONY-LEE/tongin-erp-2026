@@ -54,4 +54,10 @@ export class CreateLeadDto extends MoveAddressDto {
   @IsString()
   @MaxLength(2000)
   customerRequest?: string;
+
+  /** 상품 특이사항 — 제휴·전속 상품의 혜택·조건. 비우면 고른 업체의 혜택·메모로 채운다 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  productNote?: string;
 }

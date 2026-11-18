@@ -99,6 +99,7 @@ export class EstimateService {
           visitDate: true,
           moveDate: true,
           customerRequest: true,
+          productNote: true,
           partner: { select: { id: true, name: true, type: true, benefit: true, intake: true } },
         },
       }),

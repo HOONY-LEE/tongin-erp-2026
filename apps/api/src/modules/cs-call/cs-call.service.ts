@@ -963,6 +963,27 @@ export class CsCallService {
       assignedAt: c.assignedAt?.toISOString() ?? null,
     });
 
+    // 상담원별 오늘 숫자 — 받은 콜·콜백·접수·통화 시간
+    const perAgent = await this.prisma.$queryRaw<
+      { agent: string; received: bigint; callbacks: bigint; leads: bigint; talk: bigint | null }[]
+    >`
+      SELECT agent_emp_id AS agent,
+        count(*) FILTER (WHERE attempts = 0) AS received,
+        count(*) FILTER (WHERE attempts > 0) AS callbacks,
+        count(lead_id) AS leads,
+        sum(duration_sec) AS talk
+      FROM cs_call
+      WHERE agent_emp_id IS NOT NULL AND coalesce(assigned_at, received_at) >= ${today}
+      GROUP BY agent_emp_id`;
+    const todayOf = (id: string) => {
+      const r = perAgent.find((x) => x.agent === id);
+      return {
+        received: Number(r?.received ?? 0),
+        callbacks: Number(r?.callbacks ?? 0),
+        leads: Number(r?.leads ?? 0),
+        talkSec: Number(r?.talk ?? 0),
+      };
+    };
     const agents = people
       .map((e) => {
         const a = agentRows.find((x) => x.employeeId === e.id);
@@ -977,6 +998,7 @@ export class CsCallService {
           lastFreeAt: a?.lastFreeAt.toISOString() ?? null,
           forwarding: !!a?.ringTo,
           pcPhone: !!a?.sipUri && !!a.sipUntil && a.sipUntil > new Date(),
+          today: todayOf(e.id),
         };
       })
       .sort(
