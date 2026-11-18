@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PhoneIncoming, PhoneOutgoing, UserRound } from 'lucide-react';
+import { Mic, MicOff, PhoneIncoming, PhoneOff, PhoneOutgoing, UserRound } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import {
   LEAD_STATUS_LABEL,
@@ -13,10 +13,11 @@ import { api, ApiError } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import { SERVICE_LINES } from '../../lib/leadCodes';
 import { useOrgScope } from '../../lib/useOrgScope';
-import { dial, usePhone } from '../../lib/softphone';
+import { dial, hangup, toggleMute, usePhone } from '../../lib/softphone';
 import {
   Badge,
   Button,
+  FormModal,
   Input,
   SegmentedControl,
   Select,
@@ -24,6 +25,7 @@ import {
   useToast,
 } from '../../components/ui';
 import { AddressField } from '../../components/ui/AddressField';
+import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
 
 export interface IntakeCall {
@@ -154,47 +156,73 @@ export function IntakePanel({
       }),
     });
 
-  const register = () =>
-    run(async () => {
-      if (!v.customerName.trim()) throw new ApiError(400, '고객명을 입력해 주세요.', 'VALIDATION');
-      if (!v.orgUnitId) throw new ApiError(400, '담당 지점을 골라 주세요.', 'VALIDATION');
-      if (v.moveKind !== 'GENERAL' && !v.partnerId)
-        throw new ApiError(
-          400,
-          `${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 업체를 골라 주세요.`,
-          'VALIDATION',
-        );
-      const addr: Record<string, string> = {};
-      for (const [k, val] of Object.entries(v))
-        if (/^(from|to)(Zipcode|Addr|AddrDetail|Sido|Sigungu|Lat|Lng)$/.test(k) && val)
-          addr[k] = val;
+  // [접수 등록] → 간편접수 창(접수 화면과 같은 창)에 입력한 값을 넘겨 한 번 더 확인 후 등록
+  const leadForm = useLeadCreateForm({ withCallFields: true });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const formInitial = (): Record<string, string> => {
+    const addr: Record<string, string> = {};
+    for (const [k, val] of Object.entries(v))
+      if (/^(from|to)(Zipcode|Addr|AddrDetail|Sido|Sigungu|Lat|Lng)$/.test(k) && val) addr[k] = val;
+    return {
+      ...leadForm.defaults,
+      customerName: v.customerName.trim(),
+      customerPhone: call.phone,
+      source: 'PHONE',
+      serviceLine: v.serviceLine,
+      ...(v.orgUnitId && { orgUnitId: v.orgUnitId }),
+      ...(v.partnerId && { partnerId: v.partnerId }),
+      ...(v.moveDate && { moveDate: v.moveDate }),
+      ...(v.request.trim() && { customerRequest: v.request.trim() }),
+      ...addr,
+    };
+  };
+  const openConfirm = () => {
+    if (v.moveKind !== 'GENERAL' && !v.partnerId) {
+      toast({
+        type: 'error',
+        title: `${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 업체를 골라 주세요.`,
+      });
+      return;
+    }
+    setConfirmOpen(true);
+  };
+  /** 확인 창에서 [저장] — 접수를 만들고 콜을 끝낸다(실패하면 창이 열린 채로 남는다) */
+  const submitLead = async (values: Record<string, unknown>) => {
+    try {
       const lead = await api<{ id: string; leadNo?: string }>('/leads', {
         method: 'POST',
         body: JSON.stringify({
-          customerName: v.customerName.trim(),
+          ...values,
+          // 같은 번호의 기존 고객이면 그 고객에 잇는다
           ...(call.customerId && { customerId: call.customerId }),
-          customerPhone: call.phone,
-          orgUnitId: v.orgUnitId,
-          ...(user?.employeeId && { ownerEmpId: user.employeeId }),
-          source: 'PHONE',
-          serviceLine: v.serviceLine,
-          ...(v.partnerId && { partnerId: v.partnerId }),
-          ...(v.moveDate && { moveDate: v.moveDate }),
-          ...(v.request.trim() && { customerRequest: v.request.trim() }),
-          ...addr,
         }),
       });
-      await finish('DONE', lead.id).catch(() =>
+      const req = typeof values.customerRequest === 'string' ? values.customerRequest : v.request;
+      await api(`/cs-calls/${call.id}/finish`, {
+        method: 'POST',
+        body: JSON.stringify({
+          result: 'DONE',
+          leadId: lead.id,
+          memo: v.memo || undefined,
+          request: req?.trim() || undefined,
+        }),
+      }).catch(() =>
         toast({
           type: 'warning',
-          title: '접수는 등록했지만 콜을 끝내지 못했습니다 — 다시 눌러 주세요',
+          title: '접수는 등록했지만 콜을 끝내지 못했습니다 — 콜 목록에서 확인해 주세요',
         }),
       );
       toast({
         type: 'success',
         title: `접수를 등록했습니다${lead.leadNo ? ` (${lead.leadNo})` : ''}`,
       });
-    });
+      setConfirmOpen(false);
+      await onDone();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '접수하지 못했습니다' });
+      throw e;
+    }
+  };
 
   return (
     <div className={styles.intake}>
@@ -202,7 +230,7 @@ export function IntakePanel({
         <Badge variant="subtle" color={call.status === 'CALLBACK' ? 'warning' : 'success'}>
           {call.status === 'CALLBACK' ? (
             <>
-              <PhoneOutgoing size={12} /> 콜백 중
+              <PhoneOutgoing size={12} /> 콜백
             </>
           ) : (
             <>
@@ -211,19 +239,72 @@ export function IntakePanel({
           )}
         </Badge>
         <span className={styles.muted}>{call.channel ?? '대표번호'}</span>
-        {phone.status === 'ready' && !phone.call && (
-          <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
-            <PhoneOutgoing size={14} /> PC로 걸기
-          </Button>
-        )}
       </div>
+
+      {/* 통화 상태 — 통화 중이면 계속 '통화 중'이 보이게, 음소거·통화 종료 */}
+      {phone.call?.state === 'active' ? (
+        <div className={`${styles.liveBar} ${styles.liveOn}`} role="status" aria-live="polite">
+          <span className={styles.liveDot} aria-hidden />
+          <b>통화 중</b>
+          <span className={styles.liveTime}>{mmss(talking)}</span>
+          {phone.call.muted && (
+            <span className={styles.liveMuted}>음소거 — 고객에게 내 소리가 안 들립니다</span>
+          )}
+          <span className={styles.liveActions}>
+            <button
+              type="button"
+              className={`${styles.liveBtn} ${phone.call.muted ? styles.liveBtnOn : ''}`}
+              onClick={toggleMute}
+              aria-pressed={phone.call.muted}
+            >
+              {phone.call.muted ? <MicOff size={15} /> : <Mic size={15} />}
+              {phone.call.muted ? '음소거 해제' : '음소거'}
+            </button>
+            <button type="button" className={styles.liveHang} onClick={hangup}>
+              <PhoneOff size={15} /> 통화 종료
+            </button>
+          </span>
+        </div>
+      ) : phone.call ? (
+        <div className={styles.liveBar} role="status">
+          <span className={styles.liveDot} aria-hidden />
+          <b>{phone.call.state === 'ringing' ? '전화가 울리는 중' : '연결 중…'}</b>
+          <span className={styles.liveActions}>
+            <button type="button" className={styles.liveHang} onClick={hangup}>
+              <PhoneOff size={15} /> 끊기
+            </button>
+          </span>
+        </div>
+      ) : (
+        <div className={`${styles.liveBar} ${styles.liveOff}`}>
+          <b>통화 연결 없음</b>
+          <span className={styles.muted}>접수를 마무리하거나 다시 걸어 주세요</span>
+          {phone.status === 'ready' && (
+            <span className={styles.liveActions}>
+              <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
+                <PhoneOutgoing size={14} /> PC로 걸기
+              </Button>
+            </span>
+          )}
+        </div>
+      )}
 
       {stale && (
         <div className={styles.staleWarn} role="alert">
           <b>끝나지 않은 콜이 있어 새 전화가 배정되지 않습니다.</b>
           <span>
-            {elapsed(talking)} 전에 배정된 콜입니다. 상담이 끝났으면 아래 [접수 등록] 또는 [접수
-            없이 상담 끝]을 눌러 마무리해 주세요.
+            {elapsed(talking)} 전에 배정된 콜입니다. 접수할 콜이면 [접수 등록]을, 접수할 일이 없는
+            콜(문의·잘못 건 전화)이면 여기서 마쳐 주세요.
+          </span>
+          <span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => void run(() => finish('DONE').then(() => undefined))}
+            >
+              접수 없이 이 콜 마치기
+            </Button>
           </span>
         </div>
       )}
@@ -381,20 +462,7 @@ export function IntakePanel({
         </label>
       </div>
 
-      <div className={styles.actions}>
-        {can('LEAD.CREATE') && (
-          <Button variant="primary" size="sm" disabled={busy} onClick={() => void register()}>
-            접수 등록
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          onClick={() => void run(() => finish('DONE').then(() => undefined))}
-        >
-          접수 없이 상담 끝
-        </Button>
+      <div className={styles.intakeFooter}>
         {call.status === 'CALLBACK' && (
           <Button
             variant="ghost"
@@ -405,7 +473,22 @@ export function IntakePanel({
             안 받음 — 다시 아웃콜로
           </Button>
         )}
+        {can('LEAD.CREATE') && (
+          <Button variant="primary" disabled={busy} onClick={openConfirm}>
+            접수 등록
+          </Button>
+        )}
       </div>
+
+      <FormModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="접수 등록 — 상담 콜"
+        size="md"
+        fields={leadForm.fields}
+        initialValues={confirmOpen ? formInitial() : undefined}
+        onSubmit={submitLead}
+      />
     </div>
   );
 }

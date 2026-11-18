@@ -435,3 +435,105 @@
 .qPhone {
   white-space: nowrap;
 }
+
+/* ── 통화 상태 줄 ── */
+.liveBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.liveOn {
+  border-color: #16a34a;
+  background: color-mix(in srgb, #16a34a 9%, var(--ark-color-bg));
+  animation: liveGlow 2s ease-in-out infinite;
+}
+@keyframes liveGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(22, 163, 74, 0);
+  }
+}
+.liveOff {
+  color: var(--ark-color-text-secondary);
+}
+.liveDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: liveBlink 1.2s ease-in-out infinite;
+}
+@keyframes liveBlink {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .liveOn,
+  .liveDot {
+    animation: none;
+  }
+}
+.liveTime {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.liveMuted {
+  color: #b45309;
+  font-weight: 600;
+}
+.liveActions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.liveBtn,
+.liveHang {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.liveBtn {
+  border: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+}
+.liveBtnOn {
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 14%, var(--ark-color-bg));
+}
+.liveHang {
+  border: 0;
+  background: #dc2626;
+  color: #fff;
+}
+.liveBtn:focus-visible,
+.liveHang:focus-visible {
+  outline: 2px solid var(--ark-color-text);
+  outline-offset: 2px;
+}
+/* 접수 등록 — 오른쪽 아래 */
+.intakeFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ark-color-border);
+  padding-top: 12px;
+}
