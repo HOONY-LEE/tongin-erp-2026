@@ -830,3 +830,12 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   cursor: pointer;
   font-size: calc(14px * var(--font-scale, 1));
 }
+
+/* ── 표 높이 고정 — 행이 적거나 없어도 한 페이지(N개씩 보기) 만큼 자리를 차지한다 ──
+   DataTable이 지금 페이지 행 수를 --dt-rows로 넣는다. 비었으면 그 자리 가운데에 '데이터가 없습니다'. */
+.dt-wrap .sft-tbody {
+  min-height: calc(var(--dt-rows, 10) * var(--sft-table-row-height, 44px));
+}
+.dt-wrap .sft-tbody--empty .sft-empty {
+  min-height: calc(var(--dt-rows, 10) * var(--sft-table-row-height, 44px));
+}

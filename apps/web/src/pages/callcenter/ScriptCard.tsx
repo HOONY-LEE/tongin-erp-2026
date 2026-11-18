@@ -92,13 +92,11 @@ export function ScriptCard() {
         <NotebookPen size={15} /> 상담 메모
         <span className={styles.scriptTools}>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            aria-label="새 메모"
-            title="새 메모"
             onClick={() => setEdit({ id: null, title: '', body: '' })}
           >
-            <Plus size={14} />
+            <Plus size={14} /> 새 메모
           </Button>
         </span>
       </h3>
@@ -165,19 +163,21 @@ export function ScriptCard() {
             </div>
           ) : current ? (
             <div className={styles.scriptBody}>
-              <p>{current.body || <span className={styles.muted}>내용이 없습니다.</span>}</p>
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
+                type="button"
+                className={styles.scriptEditBtn}
                 onClick={() =>
                   setEdit({ id: current.id, title: current.title, body: current.body })
                 }
               >
-                <Pencil size={13} /> 고치기
-              </Button>
+                <Pencil size={13} /> 수정
+              </button>
+              <div className={styles.scriptText}>
+                {current.body || <span className={styles.muted}>내용이 없습니다.</span>}
+              </div>
             </div>
           ) : (
-            <p className={styles.muted}>메모가 없습니다. + 를 눌러 대본을 적어 두세요.</p>
+            <p className={styles.muted}>메모가 없습니다. [새 메모]를 눌러 대본을 적어 두세요.</p>
           )}
         </>
       )}

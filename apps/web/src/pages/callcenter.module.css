@@ -590,26 +590,66 @@
   outline: 2px solid var(--ark-color-text);
   outline-offset: 2px;
 }
+/* 메모 칸 — 카드 남은 높이를 꽉 채우고 글이 길면 칸 안에서 스크롤. 오른쪽 위 [수정] */
 .scriptBody {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
 }
-.scriptBody p {
-  margin: 0;
-  padding: 10px 12px;
-  width: 100%;
-  border-radius: 8px;
+.scriptText {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  padding-right: 72px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: var(--control-radius, 8px);
   background: var(--ark-color-bg-muted);
   font-size: calc(14px * var(--font-scale, 1));
   line-height: 1.65;
   white-space: pre-wrap;
 }
+.scriptEditBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.scriptEditBtn:focus-visible {
+  outline: 2px solid var(--ark-color-text);
+  outline-offset: 2px;
+}
 .scriptEdit {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* 고칠 때도 같은 크기 — 글 상자가 남은 높이를 채운다 */
+.scriptEdit textarea {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  resize: none;
+}
+.scriptEdit > :nth-child(2) {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .scriptActions {
   display: flex;
@@ -724,4 +764,19 @@
   .availDot {
     animation: none;
   }
+}
+/* 상담 중 등록한 접수 */
+.leadDone {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #16a34a;
+  border-radius: 8px;
+  background: color-mix(in srgb, #16a34a 10%, var(--ark-color-bg));
+  color: #15803d;
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
 }

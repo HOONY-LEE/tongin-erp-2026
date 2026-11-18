@@ -57,6 +57,8 @@ class FinishDto {
   @IsOptional() @IsString() @MaxLength(2000) request?: string;
 }
 class UpdateCallDto {
+  /** 상담 중에 등록한 접수 — 콜은 끝내지 않고 잇기만 한다 */
+  @IsOptional() @IsUUID() leadId?: string;
   @IsOptional() @IsString() @MaxLength(1000) memo?: string | null;
   @IsOptional() @IsString() @MaxLength(2000) request?: string | null;
 }

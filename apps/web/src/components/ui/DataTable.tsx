@@ -196,6 +196,19 @@ export function DataTable({
     pageSize: pageSize ?? (fit ? FIT_PAGE_SIZE : DEFAULT_PAGE_SIZE),
   });
 
+  // 빈 칸도 한 페이지 행 수만큼 자리를 차지하게(행이 적거나 없어도 표 높이가 같다) — 지금 고른
+  // 'N개씩 보기'를 풋터에서 읽어 tbody 최소 높이로 쓴다(base.css .dt-wrap .sft-tbody)
+  const basePage = pageSize ?? (fit ? FIT_PAGE_SIZE : DEFAULT_PAGE_SIZE);
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // 풋터의 'N개씩 보기' 선택값(select)
+    const picked = Number(el.querySelector<HTMLSelectElement>('.sft-tfoot select')?.value);
+    const n = Number.isFinite(picked) && picked > 0 ? picked : basePage;
+    if (el.style.getPropertyValue('--dt-rows') !== String(n))
+      el.style.setProperty('--dt-rows', String(n));
+  });
+
   // softium-ui Table에는 아직 로우 클릭 prop이 없어 DOM 위임으로 처리한다.
   // 로우 안 버튼/링크 클릭은 그 자체 동작만 수행하도록 무시.
   const handleClick = onRowClick

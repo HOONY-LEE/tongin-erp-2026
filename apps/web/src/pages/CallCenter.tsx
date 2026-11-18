@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Laptop, PhoneCall, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
+import { Laptop, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -29,6 +28,8 @@ interface CallView {
   attempts: number;
   memo: string | null;
   request: string | null;
+  leadId?: string | null;
+  leadNo?: string | null;
   customerId: string | null;
   customerName: string | null;
   agentEmpId: string | null;
@@ -83,8 +84,6 @@ const STATE: Record<Console['agents'][number]['state'], { label: string; cls: st
  */
 export default function CallCenter() {
   const toast = useToast();
-  const navigate = useNavigate();
-  const { callId: routeCallId } = useParams<{ callId?: string }>();
   const { can, user } = useAuth();
   const isSysAdmin = !!user?.permissions.includes('*');
   const [data, setData] = useState<Console | null>(null);
@@ -173,16 +172,17 @@ export default function CallCenter() {
     setListKey((k) => k + 1);
   };
 
-  // 상담 화면 주소 — 상담 중이면 /callcenter/<콜 id>, 끝나면 /callcenter (새로고침해도 같은 상담)
   // PC가 울리는 동안(아직 [받기] 전)은 상담 화면으로 넘어가지 않는다 — 받으면 그때 연다
   const ringingIn = phone.call?.state === 'ringing' && phone.call.direction === 'in';
   const activeId = ringingIn ? null : (data?.me?.call?.id ?? null);
+  // 상담 화면 주소 — 상담 중이면 /callcenter/<콜 id>, 끝나면 /callcenter (새로고침해도 같은 상담).
+  // 라우터로 옮기면 화면이 통째로 다시 그려지므로(탭이 주소별로 화면을 새로 만든다) 주소창만 바꾼다.
   useEffect(() => {
     if (!data) return;
-    if (activeId && routeCallId !== activeId)
-      navigate(`/callcenter/${activeId}`, { replace: true });
-    else if (!activeId && routeCallId) navigate('/callcenter', { replace: true });
-  }, [data, activeId, routeCallId, navigate]);
+    const want = activeId ? `/callcenter/${activeId}` : '/callcenter';
+    if (window.location.pathname !== want)
+      window.history.replaceState(window.history.state, '', want);
+  }, [data, activeId]);
 
   if (!data)
     return (
@@ -244,26 +244,6 @@ export default function CallCenter() {
           </section>
         ) : (
           <div className={styles.mainCol}>
-            <div className={styles.idleBar}>
-              <PhoneCall size={15} />
-              {!me ? (
-                <span>직원과 연결된 계정만 상담할 수 있습니다.</span>
-              ) : me.available ? (
-                <span>
-                  <b>대기 중</b> —{' '}
-                  {pcReady
-                    ? '전화가 오면 이 PC가 울립니다. 20초 안에 안 받으면 다음 상담원에게 넘어갑니다.'
-                    : me.ringTo
-                      ? `전화가 오면 ${formatPhone(me.ringTo)}로 울립니다.`
-                      : 'PC 전화를 켜면 이 PC로 전화를 받습니다.'}
-                  {data.outcalls.length > 0 && ' 아웃콜부터 콜백하세요.'}
-                </span>
-              ) : (
-                <span>
-                  <b>자리 비움</b> — 상담 준비가 끝나면 위에서 <b>상담 가능</b>을 눌러 주세요.
-                </span>
-              )}
-            </div>
             <CallList refreshKey={listKey} />
           </div>
         )}
