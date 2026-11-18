@@ -903,10 +903,10 @@
   padding: 12px 28px;
 }
 .intake .form {
-  gap: 8px 24px;
+  gap: 12px 24px;
 }
 .intake {
-  gap: 8px;
+  gap: 10px;
 }
 
 /* PC 전화 켜짐/꺼짐 — 버튼 하나(스위치) */
@@ -1061,9 +1061,8 @@
 /* 고객 요청사항 · 상담 메모 — 높이 고정(akron Textarea는 바깥 상자에 클래스가 붙는다) */
 .memoBox textarea,
 textarea.memoBox {
-  height: 60px !important;
-  min-height: 60px !important;
-  max-height: 60px;
+  height: 100% !important;
+  min-height: 56px !important;
   resize: none;
 }
 /* 상품 종류 고르기 — 제휴·전속(검색 선택)을 일반(선택)과 같은 크기(36px)로 */
@@ -1901,4 +1900,30 @@ textarea.memoBox {
 }
 .historyCard .muted {
   padding: 12px 16px;
+}
+
+/* 상담 카드 — 입력 묶음이 카드 남은 높이를 채우고, 마지막 메모 줄이 늘어난다 */
+.intakeCard > .intake {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.intake > .formSet {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+}
+.memoRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+  min-height: 0;
+}
+.memoRow > .field {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.memoRow > .field > :last-child {
+  flex: 1 1 auto;
+  min-height: 56px;
 }
