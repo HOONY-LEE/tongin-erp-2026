@@ -251,6 +251,15 @@ export default function AppLayout() {
         <div className={styles.headerLeft} />
         <div className={styles.headerCenter}>
           <HeaderTabs
+            onReorder={(from, to, after) =>
+              setOpenTabs((prev) => {
+                const rest = prev.filter((t) => t !== from);
+                const at = rest.indexOf(to);
+                if (at < 0) return prev;
+                rest.splice(after ? at + 1 : at, 0, from);
+                return rest;
+              })
+            }
             tabs={editorTabs}
             activeId={activeHref}
             onTabChange={goTab}

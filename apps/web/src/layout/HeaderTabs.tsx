@@ -22,6 +22,7 @@ export function HeaderTabs({
   onTabChange,
   onTabClose,
   onTabAdd,
+  onReorder,
   keepIconId,
 }: {
   tabs: EditorTab[];
@@ -31,6 +32,8 @@ export function HeaderTabs({
   onTabChange: (id: string) => void;
   onTabClose: (id: string) => void;
   onTabAdd: () => void;
+  /** 끌어서 놓은 탭 순서 바꾸기 — from을 to의 앞(after=false)·뒤(after=true)로 */
+  onReorder?: (from: string, to: string, after: boolean) => void;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const fullRef = useRef<HTMLDivElement>(null);
@@ -40,6 +43,9 @@ export function HeaderTabs({
     null,
   );
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  // 탭 끌어서 순서 바꾸기 — 끄는 탭, 놓일 자리(그 탭의 앞/뒤)와 표시선 위치
+  const dragId = useRef<string | null>(null);
+  const [drop, setDrop] = useState<{ id: string; after: boolean; x: number } | null>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
@@ -113,6 +119,31 @@ export function HeaderTabs({
       <div
         ref={boxRef}
         className={`${styles.headerTabs} ${compact ? styles.headerTabsCompact : ''}`}
+        onDragOver={(e) => {
+          if (!dragId.current || !onReorder) return;
+          e.preventDefault();
+          const box = boxRef.current!.getBoundingClientRect();
+          // 보이는 탭 줄(첫 번째 EditorTabs)만 — 아래 측정용 탭은 빼고
+          const els = [
+            ...(boxRef.current!.firstElementChild?.querySelectorAll<HTMLElement>('[role="tab"]') ??
+              []),
+          ];
+          for (let i = 0; i < els.length && i < view.length; i++) {
+            const r = els[i].getBoundingClientRect();
+            if (e.clientX >= r.left && e.clientX <= r.right) {
+              const after = e.clientX > r.left + r.width / 2;
+              setDrop({ id: view[i].id, after, x: (after ? r.right : r.left) - box.left });
+              return;
+            }
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const from = dragId.current;
+          if (from && drop && from !== drop.id) onReorder?.(from, drop.id, drop.after);
+          dragId.current = null;
+          setDrop(null);
+        }}
       >
         <EditorTabs
           tabs={view}
@@ -121,7 +152,17 @@ export function HeaderTabs({
           onTabClose={onTabClose}
           onTabAdd={hidden.length ? undefined : onTabAdd}
           size="sm"
+          draggable={!!onReorder}
+          onTabDragStart={(id, e) => {
+            dragId.current = id;
+            e.dataTransfer.effectAllowed = 'move';
+          }}
+          onTabDragEnd={() => {
+            dragId.current = null;
+            setDrop(null);
+          }}
         />
+        {drop && <span className={styles.tabDropLine} style={{ left: drop.x - 1 }} />}
         {hidden.length > 0 && (
           <>
             <button
