@@ -2201,10 +2201,13 @@ model CsScript {
   title      String
   body       String   @default("")
   sortOrder  Int      @default(0) @map("sort_order")
+  /// 공유 메모 — 상담 콘솔 모든 직원이 보고 고친다(employeeId는 만든 사람). false면 개인 메모
+  shared     Boolean  @default(false)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([employeeId, sortOrder])
+  @@index([shared, sortOrder])
   @@map("cs_script")
 }
 

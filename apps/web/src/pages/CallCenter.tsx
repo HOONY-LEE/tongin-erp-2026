@@ -5,7 +5,6 @@ import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
 import { dial, disablePhone, enablePhone, setRingable, usePhone } from '../lib/softphone';
 import {
-  Badge,
   Button,
   ConfirmModal,
   CopyText,
@@ -193,15 +192,6 @@ export default function CallCenter() {
       void load();
     }
   };
-  const saveRingTo = (ringTo: string) =>
-    act(
-      () =>
-        api('/cs-calls/agent/ring-to', {
-          method: 'POST',
-          body: JSON.stringify({ ringTo: ringTo.trim() || null }),
-        }),
-      ringTo.trim() ? '착신 번호를 저장했습니다' : '착신 연결을 껐습니다',
-    );
   /** 아웃콜을 눌러 콜백 — 콘솔에서 바로 접수 패널이 열린다(화면 이동 없음). PC 전화가 켜져 있으면 바로 건다 */
   const callback = (c: CallView) =>
     act(async () => {
@@ -271,7 +261,6 @@ export default function CallCenter() {
         me ? (
           <div className={styles.actions}>
             <PcPhone />
-            <RingTo value={me.ringTo} busy={busy} onSave={saveRingTo} />
             {/* 기본은 자리 비움. 콜이 배정되면 자동으로 '상담 중'이 되고, 통화가 끝나도 후처리를 마치고
                 직접 [상담 가능]을 눌러야 다음 전화가 온다 */}
             <SegmentedControl
@@ -590,74 +579,36 @@ function PcPhone() {
       setWorking(false);
     }
   };
-  if (phone.status === 'ready')
-    return (
-      <span className={styles.pcPhone}>
-        <Badge variant="subtle" color="success">
-          <Laptop size={12} /> PC 전화 켜짐{phone.ringable ? ' · 울림 대기' : ''}
-        </Badge>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={working || !!phone.call}
-          onClick={() => void run(disablePhone)}
-        >
-          끄기
-        </Button>
-        {soundButton}
-      </span>
-    );
+  // 켜짐/꺼짐 버튼 하나 — 누르면 바뀐다(통화 중에는 끌 수 없음)
+  const on = phone.status === 'ready';
   return (
     <span className={styles.pcPhone}>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={working || phone.status === 'connecting'}
-        onClick={() => void run(enablePhone)}
-        title="전화기 없이 이 PC(헤드셋)로 전화를 받고 겁니다"
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        className={`${styles.pcToggle} ${on ? styles.pcToggleOn : ''}`}
+        disabled={working || phone.status === 'connecting' || (on && !!phone.call)}
+        onClick={() => void run(on ? disablePhone : enablePhone)}
+        title={
+          on
+            ? phone.call
+              ? '통화 중에는 끌 수 없습니다'
+              : '누르면 PC 전화를 끕니다'
+            : '전화기 없이 이 PC(헤드셋)로 전화를 받고 겁니다'
+        }
       >
-        <Laptop size={14} />{' '}
+        <span className={styles.pcKnob} aria-hidden />
+        <Laptop size={14} />
         {phone.status === 'connecting'
-          ? '연결 중…'
-          : phone.status === 'error'
-            ? 'PC 전화 다시 켜기'
-            : 'PC 전화 켜기'}
-      </Button>
+          ? 'PC 전화 연결 중…'
+          : on
+            ? `PC 전화 켜짐${phone.ringable ? ' · 울림 대기' : ''}`
+            : phone.status === 'error'
+              ? 'PC 전화 꺼짐 · 다시 켜기'
+              : 'PC 전화 꺼짐'}
+      </button>
       {soundButton}
     </span>
-  );
-}
-
-/** 착신 번호 — 내 휴대폰이나 자리 전화의 직통번호. 비우고 저장하면 착신 연결을 끈다 */
-function RingTo({
-  value,
-  busy,
-  onSave,
-}: {
-  value: string | null;
-  busy: boolean;
-  onSave: (v: string) => Promise<unknown> | void;
-}) {
-  const [v, setV] = useState(value ?? '');
-  useEffect(() => setV(value ?? ''), [value]);
-  const changed = v.replace(/\D/g, '') !== (value ?? '');
-  return (
-    <div
-      className={styles.actions}
-      title="대표번호로 온 전화를 이 번호로 바로 울립니다(착신 연결). 비우면 콘솔에서 콜백합니다."
-    >
-      <Input
-        value={v}
-        onChange={(e) => setV(e.target.value)}
-        placeholder="받을 전화번호(착신)"
-        inputMode="tel"
-        style={{ width: 170 }}
-      />
-      {changed && (
-        <Button size="sm" disabled={busy} onClick={() => void onSave(v)}>
-          {v.trim() ? '저장' : '착신 끄기'}
-        </Button>
-      )}
-    </div>
   );
 }

@@ -679,34 +679,35 @@ export class CsCallService {
     };
   }
 
-  // ── 대본 메모(상담원 본인 것만) ──
-  /** 내 대본 메모 — 처음이면 기본 대본 몇 개를 만들어 준다 */
+  // ── 상담 메모(대본) — 공유(모든 상담 직원) + 개인(본인만) ──
+  /** 공유 메모 + 내 개인 메모. 처음이면 기본 대본을 공유 메모로 한 번 만든다 */
   async scripts(p: AuthPrincipal) {
     const id = this.me(p);
-    const rows = await this.prisma.csScript.findMany({
-      where: { employeeId: id },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    });
+    const find = () =>
+      this.prisma.csScript.findMany({
+        where: { OR: [{ shared: true }, { employeeId: id }] },
+        orderBy: [{ shared: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }],
+      });
+    const rows = await find();
     if (rows.length) return rows;
     await this.prisma.csScript.createMany({
-      data: DEFAULT_SCRIPTS.map((x, i) => ({ employeeId: id, ...x, sortOrder: i })),
+      data: DEFAULT_SCRIPTS.map((x, i) => ({ employeeId: id, ...x, shared: true, sortOrder: i })),
     });
-    return this.prisma.csScript.findMany({
-      where: { employeeId: id },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    });
+    return find();
   }
 
-  async createScript(p: AuthPrincipal, input: { title: string; body?: string }) {
+  async createScript(p: AuthPrincipal, input: { title: string; body?: string; shared?: boolean }) {
     const id = this.me(p);
+    const shared = !!input.shared;
     const last = await this.prisma.csScript.findFirst({
-      where: { employeeId: id },
+      where: shared ? { shared: true } : { employeeId: id, shared: false },
       orderBy: { sortOrder: 'desc' },
       select: { sortOrder: true },
     });
     return this.prisma.csScript.create({
       data: {
         employeeId: id,
+        shared,
         title: input.title.trim().slice(0, 40) || '새 메모',
         body: (input.body ?? '').slice(0, 5000),
         sortOrder: (last?.sortOrder ?? -1) + 1,
@@ -714,26 +715,38 @@ export class CsCallService {
     });
   }
 
-  private async myScript(p: AuthPrincipal, scriptId: string) {
+  /** 고칠 수 있는 메모 — 공유는 상담 직원 누구나, 개인은 본인만 */
+  private async editableScript(p: AuthPrincipal, scriptId: string) {
     const id = this.me(p);
     const row = await this.prisma.csScript.findUnique({ where: { id: scriptId } });
-    if (!row || row.employeeId !== id) throw new NotFoundException('메모를 찾을 수 없습니다.');
+    if (!row || (!row.shared && row.employeeId !== id))
+      throw new NotFoundException('메모를 찾을 수 없습니다.');
     return row;
   }
 
-  async updateScript(p: AuthPrincipal, scriptId: string, input: { title?: string; body?: string }) {
-    await this.myScript(p, scriptId);
+  async updateScript(
+    p: AuthPrincipal,
+    scriptId: string,
+    input: { title?: string; body?: string; shared?: boolean },
+  ) {
+    const row = await this.editableScript(p, scriptId);
+    // 공유 메모를 개인으로 돌리는 것은 만든 사람만(다른 직원 화면에서 사라지므로)
+    if (input.shared === false && row.shared && row.employeeId !== this.me(p))
+      throw new ForbiddenException(
+        '공유 메모를 개인 메모로 바꾸는 것은 만든 사람만 할 수 있습니다.',
+      );
     return this.prisma.csScript.update({
       where: { id: scriptId },
       data: {
         ...(input.title !== undefined && { title: input.title.trim().slice(0, 40) || '새 메모' }),
         ...(input.body !== undefined && { body: input.body.slice(0, 5000) }),
+        ...(input.shared !== undefined && { shared: input.shared }),
       },
     });
   }
 
   async deleteScript(p: AuthPrincipal, scriptId: string) {
-    await this.myScript(p, scriptId);
+    await this.editableScript(p, scriptId);
     await this.prisma.csScript.delete({ where: { id: scriptId } });
     return { ok: true };
   }

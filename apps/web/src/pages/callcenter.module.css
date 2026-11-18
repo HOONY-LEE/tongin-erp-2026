@@ -590,72 +590,7 @@
   outline: 2px solid var(--ark-color-text);
   outline-offset: 2px;
 }
-/* 메모 칸 — 카드 남은 높이를 꽉 채우고 글이 길면 칸 안에서 스크롤. 오른쪽 위 [수정] */
-.scriptBody {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-}
-.scriptText {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 12px 14px;
-  padding-right: 72px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: var(--control-radius, 8px);
-  background: var(--ark-color-bg-muted);
-  font-size: calc(14px * var(--font-scale, 1));
-  line-height: 1.65;
-  white-space: pre-wrap;
-}
-.scriptEditBtn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 8px;
-  background: var(--ark-color-bg);
-  color: var(--ark-color-text);
-  font: inherit;
-  font-size: calc(12px * var(--font-scale, 1));
-  cursor: pointer;
-}
-.scriptEditBtn:focus-visible {
-  outline: 2px solid var(--ark-color-text);
-  outline-offset: 2px;
-}
-.scriptEdit {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-/* 고칠 때도 같은 크기 — 글 상자가 남은 높이를 채운다 */
-.scriptEdit textarea {
-  flex: 1 1 0;
-  min-height: 0;
-  height: 100%;
-  resize: none;
-}
-.scriptEdit > :nth-child(2) {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.scriptActions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+
 /* 좁은 오른쪽 칸 — 버튼은 아래 줄 오른쪽 */
 .queue li .qActions {
   grid-column: 2 / -1;
@@ -832,4 +767,169 @@
   white-space: nowrap;
   color: var(--ark-color-text-secondary);
   font-size: calc(11.5px * var(--font-scale, 1));
+}
+
+/* ── 상담 메모 — 보기·고치기 같은 메모장 ── */
+.scriptTabs .scriptTabShared {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-color: #93c5fd;
+  background: color-mix(in srgb, #3b82f6 8%, var(--ark-color-bg));
+  color: #1d4ed8;
+}
+.scriptTabs .scriptTabShared.scriptTabOn {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #fff;
+}
+/* 고치기·새 메모 — 칩 자리에 제목 + 개인/공유 */
+.scriptHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scriptHead > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+/* 메모장 자리 — 카드 남은 높이를 꽉 채운다. 오른쪽 위에 버튼 */
+.scriptBody {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+}
+.scriptBtns {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: inline-flex;
+  gap: 4px;
+}
+.scriptEditBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.scriptEditBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.scriptEditBtn:focus-visible {
+  outline: 2px solid var(--ark-color-text);
+  outline-offset: 2px;
+}
+.scriptSaveBtn {
+  border-color: var(--ark-color-text);
+  background: var(--ark-color-text);
+  color: var(--ark-color-bg);
+}
+/* 보기(div)와 고치기(textarea)가 똑같이 — 크기·위치·글꼴·연회색 배경 */
+.scriptPaper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  overflow-y: auto;
+  padding: 44px 14px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: var(--control-radius, 8px);
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.65;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+}
+.scriptPaperEdit {
+  resize: none;
+  outline: none;
+}
+.scriptPaperEdit:focus {
+  border-color: var(--ark-color-text-secondary);
+}
+
+/* 내 콜 카드 — 좌우 여백을 넓혀 입력칸이 너무 길지 않게, 입력칸 사이 간격도 넉넉히 */
+.grid > .intakeCard {
+  padding: 20px 40px;
+}
+.intake .form {
+  gap: 18px 28px;
+}
+.intake {
+  gap: 16px;
+}
+
+/* PC 전화 켜짐/꺼짐 — 버튼 하나(스위치) */
+.pcToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+}
+.pcToggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.pcToggle:focus-visible {
+  outline: 2px solid var(--ark-color-text);
+  outline-offset: 2px;
+}
+.pcKnob {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--ark-color-border);
+  transition: background 0.15s;
+}
+.pcKnob::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+.pcToggleOn {
+  border-color: #16a34a;
+  background: color-mix(in srgb, #16a34a 8%, var(--ark-color-bg));
+  color: #15803d;
+}
+.pcToggleOn .pcKnob {
+  background: #16a34a;
+}
+.pcToggleOn .pcKnob::after {
+  transform: translateX(14px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pcKnob,
+  .pcKnob::after {
+    transition: none;
+  }
 }

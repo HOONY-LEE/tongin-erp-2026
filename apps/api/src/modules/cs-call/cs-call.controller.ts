@@ -65,6 +65,8 @@ class UpdateCallDto {
 class ScriptDto {
   @IsOptional() @IsString() @MaxLength(40) title?: string;
   @IsOptional() @IsString() @MaxLength(5000) body?: string;
+  /** 공유 메모(상담 콘솔 모든 직원) — 없으면 개인 */
+  @IsOptional() @IsBoolean() shared?: boolean;
 }
 class AnswerDto {
   @IsString() @MaxLength(30) phone!: string;
@@ -133,7 +135,11 @@ export class CsCallController {
   @Post('scripts')
   @RequirePermissions('LEAD.CREATE')
   createScript(@CurrentUser() user: AuthPrincipal, @Body() dto: ScriptDto) {
-    return this.calls.createScript(user, { title: dto.title ?? '새 메모', body: dto.body });
+    return this.calls.createScript(user, {
+      title: dto.title ?? '새 메모',
+      body: dto.body,
+      shared: dto.shared,
+    });
   }
 
   @Patch('scripts/:sid')
