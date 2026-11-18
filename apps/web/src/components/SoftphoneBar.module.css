@@ -211,3 +211,86 @@
   background: color-mix(in srgb, #16a34a 14%, var(--ark-color-bg));
   color: #15803d;
 }
+
+/* ── 통화 막대 — 크게, 자세히 ── */
+.bar {
+  min-width: 520px;
+  gap: 14px;
+  padding: 14px 16px 14px 18px;
+  border-radius: 16px;
+}
+.live {
+  border-color: #16a34a;
+  background: color-mix(in srgb, #16a34a 7%, var(--ark-color-bg));
+}
+.iconLive {
+  background: #16a34a;
+  color: #fff;
+}
+.icon {
+  width: 42px;
+  height: 42px;
+}
+.line1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(15px * var(--font-scale, 1));
+}
+.line2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+.num {
+  color: var(--ark-color-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.dim {
+  color: var(--ark-color-text-tertiary, var(--ark-color-text-secondary));
+}
+.timer {
+  font-size: calc(17px * var(--font-scale, 1));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.liveDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: blink 1.2s ease-in-out infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .liveDot {
+    animation: none;
+  }
+}
+.mutedTag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #f59e0b 16%, var(--ark-color-bg));
+  color: #b45309;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 700;
+}
+.ghostOn {
+  background: color-mix(in srgb, #f59e0b 16%, var(--ark-color-bg));
+  color: #b45309;
+}
+.answer,
+.hang,
+.ghost {
+  height: 38px;
+  padding: 0 14px;
+}
