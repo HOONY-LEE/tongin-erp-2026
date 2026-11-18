@@ -1,5 +1,5 @@
 export default {
-  app: { title: '通仁 AI Works' },
+  app: { title: '通仁 WORKS' },
   common: {
     add: '添加',
     save: '保存',

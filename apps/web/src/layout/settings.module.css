@@ -198,6 +198,7 @@
 }
 .sideFootCollapsed {
   justify-content: center;
+  flex-direction: column;
 }
 .gear {
   display: flex;

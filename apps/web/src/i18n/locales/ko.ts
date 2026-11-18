@@ -1,5 +1,5 @@
 export default {
-  app: { title: '통인 AI Works' },
+  app: { title: '통인 WORKS' },
   common: {
     add: '추가',
     save: '저장',
