@@ -753,15 +753,22 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   align-self: center;
 }
 
-/* ── 사이드바 스크롤바 — 기본 스크롤바는 트랙 테두리 때문에 사이드바와 사이에 선이 생긴다.
-   트랙은 투명, 얇은 손잡이만 두고 사이드바에 마우스를 올렸을 때만 보인다 ── */
-[class*='_sidebarContent_'] {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+/* ── 사이드바 스크롤바 — 기본 스크롤바는 트랙 테두리 때문에 사이드바와 사이에 선이 생긴다. 트랙은 투명 ── */
+/* 사이드바 스크롤바 — 조금 두껍게(8px, 둥근 막대). 평소엔 옅게, 마우스를 올리면 진하게 */
+[class*='_sidebarContent_']::-webkit-scrollbar {
+  width: 8px;
 }
-[class*='_sidebarContent_']:hover,
-[class*='_sidebarContent_']:focus-within {
-  scrollbar-color: color-mix(in srgb, var(--ark-color-text) 22%, transparent) transparent;
+[class*='_sidebarContent_']::-webkit-scrollbar-track {
+  background: transparent;
+}
+[class*='_sidebarContent_']::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ark-color-text) 10%, transparent);
+  background-clip: padding-box;
+}
+[class*='_sidebarContent_']:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--ark-color-text) 24%, transparent);
 }
 /* 펼친 사이드바 — 메뉴와 스크롤바 사이 빈 칸을 줄인다(오른쪽 여백 12px → 4px).
    스크롤바 자리는 늘 비워 둬(stable) 스크롤이 생겨도 메뉴 폭이 흔들리지 않는다. 접힌 사이드바는 그대로 */
