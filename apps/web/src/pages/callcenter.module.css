@@ -1,14 +1,15 @@
 /* 상담 콘솔 — 위 숫자 | 내 콜 · 아웃콜 대기 · 상담원 */
 .stats {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  flex: none;
 }
 .stats > div {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 16px;
+  gap: 2px;
+  padding: 10px 14px;
   border: 1px solid var(--ark-color-border);
   border-radius: 12px;
   background: var(--ark-color-bg);
@@ -18,7 +19,7 @@
   font-size: calc(13px * var(--font-scale, 1));
 }
 .stats b {
-  font-size: calc(22px * var(--font-scale, 1));
+  font-size: calc(20px * var(--font-scale, 1));
 }
 .stats > .warnStat {
   border-color: #f59e0b;
@@ -1067,11 +1068,7 @@ textarea.memoBox {
   min-height: 36px;
 }
 
-/* 상담원 현황(오른쪽 맨 위) — 내용만큼, 많으면 안에서 스크롤 */
-.sideCol > .agentsCard {
-  flex: 0 1 auto;
-  max-height: 36%;
-}
+/* 상담원 현황(콘솔 오른쪽 위, 상담 메모 자리) — 아웃콜과 높이를 나눈다 */
 .agentsCard .cardTitle .count {
   margin-left: auto;
   font-weight: 500;
