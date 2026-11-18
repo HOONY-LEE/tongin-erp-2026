@@ -56,11 +56,14 @@ export function CallList({
   refreshKey,
   onOpen,
   stats,
+  head,
 }: {
   refreshKey: number;
   onOpen: (id: string) => void;
   /** 카드 위 오늘 숫자(오늘 들어온 콜·상담 중·아웃콜 대기·오늘 끝낸 콜) */
   stats?: ReactNode;
+  /** 카드 맨 위(목록 바꾸는 탭) */
+  head?: ReactNode;
 }) {
   const toast = useToast();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
@@ -143,6 +146,7 @@ export function CallList({
 
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
+      {head}
       {stats}
       <DataTable
         tabs={
