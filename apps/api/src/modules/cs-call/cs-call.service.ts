@@ -94,6 +94,8 @@ export class CsCallService {
             : { status: 'OUTCALL' }),
         },
       });
+      // 배정되면 그 상담원은 '상담 중'(상담 가능 해제) — 통화가 끝나도 후처리 후 직접 [상담 가능]을 눌러야 다시 받는다
+      if (agent) await this.holdAgent(tx, agent.id);
       return { ...call, sipUri: agent?.sipUri ?? null, ringTo: agent?.ringTo ?? null };
     });
   }
@@ -114,6 +116,7 @@ export class CsCallService {
           data: { available: false, lastFreeAt: new Date() },
         });
       const agent = await this.freeAgent(tx, call.phone);
+      if (agent) await this.holdAgent(tx, agent.id);
       await tx.csCall.update({
         where: { id: callId },
         data: agent
@@ -156,6 +159,11 @@ export class CsCallService {
       : null;
   }
 
+  /** 상담원을 '상담 가능'에서 내린다(배정·콜백 시) */
+  private holdAgent(tx: Prisma.TransactionClient | PrismaService, employeeId: string) {
+    return tx.csAgent.updateMany({ where: { employeeId }, data: { available: false } });
+  }
+
   private async customerByPhone(d: string) {
     const rows = await this.prisma.$queryRaw<{ id: string; name: string }[]>`
       SELECT id, name FROM customer
@@ -182,6 +190,15 @@ export class CsCallService {
   /** 상담 가능 / 자리 비움 */
   async setAvailable(p: AuthPrincipal, available: boolean) {
     const id = this.me(p);
+    if (available) {
+      const open = await this.prisma.csCall.count({
+        where: { agentEmpId: id, status: { in: ACTIVE } },
+      });
+      if (open)
+        throw new ConflictException(
+          '상담 중인 콜을 먼저 마무리(접수 등록)한 뒤 상담 가능으로 바꿔 주세요.',
+        );
+    }
     await this.prisma.csAgent.upsert({
       where: { employeeId: id },
       create: { employeeId: id, available, lastFreeAt: new Date() },
@@ -274,6 +291,7 @@ export class CsCallService {
       },
     });
     if (!r.count) throw new ConflictException('다른 상담원이 이미 콜백했거나 끝난 콜입니다.');
+    await this.holdAgent(this.prisma, me);
     return this.prisma.csCall.findUniqueOrThrow({ where: { id } });
   }
 

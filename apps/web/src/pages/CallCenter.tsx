@@ -68,9 +68,9 @@ const since = (iso: string, now: number) => {
   return m < 1 ? '방금' : m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간 ${m % 60}분`;
 };
 const STATE: Record<Console['agents'][number]['state'], { label: string; cls: string }> = {
-  BUSY: { label: '통화 중', cls: 'busy' },
-  READY: { label: '대기', cls: 'ready' },
-  OFF: { label: '꺼짐', cls: 'off' },
+  BUSY: { label: '상담 중', cls: 'busy' },
+  READY: { label: '상담 가능', cls: 'ready' },
+  OFF: { label: '자리 비움', cls: 'off' },
 };
 
 /**
@@ -162,44 +162,29 @@ export default function CallCenter() {
           <div className={styles.actions}>
             <PcPhone />
             <RingTo value={me.ringTo} busy={busy} onSave={saveRingTo} />
+            {/* 기본은 자리 비움. 콜이 배정되면 자동으로 '상담 중'이 되고, 통화가 끝나도 후처리를 마치고
+                직접 [상담 가능]을 눌러야 다음 전화가 온다 */}
             <SegmentedControl
-              value={me.available ? 'on' : 'off'}
-              onChange={(v) => void setAvailable(v === 'on')}
+              value={me.available && !mine ? 'on' : 'off'}
+              onChange={(v) => {
+                if (v === 'on' && mine) {
+                  toast({
+                    type: 'warning',
+                    title: '상담 중인 콜을 먼저 마무리(접수 등록)한 뒤 상담 가능으로 바꿔 주세요.',
+                  });
+                  return;
+                }
+                void setAvailable(v === 'on');
+              }}
               options={[
-                { value: 'on', label: '상담 가능' },
-                { value: 'off', label: '자리 비움' },
+                { value: 'on', label: '상담 가능', disabled: !!mine },
+                { value: 'off', label: mine ? '상담 중' : '자리 비움' },
               ]}
             />
           </div>
         ) : undefined
       }
     >
-      <div className={styles.stats}>
-        <div>
-          <span>오늘 들어온 콜</span>
-          <b>{data.today.received}</b>
-        </div>
-        <div>
-          <span>상담 중</span>
-          <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
-        </div>
-        <div className={data.outcalls.length ? styles.warnStat : ''}>
-          <span>아웃콜 대기</span>
-          <b>{data.outcalls.length}</b>
-        </div>
-        <div>
-          <span>상담 가능 상담원</span>
-          <b>
-            {data.agents.filter((a) => a.state === 'READY').length} /{' '}
-            {data.agents.filter((a) => a.state !== 'OFF').length}
-          </b>
-        </div>
-        <div>
-          <span>오늘 끝낸 콜</span>
-          <b>{data.today.done}</b>
-        </div>
-      </div>
-
       <div className={styles.grid}>
         {/* 내 콜 — 통화하면서 바로 접수 */}
         <section className={`${styles.card} ${mine ? styles.intakeCard : ''}`}>
