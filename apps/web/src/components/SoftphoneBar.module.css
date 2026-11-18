@@ -96,3 +96,93 @@
   outline: 2px solid var(--ark-color-text);
   outline-offset: 2px;
 }
+
+/* ── 전화가 왔을 때 — 화면 가운데 창 ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.35);
+}
+.incoming {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(360px, 100%);
+  padding: 28px 24px 20px;
+  border-radius: 18px;
+  background: var(--ark-color-bg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+.incoming h2 {
+  margin: 8px 0 0;
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--ark-color-text-secondary);
+}
+.ringIcon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #fff;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ringIcon {
+    animation: none;
+  }
+}
+.inNumber {
+  font-size: calc(26px * var(--font-scale, 1));
+  font-variant-numeric: tabular-nums;
+}
+.inWho {
+  margin: 0;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.inActions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+}
+.answerBig,
+.hangBig {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  font: inherit;
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 700;
+  cursor: pointer;
+}
+.answerBig {
+  background: #16a34a;
+}
+.hangBig {
+  background: #dc2626;
+}
+.answerBig:focus-visible,
+.hangBig:focus-visible {
+  outline: 3px solid var(--ark-color-text);
+  outline-offset: 2px;
+}
+.inHint {
+  margin-top: 8px;
+  color: var(--ark-color-text-secondary);
+}

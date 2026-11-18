@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { api } from '../lib/api';
 import { formatPhone } from '../lib/phone';
 import { answer, hangup, resumePhoneIfEnabled, toggleMute, usePhone } from '../lib/softphone';
 import styles from './SoftphoneBar.module.css';
@@ -32,8 +34,90 @@ export function SoftphoneBar() {
   }, [phone.call?.state]);
 
   const call = phone.call;
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // 울리는 전화의 고객 — 서버가 이미 이 상담원에게 배분해 둔 콜에서 이름을 찾는다
+  const [caller, setCaller] = useState<{ name: string | null; leads: number } | null>(null);
+  const answerRef = useRef<HTMLButtonElement>(null);
+  const ringing = call?.state === 'ringing' && call.direction === 'in';
+  useEffect(() => {
+    if (!ringing) {
+      setCaller(null);
+      return;
+    }
+    answerRef.current?.focus();
+    let alive = true;
+    void api<{
+      me: { call: { customerName: string | null } | null; recentLeads: unknown[] } | null;
+    }>('/cs-calls/console')
+      .then(
+        (r) =>
+          alive &&
+          setCaller({
+            name: r.me?.call?.customerName ?? null,
+            leads: r.me?.recentLeads.length ?? 0,
+          }),
+      )
+      .catch(() => undefined);
+    // 다른 창을 보고 있어도 알아차리게 탭 제목을 깜박인다
+    const title = document.title;
+    let on = false;
+    const t = setInterval(() => {
+      on = !on;
+      document.title = on ? '📞 전화가 왔습니다' : title;
+    }, 900);
+    return () => {
+      alive = false;
+      clearInterval(t);
+      document.title = title;
+    };
+  }, [ringing]);
+
+  /** 받기 → 통화 연결 + 상담 콘솔(접수 패널)로 */
+  const take = () => {
+    answer();
+    if (pathname !== '/callcenter') navigate('/callcenter');
+  };
+
   if (!call) return null;
   const who = call.number ? formatPhone(call.number) : '알 수 없는 번호';
+
+  if (ringing)
+    return (
+      <div className={styles.overlay}>
+        <div
+          className={styles.incoming}
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="incoming-title"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') hangup();
+          }}
+        >
+          <span className={styles.ringIcon}>
+            <PhoneIncoming size={28} />
+          </span>
+          <h2 id="incoming-title">전화가 왔습니다</h2>
+          <b className={styles.inNumber}>{who}</b>
+          <p className={styles.inWho}>
+            {caller === null
+              ? '고객 정보를 찾는 중…'
+              : caller.name
+                ? `기존 고객 ${caller.name}${caller.leads ? ` · 이전 접수 ${caller.leads}건` : ''}`
+                : '처음 전화한 번호'}
+          </p>
+          <div className={styles.inActions}>
+            <button type="button" className={styles.hangBig} onClick={hangup}>
+              <PhoneOff size={18} /> 거절
+            </button>
+            <button ref={answerRef} type="button" className={styles.answerBig} onClick={take}>
+              <Phone size={18} /> 받기
+            </button>
+          </div>
+          <small className={styles.inHint}>20초 안에 받지 않으면 다음 상담원에게 넘어갑니다</small>
+        </div>
+      </div>
+    );
   const label =
     call.state === 'ringing'
       ? '전화가 왔습니다'

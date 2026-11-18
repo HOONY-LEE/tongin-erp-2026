@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Headphones, Laptop, PhoneCall, PhoneOutgoing, UserRound } from 'lucide-react';
+import { Headphones, Laptop, PhoneCall, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -16,6 +16,7 @@ import {
 import styles from './callcenter.module.css';
 import { IntakePanel } from './callcenter/IntakePanel';
 import { CallList } from './callcenter/CallList';
+import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
 
 interface CallView {
   id: string;
@@ -397,6 +398,21 @@ function PcPhone() {
   const phone = usePhone();
   const toast = useToast();
   const [working, setWorking] = useState(false);
+  const [soundOpen, setSoundOpen] = useState(false);
+  const soundButton = (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setSoundOpen(true)}
+        aria-label="PC 전화 소리 설정"
+        title="소리 설정"
+      >
+        <Settings2 size={14} />
+      </Button>
+      {soundOpen && <PhoneSettingsModal onClose={() => setSoundOpen(false)} />}
+    </>
+  );
   // 켜지 못한 이유(마이크 권한·연결 실패)는 알림으로
   useEffect(() => {
     if (phone.status === 'error' && phone.error) toast({ type: 'error', title: phone.error });
@@ -423,6 +439,7 @@ function PcPhone() {
         >
           끄기
         </Button>
+        {soundButton}
       </span>
     );
   return (
@@ -441,6 +458,7 @@ function PcPhone() {
             ? 'PC 전화 다시 켜기'
             : 'PC 전화 켜기'}
       </Button>
+      {soundButton}
     </span>
   );
 }

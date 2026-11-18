@@ -14,7 +14,15 @@ import { formatPhone } from '../../lib/phone';
 import { SERVICE_LINES } from '../../lib/leadCodes';
 import { useOrgScope } from '../../lib/useOrgScope';
 import { dial, usePhone } from '../../lib/softphone';
-import { Badge, Button, Input, Select, Textarea, useToast } from '../../components/ui';
+import {
+  Badge,
+  Button,
+  Input,
+  SegmentedControl,
+  Select,
+  Textarea,
+  useToast,
+} from '../../components/ui';
 import { AddressField } from '../../components/ui/AddressField';
 import styles from '../callcenter.module.css';
 
@@ -80,6 +88,7 @@ export function IntakePanel({
       customerName: call.customerName ?? '',
       serviceLine: 'MOVING',
       orgUnitId: ownOrgId || user?.employeeOrgUnitId || '',
+      moveKind: 'GENERAL',
       partnerId: '',
       moveDate: '',
       request: call.request ?? '',
@@ -142,6 +151,12 @@ export function IntakePanel({
     run(async () => {
       if (!v.customerName.trim()) throw new ApiError(400, '고객명을 입력해 주세요.', 'VALIDATION');
       if (!v.orgUnitId) throw new ApiError(400, '담당 지점을 골라 주세요.', 'VALIDATION');
+      if (v.moveKind !== 'GENERAL' && !v.partnerId)
+        throw new ApiError(
+          400,
+          `${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 업체를 골라 주세요.`,
+          'VALIDATION',
+        );
       const addr: Record<string, string> = {};
       for (const [k, val] of Object.entries(v))
         if (/^(from|to)(Zipcode|Addr|AddrDetail|Sido|Sigungu|Lat|Lng)$/.test(k) && val)
@@ -267,22 +282,36 @@ export function IntakePanel({
         <div className={styles.full}>
           <AddressField addrPrefix="to" label="도착지" values={v} setField={setField} />
         </div>
-        <label className={styles.field}>
-          <span>제휴 · 전속</span>
-          <Combobox
-            value={v.partnerId || null}
-            onChange={(x) => setField('partnerId', x ?? '')}
-            options={partners.map((p) => ({
-              value: p.id,
-              label: p.name,
-              group: PARTNER_TYPE_LABEL[p.type as PartnerType] ?? p.type,
-            }))}
-            placeholder="없음(일반)"
-            searchPlaceholder="업체명으로 찾기"
-            emptyMessage="찾는 업체가 없습니다"
-            clearable
-          />
-        </label>
+        <div className={`${styles.field} ${styles.full}`}>
+          <span>이사 구분</span>
+          <div className={styles.kindRow}>
+            <SegmentedControl
+              value={v.moveKind}
+              onChange={(x) => setV((cur) => ({ ...cur, moveKind: x, partnerId: '' }))}
+              options={[
+                { value: 'GENERAL', label: '일반' },
+                { value: 'AFFILIATE', label: '제휴' },
+                { value: 'EXCLUSIVE', label: '전속' },
+              ]}
+            />
+            {v.moveKind !== 'GENERAL' && (
+              <div className={styles.kindPick}>
+                <Combobox
+                  key={v.moveKind}
+                  value={v.partnerId || null}
+                  onChange={(x) => setField('partnerId', x ?? '')}
+                  options={partners
+                    .filter((p) => p.type === v.moveKind)
+                    .map((p) => ({ value: p.id, label: p.name }))}
+                  placeholder={`${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 업체 고르기`}
+                  searchPlaceholder="업체명으로 찾기"
+                  emptyMessage="찾는 업체가 없습니다"
+                  clearable
+                />
+              </div>
+            )}
+          </div>
+        </div>
         <label className={styles.field}>
           <span>이사 희망일</span>
           <Input

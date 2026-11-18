@@ -1,5 +1,5 @@
 // 카카오(다음) 우편번호 서비스 — 무료·키 불필요. 스크립트를 지연 로드해 팝업 검색.
-const SRC = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+const SRC = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
 
 export interface PostcodeResult {
   zonecode: string; // 우편번호(5자리)

@@ -53,7 +53,88 @@ let refreshPending = false;
 
 jssipDebug.disable();
 
-// ── 소리 ──
+// ── 소리 설정 — 이 PC(브라우저)에만 저장 ──
+export type RingStyle = 'classic' | 'soft' | 'bell';
+export interface PhoneSettings {
+  /** 벨소리 켜기 */
+  ring: boolean;
+  /** 벨소리 크기 0~1 */
+  volume: number;
+  ringStyle: RingStyle;
+  /** 소리 나는 곳(스피커·헤드셋) — 비우면 기본 장치 */
+  outputDeviceId: string;
+  /** 마이크 — 비우면 기본 장치 */
+  inputDeviceId: string;
+}
+const SETTINGS_KEY = 'tongin_pc_phone_settings';
+const DEFAULT_SETTINGS: PhoneSettings = {
+  ring: true,
+  volume: 0.6,
+  ringStyle: 'classic',
+  outputDeviceId: '',
+  inputDeviceId: '',
+};
+let settings: PhoneSettings = (() => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw
+      ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<PhoneSettings>) }
+      : DEFAULT_SETTINGS;
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+})();
+const settingsListeners = new Set<() => void>();
+export function getPhoneSettings() {
+  return settings;
+}
+export function setPhoneSettings(patch: Partial<PhoneSettings>) {
+  settings = { ...settings, ...patch };
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* 저장 못 해도 이번 화면에서는 적용된다 */
+  }
+  if (audioEl && 'outputDeviceId' in patch) void applySink(audioEl);
+  settingsListeners.forEach((l) => l());
+}
+export function usePhoneSettings(): PhoneSettings {
+  return useSyncExternalStore(
+    (l) => {
+      settingsListeners.add(l);
+      return () => settingsListeners.delete(l);
+    },
+    () => settings,
+  );
+}
+/** 고를 수 있는 마이크·스피커 목록(마이크 권한을 받은 뒤에야 이름이 보인다) */
+export async function listAudioDevices() {
+  const all = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+  const pick = (kind: MediaDeviceKind) =>
+    all
+      .filter(
+        (d) =>
+          d.kind === kind &&
+          // 권한 전에는 deviceId가 빈 값으로 온다 — 고를 수 없으니 뺀다
+          !!d.deviceId &&
+          d.deviceId !== 'default' &&
+          d.deviceId !== 'communications',
+      )
+      .map((d, i) => ({
+        value: d.deviceId,
+        label: d.label || `${kind === 'audioinput' ? '마이크' : '스피커'} ${i + 1}`,
+      }));
+  return { inputs: pick('audioinput'), outputs: pick('audiooutput') };
+}
+const micConstraint = (): MediaTrackConstraints | boolean =>
+  settings.inputDeviceId ? { deviceId: { exact: settings.inputDeviceId } } : true;
+
+type SinkTarget = { setSinkId?: (id: string) => Promise<void> };
+async function applySink(target: SinkTarget) {
+  if (!settings.outputDeviceId || typeof target.setSinkId !== 'function') return;
+  await target.setSinkId(settings.outputDeviceId).catch(() => undefined);
+}
+
 let audioEl: HTMLAudioElement | null = null;
 const remoteAudio = () => {
   if (!audioEl) {
@@ -61,32 +142,71 @@ const remoteAudio = () => {
     audioEl.autoplay = true;
     audioEl.style.display = 'none';
     document.body.appendChild(audioEl);
+    void applySink(audioEl as unknown as SinkTarget);
   }
   return audioEl;
 };
+
+/** 벨소리 모양 — [시작(초), 높이(Hz), 길이(초)] */
+const RING_PATTERNS: Record<
+  RingStyle,
+  { notes: [number, number, number][]; every: number; wave: OscillatorType }
+> = {
+  classic: {
+    notes: [
+      [0, 880, 0.15],
+      [0.18, 660, 0.15],
+      [0.36, 880, 0.15],
+    ],
+    every: 1800,
+    wave: 'sine',
+  },
+  soft: {
+    notes: [
+      [0, 523, 0.35],
+      [0.4, 659, 0.45],
+    ],
+    every: 2400,
+    wave: 'triangle',
+  },
+  bell: {
+    notes: [
+      [0, 1046, 0.6],
+      [0.25, 1318, 0.6],
+    ],
+    every: 2000,
+    wave: 'sine',
+  },
+};
 let ring: { ctx: AudioContext; timer: ReturnType<typeof setInterval> } | null = null;
-/** 벨소리 — 별도 음원 없이 WebAudio로 '띠리리' 반복 */
+function makeRing(style: RingStyle, volume: number) {
+  const ctx = new AudioContext();
+  void applySink(ctx as unknown as SinkTarget);
+  const p = RING_PATTERNS[style];
+  const play = () => {
+    for (const [at, f, len] of p.notes) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = p.wave;
+      o.frequency.value = f;
+      const t0 = ctx.currentTime + at;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.25 * volume), t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+      o.connect(g).connect(ctx.destination);
+      o.start(t0);
+      o.stop(t0 + len + 0.05);
+    }
+  };
+  return { ctx, play, every: p.every };
+}
+/** 벨소리 — 별도 음원 없이 WebAudio로 반복. 설정에서 끄면 화면 표시만 */
 function startRingtone() {
-  if (ring) return;
+  if (ring || !settings.ring || settings.volume <= 0) return;
   try {
-    const ctx = new AudioContext();
-    const beep = () => {
-      for (const [at, f] of [
-        [0, 880],
-        [0.18, 660],
-        [0.36, 880],
-      ] as const) {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.frequency.value = f;
-        g.gain.value = 0.12;
-        o.connect(g).connect(ctx.destination);
-        o.start(ctx.currentTime + at);
-        o.stop(ctx.currentTime + at + 0.15);
-      }
-    };
-    beep();
-    ring = { ctx, timer: setInterval(beep, 1800) };
+    const r = makeRing(settings.ringStyle, settings.volume);
+    r.play();
+    ring = { ctx: r.ctx, timer: setInterval(r.play, r.every) };
   } catch {
     // 소리를 못 내도 화면 표시는 된다
   }
@@ -96,6 +216,16 @@ function stopRingtone() {
   clearInterval(ring.timer);
   void ring.ctx.close();
   ring = null;
+}
+/** 설정 화면 '들어보기' — 한 번만 울린다 */
+export function previewRingtone(style: RingStyle = settings.ringStyle, volume = settings.volume) {
+  try {
+    const r = makeRing(style, volume);
+    r.play();
+    setTimeout(() => void r.ctx.close(), 1500);
+  } catch {
+    /* 무시 */
+  }
 }
 
 const decodeJwt = (jwt: string) => {
@@ -219,7 +349,7 @@ async function register() {
 /** PC 전화 켜기 — 마이크 권한을 먼저 받는다 */
 export async function enablePhone() {
   try {
-    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const s = await navigator.mediaDevices.getUserMedia({ audio: micConstraint() });
     s.getTracks().forEach((t) => t.stop());
   } catch (e) {
     const name = e instanceof DOMException ? e.name : '';
@@ -274,7 +404,10 @@ export function answer() {
   if (!session || state.call?.state !== 'ringing') return;
   stopRingtone();
   setCall({ state: 'connecting' });
-  session.answer({ mediaConstraints: { audio: true, video: false }, pcConfig: { iceServers } });
+  session.answer({
+    mediaConstraints: { audio: micConstraint(), video: false },
+    pcConfig: { iceServers },
+  });
 }
 
 export function hangup() {
@@ -293,7 +426,7 @@ export function dial(number: string, callId?: string) {
   const to = number.replace(/\D/g, '');
   if (!ua || state.status !== 'ready' || session || !to) return false;
   const s = ua.call(`sip:${to}@${realm}`, {
-    mediaConstraints: { audio: true, video: false },
+    mediaConstraints: { audio: micConstraint(), video: false },
     pcConfig: { iceServers },
     fromUserName: callerId,
     extraHeaders: callId ? [`X-Call-Id: ${callId}`] : [],

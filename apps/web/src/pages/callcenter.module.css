@@ -382,3 +382,31 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* PC 전화 소리 설정 */
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.volume input[type='range'] {
+  flex: 1;
+  accent-color: #16a34a;
+}
+
+/* 이사 구분 — 일반/제휴/전속 + 업체 고르기 */
+.kindRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.kindPick {
+  flex: 1;
+  min-width: 220px;
+}
