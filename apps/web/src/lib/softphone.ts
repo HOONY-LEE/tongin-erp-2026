@@ -221,11 +221,16 @@ export async function enablePhone() {
   try {
     const s = await navigator.mediaDevices.getUserMedia({ audio: true });
     s.getTracks().forEach((t) => t.stop());
-  } catch {
+  } catch (e) {
+    const name = e instanceof DOMException ? e.name : '';
     set({
       status: 'error',
       error:
-        '마이크를 쓸 수 없습니다. 브라우저 주소창의 마이크 권한을 허용하고 헤드셋을 연결해 주세요.',
+        name === 'NotFoundError' || name === 'OverconstrainedError'
+          ? '마이크(헤드셋)를 찾지 못했습니다. 헤드셋을 연결한 뒤 다시 켜 주세요.'
+          : name === 'NotReadableError'
+            ? '다른 프로그램이 마이크를 쓰고 있습니다. 화상회의 등 마이크를 쓰는 프로그램을 닫고 다시 켜 주세요.'
+            : '마이크 사용이 막혀 있습니다. 주소창 왼쪽 아이콘에서 마이크를 허용하고, Mac은 시스템 설정 → 개인정보 보호 및 보안 → 마이크에서 Chrome을 켠 뒤 Chrome을 다시 실행해 주세요.',
     });
     return;
   }
