@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { ArrowRight, CalendarClock, Search } from 'lucide-react';
+import { ArrowRight, CalendarClock } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
 import { TASK_STATUS, TASK_STATUS_LABEL, type DutyView, type TaskStatus } from '@tongin/shared';
@@ -28,7 +28,6 @@ import {
   Button,
   DataTable,
   FormModal,
-  Input,
   ListPage,
   ListToolbar,
   RecordDetail,
@@ -38,6 +37,7 @@ import {
   type Column,
   type FormField,
   type Row,
+  SearchInput,
 } from '../components/ui';
 import { TaskComments } from '../components/work/TaskComments';
 import { AssignModal, TaskHistory } from '../components/work/TaskHistory';
@@ -816,16 +816,7 @@ function Board({
   return (
     <>
       <ListToolbar
-        search={
-          <div className={styles.boardSearch}>
-            <Search size={15} aria-hidden />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="업무·사업·담당자 검색"
-            />
-          </div>
-        }
+        search={<SearchInput value={q} onChange={setQ} placeholder="업무·사업·담당자 검색" />}
         viewSwitch={viewSwitch}
         tabs={tabs}
         actions={addButton}

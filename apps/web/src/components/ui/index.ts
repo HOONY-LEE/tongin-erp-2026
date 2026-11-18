@@ -52,3 +52,4 @@ export {
   type PhaseStatus,
 } from '@sunghoon_lee/akron-ui';
 export { ConfirmModal } from './ConfirmModal';
+export { SearchInput } from './SearchInput';

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
-import { Badge, Button, Input } from '../ui';
+import { Badge, Button, SearchInput } from '../ui';
 import styles from '../../pages/campaign.module.css';
 
 interface Row {
@@ -117,11 +117,11 @@ export function PickedList({
         </span>
         <span style={{ flex: 1 }} />
         <div className={styles.pickedSearch}>
-          <Input
+          <SearchInput
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={setKeyword}
             placeholder="명단에서 이름·전화번호 찾기"
-            aria-label="명단에서 찾기"
+            ariaLabel="명단에서 찾기"
           />
         </div>
       </div>
