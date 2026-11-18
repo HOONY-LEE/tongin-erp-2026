@@ -41,6 +41,8 @@ interface History {
     firstAt: string | null;
     firstChannel: string | null;
     owner: string | null;
+    /** 가장 최근 접수(영업 기회)의 진행 단계 */
+    stage: string | null;
     orgUnit: string | null;
     calls: number;
     leads: number;
@@ -138,6 +140,10 @@ export function CustomerHistory({ customerId }: { customerId: string }) {
           <div>
             <span>유입 경로</span>
             <b>{s.firstChannel ?? '-'}</b>
+          </div>
+          <div>
+            <span>진행 단계</span>
+            <b>{s.stage ?? '-'}</b>
           </div>
           <div>
             <span>지금 담당</span>

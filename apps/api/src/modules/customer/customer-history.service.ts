@@ -381,6 +381,7 @@ export class CustomerHistoryService {
           firstCall && (!firstLead || firstCall.receivedAt <= firstLead.createdAt)
             ? `전화 (${firstCall.channel ?? '대표번호'})`
             : (sourceName(firstLead?.source ?? null) ?? null),
+        stage: lastLead ? statusLabel(lastLead.status) : null,
         owner: lastLead?.ownerEmp?.name ?? null,
         orgUnit: lastLead?.orgUnit?.name ?? null,
         calls: calls.length,
