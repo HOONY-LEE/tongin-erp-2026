@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Download, Loader2, Settings, ChevronLeft } from 'lucide-react';
+import { Download, Loader2, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -319,19 +319,30 @@ export default function AppLayout() {
             header={
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
                 {/* 색 있는 통인 호랑이 로고만(배경 상자 없이). 흰색은 /brand/tongin-logo-white.png */}
-                <img
-                  onClick={collapsed ? () => setCol(false) : undefined}
-                  title={collapsed ? '사이드바 펴기' : undefined}
-                  src="/brand/tongin-logo-color.png"
-                  alt="통인익스프레스"
-                  width={22}
-                  height={22}
-                  style={{
-                    display: 'block',
-                    flexShrink: 0,
-                    cursor: collapsed ? 'pointer' : undefined,
-                  }}
-                />
+                {collapsed ? (
+                  // 접힌 사이드바 — 로고 자리에 펴기 '>' 버튼
+                  <button
+                    type="button"
+                    className={styles.sideToggle}
+                    style={{ margin: '0 auto' }}
+                    title="사이드바 펴기"
+                    aria-label="사이드바 펴기"
+                    onClick={() => setCol(false)}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                ) : (
+                  <img
+                    src="/brand/tongin-logo-color.png"
+                    alt="통인익스프레스"
+                    width={22}
+                    height={22}
+                    style={{
+                      display: 'block',
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
                 {/* 한국AI통신 'KAT | 한국AI통신'처럼 — 굵은 이름 | 작은 부제 */}
                 {!collapsed && (
                   <span

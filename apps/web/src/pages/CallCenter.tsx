@@ -326,7 +326,6 @@ export default function CallCenter() {
       fit
       title="상담 콘솔"
       subtitle="대표번호로 들어온 콜은 '상담 가능'인 상담원에게 자동으로 배분되고, 모두 통화 중이면 아웃콜로 쌓입니다. 전화를 받으면 '내 콜'에서 통화하면서 바로 접수하세요."
-      onRefresh={load}
       actions={
         me ? (
           <div className={styles.actions}>
@@ -441,94 +440,98 @@ export default function CallCenter() {
           {/* 콘솔(목록)에서는 마감 달력 + 상담원 현황, 상담 화면에서는 상담 메모 */}
           {listView && <MiniCalendar />}
           {listView ? (
-            <section className={`${styles.card} ${styles.agentsCard}`}>
-              <h3 className={styles.cardTitle}>
+            <section className={`${styles.card} ${styles.paneCard} ${styles.agentsCard}`}>
+              <h3 className={`${styles.cardTitle} ${styles.paneHead}`}>
                 <UserRound size={15} /> 상담원 현황
                 <span className={styles.count}>
                   상담 가능 {data.agents.filter((a) => a.state === 'READY').length} /{' '}
                   {data.agents.length}
                 </span>
               </h3>
-              <ul className={styles.agents}>
-                {data.agents.map((a) => (
-                  <li key={a.employeeId}>
-                    <i className={styles[STATE[a.state].cls]} />
-                    <span className={styles.aMain}>
-                      <span className={styles.aName}>
-                        <b>{a.name}</b>
-                        {a.position ? ` ${a.position}` : ''}
-                        {a.employeeId === me?.employeeId && (
-                          <span className={styles.muted}> (나)</span>
-                        )}
-                        {a.pcPhone && <span className={styles.muted}> · PC 전화</span>}
+              <div className={styles.paneBody}>
+                <ul className={styles.agents}>
+                  {data.agents.map((a) => (
+                    <li key={a.employeeId}>
+                      <i className={styles[STATE[a.state].cls]} />
+                      <span className={styles.aMain}>
+                        <span className={styles.aName}>
+                          <b>{a.name}</b>
+                          {a.position ? ` ${a.position}` : ''}
+                          {a.employeeId === me?.employeeId && (
+                            <span className={styles.muted}> (나)</span>
+                          )}
+                          {a.pcPhone && <span className={styles.muted}> · PC 전화</span>}
+                        </span>
+                        <span className={styles.aToday}>
+                          오늘 받음 {a.today.received} · 콜백 {a.today.callbacks} · 접수{' '}
+                          {a.today.leads}
+                          {a.today.talkSec > 0 && ` · 통화 ${Math.round(a.today.talkSec / 60)}분`}
+                        </span>
                       </span>
-                      <span className={styles.aToday}>
-                        오늘 받음 {a.today.received} · 콜백 {a.today.callbacks} · 접수{' '}
-                        {a.today.leads}
-                        {a.today.talkSec > 0 && ` · 통화 ${Math.round(a.today.talkSec / 60)}분`}
+                      <span className={styles.aState}>
+                        {STATE[a.state].label}
+                        {a.state === 'BUSY' &&
+                          a.call &&
+                          ` · ${since(a.call.assignedAt ?? a.call.receivedAt, now)}`}
                       </span>
-                    </span>
-                    <span className={styles.aState}>
-                      {STATE[a.state].label}
-                      {a.state === 'BUSY' &&
-                        a.call &&
-                        ` · ${since(a.call.assignedAt ?? a.call.receivedAt, now)}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {isSysAdmin && <Integration />}
+                    </li>
+                  ))}
+                </ul>
+                {isSysAdmin && <Integration />}
+              </div>
             </section>
           ) : (
             <ScriptCard />
           )}
           {/* 아웃콜 대기 */}
-          <section className={styles.card}>
-            <h3 className={styles.cardTitle}>
+          <section className={`${styles.card} ${styles.paneCard}`}>
+            <h3 className={`${styles.cardTitle} ${styles.paneHead}`}>
               <PhoneOutgoing size={15} /> 아웃콜 대기{' '}
               <span className={styles.count}>{data.outcalls.length}</span>
             </h3>
-            {data.outcalls.length ? (
-              <ol className={styles.ocList}>
-                {data.outcalls.map((c, i) => (
-                  <li key={c.id} className={styles.ocItem}>
-                    <span className={styles.ocNo}>{i + 1}</span>
-                    <span className={styles.ocMain}>
-                      <b className={styles.ocPhone}>{formatPhone(c.phone)}</b>
-                      <span className={styles.ocInfo}>
-                        {c.customerName ?? '새 번호'} · {since(c.receivedAt, now)} 대기
-                        {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
-                        {c.channel?.includes('부재중') && ' · 부재중'}
+            <div className={styles.paneBody}>
+              {data.outcalls.length ? (
+                <ol className={styles.ocList}>
+                  {data.outcalls.map((c, i) => (
+                    <li key={c.id} className={styles.ocItem}>
+                      <span className={styles.ocNo}>{i + 1}</span>
+                      <span className={styles.ocMain}>
+                        <b className={styles.ocPhone}>{formatPhone(c.phone)}</b>
+                        <span className={styles.ocInfo}>
+                          {c.customerName ?? '새 번호'} · {since(c.receivedAt, now)} 대기
+                          {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
+                          {c.channel?.includes('부재중') && ' · 부재중'}
+                        </span>
                       </span>
-                    </span>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={busy || !me || onCall}
-                      title={
-                        onCall
-                          ? '지금 통화를 먼저 끝내 주세요'
-                          : '이 번호로 전화하고 상담 화면을 엽니다'
-                      }
-                      onClick={() => void callback(c)}
-                    >
-                      <PhoneOutgoing size={14} /> 콜백
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
-                      onClick={() => setCancelTarget(c)}
-                    >
-                      <Trash2 size={14} /> 정리
-                    </Button>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className={styles.emptyQ}>아웃콜이 없습니다.</p>
-            )}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={busy || !me || onCall}
+                        title={
+                          onCall
+                            ? '지금 통화를 먼저 끝내 주세요'
+                            : '이 번호로 전화하고 상담 화면을 엽니다'
+                        }
+                        onClick={() => void callback(c)}
+                      >
+                        <PhoneOutgoing size={14} /> 콜백
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
+                        onClick={() => setCancelTarget(c)}
+                      >
+                        <Trash2 size={14} /> 정리
+                      </Button>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className={styles.emptyQ}>아웃콜이 없습니다.</p>
+              )}
+            </div>
           </section>
         </div>
       </div>

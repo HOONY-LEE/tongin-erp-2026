@@ -1303,74 +1303,98 @@ textarea.memoBox {
   font-size: 12px;
 }
 
-/* ── 이사일 마감 작은 달력(콘솔 오른쪽 위) ── */
+/* ── 오른쪽 카드 — 머리(구분선) + 그 아래만 스크롤 ── */
+.paneCard {
+  padding: 0;
+  gap: 0;
+  overflow: hidden !important;
+}
+.paneHead {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--ark-color-border);
+  box-sizing: border-box;
+}
+.paneBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px;
+}
+
+/* ── 이사일 마감 작은 달력(콘솔 오른쪽 위) — 늘 6주, 격자선 ── */
 .sideCol > .miniCal {
   flex: none;
-  overflow: visible;
 }
-.miniCal .cardTitle {
+.miniHead {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-.miniNav {
-  display: inline-flex;
-  align-items: center;
   gap: 2px;
-  margin-left: 6px;
-  font-size: 13px;
 }
-.miniNav button,
-.miniMore {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+.miniHead b {
+  margin-right: 6px;
+  font-size: calc(14px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.miniHead button {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
   border: 0;
+  border-radius: 8px;
   background: none;
   color: var(--ark-color-text-secondary);
-  font: inherit;
-  font-size: 12.5px;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 6px;
 }
-.miniNav button:hover,
-.miniMore:hover {
-  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.05));
-  color: var(--ark-color-text);
+.miniHead button:hover {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text-primary);
 }
-.miniMore {
+.miniHead .miniMore {
   margin-left: auto;
 }
 .miniGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
+  grid-template-rows: 24px repeat(6, 26px);
   text-align: center;
 }
+.miniDow,
+.miniDay {
+  border-right: 1px solid var(--ark-color-border);
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.miniGrid > :nth-child(7n) {
+  border-right: 0;
+}
+.miniGrid > :nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
 .miniDow {
+  display: grid;
+  place-items: center;
+  background: var(--ark-color-bg-subtle, #fafafa);
   color: var(--ark-color-text-secondary);
   font-size: 11px;
-  padding-bottom: 2px;
 }
 .miniDay {
   position: relative;
   display: grid;
   place-items: center;
-  height: 22px;
-  border-radius: 6px;
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
 .miniOut {
-  opacity: 0.35;
+  color: var(--ark-color-text-disabled, #b0b0b5);
 }
 .miniToday {
-  box-shadow: inset 0 0 0 1.5px var(--ark-color-text);
+  box-shadow: inset 0 0 0 1.5px var(--ark-color-text-primary);
   font-weight: 700;
 }
 .miniBusy {
-  background: color-mix(in srgb, #3b82f6 14%, var(--ark-color-bg));
+  background: color-mix(in srgb, #3b82f6 13%, var(--ark-color-bg));
   font-weight: 600;
 }
 .miniClosed {
@@ -1380,40 +1404,13 @@ textarea.memoBox {
 }
 .miniDot {
   position: absolute;
-  bottom: 1px;
+  bottom: 2px;
   left: 50%;
   width: 4px;
   height: 4px;
   margin-left: -2px;
   border-radius: 50%;
   background: #ef4444;
-}
-.miniLegend {
-  display: flex;
-  gap: 10px;
-  margin-top: 6px;
-  color: var(--ark-color-text-secondary);
-  font-size: 11px;
-}
-.miniLegend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.miniLegend .miniDot {
-  position: static;
-  margin: 0;
-}
-.miniAll,
-.miniBusyKey {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
-  background: #ef4444;
-}
-.miniBusyKey {
-  background: color-mix(in srgb, #3b82f6 30%, var(--ark-color-bg));
 }
 .sun {
   color: #dc2626;
