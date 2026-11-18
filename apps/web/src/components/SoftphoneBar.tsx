@@ -51,20 +51,27 @@ export function SoftphoneBar() {
   } | null>(null);
   const answerRef = useRef<HTMLButtonElement>(null);
   const ringing = call?.state === 'ringing' && call.direction === 'in';
+  // 통화 상대 고객 — 울릴 때 번호로 찾아 두고 통화가 끝날 때까지 통화 막대에 보여 준다
+  const number = call?.number ?? '';
   useEffect(() => {
-    if (!ringing) {
+    if (!number) {
       setCaller(null);
       return;
     }
-    answerRef.current?.focus();
     let alive = true;
-    // 동시 울림 방식이라 받기 전에는 콜이 없다 — 번호로 고객을 찾는다
     void api<{ existing: boolean; name: string | null; leads: number }>(
-      `/cs-calls/caller?phone=${encodeURIComponent(call?.number ?? '')}`,
+      `/cs-calls/caller?phone=${encodeURIComponent(number)}`,
     )
       .then((r) => alive && setCaller(r))
       .catch(() => alive && setCaller({ existing: false, name: null, leads: 0 }));
-    // 다른 창을 보고 있어도 알아차리게 탭 제목을 깜박인다
+    return () => {
+      alive = false;
+    };
+  }, [number]);
+  // 울리는 동안 — [받기]에 초점, 다른 창을 보고 있어도 알아차리게 탭 제목을 깜박인다
+  useEffect(() => {
+    if (!ringing) return;
+    answerRef.current?.focus();
     const title = document.title;
     let on = false;
     const t = setInterval(() => {
@@ -72,7 +79,6 @@ export function SoftphoneBar() {
       document.title = on ? '📞 전화가 왔습니다' : title;
     }, 900);
     return () => {
-      alive = false;
       clearInterval(t);
       document.title = title;
     };
@@ -130,27 +136,40 @@ export function SoftphoneBar() {
         </div>
       </div>
     );
-  const label =
-    call.state === 'ringing'
-      ? '전화가 왔습니다'
-      : call.state === 'connecting'
-        ? call.direction === 'out'
-          ? '거는 중…'
-          : '연결 중…'
-        : `통화 중 ${mmss(Date.now() - (call.startedAt ?? Date.now()))}`;
+  const active = call.state === 'active';
+  const status =
+    call.state === 'connecting' ? (call.direction === 'out' ? '거는 중…' : '연결 중…') : '통화 중';
+  const custTag =
+    caller === null ? null : caller.existing ? (
+      <span className={`${styles.custTag} ${styles.custOld}`}>기존 고객</span>
+    ) : (
+      <span className={`${styles.custTag} ${styles.custNew}`}>신규 고객</span>
+    );
 
   return (
-    <div
-      className={`${styles.bar} ${call.state === 'ringing' ? styles.ringing : ''}`}
-      role="status"
-      aria-live="polite"
-    >
-      <span className={styles.icon}>
-        {call.direction === 'in' ? <PhoneIncoming size={18} /> : <PhoneOutgoing size={18} />}
+    <div className={`${styles.bar} ${active ? styles.live : ''}`} role="status" aria-live="polite">
+      <span className={`${styles.icon} ${active ? styles.iconLive : ''}`}>
+        {call.direction === 'in' ? <PhoneIncoming size={20} /> : <PhoneOutgoing size={20} />}
       </span>
       <span className={styles.text}>
-        <b>{who}</b>
-        <small>{label}</small>
+        <span className={styles.line1}>
+          {active && <span className={styles.liveDot} aria-hidden />}
+          <b>{status}</b>
+          {active && (
+            <span className={styles.timer}>
+              {mmss(Date.now() - (call.startedAt ?? Date.now()))}
+            </span>
+          )}
+          {call.muted && <span className={styles.mutedTag}>음소거 중</span>}
+        </span>
+        <span className={styles.line2}>
+          <span className={styles.num}>{who}</span>
+          {custTag}
+          {caller?.name && <span>{caller.name}</span>}
+          {caller?.existing && caller.leads > 0 && (
+            <span className={styles.dim}>· 이전 접수 {caller.leads}건</span>
+          )}
+        </span>
         {call.audioIssue === 'no-media' && (
           <small className={styles.warn}>
             고객 음성이 PC로 들어오지 않습니다 — 네트워크(방화벽) 문제일 수 있습니다
@@ -162,33 +181,20 @@ export function SoftphoneBar() {
           소리 켜기
         </button>
       )}
-      {call.state === 'ringing' ? (
-        <>
-          <button type="button" className={styles.answer} onClick={() => answer()}>
-            <Phone size={16} /> 받기
-          </button>
-          <button type="button" className={styles.hang} onClick={hangup} aria-label="거절">
-            <PhoneOff size={16} />
-          </button>
-        </>
-      ) : (
-        <>
-          {call.state === 'active' && (
-            <button
-              type="button"
-              className={styles.ghost}
-              onClick={toggleMute}
-              aria-label={call.muted ? '음소거 해제' : '음소거'}
-              aria-pressed={call.muted}
-            >
-              {call.muted ? <MicOff size={16} /> : <Mic size={16} />}
-            </button>
-          )}
-          <button type="button" className={styles.hang} onClick={hangup}>
-            <PhoneOff size={16} /> 끊기
-          </button>
-        </>
+      {active && (
+        <button
+          type="button"
+          className={`${styles.ghost} ${call.muted ? styles.ghostOn : ''}`}
+          onClick={toggleMute}
+          aria-pressed={call.muted}
+        >
+          {call.muted ? <MicOff size={16} /> : <Mic size={16} />}
+          {call.muted ? '음소거 해제' : '음소거'}
+        </button>
       )}
+      <button type="button" className={styles.hang} onClick={hangup}>
+        <PhoneOff size={16} /> {active ? '통화 종료' : '끊기'}
+      </button>
     </div>
   );
 }

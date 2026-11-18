@@ -1,15 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Headphones,
-  Mic,
-  MicOff,
-  Phone,
-  PhoneIncoming,
-  PhoneOff,
-  PhoneOutgoing,
-  UserRound,
-} from 'lucide-react';
+import { Headphones, Phone, PhoneIncoming, PhoneOutgoing, UserRound } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import {
   LEAD_STATUS_LABEL,
@@ -22,7 +13,7 @@ import { api, ApiError, cachedApi } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import { SERVICE_LINES } from '../../lib/leadCodes';
 import { useOrgScope } from '../../lib/useOrgScope';
-import { dial, hangup, toggleMute, usePhone } from '../../lib/softphone';
+import { dial, hangup, usePhone } from '../../lib/softphone';
 import {
   Badge,
   Button,
@@ -291,6 +282,12 @@ export function IntakePanel({
             </Button>
           )}
           {pending && <span className={styles.muted}>연결 중…</span>}
+          {/* 전화가 끊겨 있으면 — 다시 걸기(통화 중 표시·음소거·끊기는 화면 아래 통화 막대에) */}
+          {!pending && !phone.call && phone.status === 'ready' && (
+            <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
+              <Phone size={14} /> 전화하기
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -317,53 +314,6 @@ export function IntakePanel({
           )}
         </span>
       </div>
-
-      {/* 통화 상태 — 통화 중이면 계속 '통화 중'이 보이게, 음소거·통화 종료 */}
-      {phone.call?.state === 'active' ? (
-        <div className={`${styles.liveBar} ${styles.liveOn}`} role="status" aria-live="polite">
-          <span className={styles.liveDot} aria-hidden />
-          <b>통화 중</b>
-          <span className={styles.liveTime}>{mmss(talking)}</span>
-          {phone.call.muted && (
-            <span className={styles.liveMuted}>음소거 — 고객에게 내 소리가 안 들립니다</span>
-          )}
-          <span className={styles.liveActions}>
-            <button
-              type="button"
-              className={`${styles.liveBtn} ${phone.call.muted ? styles.liveBtnOn : ''}`}
-              onClick={toggleMute}
-              aria-pressed={phone.call.muted}
-            >
-              {phone.call.muted ? <MicOff size={15} /> : <Mic size={15} />}
-              {phone.call.muted ? '음소거 해제' : '음소거'}
-            </button>
-            <button type="button" className={styles.liveHang} onClick={hangup}>
-              <PhoneOff size={15} /> 통화 종료
-            </button>
-          </span>
-        </div>
-      ) : phone.call ? (
-        <div className={styles.liveBar} role="status">
-          <span className={styles.liveDot} aria-hidden />
-          <b>{phone.call.state === 'ringing' ? '전화가 울리는 중' : '연결 중…'}</b>
-          <span className={styles.liveActions}>
-            <button type="button" className={styles.liveHang} onClick={hangup}>
-              <PhoneOff size={15} /> 끊기
-            </button>
-          </span>
-        </div>
-      ) : (
-        <div className={`${styles.liveBar} ${styles.liveOff}`}>
-          <b>통화 연결 없음</b>
-          {phone.status === 'ready' && (
-            <span className={styles.liveActions}>
-              <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
-                <Phone size={14} /> 전화하기
-              </Button>
-            </span>
-          )}
-        </div>
-      )}
 
       {stale && (
         <div className={styles.staleWarn} role="alert">

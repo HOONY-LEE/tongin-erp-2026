@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Laptop, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
+import { Laptop, Trash2, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -330,42 +330,41 @@ export default function CallCenter() {
               <PhoneOutgoing size={15} /> 아웃콜 대기{' '}
               <span className={styles.count}>{data.outcalls.length}</span>
             </h3>
-            <p className={styles.muted}>
-              상담원이 모두 통화 중일 때 들어온 콜입니다. 먼저 들어온 순서 — 콜백을 누르면 '내 콜'에
-              접수 패널이 열립니다.
-            </p>
             {data.outcalls.length ? (
-              <ol className={styles.queue}>
+              <ol className={styles.ocList}>
                 {data.outcalls.map((c, i) => (
-                  <li key={c.id}>
-                    <span className={styles.qNo}>{i + 1}</span>
-                    <span className={styles.qPhone}>{formatPhone(c.phone)}</span>
-                    <span className={styles.qInfo}>
-                      {c.customerName ? `기존 고객 ${c.customerName}` : '새 번호'} ·{' '}
-                      {since(c.receivedAt, now)} 대기
-                      {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
-                      {c.memo && ` · ${c.memo}`}
+                  <li key={c.id} className={styles.ocItem}>
+                    <span className={styles.ocNo}>{i + 1}</span>
+                    <span className={styles.ocMain}>
+                      <b className={styles.ocPhone}>{formatPhone(c.phone)}</b>
+                      <span className={styles.ocInfo}>
+                        {c.customerName ?? '새 번호'} · {since(c.receivedAt, now)} 대기
+                        {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
+                        {c.channel?.includes('부재중') && ' · 부재중'}
+                      </span>
                     </span>
-                    <span className={styles.qActions}>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        disabled={busy || !me || !!mine}
-                        title={mine ? '지금 콜을 먼저 끝내 주세요' : undefined}
-                        onClick={() => void callback(c)}
-                      >
-                        콜백
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
-                        onClick={() => setCancelTarget(c)}
-                      >
-                        정리
-                      </Button>
-                    </span>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={busy || !me || !!mine}
+                      title={
+                        mine
+                          ? '지금 콜을 먼저 끝내 주세요'
+                          : '이 번호로 전화하고 상담 화면을 엽니다'
+                      }
+                      onClick={() => void callback(c)}
+                    >
+                      <PhoneOutgoing size={14} /> 콜백
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
+                      onClick={() => setCancelTarget(c)}
+                    >
+                      <Trash2 size={14} /> 정리
+                    </Button>
                   </li>
                 ))}
               </ol>
