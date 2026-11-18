@@ -94,6 +94,8 @@ export interface EstimateDetailData {
     moveDate: string | null;
     /** 고객 요청사항(상담 콘솔에서 받은 요청) */
     customerRequest: string | null;
+    /** 상품 특이사항 — 접수 때 업체 혜택·메모를 옮겨 둔 것(고칠 수 있음) */
+    productNote?: string | null;
     /** 제휴·전속 업체(제휴이사·전속이사) — 혜택을 견적 위에 띄운다 */
     partner: {
       id: string;

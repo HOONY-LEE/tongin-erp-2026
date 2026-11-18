@@ -279,6 +279,8 @@ export function IntakePanel({
       ...(v.partnerId && { partnerId: v.partnerId }),
       ...(v.moveDate && { moveDate: v.moveDate }),
       ...(v.request.trim() && { customerRequest: v.request.trim() }),
+      // 고른 제휴·전속 상품의 혜택·조건을 접수에 함께 남긴다
+      ...(partner?.benefit?.trim() && { productNote: partner.benefit.trim() }),
       ...addr,
     };
   };

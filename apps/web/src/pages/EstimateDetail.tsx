@@ -289,7 +289,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
       {/* 제휴이사·전속이사면 그 업체의 혜택·조건을 견적 위에 — 할인·할증을 빠뜨리지 않게 */}
       {data.lead?.partner &&
         (data.lead.partner.type === 'AFFILIATE' || data.lead.partner.type === 'EXCLUSIVE') && (
-          <PartnerNotice partner={data.lead.partner} />
+          <PartnerNotice partner={data.lead.partner} note={data.lead.productNote} />
         )}
 
       {/* 상담 때 받은 고객 요청사항 — 견적·작업에서 빠뜨리지 않게 */}
@@ -372,12 +372,15 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
 
 function PartnerNotice({
   partner,
+  note,
 }: {
   partner: { name: string; type: string; benefit: string | null; intake: string | null };
+  /** 접수에 남긴 상품 특이사항 — 있으면 이것을, 없으면 업체의 지금 혜택을 */
+  note?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const kind = MOVE_KIND_LABEL[moveKindOf(partner.type)];
-  const text = partner.benefit?.trim() ?? '';
+  const text = (note?.trim() || partner.benefit?.trim()) ?? '';
   return (
     <div
       style={{
