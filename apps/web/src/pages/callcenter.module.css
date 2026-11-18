@@ -700,3 +700,28 @@
 .leadChip:hover {
   color: var(--ark-color-text);
 }
+
+/* 상담 가능 — 켜져 있으면 초록 점 */
+.availLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.availDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #16a34a 22%, transparent);
+  animation: availPulse 2s ease-in-out infinite;
+}
+@keyframes availPulse {
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, #16a34a 8%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .availDot {
+    animation: none;
+  }
+}
