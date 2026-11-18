@@ -248,6 +248,13 @@ export class CsCallController {
     return this.calls.cancelOutcall(id, '아웃콜 정리');
   }
 
+  /** 콜 상세 — 상담 화면 */
+  @Get(':id')
+  @RequirePermissions('LEAD.CREATE')
+  detail(@Param('id', ParseUUIDPipe) id: string) {
+    return this.calls.detail(id);
+  }
+
   @Patch(':id')
   @RequirePermissions('LEAD.CREATE')
   update(

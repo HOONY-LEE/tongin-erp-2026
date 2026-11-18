@@ -283,28 +283,22 @@ export class CsCallService {
     return { existing: true, name: customer.name, leads };
   }
 
-  /** PC 전화가 울려도 되는지 — 상담 가능이고 열린 콜이 없을 때만 */
+  /**
+   * PC 전화가 울려도 되는지 — 상담 가능이면 울린다.
+   * 상담 화면(후처리)이 열려 있어도 상관없다. 통화 중인 PC는 브라우저가 스스로 등록을 내린다.
+   */
   async agentState(p: AuthPrincipal) {
     const me = this.me(p);
     const [agent, open] = await Promise.all([
       this.prisma.csAgent.findUnique({ where: { employeeId: me }, select: { available: true } }),
       this.prisma.csCall.count({ where: { agentEmpId: me, status: { in: ACTIVE } } }),
     ]);
-    return { available: !!agent?.available, busy: open > 0, ringable: !!agent?.available && !open };
+    return { available: !!agent?.available, busy: open > 0, ringable: !!agent?.available };
   }
 
-  /** 상담 가능 / 자리 비움 */
+  /** 상담 가능 / 자리 비움 — 마무리하지 않은 상담이 있어도 바꿀 수 있다 */
   async setAvailable(p: AuthPrincipal, available: boolean) {
     const id = this.me(p);
-    if (available) {
-      const open = await this.prisma.csCall.count({
-        where: { agentEmpId: id, status: { in: ACTIVE } },
-      });
-      if (open)
-        throw new ConflictException(
-          '상담 중인 콜을 먼저 마무리(접수 등록)한 뒤 상담 가능으로 바꿔 주세요.',
-        );
-    }
     await this.prisma.csAgent.upsert({
       where: { employeeId: id },
       create: { employeeId: id, available, lastFreeAt: new Date() },
@@ -380,13 +374,9 @@ export class CsCallService {
     return { ok: true };
   }
 
-  /** 아웃콜을 눌러 콜백 — 내가 통화 중이 아닐 때만. 다른 상담원이 먼저 잡았으면 409 */
+  /** 아웃콜을 눌러 콜백 — 다른 상담원이 먼저 잡았으면 409 */
   async callback(p: AuthPrincipal, id: string) {
     const me = this.me(p);
-    const busy = await this.prisma.csCall.count({
-      where: { agentEmpId: me, status: { in: ACTIVE } },
-    });
-    if (busy) throw new ConflictException('지금 상담 중인 콜을 먼저 끝내 주세요.');
     const r = await this.prisma.csCall.updateMany({
       where: { id, status: 'OUTCALL' },
       data: {
@@ -563,6 +553,11 @@ export class CsCallService {
         take: PAGE,
       }),
     ]);
+    return { total, rows: await this.rowsOf(calls) };
+  }
+
+  /** 콜 목록·상세 한 줄 — 고객명·상담원·접수 번호·녹취 여부를 붙인다 */
+  private async rowsOf(calls: Prisma.CsCallGetPayload<object>[]) {
     const custIds = [...new Set(calls.map((c) => c.customerId).filter((x): x is string => !!x))];
     const empIds = [...new Set(calls.map((c) => c.agentEmpId).filter((x): x is string => !!x))];
     const leadIds = [...new Set(calls.map((c) => c.leadId).filter((x): x is string => !!x))];
@@ -588,27 +583,59 @@ export class CsCallService {
     ]);
     const nameOf = <T extends { id: string }>(xs: T[], id: string | null, k: keyof T) =>
       id ? ((xs.find((x) => x.id === id)?.[k] as string | undefined) ?? null) : null;
+    return calls.map((c) => ({
+      id: c.id,
+      phone: c.phone,
+      status: c.status,
+      channel: c.channel,
+      customerId: c.customerId,
+      customerName: nameOf(customers, c.customerId, 'name'),
+      agentEmpId: c.agentEmpId,
+      agentName: nameOf(emps, c.agentEmpId, 'name'),
+      leadId: c.leadId,
+      leadNo: nameOf(leads, c.leadId, 'leadNo'),
+      receivedAt: c.receivedAt.toISOString(),
+      endedAt: c.endedAt?.toISOString() ?? null,
+      durationSec: c.durationSec,
+      hasRecording: !!c.katCallSid && (c.durationSec ?? 0) > 0,
+      memo: c.memo,
+      request: c.request,
+    }));
+  }
+
+  /** 콜 상세 — 상담 콜 목록에서 눌러 여는 상담 화면. 고객의 최근 접수도 함께 */
+  async detail(id: string) {
+    const call = await this.prisma.csCall.findUnique({ where: { id } });
+    if (!call) throw new NotFoundException('콜을 찾을 수 없습니다.');
+    const [[row], recentLeads] = await Promise.all([
+      this.rowsOf([call]),
+      call.customerId ? this.recentLeadsOf(call.customerId) : Promise.resolve([]),
+    ]);
     return {
-      total,
-      rows: calls.map((c) => ({
-        id: c.id,
-        phone: c.phone,
-        status: c.status,
-        channel: c.channel,
-        customerId: c.customerId,
-        customerName: nameOf(customers, c.customerId, 'name'),
-        agentEmpId: c.agentEmpId,
-        agentName: nameOf(emps, c.agentEmpId, 'name'),
-        leadId: c.leadId,
-        leadNo: nameOf(leads, c.leadId, 'leadNo'),
-        receivedAt: c.receivedAt.toISOString(),
-        endedAt: c.endedAt?.toISOString() ?? null,
-        durationSec: c.durationSec,
-        hasRecording: !!c.katCallSid && (c.durationSec ?? 0) > 0,
-        memo: c.memo,
-        request: c.request,
-      })),
+      call: { ...row, attempts: call.attempts, assignedAt: call.assignedAt?.toISOString() ?? null },
+      recentLeads,
     };
+  }
+
+  private async recentLeadsOf(customerId: string) {
+    const rows = await this.prisma.lead.findMany({
+      where: { customerId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        leadNo: true,
+        status: true,
+        createdAt: true,
+        moveDate: true,
+        orgUnit: { select: { name: true } },
+      },
+    });
+    return rows.map((l) => ({
+      ...l,
+      createdAt: l.createdAt.toISOString(),
+      moveDate: l.moveDate?.toISOString().slice(0, 10) ?? null,
+    }));
   }
 
   private async customerIdsByName(q: string) {
@@ -821,7 +848,8 @@ export class CsCallService {
           employeeId: e.id,
           name: e.name,
           position: e.position?.name ?? null,
-          state: call ? 'BUSY' : a?.available ? 'READY' : 'OFF',
+          // 상담 가능을 켰으면 마무리하지 않은 상담이 있어도 '상담 가능'
+          state: a?.available ? 'READY' : call ? 'BUSY' : 'OFF',
           call: call ? view(call) : null,
           lastFreeAt: a?.lastFreeAt.toISOString() ?? null,
           forwarding: !!a?.ringTo,
@@ -834,22 +862,13 @@ export class CsCallService {
           a.name.localeCompare(b.name),
       );
 
-    const mine = me ? active.find((c) => c.agentEmpId === me) : undefined;
-    const recentLeads = mine?.customerId
-      ? await this.prisma.lead.findMany({
-          where: { customerId: mine.customerId },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-          select: {
-            id: true,
-            leadNo: true,
-            status: true,
-            createdAt: true,
-            moveDate: true,
-            orgUnit: { select: { name: true } },
-          },
-        })
-      : [];
+    // 마무리하지 않은 내 상담이 여럿이면 가장 최근 것
+    const mine = me
+      ? active
+          .filter((c) => c.agentEmpId === me)
+          .sort((x, y) => +(y.assignedAt ?? y.receivedAt) - +(x.assignedAt ?? x.receivedAt))[0]
+      : undefined;
+    const recentLeads = mine?.customerId ? await this.recentLeadsOf(mine.customerId) : [];
     const count = (s: string) => todayCounts.find((x) => x.status === s)?._count ?? 0;
     return {
       me: me
@@ -871,11 +890,7 @@ export class CsCallService {
                     : null,
                 }
               : null,
-            recentLeads: recentLeads.map((l) => ({
-              ...l,
-              createdAt: l.createdAt.toISOString(),
-              moveDate: l.moveDate?.toISOString().slice(0, 10) ?? null,
-            })),
+            recentLeads,
           }
         : null,
       agents,

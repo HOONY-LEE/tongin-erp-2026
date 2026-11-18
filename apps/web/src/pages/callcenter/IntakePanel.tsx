@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Headphones, Phone, PhoneIncoming, PhoneOutgoing, UserRound } from 'lucide-react';
+import {
+  ArrowLeft,
+  Headphones,
+  Phone,
+  PhoneIncoming,
+  PhoneOutgoing,
+  UserRound,
+} from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import {
   LEAD_STATUS_LABEL,
@@ -32,7 +39,7 @@ import styles from '../callcenter.module.css';
 export interface IntakeCall {
   id: string;
   phone: string;
-  status: 'ASSIGNED' | 'OUTCALL' | 'CALLBACK';
+  status: string;
   channel: string | null;
   memo: string | null;
   request: string | null;
@@ -84,12 +91,15 @@ export function IntakePanel({
   recentLeads,
   pending = false,
   onDone,
+  onBack,
 }: {
   call: IntakeCall;
   recentLeads: RecentLead[];
   /** 서버가 콜을 만들기 전(받기 직후 잠깐) — 입력은 되고 접수 등록·상담 종료만 잠시 막는다 */
   pending?: boolean;
   onDone: () => Promise<void> | void;
+  /** 목록으로 — 상담을 마무리하지 않고 나가도 콜은 그대로 남는다 */
+  onBack?: () => void;
 }) {
   const toast = useToast();
   const navigate = useNavigate();
@@ -255,6 +265,11 @@ export function IntakePanel({
     <div className={styles.intake}>
       {/* 머리 — 제목·콜 종류 · 오른쪽 위 [상담 종료] [접수 등록] */}
       <div className={styles.intakeHead}>
+        {onBack && (
+          <button type="button" className={styles.backBtn} onClick={onBack} aria-label="목록으로">
+            <ArrowLeft size={16} />
+          </button>
+        )}
         <h3 className={styles.cardTitle}>
           <Headphones size={15} /> 내 콜
         </h3>
