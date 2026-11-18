@@ -305,6 +305,21 @@ export default function CallCenter() {
   const onCall = !!phone.call && phone.call.state !== 'ringing';
   /** 목록 화면(상담 화면이 아닐 때) */
   const listView = !pendingCall && !viewId;
+  /** 목록 카드 맨 위 — 상담 콜 / 이사 확인콜(2일 전) / 해피콜(다음 날) */
+  const viewTabs = (
+    <SegmentedControl
+      value={view}
+      onChange={(v) => setView(v as typeof view)}
+      options={[
+        { value: 'calls', label: '상담 콜' },
+        {
+          value: 'CONFIRM',
+          label: `이사 확인콜${fuCounts?.confirm ? ` ${fuCounts.confirm}` : ''}`,
+        },
+        { value: 'HAPPY', label: `해피콜${fuCounts?.happy ? ` ${fuCounts.happy}` : ''}` },
+      ]}
+    />
+  );
 
   return (
     <ListPage
@@ -385,21 +400,9 @@ export default function CallCenter() {
                 </Button>
               </div>
             )}
-            {/* 상담 콜 / 이사 확인콜(2일 전) / 해피콜(다음 날) */}
-            <SegmentedControl
-              value={view}
-              onChange={(v) => setView(v as typeof view)}
-              options={[
-                { value: 'calls', label: '상담 콜' },
-                {
-                  value: 'CONFIRM',
-                  label: `이사 확인콜${fuCounts?.confirm ? ` ${fuCounts.confirm}` : ''}`,
-                },
-                { value: 'HAPPY', label: `해피콜${fuCounts?.happy ? ` ${fuCounts.happy}` : ''}` },
-              ]}
-            />
             {view === 'calls' ? (
               <CallList
+                head={viewTabs}
                 refreshKey={listKey}
                 onOpen={go}
                 stats={
@@ -425,6 +428,7 @@ export default function CallCenter() {
               />
             ) : (
               <section className={`${styles.card} ${styles.listCard}`}>
+                {viewTabs}
                 <FollowupList key={view} kind={view} onChanged={loadFuCounts} />
               </section>
             )}
