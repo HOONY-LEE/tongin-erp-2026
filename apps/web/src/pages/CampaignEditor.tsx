@@ -158,6 +158,11 @@ const dt = (v: string | null) =>
  * 발송 시점(즉시·예약), 받는 사람(주소·이사일·접수상태 등 조건으로 찾아 골라 담기).
  * 보냈거나 예약된 캠페인은 결과 화면으로 보인다.
  */
+/** 캠페인 발송 잠시 막음 — 운영 실발송을 켰지만 아직 시연 고객 데이터가 섞여 있어 고객에게 일괄 발송은 막는다
+ * (상담 콘솔의 1:1 문자는 보낼 수 있다). 풀 때 false로 */
+const CAMPAIGN_SEND_BLOCKED = true;
+const CAMPAIGN_BLOCK_MSG = '지금은 캠페인 발송을 막아 두었습니다(실제 고객 데이터 정리 후 열림)';
+
 export default function CampaignEditor() {
   const { id } = useParams<{ id: string }>();
   const isNew = !id || id === 'new';
@@ -504,6 +509,10 @@ export default function CampaignEditor() {
   };
 
   const send = async () => {
+    if (CAMPAIGN_SEND_BLOCKED) {
+      toast({ type: 'warning', title: CAMPAIGN_BLOCK_MSG });
+      return;
+    }
     const c = await save(true);
     if (!c) return;
     setSaving(true);
@@ -1149,7 +1158,8 @@ export default function CampaignEditor() {
                   </Button>
                   <Button
                     variant="primary"
-                    disabled={saving || totalPicked === 0 || !!notReady}
+                    disabled={CAMPAIGN_SEND_BLOCKED || saving || totalPicked === 0 || !!notReady}
+                    title={CAMPAIGN_SEND_BLOCKED ? CAMPAIGN_BLOCK_MSG : undefined}
                     onClick={() => {
                       const err = check();
                       if (err) toast({ type: 'warning', title: err });
@@ -1158,6 +1168,11 @@ export default function CampaignEditor() {
                   >
                     {when === 'LATER' ? '예약하기' : '보내기'}
                   </Button>
+                  {CAMPAIGN_SEND_BLOCKED && (
+                    <span style={{ color: 'var(--ark-color-text-secondary)', fontSize: 12.5 }}>
+                      {CAMPAIGN_BLOCK_MSG}
+                    </span>
+                  )}
                 </div>
               </section>
             </>
