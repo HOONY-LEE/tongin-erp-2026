@@ -17,6 +17,26 @@ const ACTIVE = ['ASSIGNED', 'CALLBACK'];
 /** 배분 순서가 겹치지 않게 — 두 콜이 동시에 들어와도 한 상담원에게 둘이 가지 않는다 */
 const DISPATCH_LOCK = 7_202_611;
 const digits = (s: string) => s.replace(/\D/g, '');
+/** 처음 쓰는 상담원에게 만들어 주는 대본 메모 — 상담원이 고쳐 쓴다 */
+const DEFAULT_SCRIPTS = [
+  {
+    title: '첫 인사',
+    body: '안녕하세요, 통인익스프레스 ○○○입니다. 무엇을 도와드릴까요?\n\n(이사 문의면) 이사 예정일과 출발지·도착지를 여쭤봐도 될까요?',
+  },
+  {
+    title: '견적 안내',
+    body: '정확한 견적을 위해 방문 견적을 도와드리고 있습니다.\n방문 가능한 날짜와 시간대를 알려 주시면 담당자가 연락드리겠습니다.',
+  },
+  {
+    title: '제휴·전속 확인',
+    body: '혹시 소속 회사나 기관에서 받으신 제휴 혜택이 있으실까요?\n(제휴사 이름을 확인하고, 전속이면 본사로 배정)',
+  },
+  {
+    title: '마무리',
+    body: '접수해 드렸습니다. 담당자가 곧 연락드릴 예정입니다.\n더 궁금하신 점 있으시면 언제든 연락 주세요. 감사합니다.',
+  },
+];
+
 /** PC 전화 토큰 수명 — 화면이 만료 10분 전에 새로 받아 다시 등록한다 */
 const PHONE_TOKEN_TTL_S = 3600;
 /** 배분 결과 — 이 상담원을 어디로 울릴지. sipUri(PC 전화)가 착신 번호보다 먼저 */
@@ -523,6 +543,65 @@ export class CsCallService {
       type: res.headers.get('content-type') ?? 'audio/wav',
       length: res.headers.get('content-length'),
     };
+  }
+
+  // ── 대본 메모(상담원 본인 것만) ──
+  /** 내 대본 메모 — 처음이면 기본 대본 몇 개를 만들어 준다 */
+  async scripts(p: AuthPrincipal) {
+    const id = this.me(p);
+    const rows = await this.prisma.csScript.findMany({
+      where: { employeeId: id },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+    if (rows.length) return rows;
+    await this.prisma.csScript.createMany({
+      data: DEFAULT_SCRIPTS.map((x, i) => ({ employeeId: id, ...x, sortOrder: i })),
+    });
+    return this.prisma.csScript.findMany({
+      where: { employeeId: id },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  async createScript(p: AuthPrincipal, input: { title: string; body?: string }) {
+    const id = this.me(p);
+    const last = await this.prisma.csScript.findFirst({
+      where: { employeeId: id },
+      orderBy: { sortOrder: 'desc' },
+      select: { sortOrder: true },
+    });
+    return this.prisma.csScript.create({
+      data: {
+        employeeId: id,
+        title: input.title.trim().slice(0, 40) || '새 메모',
+        body: (input.body ?? '').slice(0, 5000),
+        sortOrder: (last?.sortOrder ?? -1) + 1,
+      },
+    });
+  }
+
+  private async myScript(p: AuthPrincipal, scriptId: string) {
+    const id = this.me(p);
+    const row = await this.prisma.csScript.findUnique({ where: { id: scriptId } });
+    if (!row || row.employeeId !== id) throw new NotFoundException('메모를 찾을 수 없습니다.');
+    return row;
+  }
+
+  async updateScript(p: AuthPrincipal, scriptId: string, input: { title?: string; body?: string }) {
+    await this.myScript(p, scriptId);
+    return this.prisma.csScript.update({
+      where: { id: scriptId },
+      data: {
+        ...(input.title !== undefined && { title: input.title.trim().slice(0, 40) || '새 메모' }),
+        ...(input.body !== undefined && { body: input.body.slice(0, 5000) }),
+      },
+    });
+  }
+
+  async deleteScript(p: AuthPrincipal, scriptId: string) {
+    await this.myScript(p, scriptId);
+    await this.prisma.csScript.delete({ where: { id: scriptId } });
+    return { ok: true };
   }
 
   /** 상담 콘솔 한 화면 — 내 상태·내 콜(고객·최근 접수), 상담원 현황, 아웃콜 대기, 오늘 숫자 */

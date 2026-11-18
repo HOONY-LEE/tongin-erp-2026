@@ -537,3 +537,82 @@
   border-top: 1px solid var(--ark-color-border);
   padding-top: 12px;
 }
+
+/* 오른쪽 칸 — 상담 메모 + 아웃콜 */
+.sideCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.sideCol > .card {
+  max-height: 560px;
+}
+/* 상담 메모(대본) */
+.scriptCard .cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.scriptTools {
+  margin-left: auto;
+}
+.scriptTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.scriptTabs button {
+  padding: 5px 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.scriptTabs button:hover {
+  color: var(--ark-color-text);
+}
+.scriptTabs .scriptTabOn {
+  border-color: var(--ark-color-text);
+  background: var(--ark-color-text);
+  color: var(--ark-color-bg);
+}
+.scriptTabs button:focus-visible {
+  outline: 2px solid var(--ark-color-text);
+  outline-offset: 2px;
+}
+.scriptBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.scriptBody p {
+  margin: 0;
+  padding: 10px 12px;
+  width: 100%;
+  border-radius: 8px;
+  background: var(--ark-color-bg-muted);
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+.scriptEdit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scriptActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* 좁은 오른쪽 칸 — 버튼은 아래 줄 오른쪽 */
+.queue li .qActions {
+  grid-column: 2 / -1;
+  grid-row: 3;
+  justify-self: end;
+}

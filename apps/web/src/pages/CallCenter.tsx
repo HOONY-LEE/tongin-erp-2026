@@ -7,6 +7,7 @@ import { dial, disablePhone, enablePhone, usePhone } from '../lib/softphone';
 import {
   Badge,
   Button,
+  ConfirmModal,
   CopyText,
   Input,
   ListPage,
@@ -17,6 +18,7 @@ import styles from './callcenter.module.css';
 import { IntakePanel } from './callcenter/IntakePanel';
 import { CallList } from './callcenter/CallList';
 import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
+import { ScriptCard } from './callcenter/ScriptCard';
 
 interface CallView {
   id: string;
@@ -136,6 +138,8 @@ export default function CallCenter() {
       await api<CallView>(`/cs-calls/${c.id}/callback`, { method: 'POST' });
       if (pcReady) dial(c.phone, c.id);
     });
+  /** 아웃콜 정리 확인 창 */
+  const [cancelTarget, setCancelTarget] = useState<CallView | null>(null);
   /** 콜이 끝나면 콜 목록도 다시 읽는다 */
   const [listKey, setListKey] = useState(0);
   const afterIntake = async () => {
@@ -217,65 +221,59 @@ export default function CallCenter() {
           )}
         </section>
 
-        {/* 아웃콜 대기 */}
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>
-            <PhoneOutgoing size={15} /> 아웃콜 대기{' '}
-            <span className={styles.count}>{data.outcalls.length}</span>
-          </h3>
-          <p className={styles.muted}>
-            상담원이 모두 통화 중일 때 들어온 콜입니다. 먼저 들어온 순서 — 콜백을 누르면 '내 콜'에
-            접수 패널이 열립니다.
-          </p>
-          {data.outcalls.length ? (
-            <ol className={styles.queue}>
-              {data.outcalls.map((c, i) => (
-                <li key={c.id}>
-                  <span className={styles.qNo}>{i + 1}</span>
-                  <span className={styles.qPhone}>{formatPhone(c.phone)}</span>
-                  <span className={styles.qInfo}>
-                    {c.customerName ? `기존 고객 ${c.customerName}` : '새 번호'} ·{' '}
-                    {since(c.receivedAt, now)} 대기
-                    {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
-                    {c.memo && ` · ${c.memo}`}
-                  </span>
-                  <span className={styles.qActions}>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={busy || !me || !!mine}
-                      title={mine ? '지금 콜을 먼저 끝내 주세요' : undefined}
-                      onClick={() => void callback(c)}
-                    >
-                      콜백
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `${formatPhone(c.phone)} 아웃콜을 콜백하지 않고 정리할까요?`,
-                          )
-                        )
-                          void act(
-                            () => api(`/cs-calls/${c.id}/cancel`, { method: 'POST' }),
-                            '아웃콜을 정리했습니다',
-                          );
-                      }}
-                    >
-                      정리
-                    </Button>
-                  </span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className={styles.emptyQ}>아웃콜이 없습니다.</p>
-          )}
-        </section>
+        {/* 오른쪽 — 상담 메모(대본) 위, 아웃콜 대기 아래 */}
+        <div className={styles.sideCol}>
+          <ScriptCard />
+          {/* 아웃콜 대기 */}
+          <section className={styles.card}>
+            <h3 className={styles.cardTitle}>
+              <PhoneOutgoing size={15} /> 아웃콜 대기{' '}
+              <span className={styles.count}>{data.outcalls.length}</span>
+            </h3>
+            <p className={styles.muted}>
+              상담원이 모두 통화 중일 때 들어온 콜입니다. 먼저 들어온 순서 — 콜백을 누르면 '내 콜'에
+              접수 패널이 열립니다.
+            </p>
+            {data.outcalls.length ? (
+              <ol className={styles.queue}>
+                {data.outcalls.map((c, i) => (
+                  <li key={c.id}>
+                    <span className={styles.qNo}>{i + 1}</span>
+                    <span className={styles.qPhone}>{formatPhone(c.phone)}</span>
+                    <span className={styles.qInfo}>
+                      {c.customerName ? `기존 고객 ${c.customerName}` : '새 번호'} ·{' '}
+                      {since(c.receivedAt, now)} 대기
+                      {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
+                      {c.memo && ` · ${c.memo}`}
+                    </span>
+                    <span className={styles.qActions}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={busy || !me || !!mine}
+                        title={mine ? '지금 콜을 먼저 끝내 주세요' : undefined}
+                        onClick={() => void callback(c)}
+                      >
+                        콜백
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
+                        onClick={() => setCancelTarget(c)}
+                      >
+                        정리
+                      </Button>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className={styles.emptyQ}>아웃콜이 없습니다.</p>
+            )}
+          </section>
+        </div>
 
         {/* 상담원 현황 */}
         <section className={styles.card}>
@@ -355,6 +353,36 @@ export default function CallCenter() {
       </div>
 
       <CallList refreshKey={listKey} />
+
+      <ConfirmModal
+        open={!!cancelTarget}
+        title="아웃콜 정리"
+        confirmLabel="정리"
+        danger
+        busy={busy}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={() => {
+          const c = cancelTarget;
+          if (!c) return;
+          void act(
+            () => api(`/cs-calls/${c.id}/cancel`, { method: 'POST' }),
+            '아웃콜을 정리했습니다',
+          ).then(() => setCancelTarget(null));
+        }}
+      >
+        {cancelTarget && (
+          <p style={{ margin: 0, lineHeight: 1.6 }}>
+            <b>{formatPhone(cancelTarget.phone)}</b>
+            {cancelTarget.customerName ? ` (${cancelTarget.customerName})` : ''} 아웃콜을 콜백하지
+            않고 목록에서 정리할까요?
+            <br />
+            <span className={styles.muted}>
+              잘못 들어온 전화나 시험 콜일 때 씁니다. 정리한 콜은 콜 목록에 &apos;취소&apos;로
+              남습니다.
+            </span>
+          </p>
+        )}
+      </ConfirmModal>
     </ListPage>
   );
 }

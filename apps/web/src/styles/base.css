@@ -665,11 +665,11 @@ select:focus {
 }
 
 /* ── 입력·선택 컨트롤과 세그먼트 탭 둥글기 통일(앱 전체) ──
-   세그먼트 탭(akron 기본 --ark-radius-xl 12px)보다 한 단계 작은 10px 하나로 — 입력칸·텍스트 상자·
+   주소 검색칸과 같은 8px 하나로 — 입력칸·텍스트 상자·
    드롭다운(Select·Combobox)·검색칸·날짜칸·세그먼트 탭. 버튼·카드·메뉴는 그대로(--ark-radius-md 등).
    akron 토큰으로 바뀌는 것은 토큰으로, 토큰 없이 radius를 직접 쓰는 컴포넌트는 접두어 선택자로 덮는다. */
 :root {
-  --control-radius: 10px;
+  --control-radius: 8px;
   --ark-input-radius: var(--control-radius);
   --ark-select-radius: var(--control-radius);
   --ark-textarea-radius: var(--control-radius);
