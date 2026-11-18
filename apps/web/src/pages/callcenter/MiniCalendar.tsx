@@ -86,7 +86,7 @@ export function MiniCalendar() {
           className={styles.miniMore}
           aria-label="이사일 마감 캘린더 새 창으로 열기"
           title="이사일 마감 캘린더(새 창)"
-          onClick={() => window.open('/move-closures', '_blank', 'noopener')}
+          onClick={() => window.open('/calendar?only=closure', '_blank', 'noopener')}
         >
           <ExternalLink size={14} />
         </button>

@@ -49,12 +49,12 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
   }, [customerId, callId]);
 
   return (
-    <section className={styles.history}>
-      <div className={styles.historyHead}>
+    <section className={`${styles.card} ${styles.paneCard} ${styles.historyCard}`}>
+      <div className={`${styles.paneHead} ${styles.historyHead}`}>
         <b>
-          <History size={14} /> 고객 이력
+          <History size={15} /> 고객 이력
         </b>
-        {items && <span className={styles.muted}>{items.length}건</span>}
+        {items && <span className={styles.count}>{items.length}</span>}
         <button
           type="button"
           className={styles.historyMore}
@@ -63,33 +63,35 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
           고객 정보 전체 보기
         </button>
       </div>
-      {items === null ? (
-        <p className={styles.muted}>불러오는 중…</p>
-      ) : items.length === 0 ? (
-        <p className={styles.muted}>이전 기록이 없습니다.</p>
-      ) : (
-        <ul className={styles.historyList}>
-          {items.slice(0, 30).map((it, i) => (
-            <li key={`${it.at}-${i}`}>
-              <button
-                type="button"
-                disabled={!it.link}
-                onClick={() => it.link && navigate(it.link)}
-              >
-                <span className={styles.hWhen}>{when(it.at)}</span>
-                <span className={`${styles.hKind} ${styles[`k_${it.kind}`] ?? ''}`}>
-                  {KIND_LABEL[it.kind] ?? it.kind}
-                </span>
-                <span className={styles.hText}>
-                  {it.title}
-                  {it.detail && <span className={styles.muted}> · {it.detail}</span>}
-                </span>
-                <span className={styles.hActor}>{it.actor ?? ''}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className={styles.paneBody}>
+        {items === null ? (
+          <p className={styles.muted}>불러오는 중…</p>
+        ) : items.length === 0 ? (
+          <p className={styles.muted}>이전 기록이 없습니다.</p>
+        ) : (
+          <ul className={styles.historyList}>
+            {items.slice(0, 30).map((it, i) => (
+              <li key={`${it.at}-${i}`}>
+                <button
+                  type="button"
+                  disabled={!it.link}
+                  onClick={() => it.link && navigate(it.link)}
+                >
+                  <span className={styles.hWhen}>{when(it.at)}</span>
+                  <span className={`${styles.hKind} ${styles[`k_${it.kind}`] ?? ''}`}>
+                    {KIND_LABEL[it.kind] ?? it.kind}
+                  </span>
+                  <span className={styles.hText}>
+                    {it.title}
+                    {it.detail && <span className={styles.muted}> · {it.detail}</span>}
+                  </span>
+                  <span className={styles.hActor}>{it.actor ?? ''}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

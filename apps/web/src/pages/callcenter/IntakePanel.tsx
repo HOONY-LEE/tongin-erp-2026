@@ -31,7 +31,6 @@ import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
 import { Recording } from './Recording';
-import { CallerHistory } from './CallerHistory';
 import { SmsModal } from './SmsModal';
 
 export interface IntakeCall {
@@ -609,11 +608,6 @@ export function IntakePanel({
           />
         </label>
       </fieldset>
-
-      {/* 이 고객의 이력 — 이전 통화·접수·견적·계약 */}
-      {call.customerId && call.id && (
-        <CallerHistory customerId={call.customerId} callId={call.id} />
-      )}
 
       <FormModal
         open={confirmOpen}

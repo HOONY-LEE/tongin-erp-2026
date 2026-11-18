@@ -137,7 +137,8 @@ export const EVENT_COLORS: Record<string, { dot: string; bg: string; text: strin
 /** 서버가 내려주는 캘린더 항목(자체 일정 + 작업오더 통합). */
 export interface CalendarItem {
   id: string;
-  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'LEAVE';
+  /** CLOSURE = 이사일 마감(지점별 마감·마감 예정) */
+  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'LEAVE' | 'CLOSURE';
   title: string;
   /** 시작 날짜 YYYY-MM-DD */
   date: string;

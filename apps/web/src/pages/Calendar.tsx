@@ -6,6 +6,12 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { PageHeader, Spinner, useToast } from '../components/ui';
 import CalendarGrid, { type CalendarSource } from '../components/calendar/CalendarGrid';
 import EventModal, { type EventFormValues } from '../components/calendar/EventModal';
+import { ClosureDayModal } from '../components/closure/ClosureDayModal';
+import type { ClosureData } from '../components/closure/useClosures';
+
+/** 로컬 날짜 → YYYY-MM-DD */
+const ymdOf = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 import {
   addDays,
   addMonths,
@@ -39,12 +45,15 @@ export default function CalendarPage() {
   const [view, setView] = useState<CalendarView>('month');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   /** 표시할 캘린더(내 일정·조직 일정·작업 일정) — 기본 전체 선택 */
-  const [selectedSources, setSelectedSources] = useState<string[]>([
-    'MINE',
-    'ORG',
-    'WORK',
-    'LEAVE',
-  ]);
+  // ?only=closure(상담 콘솔 마감 달력에서 새 창) — 이사일 마감만
+  const [selectedSources, setSelectedSources] = useState<string[]>(() =>
+    searchParams.get('only') === 'closure'
+      ? ['CLOSURE']
+      : ['MINE', 'ORG', 'WORK', 'LEAVE', 'CLOSURE'],
+  );
+  /** 이사일 마감 — 하루 창(지점별 마감·마감 예정) */
+  const [closures, setClosures] = useState<ClosureData>({ closures: [], counts: [] });
+  const [closureDay, setClosureDay] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [events, setEvents] = useState<CalendarItem[]>([]);
   const [orgUnits, setOrgUnits] = useState<OrgUnitRow[]>([]);
@@ -67,10 +76,15 @@ export default function CalendarPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await api<CalendarItem[]>(
-        `/calendar/events?from=${range.from}&to=${range.to}&scope=ORG`,
-      );
+      const [rows, cl] = await Promise.all([
+        api<CalendarItem[]>(`/calendar/events?from=${range.from}&to=${range.to}&scope=ORG`),
+        api<ClosureData>(`/move-closures?from=${range.from}&to=${range.to}`).catch(() => ({
+          closures: [],
+          counts: [],
+        })),
+      ]);
       setEvents(rows);
+      setClosures(cl);
       touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
@@ -193,13 +207,26 @@ export default function CalendarPage() {
   }, []);
 
   // ── 일정 CRUD ──
-  const openAdd = useCallback((date: Date) => {
-    setSelectedDate(date);
-    setEditing(null);
-    setModalOpen(true);
-  }, []);
+  const onlyClosure = selectedSources.length === 1 && selectedSources[0] === 'CLOSURE';
+  const openAdd = useCallback(
+    (date: Date) => {
+      // 이사일 마감만 보고 있으면 날짜를 눌러 마감을 건다
+      if (onlyClosure) {
+        setClosureDay(ymdOf(date));
+        return;
+      }
+      setSelectedDate(date);
+      setEditing(null);
+      setModalOpen(true);
+    },
+    [onlyClosure],
+  );
 
   const openEdit = useCallback((ev: CalendarItem) => {
+    if (ev.source === 'CLOSURE') {
+      setClosureDay(ev.date);
+      return;
+    }
     const [y, m, d] = ev.date.split('-').map(Number);
     setSelectedDate(new Date(y, m - 1, d));
     setEditing(ev);
@@ -310,7 +337,32 @@ export default function CalendarPage() {
     { key: 'ORG', label: '조직 일정', color: '#34C759' },
     { key: 'WORK', label: '작업 일정', color: '#007AFF' },
     { key: 'LEAVE', label: '휴가', color: '#8B5CF6' },
+    { key: 'CLOSURE', label: '이사일 마감', color: '#8E8E93' },
   ];
+  /** 이사일 마감을 캘린더 일정처럼 — 마감은 회색, 마감 예정은 주황 */
+  const closureItems = useMemo<CalendarItem[]>(
+    () =>
+      closures.closures.map((c) => ({
+        id: `closure-${c.id}`,
+        source: 'CLOSURE',
+        title: `${c.orgName ?? '전체'} ${c.kind === 'SOON' ? '마감 예정' : '마감'}`,
+        date: c.date,
+        endDate: c.date,
+        startTime: null,
+        endTime: null,
+        color: c.kind === 'SOON' ? '#D97706' : '#8E8E93',
+        location: null,
+        description: c.memo,
+        visibility: 'ORG',
+        ownerUserId: null,
+        ownerName: null,
+        orgUnitId: c.orgUnitId,
+        orgUnitName: c.orgName,
+        editable: false,
+        refId: c.id,
+      })),
+    [closures],
+  );
 
   const toggleSource = (key: string) =>
     setSelectedSources((prev) =>
@@ -320,20 +372,22 @@ export default function CalendarPage() {
   /** 선택한 캘린더 + 검색어로 필터링 */
   const visibleEvents = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return events.filter((e) => {
+    return [...events, ...closureItems].filter((e) => {
       const kind =
-        e.source === 'WORK_ORDER'
-          ? 'WORK'
-          : e.source === 'LEAVE'
-            ? 'LEAVE'
-            : e.visibility === 'ORG'
-              ? 'ORG'
-              : 'MINE';
+        e.source === 'CLOSURE'
+          ? 'CLOSURE'
+          : e.source === 'WORK_ORDER'
+            ? 'WORK'
+            : e.source === 'LEAVE'
+              ? 'LEAVE'
+              : e.visibility === 'ORG'
+                ? 'ORG'
+                : 'MINE';
       if (!selectedSources.includes(kind)) return false;
       if (q && !e.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [events, selectedSources, search]);
+  }, [events, closureItems, selectedSources, search]);
 
   return (
     <div
@@ -387,6 +441,13 @@ export default function CalendarPage() {
         />
       </div>
 
+      <ClosureDayModal
+        date={closureDay}
+        closures={closures.closures.filter((c) => c.date === closureDay)}
+        leads={closures.counts.find((c) => c.date === closureDay)?.leads ?? 0}
+        onClose={() => setClosureDay(null)}
+        onChanged={load}
+      />
       <EventModal
         open={modalOpen}
         event={editing}

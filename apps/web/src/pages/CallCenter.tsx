@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Laptop, Trash2, PhoneOutgoing, Settings2, UserRound, PhoneOff } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
@@ -22,6 +22,7 @@ import {
 import styles from './callcenter.module.css';
 import { IntakePanel, type ReadOnlyInfo } from './callcenter/IntakePanel';
 import { CallList, type CallRow } from './callcenter/CallList';
+import { CallerHistory } from './callcenter/CallerHistory';
 import { FollowupList } from './callcenter/FollowupList';
 import { MiniCalendar } from './callcenter/MiniCalendar';
 import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
@@ -389,7 +390,7 @@ export default function CallCenter() {
             <IntakePanel call={pendingCall} recentLeads={[]} pending onDone={afterIntake} />
           </section>
         ) : me && viewId && me.call?.id === viewId ? (
-          <section className={`${styles.card} ${styles.intakeCard}`}>
+          <CallColumn call={me.call}>
             <IntakePanel
               call={me.call}
               recentLeads={me.recentLeads}
@@ -397,7 +398,7 @@ export default function CallCenter() {
               onBack={backToList}
               onSaved={load}
             />
-          </section>
+          </CallColumn>
         ) : viewId ? (
           <CallPage
             key={viewId}
@@ -440,7 +441,7 @@ export default function CallCenter() {
         <div className={styles.sideCol}>
           {/* 상담원 현황 — 지금 상태와 오늘 받은 콜·콜백·접수 */}
           {/* 콘솔(목록)에서는 마감 달력 + 상담원 현황, 상담 화면에서는 상담 메모 */}
-          {listView && <MiniCalendar />}
+          <MiniCalendar />
           {listView ? (
             <section className={`${styles.card} ${styles.paneCard} ${styles.agentsCard}`}>
               <h3 className={`${styles.cardTitle} ${styles.paneHead}`}>
@@ -744,7 +745,7 @@ function CallPage({
     );
   const open = ['ASSIGNED', 'CALLBACK'].includes(d.call.status);
   return (
-    <section className={`${styles.card} ${styles.intakeCard}`}>
+    <CallColumn call={d.call}>
       {/* 마무리하지 않은 내 상담이면 이어서 입력, 아니면 같은 모양의 읽기 화면 */}
       <IntakePanel
         call={d.call}
@@ -763,6 +764,24 @@ function CallPage({
               }
         }
       />
-    </section>
+    </CallColumn>
+  );
+}
+
+/** 상담 화면 왼쪽 — 위 상담 카드 + 아래 고객 이력 카드 */
+function CallColumn({
+  call,
+  children,
+}: {
+  call: { id: string; customerId: string | null };
+  children: ReactNode;
+}) {
+  return (
+    <div className={styles.leftCol}>
+      <section className={`${styles.card} ${styles.intakeCard}`}>{children}</section>
+      {call.customerId && call.id && (
+        <CallerHistory customerId={call.customerId} callId={call.id} />
+      )}
+    </div>
   );
 }

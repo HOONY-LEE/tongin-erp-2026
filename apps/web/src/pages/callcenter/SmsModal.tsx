@@ -270,7 +270,7 @@ export function SmsModal({
               title={title}
               body={preview}
               placeholder="보낼 내용이 여기 미리 보입니다"
-              width={300}
+              width={250}
             />
           </div>
         </div>
