@@ -410,17 +410,6 @@ export default function CallCenter() {
           />
         ) : (
           <div className={styles.mainCol}>
-            {me?.call && (
-              <div className={styles.openBar}>
-                <b>마무리하지 않은 상담</b>
-                <span>
-                  {me.call.customerName ?? '새 번호'} · {formatPhone(me.call.phone)}
-                </span>
-                <Button variant="outline" size="sm" onClick={() => go(me.call!.id)}>
-                  상담 화면 열기
-                </Button>
-              </div>
-            )}
             {view === 'calls' ? (
               <CallList head={viewTabs} refreshKey={listKey} onOpen={go} stats={statsEl} />
             ) : (

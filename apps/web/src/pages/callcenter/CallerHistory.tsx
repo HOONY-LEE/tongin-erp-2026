@@ -69,27 +69,37 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
         ) : items.length === 0 ? (
           <p className={styles.muted}>이전 기록이 없습니다.</p>
         ) : (
-          <ul className={styles.historyList}>
-            {items.slice(0, 30).map((it, i) => (
-              <li key={`${it.at}-${i}`}>
-                <button
-                  type="button"
-                  disabled={!it.link}
+          <table className={styles.hTable}>
+            <thead>
+              <tr>
+                <th style={{ width: 148 }}>일시</th>
+                <th style={{ width: 76 }}>구분</th>
+                <th>내용</th>
+                <th style={{ width: 90 }}>담당</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.slice(0, 50).map((it, i) => (
+                <tr
+                  key={`${it.at}-${i}`}
+                  className={it.link ? styles.hClickable : undefined}
                   onClick={() => it.link && navigate(it.link)}
                 >
-                  <span className={styles.hWhen}>{when(it.at)}</span>
-                  <span className={`${styles.hKind} ${styles[`k_${it.kind}`] ?? ''}`}>
-                    {KIND_LABEL[it.kind] ?? it.kind}
-                  </span>
-                  <span className={styles.hText}>
+                  <td className={styles.hWhen}>{when(it.at)}</td>
+                  <td>
+                    <span className={`${styles.hKind} ${styles[`k_${it.kind}`] ?? ''}`}>
+                      {KIND_LABEL[it.kind] ?? it.kind}
+                    </span>
+                  </td>
+                  <td className={styles.hText}>
                     {it.title}
                     {it.detail && <span className={styles.muted}> · {it.detail}</span>}
-                  </span>
-                  <span className={styles.hActor}>{it.actor ?? ''}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+                  </td>
+                  <td className={styles.hActor}>{it.actor ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </section>
