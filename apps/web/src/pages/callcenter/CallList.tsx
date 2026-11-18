@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { List, Play } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { DataTable, SegmentedControl, useToast, type Column, type Row } from '../../components/ui';
@@ -54,9 +54,12 @@ const shortId = (id: string) => id.slice(0, 8).toUpperCase();
 export function CallList({
   refreshKey,
   onOpen,
+  stats,
 }: {
   refreshKey: number;
   onOpen: (id: string) => void;
+  /** 카드 위 오늘 숫자(오늘 들어온 콜·상담 중·아웃콜 대기·오늘 끝낸 콜) */
+  stats?: ReactNode;
 }) {
   const toast = useToast();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
@@ -138,6 +141,7 @@ export function CallList({
       <h3 className={styles.cardTitle}>
         <List size={15} /> 상담 콜 목록
       </h3>
+      {stats}
       <DataTable
         tabs={
           <SegmentedControl

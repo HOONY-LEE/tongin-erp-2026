@@ -342,51 +342,79 @@ export default function CallCenter() {
                 </Button>
               </div>
             )}
-            <CallList refreshKey={listKey} onOpen={go} />
+            <CallList
+              refreshKey={listKey}
+              onOpen={go}
+              stats={
+                <div className={styles.stats}>
+                  <div>
+                    <span>오늘 들어온 콜</span>
+                    <b>{data.today.received}</b>
+                  </div>
+                  <div>
+                    <span>상담 중</span>
+                    <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
+                  </div>
+                  <div className={data.outcalls.length ? styles.warnStat : ''}>
+                    <span>아웃콜 대기</span>
+                    <b>{data.outcalls.length}</b>
+                  </div>
+                  <div>
+                    <span>오늘 끝낸 콜</span>
+                    <b>{data.today.done}</b>
+                  </div>
+                </div>
+              }
+            />
           </div>
         )}
 
         {/* 오른쪽 — 상담 메모(대본) 위, 아웃콜 대기 아래 */}
         <div className={styles.sideCol}>
           {/* 상담원 현황 — 지금 상태와 오늘 받은 콜·콜백·접수 */}
-          <section className={`${styles.card} ${styles.agentsCard}`}>
-            <h3 className={styles.cardTitle}>
-              <UserRound size={15} /> 상담원 현황
-              <span className={styles.count}>
-                상담 가능 {data.agents.filter((a) => a.state === 'READY').length} /{' '}
-                {data.agents.length}
-              </span>
-            </h3>
-            <ul className={styles.agents}>
-              {data.agents.map((a) => (
-                <li key={a.employeeId}>
-                  <i className={styles[STATE[a.state].cls]} />
-                  <span className={styles.aMain}>
-                    <span className={styles.aName}>
-                      <b>{a.name}</b>
-                      {a.position ? ` ${a.position}` : ''}
-                      {a.employeeId === me?.employeeId && (
-                        <span className={styles.muted}> (나)</span>
-                      )}
-                      {a.pcPhone && <span className={styles.muted}> · PC 전화</span>}
+          {/* 콘솔(목록)에서는 상담원 현황, 상담 화면에서는 상담 메모 */}
+          {listView ? (
+            <section className={`${styles.card} ${styles.agentsCard}`}>
+              <h3 className={styles.cardTitle}>
+                <UserRound size={15} /> 상담원 현황
+                <span className={styles.count}>
+                  상담 가능 {data.agents.filter((a) => a.state === 'READY').length} /{' '}
+                  {data.agents.length}
+                </span>
+              </h3>
+              <ul className={styles.agents}>
+                {data.agents.map((a) => (
+                  <li key={a.employeeId}>
+                    <i className={styles[STATE[a.state].cls]} />
+                    <span className={styles.aMain}>
+                      <span className={styles.aName}>
+                        <b>{a.name}</b>
+                        {a.position ? ` ${a.position}` : ''}
+                        {a.employeeId === me?.employeeId && (
+                          <span className={styles.muted}> (나)</span>
+                        )}
+                        {a.pcPhone && <span className={styles.muted}> · PC 전화</span>}
+                      </span>
+                      <span className={styles.aToday}>
+                        오늘 받음 {a.today.received} · 콜백 {a.today.callbacks} · 접수{' '}
+                        {a.today.leads}
+                        {a.today.talkSec > 0 && ` · 통화 ${Math.round(a.today.talkSec / 60)}분`}
+                      </span>
                     </span>
-                    <span className={styles.aToday}>
-                      오늘 받음 {a.today.received} · 콜백 {a.today.callbacks} · 접수 {a.today.leads}
-                      {a.today.talkSec > 0 && ` · 통화 ${Math.round(a.today.talkSec / 60)}분`}
+                    <span className={styles.aState}>
+                      {STATE[a.state].label}
+                      {a.state === 'BUSY' &&
+                        a.call &&
+                        ` · ${since(a.call.assignedAt ?? a.call.receivedAt, now)}`}
                     </span>
-                  </span>
-                  <span className={styles.aState}>
-                    {STATE[a.state].label}
-                    {a.state === 'BUSY' &&
-                      a.call &&
-                      ` · ${since(a.call.assignedAt ?? a.call.receivedAt, now)}`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {isSysAdmin && <Integration />}
-          </section>
-          <ScriptCard />
+                  </li>
+                ))}
+              </ul>
+              {isSysAdmin && <Integration />}
+            </section>
+          ) : (
+            <ScriptCard />
+          )}
           {/* 아웃콜 대기 */}
           <section className={styles.card}>
             <h3 className={styles.cardTitle}>
@@ -437,36 +465,6 @@ export default function CallCenter() {
           </section>
         </div>
       </div>
-
-      {/* 아래 — 오늘 숫자와 상담원 현황(상담 화면에서는 화면을 꽉 채우게 숨긴다) */}
-      {listView && (
-        <>
-          <div className={styles.stats}>
-            <div>
-              <span>오늘 들어온 콜</span>
-              <b>{data.today.received}</b>
-            </div>
-            <div>
-              <span>상담 중</span>
-              <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
-            </div>
-            <div className={data.outcalls.length ? styles.warnStat : ''}>
-              <span>아웃콜 대기</span>
-              <b>{data.outcalls.length}</b>
-            </div>
-            <div>
-              <span>상담 가능 상담원</span>
-              <b>
-                {data.agents.filter((a) => a.state === 'READY').length} / {data.agents.length}
-              </b>
-            </div>
-            <div>
-              <span>오늘 끝낸 콜</span>
-              <b>{data.today.done}</b>
-            </div>
-          </div>
-        </>
-      )}
 
       <ConfirmModal
         open={!!cancelTarget}
