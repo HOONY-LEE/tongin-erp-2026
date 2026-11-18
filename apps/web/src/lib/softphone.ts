@@ -511,16 +511,25 @@ export function resumePhoneIfEnabled() {
   if (on && state.status === 'off') void enablePhone();
 }
 
-export function answer() {
+/** 받는 전화의 고객(수신 창에서 찾은 것) — 상담 화면을 서버 응답 전에 바로 열 때 쓴다 */
+export interface CallerHint {
+  existing: boolean;
+  name: string | null;
+}
+export function answer(hint?: CallerHint | null) {
   if (!session || state.call?.state !== 'ringing') return;
-  // 받으면 서버에 '내가 받았다' — 콜을 만들고 상담 중으로(다른 PC는 한국AI통신이 울림을 멈춘다)
+  // 받으면 서버에 '내가 받았다' — 콜을 만들고 상담 중으로(다른 PC는 한국AI통신이 울림을 멈춘다).
+  // 상담 화면은 서버를 기다리지 않고 바로 연다(answering) → 서버가 만든 콜이 오면 바꿔 끼운다(changed)
   const number = state.call.number;
+  window.dispatchEvent(
+    new CustomEvent('tongin:cs-call-answering', { detail: { phone: number, ...hint } }),
+  );
   void api('/cs-calls/answer', {
     method: 'POST',
     body: JSON.stringify({ phone: number, ...(incomingSid && { katCallSid: incomingSid }) }),
   })
-    .then(() => window.dispatchEvent(new Event('tongin:cs-call-changed')))
-    .catch(() => undefined);
+    .then((r) => window.dispatchEvent(new CustomEvent('tongin:cs-call-changed', { detail: r })))
+    .catch(() => window.dispatchEvent(new CustomEvent('tongin:cs-call-changed')));
   setRingable(false);
   stopRingtone();
   // 클릭한 이 순간에 재생 장치를 열어 둔다 — 나중에 고객 음성이 와도 브라우저가 막지 않게

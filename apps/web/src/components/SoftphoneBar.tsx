@@ -80,7 +80,7 @@ export function SoftphoneBar() {
 
   /** 받기 → 통화 연결 + 상담 콘솔(접수 패널)로 */
   const take = () => {
-    answer();
+    answer(caller ? { existing: caller.existing, name: caller.name } : null);
     if (!pathname.startsWith('/callcenter')) navigate('/callcenter');
   };
 
@@ -164,7 +164,7 @@ export function SoftphoneBar() {
       )}
       {call.state === 'ringing' ? (
         <>
-          <button type="button" className={styles.answer} onClick={answer}>
+          <button type="button" className={styles.answer} onClick={() => answer()}>
             <Phone size={16} /> 받기
           </button>
           <button type="button" className={styles.hang} onClick={hangup} aria-label="거절">

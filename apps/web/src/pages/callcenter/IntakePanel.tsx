@@ -91,10 +91,13 @@ const mmss = (ms: number) => {
 export function IntakePanel({
   call,
   recentLeads,
+  pending = false,
   onDone,
 }: {
   call: IntakeCall;
   recentLeads: RecentLead[];
+  /** 서버가 콜을 만들기 전(받기 직후 잠깐) — 입력은 되고 접수 등록·상담 종료만 잠시 막는다 */
+  pending?: boolean;
   onDone: () => Promise<void> | void;
 }) {
   const toast = useToast();
@@ -119,8 +122,8 @@ export function IntakePanel({
       // 메모는 하나 — 고객 요청사항과 상담 메모를 함께 적는다(콜·접수의 요청사항으로 남는다)
       memo: call.request ?? call.memo ?? '',
     }),
-    // 콜이 바뀔 때만 새로 채운다(입력 중에 3초마다 새로 읽어도 지우지 않게)
-    [call.id],
+    // 콜이 바뀔 때만 새로 채운다(입력 중에 3초마다 새로 읽어도, 받기 직후 임시 콜 → 실제 콜로 바뀌어도 지우지 않게)
+    [call.phone, call.receivedAt.slice(0, 16)],
   );
   const [v, setV] = useState<Record<string, string>>(initial);
   useEffect(() => setV(initial), [initial]);
@@ -141,7 +144,7 @@ export function IntakePanel({
   const defaultOrg = hqAllowed ? hqId : ownOrgId || user?.employeeOrgUnitId || '';
   useEffect(() => {
     if (defaultOrg) setV((x) => (x.orgUnitId ? x : { ...x, orgUnitId: defaultOrg }));
-  }, [defaultOrg, call.id]);
+  }, [defaultOrg, call.phone]);
 
   useEffect(() => {
     void api<PartnerOption[]>('/partners/options')
@@ -287,7 +290,13 @@ export function IntakePanel({
               안 받음 — 다시 아웃콜로
             </Button>
           )}
-          <Button variant="outline" size="sm" disabled={busy} onClick={() => setEndOpen(true)}>
+          {pending && <span className={styles.muted}>연결 중…</span>}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || pending}
+            onClick={() => setEndOpen(true)}
+          >
             상담 종료
           </Button>
           {call.leadId ? (
@@ -301,7 +310,7 @@ export function IntakePanel({
             </button>
           ) : (
             can('LEAD.CREATE') && (
-              <Button variant="primary" size="sm" disabled={busy} onClick={openConfirm}>
+              <Button variant="primary" size="sm" disabled={busy || pending} onClick={openConfirm}>
                 접수 등록
               </Button>
             )
