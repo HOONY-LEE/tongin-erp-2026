@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Laptop, Trash2, PhoneOutgoing, Settings2, UserRound } from 'lucide-react';
+import { Laptop, Trash2, PhoneOutgoing, Settings2, UserRound, PhoneOff } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -452,7 +452,6 @@ export default function CallCenter() {
                 <ul className={styles.agents}>
                   {data.agents.map((a) => (
                     <li key={a.employeeId}>
-                      <i className={styles[STATE[a.state].cls]} />
                       <span className={styles.aMain}>
                         <span className={styles.aName}>
                           <b>{a.name}</b>
@@ -468,7 +467,8 @@ export default function CallCenter() {
                           {a.today.talkSec > 0 && ` · 통화 ${Math.round(a.today.talkSec / 60)}분`}
                         </span>
                       </span>
-                      <span className={styles.aState}>
+                      <span className={`${styles.stateChip} ${styles[`st_${a.state}`]}`}>
+                        <i />
                         {STATE[a.state].label}
                         {a.state === 'BUSY' &&
                           a.call &&
@@ -486,8 +486,8 @@ export default function CallCenter() {
           {/* 아웃콜 대기 */}
           <section className={`${styles.card} ${styles.paneCard}`}>
             <h3 className={`${styles.cardTitle} ${styles.paneHead}`}>
-              <PhoneOutgoing size={15} /> 아웃콜 대기{' '}
-              <span className={styles.count}>{data.outcalls.length}</span>
+              <PhoneOutgoing size={15} /> 아웃콜 목록
+              <span className={`${styles.count} ${styles.countEnd}`}>{data.outcalls.length}</span>
             </h3>
             <div className={styles.paneBody}>
               {data.outcalls.length ? (
@@ -529,7 +529,10 @@ export default function CallCenter() {
                   ))}
                 </ol>
               ) : (
-                <p className={styles.emptyQ}>아웃콜이 없습니다.</p>
+                <div className={styles.emptyBox}>
+                  <PhoneOff size={22} />
+                  <span>대기 중인 아웃콜이 없습니다</span>
+                </div>
               )}
             </div>
           </section>
