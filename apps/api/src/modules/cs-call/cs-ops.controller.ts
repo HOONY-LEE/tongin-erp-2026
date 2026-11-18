@@ -14,6 +14,12 @@ class ClosureDto {
   @Matches(DAY) date!: string;
   @IsOptional() @IsUUID() orgUnitId?: string | null;
   @IsOptional() @IsString() @MaxLength(300) memo?: string;
+  @IsOptional() @IsIn(['CLOSED', 'SOON']) kind?: 'CLOSED' | 'SOON';
+}
+class ClosureStatusDto {
+  @Matches(DAY) date!: string;
+  @IsOptional() @IsUUID() orgUnitId?: string | null;
+  @IsIn(['CLOSED', 'SOON', 'OPEN']) status!: 'CLOSED' | 'SOON' | 'OPEN';
 }
 class FollowupQuery {
   @IsIn(['CONFIRM', 'HAPPY']) kind!: FollowupKind;
@@ -42,6 +48,13 @@ export class MoveClosureController {
   @RequirePermissions('LEAD.UPDATE')
   add(@CurrentUser() user: AuthPrincipal, @Body() dto: ClosureDto) {
     return this.ops.addClosure(user, dto);
+  }
+
+  /** 날짜 상태 — 마감 / 마감 예정 / 여유 */
+  @Post('status')
+  @RequirePermissions('LEAD.UPDATE')
+  setStatus(@CurrentUser() user: AuthPrincipal, @Body() dto: ClosureStatusDto) {
+    return this.ops.setClosureStatus(user, dto);
   }
 
   @Delete(':id')

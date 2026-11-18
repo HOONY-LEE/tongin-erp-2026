@@ -1383,34 +1383,172 @@ textarea.memoBox {
   position: relative;
   display: grid;
   place-items: center;
+  padding: 0;
+  border-top: 0;
+  border-left: 0;
+  background: var(--ark-color-bg);
+  color: inherit;
+  font: inherit;
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.miniDay:hover {
+  background: var(--ark-color-bg-muted);
 }
 .miniOut {
   color: var(--ark-color-text-disabled, #b0b0b5);
 }
-.miniToday {
-  box-shadow: inset 0 0 0 1.5px var(--ark-color-text-primary);
+/* 오늘 — 숫자에 진한 동그라미 */
+.miniTodayNum {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ark-color-text-primary);
+  color: var(--ark-color-bg);
   font-weight: 700;
 }
-.miniBusy {
-  background: color-mix(in srgb, #3b82f6 13%, var(--ark-color-bg));
+/* 마감 — 연한 장미색 칸 + 진한 글자 / 마감 예정 — 연한 노란 칸 */
+.miniClosed {
+  background: #fde8ea;
+  color: #be123c !important;
+  font-weight: 700;
+}
+.miniClosed:hover {
+  background: #fbd5da;
+}
+.miniSoon {
+  background: #fef3d7;
+  color: #b45309 !important;
   font-weight: 600;
 }
-.miniClosed {
-  background: #ef4444;
-  color: #fff !important;
-  font-weight: 700;
+.miniSoon:hover {
+  background: #fde9b4;
 }
+:global([data-theme='dark']) .miniClosed {
+  background: rgba(244, 63, 94, 0.18);
+  color: #fda4af !important;
+}
+:global([data-theme='dark']) .miniSoon {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d !important;
+}
+/* 다른 지점 마감이 있는 날 — 작은 점 */
 .miniDot {
   position: absolute;
-  bottom: 2px;
-  left: 50%;
+  top: 3px;
+  right: 3px;
   width: 4px;
   height: 4px;
-  margin-left: -2px;
   border-radius: 50%;
-  background: #ef4444;
+  background: #be123c;
+}
+/* 마우스를 올리면 — 상태·이사 건수 말풍선 */
+.miniDay[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #1d1d1f;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.tipLeft[data-tip]:hover::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.miniKeys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  color: var(--ark-color-text-secondary);
+  font-size: 11px;
+}
+.miniKeys i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.miniKeys i + i,
+.miniKeys .keySoon {
+  margin-left: 6px;
+}
+.keyClosed {
+  background: #fbcfd6;
+}
+.keySoon {
+  background: #fde3a7;
+}
+/* 날짜를 누르면 — 마감 / 마감 예정 / 여유 */
+.miniCal {
+  position: relative;
+  overflow: visible !important;
+}
+.miniMenu {
+  position: absolute;
+  z-index: 30;
+  width: 130px;
+  padding: 4px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.miniMenuHead {
+  padding: 4px 8px 6px;
+  color: var(--ark-color-text-secondary);
+  font-size: 11.5px;
+}
+.miniMenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--ark-color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.miniMenu button:hover {
+  background: var(--ark-color-bg-muted);
+}
+.miniMenu button > i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--ark-color-border);
+}
+.miniMenu button > svg {
+  margin-left: auto;
+}
+.mm_CLOSED > i {
+  background: #fbcfd6;
+  border-color: #fbcfd6 !important;
+}
+.mm_SOON > i {
+  background: #fde3a7;
+  border-color: #fde3a7 !important;
 }
 .sun {
   color: #dc2626;

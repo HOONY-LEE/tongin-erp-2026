@@ -2252,6 +2252,8 @@ model MoveClosure {
   id        String   @id @default(uuid()) @db.Uuid
   date      DateTime @db.Date
   orgUnitId String?  @map("org_unit_id") @db.Uuid
+  /// CLOSED 마감 | SOON 마감 예정(곧 찬다)
+  kind      String   @default("CLOSED")
   memo      String?
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
