@@ -28,12 +28,18 @@
   display: grid;
   /* 왼쪽(접수 패널 또는 콜 목록) · 오른쪽(상담 메모 + 아웃콜) */
   grid-template-columns: minmax(0, 2.4fr) minmax(300px, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  /* 화면 높이를 꽉 채운다(페이지 스크롤 없이) — 안에서 넘치는 칸만 스크롤 */
+  flex: 1 0 auto;
+  height: calc(100dvh - 150px);
+  min-height: 480px;
 }
-/* 아웃콜·상담원 카드는 길어지면 안에서 스크롤 */
+.grid > * {
+  min-height: 0;
+}
 .grid > .card {
-  max-height: 560px;
+  overflow-y: auto;
 }
 /* 통화 중이면 접수 패널이 넓게 — 2칸 차지 */
 .grid > .intakeCard {
@@ -542,8 +548,11 @@
   gap: 12px;
   min-width: 0;
 }
+/* 상담 메모·아웃콜 — 오른쪽 칸 높이를 반씩 고정 */
 .sideCol > .card {
-  max-height: 560px;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 /* 상담 메모(대본) */
 .scriptCard .cardTitle {
@@ -652,4 +661,42 @@
   .bottomGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* 왼쪽 칸이 높이를 꽉 채우게 — 콜 목록 표는 남은 높이 안에서 스크롤 */
+.mainCol .listCard {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* 상담 화면 머리 — 제목·콜 종류 · 오른쪽 위 버튼 */
+.intakeHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.intakeHead .cardTitle {
+  margin: 0;
+}
+.headActions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+/* 기존 고객의 이전 접수 */
+.leadChip {
+  padding: 2px 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.leadChip:hover {
+  color: var(--ark-color-text);
 }

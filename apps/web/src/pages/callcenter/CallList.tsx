@@ -130,8 +130,13 @@ export function CallList({ refreshKey }: { refreshKey: number }) {
       width: 52,
       mask: false,
     },
-    { title: '고객 요청사항', dataIndex: 'request', flex: 1, minWidth: 90 },
-    { title: '통화 메모', dataIndex: 'memo', flex: 1, minWidth: 70 },
+    {
+      title: '메모',
+      dataIndex: 'request',
+      render: (r) => (r.request as string | null) ?? (r.memo as string | null) ?? '',
+      flex: 1,
+      minWidth: 140,
+    },
     { title: '접수', dataIndex: 'leadNo', width: 124 },
   ];
 
@@ -151,7 +156,7 @@ export function CallList({ refreshKey }: { refreshKey: number }) {
             ]}
           />
         }
-        pageSize={10}
+        fit
         columns={columns}
         rows={rows as unknown as Row[]}
         loading={loading}

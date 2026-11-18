@@ -189,3 +189,25 @@
 .warn {
   color: #dc2626 !important;
 }
+/* 신규·기존 고객 표시 */
+.inWho {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.custTag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 700;
+}
+.custNew {
+  background: color-mix(in srgb, #3b82f6 14%, var(--ark-color-bg));
+  color: #1d4ed8;
+}
+.custOld {
+  background: color-mix(in srgb, #16a34a 14%, var(--ark-color-bg));
+  color: #15803d;
+}
