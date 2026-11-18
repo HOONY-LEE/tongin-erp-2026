@@ -92,6 +92,7 @@ export function IntakePanel({
   pending = false,
   onDone,
   onBack,
+  onSaved,
 }: {
   call: IntakeCall;
   recentLeads: RecentLead[];
@@ -100,6 +101,8 @@ export function IntakePanel({
   onDone: () => Promise<void> | void;
   /** 목록으로 — 상담을 마무리하지 않고 나가도 콜은 그대로 남는다 */
   onBack?: () => void;
+  /** 접수 등록처럼 콜은 그대로 두고 내용만 바뀌었을 때 — 상담 화면에 머문다 */
+  onSaved?: () => Promise<void> | void;
 }) {
   const toast = useToast();
   const navigate = useNavigate();
@@ -254,7 +257,7 @@ export function IntakePanel({
         title: `접수를 등록했습니다${lead.leadNo ? ` (${lead.leadNo})` : ''} — 상담을 마치면 [상담 종료]를 눌러 주세요`,
       });
       setConfirmOpen(false);
-      await onDone();
+      await onSaved?.();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '접수하지 못했습니다' });
       throw e;
@@ -271,7 +274,8 @@ export function IntakePanel({
           </button>
         )}
         <h3 className={styles.cardTitle}>
-          <Headphones size={15} /> 내 콜
+          <Headphones size={15} />{' '}
+          {call.id ? `콜 ${call.id.slice(0, 8).toUpperCase()}` : '콜 만드는 중…'}
         </h3>
         <Badge variant="subtle" color={call.status === 'CALLBACK' ? 'warning' : 'success'}>
           {call.status === 'CALLBACK' ? (

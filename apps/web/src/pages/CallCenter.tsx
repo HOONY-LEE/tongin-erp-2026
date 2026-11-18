@@ -317,6 +317,7 @@ export default function CallCenter() {
               recentLeads={me.recentLeads}
               onDone={afterIntake}
               onBack={backToList}
+              onSaved={load}
             />
           </section>
         ) : viewId ? (
@@ -695,7 +696,13 @@ function CallPage({
   return (
     <section className={`${styles.card} ${styles.intakeCard}`}>
       {open && (d.call.agentEmpId === myId || isAdmin) ? (
-        <IntakePanel call={d.call} recentLeads={d.recentLeads} onDone={onDone} onBack={onBack} />
+        <IntakePanel
+          call={d.call}
+          recentLeads={d.recentLeads}
+          onDone={onDone}
+          onBack={onBack}
+          onSaved={load}
+        />
       ) : (
         <CallDetail call={d.call} onBack={onBack} onSaved={() => void load()} />
       )}
