@@ -1841,3 +1841,64 @@ textarea.memoBox {
 .scriptPaperView {
   padding-top: 12px !important;
 }
+
+/* 콜 목록 상태 — 마무리 전(상담 종료·접수 전)은 주황 칩 */
+.callState {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12.5px * var(--font-scale, 1));
+}
+.callOpen {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+}
+
+/* 고객 이력 — 다른 표와 같은 모양(흰 머리·작은 회색 글자, 가로 선만) */
+.historyCard .paneBody {
+  padding: 0 !important;
+}
+.hTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.hTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 38px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 600;
+  text-align: left;
+}
+.hTable td {
+  height: 42px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--ark-color-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+.hClickable {
+  cursor: pointer;
+}
+.hClickable:hover td {
+  background: var(--ark-color-bg-muted);
+}
+.historyCard .muted {
+  padding: 12px 16px;
+}

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Play } from 'lucide-react';
 import { DateFilter, type DateRange } from './DateFilter';
 import { api, ApiError } from '../../lib/api';
 import { DataTable, SegmentedControl, useToast, type Column, type Row } from '../../components/ui';
@@ -29,7 +28,7 @@ const STATUS_LABEL: Record<string, string> = {
   ASSIGNED: '상담 중',
   CALLBACK: '콜백 중',
   OUTCALL: '아웃콜 대기',
-  DONE: '끝',
+  DONE: '완료',
   CANCELED: '취소',
 };
 /** 11.18 10:05 */
@@ -96,52 +95,53 @@ export function CallList({
   }, [scope, range, refreshKey, load]);
 
   const columns: Column[] = [
-    { title: '콜ID', render: (r) => shortId(r.id as string), width: 78 },
+    { title: '콜ID', render: (r) => shortId(r.id as string), width: 84 },
+    {
+      title: '상태',
+      render: (r) => {
+        const st = r.status as string;
+        // 아직 마무리(상담 종료·접수)하지 않은 상담은 눈에 띄게
+        const open = st === 'ASSIGNED' || st === 'CALLBACK';
+        return (
+          <span className={`${styles.callState} ${open ? styles.callOpen : ''}`}>
+            {open ? '마무리 전' : (STATUS_LABEL[st] ?? st)}
+          </span>
+        );
+      },
+      width: 88,
+      mask: false,
+    },
     {
       title: '고객명',
       dataIndex: 'customerName',
       render: (r) => (r.customerName as string | null) ?? '새 번호',
-      width: 80,
+      width: 100,
     },
     {
       title: '전화번호',
       dataIndex: 'phone',
       render: (r) => <PhoneCell value={r.phone as string} link={false} />,
-      width: 124,
+      width: 140,
     },
     {
       title: '상담원',
       dataIndex: 'agentName',
-      render: (r) =>
-        (r.agentName as string | null) ?? STATUS_LABEL[r.status as string] ?? (r.status as string),
-      width: 72,
+      render: (r) => (r.agentName as string | null) ?? '-',
+      width: 84,
     },
     {
       title: '통화시각',
       dataIndex: 'receivedAt',
       render: (r) => when(r.receivedAt as string),
-      width: 104,
+      width: 116,
     },
     {
       title: '통화시간',
       dataIndex: 'durationSec',
       render: (r) => dur(r.durationSec as number | null),
-      width: 76,
+      width: 84,
     },
-    {
-      title: '녹취',
-      render: (r) => (r.hasRecording ? <Play size={14} aria-label="녹취 있음" /> : '-'),
-      width: 52,
-      mask: false,
-    },
-    {
-      title: '메모',
-      dataIndex: 'request',
-      render: (r) => (r.request as string | null) ?? (r.memo as string | null) ?? '',
-      flex: 1,
-      minWidth: 140,
-    },
-    { title: '접수', dataIndex: 'leadNo', width: 124 },
+    { title: '접수', dataIndex: 'leadNo', flex: 1, minWidth: 150 },
   ];
 
   return (
