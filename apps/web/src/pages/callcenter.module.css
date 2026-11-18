@@ -382,3 +382,19 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* PC 전화 소리 설정 */
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.volume input[type='range'] {
+  flex: 1;
+  accent-color: #16a34a;
+}
