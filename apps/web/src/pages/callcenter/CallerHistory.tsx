@@ -15,6 +15,7 @@ interface Item {
 const KIND_LABEL: Record<string, string> = {
   customer: '고객',
   call: '통화',
+  sms: '문자',
   lead: '접수',
   owner: '담당',
   estimate: '견적',

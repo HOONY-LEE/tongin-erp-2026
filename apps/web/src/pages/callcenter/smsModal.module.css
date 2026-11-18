@@ -1,0 +1,130 @@
+/* 문자 보내기 창 — 넓게(왼쪽 작성 · 오른쪽 휴대폰 미리보기). akron Modal은 className을 받지 않아
+   안에 든 .sms-modal-wrap으로 창을 찾는다 */
+:global([role='dialog']:has(.sms-modal-wrap)) {
+  width: min(980px, calc(100vw - 32px)) !important;
+  max-width: none !important;
+}
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  min-height: 560px;
+}
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.right {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-radius: 14px;
+  background: var(--ark-color-bg-muted);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.grow {
+  flex: 1;
+}
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ark-color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.count {
+  margin-left: auto;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.over {
+  color: #dc2626;
+}
+.text,
+.text textarea {
+  min-height: 260px !important;
+  height: 100%;
+  resize: none;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chipWrap {
+  position: relative;
+  display: inline-flex;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip:hover {
+  color: var(--ark-color-text-primary);
+}
+.chipShared {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+.chipOn {
+  border-color: var(--ark-color-text-primary);
+  background: var(--ark-color-text-primary);
+  color: var(--ark-color-bg);
+}
+.chipDel {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 50%;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.chipWrap:hover .chipDel {
+  display: grid;
+}
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.note {
+  margin-left: auto;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+}
+.saveForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (max-width: 860px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+}

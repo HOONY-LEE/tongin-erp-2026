@@ -4,7 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 /**
  * 알림톡/SMS 발송 추상화.
- * - SMS: 솔라피 키(SOLAPI_*)가 있으면 솔라피로, 없고 알리고 키(ALIGO_*)가 있으면 알리고로,
+ * - SMS: SMS_VENDOR=kat 이고 한국AI통신 키(KAT_*)·발신번호(KAT_SMS_FROM)가 있으면 한국AI통신으로,
+ *   아니면 솔라피 키(SOLAPI_*)가 있으면 솔라피로, 없고 알리고 키(ALIGO_*)가 있으면 알리고로,
  *   둘 다 없으면 스텁(로그만 남기고 성공 처리).
  * - 알림톡: 템플릿 승인 전이라 아직 스텁.
  *
@@ -40,6 +41,9 @@ export interface NotificationProvider {
 }
 
 const digits = (s: string) => s.replace(/\D/g, '');
+/** 문자 길이(EUC-KR 기준) — 영문·숫자 1, 한글 등 2. 90 넘으면 장문(LMS) */
+export const smsBytes = (s: string) =>
+  [...s].reduce((n, c) => n + (c.charCodeAt(0) < 128 ? 1 : 2), 0);
 
 /** 시연 번호 공통코드 그룹(code = 숫자만, name = 표시 이름) */
 export const SMS_DEMO_NUMBERS_GROUP = 'SMS_DEMO_NUMBERS';
@@ -110,17 +114,44 @@ export class StubNotificationProvider implements NotificationProvider {
     secret: process.env.SOLAPI_API_SECRET,
     sender: process.env.SOLAPI_SENDER, // 솔라피에 등록한 발신번호
   };
+  /** 한국AI통신 문자 — 발신번호는 계정이 가진 번호(070 등)만 된다 */
+  private readonly kat = {
+    base: process.env.KAT_API_BASE || 'https://api.koreaaitel.com',
+    account: process.env.KAT_ACCOUNT_ID,
+    key: process.env.KAT_API_KEY,
+    from: process.env.KAT_SMS_FROM,
+    chosen: process.env.SMS_VENDOR === 'kat',
+  };
   private readonly allowed = new Set(
     (process.env.SMS_ALLOWED_RECIPIENTS ?? '').split(',').map(digits).filter(Boolean),
   );
 
   /** SMS를 실제 발송사로 보내는지 — 화면 안내·AI 결과 문구에 쓴다 */
   get smsLive(): boolean {
-    return this.solapiLive || this.aligoLive;
+    return this.katLive || this.solapiLive || this.aligoLive;
   }
   /** 실제로 보내는 문자 발송사 이름(없으면 null = 스텁) */
   get smsVendor(): string | null {
-    return this.solapiLive ? '솔라피' : this.aligoLive ? '알리고' : null;
+    return this.katLive
+      ? '한국AI통신'
+      : this.solapiLive
+        ? '솔라피'
+        : this.aligoLive
+          ? '알리고'
+          : null;
+  }
+  /** 지금 발송사의 발신번호(화면 미리보기용) */
+  get smsSender(): string | null {
+    return this.katLive
+      ? this.kat.from!
+      : this.solapiLive
+        ? this.solapi.sender!
+        : this.aligoLive
+          ? this.aligo.sender!
+          : null;
+  }
+  private get katLive() {
+    return !!(this.kat.chosen && this.kat.account && this.kat.key && this.kat.from);
   }
   private get solapiLive() {
     return !!(this.solapi.key && this.solapi.secret && this.solapi.sender);
@@ -190,9 +221,47 @@ export class StubNotificationProvider implements NotificationProvider {
         reason: notLive ? SMS_NOT_LIVE_REASON : SMS_BLOCKED_REASON,
       };
     }
-    return this.solapiLive
-      ? this.sendSolapi(recipient, message, opts.title)
-      : this.sendAligo(recipient, message, opts.title);
+    return this.katLive
+      ? this.sendKat(recipient, message, opts.title)
+      : this.solapiLive
+        ? this.sendSolapi(recipient, message, opts.title)
+        : this.sendAligo(recipient, message, opts.title);
+  }
+
+  /** 한국AI통신 — POST /messages. 유형(SMS/LMS)은 길이로 한국AI통신이 정한다. 장문이면 제목 */
+  private async sendKat(recipient: string, message: string, title?: string): Promise<SendResult> {
+    try {
+      const res = await fetch(
+        `${this.kat.base}/v1/accounts/${encodeURIComponent(this.kat.account!)}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.kat.key}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            To: digits(recipient),
+            From: digits(this.kat.from!),
+            Body: message,
+            // 제목은 장문(90byte 넘음)에만 — 단문에 붙이면 400
+            ...(title && smsBytes(message) > 90 ? { Subject: title } : {}),
+          }),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        const reason = `한국AI통신 ${res.status} ${body.code ?? body.error ?? ''}`.trim();
+        this.logger.warn(`[SMS·한국AI통신] 실패 ${reason}`);
+        return { ok: false, reason };
+      }
+      this.logger.log(`[SMS·한국AI통신] → ${recipient}`);
+      return { ok: true, delivered: true };
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`[SMS·한국AI통신] 연결 실패: ${reason}`);
+      return { ok: false, reason: `한국AI통신 연결 실패: ${reason}` };
+    }
   }
 
   /**

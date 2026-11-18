@@ -7,6 +7,7 @@ import {
   FileText,
   Headphones,
   LifeBuoy,
+  MessageSquare,
   Truck,
   UserPlus,
   Users,
@@ -18,6 +19,7 @@ import { SegmentedControl, useToast } from '../ui';
 import styles from './customerHistory.module.css';
 
 type Kind =
+  | 'sms'
   | 'customer'
   | 'call'
   | 'lead'
@@ -54,6 +56,7 @@ interface History {
 }
 
 const KIND: Record<Kind, { icon: LucideIcon; tone: string }> = {
+  sms: { icon: MessageSquare, tone: 'green' },
   customer: { icon: UserPlus, tone: 'gray' },
   call: { icon: Headphones, tone: 'green' },
   lead: { icon: ClipboardList, tone: 'blue' },
@@ -67,7 +70,7 @@ const KIND: Record<Kind, { icon: LucideIcon; tone: string }> = {
 };
 const FILTERS: { value: string; label: string; kinds: Kind[] | null }[] = [
   { value: 'all', label: '전체', kinds: null },
-  { value: 'call', label: '통화', kinds: ['call'] },
+  { value: 'call', label: '통화·문자', kinds: ['call', 'sms'] },
   { value: 'lead', label: '접수·담당', kinds: ['customer', 'lead', 'owner'] },
   { value: 'deal', label: '견적·계약', kinds: ['estimate', 'contract', 'payment'] },
   { value: 'work', label: '작업·AS', kinds: ['work', 'service', 'support'] },

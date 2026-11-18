@@ -7,6 +7,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   RotateCcw,
+  MessageSquare,
 } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import { PARTNER_TYPE_LABEL, type PartnerType } from '@tongin/shared';
@@ -31,6 +32,7 @@ import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
 import { Recording } from './Recording';
 import { CallerHistory } from './CallerHistory';
+import { SmsModal } from './SmsModal';
 
 export interface IntakeCall {
   id: string;
@@ -148,6 +150,8 @@ export function IntakePanel({
   const [endOpen, setEndOpen] = useState(false);
   /** 끝난 상담에서 다시 걸기 — 확인 창 */
   const [recallOpen, setRecallOpen] = useState(false);
+  /** 문자 보내기 창 */
+  const [smsOpen, setSmsOpen] = useState(false);
   const recall = async () => {
     setBusy(true);
     try {
@@ -377,6 +381,11 @@ export function IntakePanel({
                 <Phone size={14} /> 전화하기
               </Button>
             )}
+            {can('LEAD.CREATE') && (
+              <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
+                <MessageSquare size={14} /> SMS
+              </Button>
+            )}
             {call.leadId ? (
               <button
                 type="button"
@@ -408,6 +417,11 @@ export function IntakePanel({
             {!pending && !phone.call && phone.status === 'ready' && (
               <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
                 <Phone size={14} /> 전화하기
+              </Button>
+            )}
+            {!pending && (
+              <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
+                <MessageSquare size={14} /> SMS
               </Button>
             )}
             <Button
@@ -609,6 +623,15 @@ export function IntakePanel({
         fields={leadForm.fields}
         initialValues={confirmOpen ? formInitial() : undefined}
         onSubmit={submitLead}
+      />
+      <SmsModal
+        open={smsOpen}
+        onClose={() => setSmsOpen(false)}
+        phone={call.phone}
+        customerName={v.customerName || call.customerName}
+        leadNo={call.leadNo}
+        moveDate={v.moveDate || readOnly?.lead?.moveDate}
+        callId={call.id || undefined}
       />
       <ConfirmModal
         open={recallOpen}
