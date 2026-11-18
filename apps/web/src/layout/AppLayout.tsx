@@ -328,9 +328,24 @@ export default function AppLayout() {
                   height={22}
                   style={{ display: 'block', flexShrink: 0 }}
                 />
+                {/* 한국AI통신 'KAT | 한국AI통신'처럼 — 굵은 이름 | 작은 부제 */}
                 {!collapsed && (
-                  <span style={{ fontWeight: 700, fontSize: fs(14), letterSpacing: -0.2 }}>
-                    {PRODUCT_NAME}
+                  <span
+                    aria-label={PRODUCT_NAME}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
+                  >
+                    <b style={{ fontSize: fs(16), fontWeight: 800, letterSpacing: -0.4 }}>통인</b>
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 1,
+                        height: 12,
+                        background: 'var(--ark-color-border-strong, #c7c7cc)',
+                      }}
+                    />
+                    <span style={{ fontSize: fs(12.5), fontWeight: 600, letterSpacing: -0.1 }}>
+                      Works AI
+                    </span>
                   </span>
                 )}
               </div>
