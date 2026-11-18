@@ -27,6 +27,7 @@ export default function MoveClosures() {
   const [day, setDay] = useState<string | null>(null);
   const [orgId, setOrgId] = useState('');
   const [memo, setMemo] = useState('');
+  const [kind, setKind] = useState<'CLOSED' | 'SOON'>('CLOSED');
   const [busy, setBusy] = useState(false);
   const t = today();
   const editable = can('LEAD.UPDATE');
@@ -49,6 +50,7 @@ export default function MoveClosures() {
           date: day,
           orgUnitId: orgId && orgId !== 'ALL' ? orgId : null,
           memo: memo || undefined,
+          kind,
         }),
       });
       setMemo('');
@@ -105,7 +107,7 @@ export default function MoveClosures() {
         ))}
         {monthGrid(ym).map((c) => {
           const closed = closuresOf(c.date);
-          const all = closed.some((x) => !x.orgUnitId);
+          const all = closed.some((x) => !x.orgUnitId && x.kind === 'CLOSED');
           const leads = leadsOf(c.date);
           return (
             <button
@@ -127,8 +129,12 @@ export default function MoveClosures() {
               {leads > 0 && <span className={styles.leads}>이사 {leads}</span>}
               <span className={styles.chips}>
                 {closed.slice(0, 4).map((x) => (
-                  <span key={x.id} className={styles.chip} title={x.memo ?? undefined}>
-                    {x.orgName ?? '전체 마감'}
+                  <span
+                    key={x.id}
+                    className={`${styles.chip} ${x.kind === 'SOON' ? styles.chipSoon : ''}`}
+                    title={x.memo ?? undefined}
+                  >
+                    {x.orgName ?? '전체'} {x.kind === 'SOON' ? '예정' : '마감'}
                   </span>
                 ))}
                 {closed.length > 4 && <span className={styles.more}>+{closed.length - 4}</span>}
@@ -154,6 +160,9 @@ export default function MoveClosures() {
                 {closuresOf(day).map((c) => (
                   <li key={c.id}>
                     <b>{c.orgName ?? '전체(모든 지점)'}</b>
+                    <span className={c.kind === 'SOON' ? styles.chipSoon : styles.chip}>
+                      {c.kind === 'SOON' ? '마감 예정' : '마감'}
+                    </span>
                     {c.memo && <span>{c.memo}</span>}
                     {editable && (
                       <button
@@ -180,6 +189,15 @@ export default function MoveClosures() {
                   placeholder="지점"
                   aria-label="마감할 지점"
                 />
+                <Select
+                  value={kind}
+                  onValueChange={(v) => setKind(v as 'CLOSED' | 'SOON')}
+                  options={[
+                    { value: 'CLOSED', label: '마감' },
+                    { value: 'SOON', label: '마감 예정' },
+                  ]}
+                  aria-label="상태"
+                />
                 <Input
                   value={memo}
                   placeholder="메모(선택) — 예: 차량 마감"
@@ -187,7 +205,7 @@ export default function MoveClosures() {
                   onChange={(e) => setMemo(e.target.value)}
                 />
                 <Button variant="primary" size="sm" disabled={busy} onClick={() => void add()}>
-                  마감
+                  추가
                 </Button>
               </div>
             )}

@@ -61,6 +61,7 @@ export class CsOpsService {
         date: r.date.toISOString().slice(0, 10),
         orgUnitId: r.orgUnitId,
         orgName: r.orgUnitId ? (orgs.find((o) => o.id === r.orgUnitId)?.name ?? null) : null,
+        kind: r.kind,
         memo: r.memo,
       })),
       counts: counts
@@ -72,7 +73,7 @@ export class CsOpsService {
   /** 마감 걸기 — 지점은 자기 범위만, 전체(지점 비움)는 범위 제한 없는 사람(본사)만 */
   async addClosure(
     p: AuthPrincipal,
-    input: { date: string; orgUnitId?: string | null; memo?: string },
+    input: { date: string; orgUnitId?: string | null; memo?: string; kind?: string },
   ) {
     const ids = await this.scope.orgScopeIds(p);
     const orgUnitId = input.orgUnitId || null;
@@ -86,9 +87,38 @@ export class CsOpsService {
       data: {
         date: asDate(input.date),
         orgUnitId,
+        kind: input.kind === 'SOON' ? 'SOON' : 'CLOSED',
         memo: input.memo?.trim() || null,
         createdBy: p.employeeId ?? null,
       },
+    });
+  }
+
+  /**
+   * 날짜 상태 바꾸기 — 마감(CLOSED)·마감 예정(SOON)·여유(OPEN = 지운다).
+   * 지점을 비우면 전체(본사만). 같은 날·같은 지점은 하나만 둔다.
+   */
+  async setClosureStatus(
+    p: AuthPrincipal,
+    input: { date: string; orgUnitId?: string | null; status: 'CLOSED' | 'SOON' | 'OPEN' },
+  ) {
+    const ids = await this.scope.orgScopeIds(p);
+    const orgUnitId = input.orgUnitId || null;
+    if (ids !== null && (!orgUnitId || !ids.includes(orgUnitId)))
+      throw new ForbiddenException('소속 지점의 날짜만 바꿀 수 있습니다.');
+    const where = { date: asDate(input.date), orgUnitId };
+    if (input.status === 'OPEN') {
+      await this.prisma.moveClosure.deleteMany({ where });
+      return { ok: true };
+    }
+    const cur = await this.prisma.moveClosure.findFirst({ where });
+    if (cur)
+      return this.prisma.moveClosure.update({
+        where: { id: cur.id },
+        data: { kind: input.status },
+      });
+    return this.prisma.moveClosure.create({
+      data: { ...where, kind: input.status, createdBy: p.employeeId ?? null },
     });
   }
 

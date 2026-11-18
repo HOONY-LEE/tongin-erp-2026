@@ -6,6 +6,8 @@ export interface Closure {
   date: string;
   orgUnitId: string | null;
   orgName: string | null;
+  /** CLOSED 마감 | SOON 마감 예정 */
+  kind: 'CLOSED' | 'SOON';
   memo: string | null;
 }
 export interface ClosureData {

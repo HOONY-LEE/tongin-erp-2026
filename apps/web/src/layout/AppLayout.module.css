@@ -514,13 +514,16 @@
 
 /* 사이드바 머리 오른쪽 끝 접기 버튼('<') */
 .sideToggle {
+  /* 접힌 사이드바 메뉴 칸(40×37, 둥글기 10px)과 같은 크기 */
   display: inline-grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  flex-shrink: 0;
+  width: 40px;
+  height: 37px;
   margin-left: auto;
+  margin-right: -8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: var(--ark-color-text-secondary);
   cursor: pointer;
@@ -532,6 +535,10 @@
 /* 접힌 사이드바 — akron은 머리 내용을 숨기는데, 펴기 '>' 버튼은 보이게 */
 .collapsed .sidebarWrap [class*='_headerContent_'] {
   display: flex !important;
-  justify-content: center;
   width: 100%;
+}
+/* 접힌 상태의 펴기 버튼은 아래 메뉴 칸과 같은 자리(왼쪽 정렬) */
+.collapsed .sideToggle {
+  margin-left: 8px;
+  margin-right: 0;
 }

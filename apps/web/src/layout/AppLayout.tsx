@@ -324,7 +324,6 @@ export default function AppLayout() {
                   <button
                     type="button"
                     className={styles.sideToggle}
-                    style={{ margin: '0 auto' }}
                     title="사이드바 펴기"
                     aria-label="사이드바 펴기"
                     onClick={() => setCol(false)}
