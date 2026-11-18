@@ -3,6 +3,7 @@ import '@sunghoon_lee/akron-ui/tokens';
 import '@sunghoon_lee/akron-ui/styles';
 import 'softium-ui/styles.css';
 import './styles/base.css';
+import './styles/clean-theme.css';
 import './i18n';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

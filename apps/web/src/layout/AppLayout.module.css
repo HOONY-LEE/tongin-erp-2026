@@ -208,7 +208,7 @@
   padding-left: 64px;
 }
 
-/* 사이드바 — 화면 최상단부터 전체 높이 고정(헤더 위로), 떠 있는 둥근 카드(맥 앱 사이드바처럼) */
+/* 사이드바 — 화면 최상단부터 전체 높이 고정(헤더 위로). 흰 판 + 오른쪽 옅은 선(한국AI통신 콘솔 느낌) */
 .sidebarWrap {
   position: fixed;
   top: 0;
@@ -217,7 +217,6 @@
   z-index: 200;
   width: 240px;
   flex-shrink: 0;
-  padding: 6px 4px 6px 6px;
   box-sizing: border-box;
   transition: width 0.2s ease;
 }
@@ -226,40 +225,51 @@
 }
 
 .sidebarWrap > div {
-  border-radius: 12px;
-  border-right: 0 !important;
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.06),
-    0 2px 10px rgba(0, 0, 0, 0.05);
-  background: rgba(255, 255, 255, 0.72) !important;
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+  border-radius: 0;
+  border-right: 1px solid var(--ark-color-border) !important;
+  box-shadow: none;
+  background: var(--ark-color-bg) !important;
   overflow: hidden;
   height: 100%;
   box-sizing: border-box;
 }
-:global([data-theme='dark']) .sidebarWrap > div {
-  background: rgba(44, 44, 48, 0.65) !important;
-  box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.06),
-    0 2px 10px rgba(0, 0, 0, 0.2);
-}
-/* 사이드바 머리(로고) 아래 선은 옅게 */
+/* 사이드바 머리(로고) 아래 선 */
 .sidebarWrap > div > div:first-child {
-  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
-}
-:global([data-theme='dark']) .sidebarWrap > div > div:first-child {
-  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  border-bottom-color: var(--ark-color-border) !important;
 }
 
-/* 메뉴 묶음 사이 간격(기본 24px)을 줄이고, 묶음 이름은 본문보다 한 단계 작고 덜 굵게 */
+/* 메뉴 묶음 — 묶음 이름은 아주 작은 회색 글자, 묶음 사이는 좁게 */
 .sidebarWrap [class*='_group_'] {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .sidebarWrap [class*='_groupLabelBtn_'],
 .sidebarWrap [class*='_groupLabel_'] {
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(11px * var(--font-scale, 1));
   font-weight: 600;
+  color: var(--ark-color-text-secondary);
+  letter-spacing: 0.2px;
+}
+/* 메뉴 한 줄 — 14px 회색, 지금 메뉴는 연한 회색 바탕·검정 글자, 둥글기 10px */
+.sidebarWrap [class*='_item_'] {
+  min-height: 38px;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(14px * var(--font-scale, 1));
+  font-weight: 500;
+}
+.sidebarWrap [class*='_item_']:hover {
+  background: var(--ark-color-bg-muted) !important;
+  color: var(--ark-color-text-primary);
+}
+.sidebarWrap [class*='_itemActive_'],
+.sidebarWrap [class*='_active_'] {
+  background: var(--ark-color-bg-muted) !important;
+  color: var(--ark-color-text-primary) !important;
+}
+.sidebarWrap [class*='_item_'] svg {
+  color: inherit;
+  opacity: 0.9;
 }
 /* 메뉴 이름 칸을 끝까지 늘려 숫자 배지(.countBadge, margin-left:auto)가 오른쪽 끝에 붙게 — 접힌 사이드바는 제외 */
 .desktopLayout:not(.collapsed) .sidebarWrap [class*='_itemLabel_'] {
@@ -274,8 +284,8 @@
   padding: 6px 12px;
 }
 .sidebarWrap [class*='sidebarHeader'] {
-  height: 48px !important;
-  min-height: 48px !important;
+  height: 56px !important;
+  min-height: 56px !important;
   box-sizing: border-box;
 }
 

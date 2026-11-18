@@ -1,0 +1,81 @@
+/* ── 깔끔한 화면(한국AI통신 콘솔 느낌) — base.css 뒤에 덮어쓴다 ──
+   흰 바탕, 옅은 회색 선(#e5e5ea), 글자 #1d1d1f / 보조 #6e6e73, 연한 회색 강조(#f5f5f7), 둥글기 10px.
+   표: 머리 흰 바탕·작은 회색 글자, 세로 선 없음, 가로 선만. 사이드바: 떠 있는 카드 대신 흰 판 + 오른쪽 선.
+   되돌리려면 main.tsx에서 이 파일 import 한 줄만 빼면 된다. */
+
+:root:not([data-theme='dark']) {
+  --ark-color-text-primary: #1d1d1f;
+  --ark-color-text: #1d1d1f;
+  --ark-color-text-secondary: #6e6e73;
+  --ark-color-border: #e5e5ea;
+  --ark-color-bg-muted: #f5f5f7;
+  --ark-color-bg-subtle: #fafafa;
+  --sft-color-text: #1d1d1f;
+  --sft-color-text-secondary: #6e6e73;
+  --sft-color-text-muted: #86868b;
+  --sft-color-border: #e5e5ea;
+  --sft-color-bg-subtle: #ffffff;
+  --sft-color-bg-hover: #f7f7f9;
+}
+:root {
+  --control-radius: 10px;
+  --sft-radius-md: 10px;
+  /* 표 글자 — 본문 14px, 머리 12.5px(배율 따름) */
+  --sft-table-font-size: calc(14px * var(--font-scale));
+}
+
+/* ── 페이지 제목 — 조금 작고 단단하게 ── */
+h1 {
+  letter-spacing: -0.4px;
+}
+
+/* ── 표 ── */
+.sft-table {
+  --sft-table-row-height: calc(46px * var(--font-scale)) !important;
+  border-color: var(--sft-color-border);
+}
+.sft-thead {
+  background: var(--sft-color-bg) !important;
+  box-shadow: inset 0 -1px 0 var(--sft-color-border);
+}
+.sft-th {
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--sft-color-text-secondary) !important;
+  font-size: calc(12.5px * var(--font-scale)) !important;
+  font-weight: 600 !important;
+}
+.sft-th,
+.sft-td {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+.sft-td {
+  color: var(--sft-color-text);
+  font-variant-numeric: tabular-nums;
+}
+.sft-table:not([data-edit-active]) .sft-tbody .sft-tr:hover .sft-td {
+  background: var(--sft-color-bg-hover);
+}
+
+/* ── 검색·입력칸 — 36px, 14px, 둥글기 10px ── */
+.sft-toolbar__search,
+input[placeholder*='검색'],
+input[placeholder*='찾기'] {
+  min-height: 36px;
+  font-size: calc(14px * var(--font-scale)) !important;
+  border-color: var(--ark-color-border) !important;
+}
+.sft-toolbar__search:focus,
+input[placeholder*='검색']:focus {
+  border-color: #1d1d1f !important;
+  box-shadow: 0 0 0 3px rgba(29, 29, 31, 0.08) !important;
+}
+
+/* ── 표 아래 쪽 번호 — 작은 네모 버튼 ── */
+.sft-pager__btn {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px !important;
+  font-size: calc(12.5px * var(--font-scale)) !important;
+}
