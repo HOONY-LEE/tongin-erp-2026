@@ -6,13 +6,18 @@ import {
   Header,
   Headers,
   HttpCode,
+  Logger,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import { Readable } from 'node:stream';
+import type { ReadableStream as WebReadableStream } from 'node:stream/web';
+import type { Request, Response } from 'express';
 import {
   IsBoolean,
   IsIn,
@@ -24,6 +29,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import type { AuthPrincipal } from '@tongin/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
@@ -46,6 +52,17 @@ class FinishDto {
   @IsIn(['DONE', 'RETRY']) result!: 'DONE' | 'RETRY';
   @IsOptional() @IsUUID() leadId?: string;
   @IsOptional() @IsString() @MaxLength(1000) memo?: string;
+  /** 고객 요청사항 */
+  @IsOptional() @IsString() @MaxLength(2000) request?: string;
+}
+class UpdateCallDto {
+  @IsOptional() @IsString() @MaxLength(1000) memo?: string | null;
+  @IsOptional() @IsString() @MaxLength(2000) request?: string | null;
+}
+class ListQuery {
+  @IsOptional() @IsIn(['mine', 'all']) scope?: 'mine' | 'all';
+  @IsOptional() @IsString() @MaxLength(50) q?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000) page?: number;
 }
 class InboundDto {
   @IsString() @MaxLength(30) phone!: string;
@@ -85,12 +102,20 @@ const afterUrl = (req: Request, key: string, callId: string) => {
  */
 @Controller('cs-calls')
 export class CsCallController {
+  private readonly log = new Logger('CsCall');
   constructor(private readonly calls: CsCallService) {}
 
   @Get('console')
   @RequirePermissions('LEAD.CREATE')
   console(@CurrentUser() user: AuthPrincipal) {
     return this.calls.console(user);
+  }
+
+  /** 콜 목록 — 검색(전화번호·고객명) · 내 전화/전체 전화 */
+  @Get()
+  @RequirePermissions('LEAD.CREATE')
+  list(@CurrentUser() user: AuthPrincipal, @Query() q: ListQuery) {
+    return this.calls.list(user, { scope: q.scope ?? 'mine', q: q.q, page: q.page });
   }
 
   /** 전화 연동 설정 — 웹훅 주소(키 포함). 시스템 관리자만 */
@@ -143,6 +168,27 @@ export class CsCallController {
     return this.calls.finish(user, id, dto);
   }
 
+  @Patch(':id')
+  @RequirePermissions('LEAD.CREATE')
+  update(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCallDto,
+  ) {
+    return this.calls.update(user, id, dto);
+  }
+
+  /** 통화 녹음(WAV) 듣기 */
+  @Get(':id/recording')
+  @RequirePermissions('LEAD.CREATE')
+  async recording(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const r = await this.calls.recording(id);
+    res.setHeader('Content-Type', r.type);
+    if (r.length) res.setHeader('Content-Length', r.length);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    Readable.fromWeb(r.body as unknown as WebReadableStream).pipe(res);
+  }
+
   /** 시험 전화 — 실제 전화 시스템이 붙기 전 배분·아웃콜 확인용 */
   @Post('simulate')
   @RequirePermissions('LEAD.CREATE')
@@ -174,6 +220,7 @@ export class CsCallController {
       const call = await this.calls.inbound(
         body?.From ?? '',
         body?.ForwardedFrom || body?.To || '대표번호',
+        body?.CallSid,
       );
       if (call.status !== 'ASSIGNED') return vxml(say(MSG_BUSY), HANGUP);
       if (canRing(call))
@@ -212,6 +259,20 @@ export class CsCallController {
     } catch {
       return vxml(say(MSG_BUSY), HANGUP);
     }
+  }
+
+  /**
+   * 통화 상태 알림 — 번호의 '수신 통화 상태 webhook'과 SIP 단말의 statusCallback에 이 주소(+?key=)를 넣는다.
+   * 통화가 끝나면 통화 시간을 남긴다.
+   */
+  @Public()
+  @Post('voice/status')
+  @HttpCode(204)
+  async voiceStatus(@Query('key') key: string | undefined, @Body() body: Record<string, string>) {
+    if (!(await this.calls.checkSecret(key))) return;
+    await this.calls
+      .statusEvent(body ?? {})
+      .catch((e: unknown) => this.log.warn(`통화 상태 알림 처리 실패: ${String(e)}`));
   }
 
   @Public()

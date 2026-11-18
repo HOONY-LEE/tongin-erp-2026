@@ -98,6 +98,7 @@ export class EstimateService {
           leadNo: true,
           visitDate: true,
           moveDate: true,
+          customerRequest: true,
           partner: { select: { id: true, name: true, type: true, benefit: true, intake: true } },
         },
       }),

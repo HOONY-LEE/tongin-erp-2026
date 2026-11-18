@@ -25,11 +25,27 @@
   background: color-mix(in srgb, #f59e0b 8%, var(--ark-color-bg));
 }
 .grid {
-  flex: 1;
-  min-height: 0;
   display: grid;
   grid-template-columns: minmax(300px, 1fr) minmax(320px, 1.2fr) minmax(240px, 0.8fr);
   gap: 12px;
+  align-items: start;
+}
+/* 아웃콜·상담원 카드는 길어지면 안에서 스크롤 */
+.grid > .card {
+  max-height: 560px;
+}
+/* 통화 중이면 접수 패널이 넓게 — 2칸 차지 */
+.grid > .intakeCard {
+  grid-column: span 2;
+  max-height: none;
+}
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .grid > .intakeCard {
+    grid-column: auto;
+  }
 }
 .card {
   min-height: 0;
@@ -223,4 +239,146 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ── 인입콜 접수 패널 ── */
+.intake {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.callInfo {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.callInfo > div {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-muted);
+}
+.callInfo dt {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(11px * var(--font-scale, 1));
+}
+.callInfo dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.callInfo dd.phone {
+  font-size: calc(15px * var(--font-scale, 1));
+}
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+.full {
+  grid-column: 1 / -1;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.field > span {
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 500;
+}
+.field > span i {
+  color: var(--ark-color-primary, #f97316);
+  font-style: normal;
+}
+.partnerNote {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #3b82f6 7%, var(--ark-color-bg));
+  font-size: calc(13px * var(--font-scale, 1));
+  white-space: pre-line;
+}
+.partnerNote p {
+  margin: 4px 0 0;
+}
+
+/* ── 상담 콜 목록 ── */
+.listCard {
+  margin-top: 12px;
+  overflow: visible;
+}
+.listHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  color: var(--ark-color-text-secondary);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+.table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  white-space: nowrap;
+}
+.table tbody tr {
+  cursor: pointer;
+}
+.table tbody tr:hover {
+  background: var(--ark-color-bg-muted);
+}
+.table tbody tr:focus-visible {
+  outline: 2px solid var(--ark-color-text);
+  outline-offset: -2px;
+}
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+.clip {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.detail {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px 12px;
+  margin: 0 0 14px;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.detail dt {
+  color: var(--ark-color-text-secondary);
+}
+.detail dd {
+  margin: 0;
+}
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ark-color-primary, #f97316);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }

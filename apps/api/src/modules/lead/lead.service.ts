@@ -198,6 +198,7 @@ export class LeadService {
       toLng: dto.toLng,
       moveDate: dto.moveDate ? new Date(dto.moveDate) : undefined,
       visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
+      customerRequest: dto.customerRequest?.trim() || undefined,
     };
     try {
       const created = await this.prisma.lead.create({ data });
@@ -292,6 +293,8 @@ export class LeadService {
           toLng: dto.toLng,
           moveDate: dto.moveDate ? new Date(dto.moveDate) : undefined,
           visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
+          customerRequest:
+            dto.customerRequest === undefined ? undefined : dto.customerRequest.trim() || null,
         },
       });
     } catch (e) {

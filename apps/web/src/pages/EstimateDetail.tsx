@@ -292,6 +292,21 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           <PartnerNotice partner={data.lead.partner} />
         )}
 
+      {/* 상담 때 받은 고객 요청사항 — 견적·작업에서 빠뜨리지 않게 */}
+      {data.lead?.customerRequest && (
+        <div
+          style={{
+            padding: '10px 16px',
+            border: '1px solid var(--ark-color-border)',
+            borderRadius: 10,
+            fontSize: fs(13),
+            whiteSpace: 'pre-line',
+          }}
+        >
+          <b>고객 요청사항</b> · {data.lead.customerRequest}
+        </div>
+      )}
+
       <StepTabs steps={STEPS} value={tab} onChange={setTab} dirty={dirty} />
 
       {/* 탭을 옮겨도 입력하던 내용이 남도록 네 탭을 모두 띄워 두고 보이는 것만 바꾼다 */}
