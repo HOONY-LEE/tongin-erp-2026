@@ -455,6 +455,11 @@ async function register() {
 }
 
 /** PC 전화 켜기 — 마이크 권한을 먼저 받는다 */
+/** 지금 PC 전화 상태(훅 밖에서 바로 확인할 때) */
+export function getPhoneState(): PhoneState {
+  return state;
+}
+
 export async function enablePhone() {
   try {
     const s = await navigator.mediaDevices.getUserMedia({ audio: micConstraint() });

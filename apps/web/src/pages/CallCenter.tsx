@@ -3,7 +3,14 @@ import { Laptop, Trash2, PhoneOutgoing, Settings2, UserRound } from 'lucide-reac
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import { dial, disablePhone, enablePhone, setRingable, usePhone } from '../lib/softphone';
+import {
+  dial,
+  disablePhone,
+  enablePhone,
+  getPhoneState,
+  setRingable,
+  usePhone,
+} from '../lib/softphone';
 import {
   Button,
   ConfirmModal,
@@ -198,6 +205,20 @@ export default function CallCenter() {
       await api<CallView>(`/cs-calls/${c.id}/callback`, { method: 'POST' });
       if (pcReady) dial(c.phone, c.id);
     });
+  /** 상담 가능을 눌렀는데 PC 전화가 꺼져 있을 때 — 켜면서 바로 상담 가능으로 */
+  const [needPhone, setNeedPhone] = useState(false);
+  const [turningOn, setTurningOn] = useState(false);
+  const turnOnAndAvailable = async () => {
+    setTurningOn(true);
+    try {
+      await enablePhone();
+      if (getPhoneState().status === 'error') return; // 이유는 PC 전화 버튼이 알림으로 띄운다
+      setNeedPhone(false);
+      await setAvailable(true);
+    } finally {
+      setTurningOn(false);
+    }
+  };
   /** 아웃콜 정리 확인 창 */
   const [cancelTarget, setCancelTarget] = useState<CallView | null>(null);
   /** 콜이 끝나면 콜 목록도 다시 읽는다 */
@@ -286,7 +307,14 @@ export default function CallCenter() {
                 전화를 받으면 자동으로 자리 비움(다음 전화가 오지 않게), 준비되면 직접 [상담 가능] */}
             <SegmentedControl
               value={me.available ? 'on' : 'off'}
-              onChange={(v) => void setAvailable(v === 'on')}
+              onChange={(v) => {
+                // PC 전화가 꺼져 있으면 전화를 받을 수 없다 — 먼저 켜도록 묻는다
+                if (v === 'on' && (phone.status === 'off' || phone.status === 'error')) {
+                  setNeedPhone(true);
+                  return;
+                }
+                void setAvailable(v === 'on');
+              }}
               options={[
                 {
                   value: 'on',
@@ -466,6 +494,24 @@ export default function CallCenter() {
         </div>
       </div>
 
+      <ConfirmModal
+        open={needPhone}
+        title="PC 전화를 먼저 켜 주세요"
+        confirmLabel="PC 전화 켜기"
+        busy={turningOn}
+        onClose={() => setNeedPhone(false)}
+        onConfirm={() => void turnOnAndAvailable()}
+      >
+        <p style={{ margin: 0, lineHeight: 1.6 }}>
+          대표번호로 온 전화는 PC 전화로 받습니다. PC 전화가 꺼져 있으면 상담 가능으로 바꿀 수
+          없습니다.
+          <br />
+          <span className={styles.muted}>
+            [PC 전화 켜기]를 누르면 PC 전화를 켜고 바로 상담 가능으로 바뀝니다. 마이크 사용을 물으면
+            허용해 주세요.
+          </span>
+        </p>
+      </ConfirmModal>
       <ConfirmModal
         open={!!cancelTarget}
         title="아웃콜 정리"
