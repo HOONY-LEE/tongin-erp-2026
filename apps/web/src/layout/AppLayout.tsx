@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Download, Loader2, Settings } from 'lucide-react';
+import { Download, Loader2, Settings, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -288,8 +288,6 @@ export default function AppLayout() {
         <aside className={styles.sidebarWrap}>
           <LayoutSidebar
             collapsed={collapsed}
-            onCollapse={() => setCol(true)}
-            onExpand={() => setCol(false)}
             footer={
               <div
                 className={`${settingsStyles.sideFoot} ${collapsed ? settingsStyles.sideFootCollapsed : ''}`}
@@ -303,6 +301,16 @@ export default function AppLayout() {
                 >
                   <Settings size={16} />
                   {!collapsed && <span>앱 설정</span>}
+                </button>
+                {/* 사이드바 접기·펴기 — 한국AI통신 콘솔처럼 맨 아래에 */}
+                <button
+                  type="button"
+                  className={settingsStyles.footIcon}
+                  title={collapsed ? '사이드바 펴기' : '사이드바 접기'}
+                  aria-label={collapsed ? '사이드바 펴기' : '사이드바 접기'}
+                  onClick={() => setCol(!collapsed)}
+                >
+                  {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
                 </button>
                 {/* 웹에서만 — 데스크톱 앱 설치(이 컴퓨터 OS에 맞는 설치 파일) */}
                 {!isDesktop && (
@@ -334,7 +342,9 @@ export default function AppLayout() {
                     aria-label={PRODUCT_NAME}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
                   >
-                    <b style={{ fontSize: fs(16), fontWeight: 800, letterSpacing: -0.4 }}>통인</b>
+                    <span style={{ fontSize: fs(13.5), fontWeight: 600, letterSpacing: -0.1 }}>
+                      통인
+                    </span>
                     <span
                       aria-hidden
                       style={{
@@ -343,7 +353,7 @@ export default function AppLayout() {
                         background: 'var(--ark-color-border-strong, #c7c7cc)',
                       }}
                     />
-                    <span style={{ fontSize: fs(12.5), fontWeight: 600, letterSpacing: -0.1 }}>
+                    <span style={{ fontSize: fs(13.5), fontWeight: 600, letterSpacing: -0.1 }}>
                       Works AI
                     </span>
                   </span>
@@ -354,10 +364,11 @@ export default function AppLayout() {
             {visibleGroups.map((g, gi) => (
               <SidebarGroup
                 // 펼침 기본값은 처음 그릴 때만 먹는다 — 메뉴 구성이 바뀌면(계정 전환·편집) 다시 그린다
-                key={`${gi}|${g.label ?? ''}|${g.defaultOpen === false ? 'c' : 'o'}|${g.items.length}`}
+                key={`${gi}|${g.label ?? ''}|${g.items.length}`}
                 label={collapsed ? undefined : g.label}
-                collapsible={!collapsed}
-                defaultOpen={g.defaultOpen !== false || g.items.some(ownsPath)}
+                // 한국AI통신 콘솔처럼 묶음은 접지 않고 늘 펼친다(묶음 이름은 작은 회색 글자만)
+                collapsible={false}
+                defaultOpen
               >
                 {g.items.map((it) => (
                   <SidebarItem
