@@ -508,7 +508,7 @@ export class CsCallService {
   async update(
     p: AuthPrincipal,
     id: string,
-    input: { memo?: string | null; request?: string | null },
+    input: { leadId?: string; memo?: string | null; request?: string | null },
   ) {
     const call = await this.prisma.csCall.findUnique({ where: { id } });
     if (!call) throw new NotFoundException('콜을 찾을 수 없습니다.');
@@ -516,9 +516,22 @@ export class CsCallService {
       throw new ForbiddenException('내가 상담한 콜만 고칠 수 있습니다.');
     const clean = (v: string | null | undefined, max: number) =>
       v === undefined ? undefined : v?.trim() ? v.trim().slice(0, max) : null;
+    // 상담 중에 등록한 접수를 잇는다 — 새 번호면 접수가 만든 고객도 콜에 잇는다
+    const lead = input.leadId
+      ? await this.prisma.lead.findUnique({
+          where: { id: input.leadId },
+          select: { id: true, customerId: true },
+        })
+      : null;
+    if (input.leadId && !lead) throw new NotFoundException('접수를 찾을 수 없습니다.');
     return this.prisma.csCall.update({
       where: { id },
-      data: { memo: clean(input.memo, 1000), request: clean(input.request, 2000) },
+      data: {
+        memo: clean(input.memo, 1000),
+        request: clean(input.request, 2000),
+        ...(lead && { leadId: lead.id }),
+        ...(lead?.customerId && !call.customerId && { customerId: lead.customerId }),
+      },
     });
   }
 
@@ -662,6 +675,7 @@ export class CsCallService {
       attempts: c.attempts,
       memo: c.memo,
       request: c.request,
+      leadId: c.leadId,
       customerId: c.customerId,
       customerName: c.customerId ? (custName.get(c.customerId) ?? null) : null,
       agentEmpId: c.agentEmpId,
@@ -713,7 +727,20 @@ export class CsCallService {
             employeeId: me,
             available: agentRows.find((a) => a.employeeId === me)?.available ?? false,
             ringTo: agentRows.find((a) => a.employeeId === me)?.ringTo ?? null,
-            call: mine ? view(mine) : null,
+            call: mine
+              ? {
+                  ...view(mine),
+                  // 상담 중에 등록한 접수 번호(접수 등록 후에도 상담 화면에 남아 있을 때 보여 준다)
+                  leadNo: mine.leadId
+                    ? ((
+                        await this.prisma.lead.findUnique({
+                          where: { id: mine.leadId },
+                          select: { leadNo: true },
+                        })
+                      )?.leadNo ?? null)
+                    : null,
+                }
+              : null,
             recentLeads: recentLeads.map((l) => ({
               ...l,
               createdAt: l.createdAt.toISOString(),

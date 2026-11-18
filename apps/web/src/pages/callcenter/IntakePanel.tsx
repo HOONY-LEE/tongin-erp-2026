@@ -49,6 +49,9 @@ export interface IntakeCall {
   customerName: string | null;
   receivedAt: string;
   assignedAt: string | null;
+  /** 상담 중에 등록한 접수 */
+  leadId?: string | null;
+  leadNo?: string | null;
 }
 interface RecentLead {
   id: string;
@@ -232,15 +235,19 @@ export function IntakePanel({
         }),
       });
       const memo = typeof values.customerRequest === 'string' ? values.customerRequest : v.memo;
-      await finish('DONE', lead.id, memo).catch(() =>
+      // 콜은 끝내지 않고 접수만 잇는다 — 상담 화면에 그대로 남고, [상담 종료]로 마친다
+      await api(`/cs-calls/${call.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ leadId: lead.id, request: memo?.trim() || null }),
+      }).catch(() =>
         toast({
           type: 'warning',
-          title: '접수는 등록했지만 콜을 끝내지 못했습니다 — 콜 목록에서 확인해 주세요',
+          title: '접수는 등록했지만 콜에 잇지 못했습니다 — 콜 목록에서 확인해 주세요',
         }),
       );
       toast({
         type: 'success',
-        title: `접수를 등록했습니다${lead.leadNo ? ` (${lead.leadNo})` : ''}`,
+        title: `접수를 등록했습니다${lead.leadNo ? ` (${lead.leadNo})` : ''} — 상담을 마치면 [상담 종료]를 눌러 주세요`,
       });
       setConfirmOpen(false);
       await onDone();
@@ -283,10 +290,21 @@ export function IntakePanel({
           <Button variant="outline" size="sm" disabled={busy} onClick={() => setEndOpen(true)}>
             상담 종료
           </Button>
-          {can('LEAD.CREATE') && (
-            <Button variant="primary" size="sm" disabled={busy} onClick={openConfirm}>
-              접수 등록
-            </Button>
+          {call.leadId ? (
+            <button
+              type="button"
+              className={styles.leadDone}
+              onClick={() => navigate(`/leads/${call.leadId}`)}
+              title="등록한 접수 열기"
+            >
+              접수 완료{call.leadNo ? ` · ${call.leadNo}` : ''}
+            </button>
+          ) : (
+            can('LEAD.CREATE') && (
+              <Button variant="primary" size="sm" disabled={busy} onClick={openConfirm}>
+                접수 등록
+              </Button>
+            )
           )}
         </span>
       </div>
@@ -507,7 +525,9 @@ export function IntakePanel({
         onConfirm={() => void endConsult()}
       >
         <p style={{ margin: 0, lineHeight: 1.6 }}>
-          접수 없이 이 상담을 끝낼까요?
+          {call.leadId
+            ? `접수(${call.leadNo ?? '등록됨'})가 연결된 이 상담을 끝낼까요?`
+            : '접수 없이 이 상담을 끝낼까요?'}
           {phone.call ? ' 지금 통화도 함께 끊깁니다.' : ''}
           <br />
           <span className={styles.muted}>
