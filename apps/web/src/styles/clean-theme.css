@@ -18,6 +18,21 @@
   --sft-color-bg-hover: #f7f7f9;
 }
 :root {
+  /* 글자 — 한국AI통신 콘솔 크기(본문 14px·메뉴 13.5px·제목 20px). 작게/중간/크게(--font-scale)는 그대로 곱한다 */
+  --ark-font-size-xs: calc(12px * var(--font-scale));
+  --ark-font-size-sm: calc(14px * var(--font-scale));
+  --ark-font-size-base: calc(15px * var(--font-scale));
+  --ark-font-size-md: calc(15px * var(--font-scale));
+  --ark-font-size-lg: calc(17px * var(--font-scale));
+  --ark-font-size-xl: calc(20px * var(--font-scale));
+  --ark-font-size-2xl: calc(24px * var(--font-scale));
+  --ark-btn-font-size-sm: calc(13.5px * var(--font-scale, 1));
+  --ark-btn-font-size-md: calc(14px * var(--font-scale, 1));
+  --sft-font-size-xs: calc(11px * var(--font-scale));
+  --sft-font-size-sm: calc(12px * var(--font-scale));
+  --sft-font-size-md: calc(13px * var(--font-scale));
+  --sft-font-size-lg: calc(14px * var(--font-scale));
+  --sft-font-size-xl: calc(18px * var(--font-scale));
   --control-radius: 10px;
   --sft-radius-md: 10px;
   /* 표 글자 — 본문 14px, 머리 12.5px(배율 따름) */

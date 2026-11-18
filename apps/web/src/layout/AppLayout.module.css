@@ -11,8 +11,8 @@
 .topHeader {
   display: flex;
   align-items: stretch;
-  height: 38px;
-  min-height: 38px;
+  height: 46px;
+  min-height: 46px;
   padding: 0 16px 0 0;
   background: rgba(255, 255, 255, 0.92);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -251,11 +251,11 @@
 }
 /* 메뉴 한 줄 — 14px 회색, 지금 메뉴는 연한 회색 바탕·검정 글자, 둥글기 10px */
 .sidebarWrap [class*='_item_'] {
-  min-height: 38px;
-  padding: 8px 12px !important;
+  min-height: 36px;
+  padding: 7px 12px !important;
   border-radius: 10px !important;
   color: var(--ark-color-text-secondary);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--font-scale, 1));
   font-weight: 500;
 }
 .sidebarWrap [class*='_item_']:hover {
@@ -283,9 +283,12 @@
 .sidebarWrap [class*='sidebarFooter'] {
   padding: 6px 12px;
 }
+/* 로고 칸 — 옆 탭 머리(.topHeader 46px)와 같은 높이, 아래 선이 한 줄로 이어진다 */
 .sidebarWrap [class*='sidebarHeader'] {
-  height: 56px !important;
-  min-height: 56px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
   box-sizing: border-box;
 }
 

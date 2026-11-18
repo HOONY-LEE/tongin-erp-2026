@@ -1,5 +1,5 @@
 export default {
-  app: { title: 'Tongin AI Works' },
+  app: { title: 'Tongin WORKS' },
   common: {
     add: 'Add',
     save: 'Save',
