@@ -15,14 +15,14 @@ import {
 } from '../components/ui';
 import styles from './callcenter.module.css';
 import { IntakePanel } from './callcenter/IntakePanel';
-import { CallList } from './callcenter/CallList';
+import { CallDetail, CallList, type CallRow } from './callcenter/CallList';
 import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
 import { ScriptCard } from './callcenter/ScriptCard';
 
 interface CallView {
   id: string;
   phone: string;
-  status: 'ASSIGNED' | 'OUTCALL' | 'CALLBACK';
+  status: string;
   channel: string | null;
   attempts: number;
   memo: string | null;
@@ -203,26 +203,44 @@ export default function CallCenter() {
   /** 콜이 끝나면 콜 목록도 다시 읽는다 */
   const [listKey, setListKey] = useState(0);
   const afterIntake = async () => {
+    go(null);
     await load();
     setListKey((k) => k + 1);
   };
 
-  // 동시 울림 — 상담 가능이고 열린 콜이 없을 때만 이 PC가 울리게(등록) 바로 반영
-  const ringOk = !!data?.me?.available && !data?.me?.call;
+  // 동시 울림 — 상담 가능이면 울린다(상담 화면이 열려 있어도). 통화 중에는 울리지 않는다
+  const ringOk = !!data?.me?.available && !phone.call;
   useEffect(() => {
     if (data) setRingable(ringOk);
   }, [data, ringOk]);
-  // PC가 울리는 동안(아직 [받기] 전)은 상담 화면으로 넘어가지 않는다 — 받으면 그때 연다
-  const ringingIn = phone.call?.state === 'ringing' && phone.call.direction === 'in';
-  const activeId = ringingIn ? null : (data?.me?.call?.id ?? null);
-  // 상담 화면 주소 — 상담 중이면 /callcenter/<콜 id>, 끝나면 /callcenter (새로고침해도 같은 상담).
-  // 라우터로 옮기면 화면이 통째로 다시 그려지므로(탭이 주소별로 화면을 새로 만든다) 주소창만 바꾼다.
+
+  // 왼쪽에 보이는 상담 — /callcenter/<콜 id>. 라우터로 옮기면 화면이 통째로 다시 그려지므로
+  // (탭이 주소별로 화면을 새로 만든다) 주소창만 바꾸고 뒤로 가기는 popstate로 받는다
+  const idFromPath = () =>
+    /^\/callcenter\/([0-9a-f-]{36})/.exec(window.location.pathname)?.[1] ?? null;
+  const [viewId, setViewId] = useState<string | null>(idFromPath);
+  const go = useCallback((id: string | null) => {
+    const want = id ? `/callcenter/${id}` : '/callcenter';
+    if (window.location.pathname !== want) window.history.pushState(window.history.state, '', want);
+    setViewId(id);
+  }, []);
   useEffect(() => {
-    if (!data) return;
-    const want = activeId ? `/callcenter/${activeId}` : '/callcenter';
-    if (window.location.pathname !== want)
-      window.history.replaceState(window.history.state, '', want);
-  }, [data, activeId]);
+    const onPop = () => setViewId(idFromPath());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // 새로 받은 콜(받기·콜백)이 생기면 그 상담 화면을 연다. 처음 열 때는 방금(1분 안) 받은 콜만
+  const seenCall = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!data?.me) return;
+    const c = data.me.call;
+    const id = c?.id ?? null;
+    if (seenCall.current === undefined) {
+      if (c && !viewId && Date.now() - Date.parse(c.assignedAt ?? c.receivedAt) < 60_000) go(c.id);
+    } else if (id && id !== seenCall.current) go(id);
+    seenCall.current = id;
+  }, [data, viewId, go]);
+  const backToList = () => go(null);
 
   if (!data)
     return (
@@ -232,24 +250,25 @@ export default function CallCenter() {
     );
   const me = data.me;
   // 서버 콜이 오기 전 잠깐은 임시 콜로 상담 화면을 연다(접수 등록·상담 종료는 잠시 막힘)
-  const pendingCall: CallView | null =
-    pending && !me?.call
-      ? {
-          id: '',
-          phone: pending.phone,
-          status: 'ASSIGNED',
-          channel: '대표번호',
-          attempts: 0,
-          memo: null,
-          request: null,
-          customerId: null,
-          customerName: pending.name ?? null,
-          agentEmpId: me?.employeeId ?? null,
-          receivedAt: pending.at,
-          assignedAt: pending.at,
-        }
-      : null;
-  const mine = ringingIn ? null : (me?.call ?? pendingCall);
+  const pendingCall: CallView | null = pending
+    ? {
+        id: '',
+        phone: pending.phone,
+        status: 'ASSIGNED',
+        channel: '대표번호',
+        attempts: 0,
+        memo: null,
+        request: null,
+        customerId: null,
+        customerName: pending.name ?? null,
+        agentEmpId: me?.employeeId ?? null,
+        receivedAt: pending.at,
+        assignedAt: pending.at,
+      }
+    : null;
+  const onCall = !!phone.call && phone.call.state !== 'ringing';
+  /** 목록 화면(상담 화면이 아닐 때) */
+  const listView = !pendingCall && !viewId;
 
   return (
     <ListPage
@@ -263,30 +282,22 @@ export default function CallCenter() {
             <PcPhone />
             {/* 기본은 자리 비움. 콜이 배정되면 자동으로 '상담 중'이 되고, 통화가 끝나도 후처리를 마치고
                 직접 [상담 가능]을 눌러야 다음 전화가 온다 */}
+            {/* 상담 가능/자리 비움은 상담 화면과 따로 — 통화가 끝나면 상담 화면을 연 채로도 바꿀 수 있다.
+                전화를 받으면 자동으로 자리 비움(다음 전화가 오지 않게), 준비되면 직접 [상담 가능] */}
             <SegmentedControl
-              value={me.available && !mine ? 'on' : 'off'}
-              onChange={(v) => {
-                if (v === 'on' && mine) {
-                  toast({
-                    type: 'warning',
-                    title: '상담 중인 콜을 먼저 마무리(접수 등록)한 뒤 상담 가능으로 바꿔 주세요.',
-                  });
-                  return;
-                }
-                void setAvailable(v === 'on');
-              }}
+              value={me.available ? 'on' : 'off'}
+              onChange={(v) => void setAvailable(v === 'on')}
               options={[
                 {
                   value: 'on',
                   label: (
                     <span className={styles.availLabel}>
-                      {me.available && !mine && <i className={styles.availDot} aria-hidden />}
+                      {me.available && <i className={styles.availDot} aria-hidden />}
                       상담 가능
                     </span>
                   ),
-                  disabled: !!mine,
                 },
-                { value: 'off', label: mine ? '상담 중' : '자리 비움' },
+                { value: 'off', label: onCall ? '통화 중' : '자리 비움' },
               ]}
             />
           </div>
@@ -295,18 +306,42 @@ export default function CallCenter() {
     >
       <div className={styles.grid}>
         {/* 왼쪽 — 통화 중이면 접수 패널, 아니면 상담 콜 목록 */}
-        {me && mine ? (
+        {me && pendingCall ? (
+          <section className={`${styles.card} ${styles.intakeCard}`}>
+            <IntakePanel call={pendingCall} recentLeads={[]} pending onDone={afterIntake} />
+          </section>
+        ) : me && viewId && me.call?.id === viewId ? (
           <section className={`${styles.card} ${styles.intakeCard}`}>
             <IntakePanel
-              call={mine}
-              recentLeads={me.call ? me.recentLeads : []}
-              pending={!mine.id}
+              call={me.call}
+              recentLeads={me.recentLeads}
               onDone={afterIntake}
+              onBack={backToList}
             />
           </section>
+        ) : viewId ? (
+          <CallPage
+            key={viewId}
+            id={viewId}
+            myId={me?.employeeId ?? null}
+            isAdmin={isSysAdmin}
+            onBack={backToList}
+            onDone={afterIntake}
+          />
         ) : (
           <div className={styles.mainCol}>
-            <CallList refreshKey={listKey} />
+            {me?.call && (
+              <div className={styles.openBar}>
+                <b>마무리하지 않은 상담</b>
+                <span>
+                  {me.call.customerName ?? '새 번호'} · {formatPhone(me.call.phone)}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => go(me.call!.id)}>
+                  상담 화면 열기
+                </Button>
+              </div>
+            )}
+            <CallList refreshKey={listKey} onOpen={go} />
           </div>
         )}
 
@@ -335,10 +370,10 @@ export default function CallCenter() {
                     <Button
                       variant="primary"
                       size="sm"
-                      disabled={busy || !me || !!mine}
+                      disabled={busy || !me || onCall}
                       title={
-                        mine
-                          ? '지금 콜을 먼저 끝내 주세요'
+                        onCall
+                          ? '지금 통화를 먼저 끝내 주세요'
                           : '이 번호로 전화하고 상담 화면을 엽니다'
                       }
                       onClick={() => void callback(c)}
@@ -364,8 +399,8 @@ export default function CallCenter() {
         </div>
       </div>
 
-      {/* 아래 — 오늘 숫자와 상담원 현황(상담 중에는 화면을 꽉 채우게 숨긴다) */}
-      {!(me && mine) && (
+      {/* 아래 — 오늘 숫자와 상담원 현황(상담 화면에서는 화면을 꽉 채우게 숨긴다) */}
+      {listView && (
         <>
           <div className={styles.stats}>
             <div>
@@ -610,5 +645,60 @@ function PcPhone() {
       </button>
       {soundButton}
     </span>
+  );
+}
+
+/**
+ * 상담 화면(/callcenter/<콜 id>) — 상담 콜 목록에서 누른 콜.
+ * 마무리하지 않은 내 상담이면 접수 화면 그대로, 끝난 콜이면 상세(녹취·메모).
+ */
+function CallPage({
+  id,
+  myId,
+  isAdmin,
+  onBack,
+  onDone,
+}: {
+  id: string;
+  myId: string | null;
+  isAdmin: boolean;
+  onBack: () => void;
+  onDone: () => Promise<void> | void;
+}) {
+  const toast = useToast();
+  const [d, setD] = useState<{
+    call: CallRow & CallView;
+    recentLeads: NonNullable<Console['me']>['recentLeads'];
+  } | null>(null);
+  const load = useCallback(async () => {
+    try {
+      setD(await api(`/cs-calls/${id}`));
+    } catch (e) {
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : '콜을 불러오지 못했습니다',
+      });
+      onBack();
+    }
+  }, [id, toast, onBack]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (!d)
+    return (
+      <section className={`${styles.card} ${styles.intakeCard}`}>
+        <p className={styles.muted}>불러오는 중…</p>
+      </section>
+    );
+  const open = ['ASSIGNED', 'CALLBACK'].includes(d.call.status);
+  return (
+    <section className={`${styles.card} ${styles.intakeCard}`}>
+      {open && (d.call.agentEmpId === myId || isAdmin) ? (
+        <IntakePanel call={d.call} recentLeads={d.recentLeads} onDone={onDone} onBack={onBack} />
+      ) : (
+        <CallDetail call={d.call} onBack={onBack} onSaved={() => void load()} />
+      )}
+    </section>
   );
 }

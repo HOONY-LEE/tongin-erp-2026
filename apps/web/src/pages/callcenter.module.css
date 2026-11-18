@@ -933,3 +933,36 @@
     transition: none;
   }
 }
+
+/* 상담 화면 — 목록으로 */
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -4px;
+  border: 0;
+  border-radius: var(--control-radius, 8px);
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.backBtn:hover {
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.05));
+  color: var(--ark-color-text);
+}
+/* 목록 위 — 마무리하지 않은 내 상담 */
+.openBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--ark-color-success, #16a34a);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ark-color-success, #16a34a) 8%, transparent);
+  font-size: 13px;
+}
+.openBar > button:last-child {
+  margin-left: auto;
+}

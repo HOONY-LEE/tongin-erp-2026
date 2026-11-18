@@ -1,23 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { List, Play } from 'lucide-react';
+import { ArrowLeft, List, Phone, Play } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { api, ApiError, getToken } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import {
   Button,
   DataTable,
-  Modal,
   SegmentedControl,
   Textarea,
   useToast,
   type Column,
   type Row,
 } from '../../components/ui';
-import { Phone } from 'softium-ui/table';
+import { Phone as PhoneCell } from 'softium-ui/table';
 import styles from '../callcenter.module.css';
 
-interface CallRow {
+export interface CallRow {
   id: string;
   phone: string;
   status: string;
@@ -60,15 +59,20 @@ const shortId = (id: string) => id.slice(0, 8).toUpperCase();
 
 /**
  * 상담 콜 목록 — 다른 목록 화면과 같은 표(검색·정렬·페이지·칸 설정). 내 전화/전체 전화.
- * 최근 콜 500개를 받아 표 안에서 찾는다. 행을 누르면 상세(녹취 듣기·메모·요청사항).
+ * 최근 콜 500개를 받아 표 안에서 찾는다. 행을 누르면 그 콜의 상담 화면(/callcenter/<콜 id>)으로.
  * refreshKey가 바뀌면(콜이 끝나면) 다시 읽는다.
  */
-export function CallList({ refreshKey }: { refreshKey: number }) {
+export function CallList({
+  refreshKey,
+  onOpen,
+}: {
+  refreshKey: number;
+  onOpen: (id: string) => void;
+}) {
   const toast = useToast();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState<CallRow | null>(null);
 
   const load = useCallback(
     async (sc: 'mine' | 'all') => {
@@ -102,7 +106,7 @@ export function CallList({ refreshKey }: { refreshKey: number }) {
     {
       title: '전화번호',
       dataIndex: 'phone',
-      render: (r) => <Phone value={r.phone as string} link={false} />,
+      render: (r) => <PhoneCell value={r.phone as string} link={false} />,
       width: 124,
     },
     {
@@ -160,25 +164,22 @@ export function CallList({ refreshKey }: { refreshKey: number }) {
         columns={columns}
         rows={rows as unknown as Row[]}
         loading={loading}
-        onRowClick={(r) => setOpen(r as unknown as CallRow)}
+        onRowClick={(r) => onOpen(r.id as string)}
         exportable
         exportFileName="상담콜"
       />
-      {open && (
-        <CallDetail call={open} onClose={() => setOpen(null)} onSaved={() => void load(scope)} />
-      )}
     </section>
   );
 }
 
-/** 콜 상세 — 정보, 녹취 듣기, 메모·요청사항 고치기 */
-function CallDetail({
+/** 지난 콜 상세(상담 화면) — 정보, 녹취 듣기, 메모·요청사항 고치기 */
+export function CallDetail({
   call,
-  onClose,
+  onBack,
   onSaved,
 }: {
   call: CallRow;
-  onClose: () => void;
+  onBack: () => void;
   onSaved: () => void;
 }) {
   const toast = useToast();
@@ -229,7 +230,6 @@ function CallDetail({
       });
       toast({ type: 'success', title: '저장했습니다' });
       onSaved();
-      onClose();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
     } finally {
@@ -238,23 +238,25 @@ function CallDetail({
   };
 
   return (
-    <Modal
-      open
-      onOpenChange={(o) => !o && onClose()}
-      title={`콜 ${shortId(call.id)}`}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            닫기
-          </Button>
-          {canEdit && (
-            <Button variant="primary" disabled={busy} onClick={() => void save()}>
+    <div className={styles.intake}>
+      <div className={styles.intakeHead}>
+        <button type="button" className={styles.backBtn} onClick={onBack} aria-label="목록으로">
+          <ArrowLeft size={16} />
+        </button>
+        <h3 className={styles.cardTitle}>
+          <Phone size={15} /> 상담 상세
+        </h3>
+        <span className={styles.muted}>
+          콜 {shortId(call.id)} · {STATUS_LABEL[call.status] ?? call.status}
+        </span>
+        {canEdit && (
+          <span className={styles.headActions}>
+            <Button variant="primary" size="sm" disabled={busy} onClick={() => void save()}>
               저장
             </Button>
-          )}
-        </>
-      }
-    >
+          </span>
+        )}
+      </div>
       <dl className={styles.detail}>
         <dt>고객</dt>
         <dd>
@@ -322,6 +324,6 @@ function CallDetail({
           />
         </label>
       </div>
-    </Modal>
+    </div>
   );
 }
