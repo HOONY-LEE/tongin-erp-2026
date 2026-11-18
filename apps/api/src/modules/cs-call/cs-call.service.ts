@@ -71,7 +71,11 @@ export class CsCallService {
   }
 
   /** 콜 하나를 넣고 바로 배분한다. sipUri·ringTo — 배분된 상담원의 PC 전화·착신 번호(있으면 전화 시스템이 바로 울린다) */
-  async inbound(phone: string, channel?: string): Promise<CsCall & RingTarget> {
+  async inbound(
+    phone: string,
+    channel?: string,
+    katCallSid?: string,
+  ): Promise<CsCall & RingTarget> {
     const d = digits(phone);
     if (d.length < 8 || d.length > 12)
       throw new BadRequestException('전화번호가 올바르지 않습니다.');
@@ -84,6 +88,7 @@ export class CsCallService {
           phone: d,
           channel: channel?.slice(0, 50) || '대표번호',
           customerId: customer?.id ?? null,
+          katCallSid: katCallSid?.slice(0, 100) || null,
           ...(agent
             ? { status: 'ASSIGNED', agentEmpId: agent.id, assignedAt: new Date() }
             : { status: 'OUTCALL' }),
@@ -279,7 +284,7 @@ export class CsCallService {
   async finish(
     p: AuthPrincipal,
     id: string,
-    input: { result: 'DONE' | 'RETRY'; leadId?: string; memo?: string },
+    input: { result: 'DONE' | 'RETRY'; leadId?: string; memo?: string; request?: string },
   ) {
     const me = this.me(p);
     const call = await this.prisma.csCall.findUnique({ where: { id } });
@@ -288,16 +293,34 @@ export class CsCallService {
       throw new ForbiddenException('내가 받은 콜만 끝낼 수 있습니다.');
     if (!ACTIVE.includes(call.status)) throw new ConflictException('이미 끝난 콜입니다.');
     const memo = input.memo?.trim() ? input.memo.trim().slice(0, 1000) : undefined;
+    const request = input.request?.trim() ? input.request.trim().slice(0, 2000) : undefined;
+    // 새 번호로 접수했으면 접수가 만든 고객을 콜에도 잇는다(다음 전화부터 이름이 자동으로 뜬다)
+    const leadCustomer =
+      input.leadId && !call.customerId
+        ? ((
+            await this.prisma.lead.findUnique({
+              where: { id: input.leadId },
+              select: { customerId: true },
+            })
+          )?.customerId ?? null)
+        : null;
     const updated = await this.prisma.csCall.update({
       where: { id },
       data:
         input.result === 'RETRY'
-          ? { status: 'OUTCALL', agentEmpId: null, ...(memo && { memo }) }
+          ? {
+              status: 'OUTCALL',
+              agentEmpId: null,
+              ...(memo && { memo }),
+              ...(request && { request }),
+            }
           : {
               status: 'DONE',
               doneAt: new Date(),
               ...(input.leadId && { leadId: input.leadId }),
+              ...(leadCustomer && { customerId: leadCustomer }),
               ...(memo && { memo }),
+              ...(request && { request }),
             },
     });
     await this.prisma.csAgent.updateMany({
@@ -305,6 +328,169 @@ export class CsCallService {
       data: { lastFreeAt: new Date() },
     });
     return updated;
+  }
+
+  /**
+   * 통화 상태 알림(한국AI통신 status callback) — 통화가 끝나면 통화 시간을 남긴다.
+   * 받은 전화는 CallSid로, PC에서 건 전화(SIP 단말 발신)는 INVITE에 실은 X-Call-Id(=콜 id)로 찾는다.
+   */
+  async statusEvent(body: Record<string, string>) {
+    const sid = body.CallSid?.slice(0, 100);
+    const status = body.CallStatus ?? '';
+    const headerId = body['SipHeader_X-Call-Id'] ?? body['SipHeader_X-Call-ID'];
+    const UUID = /^[0-9a-f-]{36}$/i;
+    let call = sid ? await this.prisma.csCall.findUnique({ where: { katCallSid: sid } }) : null;
+    if (!call && headerId && UUID.test(headerId))
+      call = await this.prisma.csCall.findUnique({ where: { id: headerId } });
+    if (!call) return { ok: true };
+    const ended = ['completed', 'busy', 'no-answer', 'failed', 'canceled', 'rejected'].includes(
+      status,
+    );
+    const dur = Number.parseInt(body.Duration ?? '', 10);
+    await this.prisma.csCall.update({
+      where: { id: call.id },
+      data: {
+        ...(sid && !call.katCallSid && { katCallSid: sid }),
+        ...(ended && {
+          endedAt: new Date(),
+          // 콜백을 여러 번 걸면 마지막으로 연결된 통화 시간을 남긴다(안 받은 시도는 0이라 덮어쓰지 않는다)
+          ...(Number.isFinite(dur) &&
+            (dur > 0 || call.durationSec == null) && { durationSec: dur }),
+        }),
+      },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * 콜 목록 — 검색(전화번호·고객명) + 내 전화/전체 전화. 최근 순, 50개씩.
+   */
+  async list(p: AuthPrincipal, opts: { scope: 'mine' | 'all'; q?: string; page?: number }) {
+    const me = p.employeeId ?? null;
+    const q = opts.q?.trim() ?? '';
+    const d = digits(q);
+    const where: Prisma.CsCallWhereInput = {
+      ...(opts.scope === 'mine' && { agentEmpId: me ?? '00000000-0000-0000-0000-000000000000' }),
+      ...(q && {
+        OR: [
+          ...(d.length >= 3 ? [{ phone: { contains: d } }] : []),
+          ...(await this.customerIdsByName(q)).map((id) => ({ customerId: id })),
+        ],
+      }),
+    };
+    if (q && Array.isArray(where.OR) && where.OR.length === 0) return { total: 0, rows: [] };
+    const PAGE = 50;
+    const page = Math.max(0, opts.page ?? 0);
+    const [total, calls] = await Promise.all([
+      this.prisma.csCall.count({ where }),
+      this.prisma.csCall.findMany({
+        where,
+        orderBy: { receivedAt: 'desc' },
+        skip: page * PAGE,
+        take: PAGE,
+      }),
+    ]);
+    const custIds = [...new Set(calls.map((c) => c.customerId).filter((x): x is string => !!x))];
+    const empIds = [...new Set(calls.map((c) => c.agentEmpId).filter((x): x is string => !!x))];
+    const leadIds = [...new Set(calls.map((c) => c.leadId).filter((x): x is string => !!x))];
+    const [customers, emps, leads] = await Promise.all([
+      custIds.length
+        ? this.prisma.customer.findMany({
+            where: { id: { in: custIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      empIds.length
+        ? this.prisma.employee.findMany({
+            where: { id: { in: empIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      leadIds.length
+        ? this.prisma.lead.findMany({
+            where: { id: { in: leadIds } },
+            select: { id: true, leadNo: true },
+          })
+        : [],
+    ]);
+    const nameOf = <T extends { id: string }>(xs: T[], id: string | null, k: keyof T) =>
+      id ? ((xs.find((x) => x.id === id)?.[k] as string | undefined) ?? null) : null;
+    return {
+      total,
+      rows: calls.map((c) => ({
+        id: c.id,
+        phone: c.phone,
+        status: c.status,
+        channel: c.channel,
+        customerId: c.customerId,
+        customerName: nameOf(customers, c.customerId, 'name'),
+        agentEmpId: c.agentEmpId,
+        agentName: nameOf(emps, c.agentEmpId, 'name'),
+        leadId: c.leadId,
+        leadNo: nameOf(leads, c.leadId, 'leadNo'),
+        receivedAt: c.receivedAt.toISOString(),
+        endedAt: c.endedAt?.toISOString() ?? null,
+        durationSec: c.durationSec,
+        hasRecording: !!c.katCallSid && (c.durationSec ?? 0) > 0,
+        memo: c.memo,
+        request: c.request,
+      })),
+    };
+  }
+
+  private async customerIdsByName(q: string) {
+    if (q.length < 1 || /^\d+$/.test(q.replace(/[-\s]/g, ''))) return [];
+    const rows = await this.prisma.customer.findMany({
+      where: { name: { contains: q, mode: 'insensitive' } },
+      select: { id: true },
+      take: 200,
+    });
+    return rows.map((r) => r.id);
+  }
+
+  /** 콜 메모·고객 요청사항 고치기 — 상담한 본인 또는 시스템 관리자 */
+  async update(
+    p: AuthPrincipal,
+    id: string,
+    input: { memo?: string | null; request?: string | null },
+  ) {
+    const call = await this.prisma.csCall.findUnique({ where: { id } });
+    if (!call) throw new NotFoundException('콜을 찾을 수 없습니다.');
+    if (call.agentEmpId !== p.employeeId && !p.permissions.includes('*'))
+      throw new ForbiddenException('내가 상담한 콜만 고칠 수 있습니다.');
+    const clean = (v: string | null | undefined, max: number) =>
+      v === undefined ? undefined : v?.trim() ? v.trim().slice(0, max) : null;
+    return this.prisma.csCall.update({
+      where: { id },
+      data: { memo: clean(input.memo, 1000), request: clean(input.request, 2000) },
+    });
+  }
+
+  /** 녹음 파일(WAV) — 한국AI통신에서 받아 그대로 넘긴다(API 키는 서버에만). 보관 90일 */
+  async recording(id: string) {
+    const call = await this.prisma.csCall.findUnique({ where: { id } });
+    if (!call?.katCallSid) throw new NotFoundException('이 콜에는 녹음이 없습니다.');
+    const base = process.env.KAT_API_BASE || 'https://api.koreaaitel.com';
+    const account = process.env.KAT_ACCOUNT_ID;
+    const key = process.env.KAT_API_KEY;
+    if (!account || !key)
+      throw new ServiceUnavailableException('전화 서비스가 설정되지 않았습니다.');
+    const res = await fetch(
+      `${base}/v1/accounts/${encodeURIComponent(account)}/recordings/${encodeURIComponent(call.katCallSid)}`,
+      { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(30_000) },
+    ).catch(() => {
+      throw new BadGatewayException('전화 서비스에 연결하지 못했습니다.');
+    });
+    if (res.status === 404)
+      throw new NotFoundException(
+        '녹음이 없습니다(통화가 연결되지 않았거나 보관 기간 90일이 지났습니다).',
+      );
+    if (!res.ok || !res.body) throw new BadGatewayException('녹음을 받아오지 못했습니다.');
+    return {
+      body: res.body,
+      type: res.headers.get('content-type') ?? 'audio/wav',
+      length: res.headers.get('content-length'),
+    };
   }
 
   /** 상담 콘솔 한 화면 — 내 상태·내 콜(고객·최근 접수), 상담원 현황, 아웃콜 대기, 오늘 숫자 */
@@ -360,6 +546,7 @@ export class CsCallService {
       channel: c.channel,
       attempts: c.attempts,
       memo: c.memo,
+      request: c.request,
       customerId: c.customerId,
       customerName: c.customerId ? (custName.get(c.customerId) ?? null) : null,
       agentEmpId: c.agentEmpId,

@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Headphones,
-  Laptop,
-  PhoneCall,
-  PhoneIncoming,
-  PhoneOutgoing,
-  UserRound,
-} from 'lucide-react';
-import { LEAD_STATUS_LABEL, type LeadStatus } from '@tongin/shared';
+import { Headphones, Laptop, PhoneCall, PhoneOutgoing, UserRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -20,10 +11,11 @@ import {
   Input,
   ListPage,
   SegmentedControl,
-  Textarea,
   useToast,
 } from '../components/ui';
 import styles from './callcenter.module.css';
+import { IntakePanel } from './callcenter/IntakePanel';
+import { CallList } from './callcenter/CallList';
 
 interface CallView {
   id: string;
@@ -32,6 +24,7 @@ interface CallView {
   channel: string | null;
   attempts: number;
   memo: string | null;
+  request: string | null;
   customerId: string | null;
   customerName: string | null;
   agentEmpId: string | null;
@@ -86,12 +79,10 @@ const STATE: Record<Console['agents'][number]['state'], { label: string; cls: st
  */
 export default function CallCenter() {
   const toast = useToast();
-  const navigate = useNavigate();
   const { can, user } = useAuth();
   const isSysAdmin = !!user?.permissions.includes('*');
   const [data, setData] = useState<Console | null>(null);
   const [now, setNow] = useState(Date.now());
-  const [memo, setMemo] = useState('');
   const [busy, setBusy] = useState(false);
   const [simPhone, setSimPhone] = useState('');
   const phone = usePhone();
@@ -138,28 +129,18 @@ export default function CallCenter() {
         }),
       ringTo.trim() ? '착신 번호를 저장했습니다' : '착신 연결을 껐습니다',
     );
-  /** 콜의 번호를 넣은 새 접수 창으로(접수 화면을 그대로 쓴다). 접수를 등록하면 콜이 끝난다 */
-  const openLeadForm = (c: CallView) => {
-    const q = new URLSearchParams({ new: '1', phone: c.phone, call: c.id });
-    if (c.customerName) q.set('name', c.customerName);
-    navigate(`/leads?${q.toString()}`);
-  };
+  /** 아웃콜을 눌러 콜백 — 콘솔에서 바로 접수 패널이 열린다(화면 이동 없음). PC 전화가 켜져 있으면 바로 건다 */
   const callback = (c: CallView) =>
     act(async () => {
-      const r = await api<CallView>(`/cs-calls/${c.id}/callback`, { method: 'POST' });
-      // PC 전화가 켜져 있으면 바로 건다(통화는 화면을 옮겨도 이어진다)
-      if (pcReady) dial(c.phone);
-      openLeadForm({ ...c, ...r, customerName: c.customerName });
+      await api<CallView>(`/cs-calls/${c.id}/callback`, { method: 'POST' });
+      if (pcReady) dial(c.phone, c.id);
     });
-  const finish = (c: CallView, result: 'DONE' | 'RETRY') =>
-    act(
-      () =>
-        api(`/cs-calls/${c.id}/finish`, {
-          method: 'POST',
-          body: JSON.stringify({ result, memo: memo || undefined }),
-        }).then(() => setMemo('')),
-      result === 'RETRY' ? '아웃콜로 돌렸습니다' : '상담을 끝냈습니다',
-    );
+  /** 콜이 끝나면 콜 목록도 다시 읽는다 */
+  const [listKey, setListKey] = useState(0);
+  const afterIntake = async () => {
+    await load();
+    setListKey((k) => k + 1);
+  };
 
   if (!data)
     return (
@@ -172,9 +153,8 @@ export default function CallCenter() {
 
   return (
     <ListPage
-      fit
       title="상담 콘솔"
-      subtitle="대표번호로 들어온 콜은 '상담 가능'인 상담원에게 자동으로 배분되고, 모두 통화 중이면 아웃콜로 쌓입니다. 상담을 마치면 아웃콜을 눌러 콜백하고, 번호가 들어간 접수 창에서 바로 등록하세요."
+      subtitle="대표번호로 들어온 콜은 '상담 가능'인 상담원에게 자동으로 배분되고, 모두 통화 중이면 아웃콜로 쌓입니다. 전화를 받으면 '내 콜'에서 통화하면서 바로 접수하세요."
       onRefresh={load}
       actions={
         me ? (
@@ -220,98 +200,15 @@ export default function CallCenter() {
       </div>
 
       <div className={styles.grid}>
-        {/* 내 콜 */}
-        <section className={styles.card}>
+        {/* 내 콜 — 통화하면서 바로 접수 */}
+        <section className={`${styles.card} ${mine ? styles.intakeCard : ''}`}>
           <h3 className={styles.cardTitle}>
             <Headphones size={15} /> 내 콜
           </h3>
           {!me ? (
             <p className={styles.muted}>직원과 연결된 계정만 상담할 수 있습니다.</p>
           ) : mine ? (
-            <div className={styles.myCall}>
-              <div className={styles.callHead}>
-                <Badge variant="subtle" color={mine.status === 'CALLBACK' ? 'warning' : 'success'}>
-                  {mine.status === 'CALLBACK' ? (
-                    <>
-                      <PhoneOutgoing size={12} /> 콜백 중
-                    </>
-                  ) : (
-                    <>
-                      <PhoneIncoming size={12} /> 받은 콜
-                    </>
-                  )}
-                </Badge>
-                <span className={styles.muted}>
-                  {mine.channel ?? '대표번호'} · {since(mine.assignedAt ?? mine.receivedAt, now)} 전
-                </span>
-              </div>
-              <div className={styles.callHead}>
-                <a className={styles.phone} href={`tel:${mine.phone}`}>
-                  {formatPhone(mine.phone)}
-                </a>
-                {pcReady && !phone.call && (
-                  <Button variant="outline" size="sm" onClick={() => dial(mine.phone)}>
-                    <PhoneOutgoing size={14} /> PC로 걸기
-                  </Button>
-                )}
-              </div>
-              <div className={styles.customer}>
-                <UserRound size={14} />
-                {mine.customerName ? (
-                  <span>
-                    기존 고객 <b>{mine.customerName}</b>
-                  </span>
-                ) : (
-                  <span className={styles.muted}>처음 전화한 번호(새 고객)</span>
-                )}
-              </div>
-              {me.recentLeads.length > 0 && (
-                <ul className={styles.leads}>
-                  {me.recentLeads.map((l) => (
-                    <li key={l.id}>
-                      <button type="button" onClick={() => navigate(`/leads/${l.id}`)}>
-                        <span>{l.leadNo}</span>
-                        <span>{LEAD_STATUS_LABEL[l.status as LeadStatus] ?? l.status}</span>
-                        <span className={styles.muted}>
-                          {l.orgUnit?.name ?? ''} · 이사 {l.moveDate ?? '미정'}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Textarea
-                rows={2}
-                value={memo}
-                placeholder="상담 메모(선택) — 예: 견적 문의, 다음 주 다시 연락"
-                onChange={(e) => setMemo(e.target.value)}
-              />
-              <div className={styles.actions}>
-                {can('LEAD.CREATE') && (
-                  <Button variant="primary" size="sm" onClick={() => openLeadForm(mine)}>
-                    이 번호로 접수 등록
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void finish(mine, 'DONE')}
-                >
-                  접수 없이 상담 끝
-                </Button>
-                {mine.status === 'CALLBACK' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => void finish(mine, 'RETRY')}
-                  >
-                    안 받음 — 다시 아웃콜로
-                  </Button>
-                )}
-              </div>
-            </div>
+            <IntakePanel call={mine} recentLeads={me.recentLeads} onDone={afterIntake} />
           ) : (
             <div className={styles.idle}>
               <PhoneCall size={22} />
@@ -341,8 +238,8 @@ export default function CallCenter() {
             <span className={styles.count}>{data.outcalls.length}</span>
           </h3>
           <p className={styles.muted}>
-            상담원이 모두 통화 중일 때 들어온 콜입니다. 먼저 들어온 순서 — 눌러서 콜백하면 번호가
-            들어간 접수 창이 뜹니다.
+            상담원이 모두 통화 중일 때 들어온 콜입니다. 먼저 들어온 순서 — 콜백을 누르면 '내 콜'에
+            접수 패널이 열립니다.
           </p>
           {data.outcalls.length ? (
             <ol className={styles.queue}>
@@ -449,6 +346,8 @@ export default function CallCenter() {
           )}
         </section>
       </div>
+
+      <CallList refreshKey={listKey} />
     </ListPage>
   );
 }

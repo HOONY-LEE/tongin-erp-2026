@@ -467,42 +467,44 @@ model PriceCondition {
 
 // ── Phase 1: 리드(접수) — 이사 프로세스의 출발점 (DB스키마 §5) ──
 model Lead {
-  id             String      @id @default(uuid()) @db.Uuid
-  leadNo         String      @unique @map("lead_no") // 접수번호 R...
-  customerId     String?     @map("customer_id") @db.Uuid
-  customer       Customer?   @relation(fields: [customerId], references: [id])
-  orgUnitId      String      @map("org_unit_id") @db.Uuid // 담당 지점
-  orgUnit        OrgUnit     @relation(fields: [orgUnitId], references: [id])
-  ownerEmpId     String?     @map("owner_emp_id") @db.Uuid
-  ownerEmp       Employee?   @relation(fields: [ownerEmpId], references: [id])
-  partnerId      String?     @map("partner_id") @db.Uuid // 제휴/전속 출처
-  partner        Partner?    @relation(fields: [partnerId], references: [id])
-  source         String? // common_code: RECEIPT_PATH
-  serviceLine    String?     @map("service_line")
-  status         String      @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
-  fromZipcode    String?     @map("from_zipcode")
-  fromAddr       String?     @map("from_addr") // 도로명주소(카카오/다음 우편번호)
-  fromAddrDetail String?     @map("from_addr_detail") // 상세주소
-  fromSido       String?     @map("from_sido")
-  fromSigungu    String?     @map("from_sigungu")
-  fromLat        Float?      @map("from_lat") // 위도(카카오 Local geocode)
-  fromLng        Float?      @map("from_lng") // 경도
-  toZipcode      String?     @map("to_zipcode")
-  toAddr         String?     @map("to_addr")
-  toAddrDetail   String?     @map("to_addr_detail")
-  toSido         String?     @map("to_sido")
-  toSigungu      String?     @map("to_sigungu")
-  toLat          Float?      @map("to_lat")
-  toLng          Float?      @map("to_lng")
-  moveDate       DateTime?   @map("move_date") @db.Date
-  visitDate      DateTime?   @map("visit_date") @db.Date
-  expectedAmount Decimal?    @map("expected_amount") @db.Decimal(14, 2)
-  attributes     Json?
-  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  estimates      Estimate[]
-  contracts      Contract[]
-  workOrders     WorkOrder[]
+  id              String      @id @default(uuid()) @db.Uuid
+  leadNo          String      @unique @map("lead_no") // 접수번호 R...
+  customerId      String?     @map("customer_id") @db.Uuid
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  orgUnitId       String      @map("org_unit_id") @db.Uuid // 담당 지점
+  orgUnit         OrgUnit     @relation(fields: [orgUnitId], references: [id])
+  ownerEmpId      String?     @map("owner_emp_id") @db.Uuid
+  ownerEmp        Employee?   @relation(fields: [ownerEmpId], references: [id])
+  partnerId       String?     @map("partner_id") @db.Uuid // 제휴/전속 출처
+  partner         Partner?    @relation(fields: [partnerId], references: [id])
+  source          String? // common_code: RECEIPT_PATH
+  serviceLine     String?     @map("service_line")
+  status          String      @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
+  fromZipcode     String?     @map("from_zipcode")
+  fromAddr        String?     @map("from_addr") // 도로명주소(카카오/다음 우편번호)
+  fromAddrDetail  String?     @map("from_addr_detail") // 상세주소
+  fromSido        String?     @map("from_sido")
+  fromSigungu     String?     @map("from_sigungu")
+  fromLat         Float?      @map("from_lat") // 위도(카카오 Local geocode)
+  fromLng         Float?      @map("from_lng") // 경도
+  toZipcode       String?     @map("to_zipcode")
+  toAddr          String?     @map("to_addr")
+  toAddrDetail    String?     @map("to_addr_detail")
+  toSido          String?     @map("to_sido")
+  toSigungu       String?     @map("to_sigungu")
+  toLat           Float?      @map("to_lat")
+  toLng           Float?      @map("to_lng")
+  moveDate        DateTime?   @map("move_date") @db.Date
+  visitDate       DateTime?   @map("visit_date") @db.Date
+  expectedAmount  Decimal?    @map("expected_amount") @db.Decimal(14, 2)
+  /// 고객 요청사항(상담 중 받은 요청) — 상담 콘솔에서 접수할 때 함께 저장
+  customerRequest String?     @map("customer_request")
+  attributes      Json?
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  estimates       Estimate[]
+  contracts       Contract[]
+  workOrders      WorkOrder[]
 
   @@index([status])
   @@index([orgUnitId])
@@ -2165,21 +2167,30 @@ model KnowledgeRelation {
 
 /// 고객관리부(콜센터) 상담 콜 — 대표번호로 들어온 전화. 빈 상담원에게 자동 배분하고, 모두 통화 중이면 아웃콜(콜백 대기)로 남긴다
 model CsCall {
-  id         String    @id @default(uuid()) @db.Uuid
-  phone      String // 숫자만
-  status     String    @default("OUTCALL") // ASSIGNED 상담 중 | OUTCALL 콜백 대기 | CALLBACK 콜백 중 | DONE 끝 | CANCELED 취소
-  agentEmpId String?   @map("agent_emp_id") @db.Uuid
-  customerId String?   @map("customer_id") @db.Uuid // 같은 번호의 기존 고객
-  leadId     String?   @map("lead_id") @db.Uuid // 이 콜로 등록한 접수
-  channel    String? // 들어온 번호·채널(대표번호 등)
-  memo       String?
-  attempts   Int       @default(0) // 콜백 시도 횟수
-  receivedAt DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
-  assignedAt DateTime? @map("assigned_at") @db.Timestamptz(6)
-  doneAt     DateTime? @map("done_at") @db.Timestamptz(6)
+  id          String    @id @default(uuid()) @db.Uuid
+  phone       String // 숫자만
+  status      String    @default("OUTCALL") // ASSIGNED 상담 중 | OUTCALL 콜백 대기 | CALLBACK 콜백 중 | DONE 끝 | CANCELED 취소
+  agentEmpId  String?   @map("agent_emp_id") @db.Uuid
+  customerId  String?   @map("customer_id") @db.Uuid // 같은 번호의 기존 고객
+  leadId      String?   @map("lead_id") @db.Uuid // 이 콜로 등록한 접수
+  channel     String? // 들어온 번호·채널(대표번호 등)
+  memo        String?
+  attempts    Int       @default(0) // 콜백 시도 횟수
+  receivedAt  DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  assignedAt  DateTime? @map("assigned_at") @db.Timestamptz(6)
+  doneAt      DateTime? @map("done_at") @db.Timestamptz(6)
+  /// 한국AI통신 통화 ID(CallSid) — 통화 상태 알림·녹음 다운로드에 쓴다
+  katCallSid  String?   @unique @map("kat_call_sid")
+  /// 통화 시간(초) — 통화 상태 알림(completed)의 Duration
+  durationSec Int?      @map("duration_sec")
+  /// 통화가 끝난 시각
+  endedAt     DateTime? @map("ended_at") @db.Timestamptz(6)
+  /// 고객 요청사항 — 접수를 등록하면 접수(customerRequest)에도 남긴다
+  request     String?
 
   @@index([status, receivedAt])
   @@index([agentEmpId, status])
+  @@index([agentEmpId, receivedAt])
   @@map("cs_call")
 }
 

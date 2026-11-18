@@ -48,4 +48,10 @@ export class CreateLeadDto extends MoveAddressDto {
   @IsOptional()
   @IsDateString()
   visitDate?: string;
+
+  /** 고객 요청사항(상담 중 받은 요청) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  customerRequest?: string;
 }

@@ -36,7 +36,8 @@ export class PartnerService {
   options() {
     return this.prisma.partner.findMany({
       where: { isActive: true, type: { in: ['AFFILIATE', 'EXCLUSIVE', 'B2B_CLIENT'] } },
-      select: { id: true, name: true, type: true },
+      // 혜택(benefit) — 상담 중 접수할 때 고른 업체의 할인·사은품을 바로 보여 준다
+      select: { id: true, name: true, type: true, benefit: true },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     });
   }

@@ -283,14 +283,15 @@ export function toggleMute() {
   setCall({ muted: !state.call.muted });
 }
 
-/** PC로 전화 걸기(콜백·아웃콜) */
-export function dial(number: string) {
+/** PC로 전화 걸기(콜백·아웃콜). callId — 상담 콜 id(통화 상태 알림이 이 콜에 통화 시간을 남긴다) */
+export function dial(number: string, callId?: string) {
   const to = number.replace(/\D/g, '');
   if (!ua || state.status !== 'ready' || session || !to) return false;
   const s = ua.call(`sip:${to}@${realm}`, {
     mediaConstraints: { audio: true, video: false },
     pcConfig: { iceServers },
     fromUserName: callerId,
+    extraHeaders: callId ? [`X-Call-Id: ${callId}`] : [],
   });
   attachSession(s, 'out', to);
   return true;
