@@ -1312,8 +1312,8 @@ textarea.memoBox {
 }
 .paneHead {
   flex: none;
-  min-height: 44px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--ark-color-border);
   box-sizing: border-box;
 }
@@ -1335,14 +1335,14 @@ textarea.memoBox {
 }
 .miniHead b {
   margin-right: 6px;
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 600;
 }
 .miniHead button {
   display: inline-grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -1359,7 +1359,7 @@ textarea.memoBox {
 .miniGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-template-rows: 24px repeat(6, 26px);
+  grid-template-rows: 18px repeat(6, 22px);
   text-align: center;
 }
 .miniDow,
@@ -1378,7 +1378,8 @@ textarea.memoBox {
   place-items: center;
   background: var(--ark-color-bg-subtle, #fafafa);
   color: var(--ark-color-text-secondary);
-  font-size: 11px;
+  font-size: 9.5px;
+  line-height: 1;
 }
 .miniDay {
   position: relative;
@@ -1404,8 +1405,8 @@ textarea.memoBox {
 .miniTodayNum {
   display: inline-grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--ark-color-text-primary);
   color: var(--ark-color-bg);
@@ -1413,12 +1414,13 @@ textarea.memoBox {
 }
 /* 마감 — 연한 장미색 칸 + 진한 글자 / 마감 예정 — 연한 노란 칸 */
 .miniClosed {
-  background: #fde8ea;
-  color: #be123c !important;
-  font-weight: 700;
+  /* 마감 — 회색으로 막힌 느낌(숫자에 가로줄) */
+  background: #ececef;
+  color: #9a9aa0 !important;
+  text-decoration: line-through;
 }
 .miniClosed:hover {
-  background: #fbd5da;
+  background: #e2e2e6;
 }
 .miniSoon {
   background: #fef3d7;
@@ -1429,8 +1431,8 @@ textarea.memoBox {
   background: #fde9b4;
 }
 :global([data-theme='dark']) .miniClosed {
-  background: rgba(244, 63, 94, 0.18);
-  color: #fda4af !important;
+  background: rgba(255, 255, 255, 0.08);
+  color: #8e8e93 !important;
 }
 :global([data-theme='dark']) .miniSoon {
   background: rgba(245, 158, 11, 0.18);
@@ -1444,7 +1446,7 @@ textarea.memoBox {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #be123c;
+  background: #8e8e93;
 }
 /* 마우스를 올리면 — 상태·이사 건수 말풍선 */
 .miniDay[data-tip]:hover::after {
@@ -1490,7 +1492,7 @@ textarea.memoBox {
   margin-left: 6px;
 }
 .keyClosed {
-  background: #fbcfd6;
+  background: #d9d9de;
 }
 .keySoon {
   background: #fde3a7;
@@ -1544,8 +1546,8 @@ textarea.memoBox {
   margin-left: auto;
 }
 .mm_CLOSED > i {
-  background: #fbcfd6;
-  border-color: #fbcfd6 !important;
+  background: #d9d9de;
+  border-color: #d9d9de !important;
 }
 .mm_SOON > i {
   background: #fde3a7;
