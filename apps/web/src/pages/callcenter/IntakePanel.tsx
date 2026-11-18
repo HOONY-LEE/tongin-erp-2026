@@ -6,6 +6,7 @@ import {
   Phone,
   PhoneIncoming,
   PhoneOutgoing,
+  RotateCcw,
   UserRound,
 } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
@@ -162,7 +163,9 @@ export function IntakePanel({
       partnerId: '',
       moveDate: '',
       // 메모는 하나 — 고객 요청사항과 상담 메모를 함께 적는다(콜·접수의 요청사항으로 남는다)
-      memo: call.request ?? readOnly?.lead?.customerRequest ?? call.memo ?? '',
+      // 고객 요청사항(접수의 요청사항으로 남는다)과 상담 메모(콜에만 남는다)를 따로
+      request: call.request ?? readOnly?.lead?.customerRequest ?? '',
+      memo: call.memo ?? '',
       // 읽기 모드 — 이 콜로 등록한 접수 내용으로 채운다
       ...(readOnly?.lead && {
         serviceLine: readOnly.lead.serviceLine ?? 'MOVING',
@@ -229,13 +232,14 @@ export function IntakePanel({
   // 30분 넘게 끝나지 않은 콜 — 이 콜이 열려 있으면 새 전화가 배정되지 않는다
   const stale = !onPcCall && talking > 30 * 60_000;
 
-  const finish = (result: 'DONE' | 'RETRY', leadId?: string, memo = v.memo) =>
+  const finish = (result: 'DONE' | 'RETRY', leadId?: string) =>
     api(`/cs-calls/${call.id}/finish`, {
       method: 'POST',
       body: JSON.stringify({
         result,
         ...(leadId && { leadId }),
-        request: memo?.trim() || undefined,
+        request: v.request?.trim() || undefined,
+        memo: v.memo?.trim() || undefined,
       }),
     });
   const run = async (fn: () => Promise<unknown>, ok?: string) => {
@@ -274,7 +278,7 @@ export function IntakePanel({
       orgUnitId: v.orgUnitId || defaultOrg,
       ...(v.partnerId && { partnerId: v.partnerId }),
       ...(v.moveDate && { moveDate: v.moveDate }),
-      ...(v.memo.trim() && { customerRequest: v.memo.trim() }),
+      ...(v.request.trim() && { customerRequest: v.request.trim() }),
       ...addr,
     };
   };
@@ -299,11 +303,16 @@ export function IntakePanel({
           ...(call.customerId && { customerId: call.customerId }),
         }),
       });
-      const memo = typeof values.customerRequest === 'string' ? values.customerRequest : v.memo;
+      const request =
+        typeof values.customerRequest === 'string' ? values.customerRequest : v.request;
       // 콜은 끝내지 않고 접수만 잇는다 — 상담 화면에 그대로 남고, [상담 종료]로 마친다
       await api(`/cs-calls/${call.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ leadId: lead.id, request: memo?.trim() || null }),
+        body: JSON.stringify({
+          leadId: lead.id,
+          request: request?.trim() || null,
+          memo: v.memo?.trim() || null,
+        }),
       }).catch(() =>
         toast({
           type: 'warning',
@@ -367,12 +376,13 @@ export function IntakePanel({
           <span className={styles.headActions}>
             {call.status === 'CALLBACK' && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 disabled={busy}
-                onClick={() => void run(() => finish('RETRY'), '아웃콜로 돌렸습니다')}
+                title="고객이 안 받았으면 다시 아웃콜 대기로 돌립니다"
+                onClick={() => void run(() => finish('RETRY'), '다시 아웃콜로 돌렸습니다')}
               >
-                안 받음 — 다시 아웃콜로
+                <RotateCcw size={14} /> 다시 아웃콜 처리
               </Button>
             )}
             {pending && <span className={styles.muted}>연결 중…</span>}
@@ -567,12 +577,22 @@ export function IntakePanel({
             </p>
           </div>
         )}
-        <label className={`${styles.field} ${styles.full}`}>
-          <span>메모</span>
+        {/* 왼쪽 고객 요청사항(접수에도 남음) · 오른쪽 상담 메모(콜에만) — 높이 고정 */}
+        <label className={styles.field}>
+          <span>고객 요청사항</span>
           <Textarea
-            rows={3}
+            className={styles.memoBox}
+            value={v.request}
+            placeholder="예: 피아노 있음, 오전 작업 희망, 에어컨 이전 설치"
+            onChange={(e) => setField('request', e.target.value)}
+          />
+        </label>
+        <label className={styles.field}>
+          <span>상담 메모</span>
+          <Textarea
+            className={styles.memoBox}
             value={v.memo}
-            placeholder="고객 요청사항과 상담 내용 — 예: 피아노 있음, 오전 작업 희망, 견적 비교 중"
+            placeholder="상담 내용 — 예: 견적 비교 중, 다음 주 화요일 다시 연락"
             onChange={(e) => setField('memo', e.target.value)}
           />
         </label>

@@ -30,7 +30,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { SegmentedControl } from '@sunghoon_lee/akron-ui';
+import { SegmentedControl } from '../components/ui';
 import {
   AGENT_NODE_DESC,
   AGENT_NODE_LABEL,

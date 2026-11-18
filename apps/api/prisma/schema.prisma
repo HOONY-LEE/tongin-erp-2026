@@ -2222,6 +2222,8 @@ model CsAgent {
   sipUri     String?   @map("sip_uri")
   /// sipUri 토큰 만료 시각 — 지나면 그 브라우저는 더 이상 전화를 받지 못한다
   sipUntil   DateTime? @map("sip_until") @db.Timestamptz(6)
+  /// 상담 콘솔이 마지막으로 상태를 확인한 시각(5초마다) — 창을 닫으면 멈춘다. 받을 사람이 있는지 판단에 쓴다
+  seenAt     DateTime? @map("seen_at") @db.Timestamptz(6)
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("cs_agent")

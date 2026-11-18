@@ -1,22 +1,45 @@
-/* 세그먼트 탭 크기 — 앱 전체 하나: 트랙 38px(검색칸·드롭다운과 같은 높이), 안쪽 칸 30px.
-   제목 아래 화면 탭·표 위 상태 탭·보기 전환 모두 같다(akron 기본 lg는 더 높아 섞여 보였다).
-   내부 클래스는 해시가 붙어 있어 부분일치 속성 선택자로 지정한다. */
-/* 칸 내용만큼만 — 세로로 쌓는 폼(flex column) 안에서도 줄 전체로 늘어나지 않는다 */
-.large {
+/* 세그먼트 탭 — 앱 전체 하나(SegmentedControl.tsx).
+   akron 내부 클래스는 해시가 붙어 있어 부분일치 선택자로 지정한다.
+   트랙 높이 = 칸 높이 + 위아래 여백(--seg-pad) × 2, 선택 표시는 같은 여백만큼 안쪽 — 늘 가운데. */
+.seg {
+  --seg-pad: 4px;
+  --seg-h: 30px;
+  --seg-font: var(--ark-font-size-sm);
+  --seg-x: 14px;
+  /* 칸 내용만큼만 — 세로로 쌓는 폼(flex column) 안에서도 줄 전체로 늘어나지 않는다 */
   align-self: flex-start;
   width: fit-content;
   max-width: 100%;
 }
-.large [class*='_track_'] {
-  height: 38px;
+.md {
+  --seg-pad: 4px;
+  --seg-h: 30px;
+  --seg-font: var(--ark-font-size-sm);
+  --seg-x: 14px;
+}
+.sm {
+  --seg-pad: 3px;
+  --seg-h: 26px;
+  --seg-font: calc(12.5px * var(--font-scale, 1));
+  --seg-x: 11px;
+}
+.seg [class*='_track_'] {
   box-sizing: border-box;
+  height: calc(var(--seg-h) + var(--seg-pad) * 2);
+  padding: var(--seg-pad);
+  align-items: center;
 }
-.large [class*='_segment_'] {
-  min-height: 30px;
-  height: 30px;
-  padding: 0 14px;
-  font-size: var(--ark-font-size-sm);
+/* 표 툴바 등에서 '버튼 높이 38px' 같은 규칙이 칸에도 걸리지 않게 우선한다 */
+.seg [class*='_track_'] button[class*='_segment_'] {
+  box-sizing: border-box;
+  height: var(--seg-h) !important;
+  min-height: var(--seg-h) !important;
+  padding: 0 var(--seg-x) !important;
+  font-size: var(--seg-font);
+  line-height: 1;
 }
-.large [class*='_indicator_'] {
-  height: 30px;
+.seg [class*='_indicator_'] {
+  top: var(--seg-pad) !important;
+  bottom: var(--seg-pad) !important;
+  height: auto;
 }

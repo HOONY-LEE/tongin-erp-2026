@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
-import { SegmentedControl } from '@sunghoon_lee/akron-ui';
+import { SegmentedControl } from '../ui';
 import {
   AGENT_NODE_DESC,
   AGENT_NODE_LABEL,
