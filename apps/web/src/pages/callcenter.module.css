@@ -1084,3 +1084,221 @@ textarea.memoBox {
   color: var(--ark-color-text-secondary);
   font-size: calc(12px * var(--font-scale, 1));
 }
+
+/* 콜 목록 필터(아이콘) — 검색칸과 같은 38px */
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: var(--control-radius, 8px);
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: var(--ark-font-size-sm);
+  cursor: pointer;
+}
+.filterBtn:hover {
+  color: var(--ark-color-text);
+  border-color: var(--ark-color-gray-400);
+}
+.filterOn {
+  border-color: var(--ark-color-info-500);
+  color: var(--ark-color-info-600, var(--ark-color-info-500));
+}
+.filterPanel {
+  background: var(--ark-color-bg) !important;
+  color: var(--ark-color-text) !important;
+}
+.filterBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px;
+}
+.filterTitle {
+  font-size: 13px;
+}
+.filterPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filterPresets button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.filterPresets .presetOn {
+  border-color: var(--ark-color-text);
+  background: var(--ark-color-text);
+  color: var(--ark-color-bg);
+}
+.filterDates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.filterDates > :not(span) {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 상담 화면 머리 — 모두 가운데 정렬, 표시들은 같은 높이(28px) */
+.intakeHead {
+  min-height: 36px;
+}
+.intakeHead .cardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+.headActions {
+  align-items: center;
+}
+.kindPill,
+.statePill,
+.noLead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.kindIn {
+  background: color-mix(in srgb, #16a34a 12%, var(--ark-color-bg));
+  color: #15803d;
+}
+.kindOut {
+  background: color-mix(in srgb, #f59e0b 14%, var(--ark-color-bg));
+  color: #b45309;
+}
+.statePill,
+.noLead {
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.05));
+  color: var(--ark-color-text-secondary);
+}
+.channel {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.intakeHead .leadDone {
+  height: 32px;
+}
+
+/* 상담 화면 아래 — 고객 이력 목록 */
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ark-color-border);
+}
+.historyHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.historyHead b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.historyMore {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.historyList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.historyList li + li {
+  border-top: 1px solid var(--ark-color-border);
+}
+.historyList button {
+  display: grid;
+  grid-template-columns: 112px 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  background: var(--ark-color-bg);
+  color: inherit;
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  text-align: left;
+  cursor: pointer;
+}
+.historyList button:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.03));
+}
+.historyList button:disabled {
+  cursor: default;
+}
+.hWhen {
+  color: var(--ark-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.hKind {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.05));
+  font-size: 12px;
+}
+.k_call {
+  background: #dcfce7;
+  color: #15803d;
+}
+.k_lead,
+.k_estimate {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.k_owner {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.k_contract,
+.k_payment {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.hText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hActor {
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+}

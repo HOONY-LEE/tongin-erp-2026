@@ -413,6 +413,29 @@ export class CsCallService {
     return this.prisma.csCall.findUniqueOrThrow({ where: { id } });
   }
 
+  /**
+   * 끝난 상담에서 그 고객에게 다시 걸기 — 새 콜(콜백)을 만들어 상담 화면을 연다.
+   * 지난 콜 기록(통화 시간·녹취)은 그대로 두고, 이번 통화는 새 콜에 남는다.
+   */
+  async recall(p: AuthPrincipal, id: string) {
+    const me = this.me(p);
+    const prev = await this.prisma.csCall.findUnique({ where: { id } });
+    if (!prev) throw new NotFoundException('콜을 찾을 수 없습니다.');
+    const call = await this.prisma.csCall.create({
+      data: {
+        phone: prev.phone,
+        status: 'CALLBACK',
+        channel: '다시 걸기',
+        customerId: prev.customerId,
+        agentEmpId: me,
+        assignedAt: new Date(),
+        attempts: 1,
+      },
+    });
+    await this.holdAgent(this.prisma, me);
+    return call;
+  }
+
   /** 아웃콜 정리 — 잘못 들어온 콜·시험 콜을 콜백 없이 목록에서 뺀다(취소로 남는다) */
   async cancelOutcall(id: string, memo?: string) {
     const r = await this.prisma.csCall.updateMany({
@@ -552,13 +575,27 @@ export class CsCallService {
    */
   async list(
     p: AuthPrincipal,
-    opts: { scope: 'mine' | 'all'; q?: string; page?: number; limit?: number },
+    opts: {
+      scope: 'mine' | 'all';
+      q?: string;
+      page?: number;
+      limit?: number;
+      from?: string;
+      to?: string;
+    },
   ) {
     const me = p.employeeId ?? null;
     const q = opts.q?.trim() ?? '';
     const d = digits(q);
     const where: Prisma.CsCallWhereInput = {
       ...(opts.scope === 'mine' && { agentEmpId: me ?? '00000000-0000-0000-0000-000000000000' }),
+      // 날짜 범위(한국 시간 하루 단위)
+      ...((opts.from || opts.to) && {
+        receivedAt: {
+          ...(opts.from && { gte: new Date(`${opts.from}T00:00:00+09:00`) }),
+          ...(opts.to && { lt: new Date(+new Date(`${opts.to}T00:00:00+09:00`) + 86400_000) }),
+        },
+      }),
       ...(q && {
         OR: [
           ...(d.length >= 3 ? [{ phone: { contains: d } }] : []),
