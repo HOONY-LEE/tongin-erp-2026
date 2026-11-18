@@ -498,7 +498,12 @@ export function IntakePanel({
       </dl>
       {readOnly && call.id && <Recording callId={call.id} available={readOnly.hasRecording} />}
       {/* 접수 입력 — 읽기 모드면 통째로 잠근다 */}
-      <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
+      <fieldset
+        className={`${styles.form} ${styles.formSet}`}
+        disabled={!!readOnly}
+        // 마지막 줄(요청사항·상담 메모)이 남는 높이를 다 쓴다 — 제휴·전속 안내가 있으면 한 줄 더
+        style={{ gridTemplateRows: `repeat(${partner ? 4 : 3}, auto) minmax(0, 1fr)` }}
+      >
         <label className={styles.field}>
           <span>
             고객명 <i>*</i>
@@ -588,25 +593,27 @@ export function IntakePanel({
             </p>
           </div>
         )}
-        {/* 왼쪽 고객 요청사항(접수에도 남음) · 오른쪽 상담 메모(콜에만) — 높이 고정 */}
-        <label className={styles.field}>
-          <span>고객 요청사항</span>
-          <Textarea
-            className={styles.memoBox}
-            value={v.request}
-            placeholder="예: 피아노 있음, 오전 작업 희망, 에어컨 이전 설치"
-            onChange={(e) => setField('request', e.target.value)}
-          />
-        </label>
-        <label className={styles.field}>
-          <span>상담 메모</span>
-          <Textarea
-            className={styles.memoBox}
-            value={v.memo}
-            placeholder="상담 내용 — 예: 견적 비교 중, 다음 주 화요일 다시 연락"
-            onChange={(e) => setField('memo', e.target.value)}
-          />
-        </label>
+        {/* 왼쪽 고객 요청사항(접수에도 남음) · 오른쪽 상담 메모(콜에만) — 남는 높이를 다 쓴다 */}
+        <div className={`${styles.full} ${styles.memoRow}`}>
+          <label className={styles.field}>
+            <span>고객 요청사항</span>
+            <Textarea
+              className={styles.memoBox}
+              value={v.request}
+              placeholder="예: 피아노 있음, 오전 작업 희망, 에어컨 이전 설치"
+              onChange={(e) => setField('request', e.target.value)}
+            />
+          </label>
+          <label className={styles.field}>
+            <span>상담 메모</span>
+            <Textarea
+              className={styles.memoBox}
+              value={v.memo}
+              placeholder="상담 내용 — 예: 견적 비교 중, 다음 주 화요일 다시 연락"
+              onChange={(e) => setField('memo', e.target.value)}
+            />
+          </label>
+        </div>
       </fieldset>
 
       <FormModal
