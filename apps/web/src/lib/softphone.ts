@@ -29,13 +29,15 @@ export interface PhoneState {
   status: PhoneStatus;
   error: string | null;
   call: PhoneCall | null;
+  /** 지금 전화가 울리는 상태(상담 가능 · 열린 콜 없음 → 한국AI통신에 등록됨) */
+  ringable: boolean;
 }
 
 const ENABLED_KEY = 'tongin_pc_phone';
 /** 토큰 만료 몇 분 전에 새로 받아 다시 등록할지 */
 const REFRESH_BEFORE_MS = 10 * 60_000;
 
-let state: PhoneState = { status: 'off', error: null, call: null };
+let state: PhoneState = { status: 'off', error: null, call: null, ringable: false };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<PhoneState>) => {
   state = { ...state, ...patch };
@@ -52,6 +54,35 @@ let realm = '';
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 /** 통화 중에 토큰 갱신 시각이 오면 통화가 끝난 뒤 갱신한다 */
 let refreshPending = false;
+/**
+ * 동시 울림(소프트폰) 방식 — 한국AI통신은 그 순간 등록된 PC만 울린다.
+ * 그래서 상담 가능이고 열린 콜이 없을 때만 등록하고, 상담 중·자리 비움이면 등록을 푼다.
+ */
+let wantRing = false;
+let statePoll: ReturnType<typeof setInterval> | null = null;
+/** 울리는 전화의 한국AI통신 통화 ID(INVITE 헤더에 있으면) */
+let incomingSid: string | null = null;
+
+function applyRegistration() {
+  const u = ua;
+  if (!u || !u.isConnected()) return;
+  if (wantRing && !session && !u.isRegistered()) u.register();
+  else if ((!wantRing || session) && u.isRegistered()) u.unregister({ all: false });
+}
+/** 상담 콘솔·서버 상태로 '울려도 되는지'를 정한다(바로 반영) */
+export function setRingable(ring: boolean) {
+  if (wantRing === ring) return;
+  wantRing = ring;
+  applyRegistration();
+}
+async function pollAgentState() {
+  try {
+    const r = await api<{ ringable: boolean }>('/cs-calls/agent/state');
+    setRingable(r.ringable);
+  } catch {
+    /* 다음 확인 때 다시 */
+  }
+}
 
 jssipDebug.disable();
 
@@ -300,6 +331,7 @@ function attachSession(s: RTCSession, direction: 'in' | 'out', number: string) {
       refreshPending = false;
       void register();
     }
+    applyRegistration();
   };
   s.on('ended', end);
   s.on('failed', end);
@@ -362,34 +394,64 @@ async function register() {
     sockets: [new WebSocketInterface(c.ws_url)],
     uri: `sip:${c.sip_username}@${c.realm}`,
     password: c.sip_password,
-    register: true,
+    // 등록은 상담 가능일 때만 직접 한다(applyRegistration)
+    register: false,
     session_timers: false,
   });
-  next.on('registered', () => set({ status: 'ready', error: null }));
-  next.on('registrationFailed', () =>
-    set({ status: 'error', error: '전화 서비스에 등록하지 못했습니다. 다시 켜 주세요.' }),
-  );
+  next.on('registered', () => ua === next && set({ ringable: true }));
+  next.on('unregistered', () => ua === next && set({ ringable: false }));
+  next.on('registrationFailed', () => {
+    if (ua !== next) return;
+    set({ ringable: false, error: '전화 서비스에 등록하지 못했습니다. 다시 켜 주세요.' });
+  });
   next.on('disconnected', () => {
     if (ua === next && state.status === 'ready')
-      set({ status: 'connecting', error: '전화 서비스 연결이 끊겨 다시 잇는 중입니다' });
+      set({
+        status: 'connecting',
+        ringable: false,
+        error: '전화 서비스 연결이 끊겨 다시 잇는 중입니다',
+      });
   });
   next.on('connected', () => {
-    if (ua === next && state.status === 'connecting' && state.error) set({ error: null });
+    if (ua !== next) return;
+    set({ status: 'ready', error: null });
+    applyRegistration();
   });
-  next.on('newRTCSession', (e: { session: RTCSession; originator: 'local' | 'remote' }) => {
-    if (e.originator !== 'remote') return;
-    // 이미 통화 중이면 새 전화는 거절(통화 중) — 서버가 다음 상담원으로 넘긴다
-    if (session) {
-      e.session.terminate({ status_code: 486, reason_phrase: 'Busy Here' });
-      return;
-    }
-    const from = e.session.remote_identity?.uri?.user ?? '';
-    attachSession(e.session, 'in', from.replace(/\D/g, ''));
-  });
+  next.on(
+    'newRTCSession',
+    (e: {
+      session: RTCSession;
+      originator: 'local' | 'remote';
+      request?: {
+        getHeader?: (n: string) => string | undefined;
+        headers?: Record<string, unknown>;
+      };
+    }) => {
+      if (e.originator !== 'remote') return;
+      // 한국AI통신 통화 ID — 헤더 이름이 문서에 없어 X- 헤더 중 'CA…' 값을 찾는다(없으면 서버가 번호로 잇는다)
+      incomingSid = null;
+      const headers = e.request?.headers ?? {};
+      for (const [k, v] of Object.entries(headers)) {
+        if (!/^x-/i.test(k)) continue;
+        const raw = Array.isArray(v) ? (v[0] as { raw?: string })?.raw : undefined;
+        if (raw && /^CA[0-9a-f]{16,}$/i.test(raw.trim())) incomingSid = raw.trim();
+      }
+      // 이미 통화 중이면 새 전화는 거절(통화 중) — 서버가 다음 상담원으로 넘긴다
+      if (session) {
+        e.session.terminate({ status_code: 486, reason_phrase: 'Busy Here' });
+        return;
+      }
+      const from = e.session.remote_identity?.uri?.user ?? '';
+      attachSession(e.session, 'in', from.replace(/\D/g, ''));
+    },
+  );
   ua = next;
   next.start();
   scheduleRefresh(res.expiresAt);
   if (old) old.stop();
+  // 상담 가능 여부를 서버에서 주기적으로 확인해 등록/해제(다른 화면에 있어도)
+  if (!statePoll) statePoll = setInterval(() => void pollAgentState(), 5000);
+  void pollAgentState();
 }
 
 /** PC 전화 켜기 — 마이크 권한을 먼저 받는다 */
@@ -428,10 +490,13 @@ export async function disablePhone() {
   if (refreshTimer) clearTimeout(refreshTimer);
   refreshTimer = null;
   refreshPending = false;
+  if (statePoll) clearInterval(statePoll);
+  statePoll = null;
+  wantRing = false;
   session?.terminate();
   ua?.stop();
   ua = null;
-  set({ status: 'off', error: null, call: null });
+  set({ status: 'off', error: null, call: null, ringable: false });
   await api('/cs-calls/agent/phone-off', { method: 'POST' }).catch(() => undefined);
 }
 
@@ -448,6 +513,15 @@ export function resumePhoneIfEnabled() {
 
 export function answer() {
   if (!session || state.call?.state !== 'ringing') return;
+  // 받으면 서버에 '내가 받았다' — 콜을 만들고 상담 중으로(다른 PC는 한국AI통신이 울림을 멈춘다)
+  const number = state.call.number;
+  void api('/cs-calls/answer', {
+    method: 'POST',
+    body: JSON.stringify({ phone: number, ...(incomingSid && { katCallSid: incomingSid }) }),
+  })
+    .then(() => window.dispatchEvent(new Event('tongin:cs-call-changed')))
+    .catch(() => undefined);
+  setRingable(false);
   stopRingtone();
   // 클릭한 이 순간에 재생 장치를 열어 둔다 — 나중에 고객 음성이 와도 브라우저가 막지 않게
   void remoteAudio()

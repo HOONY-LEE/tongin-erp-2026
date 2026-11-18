@@ -207,6 +207,51 @@ export class CsCallService {
     };
   }
 
+  /**
+   * 소프트폰(동시 울림) — 상담원이 [받기]를 누르면 브라우저가 부른다. 그 상담원에게 콜을 만들고 '상담 중'으로.
+   * CallSid는 통화가 끝날 때 오는 상태 알림이 같은 번호로 찾아 잇는다.
+   */
+  async answer(p: AuthPrincipal, input: { phone: string; katCallSid?: string }) {
+    const me = this.me(p);
+    const d = digits(input.phone);
+    if (d.length < 8 || d.length > 12)
+      throw new BadRequestException('전화번호가 올바르지 않습니다.');
+    const customer = await this.customerByPhone(d);
+    const call = await this.prisma.csCall.create({
+      data: {
+        phone: d,
+        status: 'ASSIGNED',
+        agentEmpId: me,
+        assignedAt: new Date(),
+        channel: '대표번호',
+        customerId: customer?.id ?? null,
+        katCallSid: input.katCallSid?.slice(0, 100) || null,
+      },
+    });
+    await this.holdAgent(this.prisma, me);
+    return call;
+  }
+
+  /** 울리는 전화의 고객 — 수신 창에 신규/기존 고객 표시용 */
+  async callerInfo(phone: string) {
+    const d = digits(phone);
+    if (d.length < 8) return { existing: false, name: null, leads: 0 };
+    const customer = await this.customerByPhone(d);
+    if (!customer) return { existing: false, name: null, leads: 0 };
+    const leads = await this.prisma.lead.count({ where: { customerId: customer.id } });
+    return { existing: true, name: customer.name, leads };
+  }
+
+  /** PC 전화가 울려도 되는지 — 상담 가능이고 열린 콜이 없을 때만 */
+  async agentState(p: AuthPrincipal) {
+    const me = this.me(p);
+    const [agent, open] = await Promise.all([
+      this.prisma.csAgent.findUnique({ where: { employeeId: me }, select: { available: true } }),
+      this.prisma.csCall.count({ where: { agentEmpId: me, status: { in: ACTIVE } } }),
+    ]);
+    return { available: !!agent?.available, busy: open > 0, ringable: !!agent?.available && !open };
+  }
+
   /** 상담 가능 / 자리 비움 */
   async setAvailable(p: AuthPrincipal, available: boolean) {
     const id = this.me(p);
@@ -394,10 +439,41 @@ export class CsCallService {
     let call = sid ? await this.prisma.csCall.findUnique({ where: { katCallSid: sid } }) : null;
     if (!call && headerId && UUID.test(headerId))
       call = await this.prisma.csCall.findUnique({ where: { id: headerId } });
-    if (!call) return { ok: true };
     const ended = ['completed', 'busy', 'no-answer', 'failed', 'canceled', 'rejected'].includes(
       status,
     );
+    const inbound = body.Direction === 'inbound';
+    const from = digits(body.From ?? '');
+    // 소프트폰(동시 울림) 방식 — 받은 상담원이 [받기]로 만든 콜은 아직 CallSid가 없다 → 같은 번호의 최근 콜에 잇는다
+    if (!call && inbound && from.length >= 8)
+      call = await this.prisma.csCall.findFirst({
+        where: {
+          phone: from,
+          katCallSid: null,
+          receivedAt: { gte: new Date(Date.now() - 3 * 3600_000) },
+        },
+        orderBy: { receivedAt: 'desc' },
+      });
+    if (!call) {
+      // 아무도 받지 않은 전화(모두 통화 중·자리 비움·안 받음) — 아웃콜 대기로 올려 콜백하게 한다
+      if (inbound && ended && from.length >= 8 && from.length <= 12) {
+        const customer = await this.customerByPhone(from);
+        await this.prisma.csCall
+          .create({
+            data: {
+              phone: from,
+              status: 'OUTCALL',
+              channel: '대표번호(부재중)',
+              customerId: customer?.id ?? null,
+              katCallSid: sid || null,
+              endedAt: new Date(),
+              durationSec: 0,
+            },
+          })
+          .catch(() => undefined); // 같은 CallSid로 두 번 오면(재전송) 무시
+      }
+      return { ok: true };
+    }
     const dur = Number.parseInt(body.Duration ?? '', 10);
     await this.prisma.csCall.update({
       where: { id: call.id },
