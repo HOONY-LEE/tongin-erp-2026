@@ -1,4 +1,5 @@
 import {
+  Logger,
   BadGatewayException,
   BadRequestException,
   ConflictException,
@@ -56,6 +57,7 @@ const startOfToday = () =>
  */
 @Injectable()
 export class CsCallService {
+  private readonly log = new Logger('CsCall');
   constructor(private readonly prisma: PrismaService) {}
 
   private me(p: AuthPrincipal) {
@@ -473,7 +475,7 @@ export class CsCallService {
     const ended = ['completed', 'busy', 'no-answer', 'failed', 'canceled', 'rejected'].includes(
       status,
     );
-    const inbound = body.Direction === 'inbound';
+    const inbound = (body.Direction ?? 'inbound').toLowerCase().startsWith('in');
     const from = digits(body.From ?? '');
     // 소프트폰(동시 울림) 방식 — 받은 상담원이 [받기]로 만든 콜은 아직 CallSid가 없다 → 같은 번호의 최근 콜에 잇는다
     if (!call && inbound && from.length >= 8)
@@ -485,6 +487,10 @@ export class CsCallService {
         },
         orderBy: { receivedAt: 'desc' },
       });
+    if (!call)
+      this.log.warn(
+        `통화 상태 알림 — 콜을 찾지 못함 (status=${status}, direction=${body.Direction ?? '-'}, keys=${Object.keys(body).join(',')})`,
+      );
     if (!call) {
       // 아무도 받지 않은 전화(모두 통화 중·자리 비움·안 받음) — 아웃콜 대기로 올려 콜백하게 한다
       if (inbound && ended && from.length >= 8 && from.length <= 12) {
@@ -553,6 +559,11 @@ export class CsCallService {
         take: PAGE,
       }),
     ]);
+    // 통화 ID가 비어 있는 최근 콜 몇 개는 뒤에서 한국AI통신 기록에 잇는다(다음에 읽을 때 녹취가 보인다)
+    for (const c of calls
+      .filter((c) => !c.katCallSid && c.assignedAt && +c.assignedAt > Date.now() - 7 * 86400_000)
+      .slice(0, 5))
+      void this.resolveKat(c.id).catch(() => undefined);
     return { total, rows: await this.rowsOf(calls) };
   }
 
@@ -605,15 +616,47 @@ export class CsCallService {
 
   /** 콜 상세 — 상담 콜 목록에서 눌러 여는 상담 화면. 고객의 최근 접수도 함께 */
   async detail(id: string) {
-    const call = await this.prisma.csCall.findUnique({ where: { id } });
+    const call = await this.resolveKat(id);
     if (!call) throw new NotFoundException('콜을 찾을 수 없습니다.');
-    const [[row], recentLeads] = await Promise.all([
+    const [[row], recentLeads, lead] = await Promise.all([
       this.rowsOf([call]),
       call.customerId ? this.recentLeadsOf(call.customerId) : Promise.resolve([]),
+      // 이 콜로 등록한 접수 — 읽기 화면을 접수 입력 그대로 채운다(지점 범위와 상관없이 이 콜의 접수만)
+      call.leadId
+        ? this.prisma.lead.findUnique({
+            where: { id: call.leadId },
+            select: {
+              serviceLine: true,
+              partnerId: true,
+              partner: { select: { type: true } },
+              orgUnitId: true,
+              moveDate: true,
+              customerRequest: true,
+              fromZipcode: true,
+              fromAddr: true,
+              fromAddrDetail: true,
+              toZipcode: true,
+              toAddr: true,
+              toAddrDetail: true,
+            },
+          })
+        : Promise.resolve(null),
     ]);
     return {
       call: { ...row, attempts: call.attempts, assignedAt: call.assignedAt?.toISOString() ?? null },
       recentLeads,
+      lead: lead
+        ? {
+            ...lead,
+            moveKind:
+              lead.partner?.type === 'AFFILIATE'
+                ? 'AFFILIATE'
+                : lead.partner?.type === 'EXCLUSIVE'
+                  ? 'EXCLUSIVE'
+                  : 'GENERAL',
+            moveDate: lead.moveDate?.toISOString().slice(0, 10) ?? null,
+          }
+        : null,
     };
   }
 
@@ -680,8 +723,68 @@ export class CsCallService {
   }
 
   /** 녹음 파일(WAV) — 한국AI통신에서 받아 그대로 넘긴다(API 키는 서버에만). 보관 90일 */
+  /**
+   * 한국AI통신 통화 ID가 아직 없는 콜(통화 상태 알림이 콜에 잇히지 못한 경우)을
+   * 같은 번호·비슷한 시각의 통화로 찾아 잇는다 — 녹취 듣기·통화 시간이 그때부터 보인다.
+   * 녹음 파일은 우리 서버에 두지 않고 한국AI통신(90일 보관)에서 들을 때마다 받아 온다.
+   */
+  async resolveKat(callId: string) {
+    const call = await this.prisma.csCall.findUnique({ where: { id: callId } });
+    if (!call || call.katCallSid || !call.assignedAt) return call;
+    const base = process.env.KAT_API_BASE || 'https://api.koreaaitel.com';
+    const account = process.env.KAT_ACCOUNT_ID;
+    const key = process.env.KAT_API_KEY;
+    if (!account || !key) return call;
+    const list = async (q: string) => {
+      const r = await fetch(
+        `${base}/v1/accounts/${encodeURIComponent(account)}/calls?${q}&limit=20`,
+        { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(10_000) },
+      ).catch(() => null);
+      if (!r?.ok) return [];
+      const j = (await r.json().catch(() => null)) as {
+        data?: {
+          callId: string;
+          status: string;
+          duration: number;
+          dateCreated: string;
+          dateUpdated?: string;
+        }[];
+      } | null;
+      return j?.data ?? [];
+    };
+    const [inb, outb] = await Promise.all([
+      list(`from=${encodeURIComponent(call.phone)}`),
+      list(`to=${encodeURIComponent(call.phone)}`),
+    ]);
+    const at = +call.assignedAt;
+    const used = new Set(
+      (
+        await this.prisma.csCall.findMany({
+          where: { katCallSid: { in: [...inb, ...outb].map((c) => c.callId) } },
+          select: { katCallSid: true },
+        })
+      ).map((c) => c.katCallSid),
+    );
+    const best = [...inb, ...outb]
+      .filter((c) => c.status === 'completed' && c.duration > 0 && !used.has(c.callId))
+      .map((c) => ({ c, gap: Math.abs(+new Date(c.dateCreated) - at) }))
+      .filter((x) => x.gap < 15 * 60_000)
+      .sort((a, b) => a.gap - b.gap)[0]?.c;
+    if (!best) return call;
+    return this.prisma.csCall
+      .update({
+        where: { id: call.id },
+        data: {
+          katCallSid: best.callId,
+          durationSec: best.duration,
+          ...(!call.endedAt && best.dateUpdated && { endedAt: new Date(best.dateUpdated) }),
+        },
+      })
+      .catch(() => call);
+  }
+
   async recording(id: string) {
-    const call = await this.prisma.csCall.findUnique({ where: { id } });
+    const call = await this.resolveKat(id);
     if (!call?.katCallSid) throw new NotFoundException('이 콜에는 녹음이 없습니다.');
     const base = process.env.KAT_API_BASE || 'https://api.koreaaitel.com';
     const account = process.env.KAT_ACCOUNT_ID;

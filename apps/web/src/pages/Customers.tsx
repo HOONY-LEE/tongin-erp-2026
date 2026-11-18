@@ -1,3 +1,4 @@
+import { CustomerHistory } from '../components/customer/CustomerHistory';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Settings } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
@@ -214,6 +215,7 @@ export default function Customers() {
         columns={columns}
         fields={fields}
         editable
+        detailExtra={(row) => <CustomerHistory customerId={String(row.id)} />}
         headerActions={
           can('COMMON_CODE.UPDATE') ? (
             <button

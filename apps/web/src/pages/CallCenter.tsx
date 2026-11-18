@@ -14,8 +14,8 @@ import {
   useToast,
 } from '../components/ui';
 import styles from './callcenter.module.css';
-import { IntakePanel } from './callcenter/IntakePanel';
-import { CallDetail, CallList, type CallRow } from './callcenter/CallList';
+import { IntakePanel, type ReadOnlyInfo } from './callcenter/IntakePanel';
+import { CallList, type CallRow } from './callcenter/CallList';
 import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
 import { ScriptCard } from './callcenter/ScriptCard';
 
@@ -670,6 +670,7 @@ function CallPage({
   const [d, setD] = useState<{
     call: CallRow & CallView;
     recentLeads: NonNullable<Console['me']>['recentLeads'];
+    lead: ReadOnlyInfo['lead'];
   } | null>(null);
   const load = useCallback(async () => {
     try {
@@ -695,17 +696,24 @@ function CallPage({
   const open = ['ASSIGNED', 'CALLBACK'].includes(d.call.status);
   return (
     <section className={`${styles.card} ${styles.intakeCard}`}>
-      {open && (d.call.agentEmpId === myId || isAdmin) ? (
-        <IntakePanel
-          call={d.call}
-          recentLeads={d.recentLeads}
-          onDone={onDone}
-          onBack={onBack}
-          onSaved={load}
-        />
-      ) : (
-        <CallDetail call={d.call} onBack={onBack} onSaved={() => void load()} />
-      )}
+      {/* 마무리하지 않은 내 상담이면 이어서 입력, 아니면 같은 모양의 읽기 화면 */}
+      <IntakePanel
+        call={d.call}
+        recentLeads={d.recentLeads}
+        onDone={onDone}
+        onBack={onBack}
+        onSaved={load}
+        readOnly={
+          open && (d.call.agentEmpId === myId || isAdmin)
+            ? undefined
+            : {
+                agentName: d.call.agentName,
+                durationSec: d.call.durationSec,
+                hasRecording: d.call.hasRecording,
+                lead: d.lead,
+              }
+        }
+      />
     </section>
   );
 }

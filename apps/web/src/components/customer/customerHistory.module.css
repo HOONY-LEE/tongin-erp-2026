@@ -1,0 +1,147 @@
+.muted {
+  margin: 0;
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+}
+/* 요약 — 칸마다 이름(작게)과 값 */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.03));
+}
+.summary span {
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+}
+.summary b {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.head :global(.rd-title) {
+  margin: 0;
+}
+
+/* 이력 — 날짜별 묶음, 줄마다 아이콘·시각·내용·담당 */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dayLabel {
+  margin-bottom: 4px;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 2px solid var(--ark-color-border);
+  margin-left: 13px;
+}
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px 8px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.clickable {
+  cursor: pointer;
+  border-radius: 8px;
+}
+.clickable:hover {
+  background: var(--ark-color-bg-muted, rgba(0, 0, 0, 0.04));
+}
+.dot {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  margin-left: -14px;
+  border-radius: 50%;
+  border: 2px solid var(--ark-color-bg, #fff);
+}
+.gray {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+.blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.purple {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.orange {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.teal {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+.red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.time {
+  flex-shrink: 0;
+  width: 40px;
+  padding-top: 4px;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  padding-top: 3px;
+}
+.main b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.detail {
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.actor {
+  flex-shrink: 0;
+  padding-top: 4px;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+}

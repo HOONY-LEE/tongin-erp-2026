@@ -220,6 +220,8 @@ export class LeadService {
           source: created.source,
           orgUnitId: created.orgUnitId,
           customerId: created.customerId,
+          ownerEmpId: created.ownerEmpId,
+          by: principal?.employeeId ?? null,
         },
       });
       return created;
@@ -318,7 +320,23 @@ export class LeadService {
         payload: {
           leadNo: updated.leadNo,
           ownerEmpId: updated.ownerEmpId,
+          fromOwnerEmpId: before.ownerEmpId ?? null,
           orgUnitId: updated.orgUnitId,
+          by: principal?.employeeId ?? null,
+        },
+      });
+    }
+    // 담당 지점이 바뀌면(이관) 고객 이력에 남긴다
+    if (updated.orgUnitId !== before.orgUnitId) {
+      await this.eventBus.record({
+        aggregateType: 'lead',
+        aggregateId: updated.id,
+        eventType: 'lead.org_changed',
+        payload: {
+          leadNo: updated.leadNo,
+          orgUnitId: updated.orgUnitId,
+          fromOrgUnitId: before.orgUnitId,
+          by: principal?.employeeId ?? null,
         },
       });
     }
@@ -329,7 +347,7 @@ export class LeadService {
   async transitionTo(id: string, to: LeadStatus, principal?: AuthPrincipal) {
     const lead = await this.findOne(id, principal);
     const result = await this.transitionInTx(this.prisma, id, to);
-    await this.emitTransition(result, to);
+    await this.emitTransition(result, to, principal?.employeeId);
     return result.changed ? result.lead : lead;
   }
 
@@ -376,13 +394,14 @@ export class LeadService {
   async emitTransition(
     result: { lead: { id: string; leadNo: string }; from: LeadStatus; changed: boolean },
     to: LeadStatus,
+    by?: string | null,
   ) {
     if (!result.changed) return;
     await this.eventBus.record({
       aggregateType: 'lead',
       aggregateId: result.lead.id,
       eventType: 'lead.status_changed',
-      payload: { from: result.from, to, leadNo: result.lead.leadNo },
+      payload: { from: result.from, to, leadNo: result.lead.leadNo, by: by ?? null },
     });
   }
 
