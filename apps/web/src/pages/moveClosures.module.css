@@ -56,7 +56,11 @@
   color: var(--ark-color-bg) !important;
 }
 .allClosed {
-  background: #fff5f6;
+  background: #f4f4f6;
+}
+.allClosed .num {
+  color: #9a9aa0;
+  text-decoration: line-through;
 }
 .num {
   font-size: 14px;
@@ -77,8 +81,8 @@
 .chip {
   padding: 1px 6px;
   border-radius: 4px;
-  background: #fde8ea;
-  color: #be123c;
+  background: #ececef;
+  color: #6e6e73;
   font-size: 11.5px;
   white-space: nowrap;
 }
