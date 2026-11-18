@@ -685,6 +685,12 @@ select:focus {
 button[class*='_trigger_15c7g_'] {
   border-radius: var(--control-radius) !important;
 }
+/* 입력 창(모달) 안에서는 일반 드롭다운(36px)과 같은 높이 */
+[role='dialog'] button[class*='_trigger_15c7g_'] {
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+}
 /* 세그먼트 탭 — 바깥 트랙은 10px, 안쪽 칸·움직이는 표시는 트랙 안쪽 여백(4px)만큼 작게 */
 [class*='_track_b4708_'] {
   border-radius: var(--control-radius) !important;

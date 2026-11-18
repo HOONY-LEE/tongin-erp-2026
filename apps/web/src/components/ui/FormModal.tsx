@@ -7,6 +7,7 @@ import { AddressField } from './AddressField';
 import { PhoneInput } from './PhoneInput';
 import { ADDRESS_PARTS, addrKey } from './address';
 import { fs } from '../../lib/fontScale';
+import { SegmentedControl } from './SegmentedControl';
 
 /** akron Input/Select 기본 라벨 스타일과 맞춘 커스텀 라벨(필수 표시는 테마색 *). */
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
@@ -62,6 +63,9 @@ export function FormModal({
   }, [open, initKey]);
 
   const setField = (n: string, v: string) => setValues((s) => ({ ...s, [n]: v }));
+  // 다른 칸 값에 따라 숨는 칸(showWhen) — 숨으면 필수 확인·저장에서 빠진다
+  const shown = (f: FormField) =>
+    !f.showWhen || f.showWhen.in.includes(values[f.showWhen.field] ?? '');
 
   // 필수 항목이 비었는지 — 문자열은 공백만 있어도 빈 값, 주소는 우편번호·기본주소까지
   // (예/아니오 필드는 '사용/사용 안 함' 선택형이라 둘 중 하나를 고르면 채운 것으로 본다)
@@ -71,17 +75,18 @@ export function FormModal({
         !values[addrKey(f.addrPrefix ?? '', 'addr')]?.trim()
       : !values[f.name]?.trim();
   // 필수 항목이 모두 채워져야 저장 버튼 활성
-  const canSubmit = fields.every((f) => !f.required || !isMissing(f));
+  const canSubmit = fields.every((f) => !shown(f) || !f.required || !isMissing(f));
 
   const submit = async () => {
     for (const f of fields) {
-      if (f.required && isMissing(f)) {
+      if (shown(f) && f.required && isMissing(f)) {
         toast({ type: 'warning', title: `${f.label} — ${t('common.required')}` });
         return;
       }
     }
     const payload: Record<string, unknown> = {};
     for (const f of fields) {
+      if (f.virtual || !shown(f)) continue;
       if (f.type === 'address') {
         for (const part of ADDRESS_PARTS) {
           const key = addrKey(f.addrPrefix ?? '', part);
@@ -110,8 +115,8 @@ export function FormModal({
     }
   };
 
-  const visibleFields = fields.filter((f) => f.required || f.alwaysShow);
-  const hiddenFields = fields.filter((f) => !f.required && !f.alwaysShow);
+  const visibleFields = fields.filter((f) => shown(f) && (f.required || f.alwaysShow));
+  const hiddenFields = fields.filter((f) => shown(f) && !f.required && !f.alwaysShow);
 
   return (
     <Modal
@@ -187,10 +192,18 @@ function renderRows(
 }
 
 function renderField(
-  f: FormField,
+  field: FormField,
   values: Record<string, string>,
   setField: (n: string, v: string) => void,
 ) {
+  // 다른 칸 값에 따라 선택지를 바꾸는 칸
+  const f: FormField = field.optionsBy
+    ? { ...field, options: field.optionsBy.map[values[field.optionsBy.field] ?? ''] ?? [] }
+    : field;
+  const change = (v: string) => {
+    setField(f.name, v);
+    for (const r of f.resets ?? []) setField(r, '');
+  };
   if (f.type === 'address') {
     return (
       <AddressField
@@ -206,7 +219,13 @@ function renderField(
   return (
     <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <FieldLabel label={f.label} required={f.required} />
-      {f.type === 'chips' ? (
+      {f.type === 'segment' ? (
+        <SegmentedControl
+          value={values[f.name] ?? ''}
+          onChange={change}
+          options={(f.options ?? []).map((o) => ({ value: o.value, label: o.label }))}
+        />
+      ) : f.type === 'chips' ? (
         <div className="form-chips" role="radiogroup" aria-label={f.label}>
           {(f.options ?? []).map((o) => (
             <button
@@ -224,6 +243,7 @@ function renderField(
         </div>
       ) : f.type === 'select' && f.searchable ? (
         <Combobox
+          key={field.optionsBy ? (values[field.optionsBy.field] ?? '') : f.name}
           value={values[f.name] || null}
           onChange={(v) => setField(f.name, v ?? '')}
           options={

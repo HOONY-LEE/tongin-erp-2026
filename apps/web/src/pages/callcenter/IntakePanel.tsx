@@ -289,6 +289,7 @@ export function IntakePanel({
       customerName: v.customerName.trim(),
       customerPhone: call.phone,
       source: 'PHONE',
+      moveKind: v.moveKind,
       serviceLine: v.serviceLine,
       orgUnitId: v.orgUnitId || defaultOrg,
       ...(v.partnerId && { partnerId: v.partnerId }),

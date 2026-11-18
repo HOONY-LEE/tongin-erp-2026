@@ -66,6 +66,7 @@ const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const PartnerMgmt = lazy(() => import('./pages/PartnerMgmt'));
 const Alliances = lazy(() => import('./pages/Alliances'));
 const CallCenter = lazy(() => import('./pages/CallCenter'));
+const MoveClosures = lazy(() => import('./pages/MoveClosures'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
 const Notices = lazy(() => import('./pages/Notices'));
 const Tasks = lazy(() => import('./pages/Tasks'));
@@ -175,6 +176,7 @@ function Shell() {
         <Route path="/alliances" element={page(<Alliances />)} />
         <Route path="/callcenter" element={page(<CallCenter />)} />
         <Route path="/callcenter/:callId" element={page(<CallCenter />)} />
+        <Route path="/move-closures" element={page(<MoveClosures />)} />
         <Route path="/org-mgmt" element={page(<OrgMgmt />)} />
         <Route path="/payments-confirm" element={page(<PaymentConfirm />)} />
         <Route path="/branches" element={page(<Branches />)} />

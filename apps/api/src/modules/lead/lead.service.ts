@@ -183,14 +183,17 @@ export class LeadService {
         payload: { ownerOrgId: customer.ownerOrgId, via: 'lead' },
       });
     }
+    // 담당자는 등록한 본인 — 슈퍼관리자만 다른 직원으로 정할 수 있다
+    const superAdmin = !!principal?.permissions.includes('*');
     const data = {
       leadNo: this.genLeadNo(),
       orgUnitId: dto.orgUnitId,
       customerId,
-      ownerEmpId: dto.ownerEmpId,
+      ownerEmpId: superAdmin ? dto.ownerEmpId : (principal?.employeeId ?? dto.ownerEmpId),
       partnerId: dto.partnerId,
       source: dto.source,
-      serviceLine: dto.serviceLine,
+      // 제휴·전속 상품이면 상품 구분은 이사(MOVING)
+      serviceLine: dto.serviceLine ?? (dto.partnerId ? 'MOVING' : undefined),
       fromZipcode: dto.fromZipcode,
       fromAddr: dto.fromAddr,
       fromAddrDetail: dto.fromAddrDetail,

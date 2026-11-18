@@ -2246,3 +2246,30 @@ model AppSecret {
 
   @@map("app_secret")
 }
+
+/// 이사일 마감 — 그날 더 받을 수 없는 지점(비우면 전체·본사). 상담 콘솔 달력·접수 때 안내
+model MoveClosure {
+  id        String   @id @default(uuid()) @db.Uuid
+  date      DateTime @db.Date
+  orgUnitId String?  @map("org_unit_id") @db.Uuid
+  memo      String?
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([date])
+  @@map("move_closure")
+}
+
+/// 이사 확인콜(이사 2일 전)·해피콜(이사 다음 날) 기록 — 접수별로 결과를 남긴다
+model CsFollowup {
+  id         String   @id @default(uuid()) @db.Uuid
+  leadId     String   @map("lead_id") @db.Uuid
+  kind       String // CONFIRM 확인콜 | HAPPY 해피콜
+  result     String // DONE 통화 완료 | NO_ANSWER 부재
+  memo       String?
+  employeeId String?  @map("employee_id") @db.Uuid
+  at         DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([leadId, kind])
+  @@map("cs_followup")
+}

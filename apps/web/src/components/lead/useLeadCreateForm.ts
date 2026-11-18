@@ -14,7 +14,9 @@ import type { FormField } from '../ui';
 export function useLeadCreateForm({ withCallFields = false }: { withCallFields?: boolean } = {}) {
   const { user } = useAuth();
   // 제휴·전속 업체 — 지점 직원도 고를 수 있게 접수 권한으로 받는 목록
-  const [partners, setPartners] = useState<{ value: string; label: string; type: string }[]>([]);
+  const [partners, setPartners] = useState<
+    { value: string; label: string; name: string; type: string }[]
+  >([]);
   useEffect(() => {
     void api<{ id: string; name: string; type: string }[]>('/partners/options')
       .then((r) =>
@@ -22,6 +24,7 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
           r.map((p) => ({
             value: p.id,
             label: `[${PARTNER_TYPE_LABEL[p.type as PartnerType] ?? p.type}] ${p.name}`,
+            name: p.name,
             type: p.type,
           })),
         ),
@@ -30,7 +33,7 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
   }, []);
 
   // 담당 지점 — 목록은 전체를 보여주고, 권한 밖 지점만 흐리게(선택 불가) 처리한다.
-  const { options: orgs, ownOrgId, unrestricted: isAdmin } = useOrgScope();
+  const { options: orgs, ownOrgId } = useOrgScope();
 
   // 담당자 — 기본값은 항상 본인. 권한이 넓은 사용자만 다른 직원으로 바꿀 수 있다.
   // 직원 목록(/employees)은 EMPLOYEE.READ가 있어야 읽히는데, 바꿀 수 없는 사용자에게는
@@ -40,7 +43,8 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     user?.employeeId && user.employeeName
       ? [{ value: user.employeeId, label: user.employeeName }]
       : [];
-  const ownerOptions = isAdmin && employees.length ? employees : ownEmpOption;
+  const isSuper = !!user?.permissions.includes('*');
+  const ownerOptions = isSuper && employees.length ? employees : ownEmpOption;
 
   const fields: FormField[] = [
     {
@@ -67,8 +71,8 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
       alwaysShow: true,
       type: 'select',
       options: ownerOptions,
-      // 본인 고정 — 담당자를 바꿀 권한이 없으면 목록을 열 필요도 없다.
-      disabled: !isAdmin,
+      // 본인 고정 — 슈퍼관리자만 다른 직원으로 바꿀 수 있다(서버도 같은 규칙).
+      disabled: !isSuper,
     },
     {
       name: 'source',
@@ -78,24 +82,53 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
       type: 'select',
       options: RECEIPT_SOURCES,
     },
+    // 상품 — 먼저 종류(일반/제휴/전속)를 고르면 그 종류의 목록이 드롭다운으로 뜬다
+    {
+      name: 'moveKind',
+      label: '상품 종류',
+      type: 'segment',
+      required: true,
+      alwaysShow: true,
+      virtual: true,
+      options: [
+        { value: 'GENERAL', label: '일반' },
+        { value: 'AFFILIATE', label: '제휴' },
+        { value: 'EXCLUSIVE', label: '전속' },
+      ],
+      resets: ['partnerId'],
+    },
     {
       name: 'serviceLine',
-      label: '상품명',
+      label: '상품',
       required: true,
       alwaysShow: true,
       type: 'select',
       options: SERVICE_LINES,
+      showWhen: { field: 'moveKind', in: ['GENERAL'] },
+    },
+    {
+      name: 'partnerId',
+      label: '상품(업체) — 전속이사는 본사 부서로만 배정',
+      required: true,
+      alwaysShow: true,
+      type: 'select',
+      searchable: true,
+      placeholder: '업체명으로 찾기',
+      optionsBy: {
+        field: 'moveKind',
+        map: {
+          AFFILIATE: partners
+            .filter((p) => p.type === 'AFFILIATE')
+            .map(({ value, name }) => ({ value, label: name })),
+          EXCLUSIVE: partners
+            .filter((p) => p.type === 'EXCLUSIVE')
+            .map(({ value, name }) => ({ value, label: name })),
+        },
+      },
+      showWhen: { field: 'moveKind', in: ['AFFILIATE', 'EXCLUSIVE'] },
     },
     { name: 'fromAddress', label: '출발지', alwaysShow: true, type: 'address', addrPrefix: 'from' },
     { name: 'toAddress', label: '도착지', alwaysShow: true, type: 'address', addrPrefix: 'to' },
-    {
-      name: 'partnerId',
-      label: '제휴·전속 업체(제휴이사·전속이사) — 전속이사는 본사 부서로만 배정',
-      type: 'select',
-      searchable: true,
-      alwaysShow: true,
-      options: partners,
-    },
     ...(withCallFields
       ? ([
           { name: 'moveDate', label: '이사 희망일', type: 'date', alwaysShow: true },
@@ -111,7 +144,11 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
   ];
 
   // ERP 화면에서 직원이 직접 등록하는 접수라 경로는 '시스템'이 기본이다.
-  const defaults: Record<string, string> = { serviceLine: 'MOVING', source: 'SYSTEM' };
+  const defaults: Record<string, string> = {
+    serviceLine: 'MOVING',
+    source: 'SYSTEM',
+    moveKind: 'GENERAL',
+  };
   // 지점 소속이면 그 지점, 관리자처럼 지점 스코프가 없으면 연결된 직원의 조직(시스템관리자)
   const defaultOrg = ownOrgId || user?.employeeOrgUnitId || '';
   if (defaultOrg) defaults.orgUnitId = defaultOrg;
