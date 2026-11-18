@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Header,
@@ -59,6 +60,10 @@ class UpdateCallDto {
   @IsOptional() @IsString() @MaxLength(1000) memo?: string | null;
   @IsOptional() @IsString() @MaxLength(2000) request?: string | null;
 }
+class ScriptDto {
+  @IsOptional() @IsString() @MaxLength(40) title?: string;
+  @IsOptional() @IsString() @MaxLength(5000) body?: string;
+}
 class ListQuery {
   @IsOptional() @IsIn(['mine', 'all']) scope?: 'mine' | 'all';
   @IsOptional() @IsString() @MaxLength(50) q?: string;
@@ -109,6 +114,35 @@ export class CsCallController {
   @RequirePermissions('LEAD.CREATE')
   console(@CurrentUser() user: AuthPrincipal) {
     return this.calls.console(user);
+  }
+
+  /** 내 대본 메모 */
+  @Get('scripts')
+  @RequirePermissions('LEAD.CREATE')
+  scripts(@CurrentUser() user: AuthPrincipal) {
+    return this.calls.scripts(user);
+  }
+
+  @Post('scripts')
+  @RequirePermissions('LEAD.CREATE')
+  createScript(@CurrentUser() user: AuthPrincipal, @Body() dto: ScriptDto) {
+    return this.calls.createScript(user, { title: dto.title ?? '새 메모', body: dto.body });
+  }
+
+  @Patch('scripts/:sid')
+  @RequirePermissions('LEAD.CREATE')
+  updateScript(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('sid', ParseUUIDPipe) sid: string,
+    @Body() dto: ScriptDto,
+  ) {
+    return this.calls.updateScript(user, sid, dto);
+  }
+
+  @Delete('scripts/:sid')
+  @RequirePermissions('LEAD.CREATE')
+  deleteScript(@CurrentUser() user: AuthPrincipal, @Param('sid', ParseUUIDPipe) sid: string) {
+    return this.calls.deleteScript(user, sid);
   }
 
   /** 콜 목록 — 검색(전화번호·고객명) · 내 전화/전체 전화 */

@@ -2194,6 +2194,20 @@ model CsCall {
   @@map("cs_call")
 }
 
+/// 상담 콘솔 대본 메모 — 상담원마다 여러 개(인사말·견적 안내·제휴 안내 등). 상담 중에 눌러서 바꿔 본다
+model CsScript {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeeId String   @map("employee_id") @db.Uuid
+  title      String
+  body       String   @default("")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([employeeId, sortOrder])
+  @@map("cs_script")
+}
+
 /// 상담원 상태 — 상담 가능(available)인 상담원 중 통화 중이 아니고 가장 오래 쉰 사람에게 배분
 model CsAgent {
   employeeId String    @id @map("employee_id") @db.Uuid

@@ -111,7 +111,7 @@ export function AddressField({ addrPrefix, label, values, setField, required }: 
           height: 36,
           padding: '0 12px',
           border: '1px solid var(--ark-color-border)',
-          borderRadius: 'var(--ark-radius-md, 8px)',
+          borderRadius: 'var(--control-radius, 8px)',
           fontSize: 'var(--ark-font-size-sm)',
           color: addrDisplay ? 'var(--ark-color-text)' : 'var(--ark-color-text-tertiary)',
           background: 'var(--ark-color-bg)',

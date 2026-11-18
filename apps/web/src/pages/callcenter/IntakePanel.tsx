@@ -180,7 +180,7 @@ export function IntakePanel({
     if (v.moveKind !== 'GENERAL' && !v.partnerId) {
       toast({
         type: 'error',
-        title: `${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 업체를 골라 주세요.`,
+        title: `${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 상품을 골라 주세요.`,
       });
       return;
     }
@@ -367,11 +367,11 @@ export function IntakePanel({
           />
         </label>
         <label className={styles.field}>
-          <span>상품</span>
-          <Select
-            value={v.serviceLine}
-            onValueChange={(x) => setField('serviceLine', x)}
-            options={SERVICE_LINES}
+          <span>이사 희망일</span>
+          <Input
+            type="date"
+            value={v.moveDate}
+            onChange={(e) => setField('moveDate', e.target.value)}
           />
         </label>
         <div className={styles.full}>
@@ -380,44 +380,44 @@ export function IntakePanel({
         <div className={styles.full}>
           <AddressField addrPrefix="to" label="도착지" values={v} setField={setField} />
         </div>
+        {/* 상품 종류 — 일반이면 일반 상품, 제휴·전속이면 그 업체(업체 자체가 상품)를 고른다 */}
         <div className={`${styles.field} ${styles.full}`}>
-          <span>이사 구분</span>
-          <div className={styles.kindRow}>
-            <SegmentedControl
-              value={v.moveKind}
-              onChange={(x) => setV((cur) => ({ ...cur, moveKind: x, partnerId: '' }))}
-              options={[
-                { value: 'GENERAL', label: '일반' },
-                { value: 'AFFILIATE', label: '제휴' },
-                { value: 'EXCLUSIVE', label: '전속' },
-              ]}
-            />
-            {v.moveKind !== 'GENERAL' && (
-              <div className={styles.kindPick}>
-                <Combobox
-                  key={v.moveKind}
-                  value={v.partnerId || null}
-                  onChange={(x) => setField('partnerId', x ?? '')}
-                  options={partners
-                    .filter((p) => p.type === v.moveKind)
-                    .map((p) => ({ value: p.id, label: p.name }))}
-                  placeholder={`${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 업체 고르기`}
-                  searchPlaceholder="업체명으로 찾기"
-                  emptyMessage="찾는 업체가 없습니다"
-                  clearable
-                />
-              </div>
-            )}
-          </div>
-        </div>
-        <label className={styles.field}>
-          <span>이사 희망일</span>
-          <Input
-            type="date"
-            value={v.moveDate}
-            onChange={(e) => setField('moveDate', e.target.value)}
+          <span>
+            상품 종류 <i>*</i>
+          </span>
+          <SegmentedControl
+            value={v.moveKind}
+            onChange={(x) =>
+              setV((cur) => ({ ...cur, moveKind: x, partnerId: '', serviceLine: 'MOVING' }))
+            }
+            options={[
+              { value: 'GENERAL', label: '일반' },
+              { value: 'AFFILIATE', label: '제휴' },
+              { value: 'EXCLUSIVE', label: '전속' },
+            ]}
           />
-        </label>
+          {v.moveKind === 'GENERAL' ? (
+            <Select
+              value={v.serviceLine}
+              onValueChange={(x) => setField('serviceLine', x)}
+              options={SERVICE_LINES}
+              aria-label="일반 상품"
+            />
+          ) : (
+            <Combobox
+              key={v.moveKind}
+              value={v.partnerId || null}
+              onChange={(x) => setField('partnerId', x ?? '')}
+              options={partners
+                .filter((p) => p.type === v.moveKind)
+                .map((p) => ({ value: p.id, label: p.name }))}
+              placeholder={`${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 상품 고르기`}
+              searchPlaceholder="업체명으로 찾기"
+              emptyMessage="찾는 상품이 없습니다"
+              clearable
+            />
+          )}
+        </div>
         {partner && (
           <div className={`${styles.full} ${styles.partnerNote}`}>
             <b>
