@@ -564,18 +564,30 @@
   margin-left: auto;
 }
 .scriptTabs {
+  /* 고치기 모드의 제목 줄과 같은 높이 — 칩이 많으면 옆으로 넘긴다 */
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+  height: 38px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.scriptTabs::-webkit-scrollbar {
+  display: none;
 }
 .scriptTabs button {
-  padding: 5px 10px;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 14px;
   border: 1px solid var(--ark-color-border);
   border-radius: 999px;
   background: var(--ark-color-bg);
   color: var(--ark-color-text-secondary);
   font: inherit;
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--font-scale, 1));
+  font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
 }
 .scriptTabs button:hover {
@@ -788,6 +800,22 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.scriptHead input {
+  height: 38px;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+/* 개인/공유 — 제목 칸과 같은 높이·글자 */
+.scriptKind {
+  flex-shrink: 0;
+  align-self: center;
+}
+.scriptKind [class*='_segment_'] {
+  padding: 0 16px;
+  font-size: calc(13.5px * var(--font-scale, 1));
+  font-weight: 500;
 }
 .scriptHead > :first-child {
   flex: 1;

@@ -100,15 +100,17 @@ export function ScriptCard() {
       <h3 className={styles.cardTitle}>
         <NotebookPen size={15} /> 상담 메모
         <span className={styles.scriptTools}>
-          {!edit && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEdit({ id: null, title: '', body: '', shared: false })}
-            >
-              <Plus size={14} /> 새 메모
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            // 고치기 모드에서도 자리는 그대로(보이지만 않게) — 아래 메모장이 위로 올라가지 않게
+            style={edit ? { visibility: 'hidden' } : undefined}
+            disabled={!!edit}
+            tabIndex={edit ? -1 : undefined}
+            size="sm"
+            onClick={() => setEdit({ id: null, title: '', body: '', shared: false })}
+          >
+            <Plus size={14} /> 새 메모
+          </Button>
         </span>
       </h3>
 
@@ -126,7 +128,7 @@ export function ScriptCard() {
               aria-label="메모 제목"
             />
             <SegmentedControl
-              size="sm"
+              className={styles.scriptKind}
               value={edit.shared ? 'shared' : 'mine'}
               onChange={(v) => setEdit({ ...edit, shared: v === 'shared' })}
               options={[
