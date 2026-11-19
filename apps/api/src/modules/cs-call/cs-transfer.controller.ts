@@ -57,27 +57,35 @@ export class CsTransferController implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * 처음 한 번 내선 목록 채우기 — 환경변수 CS_EXTENSIONS_SEED(JSON 배열)가 있고 목록이 비어 있을 때만.
-   * 직원 이름·번호를 공개 저장소에 넣지 않으려고 서버 설정으로 받는다. 들어간 뒤에는 지워도 된다.
+   * 내선 목록 채우기 — 환경변수 CS_EXTENSIONS_SEED(JSON 배열)에 있는 내선 중 아직 없는 번호만 더한다.
+   * 직원 이름·번호를 공개 저장소에 넣지 않으려고 서버 설정으로 받는다.
+   * 다 들어간 뒤에는 지운다(지운 내선이 다시 생기지 않게).
    */
   async onModuleInit() {
     const raw = process.env.CS_EXTENSIONS_SEED;
     if (!raw) return;
     try {
-      if (await this.prisma.csTransferTarget.count()) return;
-      const rows = (JSON.parse(raw) as SeedRow[]).filter(
-        (r) => r.label && digits(r.number).length >= 7,
+      const have = new Set(
+        (await this.prisma.csTransferTarget.findMany({ select: { number: true } })).map(
+          (x) => x.number,
+        ),
       );
+      const max = await this.prisma.csTransferTarget.aggregate({ _max: { sortOrder: true } });
+      const rows = (JSON.parse(raw) as SeedRow[]).filter(
+        (r) => r.label && digits(r.number).length >= 7 && !have.has(digits(r.number)),
+      );
+      if (!rows.length) return;
+      const base = (max._max.sortOrder ?? -1) + 1;
       await this.prisma.csTransferTarget.createMany({
         data: rows.map((r, i) => ({
           label: r.label.trim(),
           dept: r.dept?.trim() || null,
           extNo: r.extNo?.trim() || null,
           number: digits(r.number),
-          sortOrder: i,
+          sortOrder: base + i,
         })),
       });
-      this.logger.log(`내선 ${rows.length}개를 처음 채웠습니다(CS_EXTENSIONS_SEED)`);
+      this.logger.log(`내선 ${rows.length}개를 더했습니다(CS_EXTENSIONS_SEED)`);
     } catch (e) {
       this.logger.warn(`CS_EXTENSIONS_SEED를 읽지 못했습니다: ${(e as Error).message}`);
     }
