@@ -14,6 +14,7 @@ import {
   usePhone,
 } from '../lib/softphone';
 import styles from './SoftphoneBar.module.css';
+import { TransferButton } from './TransferButton';
 
 const mmss = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -227,6 +228,7 @@ export function SoftphoneBar() {
           )}
         </span>
       )}
+      {active && <TransferButton customerPhone={call.number} />}
       {active && (
         <button
           type="button"

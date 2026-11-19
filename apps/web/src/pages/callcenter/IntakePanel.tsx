@@ -8,6 +8,7 @@ import {
   PhoneOutgoing,
   RotateCcw,
   MessageSquare,
+  PhoneForwarded,
 } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import { PARTNER_TYPE_LABEL, type PartnerType } from '@tongin/shared';
@@ -45,6 +46,8 @@ export interface IntakeCall {
   customerName: string | null;
   receivedAt: string;
   assignedAt: string | null;
+  /** 돌려주기 — 넘긴 곳(이름 · 번호) */
+  transferTo?: string | null;
   /** 상담 중에 등록한 접수 */
   leadId?: string | null;
   leadNo?: string | null;
@@ -373,6 +376,11 @@ export function IntakePanel({
           {call.status === 'CALLBACK' ? '콜백' : '받은 콜'}
         </span>
         <span className={styles.channel}>{call.channel ?? '대표번호'}</span>
+        {call.transferTo && (
+          <span className={styles.transferTag} title="이 통화를 돌려준 곳">
+            <PhoneForwarded size={12} /> {call.transferTo}
+          </span>
+        )}
         {readOnly ? (
           <span className={styles.headActions}>
             <span className={styles.statePill}>{CALL_STATUS[call.status] ?? call.status}</span>

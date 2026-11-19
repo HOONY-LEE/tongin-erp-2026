@@ -668,6 +668,8 @@ export class CsCallService {
       hasRecording: !!c.katCallSid && (c.durationSec ?? 0) > 0,
       memo: c.memo,
       request: c.request,
+      transferTo: c.transferTo,
+      transferredAt: c.transferredAt?.toISOString() ?? null,
     }));
   }
 
@@ -992,6 +994,7 @@ export class CsCallService {
       attempts: c.attempts,
       memo: c.memo,
       request: c.request,
+      transferTo: c.transferTo,
       leadId: c.leadId,
       customerId: c.customerId,
       customerName: c.customerId ? (custName.get(c.customerId) ?? null) : null,
