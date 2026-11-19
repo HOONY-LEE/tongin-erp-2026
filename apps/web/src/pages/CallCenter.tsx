@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Laptop, Trash2, PhoneOutgoing, Settings2, UserRound, PhoneOff } from 'lucide-react';
+import { Laptop, Phone, Trash2, PhoneOutgoing, Settings2, UserRound, PhoneOff } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -15,6 +15,7 @@ import {
   Button,
   ConfirmModal,
   CopyText,
+  Input,
   ListPage,
   SegmentedControl,
   useToast,
@@ -631,8 +632,51 @@ function PcPhone() {
   const toast = useToast();
   const [working, setWorking] = useState(false);
   const [soundOpen, setSoundOpen] = useState(false);
+  // 번호로 직접 걸기(대표번호로 발신 — 발신번호 인증 ARS 등)
+  const [dialOpen, setDialOpen] = useState(false);
+  const [dialNo, setDialNo] = useState('');
+  const dialOk = dialNo.replace(/\D/g, '').length >= 7;
   const soundButton = (
     <>
+      {phone.status === 'ready' && !phone.call && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setDialNo('');
+            setDialOpen(true);
+          }}
+          aria-label="번호로 전화 걸기"
+          title="번호로 전화 걸기"
+        >
+          <Phone size={14} />
+        </Button>
+      )}
+      <ConfirmModal
+        open={dialOpen}
+        title="번호로 전화 걸기"
+        confirmLabel="걸기"
+        onClose={() => setDialOpen(false)}
+        onConfirm={() => {
+          if (!dialOk) return;
+          setDialOpen(false);
+          dial(dialNo);
+        }}
+      >
+        <Input
+          autoFocus
+          inputMode="tel"
+          value={dialNo}
+          placeholder="걸 번호 — 예: 070-5276-7222"
+          onChange={(e) => setDialNo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && dialOk) {
+              setDialOpen(false);
+              dial(dialNo);
+            }
+          }}
+        />
+      </ConfirmModal>
       <Button
         variant="ghost"
         size="sm"
