@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -18,6 +19,7 @@ import { CreateMaterialOrderDto } from './dto/create-material-order.dto';
 export class MaterialOrderService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
   ) {}
@@ -62,7 +64,7 @@ export class MaterialOrderService {
 
     return this.prisma.materialOrder.create({
       data: {
-        orderNo: this.genNo(),
+        orderNo: await this.docNo.next('MO'),
         orgUnitId: dto.orgUnitId,
         note: dto.note,
         lines: { create: dto.lines.map((l) => ({ materialId: l.materialId, qty: l.qty })) },
@@ -172,13 +174,5 @@ export class MaterialOrderService {
       });
     }
     return { shipped: moved.length };
-  }
-
-  private genNo(): string {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
-    const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-    return `MO${ymd}${rand}`;
   }
 }

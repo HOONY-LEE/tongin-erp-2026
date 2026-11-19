@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthPrincipal, SupportTicketStatus } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -23,6 +24,7 @@ const TRANSITIONS: Record<SupportTicketStatus, SupportTicketStatus[]> = {
 export class SupportService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
   ) {}
@@ -58,7 +60,7 @@ export class SupportService {
     await this.scope.assertCustomer(dto.customerId, principal);
     await this.scope.assertContract(dto.contractId, principal);
     const created = await this.prisma.supportTicket.create({
-      data: { ticketNo: this.genNo(dto.kind), ...dto },
+      data: { ticketNo: await this.docNo.next(dto.kind), ...dto },
     });
     await this.eventBus.record({
       aggregateType: 'support_ticket',
@@ -97,14 +99,5 @@ export class SupportService {
       payload: { from, to },
     });
     return updated;
-  }
-
-  private genNo(kind: string): string {
-    const now = new Date();
-    const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
-      now.getDate(),
-    ).padStart(2, '0')}`;
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    return `${kind}${ymd}${rand}`;
   }
 }

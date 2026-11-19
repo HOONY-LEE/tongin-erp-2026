@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -15,6 +16,7 @@ import { CreateAssignmentDto, CreateWorkOrderDto } from './dto/work-order.dto';
 export class WorkOrderService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
     private readonly leadService: LeadService,
@@ -93,7 +95,7 @@ export class WorkOrderService {
     const { created, transition } = await this.prisma.$transaction(async (tx) => {
       const row = await tx.workOrder.create({
         data: {
-          workNo: this.genNo(),
+          workNo: await this.docNo.next('WO'),
           contractId: contract.id,
           leadId: contract.leadId,
           orgUnitId: contract.orgUnitId,
@@ -196,13 +198,5 @@ export class WorkOrderService {
       eventType,
       payload: { workNo },
     });
-  }
-
-  private genNo(): string {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
-    const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-    return `WO${ymd}${rand}`;
   }
 }

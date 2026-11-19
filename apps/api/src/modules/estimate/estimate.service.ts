@@ -17,8 +17,8 @@ import {
   type OptionVariant,
   type VolumeUnit,
 } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { kstYmd } from '../../common/util/kst';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
@@ -40,6 +40,7 @@ import { GeoService } from '../geo/geo.service';
 export class EstimateService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
     private readonly leadService: LeadService,
@@ -339,7 +340,7 @@ export class EstimateService {
     try {
       const created = await this.prisma.estimate.create({
         data: {
-          estimateNo: this.genNo(),
+          estimateNo: await this.docNo.next('ES'),
           leadId: dto.leadId,
           customerId: dto.customerId,
           orgUnitId: dto.orgUnitId,
@@ -1089,12 +1090,6 @@ export class EstimateService {
       })),
       handlings,
     });
-  }
-
-  private genNo(): string {
-    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
-    const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-    return `EST${ymd}${rand}`;
   }
 
   private mapError(e: unknown): Error {

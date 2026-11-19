@@ -8,6 +8,7 @@ import CrudTable, { type Column, type FormField, type Row } from '../components/
 import { useOptions } from '../lib/useOptions';
 import { fs } from '../lib/fontScale';
 import { formatPhone } from '../lib/phone';
+import { CopyText } from '../components/ui/CopyText';
 
 interface GradeRow {
   id?: string;
@@ -185,6 +186,11 @@ export default function Customers() {
   const gradeName = useMemo(() => new Map(grades.map((g) => [g.value, g.label])), [grades]);
 
   const columns: Column[] = [
+    {
+      title: '고객번호',
+      dataIndex: 'customerNo',
+      render: (r: Row) => (r.customerNo ? <CopyText value={String(r.customerNo)} /> : '-'),
+    },
     { title: '고객명', dataIndex: 'name' },
     {
       title: '연락처',

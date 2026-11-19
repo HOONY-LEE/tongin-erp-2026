@@ -13,8 +13,8 @@ import {
   type AuthPrincipal,
   type LeadStatus,
 } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { kstYmd } from '../../common/util/kst';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -30,6 +30,7 @@ interface LeadFilter {
 export class LeadService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
   ) {}
@@ -186,7 +187,7 @@ export class LeadService {
     // 담당자는 등록한 본인 — 슈퍼관리자만 다른 직원으로 정할 수 있다
     const superAdmin = !!principal?.permissions.includes('*');
     const data = {
-      leadNo: this.genLeadNo(),
+      leadNo: await this.docNo.next('RC'),
       orgUnitId: dto.orgUnitId,
       customerId,
       ownerEmpId: superAdmin ? dto.ownerEmpId : (principal?.employeeId ?? dto.ownerEmpId),
@@ -510,12 +511,6 @@ export class LeadService {
   async remove(id: string, principal?: AuthPrincipal) {
     await this.findOne(id, principal);
     return this.prisma.lead.delete({ where: { id } });
-  }
-
-  private genLeadNo(): string {
-    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
-    const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-    return `R${ymd}${rand}`;
   }
 
   private mapError(e: unknown): Error {

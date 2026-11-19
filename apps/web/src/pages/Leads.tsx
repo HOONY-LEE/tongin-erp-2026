@@ -17,7 +17,6 @@ import {
   type Row,
 } from '../components/ui';
 import { LEAD_STATUS, RECEIPT_SOURCES, SERVICE_LINES, codeLabel } from '../lib/leadCodes';
-import { MOVE_KIND_LABEL, moveKindOf } from '@tongin/shared';
 import { Chip, Phone, type ChipTone } from 'softium-ui/table';
 
 const STATUS = LEAD_STATUS;
@@ -68,7 +67,13 @@ export default function Leads() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await api<Row[]>('/leads'));
+      // 접수번호 칸 검색값에 옛 번호(이전 전산·시연 번호)도 — 옛 번호로 찾아도 나온다
+      setRows(
+        (await api<Row[]>('/leads')).map((r) => ({
+          ...r,
+          leadNoSearch: [r.leadNo, r.legacyNo].filter(Boolean).join(' '),
+        })),
+      );
       touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
@@ -120,13 +125,16 @@ export default function Leads() {
   const columns: Column[] = [
     {
       title: '접수번호',
-      dataIndex: 'leadNo',
+      dataIndex: 'leadNoSearch',
       // 접수번호 + 호버 복사 버튼이 잘리지 않을 만큼은 확보한다.
       minWidth: 110,
       render: (r) => <CopyText value={String(r.leadNo)} />,
+      exportValue: (r) => String(r.leadNo),
     },
     {
       title: '고객명',
+      // 이름이 긴 고객(법인명 등)이 많다
+      minWidth: 140,
       render: (r) => (r.customer as { name?: string } | null)?.name ?? '-',
     },
     {
@@ -153,26 +161,11 @@ export default function Leads() {
       },
     },
     { title: '접수경로', render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string) },
-    { title: '상품', render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string) },
     {
-      title: '이사 구분',
-      render: (r) => {
-        const p = r.partner as { name: string; type: string } | null;
-        const kind = moveKindOf(p?.type);
-        if (kind === 'GENERAL')
-          return <span style={{ color: 'var(--ark-color-text-tertiary)' }}>일반</span>;
-        return (
-          <span title={p?.name}>
-            <Chip tone={kind === 'EXCLUSIVE' ? 'warning' : 'info'}>{MOVE_KIND_LABEL[kind]}</Chip>{' '}
-            {p?.name}
-          </span>
-        );
-      },
-      exportValue: (r) => {
-        const p = r.partner as { name: string; type: string } | null;
-        const kind = moveKindOf(p?.type);
-        return kind === 'GENERAL' ? '일반이사' : `${MOVE_KIND_LABEL[kind]} · ${p?.name}`;
-      },
+      title: '상품',
+      // 상품 이름이 긴 경우가 많다
+      minWidth: 160,
+      render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string),
     },
     {
       title: '출발',
@@ -182,21 +175,6 @@ export default function Leads() {
         <AddressView
           zipcode={r.fromZipcode as string}
           addr={r.fromAddr as string}
-          addrDetail={r.fromAddrDetail as string}
-          map={false}
-          nowrap
-        />
-      ),
-    },
-    {
-      title: '도착',
-      flex: 1,
-      minWidth: 220,
-      render: (r) => (
-        <AddressView
-          zipcode={r.toZipcode as string}
-          addr={r.toAddr as string}
-          addrDetail={r.toAddrDetail as string}
           map={false}
           nowrap
         />

@@ -27,6 +27,8 @@ import { SmsModal } from './SmsModal';
 
 export interface IntakeCall {
   id: string;
+  /** 콜 번호 CL+YYMMDD+일련 */
+  callNo?: string | null;
   phone: string;
   status: string;
   channel: string | null;
@@ -456,7 +458,9 @@ export function IntakePanel({
         </div>
       )}
 
-      {readOnly && call.id && <Recording callId={call.id} available={readOnly.hasRecording} />}
+      {readOnly && call.id && (
+        <Recording callId={call.id} callNo={call.callNo} available={readOnly.hasRecording} />
+      )}
       {/* 접수 입력 — 읽기 모드면 통째로 잠근다 */}
       <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
         <label className={styles.field}>
