@@ -2180,3 +2180,17 @@ textarea.memoBox {
   flex: 1;
   min-height: 0;
 }
+
+/* 돌려준 통화 표시 */
+.transferTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #2563eb 9%, var(--ark-color-bg));
+  color: #1d4ed8;
+  font-size: calc(12px * var(--font-scale, 1));
+  white-space: nowrap;
+}

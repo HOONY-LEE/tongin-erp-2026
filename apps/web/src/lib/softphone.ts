@@ -559,6 +559,61 @@ export function toggleMute() {
   setCall({ muted: !state.call.muted });
 }
 
+/**
+ * 돌려주기(블라인드) — 지금 통화를 다른 번호로 넘긴다. 한국AI통신에 SIP REFER를 보내고,
+ * 상대가 받았다는 알림(NOTIFY 200)이 오면 내 쪽 통화를 끊는다. 못 넘기면 통화는 그대로 이어진다.
+ */
+export function transferCall(number: string): Promise<{ ok: boolean; reason?: string }> {
+  const to = number.replace(/\D/g, '');
+  const s = session;
+  if (!s || state.call?.state !== 'active' || !to)
+    return Promise.resolve({ ok: false, reason: '통화 중이 아닙니다' });
+  return new Promise((resolve) => {
+    let done = false;
+    let sent = false;
+    const finish = (r: { ok: boolean; reason?: string }) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      s.off('ended', onEnded);
+      resolve(r);
+    };
+    // 넘기는 쪽 서버가 먼저 내 통화를 끊어도 성공으로 본다
+    const onEnded = () => sent && finish({ ok: true });
+    s.on('ended', onEnded);
+    const timer = setTimeout(
+      () => finish({ ok: false, reason: '상대가 받지 않았습니다(시간 초과)' }),
+      40_000,
+    );
+    try {
+      s.refer(`sip:${to}@${realm}`, {
+        eventHandlers: {
+          requestSucceeded: () => {
+            sent = true;
+          },
+          requestFailed: (e: { response?: { status_code?: number } | null; cause?: string }) =>
+            finish({
+              ok: false,
+              reason: `돌려주기를 받아 주지 않았습니다(${e.response?.status_code ?? e.cause ?? '거절'})`,
+            }),
+          accepted: () => {
+            finish({ ok: true });
+            if (session === s) s.terminate();
+          },
+          failed: (e: { status_line?: { status_code?: number; reason_phrase?: string } }) =>
+            finish({
+              ok: false,
+              reason:
+                `연결되지 않았습니다(${e.status_line?.status_code ?? ''} ${e.status_line?.reason_phrase ?? ''})`.trim(),
+            }),
+        },
+      });
+    } catch (e) {
+      finish({ ok: false, reason: e instanceof Error ? e.message : '돌려주지 못했습니다' });
+    }
+  });
+}
+
 /** 통화 중 숫자 키 누르기(ARS 인증번호·자동 응답 메뉴) */
 export function sendDtmf(tone: string) {
   if (!session || state.call?.state !== 'active') return;

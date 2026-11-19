@@ -6,6 +6,7 @@ import { CsOpsService } from './cs-ops.service';
 import { CsSmsService } from './cs-sms.service';
 import { CsSmsController } from './cs-sms.controller';
 import { CsPresetController } from './cs-preset.controller';
+import { CsTransferController } from './cs-transfer.controller';
 import { StubNotificationProvider } from '../../notifications/notification.provider';
 import { CsFollowupController, MoveClosureController } from './cs-ops.controller';
 
@@ -17,6 +18,7 @@ import { CsFollowupController, MoveClosureController } from './cs-ops.controller
     CsFollowupController,
     CsSmsController,
     CsPresetController,
+    CsTransferController,
   ],
   providers: [
     CsCallService,

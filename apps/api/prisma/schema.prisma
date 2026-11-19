@@ -2199,6 +2199,9 @@ model CsCall {
   endedAt     DateTime? @map("ended_at") @db.Timestamptz(6)
   /// 고객 요청사항 — 접수를 등록하면 접수(customerRequest)에도 남긴다
   request     String?
+  /// 돌려주기 — 상담원이 다른 직원에게 넘긴 곳(이름 · 번호)과 시각
+  transferTo    String?   @map("transfer_to")
+  transferredAt DateTime? @map("transferred_at") @db.Timestamptz(6)
 
   @@index([status, receivedAt])
   @@index([agentEmpId, status])
@@ -2291,6 +2294,18 @@ model CsSmsTemplate {
 
   @@index([shared, sortOrder])
   @@map("cs_sms_template")
+}
+
+/// 돌려주기 연락처 — 상담원이 통화를 넘길 사무실 직원·부서 번호(상담 관리자가 관리)
+model CsTransferTarget {
+  id        String   @id @default(uuid()) @db.Uuid
+  label     String // 이름·부서 — 예: 영업팀 홍길동
+  number    String // 숫자만(070·지역번호·휴대폰)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([sortOrder])
+  @@map("cs_transfer_target")
 }
 
 /// 상담 메모 프리셋 — 상담 화면의 상담 메모에 불러 쓰는 틀(상담 관리자가 관리)
