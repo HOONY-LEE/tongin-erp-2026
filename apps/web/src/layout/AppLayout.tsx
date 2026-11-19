@@ -336,74 +336,77 @@ export default function AppLayout() {
               </div>
             }
             header={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                {/* 색 있는 통인 호랑이 로고만(배경 상자 없이). 흰색은 /brand/tongin-logo-white.png */}
-                {collapsed ? (
-                  // 접힌 사이드바 — 로고 자리에 펴기 '>' 버튼
-                  <button
-                    type="button"
-                    className={styles.sideToggle}
-                    title="사이드바 펴기"
-                    aria-label="사이드바 펴기"
-                    onClick={() => setCol(false)}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                ) : (
-                  <img
-                    src="/brand/tongin-logo-color.png"
-                    alt="통인익스프레스"
-                    width={22}
-                    height={22}
-                    style={{
-                      display: 'block',
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                {/* 한국AI통신 'KAT | 한국AI통신'처럼 — 굵은 이름 | 작은 부제 */}
-                {!collapsed && (
-                  <span
-                    aria-label={PRODUCT_NAME}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
-                  >
-                    <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
-                      통인
-                    </span>
-                    <span
-                      aria-hidden
+              // 머리 = 로고 줄(옆 탭 머리와 같은 높이) + 검색 — 메뉴 스크롤과 따로
+              <div className={styles.sideHead}>
+                <div className={styles.sideBrand}>
+                  {/* 색 있는 통인 호랑이 로고만(배경 상자 없이). 흰색은 /brand/tongin-logo-white.png */}
+                  {collapsed ? (
+                    // 접힌 사이드바 — 로고 자리에 펴기 '>' 버튼
+                    <button
+                      type="button"
+                      className={styles.sideToggle}
+                      title="사이드바 펴기"
+                      aria-label="사이드바 펴기"
+                      onClick={() => setCol(false)}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  ) : (
+                    <img
+                      src="/brand/tongin-logo-color.png"
+                      alt="통인익스프레스"
+                      width={22}
+                      height={22}
                       style={{
-                        width: 1,
-                        height: 14,
-                        background: 'var(--ark-color-border-strong, #c7c7cc)',
+                        display: 'block',
+                        flexShrink: 0,
                       }}
                     />
-                    <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
-                      Works AI
+                  )}
+                  {/* 한국AI통신 'KAT | 한국AI통신'처럼 — 굵은 이름 | 작은 부제 */}
+                  {!collapsed && (
+                    <span
+                      aria-label={PRODUCT_NAME}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
+                    >
+                      <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
+                        통인
+                      </span>
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 1,
+                          height: 14,
+                          background: 'var(--ark-color-border-strong, #c7c7cc)',
+                        }}
+                      />
+                      <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
+                        Works AI
+                      </span>
                     </span>
-                  </span>
-                )}
-                {/* 사이드바 접기 — 머리 오른쪽 끝 '<' (접힌 상태에서는 로고를 누르면 편다) */}
-                {!collapsed && (
-                  <button
-                    type="button"
-                    className={styles.sideToggle}
-                    title="사이드바 접기"
-                    aria-label="사이드바 접기"
-                    onClick={() => setCol(true)}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                )}
+                  )}
+                  {/* 사이드바 접기 — 머리 오른쪽 끝 '<' (접힌 상태에서는 로고를 누르면 편다) */}
+                  {!collapsed && (
+                    <button
+                      type="button"
+                      className={styles.sideToggle}
+                      title="사이드바 접기"
+                      aria-label="사이드바 접기"
+                      onClick={() => setCol(true)}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                  )}
+                </div>
+                <SidebarSearch
+                  items={searchItems}
+                  collapsed={collapsed}
+                  onExpand={() => setCol(false)}
+                  onOpen={(to) => navigate(to)}
+                />
               </div>
             }
           >
-            <SidebarSearch
-              items={searchItems}
-              collapsed={collapsed}
-              onExpand={() => setCol(false)}
-              onOpen={(to) => navigate(to)}
-            />
             {visibleGroups.map((g, gi) => (
               <SidebarGroup
                 // 펼침 기본값은 처음 그릴 때만 먹는다 — 메뉴 구성이 바뀌면(계정 전환·편집) 다시 그린다
