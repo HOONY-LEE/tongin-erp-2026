@@ -1939,3 +1939,61 @@ textarea.memoBox {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
+
+/* 상담 콜 목록 — 상태·상담원 칩, 접수 링크 */
+.stChip,
+.agentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-subtle, #f4f4f5);
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 500;
+  white-space: nowrap;
+}
+.st_OPEN {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.st_OUTCALL {
+  background: #fef3c7;
+  color: #b45309;
+}
+.st_DONE {
+  background: #dcfce7;
+  color: #15803d;
+}
+.st_CANCELED {
+  background: #ececef;
+  color: #6e6e73;
+}
+.agentChip {
+  background: color-mix(in srgb, #2563eb 9%, var(--ark-color-bg));
+  color: #1d4ed8;
+}
+.leadLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--ark-color-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.leadLink svg {
+  color: var(--ark-color-text-secondary);
+}
+.leadLink:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.leadLink:hover svg {
+  color: #2563eb;
+}

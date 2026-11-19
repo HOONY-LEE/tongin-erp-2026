@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, UserRound } from 'lucide-react';
 import { DateFilter, type DateRange } from './DateFilter';
 import { api, ApiError } from '../../lib/api';
 import { DataTable, SegmentedControl, useToast, type Column, type Row } from '../../components/ui';
@@ -65,6 +67,7 @@ export function CallList({
   head?: ReactNode;
 }) {
   const toast = useToast();
+  const navigate = useNavigate();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,21 +100,6 @@ export function CallList({
   const columns: Column[] = [
     { title: '콜ID', render: (r) => shortId(r.id as string), width: 84 },
     {
-      title: '상태',
-      render: (r) => {
-        const st = r.status as string;
-        // 아직 마무리(상담 종료·접수)하지 않은 상담은 눈에 띄게
-        const open = st === 'ASSIGNED' || st === 'CALLBACK';
-        return (
-          <span className={`${styles.callState} ${open ? styles.callOpen : ''}`}>
-            {open ? '마무리 전' : (STATUS_LABEL[st] ?? st)}
-          </span>
-        );
-      },
-      width: 88,
-      mask: false,
-    },
-    {
       title: '고객명',
       dataIndex: 'customerName',
       render: (r) => (r.customerName as string | null) ?? '새 번호',
@@ -126,8 +114,17 @@ export function CallList({
     {
       title: '상담원',
       dataIndex: 'agentName',
-      render: (r) => (r.agentName as string | null) ?? '-',
-      width: 84,
+      render: (r) =>
+        r.agentName ? (
+          <span className={styles.agentChip}>
+            <UserRound size={12} />
+            {r.agentName as string}
+          </span>
+        ) : (
+          <span className={styles.callState}>-</span>
+        ),
+      width: 100,
+      mask: false,
     },
     {
       title: '통화시각',
@@ -141,7 +138,47 @@ export function CallList({
       render: (r) => dur(r.durationSec as number | null),
       width: 84,
     },
-    { title: '접수', dataIndex: 'leadNo', flex: 1, minWidth: 150 },
+    {
+      title: '접수',
+      dataIndex: 'leadNo',
+      // 누르면 그 접수 상세로(행 클릭 = 상담 화면과 따로)
+      render: (r) =>
+        r.leadId ? (
+          <button
+            type="button"
+            className={styles.leadLink}
+            title="접수 상세 열기"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/leads/${r.leadId as string}`);
+            }}
+          >
+            <FileText size={13} />
+            {(r.leadNo as string | null) ?? '접수'}
+          </button>
+        ) : (
+          <span className={styles.callState}>-</span>
+        ),
+      flex: 1,
+      minWidth: 140,
+      mask: false,
+    },
+    {
+      title: '상태',
+      dataIndex: 'status',
+      render: (r) => {
+        const st = r.status as string;
+        // 아직 마무리(상담 종료·접수)하지 않은 상담은 '마무리 전'
+        const open = st === 'ASSIGNED' || st === 'CALLBACK';
+        return (
+          <span className={`${styles.stChip} ${styles[`st_${open ? 'OPEN' : st}`] ?? ''}`}>
+            {open ? '마무리 전' : (STATUS_LABEL[st] ?? st)}
+          </span>
+        );
+      },
+      width: 96,
+      mask: false,
+    },
   ];
 
   return (
