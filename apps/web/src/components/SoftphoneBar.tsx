@@ -130,7 +130,6 @@ export function SoftphoneBar() {
             <p className={styles.inWho}>
               <span className={`${styles.custTag} ${styles.custOld}`}>기존 고객</span>
               <b>{caller.name}</b>
-              {caller.leads ? ` · 이전 접수 ${caller.leads}건` : ''}
             </p>
           ) : (
             <p className={styles.inWho}>
@@ -180,9 +179,6 @@ export function SoftphoneBar() {
           <span className={styles.num}>{who}</span>
           {custTag}
           {caller?.name && <span>{caller.name}</span>}
-          {caller?.existing && caller.leads > 0 && (
-            <span className={styles.dim}>· 이전 접수 {caller.leads}건</span>
-          )}
         </span>
         {call.audioIssue === 'no-media' && (
           <small className={styles.warn}>

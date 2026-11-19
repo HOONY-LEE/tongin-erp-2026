@@ -71,7 +71,6 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
       </button>
       {open && (
         <div className={styles.xfer} role="dialog" aria-label="돌려주기">
-          <b className={styles.xferHead}>누구에게 돌려줄까요?</b>
           <Input
             autoFocus
             value={q}
@@ -110,12 +109,13 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
                 onClick={() => setSel(i)}
                 onDoubleClick={() => void go()}
               >
-                <span>
-                  {t.label}
-                  {t.dept && <em> {t.dept}</em>}
-                  {t.extNo && <em> · 내선 {t.extNo}</em>}
+                <span className={styles.xferWho}>
+                  <b>{t.label}</b>
+                  {(t.dept || t.extNo) && (
+                    <em>{[t.dept, t.extNo && `내선 ${t.extNo}`].filter(Boolean).join(' · ')}</em>
+                  )}
                 </span>
-                <small>{formatPhone(t.number)}</small>
+                <span className={styles.xferNo}>{formatPhone(t.number)}</span>
               </button>
             ))}
           </div>
@@ -138,12 +138,9 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
               disabled={!target || busy}
               onClick={() => void go()}
             >
-              {busy ? '넘기는 중…' : target ? `${target.label}에게 돌려주기` : '돌려주기'}
+              <PhoneForwarded size={15} /> {busy ? '넘기는 중…' : '돌려주기'}
             </Button>
           </div>
-          <small className={styles.xferHint}>
-            상대가 받으면 내 통화는 끊깁니다. 받지 않으면 고객과 통화가 그대로 이어집니다.
-          </small>
         </div>
       )}
     </span>
