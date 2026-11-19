@@ -4,6 +4,7 @@ import {
   Phone,
   PhoneForwarded,
   Trash2,
+  PhoneIncoming,
   PhoneOutgoing,
   Settings2,
   UserRound,
@@ -295,6 +296,8 @@ export default function CallCenter() {
   }, [data, viewId, go]);
   const backToList = () => go(null);
 
+  // 다른 콜 상세의 종류(받은 콜/콜백) — 제목 옆 표시용
+  const [pageStatus, setPageStatus] = useState<Record<string, string>>({});
   // 오른쪽 아래 카드 — 통화가 이어지면 내선(돌려주기), 끝나면 아웃콜로
   const live = !!phone.call && phone.call.state !== 'ringing';
   const [sideTab, setSideTab] = useState<'outcall' | 'ext'>('outcall');
@@ -328,6 +331,12 @@ export default function CallCenter() {
   const onCall = !!phone.call && phone.call.state !== 'ringing';
   /** 목록 화면(상담 화면이 아닐 때) */
   const listView = !pendingCall && !viewId;
+  /** 상담 화면 콜의 종류(받은 콜/콜백) — 제목 옆 표시 */
+  const detailStatus = pendingCall
+    ? 'ASSIGNED'
+    : me?.call && me.call.id === viewId
+      ? me.call.status
+      : (pageStatus[viewId ?? ''] ?? null);
   /** 오늘 숫자 — 상담 콜·확인콜·해피콜 목록 위에 똑같이 */
   const statsEl = (
     <div className={styles.stats}>
@@ -368,8 +377,37 @@ export default function CallCenter() {
   return (
     <ListPage
       fit
-      title="상담 콘솔"
-      subtitle="대표번호(임시): 070-5236-9711 — 대표번호로 들어온 전화는 '상담 가능'인 상담원 PC가 함께 울리고, 받을 사람이 없으면 아웃콜로 쌓입니다. 전화를 받으면 상담 화면에서 통화하면서 바로 접수하세요."
+      // 상담 화면이면 제목이 '< 콜 ID [받은 콜]' — '<'는 콘솔 목록으로
+      title={
+        listView
+          ? '상담 콘솔'
+          : pendingCall
+            ? '새 콜'
+            : `콜 ${(viewId ?? '').slice(0, 8).toUpperCase()}`
+      }
+      breadcrumbs={
+        listView || pendingCall ? undefined : [{ label: '상담 콘솔', onClick: backToList }]
+      }
+      hideBreadcrumbs={!listView}
+      tags={
+        listView ? undefined : (
+          <span
+            className={`${styles.kindPill} ${detailStatus === 'CALLBACK' ? styles.kindOut : styles.kindIn}`}
+          >
+            {detailStatus === 'CALLBACK' ? (
+              <PhoneOutgoing size={13} />
+            ) : (
+              <PhoneIncoming size={13} />
+            )}
+            {detailStatus === 'CALLBACK' ? '콜백' : '받은 콜'}
+          </span>
+        )
+      }
+      subtitle={
+        listView
+          ? "대표번호(임시): 070-5236-9711 — 대표번호로 들어온 전화는 '상담 가능'인 상담원 PC가 함께 울리고, 받을 사람이 없으면 아웃콜로 쌓입니다. 전화를 받으면 상담 화면에서 통화하면서 바로 접수하세요."
+          : undefined
+      }
       actions={
         me && !me.isAgent ? (
           <span className={styles.agentOnly}>PC 전화·상담 가능은 고객관리부 상담원 전용입니다</span>
@@ -427,6 +465,7 @@ export default function CallCenter() {
           <CallPage
             key={viewId}
             id={viewId}
+            onStatus={(st) => setPageStatus((m) => ({ ...m, [viewId]: st }))}
             myId={me?.employeeId ?? null}
             isAdmin={isSysAdmin}
             onBack={backToList}
@@ -788,8 +827,11 @@ function CallPage({
   isAdmin,
   onBack,
   onDone,
+  onStatus,
 }: {
   id: string;
+  /** 콜 종류를 화면 제목에 알린다 */
+  onStatus?: (status: string) => void;
   myId: string | null;
   isAdmin: boolean;
   onBack: () => void;
@@ -803,7 +845,9 @@ function CallPage({
   } | null>(null);
   const load = useCallback(async () => {
     try {
-      setD(await api(`/cs-calls/${id}`));
+      const r = await api<NonNullable<typeof d>>(`/cs-calls/${id}`);
+      setD(r);
+      onStatus?.(r.call.status);
     } catch (e) {
       toast({
         type: 'error',

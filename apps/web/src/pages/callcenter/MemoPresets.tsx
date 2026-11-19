@@ -48,6 +48,9 @@ export function MemoPresetPicker({
   const [ask, setAsk] = useState<MemoPreset | null>(null);
   const [manage, setManage] = useState(false);
   const [applied, setApplied] = useState<string | null>(null);
+  // 아무것도 안 골랐고 메모가 비어 있으면 '기본'(내용 없는 프리셋)이 골라진 것으로
+  const active =
+    applied ?? (current.trim() ? null : (presets.find((p) => !p.body.trim())?.id ?? null));
 
   const apply = (p: MemoPreset) => {
     setApplied(p.id);
@@ -64,7 +67,7 @@ export function MemoPresetPicker({
         <button
           key={p.id}
           type="button"
-          className={`${styles.presetChip} ${applied === p.id ? styles.presetChipOn : ''}`}
+          className={`${styles.presetChip} ${active === p.id ? styles.presetChipOn : ''}`}
           title={p.body.trim() ? `${p.title} 틀 넣기` : '비우고 직접 적기'}
           onClick={() => pick(p)}
         >

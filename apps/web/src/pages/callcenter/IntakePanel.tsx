@@ -1,17 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Headphones,
-  Phone,
-  PhoneIncoming,
-  PhoneOutgoing,
-  RotateCcw,
-  MessageSquare,
-  PhoneForwarded,
-} from 'lucide-react';
+import { Phone, RotateCcw, MessageSquare, PhoneForwarded } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
-import { PARTNER_TYPE_LABEL, type PartnerType } from '@tongin/shared';
 import { useAuth } from '../../auth/AuthContext';
 import { api, ApiError, cachedApi } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
@@ -104,16 +94,10 @@ interface PartnerOption {
 /** 본사(통인익스프레스) 조직 코드 — 상담 콘솔 접수의 기본 담당 */
 const HQ_CODE = 'CO-MOVING';
 
-const hhmm = (iso: string) =>
-  new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 /** 배정 후 지난 시간 — '방금' · '12분' · '2시간 19분' */
 const elapsed = (ms: number) => {
   const m = Math.max(0, Math.floor(ms / 60_000));
   return m < 1 ? '방금' : m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간 ${m % 60}분`;
-};
-const mmss = (ms: number) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초`;
 };
 
 /**
@@ -125,7 +109,6 @@ export function IntakePanel({
   call,
   pending = false,
   onDone,
-  onBack,
   onSaved,
   readOnly,
 }: {
@@ -135,7 +118,7 @@ export function IntakePanel({
   /** 서버가 콜을 만들기 전(받기 직후 잠깐) — 입력은 되고 접수 등록·상담 종료만 잠시 막는다 */
   pending?: boolean;
   onDone: () => Promise<void> | void;
-  /** 목록으로 — 상담을 마무리하지 않고 나가도 콜은 그대로 남는다 */
+  /** (예전) 목록으로 — 지금은 화면 제목 '<'가 맡는다 */
   onBack?: () => void;
   /** 접수 등록처럼 콜은 그대로 두고 내용만 바뀌었을 때 — 상담 화면에 머문다 */
   onSaved?: () => Promise<void> | void;
@@ -244,7 +227,6 @@ export function IntakePanel({
   }, []);
 
   const partner = partners.find((p) => p.id === v.partnerId) ?? null;
-  const exclusive = partner?.type === 'EXCLUSIVE';
   const startedAt = call.assignedAt ?? call.receivedAt;
   // PC 전화로 통화 중일 때만 '통화시간'(실제 통화). 아니면 '배정 후' 지난 시간
   const onPcCall = phone.call?.state === 'active' && !!phone.call.startedAt;
@@ -358,32 +340,31 @@ export function IntakePanel({
 
   return (
     <div className={styles.intake}>
-      {/* 머리 — 제목·콜 종류 · 오른쪽 위 [상담 종료] [접수 등록] */}
+      {/* 머리 — 왼쪽 들어온 번호·돌려준 곳(끝난 콜이면 상태·상담원·시각), 오른쪽 [전화하기] [문자] [상담 종료] [접수 등록] */}
       <div className={styles.intakeHead}>
-        {onBack && (
-          <button type="button" className={styles.backBtn} onClick={onBack} aria-label="목록으로">
-            <ArrowLeft size={16} />
-          </button>
-        )}
-        <h3 className={styles.cardTitle}>
-          <Headphones size={15} />{' '}
-          {call.id ? `콜 ${call.id.slice(0, 8).toUpperCase()}` : '콜 만드는 중…'}
-        </h3>
-        <span
-          className={`${styles.kindPill} ${call.status === 'CALLBACK' ? styles.kindOut : styles.kindIn}`}
-        >
-          {call.status === 'CALLBACK' ? <PhoneOutgoing size={13} /> : <PhoneIncoming size={13} />}
-          {call.status === 'CALLBACK' ? '콜백' : '받은 콜'}
-        </span>
         <span className={styles.channel}>{call.channel ?? '대표번호'}</span>
         {call.transferTo && (
           <span className={styles.transferTag} title="이 통화를 돌려준 곳">
             <PhoneForwarded size={12} /> {call.transferTo}
           </span>
         )}
+        {readOnly && (
+          <>
+            <span className={styles.statePill}>{CALL_STATUS[call.status] ?? call.status}</span>
+            <span className={styles.headInfo}>
+              {readOnly.agentName ?? '-'} ·{' '}
+              {new Date(startedAt).toLocaleString('ko-KR', {
+                month: 'numeric',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}{' '}
+              · 통화 {durText(readOnly.durationSec)}
+            </span>
+          </>
+        )}
         {readOnly ? (
           <span className={styles.headActions}>
-            <span className={styles.statePill}>{CALL_STATUS[call.status] ?? call.status}</span>
             {call.leadId ? (
               <button
                 type="button"
@@ -403,7 +384,7 @@ export function IntakePanel({
             )}
             {can('LEAD.CREATE') && (
               <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
-                <MessageSquare size={14} /> SMS
+                <MessageSquare size={14} /> 문자
               </Button>
             )}
           </span>
@@ -429,11 +410,11 @@ export function IntakePanel({
             )}
             {!pending && (
               <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
-                <MessageSquare size={14} /> SMS
+                <MessageSquare size={14} /> 문자
               </Button>
             )}
             <Button
-              variant="outline"
+              variant="danger"
               size="sm"
               disabled={busy || pending}
               onClick={() => setEndOpen(true)}
@@ -475,44 +456,9 @@ export function IntakePanel({
         </div>
       )}
 
-      {/* 통화 정보 — 자동 */}
-      <dl className={styles.callInfo}>
-        <div>
-          <dt>전화번호</dt>
-          <dd className={styles.phone}>{formatPhone(call.phone)}</dd>
-        </div>
-        <div>
-          <dt>상담원</dt>
-          <dd>{readOnly ? (readOnly.agentName ?? '-') : (user?.employeeName ?? '-')}</dd>
-        </div>
-        <div>
-          <dt>통화시각</dt>
-          <dd>
-            {readOnly
-              ? new Date(startedAt).toLocaleString('ko-KR', {
-                  month: 'numeric',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : hhmm(startedAt)}
-          </dd>
-        </div>
-        <div>
-          <dt>{readOnly || onPcCall ? '통화시간' : '배정 후'}</dt>
-          <dd>
-            {readOnly ? durText(readOnly.durationSec) : onPcCall ? mmss(talking) : elapsed(talking)}
-          </dd>
-        </div>
-      </dl>
       {readOnly && call.id && <Recording callId={call.id} available={readOnly.hasRecording} />}
       {/* 접수 입력 — 읽기 모드면 통째로 잠근다 */}
-      <fieldset
-        className={`${styles.form} ${styles.formSet}`}
-        disabled={!!readOnly}
-        // 마지막 줄(요청사항·상담 메모)이 남는 높이를 다 쓴다 — 제휴·전속 안내가 있으면 한 줄 더
-        style={{ gridTemplateRows: `repeat(${partner ? 4 : 3}, auto) minmax(0, 1fr)` }}
-      >
+      <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
         <label className={styles.field}>
           <span>
             고객명 <i>*</i>
@@ -524,21 +470,11 @@ export function IntakePanel({
           />
         </label>
         <label className={styles.field}>
-          <span>이사 희망일</span>
-          <Input
-            type="date"
-            value={v.moveDate}
-            onChange={(e) => setField('moveDate', e.target.value)}
-          />
+          <span>전화번호</span>
+          {/* 콜의 번호 — 고칠 수 없다 */}
+          <Input value={formatPhone(call.phone)} readOnly className={styles.readOnlyInput} />
         </label>
-        {/* 주소 — 출발지 왼쪽, 도착지 오른쪽 */}
-        <div className={styles.field}>
-          <AddressField addrPrefix="from" label="출발지" values={v} setField={setField} />
-        </div>
-        <div className={styles.field}>
-          <AddressField addrPrefix="to" label="도착지" values={v} setField={setField} />
-        </div>
-        {/* 상품 종류 — 일반이면 일반 상품, 제휴·전속이면 그 업체(업체 자체가 상품) · 같은 줄에 담당 지점 */}
+        {/* 상품 종류 — 일반이면 일반 상품, 제휴·전속이면 그 업체(업체 자체가 상품) */}
         <div className={styles.field}>
           <span>
             상품 종류 <i>*</i>
@@ -581,28 +517,21 @@ export function IntakePanel({
           </div>
         </div>
         <label className={styles.field}>
-          <span>담당 지점</span>
-          <Select
-            value={v.orgUnitId || defaultOrg}
-            onValueChange={(x) => setField('orgUnitId', x)}
-            options={orgs}
-            placeholder="본사"
+          <span>서비스 요청일</span>
+          <Input
+            type="date"
+            value={v.moveDate}
+            onChange={(e) => setField('moveDate', e.target.value)}
           />
         </label>
-        {partner && (
-          <div className={`${styles.full} ${styles.partnerNote}`}>
-            <b>
-              [{PARTNER_TYPE_LABEL[partner.type as PartnerType] ?? partner.type}] {partner.name}
-            </b>
-            {partner.benefit && <p>{partner.benefit}</p>}
-            <p className={styles.muted}>
-              {exclusive
-                ? '전속 이사는 본사에서만 진행합니다(지점·가맹점은 고를 수 없습니다).'
-                : '제휴 이사는 가맹점까지 배정할 수 있습니다.'}
-            </p>
-          </div>
-        )}
-        {/* 왼쪽 고객 요청사항(접수에도 남음) · 오른쪽 상담 메모(콜에만) — 남는 높이를 다 쓴다 */}
+        {/* 주소 — 출발지 왼쪽, 도착지 오른쪽 */}
+        <div className={styles.field}>
+          <AddressField addrPrefix="from" label="출발지" values={v} setField={setField} />
+        </div>
+        <div className={styles.field}>
+          <AddressField addrPrefix="to" label="도착지" values={v} setField={setField} />
+        </div>
+        {/* 왼쪽 고객 요청사항(접수에도 남음) · 오른쪽 상담 메모(콜에만, 머리에 프리셋 칩) — 남는 높이를 다 쓴다 */}
         <div className={`${styles.full} ${styles.memoRow}`}>
           <label className={styles.field}>
             <span>고객 요청사항</span>
@@ -615,8 +544,9 @@ export function IntakePanel({
           </label>
           <div className={styles.field}>
             <span className={styles.memoHead}>
-              <label htmlFor="cs-memo">상담 메모</label>
-              {!readOnly && (
+              {readOnly ? (
+                <label htmlFor="cs-memo">상담 메모</label>
+              ) : (
                 <MemoPresetPicker current={v.memo} onApply={(b) => setField('memo', b)} />
               )}
             </span>
@@ -624,7 +554,8 @@ export function IntakePanel({
               id="cs-memo"
               className={styles.memoBox}
               value={v.memo}
-              placeholder="상담 내용 — 예: 견적 비교 중, 다음 주 화요일 다시 연락"
+              aria-label="상담 메모"
+              placeholder="상담 메모 — 예: 견적 비교 중, 다음 주 화요일 다시 연락"
               onChange={(e) => setField('memo', e.target.value)}
             />
           </div>
