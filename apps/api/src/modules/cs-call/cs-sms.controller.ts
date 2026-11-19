@@ -1,5 +1,14 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import type { AuthPrincipal } from '@tongin/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
@@ -16,6 +25,12 @@ class SendDto {
   @IsString() @MinLength(1) @MaxLength(2000) body!: string;
   @IsOptional() @IsString() @MaxLength(40) title?: string;
   @IsOptional() @IsUUID() callId?: string;
+}
+
+class HistoryQuery {
+  @IsOptional() @IsIn(['mine', 'all']) scope?: 'mine' | 'all';
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) from?: string;
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) to?: string;
 }
 
 /** 상담 콘솔 문자 — 템플릿과 보내기 */
@@ -45,6 +60,13 @@ export class CsSmsController {
   @RequirePermissions('LEAD.CREATE')
   status() {
     return this.svc.status();
+  }
+
+  /** 보낸 문자 내역 — 기본은 내가 보낸 것. '전체'는 상담 콘솔 전체 보기 권한 */
+  @Get('history')
+  @RequirePermissions('LEAD.CREATE')
+  history(@CurrentUser() user: AuthPrincipal, @Query() q: HistoryQuery) {
+    return this.svc.history(user, q);
   }
 
   @Post('send')

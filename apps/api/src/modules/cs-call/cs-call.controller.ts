@@ -166,8 +166,10 @@ export class CsCallController {
   @Get()
   @RequirePermissions('LEAD.CREATE')
   list(@CurrentUser() user: AuthPrincipal, @Query() q: ListQuery) {
+    // '전체 전화'는 상담 콘솔 전체 보기 권한(또는 전체 권한)이 있을 때만
+    const all = user.permissions.includes('*') || user.permissions.includes('CS_CALL.ALL');
     return this.calls.list(user, {
-      scope: q.scope ?? 'mine',
+      scope: all && q.scope === 'all' ? 'all' : 'mine',
       q: q.q,
       page: q.page,
       limit: q.limit,

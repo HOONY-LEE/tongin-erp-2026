@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, PhoneOff, Check } from 'lucide-react';
+import { Phone, PhoneOff, Check, FileText, UserRound } from 'lucide-react';
+import { Phone as PhoneCell } from 'softium-ui/table';
 import { api, ApiError } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import { dial, enablePhone, getPhoneState, usePhone } from '../../lib/softphone';
@@ -124,33 +125,72 @@ export function FollowupList({
 
   const columns: Column[] = [
     {
-      title: '결과',
-      width: 92,
+      title: '고객명',
+      dataIndex: 'customerName',
+      render: (r) => (r.customerName as string | null) ?? '-',
+      width: 100,
+    },
+    {
+      title: '전화번호',
+      dataIndex: 'phone',
+      render: (r) => (r.phone ? <PhoneCell value={r.phone as string} link={false} /> : '-'),
+      width: 140,
+    },
+    {
+      title: '담당자',
+      dataIndex: 'ownerName',
+      render: (r) =>
+        r.ownerName ? (
+          <span className={styles.agentChip}>
+            <UserRound size={12} />
+            {r.ownerName as string}
+          </span>
+        ) : (
+          <span className={styles.callState}>-</span>
+        ),
+      width: 112,
+      mask: false,
+    },
+    { title: '담당 지점', dataIndex: 'orgName', width: 120 },
+    { title: '제휴·전속', dataIndex: 'partnerName', width: 120 },
+    { title: '메모', dataIndex: 'memo', flex: 1, minWidth: 140 },
+    {
+      title: '접수',
+      dataIndex: 'leadNo',
+      // 누르면 그 접수 상세로(행 클릭 = 통화 창과 따로)
+      render: (r) => (
+        <button
+          type="button"
+          className={styles.leadLink}
+          title="접수 상세 열기"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/leads/${r.leadId as string}`);
+          }}
+        >
+          <FileText size={13} />
+          {r.leadNo as string}
+        </button>
+      ),
+      width: 150,
+      mask: false,
+    },
+    {
+      title: '상태',
+      dataIndex: 'result',
       render: (r) => {
         const x = r as unknown as FollowupRow;
+        const cls = x.result === 'DONE' ? styles.st_DONE : x.result ? styles.st_OPEN : '';
         return (
-          <span
-            className={`${styles.fuState} ${
-              x.result === 'DONE' ? styles.fuDone : x.result ? styles.fuMiss : ''
-            }`}
-          >
+          <span className={`${styles.stChip} ${cls}`}>
             {x.result ? RESULT[x.result] : '대기'}
-            {x.tries > 1 ? ` ${x.tries}` : ''}
+            {x.tries > 1 ? ` ${x.tries}회` : ''}
           </span>
         );
       },
+      width: 100,
+      mask: false,
     },
-    { title: '고객명', dataIndex: 'customerName', width: 90 },
-    {
-      title: '전화번호',
-      width: 130,
-      render: (r) => (r.phone ? formatPhone(r.phone as string) : '-'),
-    },
-    { title: '담당 지점', dataIndex: 'orgName', width: 120 },
-    { title: '담당자', dataIndex: 'ownerName', width: 80 },
-    { title: '제휴·전속', dataIndex: 'partnerName', width: 120 },
-    { title: '메모', dataIndex: 'memo', flex: 1, minWidth: 140 },
-    { title: '접수', dataIndex: 'leadNo', width: 130 },
   ];
 
   const L = LABEL[kind];

@@ -26,6 +26,7 @@ export default {
     workOrders: 'Work Orders',
     customers: 'Customers',
     callcenter: 'Call Console',
+    smsHistory: 'SMS History',
     alliances: 'Alliances',
     products: 'Products',
     cbmItems: 'CBM Items',
