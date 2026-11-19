@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Plus, Settings2, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Settings2, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
 import { Button, ConfirmModal, Input, Modal, Textarea, useToast } from '../../components/ui';
@@ -33,8 +33,8 @@ function usePresets() {
 }
 
 /**
- * 상담 메모 머리의 [프리셋 ▾] — 고르면 상담 메모를 그 틀로 바꾼다(적어 둔 메모가 있으면 묻고).
- * 상담 관리자(상담 콘솔 전체 보기 권한)에게는 [프리셋 관리]도.
+ * 상담 메모 머리의 프리셋 칩 — 누르면 상담 메모를 그 틀로 바꾼다(적어 둔 메모가 있으면 묻고).
+ * 상담 관리자(상담 콘솔 전체 보기 권한)에게는 끝에 [⚙] 프리셋 관리.
  */
 export function MemoPresetPicker({
   current,
@@ -45,63 +45,42 @@ export function MemoPresetPicker({
 }) {
   const { can } = useAuth();
   const presets = usePresets();
-  const [open, setOpen] = useState(false);
   const [ask, setAsk] = useState<MemoPreset | null>(null);
   const [manage, setManage] = useState(false);
-  const box = useRef<HTMLSpanElement>(null);
+  const [applied, setApplied] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const down = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    window.addEventListener('pointerdown', down);
-    window.addEventListener('keydown', key);
-    return () => {
-      window.removeEventListener('pointerdown', down);
-      window.removeEventListener('keydown', key);
-    };
-  }, [open]);
-
+  const apply = (p: MemoPreset) => {
+    setApplied(p.id);
+    onApply(p.body);
+  };
   const pick = (p: MemoPreset) => {
-    setOpen(false);
     if (current.trim() && current.trim() !== p.body.trim()) setAsk(p);
-    else onApply(p.body);
+    else apply(p);
   };
 
   return (
-    <span className={styles.presetWrap} ref={box}>
-      <button
-        type="button"
-        className={styles.presetBtn}
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        프리셋 <ChevronDown size={13} />
-      </button>
-      {open && (
-        <div className={styles.presetMenu} role="menu">
-          {presets.map((p) => (
-            <button key={p.id} type="button" role="menuitem" onClick={() => pick(p)}>
-              {p.title}
-              {!p.body.trim() && <small>직접 입력</small>}
-            </button>
-          ))}
-          {can('CS_CALL.ALL') && (
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.presetManage}
-              onClick={() => {
-                setOpen(false);
-                setManage(true);
-              }}
-            >
-              <Settings2 size={13} /> 프리셋 관리
-            </button>
-          )}
-        </div>
+    <span className={styles.presetChips} role="group" aria-label="상담 메모 프리셋">
+      {presets.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          className={`${styles.presetChip} ${applied === p.id ? styles.presetChipOn : ''}`}
+          title={p.body.trim() ? `${p.title} 틀 넣기` : '비우고 직접 적기'}
+          onClick={() => pick(p)}
+        >
+          {p.title}
+        </button>
+      ))}
+      {can('CS_CALL.ALL') && (
+        <button
+          type="button"
+          className={`${styles.presetChip} ${styles.presetChipGear}`}
+          aria-label="프리셋 관리"
+          title="프리셋 관리"
+          onClick={() => setManage(true)}
+        >
+          <Settings2 size={12} />
+        </button>
       )}
       <ConfirmModal
         open={!!ask}
@@ -109,7 +88,7 @@ export function MemoPresetPicker({
         confirmLabel="바꾸기"
         onClose={() => setAsk(null)}
         onConfirm={() => {
-          if (ask) onApply(ask.body);
+          if (ask) apply(ask);
           setAsk(null);
         }}
       >

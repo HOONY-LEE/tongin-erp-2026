@@ -1918,16 +1918,22 @@ textarea.memoBox {
 .memoRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 24px;
+  /* 머리(이름·프리셋 칩) 줄 높이를 두 칸이 같이 써서 입력칸 위쪽이 맞는다 */
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px 24px;
   min-height: 0;
 }
 .memoRow > .field {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  gap: inherit;
   min-height: 0;
 }
+.memoRow > .field > :first-child {
+  align-self: end;
+}
 .memoRow > .field > :last-child {
-  flex: 1 1 auto;
   min-height: 56px;
 }
 
@@ -2017,8 +2023,9 @@ textarea.memoBox {
 /* 상담 메모 프리셋 — 상담 메모 머리 오른쪽 [프리셋 ▾] */
 .memoHead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px 8px;
   min-height: 20px;
 }
 .presetWrap {
@@ -2296,4 +2303,46 @@ textarea.memoBox {
 .agentOnly {
   color: var(--ark-color-text-secondary);
   font-size: calc(12.5px * var(--font-scale, 1));
+}
+
+/* 상담 메모 프리셋 칩 — 상담 메모 머리 오른쪽(넘치면 옆으로 밀어 본다) */
+.presetChips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+.presetChip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.presetChip:hover {
+  border-color: var(--ark-color-text-secondary);
+  color: var(--ark-color-text-primary);
+}
+.presetChipOn {
+  border-color: var(--ark-color-text-primary);
+  background: var(--ark-color-text-primary);
+  color: var(--ark-color-bg);
+}
+.presetChipOn:hover {
+  color: var(--ark-color-bg);
+}
+.presetChipGear {
+  padding: 0 6px;
+}
+.memoHead > label {
+  flex: none;
 }
