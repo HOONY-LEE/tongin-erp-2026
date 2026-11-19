@@ -27,6 +27,7 @@ export default {
     customers: '고객관리',
     callcenter: '상담 콘솔',
     smsHistory: '문자 발송 내역',
+    extensions: '내선 관리',
     alliances: '제휴·전속',
     products: '상품',
     cbmItems: '품목사전',

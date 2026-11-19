@@ -2299,8 +2299,11 @@ model CsSmsTemplate {
 /// 돌려주기 연락처 — 상담원이 통화를 넘길 사무실 직원·부서 번호(상담 관리자가 관리)
 model CsTransferTarget {
   id        String   @id @default(uuid()) @db.Uuid
-  label     String // 이름·부서 — 예: 영업팀 홍길동
-  number    String // 숫자만(070·지역번호·휴대폰)
+  label     String // 이름 — 예: 홍길동 과장
+  dept      String? // 부서 — 예: 영업팀
+  extNo     String?  @map("ext_no") // 내선번호(표시용) — 예: 3001
+  number    String // 돌려줄 실제 번호(숫자만 — 070·지역번호·휴대폰)
+  memo      String? // 예: 오전만 근무
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

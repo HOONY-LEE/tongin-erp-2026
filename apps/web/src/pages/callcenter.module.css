@@ -2194,3 +2194,94 @@ textarea.memoBox {
   font-size: calc(12px * var(--font-scale, 1));
   white-space: nowrap;
 }
+
+/* 오른쪽 아래 카드 머리 — 아웃콜 / 내선 탭 */
+.paneTabs {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.tabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* 내선 목록 — 통화 중이면 [돌려주기] */
+.extWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.extList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.extList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+}
+.extList li + li {
+  border-top: 1px solid var(--ark-color-border);
+}
+.extMain {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.extMain b {
+  font-size: calc(13.5px * var(--font-scale, 1));
+}
+.extSub {
+  overflow: hidden;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.extGo {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-primary);
+  font: inherit;
+  font-size: calc(12.5px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.extGo:hover:not(:disabled) {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+.extGo:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.extArm {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+.extArm:hover:not(:disabled) {
+  color: #fff;
+}
+.extEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px 0;
+  color: var(--ark-color-text-secondary);
+  font-size: 13px;
+}
+.extEmpty p {
+  margin: 0;
+}

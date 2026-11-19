@@ -27,6 +27,7 @@ export default {
     customers: '客户管理',
     callcenter: '呼叫中心',
     smsHistory: '短信记录',
+    extensions: '分机管理',
     alliances: '合作·专属',
     products: '商品',
     cbmItems: 'CBM 物品',
