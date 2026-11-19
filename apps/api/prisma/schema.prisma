@@ -827,7 +827,9 @@ model WorkPhoto {
   size             Int
   width            Int?
   height           Int?
-  bytes            Bytes
+  // 파일 내용 — S3를 쓰면 비우고 storageKey(S3 키, 내용 해시)로 둔다
+  bytes            Bytes?
+  storageKey       String?   @map("storage_key")
   uploadedByUserId String    @map("uploaded_by_user_id") @db.Uuid
   uploadedBy       AppUser   @relation(fields: [uploadedByUserId], references: [id])
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1164,7 +1166,9 @@ model AiFile {
   name           String
   mediaType      String          @map("media_type")
   size           Int
-  bytes          Bytes
+  // 파일 내용 — S3를 쓰면 비우고 storageKey(S3 키, 내용 해시)로 둔다
+  bytes          Bytes?
+  storageKey     String?         @map("storage_key")
   createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([conversationId])
@@ -1258,7 +1262,9 @@ model AgentReferenceFile {
   name        String
   mediaType   String          @map("media_type")
   size        Int
-  bytes       Bytes
+  // 파일 내용 — S3를 쓰면 비우고 storageKey(S3 키, 내용 해시)로 둔다
+  bytes       Bytes?
+  storageKey  String?         @map("storage_key")
   // 서버가 읽어 낸 구조(시트·칸 위치·표 머리글) — AI가 양식을 이해하는 데 쓴다
   structure   Json            @default("{}")
   createdBy   String?         @map("created_by") @db.Uuid
@@ -1693,7 +1699,9 @@ model ApprovalAttachment {
   fileName         String       @map("file_name")
   mediaType        String       @map("media_type")
   size             Int
-  bytes            Bytes
+  // 파일 내용 — S3를 쓰면 비우고 storageKey(S3 키, 내용 해시)로 둔다
+  bytes            Bytes?
+  storageKey       String?      @map("storage_key")
   createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([docId])
@@ -1921,9 +1929,11 @@ model DriveItem {
 
 // 파일 내용 — 목록을 읽을 때 같이 읽히지 않게 따로 둔다
 model DriveContent {
-  itemId String    @id @map("item_id") @db.Uuid
-  item   DriveItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  bytes  Bytes
+  itemId     String    @id @map("item_id") @db.Uuid
+  item       DriveItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  // 파일 내용 — S3를 쓰면 비우고 storageKey(S3 키, 내용 해시)로 둔다
+  bytes      Bytes?
+  storageKey String?   @map("storage_key")
 
   @@map("drive_content")
 }
@@ -2179,26 +2189,26 @@ model KnowledgeRelation {
 
 /// 고객관리부(콜센터) 상담 콜 — 대표번호로 들어온 전화. 빈 상담원에게 자동 배분하고, 모두 통화 중이면 아웃콜(콜백 대기)로 남긴다
 model CsCall {
-  id          String    @id @default(uuid()) @db.Uuid
-  phone       String // 숫자만
-  status      String    @default("OUTCALL") // ASSIGNED 상담 중 | OUTCALL 콜백 대기 | CALLBACK 콜백 중 | DONE 끝 | CANCELED 취소
-  agentEmpId  String?   @map("agent_emp_id") @db.Uuid
-  customerId  String?   @map("customer_id") @db.Uuid // 같은 번호의 기존 고객
-  leadId      String?   @map("lead_id") @db.Uuid // 이 콜로 등록한 접수
-  channel     String? // 들어온 번호·채널(대표번호 등)
-  memo        String?
-  attempts    Int       @default(0) // 콜백 시도 횟수
-  receivedAt  DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
-  assignedAt  DateTime? @map("assigned_at") @db.Timestamptz(6)
-  doneAt      DateTime? @map("done_at") @db.Timestamptz(6)
+  id            String    @id @default(uuid()) @db.Uuid
+  phone         String // 숫자만
+  status        String    @default("OUTCALL") // ASSIGNED 상담 중 | OUTCALL 콜백 대기 | CALLBACK 콜백 중 | DONE 끝 | CANCELED 취소
+  agentEmpId    String?   @map("agent_emp_id") @db.Uuid
+  customerId    String?   @map("customer_id") @db.Uuid // 같은 번호의 기존 고객
+  leadId        String?   @map("lead_id") @db.Uuid // 이 콜로 등록한 접수
+  channel       String? // 들어온 번호·채널(대표번호 등)
+  memo          String?
+  attempts      Int       @default(0) // 콜백 시도 횟수
+  receivedAt    DateTime  @default(now()) @map("received_at") @db.Timestamptz(6)
+  assignedAt    DateTime? @map("assigned_at") @db.Timestamptz(6)
+  doneAt        DateTime? @map("done_at") @db.Timestamptz(6)
   /// 한국AI통신 통화 ID(CallSid) — 통화 상태 알림·녹음 다운로드에 쓴다
-  katCallSid  String?   @unique @map("kat_call_sid")
+  katCallSid    String?   @unique @map("kat_call_sid")
   /// 통화 시간(초) — 통화 상태 알림(completed)의 Duration
-  durationSec Int?      @map("duration_sec")
+  durationSec   Int?      @map("duration_sec")
   /// 통화가 끝난 시각
-  endedAt     DateTime? @map("ended_at") @db.Timestamptz(6)
+  endedAt       DateTime? @map("ended_at") @db.Timestamptz(6)
   /// 고객 요청사항 — 접수를 등록하면 접수(customerRequest)에도 남긴다
-  request     String?
+  request       String?
   /// 돌려주기 — 상담원이 다른 직원에게 넘긴 곳(이름 · 번호)과 시각
   transferTo    String?   @map("transfer_to")
   transferredAt DateTime? @map("transferred_at") @db.Timestamptz(6)

@@ -5,6 +5,7 @@ import {
   type WorkPhotoKind,
   type WorkPhotoMeta,
 } from '@tongin/shared';
+import { FileStoreService } from '../../prisma/file-store.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkOrderService } from '../work-order/work-order.service';
 import { FieldService } from './field.service';
@@ -45,6 +46,7 @@ function sniff(buf: Buffer): string | null {
 export class WorkPhotoService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly store: FileStoreService,
     private readonly field: FieldService,
     private readonly workOrders: WorkOrderService,
   ) {}
@@ -157,7 +159,7 @@ export class WorkPhotoService {
         size: bytes.length,
         width: input.width ?? null,
         height: input.height ?? null,
-        bytes: new Uint8Array(bytes),
+        ...(await this.store.put(bytes, actual)),
         uploadedByUserId: principal.userId,
       },
       select: this.metaSelect,
@@ -185,7 +187,7 @@ export class WorkPhotoService {
   async bytes(photoId: string, principal: AuthPrincipal) {
     const p = await this.prisma.workPhoto.findUnique({
       where: { id: photoId },
-      select: { workOrderId: true, mediaType: true, bytes: true },
+      select: { workOrderId: true, mediaType: true, bytes: true, storageKey: true },
     });
     if (!p) throw new NotFoundException('사진을 찾을 수 없습니다.');
     const ok =
@@ -195,7 +197,7 @@ export class WorkPhotoService {
         () => false,
       ));
     if (!ok) throw new NotFoundException('사진을 찾을 수 없습니다.');
-    return { mediaType: p.mediaType, bytes: Buffer.from(p.bytes) };
+    return { mediaType: p.mediaType, bytes: await this.store.read(p) };
   }
 
   /** 작업 후 사진 수 — 완료할 때 "사진 없이 완료" 안내용 */

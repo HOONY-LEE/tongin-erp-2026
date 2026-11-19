@@ -22,6 +22,7 @@ import {
   type DriveSpaceKind,
   type DriveSpaceView,
 } from '@tongin/shared';
+import { FileStoreService } from '../../prisma/file-store.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /** 조직 트리를 들고 있는 시간 */
@@ -77,7 +78,10 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
   } | null = null;
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly store: FileStoreService,
+  ) {}
 
   onModuleInit() {
     // 휴지통 비우기 — 30일 지난 것. 한 시간마다
@@ -678,6 +682,7 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
     const a = await this.actor(p);
     const t = await this.target(spaceId, parentId, a);
     await this.assertQuota(t.space, bytes.length);
+    const stored = await this.store.put(bytes, mimeType);
     const item = await this.prisma.driveItem.create({
       data: {
         spaceId: t.space.id,
@@ -691,7 +696,7 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
         size: bytes.length,
         createdBy: a.userId,
         updatedBy: a.userId,
-        content: { create: { bytes: new Uint8Array(bytes) } },
+        content: { create: stored },
       },
     });
     return item.id;
@@ -732,7 +737,7 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
     return {
       name: item.name,
       mimeType: item.mimeType ?? 'application/octet-stream',
-      bytes: c.bytes,
+      bytes: await this.store.read(c),
     };
   }
 
@@ -833,7 +838,7 @@ export class DriveService implements OnModuleInit, OnModuleDestroy {
         googleFileId: item.googleFileId,
         createdBy: a.userId,
         updatedBy: a.userId,
-        ...(c ? { content: { create: { bytes: c.bytes } } } : {}),
+        ...(c ? { content: { create: this.store.copyOf(c) } } : {}),
       },
     });
     return created.id;

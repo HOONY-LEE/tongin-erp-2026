@@ -3,6 +3,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
 import { defaultModel } from '../ai/ai-models';
 import { trackClaude } from '../ai/ai-usage.service';
+import { FileStoreService } from '../prisma/file-store.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiFiles } from '../ai/ai-files.service';
 import { ToolError, type AiTool } from '../ai/ai-tool.types';
@@ -51,6 +52,7 @@ export class AgentReferenceService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly store: FileStoreService,
     private readonly files: AiFiles,
   ) {}
 
@@ -76,12 +78,13 @@ export class AgentReferenceService {
         `양식을 읽지 못했습니다: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
+    const mediaType = kind === 'xlsx' ? MEDIA_TYPES.xlsx : MEDIA_TYPES.csv;
     const f = await this.prisma.agentReferenceFile.create({
       data: {
         name: input.name.slice(0, 200),
-        mediaType: kind === 'xlsx' ? MEDIA_TYPES.xlsx : MEDIA_TYPES.csv,
+        mediaType,
         size: bytes.length,
-        bytes: new Uint8Array(bytes),
+        ...(await this.store.put(bytes, mediaType)),
         structure: structure as object,
         createdBy: principal.userId,
       },
@@ -158,7 +161,7 @@ export class AgentReferenceService {
           name: f.name,
           mediaType: f.mediaType,
           size: f.size,
-          bytes: f.bytes,
+          ...this.store.copyOf(f),
           structure: f.structure as object,
           createdBy: principal.userId,
         },
@@ -171,7 +174,7 @@ export class AgentReferenceService {
 
   async download(id: string, principal: AuthPrincipal) {
     const f = await this.load(id, principal);
-    return { name: f.name, mediaType: f.mediaType, bytes: Buffer.from(f.bytes) };
+    return { name: f.name, mediaType: f.mediaType, bytes: await this.store.read(f) };
   }
 
   /** 에이전트 노드에서 부르는 도구 — 참고 양식 그대로 파일 만들기 */
@@ -214,7 +217,7 @@ export class AgentReferenceService {
         }
         const st = tpl.structure as unknown as TemplateStructure;
         const spec = await this.plan(tpl.name, st, input);
-        const bytes = await fillTemplate(st.kind, Buffer.from(tpl.bytes), spec);
+        const bytes = await fillTemplate(st.kind, await this.store.read(tpl), spec);
         const ext = st.kind;
         const name = safeFileName(
           (String(input.fileName ?? '').trim() || spec.fileName || tpl.name).replace(
