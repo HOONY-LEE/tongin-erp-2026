@@ -446,7 +446,7 @@ export class LeadService {
     if (lead.orgUnitId === hq.id || (org?.type !== 'BRANCH' && org?.type !== 'PARTNER'))
       throw new BadRequestException('지점(가맹점)에 배정된 접수만 반려할 수 있습니다.');
     const from = lead.status as LeadStatus;
-    if (LEAD_STATUS.indexOf(from) >= LEAD_STATUS.indexOf('CONTRACTED'))
+    if (LEAD_STATUS.indexOf(from) >= LEAD_STATUS.indexOf('CONTRACT_PENDING'))
       throw new BadRequestException(
         `${LEAD_STATUS_LABEL[from]} 단계의 접수는 반려할 수 없습니다(계약 이후).`,
       );

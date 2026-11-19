@@ -27,7 +27,13 @@ import { ScopeService } from '../../scope/scope.service';
  * 통계적 신호일 뿐 부정의 증거는 아니다 — 근거 접수번호를 보고 현장 확인이 필요하다.
  */
 
-const OPEN_STATUSES = ['RECEIVED', 'CONSULT_ASSIGNED', 'CONSULT_TOSS', 'QUOTED'];
+const OPEN_STATUSES = [
+  'RECEIVED',
+  'CONSULT_ASSIGNED',
+  'CONSULT_TOSS',
+  'QUOTED',
+  'CONTRACT_PENDING',
+];
 const CONTRACT_STAGE = ['CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS', 'DONE'];
 const STALL_DAYS = 14;
 const DEFAULT_PERIOD_DAYS = 180;

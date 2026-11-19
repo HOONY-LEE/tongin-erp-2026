@@ -705,6 +705,9 @@ model Contract {
   signatureImage     String?   @map("signature_image") // 서명 그림(PNG data URL)
   signerName         String?   @map("signer_name")
   sentAt             DateTime? @map("sent_at") @db.Timestamptz(6) // 고객에게 마지막으로 보낸 시각
+  // 본사 계약 승인 — 서명·계약금이 들어온 뒤 본사가 확인해야 접수가 '계약'이 된다
+  approvedAt         DateTime? @map("approved_at") @db.Timestamptz(6)
+  approvedBy         String?   @map("approved_by") @db.Uuid // 승인한 직원
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   payments           Payment[]
   invoices           Invoice[]

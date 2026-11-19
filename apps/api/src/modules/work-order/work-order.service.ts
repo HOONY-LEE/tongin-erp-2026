@@ -84,6 +84,8 @@ export class WorkOrderService {
         throw new BadRequestException('고객 서명 또는 계약금 입금 후에 작업을 만들 수 있습니다.');
       }
     }
+    if (!contract.approvedAt)
+      throw new BadRequestException('본사 계약 승인 뒤에 작업을 만들 수 있습니다.');
     const dup = await this.prisma.workOrder.findUnique({ where: { contractId: dto.contractId } });
     if (dup) throw new BadRequestException('이미 작업오더가 생성된 계약입니다.');
 

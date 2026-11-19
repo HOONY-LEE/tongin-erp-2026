@@ -14,7 +14,7 @@ export const kDay = (offset = 0) =>
 const asDate = (d: string) => new Date(`${d}T00:00:00Z`);
 
 /** 확인콜 대상 — 계약된 이사 */
-const CONFIRM_STATUSES = ['CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS'];
+const CONFIRM_STATUSES = ['CONTRACT_PENDING', 'CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS'];
 /** 해피콜 대상 — 이사를 했거나 하는 중 */
 const HAPPY_STATUSES = ['IN_PROGRESS', 'DONE'];
 export type FollowupKind = 'CONFIRM' | 'HAPPY';

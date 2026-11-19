@@ -93,10 +93,11 @@ export class ContractService {
           balanceAmount: balance,
         },
       });
-      const t = await this.leadService.advanceInTx(tx, estimate.leadId, 'CONTRACTED');
+      // 계약서만 만든 단계 — 서명·계약금이 들어와야 '계약 미승인', 본사 승인 뒤 '계약'
+      const t = await this.leadService.advanceInTx(tx, estimate.leadId, 'QUOTED');
       return { created: row, transition: t };
     });
-    await this.leadService.emitTransition(transition, 'CONTRACTED');
+    await this.leadService.emitTransition(transition, 'QUOTED');
     await this.eventBus.record({
       aggregateType: 'contract',
       aggregateId: created.id,
@@ -104,6 +105,39 @@ export class ContractService {
       payload: { contractNo: created.contractNo, total, deposit },
     });
     return created;
+  }
+
+  /**
+   * 본사 계약 승인 — 계약금이 들어온(계약금이 없는 계약은 고객이 서명한) 계약을 본사가 확인하고
+   * 접수를 '계약 미승인' → '계약'으로 올린다. 승인한 사람·시각을 남긴다.
+   */
+  async approve(id: string, principal: AuthPrincipal) {
+    const c = await this.prisma.contract.findUnique({ where: { id } });
+    if (!c) throw new NotFoundException(`계약을 찾을 수 없습니다: ${id}`);
+    if (c.status === 'CANCELED') throw new BadRequestException('취소된 계약은 승인할 수 없습니다.');
+    if (c.approvedAt) return c;
+    const depositPaid = await this.prisma.payment.count({
+      where: { contractId: c.id, kind: 'DEPOSIT', status: 'PAID' },
+    });
+    const noDeposit = Number(c.depositAmount) <= 0;
+    if (!depositPaid && !(noDeposit && c.status === 'SIGNED'))
+      throw new BadRequestException('계약금이 들어온 뒤에 승인할 수 있습니다.');
+    const { row, transition } = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.contract.update({
+        where: { id },
+        data: { approvedAt: new Date(), approvedBy: principal.employeeId ?? null },
+      });
+      const t = await this.leadService.advanceInTx(tx, c.leadId, 'CONTRACTED');
+      return { row, transition: t };
+    });
+    await this.leadService.emitTransition(transition, 'CONTRACTED', principal.employeeId);
+    await this.eventBus.record({
+      aggregateType: 'contract',
+      aggregateId: id,
+      eventType: 'contract.approved',
+      payload: { contractNo: c.contractNo, by: principal.employeeId ?? null },
+    });
+    return row;
   }
 
   /** 전자서명(스텁) — 서명 시점 데이터 동결(E-0) */
@@ -241,10 +275,11 @@ export class ContractService {
     if (payment.kind === 'DEPOSIT') {
       const c = await this.prisma.contract.findUnique({ where: { id: payment.contractId } });
       if (c) {
+        // 계약금이 들어왔다 — 본사가 확인해 승인할 때까지 '계약 미승인'
         const t = await this.prisma.$transaction((tx) =>
-          this.leadService.advanceInTx(tx, c.leadId, 'CONTRACTED'),
+          this.leadService.advanceInTx(tx, c.leadId, 'CONTRACT_PENDING'),
         );
-        await this.leadService.emitTransition(t, 'CONTRACTED');
+        await this.leadService.emitTransition(t, 'CONTRACT_PENDING');
       }
     }
     return payment;

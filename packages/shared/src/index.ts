@@ -77,8 +77,9 @@ export const LEAD_STATUS = [
   'RECEIVED', // 접수완료
   'CONSULT_ASSIGNED', // 상담배정
   'CONSULT_TOSS', // 상담토스
-  'QUOTED', // 견적완료
-  'CONTRACTED', // 계약(승인)
+  'QUOTED', // 견적완료(미계약)
+  'CONTRACT_PENDING', // 계약 미승인 — 서명·계약금은 들어왔고 본사 승인 전
+  'CONTRACTED', // 계약(본사 승인)
   'WORK_TOSS', // 작업토스
   'IN_PROGRESS', // 작업중
   'DONE', // 완료
@@ -91,10 +92,11 @@ export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
   CONSULT_ASSIGNED: '상담배정',
   CONSULT_TOSS: '상담토스',
   QUOTED: '견적완료',
+  CONTRACT_PENDING: '계약 미승인',
   CONTRACTED: '계약',
   WORK_TOSS: '작업토스',
   IN_PROGRESS: '작업중',
-  DONE: '완료',
+  DONE: '작업완료',
   CANCELED: '취소',
 };
 
@@ -103,7 +105,8 @@ export const LEAD_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
   RECEIVED: ['CONSULT_ASSIGNED', 'CANCELED'],
   CONSULT_ASSIGNED: ['CONSULT_TOSS', 'CANCELED'],
   CONSULT_TOSS: ['QUOTED', 'CANCELED'],
-  QUOTED: ['CONTRACTED', 'CANCELED'],
+  QUOTED: ['CONTRACT_PENDING', 'CANCELED'],
+  CONTRACT_PENDING: ['CONTRACTED', 'CANCELED'],
   CONTRACTED: ['WORK_TOSS', 'CANCELED'],
   WORK_TOSS: ['IN_PROGRESS', 'CANCELED'],
   IN_PROGRESS: ['DONE', 'CANCELED'],
@@ -332,6 +335,7 @@ export interface EstimateMeta {
   sentAt: string | null; // 고객에게 견적서를 보낸 시각
   signedAt: string | null; // 고객 전자서명 시각
   depositPaidAt: string | null; // 계약금 입금 확인 시각
+  contractApprovedAt: string | null; // 본사 계약 승인 시각
   depositAccount: string | null; // 안내한 계약금 계좌
   workOrderId: string | null;
 }
@@ -654,7 +658,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   },
   { key: 'LEAD', label: '접수', group: '운영', actions: ALL_CRUD },
   { key: 'ESTIMATE', label: '견적', group: '운영', actions: ALL_CRUD },
-  { key: 'CONTRACT', label: '계약', group: '운영', actions: ALL_CRUD },
+  {
+    key: 'CONTRACT',
+    label: '계약',
+    group: '운영',
+    actions: ALL_CRUD,
+    specials: [{ action: 'APPROVE', label: '계약 승인(본사)' }],
+    hint: '계약 승인 = 서명·계약금이 들어온 계약 미승인 건을 본사가 확인하고 계약으로 올립니다',
+  },
   { key: 'PAYMENT', label: '입금', group: '운영', actions: ALL_CRUD },
   { key: 'WORK_ORDER', label: '작업', group: '운영', actions: ALL_CRUD },
   { key: 'SERVICE_ORDER', label: '리빙·케어', group: '운영', actions: ALL_CRUD },

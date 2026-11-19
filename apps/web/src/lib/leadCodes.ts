@@ -6,10 +6,11 @@ export const LEAD_STATUS: StatusMap = {
   CONSULT_ASSIGNED: { label: '상담배정', color: 'info' },
   CONSULT_TOSS: { label: '상담토스', color: 'info' },
   QUOTED: { label: '견적완료', color: 'warning' },
+  CONTRACT_PENDING: { label: '계약 미승인', color: 'warning' },
   CONTRACTED: { label: '계약', color: 'primary' },
   WORK_TOSS: { label: '작업토스', color: 'primary' },
   IN_PROGRESS: { label: '작업중', color: 'info' },
-  DONE: { label: '완료', color: 'success' },
+  DONE: { label: '작업완료', color: 'success' },
   CANCELED: { label: '취소', color: 'error' },
 };
 
