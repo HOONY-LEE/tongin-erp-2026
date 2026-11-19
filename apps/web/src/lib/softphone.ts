@@ -559,6 +559,12 @@ export function toggleMute() {
   setCall({ muted: !state.call.muted });
 }
 
+/** 통화 중 숫자 키 누르기(ARS 인증번호·자동 응답 메뉴) */
+export function sendDtmf(tone: string) {
+  if (!session || state.call?.state !== 'active') return;
+  session.sendDTMF(tone, { duration: 120, interToneGap: 70 });
+}
+
 /** PC로 전화 걸기(콜백·아웃콜). callId — 상담 콜 id(통화 상태 알림이 이 콜에 통화 시간을 남긴다) */
 export function dial(number: string, callId?: string) {
   const to = number.replace(/\D/g, '');
