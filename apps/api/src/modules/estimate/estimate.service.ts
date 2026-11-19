@@ -183,6 +183,7 @@ export class EstimateService {
             signedAt: true,
             createdAt: true,
             sentAt: true,
+            approvedAt: true,
             workOrder: { select: { id: true } },
             payments: {
               where: { kind: 'DEPOSIT', status: { in: ['PAID', 'PENDING'] } },
@@ -234,6 +235,7 @@ export class EstimateService {
       signedAt: e.contract?.signedAt?.toISOString() ?? null,
       depositPaidAt:
         e.contract?.payments.find((p) => p.status === 'PAID')?.paidAt?.toISOString() ?? null,
+      contractApprovedAt: e.contract?.approvedAt?.toISOString() ?? null,
       depositAccount:
         (e.contract?.payments.find((p) => p.status === 'PAID') ?? e.contract?.payments[0])
           ?.virtualAccount ?? null,

@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import {
   Badge,
   Button,
+  ConfirmModal,
   FormModal,
   PageHeader,
   PageSkeleton,
@@ -60,6 +61,8 @@ function FlowBar({ data }: { data: EstimateDetailData }) {
     { label: '견적서 발송', when: shortDate(m.sentAt), ok: !!m.sentAt || !!m.signedAt },
     { label: '고객 서명', when: shortDate(m.signedAt), ok: !!m.signedAt },
     { label: '계약금 입금', when: shortDate(m.depositPaidAt), ok: !!m.depositPaidAt },
+    // 본사가 확인해 승인해야 '계약' — 그 전은 '계약 미승인'
+    { label: '계약 승인', when: shortDate(m.contractApprovedAt), ok: !!m.contractApprovedAt },
     { label: '작업', when: m.workDate, ok: !!m.workOrderId || done },
     { label: '완료', when: null, ok: done },
   ];
@@ -107,6 +110,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
   /** 지점 반려·접수 취소 창 */
   const [rejectOpen, setRejectOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
   /** 조직 이름·본사 id — 반려 버튼(지점 접수만)과 반려 안내에 쓴다 */
   const [orgs, setOrgs] = useState<{ id: string; code: string; name: string; type?: string }[]>([]);
   useEffect(() => {
@@ -219,10 +223,29 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
     !!hqId &&
     data.lead.orgUnitId !== hqId &&
     ['BRANCH', 'PARTNER'].includes(orgs.find((o) => o.id === data.lead!.orgUnitId)?.type ?? '') &&
-    !['CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS', 'DONE', 'CANCELED'].includes(leadStatus ?? '');
+    !['CONTRACT_PENDING', 'CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS', 'DONE', 'CANCELED'].includes(
+      leadStatus ?? '',
+    );
 
   // 계약이 성립했으면(서명 또는 계약금 입금) 작업을 잡는다 — 접수 화면에서 바로
-  const contractReady = !!data.meta.signedAt || !!data.meta.depositPaidAt;
+  // 본사가 계약을 승인해야 작업을 잡는다(서명·계약금만으로는 '계약 미승인')
+  const contractReady = !!data.meta.contractApprovedAt;
+  const canApprove =
+    can('CONTRACT.APPROVE') &&
+    !closed &&
+    !!data.meta.contractId &&
+    !data.meta.contractApprovedAt &&
+    leadStatus === 'CONTRACT_PENDING';
+  const approve = async () => {
+    try {
+      await api(`/contracts/${data.meta.contractId}/approve`, { method: 'POST' });
+      toast({ type: 'success', title: '계약을 승인했습니다' });
+      setApproveOpen(false);
+      await load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '승인하지 못했습니다' });
+    }
+  };
   const createWorkOrder = async (values: Record<string, unknown>) => {
     try {
       const wo = await api<{ id: string }>('/work-orders', {
@@ -260,6 +283,11 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           onClick={() => navigate(`/contracts/${data.meta.contractId}`)}
         >
           계약 보기
+        </Button>
+      )}
+      {canApprove && (
+        <Button variant="primary" size="sm" onClick={() => setApproveOpen(true)}>
+          계약 승인
         </Button>
       )}
       {data.meta.workOrderId ? (
@@ -409,6 +437,16 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         <SummaryTab {...priceProps} onDirtyChange={dirtyHandlers.summary} />
       </div>
 
+      <ConfirmModal
+        open={approveOpen}
+        title="계약을 승인할까요?"
+        confirmLabel="계약 승인"
+        onClose={() => setApproveOpen(false)}
+        onConfirm={() => void approve()}
+      >
+        계약금 입금을 확인했다면 승인하세요. 승인하면 접수가 &apos;계약&apos;이 되고 작업을 잡을 수
+        있습니다.
+      </ConfirmModal>
       <FormModal
         open={rejectOpen}
         onOpenChange={setRejectOpen}

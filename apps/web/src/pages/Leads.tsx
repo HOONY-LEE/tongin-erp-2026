@@ -36,7 +36,7 @@ const CHIP_TONE: Record<string, ChipTone> = {
 const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
   { key: 'ALL', label: '전체', statuses: null },
   { key: 'INTAKE', label: '접수', statuses: ['RECEIVED', 'CONSULT_ASSIGNED', 'CONSULT_TOSS'] },
-  { key: 'QUOTE', label: '견적', statuses: ['QUOTED'] },
+  { key: 'QUOTE', label: '견적', statuses: ['QUOTED', 'CONTRACT_PENDING'] },
   { key: 'CONTRACT', label: '계약', statuses: ['CONTRACTED'] },
   { key: 'WORK', label: '작업', statuses: ['WORK_TOSS', 'IN_PROGRESS', 'DONE'] },
 ];
@@ -144,12 +144,9 @@ export default function Leads() {
         const chip = (
           <Chip tone={CHIP_TONE[s?.color ?? 'neutral']}>{s?.label ?? String(r.status)}</Chip>
         );
-        // 지점에서 반려돼 본사로 돌아온 접수 — 다시 배정해야 한다
+        // 지점에서 반려돼 본사로 돌아온 접수 — 다시 배정할 때까지 상태는 '반려'
         return r.rejectedAt && r.status === 'RECEIVED' ? (
-          <span style={{ display: 'inline-flex', gap: 4 }}>
-            {chip}
-            <Chip tone={CHIP_TONE.warning}>반려</Chip>
-          </span>
+          <Chip tone={CHIP_TONE.warning}>반려</Chip>
         ) : (
           chip
         );
