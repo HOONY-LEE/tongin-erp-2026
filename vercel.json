@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://tongin-erp-api.onrender.com/api/:path*"
+      "destination": "https://3-35-185-107.sslip.io/api/:path*"
     },
     {
       "source": "/((?!api/|assets/|icon-|manifest\\.webmanifest|sw\\.js).*)",
