@@ -81,7 +81,6 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
       name: 'source',
       label: '접수경로',
       alwaysShow: true,
-      pairWithNext: !withCallFields,
       type: 'select',
       options: RECEIPT_SOURCES,
       // 상담 콘솔에서 받은 접수는 늘 '전화'
@@ -140,7 +139,8 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
       alwaysShow: true,
       type: 'address',
       addrPrefix: 'from',
-      pairWithNext: withCallFields,
+      // 출발지·도착지를 한 줄에
+      pairWithNext: true,
     },
     { name: 'toAddress', label: '도착지', alwaysShow: true, type: 'address', addrPrefix: 'to' },
     ...(withCallFields
