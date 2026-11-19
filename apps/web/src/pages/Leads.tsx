@@ -122,7 +122,7 @@ export default function Leads() {
       title: '접수번호',
       dataIndex: 'leadNo',
       // 접수번호 + 호버 복사 버튼이 잘리지 않을 만큼은 확보한다.
-      minWidth: 124,
+      minWidth: 110,
       render: (r) => <CopyText value={String(r.leadNo)} />,
     },
     {
