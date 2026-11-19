@@ -37,10 +37,21 @@ export const extName = (x: Extension) => (x.dept ? `${x.label}(${x.dept})` : x.l
  * 지금 통화를 이 번호로 돌려주고, 성공하면 콜에 넘긴 곳을 남긴다.
  * 결과 문구를 돌려준다(알림은 부르는 쪽에서).
  */
+/**
+ * 돌려주기 잠금 — 시험 기간에는 실제로 넘기지 않는다(목록·검색은 그대로).
+ * 실통화 시험을 마치면 false로 바꾼다.
+ */
+export const TRANSFER_BLOCKED = true;
+
 export async function transferTo(
   x: { label: string; dept?: string | null; number: string },
   customerPhone: string,
 ): Promise<{ ok: boolean; message: string }> {
+  if (TRANSFER_BLOCKED)
+    return {
+      ok: false,
+      message: '돌려주기는 아직 시험 중이라 막아 두었습니다. 시험이 끝나면 열겠습니다.',
+    };
   const { transferCall } = await import('./softphone');
   const { formatPhone } = await import('./phone');
   const who = `${x.dept ? `${x.label}(${x.dept})` : x.label} ${formatPhone(x.number)}`;

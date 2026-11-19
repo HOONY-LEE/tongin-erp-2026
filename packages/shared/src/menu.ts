@@ -167,7 +167,7 @@ export const MENU_CATALOG: readonly MenuDef[] = [
     label: '내선 관리',
     i18n: 'extensions',
     icon: 'PhoneForwarded',
-    perm: 'LEAD.CREATE',
+    perm: 'CS_CALL.EXTENSIONS',
     category: '운영',
     desc: '사무실 직원·부서 내선 — 상담 중 한 번에 돌려주기',
   },

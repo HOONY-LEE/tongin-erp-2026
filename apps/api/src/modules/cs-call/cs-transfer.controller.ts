@@ -5,6 +5,8 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  Logger,
+  type OnModuleInit,
   Param,
   ParseUUIDPipe,
   Post,
@@ -30,22 +32,62 @@ class TransferredDto {
   @IsString() @MaxLength(80) to!: string;
 }
 
+const has = (p: AuthPrincipal, ...perms: string[]) =>
+  p.permissions.includes('*') || perms.some((x) => p.permissions.includes(x));
+/** 내선 등록·수정 — 내선 관리 권한(관리자) */
 const assertManager = (p: AuthPrincipal) => {
-  if (!p.permissions.includes('*') && !p.permissions.includes('CS_CALL.ALL'))
-    throw new ForbiddenException('돌려주기 연락처는 상담 관리자만 고칠 수 있습니다.');
+  if (!has(p, 'CS_CALL.EXTENSIONS'))
+    throw new ForbiddenException('내선은 내선 관리 권한이 있는 관리자만 고칠 수 있습니다.');
 };
+
+interface SeedRow {
+  label: string;
+  dept?: string;
+  extNo?: string;
+  number: string;
+}
 
 /**
  * 돌려주기 — 상담원이 통화를 사무실 직원·부서로 넘긴다(PC 전화가 한국AI통신에 SIP REFER).
  * 내선(연락처) 목록은 상담원 모두 보고, 상담 관리자가 고친다(내선 관리 화면). 넘긴 기록은 그 콜에 남긴다.
  */
 @Controller()
-export class CsTransferController {
+export class CsTransferController implements OnModuleInit {
+  private readonly logger = new Logger('CsTransfer');
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * 처음 한 번 내선 목록 채우기 — 환경변수 CS_EXTENSIONS_SEED(JSON 배열)가 있고 목록이 비어 있을 때만.
+   * 직원 이름·번호를 공개 저장소에 넣지 않으려고 서버 설정으로 받는다. 들어간 뒤에는 지워도 된다.
+   */
+  async onModuleInit() {
+    const raw = process.env.CS_EXTENSIONS_SEED;
+    if (!raw) return;
+    try {
+      if (await this.prisma.csTransferTarget.count()) return;
+      const rows = (JSON.parse(raw) as SeedRow[]).filter(
+        (r) => r.label && digits(r.number).length >= 7,
+      );
+      await this.prisma.csTransferTarget.createMany({
+        data: rows.map((r, i) => ({
+          label: r.label.trim(),
+          dept: r.dept?.trim() || null,
+          extNo: r.extNo?.trim() || null,
+          number: digits(r.number),
+          sortOrder: i,
+        })),
+      });
+      this.logger.log(`내선 ${rows.length}개를 처음 채웠습니다(CS_EXTENSIONS_SEED)`);
+    } catch (e) {
+      this.logger.warn(`CS_EXTENSIONS_SEED를 읽지 못했습니다: ${(e as Error).message}`);
+    }
+  }
+
+  /** 내선 목록 — 상담원(돌려주기)과 내선 관리자 */
   @Get('cs-transfer-targets')
-  @RequirePermissions('LEAD.CREATE')
-  list() {
+  list(@CurrentUser() user: AuthPrincipal) {
+    if (!has(user, 'LEAD.CREATE', 'CS_CALL.EXTENSIONS'))
+      throw new ForbiddenException('내선 목록을 볼 권한이 없습니다.');
     return this.prisma.csTransferTarget.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       select: { id: true, label: true, dept: true, extNo: true, number: true, memo: true },
@@ -53,7 +95,6 @@ export class CsTransferController {
   }
 
   @Post('cs-transfer-targets')
-  @RequirePermissions('LEAD.CREATE')
   async save(@CurrentUser() user: AuthPrincipal, @Body() dto: TargetDto) {
     assertManager(user);
     const number = digits(dto.number);
@@ -73,7 +114,6 @@ export class CsTransferController {
   }
 
   @Delete('cs-transfer-targets/:id')
-  @RequirePermissions('LEAD.CREATE')
   async remove(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     assertManager(user);
     await this.prisma.csTransferTarget.deleteMany({ where: { id } });
