@@ -357,18 +357,18 @@ export default function AppLayout() {
                     aria-label={PRODUCT_NAME}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
                   >
-                    <span style={{ fontSize: fs(13.5), fontWeight: 600, letterSpacing: -0.1 }}>
+                    <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
                       통인
                     </span>
                     <span
                       aria-hidden
                       style={{
                         width: 1,
-                        height: 12,
+                        height: 14,
                         background: 'var(--ark-color-border-strong, #c7c7cc)',
                       }}
                     />
-                    <span style={{ fontSize: fs(13.5), fontWeight: 600, letterSpacing: -0.1 }}>
+                    <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
                       Works AI
                     </span>
                   </span>
