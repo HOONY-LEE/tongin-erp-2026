@@ -21,6 +21,7 @@ import { menuIcon, useMenuLabel, useMyMenu } from '../lib/menu';
 import { useInbox } from '../lib/inbox';
 import { MENU_CATALOG, PRODUCT_NAME, filterLayout, menuDef } from '@tongin/shared';
 import styles from './AppLayout.module.css';
+import { SidebarSearch, type SearchMenu } from './SidebarSearch';
 import { HeaderTabs } from './HeaderTabs';
 import { ProfileMenu } from './ProfileMenu';
 import settingsStyles from './settings.module.css';
@@ -125,6 +126,15 @@ export default function AppLayout() {
     label: menuLabel(m.key),
     icon: menuIcon(m),
     owns: m.owns,
+  }));
+
+  // 메뉴 검색 — 권한 있는 전체 메뉴(사이드바에서 숨긴 것도). 설명·묶음 이름으로도 찾는다
+  const searchItems: SearchMenu[] = MENU_CATALOG.filter((m) => canSeeMenu(m.key)).map((m) => ({
+    to: m.path,
+    label: menuLabel(m.key),
+    desc: m.desc,
+    group: m.category,
+    icon: menuIcon(m),
   }));
 
   /** 이 메뉴가 현재 경로를 담당하는가 — 자기 경로이거나, owns에 등록된 하위 화면이거나. */
@@ -388,6 +398,12 @@ export default function AppLayout() {
               </div>
             }
           >
+            <SidebarSearch
+              items={searchItems}
+              collapsed={collapsed}
+              onExpand={() => setCol(false)}
+              onOpen={(to) => navigate(to)}
+            />
             {visibleGroups.map((g, gi) => (
               <SidebarGroup
                 // 펼침 기본값은 처음 그릴 때만 먹는다 — 메뉴 구성이 바뀌면(계정 전환·편집) 다시 그린다
