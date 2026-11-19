@@ -61,6 +61,8 @@ interface CallView {
 interface Console {
   me: {
     employeeId: string;
+    /** 고객관리부 상담원 — PC 전화·상담 가능은 상담원 전용 */
+    isAgent: boolean;
     available: boolean;
     /** 착신 연결 번호 — 대표번호 전화가 이 전화로 바로 울린다 */
     ringTo: string | null;
@@ -369,7 +371,9 @@ export default function CallCenter() {
       title="상담 콘솔"
       subtitle="대표번호(임시): 070-5236-9711 — 대표번호로 들어온 전화는 '상담 가능'인 상담원 PC가 함께 울리고, 받을 사람이 없으면 아웃콜로 쌓입니다. 전화를 받으면 상담 화면에서 통화하면서 바로 접수하세요."
       actions={
-        me ? (
+        me && !me.isAgent ? (
+          <span className={styles.agentOnly}>PC 전화·상담 가능은 고객관리부 상담원 전용입니다</span>
+        ) : me ? (
           <div className={styles.actions}>
             <PcPhone />
             {/* 기본은 후처리. 콜이 배정되면 자동으로 '상담 중'이 되고, 통화가 끝나도 후처리를 마치고
