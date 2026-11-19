@@ -297,7 +297,6 @@ export default function Franchise() {
     },
     {
       title: '연락처',
-      width: 130,
       render: (r) => (r.ownerPhone ? formatPhone(String(r.ownerPhone)) : '—'),
     },
     {

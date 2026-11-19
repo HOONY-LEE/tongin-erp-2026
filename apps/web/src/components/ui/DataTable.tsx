@@ -1,5 +1,6 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
@@ -58,11 +59,63 @@ interface Props {
 /** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
 const SKELETON_ROWS = 8;
 
+/**
+ * 칸 폭 자동 — 폭을 정하지 않은 칸은 머리글과 앞쪽 행들의 글자 길이를 재서 정한다
+ * (한국AI통신 콘솔처럼 짧은 칸은 좁게, 긴 칸은 넓게). 글자는 실제 표 서체로 잰다.
+ */
+const SAMPLE_ROWS = 60;
+const CELL_PAD = 32; // 칸 좌우 안쪽 여백 16px씩
+const AUTO_MIN = 64;
+const AUTO_MAX = 320;
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+function textWidth(text: string, px: number, weight: number, spacing = 0, mono = false) {
+  if (!text) return 0;
+  if (measureCtx === undefined) measureCtx = document.createElement('canvas').getContext('2d');
+  if (!measureCtx) return text.length * px * 0.6;
+  const family = getComputedStyle(document.body).fontFamily;
+  measureCtx.font = `${weight} ${px}px ${mono ? "'Geist Mono', " : ''}TabNum, ${family}`;
+  return measureCtx.measureText(text).width + spacing * text.length;
+}
+/** 셀을 그려 글자와 덧붙는 것(상태 점·복사 버튼)을 본다 */
+function cellMeasure(c: Column, r: Row) {
+  const v = c.exportValue ? c.exportValue(r) : null;
+  if (!c.render) return { text: String(r[c.dataIndex ?? ''] ?? ''), extra: 0, mono: false };
+  let html = '';
+  try {
+    html = renderToStaticMarkup(<>{c.render(r)}</>);
+  } catch {
+    /* 그릴 수 없는 칸은 글자만 */
+  }
+  const text =
+    v !== null && v !== undefined && v !== ''
+      ? String(v)
+      : html
+        ? (new DOMParser().parseFromString(html, 'text/html').body.textContent ?? '')
+            .replace(/\s+/g, ' ')
+            .trim()
+        : cellText(c, r);
+  // 상태 점(6px + 8px) · 복사 버튼(24px + 10px)
+  const copy = html.includes('복사"');
+  const extra = (html.includes('sft-chip') ? 14 : 0) + (copy ? 34 : 0);
+  return { text, extra, mono: copy };
+}
+function autoWidth(c: Column, rows: Row[]) {
+  const scale =
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-scale')) || 1;
+  // 머리글 12px 굵게(자간 0.6px) + 정렬 화살표 자리
+  let w = textWidth(titleOf(c), 12 * scale, 600, 0.6) + (c.dataIndex ? 12 : 0);
+  for (const r of rows.slice(0, SAMPLE_ROWS)) {
+    if (r.__sk) continue;
+    const { text, extra, mono } = cellMeasure(c, r);
+    w = Math.max(w, textWidth(text, 14 * scale, 400, 0, mono) + extra + 4);
+  }
+  return Math.min(AUTO_MAX, Math.max(AUTO_MIN, Math.ceil(w + CELL_PAD)));
+}
+
 /** 목록 화면 기본 페이지 크기. 푸터의 선택지(10/20/50/100) 중 하나여야 셀렉트와 값이 맞는다. */
 const DEFAULT_PAGE_SIZE = 20;
 /** 화면 높이 맞춤(fit) 목록의 기본 — 900px 높이 화면에서 머리글·툴바·풋터와 함께 스크롤 없이 들어간다 */
 const FIT_PAGE_SIZE = 10;
-
 /** 컬럼 정의로 렌더하는 공통 테이블 — softium-ui Table(정렬·검색·컬럼설정 내장) 기반. */
 export function DataTable({
   columns,
@@ -112,6 +165,44 @@ export function DataTable({
     [columns],
   );
 
+  // 칸 폭 계산은 무겁다(셀을 글자로 그려 잰다) — 앞쪽 행들이 바뀔 때만 다시 잰다
+  // 숫자 서체(Geist Mono)가 내려오기 전에 재면 좁게 잡힌다 — 받은 뒤 한 번 다시 잰다
+  const [fontReady, setFontReady] = useState(
+    () => typeof document === 'undefined' || document.fonts.check('14px TabNum', '0'),
+  );
+  useEffect(() => {
+    if (fontReady) return;
+    let alive = true;
+    void Promise.all([
+      document.fonts.load('400 14px TabNum', '0'),
+      document.fonts.load("400 14px 'Geist Mono'", 'R0'),
+    ]).then(() => alive && setFontReady(true));
+    return () => {
+      alive = false;
+    };
+  }, [fontReady]);
+  const widthCache = useRef<{ sig: string; byCol: Map<string, number> }>({
+    sig: '',
+    byCol: new Map(),
+  });
+  const rowsSig = `${fontReady ? 1 : 0}|${rows.length}|${rows
+    .slice(0, SAMPLE_ROWS)
+    .map((r) => String(r[rowKey] ?? ''))
+    .join(',')}`;
+  if (widthCache.current.sig !== rowsSig) widthCache.current = { sig: rowsSig, byCol: new Map() };
+  const cachedWidth = (c: Column, i: number) => {
+    const k = `${colKey(c, i)}|${titleOf(c)}`;
+    let w = widthCache.current.byCol.get(k);
+    if (w === undefined) {
+      w = autoWidth(c, rows);
+      widthCache.current.byCol.set(k, w);
+    }
+    return w;
+  };
+
+  /** 이번에 잰 칸 폭(고정폭 칸만) — 표가 처음 폭을 기억하므로 데이터가 바뀌면 아래에서 다시 넣는다 */
+  const autoWidths = useRef(new Map<string, number>());
+
   const softiumColumns: ReactColumnDef<Row>[] = useMemo(() => {
     const mapped: ReactColumnDef<Row>[] = columns.map((c, i) => {
       const key = colKey(c, i);
@@ -122,9 +213,15 @@ export function DataTable({
         label: typeof c.title === 'string' ? c.title : String(c.title ?? ''),
         align: c.numeric ? 'right' : 'left',
         sortable: !!c.dataIndex,
-        width: c.width,
-        minWidth: c.minWidth,
-        flex: c.flex,
+        // 폭을 안 정한 칸은 내용 길이로(늘어나는 칸은 최소 폭으로만)
+        ...(() => {
+          if (c.width) return { width: c.width, minWidth: c.minWidth, flex: c.flex };
+          const auto = cachedWidth(c, i);
+          if (!c.flex) autoWidths.current.set(key, Math.max(c.minWidth ?? 0, auto));
+          return c.flex
+            ? { minWidth: Math.min(c.minWidth ?? 120, 120, auto), flex: c.flex }
+            : { width: Math.max(c.minWidth ?? 0, auto), minWidth: c.minWidth };
+        })(),
         // 내보내기 값 — 지정값 > 화면에 그린 글자 > 원본 필드 (원본만 읽으면 render로 그리는 칸이 비거나 코드로 나간다)
         exportValue: (data: Row) => {
           const v = c.exportValue
@@ -173,7 +270,7 @@ export function DataTable({
       });
     }
     return mapped;
-  }, [columns, masked]);
+  }, [columns, masked, rowsSig]);
 
   // 처음 불러오기가 끝나기 전에는 '데이터가 없습니다' 대신 표 안에 자리표시 행을 깐다
   // (검색창·내보내기·등록 버튼 같은 툴바는 그대로 보인다).
@@ -195,6 +292,17 @@ export function DataTable({
     // "N개씩 보기" 선택기도 감춘다.
     pageSize: pageSize ?? (fit ? FIT_PAGE_SIZE : DEFAULT_PAGE_SIZE),
   });
+
+  // softium 표는 칸 폭을 처음 그릴 때 상태로 저장한다 — 데이터가 들어와 다시 잰 폭을 상태에 넣는다
+  useLayoutEffect(() => {
+    const widths = autoWidths.current;
+    if (!widths.size) return;
+    table.setColumnState((prev) =>
+      prev.some((st) => widths.has(st.key) && st.width !== widths.get(st.key))
+        ? prev.map((st) => (widths.has(st.key) ? { ...st, width: widths.get(st.key) } : st))
+        : prev,
+    );
+  }, [rowsSig, softiumColumns.length]);
 
   // 빈 칸도 한 페이지 행 수만큼 자리를 차지하게(행이 적거나 없어도 표 높이가 같다) — 지금 고른
   // 'N개씩 보기'를 풋터에서 읽어 tbody 최소 높이로 쓴다(base.css .dt-wrap .sft-tbody)

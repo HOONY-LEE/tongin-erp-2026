@@ -494,7 +494,6 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     },
     {
       title: '연락처',
-      width: 142,
       render: (r) => (r.phone ? formatPhone(String(r.phone)) : '—'),
       exportValue: (r) => (r.phone ? formatPhone(String(r.phone)) : ''),
     },

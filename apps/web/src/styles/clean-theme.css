@@ -39,14 +39,34 @@
   --sft-table-font-size: calc(14px * var(--font-scale));
 }
 
+/* ── 숫자 서체 — Geist Mono(한국AI통신 콘솔 표와 같은 서체) ──
+   TabNum: 숫자·하이픈·콜론·점·쉼표·퍼센트만 Geist Mono로, 나머지(한글·영문)는 원래 서체로.
+   Geist Mono: 코드(접수번호 등) 전체를 고정폭으로. 글꼴 파일 OFL — assets/fonts/GeistMono-LICENSE.txt */
+@font-face {
+  font-family: 'TabNum';
+  src: url('../assets/fonts/geist-mono-latin-wght-normal.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002D, U+003A, U+002E, U+002C, U+0025;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('../assets/fonts/geist-mono-latin-wght-normal.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* ── 페이지 제목 — 조금 작고 단단하게 ── */
 h1 {
   letter-spacing: -0.4px;
 }
 
-/* ── 표 ── */
+/* ── 표 — 한국AI통신 콘솔 통화 기록 표 그대로 ──
+   머리 44px·12px 굵게 회색(자간 0.6px), 행 47px·14px, 칸 좌우 16px, 가로 선만(#e5e5ea).
+   숫자는 Geist Mono(고정폭이라 자리가 위아래로 맞는다). 상태 칩은 점 + 글자. */
 .sft-table {
-  --sft-table-row-height: calc(46px * var(--font-scale)) !important;
+  --sft-table-row-height: calc(47px * var(--font-scale)) !important;
+  --sft-table-header-height: calc(44px * var(--font-scale)) !important;
   border-color: var(--sft-color-border);
 }
 .sft-thead {
@@ -57,8 +77,9 @@ h1 {
   box-shadow: none !important;
   background: transparent !important;
   color: var(--sft-color-text-secondary) !important;
-  font-size: calc(12.5px * var(--font-scale)) !important;
+  font-size: calc(12px * var(--font-scale)) !important;
   font-weight: 600 !important;
+  letter-spacing: 0.6px;
 }
 .sft-th,
 .sft-td {
@@ -67,10 +88,55 @@ h1 {
 }
 .sft-td {
   color: var(--sft-color-text);
+  font-family: 'TabNum', var(--ark-font-family);
   font-variant-numeric: tabular-nums;
 }
 .sft-table:not([data-edit-active]) .sft-tbody .sft-tr:hover .sft-td {
   background: var(--sft-color-bg-hover);
+}
+/* 내용 길이로 정한 칸은 줄어들지 않는다 — 모자라면 늘어나는 칸(주소 등)이 내준다
+   (softium은 칸마다 인라인 flex를 준다: 고정 칸 '0 1 Npx', 늘어나는 칸 '1 1 0px') */
+.sft-th[style*='flex: 0 1'],
+.sft-td[style*='flex: 0 1'] {
+  flex-shrink: 0 !important;
+}
+/* 상태 칩 — 표 안에서는 바탕 없이 색 점(6px) + 글자 */
+.sft-td .sft-chip {
+  --dot: #c7c7cc;
+  height: auto;
+  gap: 8px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--sft-color-text) !important;
+  font-size: inherit;
+  font-weight: 400;
+}
+.sft-td .sft-chip::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+.sft-td .sft-chip__dot {
+  display: none;
+}
+.sft-td .sft-chip[data-tone='success'] {
+  --dot: var(--sft-color-success);
+}
+.sft-td .sft-chip[data-tone='warning'] {
+  --dot: var(--sft-color-warning);
+}
+.sft-td .sft-chip[data-tone='danger'] {
+  --dot: var(--sft-color-danger);
+}
+.sft-td .sft-chip[data-tone='accent'] {
+  --dot: var(--sft-color-accent);
+}
+.sft-td .sft-chip[data-tone='info'] {
+  --dot: #8e8e93;
 }
 
 /* ── 검색·입력칸 — 36px, 14px, 둥글기 10px ── */

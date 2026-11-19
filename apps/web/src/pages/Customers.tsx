@@ -7,6 +7,7 @@ import { Badge, Button, Checkbox, Input, Modal, useToast } from '../components/u
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 import { fs } from '../lib/fontScale';
+import { formatPhone } from '../lib/phone';
 
 interface GradeRow {
   id?: string;
@@ -185,7 +186,11 @@ export default function Customers() {
 
   const columns: Column[] = [
     { title: '고객명', dataIndex: 'name' },
-    { title: '연락처', dataIndex: 'phonePrimary' },
+    {
+      title: '연락처',
+      dataIndex: 'phonePrimary',
+      render: (r: Row) => formatPhone(String(r.phonePrimary ?? '')) || '-',
+    },
     {
       title: '등급',
       render: (r: Row) =>
