@@ -13,6 +13,7 @@ import { Prisma, type CsCall } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CtiRoutingService } from './cti-routing.service';
+import { CS_ORG } from './cs-org';
 
 /** 상담원이 들고 있는(통화 중) 콜 상태 */
 const ACTIVE = ['ASSIGNED', 'CALLBACK'];
@@ -315,9 +316,23 @@ export class CsCallService {
     return { available: !!agent?.available, busy: open > 0, ringable: !!agent?.available };
   }
 
-  /** 상담 가능 / 자리 비움 — 마무리하지 않은 상담이 있어도 바꿀 수 있다 */
-  async setAvailable(p: AuthPrincipal, available: boolean) {
+  /** 고객관리부(하위 조직 포함) 상담원인가 — PC 전화·상담 가능은 상담원 전용 */
+  private async isCsAgent(employeeId: string) {
+    const n = await this.prisma.employee.count({
+      where: { id: employeeId, isActive: true, orgUnit: CS_ORG },
+    });
+    return n > 0;
+  }
+  private async assertCsAgent(p: AuthPrincipal) {
     const id = this.me(p);
+    if (!(await this.isCsAgent(id)))
+      throw new ForbiddenException('PC 전화·상담 가능은 고객관리부 상담원만 쓸 수 있습니다.');
+    return id;
+  }
+
+  /** 상담 가능 / 후처리 — 마무리하지 않은 상담이 있어도 바꿀 수 있다(상담원 전용 — 끄기는 누구나) */
+  async setAvailable(p: AuthPrincipal, available: boolean) {
+    const id = available ? await this.assertCsAgent(p) : this.me(p);
     await this.prisma.csAgent.upsert({
       where: { employeeId: id },
       create: { employeeId: id, available, lastFreeAt: new Date() },
@@ -347,7 +362,7 @@ export class CsCallService {
    * API 키는 서버에만 둔다(KAT_API_KEY). 토큰은 1시간짜리라 화면이 만료 전에 다시 부른다.
    */
   async phoneToken(p: AuthPrincipal) {
-    const id = this.me(p);
+    const id = await this.assertCsAgent(p);
     const base = process.env.KAT_API_BASE || 'https://api.koreaaitel.com';
     const account = process.env.KAT_ACCOUNT_ID;
     const credential = process.env.KAT_SIP_CREDENTIAL_ID;
@@ -950,7 +965,7 @@ export class CsCallService {
       this.prisma.employee.findMany({
         where: {
           isActive: true,
-          orgUnit: { OR: [{ code: 'DEPT-CS' }, { parent: { code: 'DEPT-CS' } }] },
+          orgUnit: CS_ORG,
         },
         select: { id: true, name: true, position: { select: { name: true } } },
       }),
@@ -966,16 +981,8 @@ export class CsCallService {
         _count: true,
       }),
     ]);
-    const extraIds = agentRows
-      .map((a) => a.employeeId)
-      .filter((id) => !csTeam.some((e) => e.id === id));
-    const extra = extraIds.length
-      ? await this.prisma.employee.findMany({
-          where: { id: { in: extraIds } },
-          select: { id: true, name: true, position: { select: { name: true } } },
-        })
-      : [];
-    const people = [...csTeam, ...extra];
+    // 상담원 현황은 고객관리부만(다른 부서 직원은 PC 전화·상담 가능을 쓸 수 없다)
+    const people = csTeam;
     const custIds = [
       ...new Set([...active, ...outcalls].map((c) => c.customerId).filter((x): x is string => !!x)),
     ];
@@ -1059,6 +1066,8 @@ export class CsCallService {
       me: me
         ? {
             employeeId: me,
+            /** 고객관리부 상담원 — PC 전화·상담 가능을 쓸 수 있다 */
+            isAgent: csTeam.some((e) => e.id === me),
             available: agentRows.find((a) => a.employeeId === me)?.available ?? false,
             ringTo: agentRows.find((a) => a.employeeId === me)?.ringTo ?? null,
             call: mine

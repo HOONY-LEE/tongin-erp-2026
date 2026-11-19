@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { UA, WebSocketInterface, debug as jssipDebug } from 'jssip';
 import type { RTCSession } from 'jssip/lib/RTCSession';
-import { api, getToken } from './api';
+import { api, ApiError, getToken } from './api';
 
 /**
  * PC 전화(브라우저 WebRTC) — 상담원이 전화기 없이 상담 콘솔에서 헤드셋으로 받고 건다.
@@ -382,6 +382,16 @@ async function register() {
   try {
     res = await api('/cs-calls/agent/phone-token', { method: 'POST' });
   } catch (e) {
+    // 상담원(고객관리부)이 아니면 PC 전화를 쓸 수 없다 — 켜 둔 기억을 지우고 조용히 끈다
+    if (e instanceof ApiError && e.status === 403) {
+      try {
+        localStorage.removeItem(ENABLED_KEY);
+      } catch {
+        /* 무시 */
+      }
+      set({ status: 'off', error: null });
+      return;
+    }
     set({ status: 'error', error: e instanceof Error ? e.message : 'PC 전화를 켜지 못했습니다' });
     return;
   }

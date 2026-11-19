@@ -1,5 +1,6 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CS_ORG } from './cs-org';
 
 /** 상담 콘솔이 이 시간 안에 확인했으면 '켜져 있는' 상담원 */
 const SEEN_MS = 30_000;
@@ -49,8 +50,14 @@ export class CtiRoutingService implements OnModuleInit, OnModuleDestroy {
   /** 지금 받을 수 있는 상담원 수 */
   async ringableCount() {
     const now = new Date();
+    // 고객관리부 상담원만(다른 부서가 예전에 켜 둔 상태는 세지 않는다)
+    const team = await this.prisma.employee.findMany({
+      where: { isActive: true, orgUnit: CS_ORG },
+      select: { id: true },
+    });
     return this.prisma.csAgent.count({
       where: {
+        employeeId: { in: team.map((e) => e.id) },
         available: true,
         sipUri: { not: null },
         sipUntil: { gt: now },
