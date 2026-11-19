@@ -543,8 +543,9 @@
   margin-right: 0;
 }
 
-/* 머리 탭 끌어서 순서 바꾸기 — 놓일 자리 표시선 */
-.headerTabs {
+/* 머리 탭 끌어서 순서 바꾸기 — 놓일 자리 표시선.
+   폭 측정용(.tabsMeasure, position:absolute)까지 relative로 덮으면 자리를 차지해 탭이 '…'로 접힌다 */
+.headerTabs:not(.tabsMeasure) {
   position: relative;
 }
 .tabDropLine {
