@@ -2290,6 +2290,19 @@ model CsSmsTemplate {
   @@map("cs_sms_template")
 }
 
+/// 상담 메모 프리셋 — 상담 화면의 상담 메모에 불러 쓰는 틀(상담 관리자가 관리)
+model CsMemoPreset {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String
+  body      String   @default("")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([sortOrder])
+  @@map("cs_memo_preset")
+}
+
 /// 상담 콘솔에서 보낸 문자 기록 — 고객 이력에 남는다
 model CsSms {
   id         String   @id @default(uuid()) @db.Uuid

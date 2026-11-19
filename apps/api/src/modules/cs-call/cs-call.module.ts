@@ -5,12 +5,19 @@ import { CtiRoutingService } from './cti-routing.service';
 import { CsOpsService } from './cs-ops.service';
 import { CsSmsService } from './cs-sms.service';
 import { CsSmsController } from './cs-sms.controller';
+import { CsPresetController } from './cs-preset.controller';
 import { StubNotificationProvider } from '../../notifications/notification.provider';
 import { CsFollowupController, MoveClosureController } from './cs-ops.controller';
 
 /** 고객관리부 상담 콘솔 — 콜 자동 배분·아웃콜·콜백 */
 @Module({
-  controllers: [CsCallController, MoveClosureController, CsFollowupController, CsSmsController],
+  controllers: [
+    CsCallController,
+    MoveClosureController,
+    CsFollowupController,
+    CsSmsController,
+    CsPresetController,
+  ],
   providers: [
     CsCallService,
     CtiRoutingService,

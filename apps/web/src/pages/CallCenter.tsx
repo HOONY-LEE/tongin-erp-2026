@@ -88,7 +88,7 @@ const since = (iso: string, now: number) => {
 const STATE: Record<Console['agents'][number]['state'], { label: string; cls: string }> = {
   BUSY: { label: '상담 중', cls: 'busy' },
   READY: { label: '상담 가능', cls: 'ready' },
-  OFF: { label: '자리 비움', cls: 'off' },
+  OFF: { label: '후처리', cls: 'off' },
 };
 
 /**
@@ -187,7 +187,7 @@ export default function CallCenter() {
     }
   };
   /**
-   * 상담 가능/자리 비움 — 누르는 즉시 화면을 바꾸고(낙관적 갱신) 서버 저장은 뒤에서.
+   * 상담 가능/후처리 — 누르는 즉시 화면을 바꾸고(낙관적 갱신) 서버 저장은 뒤에서.
    * 실패하면 되돌리고 알린다.
    */
   const setAvailable = async (available: boolean) => {
@@ -356,10 +356,10 @@ export default function CallCenter() {
         me ? (
           <div className={styles.actions}>
             <PcPhone />
-            {/* 기본은 자리 비움. 콜이 배정되면 자동으로 '상담 중'이 되고, 통화가 끝나도 후처리를 마치고
+            {/* 기본은 후처리. 콜이 배정되면 자동으로 '상담 중'이 되고, 통화가 끝나도 후처리를 마치고
                 직접 [상담 가능]을 눌러야 다음 전화가 온다 */}
-            {/* 상담 가능/자리 비움은 상담 화면과 따로 — 통화가 끝나면 상담 화면을 연 채로도 바꿀 수 있다.
-                전화를 받으면 자동으로 자리 비움(다음 전화가 오지 않게), 준비되면 직접 [상담 가능] */}
+            {/* 상담 가능/후처리는 상담 화면과 따로 — 통화가 끝나면 상담 화면을 연 채로도 바꿀 수 있다.
+                전화를 받으면 자동으로 후처리(다음 전화가 오지 않게), 준비되면 직접 [상담 가능] */}
             <SegmentedControl
               value={me.available ? 'on' : 'off'}
               onChange={(v) => {
@@ -380,7 +380,7 @@ export default function CallCenter() {
                     </span>
                   ),
                 },
-                { value: 'off', label: onCall ? '통화 중' : '자리 비움' },
+                { value: 'off', label: onCall ? '상담 중' : '후처리' },
               ]}
             />
           </div>

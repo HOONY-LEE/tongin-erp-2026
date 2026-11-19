@@ -13,13 +13,13 @@ import {
 } from '../../components/closure/useClosures';
 import styles from '../callcenter.module.css';
 
-type Status = 'CLOSED' | 'SOON' | 'OPEN';
-const LABEL: Record<Status, string> = { CLOSED: '마감', SOON: '마감 예정', OPEN: '여유' };
+type Status = 'CLOSED' | 'OPEN';
+const LABEL: Record<Status, string> = { CLOSED: '마감', OPEN: '여유' };
 
 /**
  * 상담 콘솔 오른쪽 위 — 아주 작은 이사일 마감 달력(늘 6주라 높이가 바뀌지 않는다).
- * 마감·마감 예정·오늘을 색으로, 마우스를 올리면 상태와 이사 건수.
- * 날짜를 누르면 작은 메뉴로 마감 / 마감 예정 / 여유를 바꾼다(본사는 전체, 지점은 자기 지점).
+ * 마감·오늘을 색으로(토요일 파랑·일요일 빨강), 마우스를 올리면 상태와 이사 건수.
+ * 날짜를 누르면 작은 메뉴로 마감 / 여유를 바꾼다(본사는 전체, 지점은 자기 지점).
  * 오른쪽 위 아이콘은 마감 캘린더를 새 창으로.
  */
 export function MiniCalendar() {
@@ -50,7 +50,7 @@ export function MiniCalendar() {
 
   const statusOf = (date: string): Status => {
     const mine = data?.closures.find((x) => x.date === date && (x.orgUnitId ?? null) === target);
-    return mine ? mine.kind : 'OPEN';
+    return mine ? 'CLOSED' : 'OPEN';
   };
   const setStatus = async (date: string, status: Status) => {
     setMenu(null);
@@ -79,7 +79,6 @@ export function MiniCalendar() {
         </button>
         <span className={styles.miniKeys}>
           <i className={styles.keyClosed} /> 마감
-          <i className={styles.keySoon} /> 예정
         </span>
         <button
           type="button"
@@ -93,7 +92,10 @@ export function MiniCalendar() {
       </div>
       <div className={styles.miniGrid}>
         {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-          <span key={d} className={`${styles.miniDow} ${i === 0 ? styles.sun : ''}`}>
+          <span
+            key={d}
+            className={`${styles.miniDow} ${i === 0 ? styles.sun : i === 6 ? styles.sat : ''}`}
+          >
             {d}
           </span>
         ))}
@@ -108,7 +110,7 @@ export function MiniCalendar() {
               c.date === t ? ' (오늘)' : ''
             }${status !== 'OPEN' ? ` · ${LABEL[status]}` : ''}`,
             `이사 ${leads}건`,
-            ...others.map((x) => `${x.orgName ?? '전체'} ${LABEL[x.kind]}`),
+            ...others.map((x) => `${x.orgName ?? '전체'} 마감`),
           ].join('\n');
           return (
             <button
@@ -120,8 +122,8 @@ export function MiniCalendar() {
                 i % 7 >= 5 && styles.tipLeft,
                 !c.inMonth && styles.miniOut,
                 status === 'CLOSED' && styles.miniClosed,
-                status === 'SOON' && styles.miniSoon,
                 c.dow === 0 && styles.sun,
+                c.dow === 6 && styles.sat,
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -156,10 +158,7 @@ export function MiniCalendar() {
             {Number(menu.date.slice(5, 7))}월 {Number(menu.date.slice(8))}일
             {target === null ? ' · 전체' : ''}
           </div>
-          {(statusOf(menu.date) === 'OPEN'
-            ? (['CLOSED', 'SOON'] as Status[])
-            : (['CLOSED', 'SOON', 'OPEN'] as Status[])
-          ).map((s) => (
+          {(['CLOSED', 'OPEN'] as Status[]).map((s) => (
             <button
               key={s}
               type="button"
