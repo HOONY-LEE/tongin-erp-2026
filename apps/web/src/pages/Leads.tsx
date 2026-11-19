@@ -35,7 +35,7 @@ const CHIP_TONE: Record<string, ChipTone> = {
 // 단계 탭 = lead.status 그룹 (한 케이스가 상태로 전 단계를 관통)
 const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
   { key: 'ALL', label: '전체', statuses: null },
-  { key: 'INTAKE', label: '접수', statuses: ['RECEIVED', 'CONSULT_ASSIGNED', 'CONSULT_TOSS'] },
+  { key: 'INTAKE', label: '접수', statuses: ['RECEIVED', 'CONSULT_TOSS'] },
   { key: 'QUOTE', label: '견적', statuses: ['QUOTED', 'CONTRACT_PENDING'] },
   { key: 'CONTRACT', label: '계약', statuses: ['CONTRACTED'] },
   { key: 'WORK', label: '작업', statuses: ['WORK_TOSS', 'DONE'] },

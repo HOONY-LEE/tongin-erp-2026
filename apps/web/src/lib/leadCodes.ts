@@ -3,7 +3,6 @@ import type { StatusMap } from '../components/ui';
 
 export const LEAD_STATUS: StatusMap = {
   RECEIVED: { label: '접수', color: 'neutral' },
-  CONSULT_ASSIGNED: { label: '상담배정', color: 'info' },
   CONSULT_TOSS: { label: '상담토스', color: 'info' },
   QUOTED: { label: '견적완료', color: 'warning' },
   CONTRACT_PENDING: { label: '계약 미승인', color: 'warning' },
