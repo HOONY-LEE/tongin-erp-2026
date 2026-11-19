@@ -375,16 +375,6 @@ export function IntakePanel({
         {readOnly ? (
           <span className={styles.headActions}>
             <span className={styles.statePill}>{CALL_STATUS[call.status] ?? call.status}</span>
-            {can('LEAD.CREATE') && !phone.call && (
-              <Button variant="outline" size="sm" onClick={() => setRecallOpen(true)}>
-                <Phone size={14} /> 전화하기
-              </Button>
-            )}
-            {can('LEAD.CREATE') && (
-              <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
-                <MessageSquare size={14} /> SMS
-              </Button>
-            )}
             {call.leadId ? (
               <button
                 type="button"
@@ -396,6 +386,16 @@ export function IntakePanel({
               </button>
             ) : (
               <span className={styles.noLead}>접수 없음</span>
+            )}
+            {can('LEAD.CREATE') && !phone.call && (
+              <Button variant="outline" size="sm" onClick={() => setRecallOpen(true)}>
+                <Phone size={14} /> 전화하기
+              </Button>
+            )}
+            {can('LEAD.CREATE') && (
+              <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
+                <MessageSquare size={14} /> SMS
+              </Button>
             )}
           </span>
         ) : (
