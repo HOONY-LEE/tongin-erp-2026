@@ -1563,6 +1563,9 @@ textarea.memoBox {
 .sun {
   color: #dc2626;
 }
+.sat {
+  color: #2563eb;
+}
 
 /* ── 이사 확인콜 · 해피콜 ── */
 .fuDate {
@@ -2009,4 +2012,171 @@ textarea.memoBox {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 상담 메모 프리셋 — 상담 메모 머리 오른쪽 [프리셋 ▾] */
+.memoHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+}
+.presetWrap {
+  position: relative;
+  display: inline-flex;
+}
+.presetBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+}
+.presetBtn:hover,
+.presetBtn[aria-expanded='true'] {
+  color: var(--ark-color-text-primary);
+  border-color: var(--ark-color-text-secondary);
+}
+.presetMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.presetMenu button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ark-color-text-primary);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  text-align: left;
+  cursor: pointer;
+}
+.presetMenu button:hover {
+  background: var(--ark-color-bg-subtle, #f4f4f5);
+}
+.presetMenu small {
+  margin-left: auto;
+  color: var(--ark-color-text-secondary);
+  font-size: 11.5px;
+}
+.presetMenu .presetManage {
+  margin-top: 4px;
+  border-top: 1px solid var(--ark-color-border);
+  border-radius: 0 0 6px 6px;
+  color: var(--ark-color-text-secondary);
+}
+:global([role='dialog']:has(.preset-mgr-wrap)) {
+  width: min(820px, calc(100vw - 32px)) !important;
+  max-width: none !important;
+}
+.presetMgr {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
+  height: min(440px, calc(100vh - 240px));
+}
+.presetList {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  list-style: none;
+}
+.presetList li {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--ark-color-border);
+}
+.presetList li:last-child {
+  border-bottom: 0;
+}
+.presetOn {
+  background: var(--ark-color-bg-subtle, #f4f4f5);
+}
+.presetName {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--ark-color-text-primary);
+  font: inherit;
+  font-size: calc(13.5px * var(--font-scale, 1));
+  text-align: left;
+  cursor: pointer;
+}
+.presetOn .presetName {
+  font-weight: 600;
+}
+.presetTools {
+  display: inline-flex;
+  padding-right: 6px;
+}
+.presetTools button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.presetTools button:hover:not(:disabled) {
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-primary);
+}
+.presetTools button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.presetEdit {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+.presetBody {
+  flex: 1;
+  min-height: 0;
+}
+.presetBody textarea {
+  height: 100% !important;
+  min-height: 0 !important;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.6;
+}
+.presetBody > :last-child {
+  flex: 1;
+  min-height: 0;
 }

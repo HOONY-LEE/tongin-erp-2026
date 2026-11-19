@@ -8,7 +8,7 @@ import type { Closure } from './useClosures';
 import styles from './closureDayModal.module.css';
 
 /**
- * 하루의 이사일 마감 — 지점별 마감·마감 예정을 보고, 걸고, 푼다(캘린더 '이사일 마감'에서 날짜·마감을 누르면).
+ * 하루의 이사일 마감 — 지점별 마감을 보고, 걸고, 푼다(캘린더 '이사일 마감'에서 날짜·마감을 누르면).
  */
 export function ClosureDayModal({
   date,
@@ -27,7 +27,6 @@ export function ClosureDayModal({
   const { can } = useAuth();
   const { options, ownOrgId, unrestricted } = useOrgScope();
   const [orgId, setOrgId] = useState('ALL');
-  const [kind, setKind] = useState<'CLOSED' | 'SOON'>('CLOSED');
   const [memo, setMemo] = useState('');
   const [busy, setBusy] = useState(false);
   const editable = can('LEAD.UPDATE');
@@ -35,7 +34,6 @@ export function ClosureDayModal({
   useEffect(() => {
     if (!date) return;
     setOrgId(unrestricted ? 'ALL' : ownOrgId);
-    setKind('CLOSED');
     setMemo('');
   }, [date, unrestricted, ownOrgId]);
 
@@ -49,7 +47,7 @@ export function ClosureDayModal({
           date,
           orgUnitId: orgId && orgId !== 'ALL' ? orgId : null,
           memo: memo || undefined,
-          kind,
+          kind: 'CLOSED',
         }),
       });
       setMemo('');
@@ -93,9 +91,7 @@ export function ClosureDayModal({
               {closures.map((c) => (
                 <li key={c.id}>
                   <b>{c.orgName ?? '전체(모든 지점)'}</b>
-                  <span className={c.kind === 'SOON' ? styles.soon : styles.closed}>
-                    {c.kind === 'SOON' ? '마감 예정' : '마감'}
-                  </span>
+                  <span className={styles.closed}>마감</span>
                   {c.memo && <span className={styles.memo}>{c.memo}</span>}
                   {editable && (
                     <button
@@ -121,15 +117,6 @@ export function ClosureDayModal({
                 options={orgOptions}
                 placeholder="지점"
                 aria-label="마감할 지점"
-              />
-              <Select
-                value={kind}
-                onValueChange={(v) => setKind(v as 'CLOSED' | 'SOON')}
-                options={[
-                  { value: 'CLOSED', label: '마감' },
-                  { value: 'SOON', label: '마감 예정' },
-                ]}
-                aria-label="상태"
               />
               <Input
                 value={memo}

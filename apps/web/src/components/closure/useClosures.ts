@@ -33,6 +33,12 @@ export const shiftMonth = (ym: string, n: number) => {
   return d.toISOString().slice(0, 7);
 };
 
+/** 마감 예정(SOON)은 더 쓰지 않는다 — 예전에 걸어 둔 것도 마감/여유만 보이게 뺀다 */
+export const closedOnly = (d: ClosureData): ClosureData => ({
+  ...d,
+  closures: d.closures.filter((c) => c.kind !== 'SOON'),
+});
+
 /** 한 달(달력 6주) 마감·이사 건수 */
 export function useClosures(ym: string) {
   const [data, setData] = useState<ClosureData | null>(null);
@@ -40,7 +46,9 @@ export function useClosures(ym: string) {
     const g = monthGrid(ym);
     try {
       setData(
-        await api<ClosureData>(`/move-closures?from=${g[0].date}&to=${g[g.length - 1].date}`),
+        closedOnly(
+          await api<ClosureData>(`/move-closures?from=${g[0].date}&to=${g[g.length - 1].date}`),
+        ),
       );
     } catch {
       setData({ closures: [], counts: [] });

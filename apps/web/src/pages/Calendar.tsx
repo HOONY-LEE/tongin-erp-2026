@@ -7,7 +7,7 @@ import { PageHeader, Spinner, useToast } from '../components/ui';
 import CalendarGrid, { type CalendarSource } from '../components/calendar/CalendarGrid';
 import EventModal, { type EventFormValues } from '../components/calendar/EventModal';
 import { ClosureDayModal } from '../components/closure/ClosureDayModal';
-import type { ClosureData } from '../components/closure/useClosures';
+import { closedOnly, type ClosureData } from '../components/closure/useClosures';
 
 /** 로컬 날짜 → YYYY-MM-DD */
 const ymdOf = (d: Date) =>
@@ -84,7 +84,7 @@ export default function CalendarPage() {
         })),
       ]);
       setEvents(rows);
-      setClosures(cl);
+      setClosures(closedOnly(cl));
       touch();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
@@ -339,18 +339,18 @@ export default function CalendarPage() {
     { key: 'LEAVE', label: '휴가', color: '#8B5CF6' },
     { key: 'CLOSURE', label: '이사일 마감', color: '#8E8E93' },
   ];
-  /** 이사일 마감을 캘린더 일정처럼 — 마감은 회색, 마감 예정은 주황 */
+  /** 이사일 마감을 캘린더 일정처럼 — 마감은 회색 */
   const closureItems = useMemo<CalendarItem[]>(
     () =>
       closures.closures.map((c) => ({
         id: `closure-${c.id}`,
         source: 'CLOSURE',
-        title: `${c.orgName ?? '전체'} ${c.kind === 'SOON' ? '마감 예정' : '마감'}`,
+        title: `${c.orgName ?? '전체'} 마감`,
         date: c.date,
         endDate: c.date,
         startTime: null,
         endTime: null,
-        color: c.kind === 'SOON' ? '#D97706' : '#8E8E93',
+        color: '#8E8E93',
         location: null,
         description: c.memo,
         visibility: 'ORG',

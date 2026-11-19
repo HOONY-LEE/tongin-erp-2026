@@ -29,8 +29,7 @@
   color: var(--ark-color-text-secondary);
   font-size: 13px;
 }
-.closed,
-.soon {
+.closed {
   padding: 1px 8px;
   border-radius: 999px;
   font-size: 12px;
@@ -39,10 +38,6 @@
 .closed {
   background: #ececef;
   color: #6e6e73;
-}
-.soon {
-  background: #fef3d7;
-  color: #b45309;
 }
 .list button {
   display: inline-flex;
@@ -58,7 +53,7 @@
 }
 .addRow {
   display: grid;
-  grid-template-columns: 160px 110px minmax(0, 1fr) auto;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
 }

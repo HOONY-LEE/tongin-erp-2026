@@ -30,6 +30,7 @@ import {
 import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
+import { MemoPresetPicker } from './MemoPresets';
 import { Recording } from './Recording';
 import { SmsModal } from './SmsModal';
 
@@ -604,15 +605,21 @@ export function IntakePanel({
               onChange={(e) => setField('request', e.target.value)}
             />
           </label>
-          <label className={styles.field}>
-            <span>상담 메모</span>
+          <div className={styles.field}>
+            <span className={styles.memoHead}>
+              <label htmlFor="cs-memo">상담 메모</label>
+              {!readOnly && (
+                <MemoPresetPicker current={v.memo} onApply={(b) => setField('memo', b)} />
+              )}
+            </span>
             <Textarea
+              id="cs-memo"
               className={styles.memoBox}
               value={v.memo}
               placeholder="상담 내용 — 예: 견적 비교 중, 다음 주 화요일 다시 연락"
               onChange={(e) => setField('memo', e.target.value)}
             />
-          </label>
+          </div>
         </div>
       </fieldset>
 
@@ -667,7 +674,7 @@ export function IntakePanel({
           {phone.call ? ' 지금 통화도 함께 끊깁니다.' : ''}
           <br />
           <span className={styles.muted}>
-            적어 둔 메모는 콜 기록에 남습니다. 끝낸 뒤에는 자리 비움 상태이니, 준비가 되면 [상담
+            적어 둔 메모는 콜 기록에 남습니다. 끝낸 뒤에는 후처리 상태이니, 준비가 되면 [상담
             가능]을 눌러 주세요.
           </span>
         </p>
