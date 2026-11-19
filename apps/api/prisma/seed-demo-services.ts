@@ -7,6 +7,7 @@
  * 실제로 보내지 않는다: 캠페인은 '발송 완료'(결과 기록만)와 '작성 중'뿐이라 예약 발송이 문자를 내보낼 일이 없다.
  * 날짜는 오늘 기준 상대일. 멱등하다 — 번호(AS/LV + 순번)·고정 id로 upsert, 받는 사람은 지우고 다시 넣는다.
  */
+import { docNo } from './seed-doc-no';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -260,11 +261,15 @@ async function main() {
       assignedEmpId: status === 'REQUESTED' ? null : (branchStaff.get(c.orgUnitId) ?? null),
       createdAt: at(Math.min(offset, 0) - 7, 10 + (i % 6)),
     };
-    await prisma.serviceOrder.upsert({
-      where: { orderNo },
-      update: data,
-      create: { orderNo, ...data },
+    const oldSo = await prisma.serviceOrder.findFirst({
+      where: { legacyNo: orderNo },
+      select: { id: true },
     });
+    if (oldSo) await prisma.serviceOrder.update({ where: { id: oldSo.id }, data });
+    else
+      await prisma.serviceOrder.create({
+        data: { orderNo: await docNo(prisma, 'SV', data.createdAt), legacyNo: orderNo, ...data },
+      });
   }
 
   // ── A/S·CS 접수 — A/S는 이사가 끝난 계약 고객 ──
@@ -288,11 +293,15 @@ async function main() {
       assigneeEmpId: status === 'RECEIVED' ? null : (branchStaff.get(c.orgUnitId) ?? null),
       createdAt: at(offset, 9 + (i % 8), (i * 7) % 60),
     };
-    await prisma.supportTicket.upsert({
-      where: { ticketNo },
-      update: data,
-      create: { ticketNo, ...data },
+    const oldTk = await prisma.supportTicket.findFirst({
+      where: { legacyNo: ticketNo },
+      select: { id: true },
     });
+    if (oldTk) await prisma.supportTicket.update({ where: { id: oldTk.id }, data });
+    else
+      await prisma.supportTicket.create({
+        data: { ticketNo: await docNo(prisma, kind, data.createdAt), legacyNo: ticketNo, ...data },
+      });
   }
 
   // ── 마케팅 캠페인 3개 — 발송 완료 2(결과만 기록) + 작성 중 1 ──

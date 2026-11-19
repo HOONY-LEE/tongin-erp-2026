@@ -265,6 +265,7 @@ export class CsCallService {
     return {
       call: {
         id: call.id,
+        callNo: call.callNo,
         phone: call.phone,
         status: call.status,
         channel: call.channel,
@@ -668,6 +669,7 @@ export class CsCallService {
       id ? ((xs.find((x) => x.id === id)?.[k] as string | undefined) ?? null) : null;
     return calls.map((c) => ({
       id: c.id,
+      callNo: c.callNo,
       phone: c.phone,
       status: c.status,
       channel: c.channel,

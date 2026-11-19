@@ -9,6 +9,7 @@ import { Phone as PhoneCell } from 'softium-ui/table';
 import styles from '../callcenter.module.css';
 
 export interface CallRow {
+  callNo?: string | null;
   id: string;
   phone: string;
   status: string;
@@ -102,7 +103,11 @@ export function CallList({
   }, [scope, range, refreshKey, load]);
 
   const columns: Column[] = [
-    { title: '콜ID', render: (r) => shortId(r.id as string), width: 84 },
+    {
+      title: '콜 번호',
+      dataIndex: 'callNo',
+      render: (r) => (r.callNo as string | null) ?? shortId(r.id as string),
+    },
     {
       title: '고객명',
       dataIndex: 'customerName',

@@ -24,6 +24,7 @@ interface SmsRow {
   customerId: string | null;
   customerName: string | null;
   callId: string | null;
+  callNo: string | null;
   title: string | null;
   body: string;
   ok: boolean;
@@ -218,7 +219,7 @@ export default function SmsHistory() {
                       className={styles.link}
                       onClick={() => navigate(`/callcenter/${open.callId}`)}
                     >
-                      콜 {open.callId.slice(0, 8).toUpperCase()}
+                      콜 {open.callNo ?? open.callId.slice(0, 8).toUpperCase()}
                     </button>
                   </dd>
                 </>

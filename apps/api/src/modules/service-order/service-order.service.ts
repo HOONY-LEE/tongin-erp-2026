@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthPrincipal, ServiceOrderStatus } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -23,6 +24,7 @@ const TRANSITIONS: Record<ServiceOrderStatus, ServiceOrderStatus[]> = {
 export class ServiceOrderService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
   ) {}
@@ -58,7 +60,7 @@ export class ServiceOrderService {
     await this.scope.assertCustomer(dto.customerId, principal);
     const created = await this.prisma.serviceOrder.create({
       data: {
-        orderNo: this.genNo(),
+        orderNo: await this.docNo.next('SV'),
         serviceLine: dto.serviceLine,
         orgUnitId: dto.orgUnitId,
         productId: dto.productId,
@@ -113,14 +115,5 @@ export class ServiceOrderService {
       payload: { from, to },
     });
     return updated;
-  }
-
-  private genNo(): string {
-    const now = new Date();
-    const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
-      now.getDate(),
-    ).padStart(2, '0')}`;
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    return `SV${ymd}${rand}`;
   }
 }

@@ -44,6 +44,8 @@ import { ScriptCard } from './callcenter/ScriptCard';
 import { ExtensionList } from './callcenter/ExtensionList';
 
 interface CallView {
+  /** 콜 번호 CL+YYMMDD+일련 */
+  callNo?: string | null;
   id: string;
   phone: string;
   status: string;
@@ -298,6 +300,7 @@ export default function CallCenter() {
 
   // 다른 콜 상세의 종류(받은 콜/콜백) — 제목 옆 표시용
   const [pageStatus, setPageStatus] = useState<Record<string, string>>({});
+  const [pageNo, setPageNo] = useState<Record<string, string | null>>({});
   // 오른쪽 아래 카드 — 통화가 이어지면 내선(돌려주기), 끝나면 아웃콜로
   const live = !!phone.call && phone.call.state !== 'ringing';
   const [sideTab, setSideTab] = useState<'outcall' | 'ext'>('outcall');
@@ -383,7 +386,10 @@ export default function CallCenter() {
           ? '상담 콘솔'
           : pendingCall
             ? '새 콜'
-            : `콜 ${(viewId ?? '').slice(0, 8).toUpperCase()}`
+            : `콜 ${
+                (me?.call?.id === viewId ? me.call.callNo : pageNo[viewId ?? '']) ??
+                (viewId ?? '').slice(0, 8).toUpperCase()
+              }`
       }
       breadcrumbs={
         listView || pendingCall ? undefined : [{ label: '상담 콘솔', onClick: backToList }]
@@ -465,7 +471,10 @@ export default function CallCenter() {
           <CallPage
             key={viewId}
             id={viewId}
-            onStatus={(st) => setPageStatus((m) => ({ ...m, [viewId]: st }))}
+            onStatus={(st, no) => {
+              setPageStatus((m) => ({ ...m, [viewId]: st }));
+              setPageNo((m) => ({ ...m, [viewId]: no }));
+            }}
             myId={me?.employeeId ?? null}
             isAdmin={isSysAdmin}
             onBack={backToList}
@@ -831,7 +840,7 @@ function CallPage({
 }: {
   id: string;
   /** 콜 종류를 화면 제목에 알린다 */
-  onStatus?: (status: string) => void;
+  onStatus?: (status: string, callNo: string | null) => void;
   myId: string | null;
   isAdmin: boolean;
   onBack: () => void;
@@ -847,7 +856,7 @@ function CallPage({
     try {
       const r = await api<NonNullable<typeof d>>(`/cs-calls/${id}`);
       setD(r);
-      onStatus?.(r.call.status);
+      onStatus?.(r.call.status, r.call.callNo ?? null);
     } catch (e) {
       toast({
         type: 'error',

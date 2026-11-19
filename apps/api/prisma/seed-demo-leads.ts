@@ -13,6 +13,7 @@
  * 날짜는 오늘 기준 상대일 — 언제 돌려도 최근 데이터가 된다.
  * 멱등하다 — 번호(RS/ES/CS/WS + 순번)로 upsert 하고, 견적품목·결제·배정은 그 건의 것만 지우고 다시 넣는다.
  */
+import { docNo } from './seed-doc-no';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -380,11 +381,16 @@ async function main() {
       createdAt: at(received, 9 + (i % 9)),
       ...addr,
     };
-    const lead = await prisma.lead.upsert({
-      where: { leadNo },
-      update: data,
-      create: { leadNo, ...data },
+    // 시드 번호(RS0001…)는 '이전 번호'로 — 화면 번호는 규칙대로(RC+날짜+일련)
+    const oldLead = await prisma.lead.findFirst({
+      where: { legacyNo: leadNo },
+      select: { id: true },
     });
+    const lead = oldLead
+      ? await prisma.lead.update({ where: { id: oldLead.id }, data })
+      : await prisma.lead.create({
+          data: { leadNo: await docNo(prisma, 'RC', data.createdAt), legacyNo: leadNo, ...data },
+        });
     counts[stage] = (counts[stage] ?? 0) + 1;
     if (!quotedOrLater) continue;
 
@@ -413,11 +419,19 @@ async function main() {
       createdAt: at(Math.min(-1, received + 3), 15),
       ...addr,
     };
-    const estimate = await prisma.estimate.upsert({
-      where: { estimateNo },
-      update: estData,
-      create: { estimateNo, ...estData },
+    const oldEst = await prisma.estimate.findFirst({
+      where: { legacyNo: estimateNo },
+      select: { id: true },
     });
+    const estimate = oldEst
+      ? await prisma.estimate.update({ where: { id: oldEst.id }, data: estData })
+      : await prisma.estimate.create({
+          data: {
+            estimateNo: await docNo(prisma, 'ES', estData.createdAt),
+            legacyNo: estimateNo,
+            ...estData,
+          },
+        });
     await prisma.estimateLine.deleteMany({ where: { estimateId: estimate.id } });
     await prisma.estimateZone.deleteMany({ where: { estimateId: estimate.id } });
     const zoneByRoom = new Map<string, string>();
@@ -473,11 +487,19 @@ async function main() {
       // 계약 이후 단계는 본사 승인까지 끝난 계약(SENT는 계약금 대기)
       approvedAt: signed ? at(contractDay, 16) : null,
     };
-    const contract = await prisma.contract.upsert({
-      where: { contractNo },
-      update: conData,
-      create: { contractNo, ...conData },
+    const oldCon = await prisma.contract.findFirst({
+      where: { legacyNo: contractNo },
+      select: { id: true },
     });
+    const contract = oldCon
+      ? await prisma.contract.update({ where: { id: oldCon.id }, data: conData })
+      : await prisma.contract.create({
+          data: {
+            contractNo: await docNo(prisma, 'CT', conData.sentAt),
+            legacyNo: contractNo,
+            ...conData,
+          },
+        });
     await prisma.payment.deleteMany({ where: { contractId: contract.id } });
     await prisma.payment.create({
       data: {
@@ -509,11 +531,16 @@ async function main() {
     const workNo = `WS${String(i).padStart(4, '0')}`;
     const woStatus =
       stage === 'DONE' ? 'DONE' : stage === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'ASSIGNED';
+    const oldWo = await prisma.workOrder.findUnique({
+      where: { contractId: contract.id },
+      select: { id: true },
+    });
     const wo = await prisma.workOrder.upsert({
       where: { contractId: contract.id },
       update: { status: woStatus, scheduledDate: day(move), orgUnitId },
       create: {
-        workNo,
+        workNo: oldWo ? workNo : await docNo(prisma, 'WO', at(contractDay, 17)),
+        legacyNo: workNo,
         contractId: contract.id,
         leadId: lead.id,
         orgUnitId,

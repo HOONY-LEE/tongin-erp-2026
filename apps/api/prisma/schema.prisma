@@ -138,6 +138,10 @@ model EmployeeConcurrentOrg {
 
 model Customer {
   id           String     @id @default(uuid()) @db.Uuid
+  /// 고객 번호 CU+일련 6자리 — DB 트리거가 붙인다(next_doc_no)
+  customerNo   String?    @unique @map("customer_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo     String?    @map("legacy_no")
   name         String
   phonePrimary String?    @map("phone_primary")
   legacyId     String?    @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
@@ -158,6 +162,7 @@ model Customer {
   contracts    Contract[]
 
   @@index([phonePrimary])
+  @@index([legacyNo])
   @@map("customer")
 }
 
@@ -468,7 +473,9 @@ model PriceCondition {
 // ── Phase 1: 리드(접수) — 이사 프로세스의 출발점 (DB스키마 §5) ──
 model Lead {
   id                String      @id @default(uuid()) @db.Uuid
-  leadNo            String      @unique @map("lead_no") // 접수번호 R...
+  leadNo            String      @unique @map("lead_no") // 접수번호 RC+YYMMDD+일련 4자리(next_doc_no)
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo          String?     @map("legacy_no")
   customerId        String?     @map("customer_id") @db.Uuid
   customer          Customer?   @relation(fields: [customerId], references: [id])
   orgUnitId         String      @map("org_unit_id") @db.Uuid // 담당 지점
@@ -517,6 +524,7 @@ model Lead {
 
   @@index([status])
   @@index([orgUnitId])
+  @@index([legacyNo])
   @@map("lead")
 }
 
@@ -524,6 +532,8 @@ model Lead {
 model Estimate {
   id               String               @id @default(uuid()) @db.Uuid
   estimateNo       String               @unique @map("estimate_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo         String?              @map("legacy_no")
   leadId           String               @map("lead_id") @db.Uuid
   lead             Lead                 @relation(fields: [leadId], references: [id])
   customerId       String               @map("customer_id") @db.Uuid
@@ -682,6 +692,8 @@ model EstimateCostLine {
 model Contract {
   id                 String    @id @default(uuid()) @db.Uuid
   contractNo         String    @unique @map("contract_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo           String?   @map("legacy_no")
   estimateId         String    @unique @map("estimate_id") @db.Uuid
   estimate           Estimate  @relation(fields: [estimateId], references: [id])
   leadId             String    @map("lead_id") @db.Uuid
@@ -741,6 +753,8 @@ model Payment {
 model Invoice {
   id         String           @id @default(uuid()) @db.Uuid
   invoiceNo  String           @unique @map("invoice_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo   String?          @map("legacy_no")
   partnerId  String           @map("partner_id") @db.Uuid
   partner    Partner          @relation(fields: [partnerId], references: [id])
   orgUnitId  String?          @map("org_unit_id") @db.Uuid // 담당 지점(실적 귀속). 발행은 본사만
@@ -798,6 +812,8 @@ model CommissionRule {
 model WorkOrder {
   id            String           @id @default(uuid()) @db.Uuid
   workNo        String           @unique @map("work_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo      String?          @map("legacy_no")
   contractId    String           @unique @map("contract_id") @db.Uuid
   contract      Contract         @relation(fields: [contractId], references: [id])
   leadId        String           @map("lead_id") @db.Uuid
@@ -887,6 +903,8 @@ model Material {
 model MaterialOrder {
   id        String              @id @default(uuid()) @db.Uuid
   orderNo   String              @unique @map("order_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo  String?             @map("legacy_no")
   orgUnitId String              @map("org_unit_id") @db.Uuid // 발주 지점
   orgUnit   OrgUnit             @relation(fields: [orgUnitId], references: [id])
   status    String              @default("REQUESTED") // REQUESTED | APPROVED | SHIPPED | CANCELED
@@ -932,6 +950,8 @@ model StockMovement {
 model ServiceOrder {
   id            String    @id @default(uuid()) @db.Uuid
   orderNo       String    @unique @map("order_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo      String?   @map("legacy_no")
   serviceLine   String    @map("service_line") // LIVING | CARE (홈케어/새집증후군/청소/엔딩케어)
   productId     String?   @map("product_id") @db.Uuid // 서비스 상품(scalar; 이름은 마스터에서 조회)
   customerId    String?   @map("customer_id") @db.Uuid
@@ -952,6 +972,8 @@ model ServiceOrder {
 model SupportTicket {
   id            String   @id @default(uuid()) @db.Uuid
   ticketNo      String   @unique @map("ticket_no")
+  /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
+  legacyNo      String?  @map("legacy_no")
   kind          String // CS | AS
   customerId    String?  @map("customer_id") @db.Uuid
   contractId    String?  @map("contract_id") @db.Uuid // AS는 원계약 연결
@@ -2190,6 +2212,8 @@ model KnowledgeRelation {
 /// 고객관리부(콜센터) 상담 콜 — 대표번호로 들어온 전화. 빈 상담원에게 자동 배분하고, 모두 통화 중이면 아웃콜(콜백 대기)로 남긴다
 model CsCall {
   id            String    @id @default(uuid()) @db.Uuid
+  /// 콜 번호 CL+YYMMDD+일련 4자리 — DB 트리거가 붙인다(next_doc_no)
+  callNo        String?   @unique @map("call_no")
   phone         String // 숫자만
   status        String    @default("OUTCALL") // ASSIGNED 상담 중 | OUTCALL 콜백 대기 | CALLBACK 콜백 중 | DONE 끝 | CANCELED 취소
   agentEmpId    String?   @map("agent_emp_id") @db.Uuid
@@ -2351,4 +2375,12 @@ model CsSms {
   @@index([customerId, at])
   @@index([phone, at])
   @@map("cs_sms")
+}
+
+/// 문서 번호 일련 — 키(접두어+YYMMDD, 고객은 'CU')마다 마지막 번호. DB 함수 next_doc_no가 올린다
+model DocSequence {
+  key  String @id
+  last Int
+
+  @@map("doc_sequence")
 }

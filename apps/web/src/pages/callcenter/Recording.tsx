@@ -8,7 +8,15 @@ import styles from '../callcenter.module.css';
  * 통화 녹취 — 파일은 우리 서버에 두지 않는다. 누를 때 한국AI통신(90일 보관)에서 받아 와 듣고·내려받는다.
  * 녹취는 인증이 필요해 <audio src>로 바로 못 연다 — 받아서 브라우저 메모리에서 재생.
  */
-export function Recording({ callId, available }: { callId: string; available: boolean }) {
+export function Recording({
+  callId,
+  callNo,
+  available,
+}: {
+  callId: string;
+  callNo?: string | null;
+  available: boolean;
+}) {
   const toast = useToast();
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,7 +57,7 @@ export function Recording({ callId, available }: { callId: string; available: bo
     if (!u) return;
     const a = document.createElement('a');
     a.href = u;
-    a.download = `녹취_${callId.slice(0, 8).toUpperCase()}.wav`;
+    a.download = `녹취_${callNo ?? callId.slice(0, 8).toUpperCase()}.wav`;
     a.click();
   };
 

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthPrincipal, ContractMargin, PartnerReceivable } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -20,6 +21,7 @@ import { CreateInvoiceDto, CreateReceiptDto, SetOutsourceCostDto } from './dto/b
 export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
   ) {}
@@ -111,7 +113,7 @@ export class BillingService {
 
     const created = await this.prisma.invoice.create({
       data: {
-        invoiceNo: this.genNo(),
+        invoiceNo: await this.docNo.next('IV'),
         partnerId: partner.id,
         orgUnitId: contract.orgUnitId, // 담당 지점 = 계약 지점
         contractId,
@@ -155,7 +157,7 @@ export class BillingService {
     this.assertBillablePartner(partner.type);
     return this.prisma.invoice.create({
       data: {
-        invoiceNo: this.genNo(),
+        invoiceNo: await this.docNo.next('IV'),
         partnerId: dto.partnerId,
         orgUnitId: dto.orgUnitId,
         title: dto.title,
@@ -275,13 +277,5 @@ export class BillingService {
     const inv = await this.prisma.invoice.findUnique({ where: { id } });
     if (!inv) throw new NotFoundException(`청구서를 찾을 수 없습니다: ${id}`);
     return inv;
-  }
-
-  private genNo(): string {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
-    const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-    return `INV${ymd}${rand}`;
   }
 }

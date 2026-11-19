@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import type { AuthPrincipal } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { kstYmd } from '../../common/util/kst';
 import { ScopeService } from '../../scope/scope.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { StubNotificationProvider } from '../../notifications/notification.provider';
@@ -49,6 +49,7 @@ export class EsignService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly scope: ScopeService,
     private readonly eventBus: EventBusService,
     private readonly sms: StubNotificationProvider,
@@ -93,7 +94,7 @@ export class EsignService {
         c = await tx.contract.create({
           omit: { signToken: false },
           data: {
-            contractNo: this.genContractNo(),
+            contractNo: await this.docNo.next('CT'),
             estimateId: e.id,
             leadId: e.leadId,
             customerId: e.customerId,
@@ -381,11 +382,5 @@ export class EsignService {
       moveDate: e.lead?.moveDate ? kstDate(e.lead.moveDate) : null,
       problems,
     };
-  }
-
-  private genContractNo(): string {
-    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
-    const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-    return `CT${ymd}${rand}`;
   }
 }

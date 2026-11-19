@@ -124,6 +124,14 @@ export class CsSmsService {
     });
     const empIds = [...new Set(rows.map((r) => r.employeeId).filter((x): x is string => !!x))];
     const custIds = [...new Set(rows.map((r) => r.customerId).filter((x): x is string => !!x))];
+    const callIds = [...new Set(rows.map((r) => r.callId).filter((x): x is string => !!x))];
+    const calls = callIds.length
+      ? await this.prisma.csCall.findMany({
+          where: { id: { in: callIds } },
+          select: { id: true, callNo: true },
+        })
+      : [];
+    const callNo = new Map(calls.map((c) => [c.id, c.callNo]));
     const [emps, custs] = await Promise.all([
       empIds.length
         ? this.prisma.employee.findMany({
@@ -149,6 +157,7 @@ export class CsSmsService {
         customerId: r.customerId,
         customerName: r.customerId ? (custName.get(r.customerId) ?? null) : null,
         callId: r.callId,
+        callNo: r.callId ? (callNo.get(r.callId) ?? null) : null,
         title: r.title,
         body: r.body,
         ok: r.ok,

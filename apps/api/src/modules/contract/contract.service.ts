@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { kstYmd } from '../../common/util/kst';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
@@ -19,6 +19,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export class ContractService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly eventBus: EventBusService,
     private readonly scope: ScopeService,
     private readonly leadService: LeadService,
@@ -81,7 +82,7 @@ export class ContractService {
     const { created, transition } = await this.prisma.$transaction(async (tx) => {
       const row = await tx.contract.create({
         data: {
-          contractNo: this.genNo(),
+          contractNo: await this.docNo.next('CT'),
           estimateId: dto.estimateId,
           leadId: estimate.leadId,
           customerId: estimate.customerId,
@@ -296,11 +297,5 @@ export class ContractService {
       where: { contractId },
       orderBy: { createdAt: 'asc' },
     });
-  }
-
-  private genNo(): string {
-    const ymd = kstYmd(); // 한국 날짜(서버는 UTC)
-    const rand = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
-    return `CT${ymd}${rand}`;
   }
 }
