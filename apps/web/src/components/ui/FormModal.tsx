@@ -115,8 +115,8 @@ export function FormModal({
     }
   };
 
-  const visibleFields = fields.filter((f) => shown(f) && (f.required || f.alwaysShow));
-  const hiddenFields = fields.filter((f) => shown(f) && !f.required && !f.alwaysShow);
+  const visibleFields = fields.filter((f) => shown(f) && !f.hidden && (f.required || f.alwaysShow));
+  const hiddenFields = fields.filter((f) => shown(f) && !f.hidden && !f.required && !f.alwaysShow);
 
   return (
     <Modal
@@ -175,6 +175,21 @@ function renderRows(
   const rows: ReactNode[] = [];
   for (let i = 0; i < list.length; i++) {
     const f = list[i];
+    // 이 칸 + 다음 칸 입력을 한 줄로(라벨 하나) — 예: [일반|제휴|전속] [상품 ▾]
+    if (f.joinNext && i + 1 < list.length) {
+      const next = list[i + 1];
+      rows.push(
+        <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <FieldLabel label={f.label} required={f.required || next.required} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ flex: 'none' }}>{renderControl(f, values, setField)}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>{renderControl(next, values, setField)}</div>
+          </div>
+        </div>,
+      );
+      i++;
+      continue;
+    }
     if (f.pairWithNext && i + 1 < list.length) {
       const next = list[i + 1];
       rows.push(
@@ -196,14 +211,7 @@ function renderField(
   values: Record<string, string>,
   setField: (n: string, v: string) => void,
 ) {
-  // 다른 칸 값에 따라 선택지를 바꾸는 칸
-  const f: FormField = field.optionsBy
-    ? { ...field, options: field.optionsBy.map[values[field.optionsBy.field] ?? ''] ?? [] }
-    : field;
-  const change = (v: string) => {
-    setField(f.name, v);
-    for (const r of f.resets ?? []) setField(r, '');
-  };
+  const f = field;
   if (f.type === 'address') {
     return (
       <AddressField
@@ -219,6 +227,27 @@ function renderField(
   return (
     <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <FieldLabel label={f.label} required={f.required} />
+      {renderControl(field, values, setField)}
+    </div>
+  );
+}
+
+/** 칸의 입력 부분(라벨 없이) */
+function renderControl(
+  field: FormField,
+  values: Record<string, string>,
+  setField: (n: string, v: string) => void,
+) {
+  // 다른 칸 값에 따라 선택지를 바꾸는 칸
+  const f: FormField = field.optionsBy
+    ? { ...field, options: field.optionsBy.map[values[field.optionsBy.field] ?? ''] ?? [] }
+    : field;
+  const change = (v: string) => {
+    setField(f.name, v);
+    for (const r of f.resets ?? []) setField(r, '');
+  };
+  return (
+    <>
       {f.type === 'segment' ? (
         <SegmentedControl
           value={values[f.name] ?? ''}
@@ -278,7 +307,7 @@ function renderField(
         <Textarea
           value={values[f.name] ?? ''}
           placeholder={f.placeholder}
-          rows={5}
+          rows={f.rows ?? 5}
           onChange={(e) => setField(f.name, e.target.value)}
           disabled={f.disabled}
         />
@@ -298,6 +327,6 @@ function renderField(
           disabled={f.disabled}
         />
       )}
-    </div>
+    </>
   );
 }

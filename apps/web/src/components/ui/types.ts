@@ -74,6 +74,12 @@ export interface FormField {
   virtual?: boolean;
   /** 이 칸을 바꾸면 비울 다른 칸들 */
   resets?: string[];
+  /** 화면에 보이지 않지만 값은 저장한다(고정값 — 예: 상담 콘솔 접수의 접수경로 '전화') */
+  hidden?: boolean;
+  /** 바로 다음 칸의 입력을 이 칸과 한 줄에 붙인다(라벨은 이 칸 하나 — 예: 상품 종류 탭 + 상품) */
+  joinNext?: boolean;
+  /** textarea 줄 수(기본 5) */
+  rows?: number;
 }
 
 export type BadgeColor = 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral';

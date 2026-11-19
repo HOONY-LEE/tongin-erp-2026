@@ -9,7 +9,8 @@ import type { FormField } from '../ui';
 
 /**
  * 간편접수(접수 등록) 창의 항목과 기본값 — 접수 화면과 상담 콘솔이 같은 창을 쓴다.
- * withCallFields: 상담 콘솔에서 열 때 이사 희망일·고객 요청사항도 함께 보인다.
+ * withCallFields: 상담 콘솔에서 열 때 — 서비스 요청일·고객 요청사항을 함께 받고,
+ * 담당 지점·담당자·접수경로(전화)·상품 특이사항은 고정값으로 숨겨 보낸다(스크롤 없는 짧은 창).
  */
 export function useLeadCreateForm({ withCallFields = false }: { withCallFields?: boolean } = {}) {
   const { user } = useAuth();
@@ -59,11 +60,12 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     {
       name: 'orgUnitId',
       label: '담당 지점',
-      required: true,
+      required: !withCallFields,
       alwaysShow: true,
       pairWithNext: true,
       type: 'select',
       options: orgs,
+      hidden: withCallFields,
     },
     {
       name: 'ownerEmpId',
@@ -73,14 +75,17 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
       options: ownerOptions,
       // 본인 고정 — 슈퍼관리자만 다른 직원으로 바꿀 수 있다(서버도 같은 규칙).
       disabled: !isSuper,
+      hidden: withCallFields,
     },
     {
       name: 'source',
       label: '접수경로',
       alwaysShow: true,
-      pairWithNext: true,
+      pairWithNext: !withCallFields,
       type: 'select',
       options: RECEIPT_SOURCES,
+      // 상담 콘솔에서 받은 접수는 늘 '전화'
+      hidden: withCallFields,
     },
     // 상품 — 먼저 종류(일반/제휴/전속)를 고르면 그 종류의 목록이 드롭다운으로 뜬다
     {
@@ -96,6 +101,8 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
         { value: 'EXCLUSIVE', label: '전속' },
       ],
       resets: ['partnerId'],
+      // 상품 종류 탭과 상품 고르기를 한 줄에
+      joinNext: true,
     },
     {
       name: 'serviceLine',
@@ -127,18 +134,27 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
       },
       showWhen: { field: 'moveKind', in: ['AFFILIATE', 'EXCLUSIVE'] },
     },
-    { name: 'fromAddress', label: '출발지', alwaysShow: true, type: 'address', addrPrefix: 'from' },
+    {
+      name: 'fromAddress',
+      label: '출발지',
+      alwaysShow: true,
+      type: 'address',
+      addrPrefix: 'from',
+      pairWithNext: withCallFields,
+    },
     { name: 'toAddress', label: '도착지', alwaysShow: true, type: 'address', addrPrefix: 'to' },
     ...(withCallFields
       ? ([
-          { name: 'moveDate', label: '이사 희망일', type: 'date', alwaysShow: true },
-          { name: 'customerRequest', label: '고객 요청사항', type: 'textarea', alwaysShow: true },
+          { name: 'moveDate', label: '서비스 요청일', type: 'date', alwaysShow: true },
           {
-            name: 'productNote',
-            label: '상품 특이사항(제휴·전속 혜택·조건)',
+            name: 'customerRequest',
+            label: '고객 요청사항',
             type: 'textarea',
             alwaysShow: true,
+            rows: 3,
           },
+          // 고른 제휴·전속의 혜택·조건 — 화면엔 안 보이고 접수에 함께 남는다
+          { name: 'productNote', label: '상품 특이사항', type: 'textarea', hidden: true },
         ] satisfies FormField[])
       : []),
   ];
