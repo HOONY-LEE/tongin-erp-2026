@@ -75,7 +75,6 @@ export type DiscountType = (typeof DISCOUNT_TYPES)[number];
 // 접수→완료 상태머신 (설계노트 부록 D-4)
 export const LEAD_STATUS = [
   'RECEIVED', // 접수완료
-  'CONSULT_ASSIGNED', // 상담배정
   'CONSULT_TOSS', // 상담토스
   'QUOTED', // 견적완료(미계약)
   'CONTRACT_PENDING', // 계약 미승인 — 서명·계약금은 들어왔고 본사 승인 전
@@ -88,7 +87,6 @@ export type LeadStatus = (typeof LEAD_STATUS)[number];
 /** 진행상태 라벨 — 화면과 견적서 문서가 같은 표기를 쓰도록 공용으로 둔다 */
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
   RECEIVED: '접수',
-  CONSULT_ASSIGNED: '상담배정',
   CONSULT_TOSS: '상담토스',
   QUOTED: '견적완료',
   CONTRACT_PENDING: '계약 미승인',
@@ -100,8 +98,8 @@ export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
 
 // 리드 상태머신: 허용 전이만 가능 (부록 D-4). CANCELED는 종료 전 어디서든 가능.
 export const LEAD_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
-  RECEIVED: ['CONSULT_ASSIGNED', 'CANCELED'],
-  CONSULT_ASSIGNED: ['CONSULT_TOSS', 'CANCELED'],
+  // 상담토스 = 본사가 지점(가맹점)에 상담을 넘김(예전 '상담배정'과 같은 단계라 합쳤다)
+  RECEIVED: ['CONSULT_TOSS', 'CANCELED'],
   CONSULT_TOSS: ['QUOTED', 'CANCELED'],
   QUOTED: ['CONTRACT_PENDING', 'CANCELED'],
   CONTRACT_PENDING: ['CONTRACTED', 'CANCELED'],

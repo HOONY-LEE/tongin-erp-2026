@@ -65,13 +65,13 @@ const PLAN: [Stage, number][] = [
 
 const LEAD_STATUS: Record<Stage, string> = {
   RECEIVED: 'RECEIVED',
-  CONSULT_ASSIGNED: 'CONSULT_ASSIGNED',
+  CONSULT_ASSIGNED: 'CONSULT_TOSS', // 상담배정은 상담토스로 합쳤다
   CONSULT_TOSS: 'CONSULT_TOSS',
   QUOTED: 'QUOTED',
   SENT: 'QUOTED',
   CONTRACTED: 'CONTRACTED',
   WORK_TOSS: 'WORK_TOSS',
-  IN_PROGRESS: 'IN_PROGRESS',
+  IN_PROGRESS: 'WORK_TOSS', // 접수에는 '작업중'이 없다(작업오더만 진행 중)
   DONE: 'DONE',
   CANCELED: 'CANCELED',
 };
@@ -470,6 +470,8 @@ async function main() {
       signedAt: signed ? at(contractDay, 14) : null,
       sentAt: at(contractDay, 11),
       esignRef: signed ? `seed_sign_${i}` : null,
+      // 계약 이후 단계는 본사 승인까지 끝난 계약(SENT는 계약금 대기)
+      approvedAt: signed ? at(contractDay, 16) : null,
     };
     const contract = await prisma.contract.upsert({
       where: { contractNo },
