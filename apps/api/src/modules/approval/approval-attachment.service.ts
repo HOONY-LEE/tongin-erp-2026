@@ -6,6 +6,7 @@ import {
   type AuthPrincipal,
   type FormFile,
 } from '@tongin/shared';
+import { FileStoreService } from '../../prisma/file-store.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalService } from './approval.service';
 
@@ -27,6 +28,7 @@ const meta = (a: { id: string; fileName: string; size: number; mediaType: string
 export class ApprovalAttachmentService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly store: FileStoreService,
     private readonly approvals: ApprovalService,
   ) {}
 
@@ -40,13 +42,14 @@ export class ApprovalAttachmentService {
       throw new BadRequestException(
         `파일이 너무 큽니다(${(bytes.length / 1048576).toFixed(1)}MB, 최대 ${APPROVAL_FILE_MAX_BYTES / 1048576}MB).`,
       );
+    const mediaType = input.mediaType.trim() || 'application/octet-stream';
     const row = await this.prisma.approvalAttachment.create({
       data: {
         uploadedByUserId: p.userId,
         fileName: name,
-        mediaType: input.mediaType.trim() || 'application/octet-stream',
+        mediaType,
         size: bytes.length,
-        bytes: new Uint8Array(bytes),
+        ...(await this.store.put(bytes, mediaType)),
       },
       select: { id: true, fileName: true, size: true, mediaType: true },
     });
@@ -67,7 +70,7 @@ export class ApprovalAttachmentService {
       if (!a.docId) throw new NotFoundException('첨부파일을 찾을 수 없습니다.');
       await this.approvals.get(a.docId, p); // 문서를 볼 수 없으면 여기서 막힌다
     }
-    return { name: a.fileName, mediaType: a.mediaType, bytes: Buffer.from(a.bytes) };
+    return { name: a.fileName, mediaType: a.mediaType, bytes: await this.store.read(a) };
   }
 
   /**

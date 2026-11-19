@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { basename, extname } from 'path';
 import type Anthropic from '@anthropic-ai/sdk';
+import { FileStoreService } from '../prisma/file-store.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PiiVault } from './pii-vault';
 
@@ -44,6 +45,7 @@ export class AiFiles {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly store: FileStoreService,
     private readonly vault: PiiVault,
   ) {}
 
@@ -64,7 +66,11 @@ export class AiFiles {
       );
     }
     const f = await this.prisma.aiFile.create({
-      data: { ...data, bytes: new Uint8Array(data.bytes), size: data.bytes.length },
+      data: {
+        ...data,
+        ...(await this.store.put(data.bytes, data.mediaType)),
+        size: data.bytes.length,
+      },
       select: { id: true, toolUseId: true, name: true, mediaType: true, size: true },
     });
     return f;
@@ -101,9 +107,8 @@ export class AiFiles {
       throw new NotFoundException('파일을 찾을 수 없습니다.');
     }
     // 코드 실행 샌드박스는 가명만 받아 파일을 만든다 — 내려받을 때 만든 사람의 가명을 실제 값으로
-    const bytes = owner
-      ? await this.vault.revealFile(owner, f.name, f.mediaType, Buffer.from(f.bytes))
-      : Buffer.from(f.bytes);
+    const raw = await this.store.read(f);
+    const bytes = owner ? await this.vault.revealFile(owner, f.name, f.mediaType, raw) : raw;
     return { name: f.name, mediaType: f.mediaType, bytes };
   }
 
