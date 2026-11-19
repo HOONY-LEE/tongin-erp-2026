@@ -563,7 +563,15 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 4px 8px 8px;
+  /* 스크롤 영역 맨 위에 붙여 두고(메뉴만 아래로 스크롤), 경계선으로 나눈다.
+     음수 여백은 사이드바 내용 영역의 안쪽 여백(16px 4px 16px 12px)을 상쇄한다 */
+  position: sticky;
+  top: -16px; /* 스크롤 영역 안쪽 여백만큼 위로 — 그래야 맨 위에 딱 붙는다 */
+  z-index: 2;
+  margin: -16px -4px 8px -12px;
+  padding: 10px 12px 10px 20px;
+  border-bottom: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg);
 }
 .sideSearchBox {
   display: flex;
@@ -578,6 +586,19 @@
 }
 .sideSearchBox:focus-within {
   border-color: var(--ark-color-text-secondary);
+}
+/* 검색 중에는 돋보기를 숨기고 입력이 왼쪽 끝부터 */
+.sideSearchBox:focus-within > svg {
+  display: none;
+}
+/* 전역 입력칸 포커스 링이 안쪽에 한 겹 더 그려지지 않게 —
+   전역 input[placeholder*='검색']:focus 규칙이 !important라 여기서도 !important */
+.sideSearch .sideSearchBox input,
+.sideSearch .sideSearchBox input:focus,
+.sideSearch .sideSearchBox input:focus-visible {
+  box-shadow: none !important;
+  border-radius: 0;
+  appearance: none;
 }
 .sideSearchBox input {
   flex: 1;
