@@ -27,6 +27,7 @@ export default {
     customers: 'Customers',
     callcenter: 'Call Console',
     smsHistory: 'SMS History',
+    extensions: 'Extensions',
     alliances: 'Alliances',
     products: 'Products',
     cbmItems: 'CBM Items',

@@ -20,7 +20,10 @@ const digits = (s: string) => s.replace(/\D/g, '');
 class TargetDto {
   @IsOptional() @IsUUID() id?: string;
   @IsString() @MinLength(1) @MaxLength(40) label!: string;
+  @IsOptional() @IsString() @MaxLength(40) dept?: string;
+  @IsOptional() @IsString() @MaxLength(20) extNo?: string;
   @IsString() @MinLength(7) @MaxLength(20) number!: string;
+  @IsOptional() @IsString() @MaxLength(200) memo?: string;
 }
 class TransferredDto {
   @IsString() @MaxLength(20) phone!: string;
@@ -34,7 +37,7 @@ const assertManager = (p: AuthPrincipal) => {
 
 /**
  * 돌려주기 — 상담원이 통화를 사무실 직원·부서로 넘긴다(PC 전화가 한국AI통신에 SIP REFER).
- * 연락처 목록은 상담원 모두 보고, 상담 관리자가 고친다. 넘긴 기록은 그 콜에 남긴다.
+ * 내선(연락처) 목록은 상담원 모두 보고, 상담 관리자가 고친다(내선 관리 화면). 넘긴 기록은 그 콜에 남긴다.
  */
 @Controller()
 export class CsTransferController {
@@ -45,7 +48,7 @@ export class CsTransferController {
   list() {
     return this.prisma.csTransferTarget.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-      select: { id: true, label: true, number: true },
+      select: { id: true, label: true, dept: true, extNo: true, number: true, memo: true },
     });
   }
 
@@ -55,7 +58,13 @@ export class CsTransferController {
     assertManager(user);
     const number = digits(dto.number);
     if (number.length < 7) throw new BadRequestException('번호를 확인해 주세요.');
-    const data = { label: dto.label.trim(), number };
+    const data = {
+      label: dto.label.trim(),
+      dept: dto.dept?.trim() || null,
+      extNo: dto.extNo?.trim() || null,
+      number,
+      memo: dto.memo?.trim() || null,
+    };
     if (dto.id) return this.prisma.csTransferTarget.update({ where: { id: dto.id }, data });
     const max = await this.prisma.csTransferTarget.aggregate({ _max: { sortOrder: true } });
     return this.prisma.csTransferTarget.create({

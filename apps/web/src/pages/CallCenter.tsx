@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Laptop, Phone, Trash2, PhoneOutgoing, Settings2, UserRound, PhoneOff } from 'lucide-react';
+import {
+  Laptop,
+  Phone,
+  PhoneForwarded,
+  Trash2,
+  PhoneOutgoing,
+  Settings2,
+  UserRound,
+  PhoneOff,
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -31,6 +40,7 @@ import { FollowupList } from './callcenter/FollowupList';
 import { MiniCalendar } from './callcenter/MiniCalendar';
 import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
 import { ScriptCard } from './callcenter/ScriptCard';
+import { ExtensionList } from './callcenter/ExtensionList';
 
 interface CallView {
   id: string;
@@ -283,6 +293,12 @@ export default function CallCenter() {
   }, [data, viewId, go]);
   const backToList = () => go(null);
 
+  // 오른쪽 아래 카드 — 통화가 이어지면 내선(돌려주기), 끝나면 아웃콜로
+  const live = !!phone.call && phone.call.state !== 'ringing';
+  const [sideTab, setSideTab] = useState<'outcall' | 'ext'>('outcall');
+  useEffect(() => {
+    setSideTab(live ? 'ext' : 'outcall');
+  }, [live]);
   if (!data)
     return (
       <ListPage fit title="상담 콘솔">
@@ -479,14 +495,37 @@ export default function CallCenter() {
           ) : (
             <ScriptCard />
           )}
-          {/* 아웃콜 대기 */}
+          {/* 아웃콜 대기 · 내선(통화 중이면 자동으로 내선 — 이름 옆 [돌려주기]) */}
           <section className={`${styles.card} ${styles.paneCard}`}>
-            <h3 className={`${styles.cardTitle} ${styles.paneHead}`}>
-              <PhoneOutgoing size={15} /> 아웃콜 목록
-              <span className={`${styles.count} ${styles.countEnd}`}>{data.outcalls.length}</span>
+            <h3 className={`${styles.cardTitle} ${styles.paneHead} ${styles.paneTabs}`}>
+              <SegmentedControl
+                size="sm"
+                value={sideTab}
+                onChange={(v) => setSideTab(v as 'outcall' | 'ext')}
+                options={[
+                  {
+                    value: 'outcall',
+                    label: (
+                      <span className={styles.tabLabel}>
+                        <PhoneOutgoing size={13} /> 아웃콜 {data.outcalls.length}
+                      </span>
+                    ),
+                  },
+                  {
+                    value: 'ext',
+                    label: (
+                      <span className={styles.tabLabel}>
+                        <PhoneForwarded size={13} /> 내선
+                      </span>
+                    ),
+                  },
+                ]}
+              />
             </h3>
             <div className={styles.paneBody}>
-              {data.outcalls.length ? (
+              {sideTab === 'ext' ? (
+                <ExtensionList />
+              ) : data.outcalls.length ? (
                 <ol className={styles.ocList}>
                   {data.outcalls.map((c, i) => (
                     <li key={c.id} className={styles.ocItem}>

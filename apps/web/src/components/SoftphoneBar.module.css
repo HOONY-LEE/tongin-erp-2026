@@ -431,44 +431,8 @@
   font-size: 11.5px;
   line-height: 1.5;
 }
-.xferMgr {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.xferMgr ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 10px;
-}
-.xferMgr li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  font-size: 14px;
-}
-.xferMgr li + li {
-  border-top: 1px solid var(--ark-color-border);
-}
-.xferMgr li span {
+.xferList em {
   color: var(--ark-color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-.xferMgr li button {
-  display: grid;
-  place-items: center;
-  margin-left: auto;
-  border: 0;
-  background: none;
-  color: var(--ark-color-text-secondary);
-  cursor: pointer;
-}
-.xferAdd {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
+  font-size: 12px;
+  font-style: normal;
 }
