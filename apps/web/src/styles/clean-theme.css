@@ -35,20 +35,15 @@
   --sft-font-size-xl: calc(18px * var(--font-scale));
   --control-radius: 10px;
   --sft-radius-md: 10px;
+  /* 표·softium 부품도 앱 서체(Pretendard) — softium 기본값은 시스템 서체(-apple-system)가 먼저라 덮어쓴다 */
+  --sft-font-family: var(--ark-font-family);
   /* 표 글자 — 본문 14px, 머리 12.5px(배율 따름) */
   --sft-table-font-size: calc(14px * var(--font-scale));
 }
 
 /* ── 숫자 서체 — Geist Mono(한국AI통신 콘솔 표와 같은 서체) ──
-   TabNum: 숫자·하이픈·콜론·점·쉼표·퍼센트만 Geist Mono로, 나머지(한글·영문)는 원래 서체로.
-   Geist Mono: 코드(접수번호 등) 전체를 고정폭으로. 글꼴 파일 OFL — assets/fonts/GeistMono-LICENSE.txt */
-@font-face {
-  font-family: 'TabNum';
-  src: url('../assets/fonts/geist-mono-latin-wght-normal.woff2') format('woff2-variations');
-  font-weight: 100 900;
-  font-display: swap;
-  unicode-range: U+0030-0039, U+002D, U+003A, U+002E, U+002C, U+0025;
-}
+   숫자로만 된 칸(전화번호·금액·날짜 등, 표가 알아서 .dt-num을 붙인다)과 ID·코드에만 쓴다.
+   글자와 숫자가 섞인 값(주소 등)은 Pretendard 그대로. 글꼴 파일 OFL — assets/fonts/GeistMono-LICENSE.txt */
 @font-face {
   font-family: 'Geist Mono';
   src: url('../assets/fonts/geist-mono-latin-wght-normal.woff2') format('woff2-variations');
@@ -63,7 +58,7 @@ h1 {
 
 /* ── 표 — 한국AI통신 콘솔 통화 기록 표 그대로 ──
    머리 44px·12px 굵게 회색(자간 0.6px), 행 47px·14px, 칸 좌우 16px, 가로 선만(#e5e5ea).
-   숫자는 Geist Mono(고정폭이라 자리가 위아래로 맞는다). 상태 칩은 점 + 글자. */
+   숫자로만 된 칸은 Geist Mono(고정폭이라 자리가 위아래로 맞는다). 상태 칩은 점 + 글자. */
 .sft-table {
   --sft-table-row-height: calc(47px * var(--font-scale)) !important;
   --sft-table-header-height: calc(44px * var(--font-scale)) !important;
@@ -88,8 +83,11 @@ h1 {
 }
 .sft-td {
   color: var(--sft-color-text);
-  font-family: 'TabNum', var(--ark-font-family);
   font-variant-numeric: tabular-nums;
+}
+/* 숫자로만 된 칸 */
+.sft-td .dt-num {
+  font-family: 'Geist Mono', var(--ark-font-family);
 }
 .sft-table:not([data-edit-active]) .sft-tbody .sft-tr:hover .sft-td {
   background: var(--sft-color-bg-hover);

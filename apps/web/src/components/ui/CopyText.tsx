@@ -63,7 +63,7 @@ export function CopyText({ value, children }: Props) {
         title={copied ? '복사됨' : '복사'}
         aria-label={`${value} 복사`}
       >
-        {copied ? <Check size={14} /> : <Copy size={14} />}
+        {copied ? <Check size={15} /> : <Copy size={15} />}
       </button>
     </span>
   );

@@ -73,7 +73,7 @@ function textWidth(text: string, px: number, weight: number, spacing = 0, mono =
   if (measureCtx === undefined) measureCtx = document.createElement('canvas').getContext('2d');
   if (!measureCtx) return text.length * px * 0.6;
   const family = getComputedStyle(document.body).fontFamily;
-  measureCtx.font = `${weight} ${px}px ${mono ? "'Geist Mono', " : ''}TabNum, ${family}`;
+  measureCtx.font = `${weight} ${px}px ${mono ? "'Geist Mono', " : ''}${family}`;
   return measureCtx.measureText(text).width + spacing * text.length;
 }
 /** 셀을 그려 글자와 덧붙는 것(상태 점·복사 버튼)을 본다 */
@@ -94,22 +94,30 @@ function cellMeasure(c: Column, r: Row) {
             .replace(/\s+/g, ' ')
             .trim()
         : cellText(c, r);
-  // 상태 점(6px + 8px) · 복사 버튼(24px + 10px)
+  // 상태 점(6px + 8px) · 복사 아이콘(15px + 4px)
   const copy = html.includes('복사"');
-  const extra = (html.includes('sft-chip') ? 14 : 0) + (copy ? 34 : 0);
+  const extra = (html.includes('sft-chip') ? 14 : 0) + (copy ? 20 : 0);
   return { text, extra, mono: copy };
 }
-function autoWidth(c: Column, rows: Row[]) {
+/** 숫자로만 된 값(전화번호·금액·날짜·시간 등) — 이런 칸만 숫자 서체(Geist Mono) */
+const NUMERIC_ONLY = /^[\d\s\-:.,%/+()~]+$/;
+const EMPTY_MARK = /^[-—–\s]*$/;
+/** 칸 재기 — 폭(머리글·앞쪽 행 글자 길이)과 숫자만 있는 칸인지 */
+function measureColumn(c: Column, rows: Row[]) {
   const scale =
     parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-scale')) || 1;
+  const cells = rows
+    .slice(0, SAMPLE_ROWS)
+    .filter((r) => !r.__sk)
+    .map((r) => cellMeasure(c, r));
+  const filled = cells.filter((x) => !EMPTY_MARK.test(x.text));
+  const numeric =
+    filled.length > 0 && filled.every((x) => NUMERIC_ONLY.test(x.text) && /\d/.test(x.text));
   // 머리글 12px 굵게(자간 0.6px) + 정렬 화살표 자리
   let w = textWidth(titleOf(c), 12 * scale, 600, 0.6) + (c.dataIndex ? 12 : 0);
-  for (const r of rows.slice(0, SAMPLE_ROWS)) {
-    if (r.__sk) continue;
-    const { text, extra, mono } = cellMeasure(c, r);
-    w = Math.max(w, textWidth(text, 14 * scale, 400, 0, mono) + extra + 4);
-  }
-  return Math.min(AUTO_MAX, Math.max(AUTO_MIN, Math.ceil(w + CELL_PAD)));
+  for (const x of cells)
+    w = Math.max(w, textWidth(x.text, 14 * scale, 400, 0, numeric || x.mono) + x.extra + 4);
+  return { width: Math.min(AUTO_MAX, Math.max(AUTO_MIN, Math.ceil(w + CELL_PAD))), numeric };
 }
 
 /** 목록 화면 기본 페이지 크기. 푸터의 선택지(10/20/50/100) 중 하나여야 셀렉트와 값이 맞는다. */
@@ -168,20 +176,20 @@ export function DataTable({
   // 칸 폭 계산은 무겁다(셀을 글자로 그려 잰다) — 앞쪽 행들이 바뀔 때만 다시 잰다
   // 숫자 서체(Geist Mono)가 내려오기 전에 재면 좁게 잡힌다 — 받은 뒤 한 번 다시 잰다
   const [fontReady, setFontReady] = useState(
-    () => typeof document === 'undefined' || document.fonts.check('14px TabNum', '0'),
+    () => typeof document === 'undefined' || document.fonts.check("14px 'Geist Mono'", '0'),
   );
   useEffect(() => {
     if (fontReady) return;
     let alive = true;
-    void Promise.all([
-      document.fonts.load('400 14px TabNum', '0'),
-      document.fonts.load("400 14px 'Geist Mono'", 'R0'),
-    ]).then(() => alive && setFontReady(true));
+    void document.fonts.load("400 14px 'Geist Mono'", 'R0').then(() => alive && setFontReady(true));
     return () => {
       alive = false;
     };
   }, [fontReady]);
-  const widthCache = useRef<{ sig: string; byCol: Map<string, number> }>({
+  const widthCache = useRef<{
+    sig: string;
+    byCol: Map<string, { width: number; numeric: boolean }>;
+  }>({
     sig: '',
     byCol: new Map(),
   });
@@ -190,11 +198,11 @@ export function DataTable({
     .map((r) => String(r[rowKey] ?? ''))
     .join(',')}`;
   if (widthCache.current.sig !== rowsSig) widthCache.current = { sig: rowsSig, byCol: new Map() };
-  const cachedWidth = (c: Column, i: number) => {
+  const cachedMeasure = (c: Column, i: number) => {
     const k = `${colKey(c, i)}|${titleOf(c)}`;
     let w = widthCache.current.byCol.get(k);
     if (w === undefined) {
-      w = autoWidth(c, rows);
+      w = measureColumn(c, rows);
       widthCache.current.byCol.set(k, w);
     }
     return w;
@@ -208,6 +216,10 @@ export function DataTable({
       const key = colKey(c, i);
       const kind = maskKindOf(c);
       const hide = !!kind && masked.has(key);
+      const measured = cachedMeasure(c, i);
+      // 숫자만 있는 칸은 숫자 서체로(글자·숫자가 섞인 주소 등은 그대로)
+      const num = (node: ReactNode) =>
+        measured.numeric ? <span className="dt-num">{node}</span> : node;
       return {
         key,
         label: typeof c.title === 'string' ? c.title : String(c.title ?? ''),
@@ -216,7 +228,7 @@ export function DataTable({
         // 폭을 안 정한 칸은 내용 길이로(늘어나는 칸은 최소 폭으로만)
         ...(() => {
           if (c.width) return { width: c.width, minWidth: c.minWidth, flex: c.flex };
-          const auto = cachedWidth(c, i);
+          const auto = measured.width;
           if (!c.flex) autoWidths.current.set(key, Math.max(c.minWidth ?? 0, auto));
           return c.flex
             ? { minWidth: Math.min(c.minWidth ?? 120, 120, auto), flex: c.flex }
@@ -247,9 +259,9 @@ export function DataTable({
               {c.render ? c.render(row.data) : String(row.data[c.dataIndex ?? ''] ?? '')}
             </div>
           ) : c.render ? (
-            c.render(row.data)
+            num(c.render(row.data))
           ) : (
-            String(row.data[c.dataIndex ?? ''] ?? '')
+            num(String(row.data[c.dataIndex ?? ''] ?? ''))
           ),
       };
     });
