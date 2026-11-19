@@ -163,16 +163,14 @@ export class WorkOrderService {
     });
   }
 
-  /** 작업 시작 → IN_PROGRESS + 리드 전이 */
+  /** 작업 시작 → 작업오더만 IN_PROGRESS(접수는 작업토스 그대로 — 완료 때 바로 작업완료) */
   async start(id: string, principal?: AuthPrincipal) {
     const wo = await this.findOne(id, principal);
     if (wo.status !== 'ASSIGNED') throw new BadRequestException(`시작 불가 상태: ${wo.status}`);
-    const { updated, transition } = await this.prisma.$transaction(async (tx) => {
-      const row = await tx.workOrder.update({ where: { id }, data: { status: 'IN_PROGRESS' } });
-      const t = await this.leadService.transitionInTx(tx, wo.leadId, 'IN_PROGRESS');
-      return { updated: row, transition: t };
+    const updated = await this.prisma.workOrder.update({
+      where: { id },
+      data: { status: 'IN_PROGRESS' },
     });
-    await this.leadService.emitTransition(transition, 'IN_PROGRESS');
     await this.emit(id, 'work_order.started', wo.workNo);
     return updated;
   }

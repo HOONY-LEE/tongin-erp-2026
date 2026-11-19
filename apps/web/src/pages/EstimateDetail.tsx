@@ -223,9 +223,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
     !!hqId &&
     data.lead.orgUnitId !== hqId &&
     ['BRANCH', 'PARTNER'].includes(orgs.find((o) => o.id === data.lead!.orgUnitId)?.type ?? '') &&
-    !['CONTRACT_PENDING', 'CONTRACTED', 'WORK_TOSS', 'IN_PROGRESS', 'DONE', 'CANCELED'].includes(
-      leadStatus ?? '',
-    );
+    !['CONTRACT_PENDING', 'CONTRACTED', 'WORK_TOSS', 'DONE', 'CANCELED'].includes(leadStatus ?? '');
 
   // 계약이 성립했으면(서명 또는 계약금 입금) 작업을 잡는다 — 접수 화면에서 바로
   // 본사가 계약을 승인해야 작업을 잡는다(서명·계약금만으로는 '계약 미승인')

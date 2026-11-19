@@ -38,7 +38,7 @@ const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
   { key: 'INTAKE', label: '접수', statuses: ['RECEIVED', 'CONSULT_ASSIGNED', 'CONSULT_TOSS'] },
   { key: 'QUOTE', label: '견적', statuses: ['QUOTED', 'CONTRACT_PENDING'] },
   { key: 'CONTRACT', label: '계약', statuses: ['CONTRACTED'] },
-  { key: 'WORK', label: '작업', statuses: ['WORK_TOSS', 'IN_PROGRESS', 'DONE'] },
+  { key: 'WORK', label: '작업', statuses: ['WORK_TOSS', 'DONE'] },
 ];
 const inStage = (status: string, statuses: string[] | null) =>
   statuses === null ? true : statuses.includes(status);

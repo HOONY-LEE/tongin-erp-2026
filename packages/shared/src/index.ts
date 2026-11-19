@@ -80,8 +80,7 @@ export const LEAD_STATUS = [
   'QUOTED', // 견적완료(미계약)
   'CONTRACT_PENDING', // 계약 미승인 — 서명·계약금은 들어왔고 본사 승인 전
   'CONTRACTED', // 계약(본사 승인)
-  'WORK_TOSS', // 작업토스
-  'IN_PROGRESS', // 작업중
+  'WORK_TOSS', // 작업토스(작업팀에 넘김 — 이사 당일까지)
   'DONE', // 완료
   'CANCELED', // 취소
 ] as const;
@@ -95,7 +94,6 @@ export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
   CONTRACT_PENDING: '계약 미승인',
   CONTRACTED: '계약',
   WORK_TOSS: '작업토스',
-  IN_PROGRESS: '작업중',
   DONE: '작업완료',
   CANCELED: '취소',
 };
@@ -108,8 +106,8 @@ export const LEAD_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
   QUOTED: ['CONTRACT_PENDING', 'CANCELED'],
   CONTRACT_PENDING: ['CONTRACTED', 'CANCELED'],
   CONTRACTED: ['WORK_TOSS', 'CANCELED'],
-  WORK_TOSS: ['IN_PROGRESS', 'CANCELED'],
-  IN_PROGRESS: ['DONE', 'CANCELED'],
+  // 작업팀이 현장에서 '완료'를 누르면 바로 작업완료(접수에는 '작업중' 단계를 두지 않는다)
+  WORK_TOSS: ['DONE', 'CANCELED'],
   DONE: [],
   CANCELED: [],
 };
