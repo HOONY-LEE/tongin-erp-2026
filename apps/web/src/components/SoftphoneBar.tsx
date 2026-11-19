@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing } from 'lucide-react';
+import { Grid3x3, Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
 import { formatPhone } from '../lib/phone';
@@ -9,6 +9,7 @@ import {
   hangup,
   resumeAudio,
   resumePhoneIfEnabled,
+  sendDtmf,
   toggleMute,
   usePhone,
 } from '../lib/softphone';
@@ -50,6 +51,18 @@ export function SoftphoneBar() {
     leads: number;
   } | null>(null);
   const answerRef = useRef<HTMLButtonElement>(null);
+  // 통화 중 키패드(ARS 인증번호·자동 응답 메뉴) — 누른 숫자를 옆에 보여 준다
+  const [padOpen, setPadOpen] = useState(false);
+  const [pressed, setPressed] = useState('');
+  useEffect(() => {
+    if (call?.state === 'active') return;
+    setPadOpen(false);
+    setPressed('');
+  }, [call?.state]);
+  const press = (k: string) => {
+    sendDtmf(k);
+    setPressed((p) => (p + k).slice(-20));
+  };
   const ringing = call?.state === 'ringing' && call.direction === 'in';
   // 통화 상대 고객 — 울릴 때 번호로 찾아 두고 통화가 끝날 때까지 통화 막대에 보여 준다
   const number = call?.number ?? '';
@@ -180,6 +193,39 @@ export function SoftphoneBar() {
         <button type="button" className={styles.answer} onClick={resumeAudio}>
           소리 켜기
         </button>
+      )}
+      {active && (
+        <span className={styles.padWrap}>
+          <button
+            type="button"
+            className={`${styles.ghost} ${padOpen ? styles.ghostOn : ''}`}
+            onClick={() => setPadOpen((o) => !o)}
+            aria-expanded={padOpen}
+          >
+            <Grid3x3 size={16} /> 키패드
+          </button>
+          {padOpen && (
+            <div
+              className={styles.pad}
+              role="group"
+              aria-label="키패드"
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (/^[0-9*#]$/.test(e.key)) press(e.key);
+                if (e.key === 'Escape') setPadOpen(false);
+              }}
+            >
+              <output className={styles.padShow}>{pressed || '번호를 누르세요'}</output>
+              <div className={styles.padKeys}>
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((k) => (
+                  <button key={k} type="button" onClick={() => press(k)}>
+                    {k}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </span>
       )}
       {active && (
         <button

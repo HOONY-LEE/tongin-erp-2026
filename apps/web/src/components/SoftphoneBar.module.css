@@ -294,3 +294,54 @@
   height: 38px;
   padding: 0 14px;
 }
+
+/* 통화 중 키패드 — 키패드 버튼 위로 뜬다 */
+.padWrap {
+  position: relative;
+  display: inline-flex;
+}
+.pad {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  width: 216px;
+  padding: 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+.padShow {
+  display: block;
+  margin-bottom: 10px;
+  overflow: hidden;
+  color: var(--ark-color-text-primary);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  text-align: center;
+  white-space: nowrap;
+  min-height: 24px;
+}
+.padKeys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.padKeys button {
+  height: 44px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-primary);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.padKeys button:hover {
+  background: var(--ark-color-bg-subtle, #f4f4f5);
+}
+.padKeys button:active {
+  transform: scale(0.96);
+}
