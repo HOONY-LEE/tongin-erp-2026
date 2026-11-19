@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, UserRound } from 'lucide-react';
 import { DateFilter, type DateRange } from './DateFilter';
 import { api, ApiError } from '../../lib/api';
+import { useAuth } from '../../auth/AuthContext';
 import { DataTable, SegmentedControl, useToast, type Column, type Row } from '../../components/ui';
 import { Phone as PhoneCell } from 'softium-ui/table';
 import styles from '../callcenter.module.css';
@@ -68,6 +69,9 @@ export function CallList({
 }) {
   const toast = useToast();
   const navigate = useNavigate();
+  // '전체 전화'는 상담 콘솔 전체 보기 권한이 있는 사람만(그 밖에는 '내 전화' 하나)
+  const { can } = useAuth();
+  const canAll = can('CS_CALL.ALL');
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +127,7 @@ export function CallList({
         ) : (
           <span className={styles.callState}>-</span>
         ),
-      width: 100,
+      width: 112,
       mask: false,
     },
     {
@@ -192,7 +196,7 @@ export function CallList({
             onChange={(x) => setScope(x as 'mine' | 'all')}
             options={[
               { value: 'mine', label: '내 전화' },
-              { value: 'all', label: '전체 전화' },
+              ...(canAll ? [{ value: 'all', label: '전체 전화' }] : []),
             ]}
           />
         }

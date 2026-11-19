@@ -105,6 +105,60 @@ export class CsSmsService {
    * 문자 보내기 — 허용 번호 제한(시연·SMS_LIVE)은 발송 모듈이 그대로 지킨다.
    * 결과는 성공·실패 모두 기록(고객 이력에 남는다).
    */
+  /** 보낸 문자 내역(최근 1,000건) — 보낸 사람·고객 이름을 붙여서 */
+  async history(p: AuthPrincipal, q: { scope?: 'mine' | 'all'; from?: string; to?: string }) {
+    const canAll = p.permissions.includes('*') || p.permissions.includes('CS_CALL.ALL');
+    const all = canAll && q.scope === 'all';
+    const rows = await this.prisma.csSms.findMany({
+      where: {
+        ...(!all && { employeeId: p.employeeId ?? '00000000-0000-0000-0000-000000000000' }),
+        ...((q.from || q.to) && {
+          at: {
+            ...(q.from && { gte: new Date(`${q.from}T00:00:00+09:00`) }),
+            ...(q.to && { lt: new Date(+new Date(`${q.to}T00:00:00+09:00`) + 86400_000) }),
+          },
+        }),
+      },
+      orderBy: { at: 'desc' },
+      take: 1000,
+    });
+    const empIds = [...new Set(rows.map((r) => r.employeeId).filter((x): x is string => !!x))];
+    const custIds = [...new Set(rows.map((r) => r.customerId).filter((x): x is string => !!x))];
+    const [emps, custs] = await Promise.all([
+      empIds.length
+        ? this.prisma.employee.findMany({
+            where: { id: { in: empIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      custIds.length
+        ? this.prisma.customer.findMany({
+            where: { id: { in: custIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
+    const empName = new Map(emps.map((e) => [e.id, e.name]));
+    const custName = new Map(custs.map((c) => [c.id, c.name]));
+    return {
+      canAll,
+      rows: rows.map((r) => ({
+        id: r.id,
+        at: r.at,
+        phone: r.phone,
+        customerId: r.customerId,
+        customerName: r.customerId ? (custName.get(r.customerId) ?? null) : null,
+        callId: r.callId,
+        title: r.title,
+        body: r.body,
+        ok: r.ok,
+        reason: r.reason,
+        vendor: r.vendor,
+        employeeName: r.employeeId ? (empName.get(r.employeeId) ?? null) : null,
+      })),
+    };
+  }
+
   async send(
     p: AuthPrincipal,
     input: { phone: string; body: string; title?: string; callId?: string },

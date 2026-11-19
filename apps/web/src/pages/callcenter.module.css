@@ -1997,3 +1997,16 @@ textarea.memoBox {
 .leadLink:hover svg {
   color: #2563eb;
 }
+
+/* 문자 발송 내역 — 보낸 내용 창 */
+.smsDetail {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.smsResult {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

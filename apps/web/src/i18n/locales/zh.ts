@@ -26,6 +26,7 @@ export default {
     workOrders: '作业',
     customers: '客户管理',
     callcenter: '呼叫中心',
+    smsHistory: '短信记录',
     alliances: '合作·专属',
     products: '商品',
     cbmItems: 'CBM 物品',

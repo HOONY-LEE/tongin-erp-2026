@@ -644,6 +644,14 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     ],
     hint: 'AI는 사용자 본인 권한 안에서만 도구를 실행합니다',
   },
+  {
+    key: 'CS_CALL',
+    label: '상담 콘솔',
+    group: '운영',
+    actions: [],
+    specials: [{ action: 'ALL', label: '모든 상담원의 상담·문자 내역 보기' }],
+    hint: "내 상담·내가 보낸 문자는 권한 없이 봅니다. 이 권한은 상담 콜 목록·문자 내역에서 '전체'를 엽니다",
+  },
   { key: 'LEAD', label: '접수', group: '운영', actions: ALL_CRUD },
   { key: 'ESTIMATE', label: '견적', group: '운영', actions: ALL_CRUD },
   { key: 'CONTRACT', label: '계약', group: '운영', actions: ALL_CRUD },
@@ -825,6 +833,8 @@ export function permissionLabel(code: string): string {
   return `${r.label} · ${label}`;
 }
 export const PERMISSION_WILDCARD = '*';
+/** 상담 콘솔 — 모든 상담원의 상담·문자 내역 보기 */
+export const PERM_CS_ALL = 'CS_CALL.ALL';
 
 // 기본 역할 코드 (시드)
 export const ROLE_SUPER_ADMIN = 'SUPER_ADMIN';
