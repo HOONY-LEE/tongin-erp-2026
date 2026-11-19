@@ -91,8 +91,8 @@ export function SidebarSearch({
       <button
         type="button"
         className={styles.sideSearchIcon}
-        title="메뉴 검색 (⌘K)"
-        aria-label="메뉴 검색"
+        title="검색 (⌘K)"
+        aria-label="검색"
         onClick={() => {
           onExpand();
           setTimeout(() => input.current?.focus(), 0);
@@ -110,8 +110,8 @@ export function SidebarSearch({
         <input
           ref={input}
           value={q}
-          placeholder="메뉴 검색"
-          aria-label="메뉴 검색"
+          placeholder="검색"
+          aria-label="검색"
           role="combobox"
           aria-expanded={results.length > 0}
           aria-controls="side-search-results"
