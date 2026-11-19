@@ -3,12 +3,14 @@
 .wrap {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   max-width: 100%;
 }
 
 /* 셀이 좁을 때 잘려야 하는 쪽은 값이고, 복사 버튼은 항상 자리를 지킨다. */
 .text {
+  /* 코드(접수번호 등)는 글자까지 고정폭 — 숫자 서체와 같은 Geist Mono */
+  font-family: 'Geist Mono', var(--ark-font-family);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -21,12 +23,13 @@
   justify-content: center;
   /* 아이콘(14px)보다 클릭 영역을 키운다 — 실제 여백은 margin의 음수 상쇄로
      주변 레이아웃(폭 계산)에 영향을 주지 않는다. */
-  padding: 6px;
-  margin: -6px;
+  padding: 5px;
+  margin: -5px 0;
   border: none;
-  border-radius: var(--ark-radius-sm, 4px);
-  background: transparent;
-  color: var(--ark-color-info-500, #3b82f6);
+  border-radius: 6px;
+  /* 아주 연한 회색 바탕 + 조금 진한 회색 아이콘 */
+  background: var(--ark-color-bg-muted, #f2f2f4);
+  color: var(--ark-color-text-secondary, #6e6e73);
   line-height: 1;
   cursor: pointer;
   /* display:none 이 아니라 visibility 로 감춘다 — 폭을 계속 차지해야
@@ -45,11 +48,16 @@
 }
 
 .button:hover {
-  color: var(--ark-color-info-600, #2563eb);
+  background: #e8e8ed;
+  color: var(--ark-color-text-primary, #1d1d1f);
 }
 
 .copied {
   color: var(--ark-color-success-600, #16a34a);
   opacity: 1;
   visibility: visible;
+}
+
+:global([data-theme='dark']) .button:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
