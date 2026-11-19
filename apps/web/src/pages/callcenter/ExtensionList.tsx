@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhoneForwarded, Settings2 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
-import { extName, transferTo, useExtensions, type Extension } from '../../lib/extensions';
+import {
+  extName,
+  searchExtensions,
+  transferTo,
+  useExtensions,
+  type Extension,
+} from '../../lib/extensions';
 import { usePhone } from '../../lib/softphone';
 import { SearchInput, useToast } from '../../components/ui';
 import styles from '../callcenter.module.css';
@@ -29,17 +35,7 @@ export function ExtensionList() {
     return () => clearTimeout(t);
   }, [arm]);
 
-  const rows = useMemo(() => {
-    const k = q.trim();
-    if (!k) return list;
-    const d = k.replace(/\D/g, '');
-    return list.filter(
-      (x) =>
-        x.label.includes(k) ||
-        (x.dept ?? '').includes(k) ||
-        (!!d && (x.number.includes(d) || (x.extNo ?? '').includes(d))),
-    );
-  }, [list, q]);
+  const rows = useMemo(() => searchExtensions(list, q), [list, q]);
 
   const go = async (x: Extension) => {
     if (!phone.call) return;
@@ -56,7 +52,9 @@ export function ExtensionList() {
 
   return (
     <div className={styles.extWrap}>
-      {list.length > 6 && <SearchInput value={q} onChange={setQ} placeholder="이름·부서·번호" />}
+      {list.length > 0 && (
+        <SearchInput value={q} onChange={setQ} placeholder="이름·부서·내선·번호로 찾기" />
+      )}
       {list.length === 0 ? (
         <div className={styles.extEmpty}>
           <p>등록된 내선이 없습니다.</p>
@@ -68,6 +66,7 @@ export function ExtensionList() {
         </div>
       ) : (
         <ul className={styles.extList}>
+          {rows.length === 0 && <li className={styles.extNone}>찾는 내선이 없습니다</li>}
           {rows.map((x) => (
             <li key={x.id}>
               <span className={styles.extMain}>

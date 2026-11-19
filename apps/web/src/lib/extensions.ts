@@ -52,3 +52,29 @@ export async function transferTo(
   }).catch(() => undefined);
   return { ok: true, message: `${who}에게 돌려줬습니다` };
 }
+
+/** 한글 초성 — '홍길동' → 'ㅎㄱㄷ' */
+const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+const chosung = (s: string) =>
+  [...s]
+    .map((c) => {
+      const n = c.charCodeAt(0) - 0xac00;
+      return n >= 0 && n < 11172 ? CHO[Math.floor(n / 588)] : c;
+    })
+    .join('');
+
+/** 내선 검색 — 이름·부서·메모(초성도), 내선번호·전화번호(숫자) */
+export function searchExtensions(list: Extension[], q: string) {
+  const k = q.trim().replace(/\s+/g, '');
+  if (!k) return list;
+  const d = k.replace(/\D/g, '');
+  const onlyDigits = /^[\d-]+$/.test(k);
+  const cho = /^[ㄱ-ㅎ]+$/.test(k);
+  return list.filter((x) => {
+    const text = `${x.label}${x.dept ?? ''}${x.memo ?? ''}`.replace(/\s+/g, '');
+    if (!onlyDigits && text.includes(k)) return true;
+    if (cho && chosung(text).includes(k)) return true;
+    if (d && ((x.extNo ?? '').includes(d) || x.number.includes(d))) return true;
+    return false;
+  });
+}

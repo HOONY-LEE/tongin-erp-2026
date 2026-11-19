@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhoneForwarded, Settings2 } from 'lucide-react';
 import { formatPhone } from '../lib/phone';
-import { transferTo, useExtensions, type Extension } from '../lib/extensions';
+import { searchExtensions, transferTo, useExtensions, type Extension } from '../lib/extensions';
 import { useAuth } from '../auth/AuthContext';
 import { Button, Input, useToast } from './ui';
 import styles from './SoftphoneBar.module.css';
 
-type Target = Pick<Extension, 'id' | 'label' | 'dept' | 'number'>;
+type Target = Pick<Extension, 'id' | 'label' | 'dept' | 'number'> & { extNo?: string | null };
 
 /**
  * 통화 막대 [돌려주기] — 사무실 직원·부서로 지금 통화를 넘긴다.
@@ -20,8 +20,8 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
   const [open, setOpen] = useState(false);
   const targets = useExtensions();
   const navigate = useNavigate();
-  const [pick, setPick] = useState<Target | null>(null);
-  const [direct, setDirect] = useState('');
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(0);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLSpanElement>(null);
   // 넘기는 중에는 바깥을 눌러도 닫지 않는다(결과를 보여 줘야 하므로)
@@ -30,8 +30,8 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
 
   useEffect(() => {
     if (!open) return;
-    setPick(null);
-    setDirect('');
+    setQ('');
+    setSel(0);
     const down = (e: PointerEvent) => {
       if (!busyRef.current && !box.current?.contains(e.target as Node)) setOpen(false);
     };
@@ -39,10 +39,16 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
     return () => window.removeEventListener('pointerdown', down);
   }, [open]);
 
-  const directNo = direct.replace(/\D/g, '');
-  const target: Target | null =
-    pick ??
-    (directNo.length >= 7 ? { id: '', label: '직접 입력', dept: null, number: directNo } : null);
+  // 이름·부서·내선·번호(초성도)로 찾는다. 목록에 없는 번호(7자리 이상)는 그 번호로 바로 돌려준다
+  const found = useMemo(() => searchExtensions(targets, q), [targets, q]);
+  const digits = q.replace(/\D/g, '');
+  const direct: Target | null =
+    /^[\d\s-]+$/.test(q.trim()) && digits.length >= 7
+      ? { id: '', label: '입력한 번호', dept: null, number: digits }
+      : null;
+  const options: Target[] = direct ? [...found, direct] : found;
+  useEffect(() => setSel(0), [q]);
+  const target: Target | null = options[Math.min(sel, options.length - 1)] ?? null;
 
   const go = async () => {
     if (!target) return;
@@ -66,39 +72,53 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
       {open && (
         <div className={styles.xfer} role="dialog" aria-label="돌려주기">
           <b className={styles.xferHead}>누구에게 돌려줄까요?</b>
-          <div className={styles.xferList}>
-            {targets.length === 0 && (
+          <Input
+            autoFocus
+            value={q}
+            placeholder="이름·부서·내선·번호로 찾기"
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSel((i) => Math.min(i + 1, options.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSel((i) => Math.max(i - 1, 0));
+              } else if (e.key === 'Enter' && target && !busy) {
+                e.preventDefault();
+                void go();
+              } else if (e.key === 'Escape') setOpen(false);
+            }}
+          />
+          <div className={styles.xferList} role="listbox">
+            {options.length === 0 && (
               <p className={styles.xferEmpty}>
-                등록된 내선이 없습니다. 아래에 번호를 직접 넣어 주세요.
+                {targets.length === 0
+                  ? '등록된 내선이 없습니다. 번호를 직접 넣으면 그 번호로 돌려줍니다.'
+                  : '찾는 내선이 없습니다. 번호를 직접 넣어도 됩니다.'}
               </p>
             )}
-            {targets.map((t) => (
+            {options.map((t, i) => (
               <button
-                key={t.id}
+                key={t.id || 'direct'}
                 type="button"
-                className={pick?.id === t.id ? styles.xferOn : undefined}
-                onClick={() => {
-                  setPick(t);
-                  setDirect('');
-                }}
+                role="option"
+                aria-selected={target === t}
+                className={target === t ? styles.xferOn : undefined}
+                onMouseEnter={() => setSel(i)}
+                onClick={() => setSel(i)}
+                onDoubleClick={() => void go()}
               >
                 <span>
                   {t.label}
                   {t.dept && <em> {t.dept}</em>}
+                  {t.extNo && <em> · 내선 {t.extNo}</em>}
                 </span>
                 <small>{formatPhone(t.number)}</small>
               </button>
             ))}
           </div>
-          <Input
-            value={direct}
-            inputMode="tel"
-            placeholder="직접 입력 — 예: 070-1234-5678"
-            onChange={(e) => {
-              setDirect(e.target.value);
-              setPick(null);
-            }}
-          />
           <div className={styles.xferFoot}>
             {can('CS_CALL.ALL') && (
               <button
