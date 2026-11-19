@@ -58,7 +58,7 @@ export function ExtensionList() {
       {list.length === 0 ? (
         <div className={styles.extEmpty}>
           <p>등록된 내선이 없습니다.</p>
-          {can('CS_CALL.ALL') && (
+          {can('CS_CALL.EXTENSIONS') && (
             <button type="button" className={styles.link} onClick={() => navigate('/extensions')}>
               <Settings2 size={13} /> 내선 등록하기
             </button>

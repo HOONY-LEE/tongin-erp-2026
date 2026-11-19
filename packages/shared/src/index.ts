@@ -649,7 +649,10 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
     label: '상담 콘솔',
     group: '운영',
     actions: [],
-    specials: [{ action: 'ALL', label: '상담 관리 — 모든 상담·문자 보기, 상담 메모 프리셋 관리' }],
+    specials: [
+      { action: 'ALL', label: '상담 관리 — 모든 상담·문자 보기, 상담 메모 프리셋 관리' },
+      { action: 'EXTENSIONS', label: '내선 관리 — 돌려주기 내선 등록·수정' },
+    ],
     hint: "내 상담·내가 보낸 문자는 권한 없이 봅니다. 이 권한은 상담 콜 목록·문자 내역에서 '전체'를 열고, 상담 메모 프리셋을 고칩니다",
   },
   { key: 'LEAD', label: '접수', group: '운영', actions: ALL_CRUD },

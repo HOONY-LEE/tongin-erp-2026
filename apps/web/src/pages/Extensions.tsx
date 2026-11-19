@@ -18,12 +18,13 @@ import {
 /**
  * 내선 관리 — 상담원이 통화를 돌려줄 사무실 직원·부서 번호.
  * 여기 등록하면 상담 콘솔 '내선' 목록과 통화 막대 [돌려주기]에 바로 나온다.
- * 보기는 상담원 모두, 고치기는 상담 관리자(상담 콘솔 전체 보기 권한).
+ * 고치기는 내선 관리 권한(CS_CALL.EXTENSIONS)이 있는 관리자.
  */
 export default function Extensions() {
   const toast = useToast();
   const { can } = useAuth();
-  const editable = can('CS_CALL.ALL');
+  // 내선 등록·수정은 내선 관리 권한(관리자 — 경영관리 등)
+  const editable = can('CS_CALL.EXTENSIONS');
   const rows = useExtensions();
   const [editing, setEditing] = useState<Extension | 'new' | null>(null);
   const [del, setDel] = useState<Extension | null>(null);

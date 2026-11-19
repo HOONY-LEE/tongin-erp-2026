@@ -120,7 +120,7 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
             ))}
           </div>
           <div className={styles.xferFoot}>
-            {can('CS_CALL.ALL') && (
+            {can('CS_CALL.EXTENSIONS') && (
               <button
                 type="button"
                 className={styles.xferManage}
