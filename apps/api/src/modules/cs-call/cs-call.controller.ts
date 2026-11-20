@@ -383,6 +383,20 @@ export class CsCallController {
       .catch((e: unknown) => this.log.warn(`통화 상태 알림 처리 실패: ${String(e)}`));
   }
 
+  /**
+   * AI 상담원 통화 요약 알림 — 한국AI통신 webhooks(summary.completed)에 이 주소(+?key=)를 등록한다.
+   * 통화 요약·받아쓰기 부가서비스와 번호 녹음이 켜져 있어야 온다.
+   */
+  @Public()
+  @Post('voice/summary')
+  @HttpCode(204)
+  async voiceSummary(@Query('key') key: string | undefined, @Body() body: Record<string, string>) {
+    if (!(await this.calls.checkSecret(key))) return;
+    await this.calls
+      .aiSummary(body ?? {})
+      .catch((e: unknown) => this.log.warn(`AI 통화 요약 처리 실패: ${String(e)}`));
+  }
+
   @Public()
   @Post('inbound')
   inbound(@Headers('x-cti-secret') secret: string | undefined, @Body() dto: InboundDto) {
