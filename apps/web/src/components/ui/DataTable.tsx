@@ -327,6 +327,26 @@ export function DataTable({
     );
   }, [rowsSig, softiumColumns.length]);
 
+  // 가로 스크롤바는 좌우로 움직이는 동안만 보인다 — 움직이면 잠깐 표시(.dt-scrolling-x), 멈추면 숨김
+  useEffect(() => {
+    const el = containerRef.current?.querySelector<HTMLElement>('.sft-table__scroll');
+    if (!el) return;
+    let left = el.scrollLeft;
+    let timer: number | undefined;
+    const onScroll = () => {
+      if (el.scrollLeft === left) return; // 세로 스크롤은 상관없다
+      left = el.scrollLeft;
+      el.classList.add('dt-scrolling-x');
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => el.classList.remove('dt-scrolling-x'), 900);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   // 빈 칸도 한 페이지 행 수만큼 자리를 차지하게(행이 적거나 없어도 표 높이가 같다) — 지금 고른
   // 'N개씩 보기'를 풋터에서 읽어 tbody 최소 높이로 쓴다(base.css .dt-wrap .sft-tbody)
   const basePage = pageSize ?? (fit ? FIT_PAGE_SIZE : DEFAULT_PAGE_SIZE);
