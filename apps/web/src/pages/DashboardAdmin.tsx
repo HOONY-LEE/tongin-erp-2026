@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtDate } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import { defaultDashLayout } from '@tongin/shared';
@@ -186,7 +187,7 @@ export default function DashboardAdmin() {
     {
       title: '수정일',
       width: 110,
-      render: (r) => new Date(String(r.updatedAt)).toLocaleDateString('ko-KR'),
+      render: (r) => fmtDate(r.updatedAt),
     },
   ];
 
@@ -260,7 +261,7 @@ export default function DashboardAdmin() {
                     <Targets t={t} />
                   </div>
                   <div className={styles.tplFoot} onClick={(e) => e.stopPropagation()}>
-                    위젯 {t.widgetCount}개 · {new Date(t.updatedAt).toLocaleDateString('ko-KR')}
+                    위젯 {t.widgetCount}개 · {fmtDate(t.updatedAt)}
                     <span className={styles.spacer} />
                     <button
                       type="button"

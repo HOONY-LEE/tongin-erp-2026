@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { LayoutGrid, List } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -47,8 +48,7 @@ const STATUS_MAP: StatusMap = {
   ACTIVE: { label: '사용중', color: 'success' },
 };
 
-const dt = (v: unknown) =>
-  v ? new Date(String(v)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+const dt = (v: unknown) => fmtDateTime(v) || '-';
 
 /** 시작 방식 — 표의 '시작' 칸과 카드 메타가 같이 쓴다 */
 const triggerText = (r: Row) => {

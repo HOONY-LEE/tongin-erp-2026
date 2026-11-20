@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -40,16 +41,7 @@ interface Stats {
 
 const LEVEL_LABEL = { ERROR: '오류', WARN: '경고' } as const;
 const SOURCE_LABEL = { API: '서버', WEB: '화면' } as const;
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    year: '2-digit',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+const when = (iso: string) => fmtDateTime(iso, { seconds: true });
 const kstDate = (offsetDays = 0) =>
   new Date(Date.now() + 9 * 3600_000 - offsetDays * 24 * 3600_000).toISOString().slice(0, 10);
 

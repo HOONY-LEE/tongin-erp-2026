@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
@@ -36,8 +37,7 @@ import styles from '../components/approval/approval.module.css';
 
 type Box = 'todo' | 'mine' | 'cc' | 'all' | 'forms' | 'lines';
 
-const dt = (v: unknown) =>
-  v ? new Date(String(v)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+const dt = (v: unknown) => fmtDateTime(v) || '-';
 
 /**
  * 결재함 — 결재할 문서 / 내가 올린 문서 / 참조·처리한 문서 / 전체(APPROVAL.READ) / 결재선 설정(APPROVAL.MANAGE).

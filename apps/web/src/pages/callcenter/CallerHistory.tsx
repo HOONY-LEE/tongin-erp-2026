@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { History } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -25,11 +26,7 @@ const KIND_LABEL: Record<string, string> = {
   service: '서비스',
   support: 'AS',
 };
-const when = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
+const when = (iso: string) => fmtDateTime(iso);
 
 /**
  * 상담 화면 아래 — 이 고객의 이력(통화·접수·견적·계약…) 최근 순 목록.

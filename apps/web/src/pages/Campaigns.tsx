@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CAMPAIGN_CHANNEL_LABEL, type CampaignChannel } from '@tongin/shared';
@@ -23,8 +24,7 @@ export const CAMPAIGN_STATUS_MAP: StatusMap = {
   CANCELED: { label: '취소', color: 'error' },
 };
 
-const dt = (v: unknown) =>
-  v ? new Date(String(v)).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+const dt = (v: unknown) => fmtDateTime(v) || '-';
 
 /** 마케팅 캠페인 목록 — 등록·수정·삭제는 별도 화면(행을 누르면 열린다, 대상 고르기까지 한 곳에서) */
 export default function Campaigns() {

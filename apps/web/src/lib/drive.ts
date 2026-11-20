@@ -12,6 +12,7 @@ import {
   Presentation,
   type LucideIcon,
 } from 'lucide-react';
+import { fmtDateTime } from '../lib/dateFormat';
 import type { DriveItemView } from '@tongin/shared';
 import { ApiError, getToken, toApiError } from './api';
 
@@ -134,13 +135,7 @@ export function uploadDriveFile(
 
 /** 날짜 글자 — 오늘이면 시각, 올해면 월·일, 아니면 연·월·일 */
 export function driveDate(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  if (d.toDateString() === now.toDateString())
-    return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-  if (d.getFullYear() === now.getFullYear())
-    return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+  return fmtDateTime(iso);
 }
 
 /* ── 폴더째 올리기 — 컴퓨터의 폴더 구조를 그대로 드라이브에 만든다 ── */

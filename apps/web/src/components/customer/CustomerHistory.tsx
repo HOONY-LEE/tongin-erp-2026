@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { fmtDate } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import {
   Banknote,
@@ -76,10 +77,7 @@ const FILTERS: { value: string; label: string; kinds: Kind[] | null }[] = [
   { value: 'work', label: '작업·AS', kinds: ['work', 'service', 'support'] },
 ];
 
-const day = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-};
+const day = (iso: string) => fmtDate(iso);
 const time = (iso: string) => {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;

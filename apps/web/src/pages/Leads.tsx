@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -151,6 +152,13 @@ export default function Leads() {
       width: 172,
       render: (r) => <CopyText value={String(r.leadNo)} />,
       exportValue: (r) => String(r.leadNo),
+    },
+    {
+      title: '접수일시',
+      dataIndex: 'createdAt',
+      width: 168,
+      render: (r) => fmtDateTime(r.createdAt),
+      exportValue: (r) => fmtDateTime(r.createdAt),
     },
     {
       title: '고객명',

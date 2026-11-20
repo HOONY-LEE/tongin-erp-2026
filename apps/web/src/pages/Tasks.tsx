@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { fmtDate } from '../lib/dateFormat';
 import { EmployeeAvatar } from '../components/employee/EmployeeAvatar';
 import { ArrowRight, CalendarClock } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
@@ -656,10 +657,7 @@ export default function Tasks() {
 
 /** 카드용 짧은 날짜 — 올해면 11.03, 아니면 25.11.03 */
 function md(v: string): string {
-  const d = ymd(v);
-  if (!d) return '—';
-  const [y, m, day] = d.split('-');
-  return y === String(new Date().getFullYear()) ? `${m}.${day}` : `${y.slice(2)}.${m}.${day}`;
+  return fmtDate(ymd(v)) || '—';
 }
 
 /** 목록의 사람 칩(담당자·생성자) */

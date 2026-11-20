@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -19,6 +20,11 @@ const maskKindOf = (c: Column): MaskKind | null =>
 /** 화면에 그린 글자(가릴 때 씀) */
 const cellText = (c: Column, data: Row) =>
   c.render ? nodeText(c.render(data)) : String(data[c.dataIndex ?? ''] ?? '');
+
+/** 원본 값 그대로 그리는 칸 — 시각(ISO)은 2026-11-20 16:14로(앱 공통 표기) */
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const cellValue = (v: unknown) =>
+  typeof v === 'string' && ISO_TIME.test(v) ? fmtDateTime(v) : String(v ?? '');
 
 /** 화면에서 가린 칸은 화면(주소)마다 기억한다 — 기본은 다 보임 */
 const maskStoreKey = () => `tongin.mask:${window.location.pathname}`;
@@ -266,7 +272,7 @@ export function DataTable({
           ) : c.render ? (
             num(c.render(row.data))
           ) : (
-            num(String(row.data[c.dataIndex ?? ''] ?? ''))
+            num(cellValue(row.data[c.dataIndex ?? '']))
           ),
       };
     });
