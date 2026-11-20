@@ -54,6 +54,15 @@ export class EmployeeService {
     return { photoAt: null };
   }
 
+  /** 사진 있는 직원 — { id: photoAt } */
+  async photoIndex(): Promise<Record<string, string>> {
+    const rows = await this.prisma.employee.findMany({
+      where: { photoAt: { not: null } },
+      select: { id: true, photoAt: true },
+    });
+    return Object.fromEntries(rows.map((r) => [r.id, r.photoAt!.toISOString()]));
+  }
+
   /** 사진 받기 — 로그인한 직원이면 누구나(사내 연락처처럼) */
   async photo(id: string) {
     const e = await this.prisma.employee.findUnique({

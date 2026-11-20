@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { EmployeeAvatar } from '../components/employee/EmployeeAvatar';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -98,7 +99,6 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
   };
 
   const name = user?.employeeName ?? user?.loginId ?? '';
-  const initial = name.slice(0, 1);
 
   return (
     <>
@@ -111,9 +111,7 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
         aria-expanded={!!pos}
         title="내 프로필"
       >
-        <span className={styles.avatar} aria-hidden>
-          {initial}
-        </span>
+        <EmployeeAvatar id={user?.employeeId} name={name} size={26} />
         <span className={styles.triggerName}>{name}</span>
         <ChevronDown size={14} aria-hidden />
       </button>
@@ -127,9 +125,7 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
             aria-label="내 프로필"
           >
             <div className={styles.head}>
-              <span className={`${styles.avatar} ${styles.avatarLg}`} aria-hidden>
-                {initial}
-              </span>
+              <EmployeeAvatar id={user?.employeeId} name={name} size={36} />
               <div className={styles.headText}>
                 <b>{name}</b>
                 <span>{[user?.positionName, user?.loginId].filter(Boolean).join(' · ')}</span>

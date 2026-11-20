@@ -143,6 +143,7 @@ export function EmployeeHrDetail({
   const removePhoto = async () => {
     try {
       await api(`/employees/${id}/photo`, { method: 'DELETE' });
+      primeEmployeePhoto(id, null);
       setRec((cur) => (cur ? { ...cur, photoAt: null } : cur));
       toast({ type: 'success', title: '프로필 사진을 지웠습니다' });
     } catch (e) {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { EmployeeAvatar } from '../employee/EmployeeAvatar';
 import { createPortal } from 'react-dom';
 import { ChevronRight, Download, Folder, HardDrive, Users, X } from 'lucide-react';
 import {
@@ -236,7 +237,7 @@ function PeopleEditor({
       <div className={styles.people}>
         {value.map((p) => (
           <div key={p.employeeId} className={styles.person}>
-            <span className={styles.avatar}>{p.name.slice(0, 1)}</span>
+            <EmployeeAvatar id={p.employeeId} name={p.name} size={32} />
             <span className={styles.personText}>
               <span>{p.name}</span>
               <span className={styles.personSub}>
@@ -359,7 +360,7 @@ export function ShareModal({
           <div className={styles.people}>
             {list.map((p) => (
               <div key={p.employeeId} className={styles.person}>
-                <span className={styles.avatar}>{p.name.slice(0, 1)}</span>
+                <EmployeeAvatar id={p.employeeId} name={p.name} size={32} />
                 <span className={styles.personText}>{p.name}</span>
                 <span className={styles.muted}>{DRIVE_ROLE[p.role]}</span>
               </div>
@@ -532,7 +533,7 @@ export function SpaceModal({
             <div className={styles.people}>
               {members.map((p) => (
                 <div key={p.employeeId} className={styles.person}>
-                  <span className={styles.avatar}>{p.name.slice(0, 1)}</span>
+                  <EmployeeAvatar id={p.employeeId} name={p.name} size={32} />
                   <span className={styles.personText}>{p.name}</span>
                   <span className={styles.muted}>{DRIVE_ROLE[p.role]}</span>
                 </div>

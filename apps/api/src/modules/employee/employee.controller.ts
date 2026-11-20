@@ -40,6 +40,12 @@ export class EmployeeController {
     return this.employeeService.findAll(orgUnitId);
   }
 
+  /** 사진 있는 직원 목록(id → 바뀐 시각) — 화면의 공통 동그라미가 이걸로 사진을 찾는다(로그인만 하면 됨) */
+  @Get('photos')
+  photos() {
+    return this.employeeService.photoIndex();
+  }
+
   @AccessLog('employee', 'VIEW')
   @Get(':id')
   @RequirePermissions('EMPLOYEE.READ')
