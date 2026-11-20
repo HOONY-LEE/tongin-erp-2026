@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { CustomerHistory } from '../components/customer/CustomerHistory';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Settings } from 'lucide-react';
@@ -36,6 +37,7 @@ function GradeSettings({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [rows, setRows] = useState<GradeRow[]>([]);
   const [orig, setOrig] = useState<GradeRow[]>([]);
@@ -68,12 +70,12 @@ function GradeSettings({
 
   const save = async () => {
     if (rows.some((r) => !r.name.trim())) {
-      toast({ type: 'warning', title: '등급 이름을 입력하세요' });
+      toast({ type: 'warning', title: t('customers.gradeNameReq') });
       return;
     }
     const names = rows.map((r) => r.name.trim());
     if (new Set(names).size !== names.length) {
-      toast({ type: 'warning', title: '같은 이름의 등급이 있습니다' });
+      toast({ type: 'warning', title: t('customers.gradeDup') });
       return;
     }
     setSaving(true);
@@ -97,11 +99,14 @@ function GradeSettings({
           continue;
         await api(`/common-codes/${r.id}`, { method: 'PATCH', body: JSON.stringify(body) });
       }
-      toast({ type: 'success', title: '고객 등급을 저장했습니다' });
+      toast({ type: 'success', title: t('customers.gradeSaved') });
       onSaved();
       onClose();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('customers.saveFailed'),
+      });
     } finally {
       setSaving(false);
     }
@@ -111,11 +116,11 @@ function GradeSettings({
     <Modal
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="고객 등급 설정"
+      title={t('customers.gradeTitle')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('customers.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -123,36 +128,46 @@ function GradeSettings({
             loading={saving}
             disabled={!canSubmit || saving}
           >
-            저장
+            {t('customers.save')}
           </Button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)' }}>
-          위에서부터 순서대로 보입니다. 더 쓰지 않는 등급은 &apos;사용&apos;을 끄세요(이미 그 등급인
-          고객은 그대로 둡니다).
+          {t('customers.gradeHelp1')}
+          {t('customers.gradeHelp2')}
         </div>
         {rows.map((r, i) => (
           <div key={r.id ?? r.code} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Button variant="ghost" size="sm" aria-label="위로" onClick={() => move(i, -1)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={t('customers.up')}
+              onClick={() => move(i, -1)}
+            >
               <ArrowUp size={14} />
             </Button>
-            <Button variant="ghost" size="sm" aria-label="아래로" onClick={() => move(i, 1)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={t('customers.down')}
+              onClick={() => move(i, 1)}
+            >
               <ArrowDown size={14} />
             </Button>
             <div style={{ flex: 1 }}>
               <Input
                 value={r.name}
                 onChange={(e) => patch(i, { name: e.target.value })}
-                aria-label="등급 이름"
+                aria-label={t('customers.gradeName')}
                 maxLength={30}
               />
             </div>
             <Checkbox
               checked={r.isActive}
               onCheckedChange={(v) => patch(i, { isActive: v === true })}
-              label="사용"
+              label={t('customers.use')}
             />
           </div>
         ))}
@@ -168,7 +183,7 @@ function GradeSettings({
               ])
             }
           >
-            등급 추가
+            {t('customers.gradeAdd')}
           </Button>
         </div>
       </div>
@@ -178,6 +193,7 @@ function GradeSettings({
 
 /** 고객관리 — 등급은 정해진 목록(관리자가 설정 아이콘에서 정의)에서 고른다 */
 export default function Customers() {
+  const { t } = useTranslation();
   const { can } = useAuth();
   const orgs = useOptions('/org-units', 'name');
   const [gradeVer, setGradeVer] = useState(0);
@@ -187,18 +203,18 @@ export default function Customers() {
 
   const columns: Column[] = [
     {
-      title: '고객번호',
+      title: t('customers.col.no'),
       dataIndex: 'customerNo',
       render: (r: Row) => (r.customerNo ? <CopyText value={String(r.customerNo)} /> : '-'),
     },
-    { title: '고객명', dataIndex: 'name' },
+    { title: t('customers.col.name'), dataIndex: 'name' },
     {
-      title: '연락처',
+      title: t('customers.col.phone'),
       dataIndex: 'phonePrimary',
       render: (r: Row) => formatPhone(String(r.phonePrimary ?? '')) || '-',
     },
     {
-      title: '등급',
+      title: t('customers.col.grade'),
       render: (r: Row) =>
         r.grade ? (
           <Badge variant="subtle" color={r.grade === 'VIP' ? 'primary' : 'neutral'}>
@@ -208,20 +224,23 @@ export default function Customers() {
           '-'
         ),
     },
-    { title: '주소', render: (r) => (r.addr ? `(${r.zipcode ?? ''}) ${r.addr}` : '-') },
+    {
+      title: t('customers.col.address'),
+      render: (r) => (r.addr ? `(${r.zipcode ?? ''}) ${r.addr}` : '-'),
+    },
   ];
   const fields: FormField[] = [
-    { name: 'name', label: '고객명', required: true },
-    { name: 'phonePrimary', label: '연락처', type: 'tel' },
-    { name: 'grade', label: '등급', type: 'select', options: grades },
-    { name: 'ownerOrgId', label: '담당 조직', type: 'select', options: orgs },
-    { name: 'address', label: '주소', type: 'address', addrPrefix: '' },
+    { name: 'name', label: t('customers.col.name'), required: true },
+    { name: 'phonePrimary', label: t('customers.col.phone'), type: 'tel' },
+    { name: 'grade', label: t('customers.col.grade'), type: 'select', options: grades },
+    { name: 'ownerOrgId', label: t('customers.ownerOrg'), type: 'select', options: orgs },
+    { name: 'address', label: t('customers.col.address'), type: 'address', addrPrefix: '' },
   ];
 
   return (
     <>
       <CrudTable
-        title="고객"
+        title={t('customers.title')}
         path="/customers"
         columns={columns}
         fields={fields}
@@ -231,8 +250,8 @@ export default function Customers() {
           can('COMMON_CODE.UPDATE') ? (
             <button
               type="button"
-              aria-label="고객 등급 설정"
-              title="고객 등급 설정"
+              aria-label={t('customers.gradeTitle')}
+              title={t('customers.gradeTitle')}
               onClick={() => setSettingsOpen(true)}
               style={{
                 display: 'grid',

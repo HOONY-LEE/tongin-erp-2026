@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { SearchInput } from '../ui/SearchInput';
@@ -35,10 +37,10 @@ import {
 import { fs } from '../../lib/fontScale';
 
 const VIEW_OPTIONS = [
-  { value: 'day', label: '일간' },
-  { value: 'week', label: '주간' },
-  { value: 'month', label: '월간' },
-  { value: 'year', label: '연간' },
+  { value: 'day', label: i18n.t('cal.view.day') },
+  { value: 'week', label: i18n.t('cal.view.week') },
+  { value: 'month', label: i18n.t('cal.view.month') },
+  { value: 'year', label: i18n.t('cal.view.year') },
 ];
 
 const BORDER = '1px solid var(--ark-color-border)';
@@ -104,6 +106,7 @@ function SourceFilter({
   selected: string[];
   onToggle: (key: string) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -137,7 +140,10 @@ function SourceFilter({
           cursor: 'pointer',
         }}
       >
-        <span>{selected.length}개 선택됨</span>
+        <span>
+          {selected.length}
+          {t('cal.selected')}
+        </span>
         <ChevronDown size={14} style={{ color: 'var(--ark-color-text-tertiary)' }} />
       </button>
 
@@ -224,6 +230,7 @@ function GoogleMenu({
   onSync: () => void;
   onDisconnect: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -246,12 +253,12 @@ function GoogleMenu({
         : 'var(--ark-color-text-tertiary)';
 
   const statusText = !google?.configured
-    ? '구글 연동이 설정되지 않았습니다'
+    ? t('cal.g.notConfigured')
     : syncing
-      ? '동기화 중…'
+      ? t('cal.g.syncing')
       : google.connected
-        ? (google.googleEmail ?? '연결됨')
-        : '연결되지 않음';
+        ? (google.googleEmail ?? t('cal.g.on'))
+        : t('cal.g.off');
 
   const lastSync = google?.lastSyncAt ? fmtDateTime(google.lastSyncAt) : null;
 
@@ -287,8 +294,8 @@ function GoogleMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="구글 캘린더 연동"
-        title="구글 캘린더 연동"
+        aria-label={t('cal.g.menu')}
+        title={t('cal.g.menu')}
         style={{
           position: 'relative',
           display: 'inline-flex',
@@ -337,7 +344,9 @@ function GoogleMenu({
           }}
         >
           <div style={{ padding: '8px 10px 10px' }}>
-            <div style={{ fontSize: fs(13), fontWeight: 600, marginBottom: 2 }}>구글 캘린더</div>
+            <div style={{ fontSize: fs(13), fontWeight: 600, marginBottom: 2 }}>
+              {t('cal.g.title')}
+            </div>
             <div
               style={{
                 fontSize: fs(12),
@@ -351,7 +360,7 @@ function GoogleMenu({
               <div
                 style={{ fontSize: fs(11), color: 'var(--ark-color-text-tertiary)', marginTop: 3 }}
               >
-                마지막 동기화 {lastSync ?? '없음'}
+                {t('cal.g.lastSync')} {lastSync ?? t('cal.none')}
               </div>
             )}
           </div>
@@ -360,11 +369,11 @@ function GoogleMenu({
             <div style={{ borderTop: BORDER, paddingTop: 4 }}>
               {google.connected ? (
                 <>
-                  {item(syncing ? '동기화 중…' : '지금 동기화', onSync, syncing)}
-                  {item('연결 해제', onDisconnect)}
+                  {item(syncing ? t('cal.g.syncing') : t('cal.g.syncNow'), onSync, syncing)}
+                  {item(t('cal.g.disconnect'), onDisconnect)}
                 </>
               ) : (
-                item('구글 캘린더 연결', onConnect)
+                item(t('cal.g.connect'), onConnect)
               )}
             </div>
           )}
@@ -532,6 +541,7 @@ function MonthView({
   onDateClick,
   onEventClick,
 }: ViewProps) {
+  const { t } = useTranslation();
   const days = getMonthMatrix(currentDate.getFullYear(), currentDate.getMonth());
   const month = currentDate.getMonth();
   return (
@@ -673,7 +683,8 @@ function MonthView({
                             paddingLeft: 6,
                           }}
                         >
-                          +{list.length - 4}개 더보기
+                          +{list.length - 4}
+                          {t('cal.more')}
                         </span>
                       )}
                     </div>
@@ -788,6 +799,7 @@ function DayView({
   onDateClick,
   onEventClick,
 }: Omit<ViewProps, 'today' | 'allEvents'>) {
+  const { t } = useTranslation();
   const list = sortEvents(eventMap.get(dateKey(currentDate)) || []);
   return (
     <div
@@ -813,7 +825,7 @@ function DayView({
               fontSize: fs(14),
             }}
           >
-            일정이 없습니다. 클릭해서 추가하세요.
+            {t('cal.empty')}
           </div>
         ) : (
           list.map((ev) => {
@@ -843,7 +855,7 @@ function DayView({
                     color: 'var(--ark-color-text-secondary)',
                   }}
                 >
-                  {ev.startTime ? formatTime(ev.startTime) : '종일'}
+                  {ev.startTime ? formatTime(ev.startTime) : t('cal.allDay')}
                 </span>
                 <span style={{ fontSize: fs(15), fontWeight: 600, color: 'var(--ark-color-text)' }}>
                   {ev.title}
@@ -1043,6 +1055,7 @@ export default function CalendarGrid({
   onGoogleSync,
   onGoogleDisconnect,
 }: Props) {
+  const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
   const today = new Date();
   const eventMap = buildEventMap(events);
@@ -1089,15 +1102,15 @@ export default function CalendarGrid({
           {title}
         </h2>
 
-        <IconBtn onClick={onPrev} label="이전">
+        <IconBtn onClick={onPrev} label={t('cal.prev')}>
           <ChevronLeft size={18} />
         </IconBtn>
-        <IconBtn onClick={onNext} label="다음">
+        <IconBtn onClick={onNext} label={t('cal.next')}>
           <ChevronRight size={18} />
         </IconBtn>
 
         <Button variant="outline" size="sm" onClick={onToday}>
-          오늘
+          {t('cal.today')}
         </Button>
 
         {searchOpen ? (
@@ -1106,11 +1119,11 @@ export default function CalendarGrid({
               autoFocus
               value={search}
               onChange={onSearchChange}
-              placeholder="일정 검색"
+              placeholder={t('cal.search')}
               width={200}
             />
             <IconBtn
-              label="검색 닫기"
+              label={t('cal.searchClose')}
               onClick={() => {
                 onSearchChange('');
                 setSearchOpen(false);
@@ -1120,7 +1133,7 @@ export default function CalendarGrid({
             </IconBtn>
           </div>
         ) : (
-          <IconBtn label="검색" onClick={() => setSearchOpen(true)}>
+          <IconBtn label={t('cal.searchBtn')} onClick={() => setSearchOpen(true)}>
             <Search size={17} />
           </IconBtn>
         )}
@@ -1150,7 +1163,7 @@ export default function CalendarGrid({
             size="sm"
           />
           <Button className="cal-add-btn" variant="primary" size="sm" onClick={onAddEvent}>
-            일정 추가
+            {t('cal.add')}
           </Button>
         </div>
       </div>

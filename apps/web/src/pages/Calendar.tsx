@@ -156,7 +156,7 @@ export default function CalendarPage() {
     const result = searchParams.get('google');
     if (!result) return;
     if (result === 'connected') {
-      toast({ type: 'success', title: '구글 캘린더가 연결되었습니다. 일정을 불러오는 중…' });
+      toast({ type: 'success', title: t('cal.g.connected') });
       // 연결 직후 곧바로 1회 동기화 — 사용자가 별도로 버튼을 누르지 않아도 일정이 보이게 한다.
       void api<GoogleStatus>('/calendar/google/status')
         .then((s) => {
@@ -165,9 +165,9 @@ export default function CalendarPage() {
         })
         .catch(() => undefined);
     } else if (result === 'denied') {
-      toast({ type: 'warning', title: '구글 계정 연결이 취소되었습니다.' });
+      toast({ type: 'warning', title: t('cal.g.canceled') });
     } else {
-      toast({ type: 'error', title: searchParams.get('message') ?? '구글 연결에 실패했습니다.' });
+      toast({ type: 'error', title: searchParams.get('message') ?? t('cal.g.failed') });
     }
     searchParams.delete('google');
     searchParams.delete('message');
@@ -259,7 +259,7 @@ export default function CalendarPage() {
       }
       toast({
         type: 'success',
-        title: editing ? '일정이 수정되었습니다.' : '일정이 등록되었습니다.',
+        title: editing ? t('cal.updated') : t('cal.created'),
       });
       setModalOpen(false);
       await load();
@@ -276,7 +276,7 @@ export default function CalendarPage() {
     if (!editing) return;
     try {
       await api(`/calendar/events/${editing.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '일정이 삭제되었습니다.' });
+      toast({ type: 'success', title: t('cal.deleted') });
       setModalOpen(false);
       await load();
     } catch (e) {
@@ -290,7 +290,7 @@ export default function CalendarPage() {
       const { url } = await api<{ url: string }>('/calendar/google/auth-url');
       window.location.href = url;
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '연결에 실패했습니다.' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cal.connectFailed') });
     }
   };
 
@@ -305,12 +305,12 @@ export default function CalendarPage() {
       );
       toast({
         type: 'success',
-        title: `동기화 완료 — 가져오기 ${r.imported} · 내보내기 ${r.exported} · 정리 ${r.removed}`,
+        title: t('cal.g.synced', { v0: r.imported, v1: r.exported, v2: r.removed }),
       });
       await api<GoogleStatus>('/calendar/google/status').then(setGoogle);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '동기화에 실패했습니다.' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cal.g.syncFailed') });
     } finally {
       setSyncing(false);
     }
@@ -319,12 +319,15 @@ export default function CalendarPage() {
   const disconnectGoogle = async () => {
     try {
       await api('/calendar/google', { method: 'DELETE' });
-      toast({ type: 'success', title: '구글 캘린더 연결을 해제했습니다.' });
+      toast({ type: 'success', title: t('cal.g.disconnected') });
       syncedRangesRef.current.clear(); // 재연결 시 곧바로 다시 동기화되도록
       await api<GoogleStatus>('/calendar/google/status').then(setGoogle);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '해제에 실패했습니다.' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('cal.g.disconnectFailed'),
+      });
     }
   };
 
@@ -333,11 +336,11 @@ export default function CalendarPage() {
 
   /** 드롭다운에 노출할 캘린더 목록 */
   const sources: CalendarSource[] = [
-    { key: 'MINE', label: '내 일정', color: '#AF52DE' },
-    { key: 'ORG', label: '조직 일정', color: '#34C759' },
-    { key: 'WORK', label: '작업 일정', color: '#007AFF' },
-    { key: 'LEAVE', label: '휴가', color: '#8B5CF6' },
-    { key: 'CLOSURE', label: '이사일 마감', color: '#8E8E93' },
+    { key: 'MINE', label: t('cal.src.MINE'), color: '#AF52DE' },
+    { key: 'ORG', label: t('cal.src.ORG'), color: '#34C759' },
+    { key: 'WORK', label: t('cal.src.WORK'), color: '#007AFF' },
+    { key: 'LEAVE', label: t('cal.src.LEAVE'), color: '#8B5CF6' },
+    { key: 'CLOSURE', label: t('cal.src.CLOSURE'), color: '#8E8E93' },
   ];
   /** 이사일 마감을 캘린더 일정처럼 — 마감은 회색 */
   const closureItems = useMemo<CalendarItem[]>(
@@ -345,7 +348,7 @@ export default function CalendarPage() {
       closures.closures.map((c) => ({
         id: `closure-${c.id}`,
         source: 'CLOSURE',
-        title: `${c.orgName ?? '전체'} 마감`,
+        title: t('cal.closure', { v0: c.orgName ?? '전체' }),
         date: c.date,
         endDate: c.date,
         startTime: null,

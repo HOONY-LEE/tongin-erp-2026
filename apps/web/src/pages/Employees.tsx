@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmployeeChip, type EmployeeBrief } from '../components/ui/EmployeeChip';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +24,7 @@ import { formatPhone } from '../lib/phone';
 
 const ACTIVE_FIELD: FormField = {
   name: 'isActive',
-  label: '재직',
+  label: i18n.t('employees.active'),
   type: 'boolean',
   alwaysShow: true,
 };
@@ -67,7 +68,7 @@ export default function Employees({ view = 'list', branch }: Props) {
         .map((u) => ({ value: u.id, label: u.name })),
     [units, branch],
   );
-  const orgLabel = branch ? '소속 지점' : '소속 조직';
+  const orgLabel = branch ? t('employees.branch') : t('employees.org');
 
   // 본사 화면이면 지점 소속 직원을 뺀다(조직 목록을 받기 전엔 판단할 수 없어 기다린다)
   const shown = useMemo(() => {
@@ -123,56 +124,59 @@ export default function Employees({ view = 'list', branch }: Props) {
 
   const fields: FormField[] = [
     { name: 'orgUnitId', label: orgLabel, required: true, type: 'select', options: orgs },
-    { name: 'name', label: '직원명', required: true },
+    { name: 'name', label: t('employees.name'), required: true },
     {
       name: 'positionId',
-      label: '직책',
+      label: t('employees.position'),
       type: 'select',
       alwaysShow: true,
       options: positions,
     },
-    { name: 'hireDate', label: '입사일', type: 'date', alwaysShow: true },
-    { name: 'empNo', label: '사번', placeholder: '비우면 자동 — 입사연도+일련번호(예: 20260001)' },
-    { name: 'phone', label: '연락처', type: 'tel' },
+    { name: 'hireDate', label: t('employees.hireDate'), type: 'date', alwaysShow: true },
+    { name: 'empNo', label: t('employees.empNo'), placeholder: t('employees.empNoPh') },
+    { name: 'phone', label: t('employees.phone'), type: 'tel' },
     // ── 인사기록 ──
     {
       name: 'employmentType',
-      label: '고용 형태',
+      label: t('employees.employmentType'),
       type: 'select',
       options: EMPLOYMENT_TYPES.map((v) => ({ value: v, label: EMPLOYMENT_TYPE_LABEL[v] })),
       pairWithNext: true,
     },
-    { name: 'birthDate', label: '생년월일', type: 'date' },
-    { name: 'email', label: '이메일' },
-    { name: 'address', label: '주소', type: 'address' },
-    { name: 'emergencyName', label: '비상 연락처 이름', pairWithNext: true },
-    { name: 'emergencyRelation', label: '관계' },
-    { name: 'emergencyPhone', label: '비상 연락처 번호', type: 'tel' },
-    { name: 'memo', label: '메모' },
+    { name: 'birthDate', label: t('employees.birthDate'), type: 'date' },
+    { name: 'email', label: t('employees.email') },
+    { name: 'address', label: t('employees.address'), type: 'address' },
+    { name: 'emergencyName', label: t('employees.emergencyName'), pairWithNext: true },
+    { name: 'emergencyRelation', label: t('employees.relation') },
+    { name: 'emergencyPhone', label: t('employees.emergencyPhone'), type: 'tel' },
+    { name: 'memo', label: t('employees.memo') },
   ];
 
   const columns: Column[] = [
     {
-      title: '직원명',
+      title: t('employees.name'),
       dataIndex: 'name',
       // 다른 표의 담당자와 같은 직원 칩 — 누르면 프로필 카드
       render: (r) => <EmployeeChip emp={r as unknown as EmployeeBrief} />,
       exportValue: (r) => String(r.name ?? ''),
     },
     {
-      title: '직책',
+      title: t('employees.position'),
       render: (r) => (r.position as { name: string } | null)?.name ?? '-',
     },
-    { title: '사번', render: (r) => String(r.empNo ?? '-') },
-    { title: '입사일', render: (r) => (r.hireDate ? String(r.hireDate).slice(0, 10) : '-') },
-    { title: '연락처', render: (r) => (r.phone ? formatPhone(String(r.phone)) : '-') },
+    { title: t('employees.empNo'), render: (r) => String(r.empNo ?? '-') },
+    {
+      title: t('employees.hireDate'),
+      render: (r) => (r.hireDate ? String(r.hireDate).slice(0, 10) : '-'),
+    },
+    { title: t('employees.phone'), render: (r) => (r.phone ? formatPhone(String(r.phone)) : '-') },
     // 지점 상세 안에선 모두 같은 지점이라 칸을 뺀다
     ...(branch
       ? []
       : [
           { title: orgLabel, render: (r: Row) => orgName.get(String(r.orgUnitId)) ?? '-' },
           {
-            title: '겸직',
+            title: t('employees.concurrent'),
             render: (r: Row) =>
               ((r.concurrentOrgs as { orgUnitId: string }[] | undefined) ?? [])
                 .map((c) => orgName.get(c.orgUnitId))
@@ -180,14 +184,17 @@ export default function Employees({ view = 'list', branch }: Props) {
                 .join(', ') || '-',
           },
         ]),
-    { title: '상태', render: (r) => (r.isActive ? '재직' : '비활성') },
+    {
+      title: t('employees.status'),
+      render: (r) => (r.isActive ? t('employees.active') : t('employees.inactive')),
+    },
   ];
 
   const modal = (
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? '직원 등록' : '직원 수정'}
+      title={editing === 'new' ? t('employees.create') : t('employees.edit')}
       size="md"
       fields={editing === 'new' ? fields : [...fields, ACTIVE_FIELD]}
       initialValues={
@@ -241,14 +248,14 @@ export default function Employees({ view = 'list', branch }: Props) {
 
   const addButton = (
     <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-      + 직원 등록
+      {t('employees.createBtn')}
     </Button>
   );
 
   // 지점 상세 안에선 '소속 직원 (N)' 제목이 달린 카드로 — 상세 화면의 한 구획이라
   if (branch) {
     return (
-      <PageCard title="소속 직원" count={shown.length} actions={addButton}>
+      <PageCard title={t('employees.members')} count={shown.length} actions={addButton}>
         <DataTable
           columns={columns}
           rows={shown}

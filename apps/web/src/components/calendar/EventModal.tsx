@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Badge, Button, Input, Modal, Select } from '../ui';
 import {
@@ -50,6 +51,7 @@ export default function EventModal({
   onClose,
   onOpenRef,
 }: Props) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -107,12 +109,12 @@ export default function EventModal({
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {event.source === 'WORK_ORDER' && (
               <Badge variant="subtle" color="info">
-                작업 일정
+                {t('cal.src.WORK')}
               </Badge>
             )}
             {event.source === 'LEAVE' && (
               <Badge variant="subtle" color="primary">
-                휴가
+                {t('cal.src.LEAVE')}
               </Badge>
             )}
             {event.orgUnitName && (
@@ -126,20 +128,23 @@ export default function EventModal({
               </Badge>
             )}
           </div>
-          <Row label="시간" value={event.startTime ? formatTime(event.startTime) : '종일'} />
-          {event.location && <Row label="장소" value={event.location} />}
-          {event.description && <Row label="메모" value={event.description} />}
+          <Row
+            label={t('cal.time')}
+            value={event.startTime ? formatTime(event.startTime) : t('cal.allDay')}
+          />
+          {event.location && <Row label={t('cal.place')} value={event.location} />}
+          {event.description && <Row label={t('cal.memo')} value={event.description} />}
           <div style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)' }}>
-            다른 사람이 등록했거나 시스템이 생성한 일정이라 여기서는 수정할 수 없습니다.
+            {t('cal.readonly')}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
             {event.refId && onOpenRef && (
               <Button variant="outline" onClick={() => onOpenRef(event)}>
-                {event.source === 'LEAVE' ? '결재 문서 열기 →' : '작업 상세 열기 →'}
+                {event.source === 'LEAVE' ? t('cal.openApproval') : t('cal.openWork')}
               </Button>
             )}
             <Button variant="ghost" onClick={onClose}>
-              닫기
+              {t('cal.close')}
             </Button>
           </div>
         </div>
@@ -154,13 +159,13 @@ export default function EventModal({
         if (!v) onClose();
       }}
       size="sm"
-      title={event ? '일정 편집' : '새로운 일정'}
+      title={event ? t('cal.editTitle') : t('cal.newTitle')}
       description={selectedDate ? formatSelectedDate(selectedDate) : undefined}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Input
-          label="제목 *"
-          placeholder="일정 제목"
+          label={t('cal.f.title')}
+          placeholder={t('cal.f.titlePh')}
           value={title}
           autoFocus
           onChange={(e) => setTitle(e.target.value)}
@@ -170,7 +175,7 @@ export default function EventModal({
         />
 
         <Input
-          label="종료일 (여러 날에 걸치는 일정)"
+          label={t('cal.f.endDate')}
           type="date"
           value={endDate}
           min={selectedDate ? dateKey(selectedDate) : undefined}
@@ -180,7 +185,7 @@ export default function EventModal({
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Input
-              label="시작"
+              label={t('cal.f.start')}
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
@@ -188,7 +193,7 @@ export default function EventModal({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Input
-              label="종료"
+              label={t('cal.f.end')}
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
@@ -196,39 +201,39 @@ export default function EventModal({
           </div>
         </div>
         <div style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)', marginTop: -10 }}>
-          시간을 비워두면 종일 일정으로 저장됩니다. 종료일을 지정하면 여러 날 막대로 표시됩니다.
+          {t('cal.f.help')}
         </div>
 
         <Select
-          label="공개 범위"
+          label={t('cal.f.scope')}
           value={visibility}
           onValueChange={(v) => setVisibility(v as 'PRIVATE' | 'ORG')}
           options={[
-            { value: 'PRIVATE', label: '개인 일정 (나만 보기)' },
-            { value: 'ORG', label: '조직 일정 (소속 구성원 공유)' },
+            { value: 'PRIVATE', label: t('cal.f.private') },
+            { value: 'ORG', label: t('cal.f.org') },
           ]}
         />
 
         {visibility === 'ORG' && (
           <Select
-            label="공유 조직 *"
+            label={t('cal.f.shareOrg')}
             value={orgUnitId}
             onValueChange={setOrgUnitId}
             options={orgOptions}
-            placeholder="조직을 선택하세요"
+            placeholder={t('cal.f.pickOrg')}
           />
         )}
 
         <Input
-          label="장소"
-          placeholder="예: 본사 3층 회의실"
+          label={t('cal.place')}
+          placeholder={t('cal.f.placePh')}
           value={location}
           onChange={(e) => setLocation(e.target.value)}
         />
 
         <Input
-          label="메모"
-          placeholder="상세 내용"
+          label={t('cal.memo')}
+          placeholder={t('cal.f.detail')}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
@@ -242,7 +247,7 @@ export default function EventModal({
               color: 'var(--ark-color-text-secondary)',
             }}
           >
-            색상
+            {t('cal.f.color')}
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             {COLORS.map((c) => (
@@ -269,18 +274,18 @@ export default function EventModal({
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           {event && (
             <Button variant="danger" onClick={onDelete} style={{ marginRight: 'auto' }}>
-              삭제
+              {t('cal.delete')}
             </Button>
           )}
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('cal.cancel')}
           </Button>
           <Button
             variant="primary"
             onClick={handleSave}
             disabled={!title.trim() || saving || (visibility === 'ORG' && !orgUnitId)}
           >
-            저장
+            {t('cal.save')}
           </Button>
         </div>
       </div>

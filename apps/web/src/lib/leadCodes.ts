@@ -1,16 +1,17 @@
+import i18n from '../i18n';
 // 접수(리드) 관련 코드값 — 목록/상세가 같은 라벨을 쓰도록 한 곳에서 관리.
 import type { StatusMap } from '../components/ui';
 import { APPLE } from './palette';
 
 export const LEAD_STATUS: StatusMap = {
-  RECEIVED: { label: '접수', color: 'neutral' },
-  CONSULT_TOSS: { label: '상담토스', color: 'info' },
-  QUOTED: { label: '계약미승인', color: 'warning' }, // 견적서 발송 — 화면에서는 계약미승인과 한 단계
-  CONTRACT_PENDING: { label: '계약미승인', color: 'warning' },
-  CONTRACTED: { label: '계약', color: 'primary' },
-  WORK_TOSS: { label: '작업토스', color: 'primary' },
-  DONE: { label: '작업완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  RECEIVED: { label: i18n.t('leads.st.RECEIVED'), color: 'neutral' },
+  CONSULT_TOSS: { label: i18n.t('leads.st.CONSULT_TOSS'), color: 'info' },
+  QUOTED: { label: i18n.t('leads.st.CONTRACT_PENDING'), color: 'warning' }, // 견적서 발송 — 화면에서는 계약미승인과 한 단계
+  CONTRACT_PENDING: { label: i18n.t('leads.st.CONTRACT_PENDING'), color: 'warning' },
+  CONTRACTED: { label: i18n.t('leads.st.CONTRACTED'), color: 'primary' },
+  WORK_TOSS: { label: i18n.t('leads.st.WORK_TOSS'), color: 'primary' },
+  DONE: { label: i18n.t('leads.st.DONE'), color: 'success' },
+  CANCELED: { label: i18n.t('leads.st.CANCELED'), color: 'error' },
 };
 
 /** 접수 상태 칩 색 — 연한 바탕 + 같은 색 글자. 상태마다 확실히 다른 색 */
@@ -27,24 +28,24 @@ export const LEAD_STATUS_COLOR: Record<string, string> = {
 };
 
 export const SERVICE_LINES = [
-  { value: 'MOVING', label: '이사(무빙)' },
-  { value: 'LIVING', label: '리빙' },
-  { value: 'CARE', label: '케어' },
-  { value: 'B2B_MOVING', label: '기업이전' },
-  { value: 'GENERAL', label: '일반' },
+  { value: 'MOVING', label: i18n.t('leads.line.MOVING') },
+  { value: 'LIVING', label: i18n.t('leads.line.LIVING') },
+  { value: 'CARE', label: i18n.t('leads.line.CARE') },
+  { value: 'B2B_MOVING', label: i18n.t('leads.line.B2B_MOVING') },
+  { value: 'GENERAL', label: i18n.t('leads.line.GENERAL') },
 ];
 
 export const RECEIPT_SOURCES = [
   // ERP 화면에서 직원이 직접 등록한 건 — CS가 상담 중 남기는 접수도 여기에 해당한다.
-  { value: 'SYSTEM', label: '시스템' },
-  { value: 'HOMEPAGE', label: '홈페이지' },
-  { value: 'AIBOT', label: 'AI상담봇' },
-  { value: 'PHONE', label: '전화상담' },
-  { value: 'NAVER', label: '네이버' },
-  { value: 'INSTAGRAM', label: '인스타그램' },
-  { value: 'PARTNER', label: '제휴사' },
-  { value: 'WALK_IN', label: '방문접수' },
-  { value: 'ETC', label: '기타' },
+  { value: 'SYSTEM', label: i18n.t('leads.src.SYSTEM') },
+  { value: 'HOMEPAGE', label: i18n.t('leads.src.HOMEPAGE') },
+  { value: 'AIBOT', label: i18n.t('leads.src.AIBOT') },
+  { value: 'PHONE', label: i18n.t('leads.src.PHONE') },
+  { value: 'NAVER', label: i18n.t('leads.src.NAVER') },
+  { value: 'INSTAGRAM', label: i18n.t('leads.src.INSTAGRAM') },
+  { value: 'PARTNER', label: i18n.t('leads.src.PARTNER') },
+  { value: 'WALK_IN', label: i18n.t('leads.src.WALK_IN') },
+  { value: 'ETC', label: i18n.t('leads.src.ETC') },
 ];
 
 /** 코드값을 사람이 읽는 라벨로. 모르는 코드는 원문 그대로 보여준다. */

@@ -26,9 +26,14 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+/**
+ * 언어 바꾸기 — 화면 곳곳의 고정 목록(칼럼·선택지 이름 등)까지 새 언어로 다시 만들도록 화면을 새로 연다.
+ * (언어는 자주 바꾸지 않는다)
+ */
 export function setLang(code: string) {
+  if (code === i18n.language) return;
   localStorage.setItem(LANG_KEY, code);
-  void i18n.changeLanguage(code);
+  void i18n.changeLanguage(code).then(() => window.location.reload());
 }
 
 export default i18n;
