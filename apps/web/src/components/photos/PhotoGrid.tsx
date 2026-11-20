@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { ChevronLeft, ChevronRight, ImageOff, Trash2, X } from 'lucide-react';
 import { WORK_PHOTO_KIND_LABEL, type WorkPhotoMeta } from '@tongin/shared';
 import { Spinner } from '../ui';
@@ -12,12 +13,7 @@ export interface PendingPhoto {
   error?: string;
 }
 
-const when = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(
-    d.getMinutes(),
-  ).padStart(2, '0')}`;
-};
+const when = (iso: string) => fmtDateTime(iso);
 
 function Thumb({ photo, onOpen }: { photo: WorkPhotoMeta; onOpen: () => void }) {
   const { url, failed } = usePhotoUrl(photo.id);

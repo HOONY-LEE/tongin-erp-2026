@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
@@ -45,15 +46,7 @@ interface PayRow extends Row {
   depositPaidAt: string | null;
 }
 
-const md = (iso: unknown) =>
-  iso
-    ? new Date(String(iso)).toLocaleString('ko-KR', {
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '';
+const md = (iso: unknown) => fmtDateTime(iso);
 
 export default function PaymentConfirm() {
   const { t } = useTranslation();

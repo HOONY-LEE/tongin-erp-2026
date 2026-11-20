@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, UserRound, XCircle } from 'lucide-react';
 import { Phone as PhoneCell } from 'softium-ui/table';
@@ -33,12 +34,8 @@ interface SmsRow {
   employeeName: string | null;
 }
 
-/** 11.18 10:05 */
-const when = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
+/** 2026-11-20 16:14 */
+const when = (iso: string) => fmtDateTime(iso);
 /** 문자 길이(EUC-KR) — 90byte 넘으면 장문 */
 const bytes = (s: string) => [...s].reduce((n, c) => n + (c.charCodeAt(0) < 128 ? 1 : 2), 0);
 

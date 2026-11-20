@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { SearchInput } from '../components/ui/SearchInput';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
@@ -151,8 +152,7 @@ const toLocalInput = (iso: string | null) => {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 };
-const dt = (v: string | null) =>
-  v ? new Date(v).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+const dt = (v: string | null) => fmtDateTime(v) || '-';
 
 /**
  * 캠페인 작성 — 채널별 설정(문자: 광고 표기·장문 제목 / 알림톡: 템플릿·버튼·대체발송),

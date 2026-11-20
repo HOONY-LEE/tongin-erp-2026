@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { Phone, PhoneOff, Check, FileText, UserRound } from 'lucide-react';
 import { Phone as PhoneCell } from 'softium-ui/table';
@@ -279,13 +280,7 @@ export function FollowupList({
                 <>
                   <dt>지난 통화</dt>
                   <dd>
-                    {open.result ? RESULT[open.result] : ''} ·{' '}
-                    {new Date(open.at).toLocaleString('ko-KR', {
-                      month: 'numeric',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {open.result ? RESULT[open.result] : ''} · {fmtDateTime(open.at)}
                     {open.by && ` · ${open.by}`} ({open.tries}번)
                   </dd>
                 </>

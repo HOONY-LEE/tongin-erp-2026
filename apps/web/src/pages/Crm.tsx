@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fmtDate, fmtDateTime } from '../lib/dateFormat';
 import { CalendarClock, Mail, MessageSquare, Phone, Search, StickyNote, Users } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import {
@@ -62,21 +63,10 @@ const fieldText = (f: CrmPipelineDef['fields'][number], v: unknown) =>
       ? `${Number(v).toLocaleString('ko-KR')}${f.unit ?? ''}`
       : String(v);
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
-/** 목록용 짧은 날짜 — 올해면 11.01, 아니면 25.11.01 */
-const shortYmd = (iso: string) => {
-  const d = new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 10);
-  const [y, m, dd] = d.split('-');
-  return y === kstToday().slice(0, 4) ? `${m}.${dd}` : `${y.slice(2)}.${m}.${dd}`;
-};
-const md = (s: string) => `${Number(s.slice(5, 7))}.${Number(s.slice(8, 10))}`;
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+/** 목록용 날짜 — 2026-11-20 */
+const shortYmd = (iso: string) => fmtDate(iso);
+const md = (s: string) => fmtDate(s);
+const when = (iso: string) => fmtDateTime(iso);
 
 function StageBadge({ def, stage }: { def: CrmPipelineDef; stage: string }) {
   const s = def.stages.find((x) => x.key === stage);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { Trash2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useDirectory, type DirectoryPerson } from '../../lib/approvals';
@@ -14,8 +15,7 @@ interface Comment {
   mentions: { id: string; name: string }[];
 }
 
-const when = (v: string) =>
-  new Date(v).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
+const when = (v: string) => fmtDateTime(v);
 
 /** 본문의 '@이름'을 멘션 색으로 */
 function Body({ text, names }: { text: string; names: string[] }) {

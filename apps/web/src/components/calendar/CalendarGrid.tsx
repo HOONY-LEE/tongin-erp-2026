@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { SearchInput } from '../ui/SearchInput';
 import {
   ChevronLeft,
@@ -252,14 +253,7 @@ function GoogleMenu({
         ? (google.googleEmail ?? '연결됨')
         : '연결되지 않음';
 
-  const lastSync = google?.lastSyncAt
-    ? new Date(google.lastSyncAt).toLocaleString('ko-KR', {
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : null;
+  const lastSync = google?.lastSyncAt ? fmtDateTime(google.lastSyncAt) : null;
 
   const item = (label: string, onClick: () => void, disabled?: boolean) => (
     <button

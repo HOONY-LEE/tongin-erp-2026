@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import { ArrowRight, CircleDot, Forward, Plus, Users } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -16,14 +17,7 @@ interface Event {
   at: string;
 }
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+const when = (iso: string) => fmtDateTime(iso);
 
 /**
  * 작업관리 이력 — 만듦 · 담당 넘김(누가 누구에게 언제, 남긴 말) · 상태 · 팀 바뀜. 오래된 것부터.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { createPortal } from 'react-dom';
 import { ExternalLink, History, Printer, X } from 'lucide-react';
 import { api, ApiError, getToken } from '../../lib/api';
@@ -34,14 +35,7 @@ const APPROVAL_STATUS: Record<string, string> = {
   REJECTED: '반려',
   CANCELED: '취소',
 };
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+const when = (iso: string) => fmtDateTime(iso);
 
 /** 인증 fetch로 문서(HTML)를 받는다 */
 async function fetchHtml(path: string) {

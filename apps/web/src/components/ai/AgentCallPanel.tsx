@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { AlertTriangle, Check, CircleDot, Play, ShieldCheck, X } from 'lucide-react';
 import {
   AGENT_RUN_STATUS_LABEL,
@@ -52,8 +53,7 @@ const STEP_ICON: Record<TraceStep['status'], typeof Check> = {
 };
 
 const show = (v: unknown) => (typeof v === 'string' ? v : JSON.stringify(v, null, 2));
-const dt = (v: string) =>
-  new Date(v).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' });
+const dt = (v: string) => fmtDateTime(v);
 
 /**
  * 만들어 둔 에이전트를 AI 에이전트 화면에서 부른다 — 입력값을 넣고 실행하면 단계별 진행과 결과가 보인다.

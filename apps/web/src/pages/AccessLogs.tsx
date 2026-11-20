@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -69,16 +70,7 @@ function detailText(r: AccessRow): string {
   return '';
 }
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    year: '2-digit',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+const when = (iso: string) => fmtDateTime(iso, { seconds: true });
 const kstDate = (offsetDays = 0) =>
   new Date(Date.now() + 9 * 3600_000 - offsetDays * 24 * 3600_000).toISOString().slice(0, 10);
 

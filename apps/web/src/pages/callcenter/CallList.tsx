@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { EmployeeChip, type EmployeeBrief } from '../../components/ui/EmployeeChip';
 import { CopyText } from '../../components/ui/CopyText';
@@ -46,12 +47,8 @@ const STATUS_LABEL: Record<string, string> = {
   DONE: '완료',
   CANCELED: '취소',
 };
-/** 11.18 10:05 */
-const when = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
+/** 2026-11-20 16:14 */
+const when = (iso: string) => fmtDateTime(iso);
 const dur = (s: number | null) =>
   s == null
     ? '-'

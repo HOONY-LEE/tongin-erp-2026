@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { fmtDate } from '../lib/dateFormat';
 import { useDirectory } from './approvals';
 import type { BadgeColor } from '../components/ui';
 
@@ -17,8 +18,7 @@ export interface OrgRef {
 /** 'YYYY-MM-DD' (DATE 컬럼은 UTC 자정으로 오므로 앞 10자리) */
 export const ymd = (v: unknown) => (v ? String(v).slice(0, 10) : '');
 /** 작성 시각 — 2026. 10. 29. */
-export const shortDate = (v: unknown) =>
-  v ? new Date(String(v)).toLocaleDateString('ko-KR', { dateStyle: 'medium' }) : '';
+export const shortDate = (v: unknown) => fmtDate(v);
 export const won = (v: unknown) =>
   v === null || v === undefined || v === '' ? '' : `${Number(v).toLocaleString('ko-KR')}원`;
 

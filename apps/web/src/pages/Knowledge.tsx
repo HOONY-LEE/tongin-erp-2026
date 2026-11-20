@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { FileText, FileUp, RefreshCw, Search, Sparkles } from 'lucide-react';
 import {
   KNOWLEDGE_CATEGORIES,
@@ -47,15 +48,7 @@ interface ConceptView {
   relations: { from: string; to: string; label: string }[];
 }
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+const when = (iso: string) => fmtDateTime(iso);
 
 function CategoryTag({ c }: { c: KnowledgeCategory }) {
   return (

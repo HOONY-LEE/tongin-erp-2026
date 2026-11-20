@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AI_ACCESS, AI_FEATURES, type AiAccess, type AiPrices } from '@tongin/shared';
@@ -96,16 +97,7 @@ interface Summary {
 const num = (n: number) => n.toLocaleString('ko-KR');
 const usd = (n: number | null | undefined) =>
   n == null ? '—' : `$${n < 1 ? n.toFixed(4) : n.toFixed(2)}`;
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
-    year: '2-digit',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+const when = (iso: string) => fmtDateTime(iso, { seconds: true });
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 const thisMonth = () => kstToday().slice(0, 7);
 const daysAgo = (n: number) =>

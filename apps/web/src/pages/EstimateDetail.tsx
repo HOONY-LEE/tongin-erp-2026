@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
+import { fmtDateTime } from '../lib/dateFormat';
 import { Send } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -41,15 +42,7 @@ const STEPS: StepDef[] = [
 ];
 type StepKey = 'basic' | 'items' | 'options' | 'summary';
 
-const shortDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleString('ko-KR', {
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : null;
+const shortDate = (iso: string | null) => (iso ? fmtDateTime(iso) : null);
 
 /** 진행 — 접수 → 견적서 발송 → 고객 서명 → 계약금 입금 → 작업. 단계는 저절로 넘어간다 */
 function FlowBar({ data }: { data: EstimateDetailData }) {
@@ -365,12 +358,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           <b>지점 반려</b>
           <span>
             {orgName(data.lead.rejectedFromOrgId) || '지점'} · {data.lead.rejectKind} ·{' '}
-            {new Date(data.lead.rejectedAt).toLocaleString('ko-KR', {
-              month: 'numeric',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {fmtDateTime(data.lead.rejectedAt)}
           </span>
           {data.lead.rejectReason && <p>{data.lead.rejectReason}</p>}
         </div>

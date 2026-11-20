@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Phone, RotateCcw, MessageSquare, PhoneForwarded } from 'lucide-react';
@@ -357,14 +358,8 @@ export function IntakePanel({
           <>
             <span className={styles.statePill}>{CALL_STATUS[call.status] ?? call.status}</span>
             <span className={styles.headInfo}>
-              {readOnly.agentName ?? '-'} ·{' '}
-              {new Date(startedAt).toLocaleString('ko-KR', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}{' '}
-              · 통화 {durText(readOnly.durationSec)}
+              {readOnly.agentName ?? '-'} · {fmtDateTime(startedAt)} · 통화{' '}
+              {durText(readOnly.durationSec)}
             </span>
           </>
         )}

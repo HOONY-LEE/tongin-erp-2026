@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { fmtDateTime } from '../../lib/dateFormat';
 import { api, ApiError } from '../../lib/api';
 import {
   APPROVAL_STATUS_MAP,
@@ -12,8 +13,7 @@ import type { FormField, FormValue } from '@tongin/shared';
 import { FormValuesView } from './FormFields';
 import styles from './approval.module.css';
 
-const dt = (v: string | null) =>
-  v ? new Date(v).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) : null;
+const dt = (v: string | null) => (v ? fmtDateTime(v) : null);
 
 /** 업무 문서의 기본 본문 — 휴가·근태 정정은 payload를 표로, 그 외는 내용(content) */
 function defaultBody(doc: ApprovalDocView): ReactNode {
