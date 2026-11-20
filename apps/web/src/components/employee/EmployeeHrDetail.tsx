@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ORG_UNIT_TYPE_LABEL,
@@ -104,6 +105,7 @@ export function EmployeeHrDetail({
   /** 수정 창에서 저장하면 바뀌어 다시 읽는다 */
   reloadKey?: number;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can, user } = useAuth();
   const [rec, setRec] = useState<HrRecord | null>(null);
@@ -116,7 +118,10 @@ export function EmployeeHrDetail({
     try {
       setRec(await api<HrRecord>(`/employees/${id}/hr`));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('employees.loadFailed'),
+      });
     } finally {
       setLoading(false);
     }
@@ -138,35 +143,40 @@ export function EmployeeHrDetail({
     });
     primeEmployeePhoto(id, r.photoAt, previewUrl);
     setRec((cur) => (cur ? { ...cur, photoAt: r.photoAt } : cur));
-    toast({ type: 'success', title: '프로필 사진을 바꿨습니다' });
+    toast({ type: 'success', title: t('employees.photoSaved') });
   };
   const removePhoto = async () => {
     try {
       await api(`/employees/${id}/photo`, { method: 'DELETE' });
       primeEmployeePhoto(id, null);
       setRec((cur) => (cur ? { ...cur, photoAt: null } : cur));
-      toast({ type: 'success', title: '프로필 사진을 지웠습니다' });
+      toast({ type: 'success', title: t('employees.photoDeleted') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('employees.deleteFailed'),
+      });
     }
   };
   const tabs = [
-    { value: 'info', label: '기본·인사' },
-    ...(can('LEAVE.READ') ? [{ value: 'leave', label: '휴가' }] : []),
-    ...(can('ATTENDANCE.READ') ? [{ value: 'attendance', label: '근태' }] : []),
-    { value: 'history', label: '발령 이력' },
-    { value: 'checklist', label: '입·퇴사 체크리스트' },
+    { value: 'info', label: t('employees.tab.info') },
+    ...(can('LEAVE.READ') ? [{ value: 'leave', label: t('employees.tab.leave') }] : []),
+    ...(can('ATTENDANCE.READ')
+      ? [{ value: 'attendance', label: t('employees.tab.attendance') }]
+      : []),
+    { value: 'history', label: t('employees.tab.history') },
+    { value: 'checklist', label: t('employees.tab.checklist') },
   ];
 
   const statusBadge = rec ? (
     rec.resignDate ? (
       <Badge variant="subtle" color="neutral">
-        퇴사 {d10(rec.resignDate)}
+        {t('employees.resigned')} {d10(rec.resignDate)}
         {rec.resignReason ? ` · ${rec.resignReason}` : ''}
       </Badge>
     ) : (
       <Badge variant="subtle" color={rec.isActive ? 'success' : 'neutral'}>
-        {rec.isActive ? '재직' : '비활성'}
+        {rec.isActive ? t('employees.active') : t('employees.inactive')}
       </Badge>
     )
   ) : null;
@@ -177,36 +187,36 @@ export function EmployeeHrDetail({
   // 프로필 항목 — 이름 · ID · 사번 · 입사일 · 고용 형태 · 연락처 · 직책 · 소속 · 상태 · 주소 · 이메일 · 메모 · 권한
   const info: DetailItem[] = rec
     ? [
-        { label: '이름', value: rec.name },
+        { label: t('employees.f.name'), value: rec.name },
         {
           label: 'ID',
           value: rec.appUsers.length
             ? rec.appUsers
-                .map((u) => `${u.loginId}${u.isActive ? '' : ' (로그인 막힘)'}`)
+                .map((u) => `${u.loginId}${u.isActive ? '' : t('employees.loginBlocked')}`)
                 .join(', ')
-            : '계정 없음',
+            : t('employees.noAccount'),
         },
-        { label: '사번', value: rec.empNo },
-        { label: '입사일', value: d10(rec.hireDate) },
+        { label: t('employees.empNo'), value: rec.empNo },
+        { label: t('employees.hireDate'), value: d10(rec.hireDate) },
         {
-          label: '고용 형태',
+          label: t('employees.employmentType'),
           value: EMPLOYMENT_TYPE_LABEL[rec.employmentType] ?? rec.employmentType,
         },
-        { label: '연락처', value: rec.phone ? formatPhone(rec.phone) : null },
-        { label: '직책', value: rec.position?.name },
-        { label: '소속', value: rec.orgUnit?.name },
-        { label: '상태', value: statusBadge },
+        { label: t('employees.phone'), value: rec.phone ? formatPhone(rec.phone) : null },
+        { label: t('employees.position'), value: rec.position?.name },
+        { label: t('employees.f.org'), value: rec.orgUnit?.name },
+        { label: t('employees.status'), value: statusBadge },
         {
-          label: '주소',
+          label: t('employees.address'),
           wide: true,
           value: rec.addr
             ? `${rec.addr}${rec.addrDetail ? ` ${rec.addrDetail}` : ''}${rec.zipcode ? `(${rec.zipcode})` : ''}`
             : null,
         },
-        { label: '이메일', value: rec.email },
-        { label: '메모', wide: true, value: rec.memo },
+        { label: t('employees.email'), value: rec.email },
+        { label: t('employees.memo'), wide: true, value: rec.memo },
         {
-          label: '권한',
+          label: t('employees.f.roles'),
           wide: true,
           value: roles.length ? (
             <span className={styles.roles}>
@@ -219,16 +229,16 @@ export function EmployeeHrDetail({
           ) : null,
         },
         {
-          label: '겸직',
+          label: t('employees.concurrent'),
           value: rec.concurrentOrgs.length
             ? rec.concurrentOrgs
                 .map((c) => `${c.orgUnit.name}${c.position ? ` · ${c.position.name}` : ''}`)
                 .join(', ')
             : null,
         },
-        { label: '생년월일', value: d10(rec.birthDate) },
+        { label: t('employees.birthDate'), value: d10(rec.birthDate) },
         {
-          label: '비상 연락처',
+          label: t('employees.f.emergency'),
           value: rec.emergencyName
             ? `${rec.emergencyName}${rec.emergencyRelation ? `(${rec.emergencyRelation})` : ''}${rec.emergencyPhone ? ` · ${formatPhone(rec.emergencyPhone)}` : ''}`
             : null,
@@ -240,7 +250,7 @@ export function EmployeeHrDetail({
     <>
       <RecordDetail
         loading={loading && !rec}
-        title={rec ? rec.name : '직원을 찾을 수 없습니다'}
+        title={rec ? rec.name : t('employees.notFound')}
         backLabel={backLabel}
         onBack={onBack}
         actions={
@@ -248,11 +258,11 @@ export function EmployeeHrDetail({
             <>
               {!rec.resignDate && (
                 <Button variant="outline" size="sm" onClick={() => setResigning(true)}>
-                  퇴사 처리
+                  {t('employees.resign')}
                 </Button>
               )}
               <Button variant="primary" size="sm" onClick={() => onEdit(rec)}>
-                수정
+                {t('employees.editBtn')}
               </Button>
             </>
           ) : undefined
@@ -269,8 +279,8 @@ export function EmployeeHrDetail({
                     type="button"
                     className={styles.photoEdit}
                     onClick={() => setCropOpen(true)}
-                    aria-label="프로필 사진 바꾸기"
-                    title="프로필 사진 바꾸기"
+                    aria-label={t('employees.changePhoto')}
+                    title={t('employees.changePhoto')}
                   >
                     <Camera size={14} />
                   </button>
@@ -286,11 +296,11 @@ export function EmployeeHrDetail({
                 {canPhoto && (
                   <div className={styles.photoActions}>
                     <Button variant="outline" size="sm" onClick={() => setCropOpen(true)}>
-                      {rec.photoAt ? '사진 바꾸기' : '사진 올리기'}
+                      {rec.photoAt ? t('employees.photoChange') : t('employees.photoUpload')}
                     </Button>
                     {rec.photoAt && (
                       <Button variant="ghost" size="sm" onClick={() => void removePhoto()}>
-                        사진 지우기
+                        {t('employees.photoDelete')}
                       </Button>
                     )}
                   </div>
@@ -350,6 +360,7 @@ export function EmployeeHrDetail({
  * 결재선(팀장 찾기)·근태는 주 소속 기준이다.
  */
 function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRecord) => void }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { units } = useOrgUnits();
   const positions = useOptions('/positions', 'name', 'id', (r) => r.isActive !== false);
@@ -371,7 +382,10 @@ function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRe
       onChanged(await fn());
       toast({ type: 'success', title: done });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('employees.saveFailed'),
+      });
     } finally {
       setBusy(false);
     }
@@ -385,33 +399,35 @@ function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRe
       setOrgId('');
       setPosId('');
       return r;
-    }, '겸직을 더했습니다');
+    }, t('employees.concAdded'));
   const remove = (c: HrRecord['concurrentOrgs'][number]) => {
-    if (!window.confirm(`${c.orgUnit.name} 겸직을 해제할까요?`)) return;
+    if (!window.confirm(t('employees.concRemoveQ', { v0: c.orgUnit.name }))) return;
     void run(
       () =>
         api<HrRecord>(`/employees/${rec.id}/concurrent-orgs/${c.orgUnitId}`, {
           method: 'DELETE',
         }),
-      '겸직을 해제했습니다',
+      t('employees.concRemoved'),
     );
   };
 
   return (
     <section className="rd-card">
-      <h3 className="rd-title">겸직(추가 소속)</h3>
+      <h3 className="rd-title">{t('employees.concTitle')}</h3>
       <p className={styles.muted} style={{ margin: '0 0 12px' }}>
-        TF·프로젝트팀처럼 다른 조직에도 함께 속하면 더하세요. 그 조직의 메뉴·공지·작업관리를 함께
-        받습니다. 결재선과 근태는 주 소속({rec.orgUnit?.name ?? '-'}) 기준입니다.
+        {t('employees.concHelp1')}
+        {t('employees.concHelp2')}
+        {rec.orgUnit?.name ?? '-'}
+        {t('employees.concHelp3')}
       </p>
       {rec.concurrentOrgs.length > 0 && (
         <ul className={styles.concurrentList}>
           {rec.concurrentOrgs.map((c) => (
             <li key={c.orgUnitId}>
               <b>{c.orgUnit.name}</b>
-              <span className={styles.muted}>{c.position?.name ?? '직책 없음'}</span>
+              <span className={styles.muted}>{c.position?.name ?? t('employees.noPosition')}</span>
               <Button variant="ghost" size="sm" disabled={busy} onClick={() => remove(c)}>
-                해제
+                {t('employees.remove')}
               </Button>
             </li>
           ))}
@@ -420,13 +436,13 @@ function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRe
       <div className={styles.concurrentAdd}>
         <Select
           value={orgId}
-          placeholder="조직 고르기"
+          placeholder={t('employees.pickOrg')}
           onValueChange={setOrgId}
           options={orgOptions}
         />
         <Select
           value={posId}
-          placeholder="그 조직 직책(선택)"
+          placeholder={t('employees.pickPosition')}
           onValueChange={setPosId}
           options={positions}
         />
@@ -437,7 +453,7 @@ function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRe
           disabled={!orgId}
           onClick={() => void add()}
         >
-          겸직 더하기
+          {t('employees.concAdd')}
         </Button>
       </div>
     </section>
@@ -445,6 +461,7 @@ function ConcurrentOrgs({ rec, onChanged }: { rec: HrRecord; onChanged: (r: HrRe
 }
 
 function EmployeeLeave({ employeeId }: { employeeId: string }) {
+  const { t } = useTranslation();
   const [data, setData] = useState<{
     balance: LeaveBalance;
     requests: Parameters<typeof LeaveRequestTable>[0]['rows'];
@@ -455,7 +472,7 @@ function EmployeeLeave({ employeeId }: { employeeId: string }) {
       `/leave/employees/${employeeId}`,
     )
       .then(setData)
-      .catch((e) => setError(e instanceof ApiError ? e.message : '불러오지 못했습니다'));
+      .catch((e) => setError(e instanceof ApiError ? e.message : t('employees.loadFailed')));
   }, [employeeId]);
   if (error) return <p className={styles.muted}>{error}</p>;
   if (!data) return null;
@@ -468,16 +485,12 @@ function EmployeeLeave({ employeeId }: { employeeId: string }) {
 }
 
 function History({ rec }: { rec: HrRecord }) {
-  if (!rec.histories.length)
-    return (
-      <p className={styles.muted}>
-        발령 이력이 없습니다 — 이제부터 소속·직책을 바꾸거나 퇴사 처리하면 자동으로 남습니다.
-      </p>
-    );
+  const { t } = useTranslation();
+  if (!rec.histories.length) return <p className={styles.muted}>{t('employees.noHistory')}</p>;
   const desc = (h: HrRecord['histories'][number]) => {
     if (h.kind === 'TRANSFER') return `${h.fromOrgName ?? '-'} → ${h.toOrgName ?? '-'}`;
     if (h.kind === 'POSITION')
-      return `${h.fromPositionName ?? '직책 없음'} → ${h.toPositionName ?? '직책 없음'}`;
+      return `${h.fromPositionName ?? t('employees.noPosition')} → ${h.toPositionName ?? t('employees.noPosition')}`;
     if (h.kind === 'JOIN')
       return [h.toOrgName, h.toPositionName].filter(Boolean).join(' · ') || '-';
     if (h.kind === 'CONCURRENT_ADD')
@@ -515,6 +528,7 @@ function Checklist({
   canEdit: boolean;
   onChanged: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const toggle = async (itemId: string, done: boolean) => {
     try {
@@ -524,7 +538,10 @@ function Checklist({
       });
       onChanged();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('employees.changeFailed'),
+      });
     }
   };
   const open = async (kind: ChecklistKind) => {
@@ -532,7 +549,10 @@ function Checklist({
       await api(`/employees/${rec.id}/checklist/${kind}`, { method: 'POST' });
       onChanged();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('employees.createFailed'),
+      });
     }
   };
 
@@ -544,7 +564,7 @@ function Checklist({
         return (
           <section key={kind} className="rd-card">
             <h3 className="rd-title">
-              {CHECKLIST_KIND_LABEL[kind]} 체크리스트{' '}
+              {CHECKLIST_KIND_LABEL[kind]} {t('employees.checklist')}{' '}
               {items.length > 0 && (
                 <span className={styles.muted}>
                   {done}/{items.length}
@@ -554,11 +574,11 @@ function Checklist({
             {items.length === 0 ? (
               <div className={styles.muted}>
                 {kind === 'OFFBOARD' && !rec.resignDate
-                  ? '퇴사 처리하면 퇴사 체크리스트가 생깁니다.'
-                  : '아직 체크리스트가 없습니다.'}
+                  ? t('employees.checklistOffHint')
+                  : t('employees.checklistNone')}
                 {canEdit && (kind === 'ONBOARD' || rec.resignDate) && (
                   <Button size="sm" variant="outline" onClick={() => void open(kind)}>
-                    기본 항목 펼치기
+                    {t('employees.checklistSeed')}
                   </Button>
                 )}
               </div>
@@ -595,6 +615,7 @@ function ResignModal({
   onClose: () => void;
   onDone: (next: HrRecord) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [date, setDate] = useState(new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10));
   const [reason, setReason] = useState('');
@@ -607,10 +628,13 @@ function ResignModal({
         method: 'POST',
         body: JSON.stringify({ resignDate: date, reason: reason.trim() || undefined }),
       });
-      toast({ type: 'success', title: '퇴사 처리했습니다 — 퇴사 체크리스트를 확인하세요' });
+      toast({ type: 'success', title: t('employees.resignDone') });
       onDone(next);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '처리하지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('employees.processFailed'),
+      });
     } finally {
       setBusy(false);
     }
@@ -620,34 +644,35 @@ function ResignModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`${rec.name} 퇴사 처리`}
+      title={t('employees.resignTitle', { v0: rec.name })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('employees.cancel')}
           </Button>
           <Button variant="primary" loading={busy} disabled={!date} onClick={() => void save()}>
-            퇴사 처리
+            {t('employees.resign')}
           </Button>
         </>
       }
     >
       <div className={astyles.formCol}>
         <p className={styles.muted}>
-          재직이 해제되고, 연결된 로그인 계정
-          {rec.appUsers.length ? `(${rec.appUsers.map((u) => u.loginId).join(', ')})` : ''}은
-          로그인할 수 없게 됩니다. 퇴사 이력과 퇴사 체크리스트가 생깁니다.
+          {t('employees.resignHelp1')}
+          {rec.appUsers.length ? `(${rec.appUsers.map((u) => u.loginId).join(', ')})` : ''}
+          {t('employees.resignHelp2')}
+          {t('employees.resignHelp3')}
         </p>
         <label className={astyles.fieldLabel}>
-          퇴사일
+          {t('employees.resignDate')}
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
         <label className={astyles.fieldLabel}>
-          사유
+          {t('employees.reason')}
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="예: 개인 사유, 계약 만료"
+            placeholder={t('employees.reasonPh')}
           />
         </label>
       </div>

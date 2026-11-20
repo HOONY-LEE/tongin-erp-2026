@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { fmtDate } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
@@ -70,11 +72,11 @@ const KIND: Record<Kind, { icon: LucideIcon; tone: string }> = {
   support: { icon: LifeBuoy, tone: 'red' },
 };
 const FILTERS: { value: string; label: string; kinds: Kind[] | null }[] = [
-  { value: 'all', label: '전체', kinds: null },
-  { value: 'call', label: '통화·문자', kinds: ['call', 'sms'] },
-  { value: 'lead', label: '접수·담당', kinds: ['customer', 'lead', 'owner'] },
-  { value: 'deal', label: '견적·계약', kinds: ['estimate', 'contract', 'payment'] },
-  { value: 'work', label: '작업·AS', kinds: ['work', 'service', 'support'] },
+  { value: 'all', label: i18n.t('customers.h.all'), kinds: null },
+  { value: 'call', label: i18n.t('customers.h.call'), kinds: ['call', 'sms'] },
+  { value: 'lead', label: i18n.t('customers.h.lead'), kinds: ['customer', 'lead', 'owner'] },
+  { value: 'deal', label: i18n.t('customers.h.deal'), kinds: ['estimate', 'contract', 'payment'] },
+  { value: 'work', label: i18n.t('customers.h.work'), kinds: ['work', 'service', 'support'] },
 ];
 
 const day = (iso: string) => fmtDate(iso);
@@ -88,6 +90,7 @@ const time = (iso: string) => {
  * 통화·접수·담당자 변경·견적·계약·입금·작업을 날짜별로 최신순.
  */
 export function CustomerHistory({ customerId }: { customerId: string }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
   const [data, setData] = useState<History | null>(null);
@@ -101,7 +104,7 @@ export function CustomerHistory({ customerId }: { customerId: string }) {
       .catch((e) =>
         toast({
           type: 'error',
-          title: e instanceof ApiError ? e.message : '고객 이력을 불러오지 못했습니다',
+          title: e instanceof ApiError ? e.message : t('customers.h.loadFailed'),
         }),
       );
     return () => {
@@ -124,56 +127,64 @@ export function CustomerHistory({ customerId }: { customerId: string }) {
   if (!data)
     return (
       <section className="rd-card">
-        <h3 className="rd-title">고객 이력</h3>
-        <p className={styles.muted}>불러오는 중…</p>
+        <h3 className="rd-title">{t('customers.h.title')}</h3>
+        <p className={styles.muted}>{t('customers.loading')}</p>
       </section>
     );
   const s = data.summary;
   return (
     <>
       <section className="rd-card">
-        <h3 className="rd-title">고객 요약</h3>
+        <h3 className="rd-title">{t('customers.s.title')}</h3>
         <div className={styles.summary}>
           <div>
-            <span>처음 들어온 날</span>
+            <span>{t('customers.s.firstAt')}</span>
             <b>{s.firstAt ? day(s.firstAt) : '-'}</b>
           </div>
           <div>
-            <span>유입 경로</span>
+            <span>{t('customers.s.source')}</span>
             <b>{s.firstChannel ?? '-'}</b>
           </div>
           <div>
-            <span>진행 단계</span>
+            <span>{t('customers.s.stage')}</span>
             <b>{s.stage ?? '-'}</b>
           </div>
           <div>
-            <span>지금 담당</span>
+            <span>{t('customers.s.owner')}</span>
             <b>{[s.orgUnit, s.owner].filter(Boolean).join(' · ') || '-'}</b>
           </div>
           <div>
-            <span>통화</span>
-            <b>{s.calls}건</b>
-          </div>
-          <div>
-            <span>접수</span>
-            <b>{s.leads}건</b>
-          </div>
-          <div>
-            <span>견적 · 계약</span>
+            <span>{t('customers.s.calls')}</span>
             <b>
-              {s.estimates}건 · {s.contracts}건
+              {s.calls}
+              {t('customers.s.count')}
             </b>
           </div>
           <div>
-            <span>입금</span>
-            <b>{s.paid ? `${s.paid.toLocaleString('ko-KR')}원` : '-'}</b>
+            <span>{t('customers.s.leads')}</span>
+            <b>
+              {s.leads}
+              {t('customers.s.count')}
+            </b>
+          </div>
+          <div>
+            <span>{t('customers.s.deals')}</span>
+            <b>
+              {s.estimates}
+              {t('customers.s.countSep')} {s.contracts}
+              {t('customers.s.count')}
+            </b>
+          </div>
+          <div>
+            <span>{t('customers.s.paid')}</span>
+            <b>{s.paid ? t('customers.s.won', { v0: s.paid.toLocaleString('ko-KR') }) : '-'}</b>
           </div>
         </div>
       </section>
 
       <section className="rd-card">
         <div className={styles.head}>
-          <h3 className="rd-title">고객 이력</h3>
+          <h3 className="rd-title">{t('customers.h.title')}</h3>
           <SegmentedControl
             size="sm"
             value={filter}
@@ -182,7 +193,7 @@ export function CustomerHistory({ customerId }: { customerId: string }) {
           />
         </div>
         {groups.length === 0 ? (
-          <p className={styles.muted}>기록이 없습니다.</p>
+          <p className={styles.muted}>{t('customers.h.empty')}</p>
         ) : (
           <div className={styles.timeline}>
             {groups.map((g) => (

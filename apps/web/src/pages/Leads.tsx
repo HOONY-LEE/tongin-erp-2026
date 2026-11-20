@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -49,9 +50,9 @@ const statusKey = (r: Row) =>
 
 // 상태 탭 — 전체 + 모든 상태(반려 포함, 견적완료는 계약미승인에 포함)
 const STAGES: { key: string; label: string }[] = [
-  { key: 'ALL', label: '전체' },
-  { key: 'RECEIVED', label: '접수' },
-  { key: 'REJECTED', label: '반려' },
+  { key: 'ALL', label: i18n.t('leads.all') },
+  { key: 'RECEIVED', label: i18n.t('leads.st.RECEIVED') },
+  { key: 'REJECTED', label: i18n.t('leads.st.REJECTED') },
   { key: 'CONSULT_TOSS', label: STATUS.CONSULT_TOSS.label },
   { key: 'CONTRACT_PENDING', label: STATUS.CONTRACT_PENDING.label },
   { key: 'CONTRACTED', label: STATUS.CONTRACTED.label },
@@ -132,7 +133,7 @@ export default function Leads() {
         }).catch(() =>
           toast({
             type: 'warning',
-            title: '접수는 등록했지만 콜을 끝내지 못했습니다 — 상담 콘솔에서 끝내 주세요',
+            title: t('leads.callNotClosed'),
           }),
         );
       // 접수 상세(= 견적서 화면)로 바로 — 견적은 상세를 열 때 자동으로 만들어진다
@@ -146,7 +147,7 @@ export default function Leads() {
 
   const columns: Column[] = [
     {
-      title: '접수번호',
+      title: t('leads.col.no'),
       dataIndex: 'leadNoSearch',
       // 칸 폭 고정 — 탭(상태)마다 데이터가 달라도 표 모양이 그대로(접수번호 12자 + 복사 아이콘)
       width: 172,
@@ -154,20 +155,20 @@ export default function Leads() {
       exportValue: (r) => String(r.leadNo),
     },
     {
-      title: '접수일시',
+      title: t('leads.col.at'),
       dataIndex: 'createdAt',
       width: 168,
       render: (r) => fmtDateTime(r.createdAt),
       exportValue: (r) => fmtDateTime(r.createdAt),
     },
     {
-      title: '고객명',
+      title: t('leads.col.customer'),
       // 이름이 긴 고객(법인명 등)이 많다
       width: 150,
       render: (r) => (r.customer as { name?: string } | null)?.name ?? '-',
     },
     {
-      title: '전화번호',
+      title: t('leads.col.phone'),
       width: 148,
       render: (r) => {
         const phone = (r.customer as { phonePrimary?: string } | null)?.phonePrimary;
@@ -175,35 +176,35 @@ export default function Leads() {
       },
     },
     {
-      title: '상태',
+      title: t('leads.col.status'),
       dataIndex: 'status',
       width: 112,
       render: (r) => {
         const key = statusKey(r);
         return (
           <StatusChip color={LEAD_STATUS_COLOR[key] ?? LEAD_STATUS_COLOR.CANCELED}>
-            {key === 'REJECTED' ? '반려' : (STATUS[key]?.label ?? key)}
+            {key === 'REJECTED' ? t('leads.st.REJECTED') : (STATUS[key]?.label ?? key)}
           </StatusChip>
         );
       },
       exportValue: (r) => {
         const key = statusKey(r);
-        return key === 'REJECTED' ? '반려' : (STATUS[key]?.label ?? key);
+        return key === 'REJECTED' ? t('leads.st.REJECTED') : (STATUS[key]?.label ?? key);
       },
     },
     {
-      title: '접수경로',
+      title: t('leads.col.source'),
       width: 112,
       render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string),
     },
     {
-      title: '상품',
+      title: t('leads.col.product'),
       // 상품 이름이 긴 경우가 많다
       width: 170,
       render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string),
     },
     {
-      title: '담당자',
+      title: t('leads.col.owner'),
       dataIndex: 'ownerName',
       width: 128,
       mask: false,
@@ -218,7 +219,7 @@ export default function Leads() {
       exportValue: (r) => (r.ownerEmp as EmployeeBrief | null)?.name ?? '',
     },
     {
-      title: '계약서',
+      title: t('leads.col.contract'),
       width: 172,
       mask: false,
       render: (r) => {
@@ -227,7 +228,7 @@ export default function Leads() {
           <button
             type="button"
             className="dt-doc-btn"
-            title="계약서 보기"
+            title={t('leads.viewContract')}
             onClick={(e) => {
               e.stopPropagation(); // 행 클릭(접수 상세)과 겹치지 않게
               setDoc({ ...c, customerName: (r.customer as { name?: string } | null)?.name });
@@ -243,7 +244,7 @@ export default function Leads() {
       exportValue: (r) => (r.contracts as LeadContract[] | undefined)?.[0]?.contractNo ?? '',
     },
     {
-      title: '출발',
+      title: t('leads.col.from'),
       flex: 1,
       minWidth: 220,
       render: (r) => (
@@ -296,7 +297,7 @@ export default function Leads() {
           // 콜에서 온 창을 닫으면 주소의 번호를 지운다(새로고침해도 다시 뜨지 않게)
           if (!o && fromCall && !leaving.current) setParams({}, { replace: true });
         }}
-        title={fromCall ? `${t('lead.register')} — 상담 콜` : t('lead.register')}
+        title={fromCall ? t('leads.fromCall', { v0: t('lead.register') }) : t('lead.register')}
         size="md"
         fields={createFields}
         initialValues={createInitial}
@@ -306,8 +307,14 @@ export default function Leads() {
         <DocumentViewer
           path={`/estimates/${doc.estimateId}/document`}
           estimatePath={`/estimates/${doc.estimateId}`}
-          title={`계약서 ${doc.contractNo}${doc.customerName ? ` · ${doc.customerName}` : ''}`}
-          fileName={`계약서_${doc.customerName || '고객'}_${doc.contractNo}`}
+          title={t('leads.contractTitle', {
+            v0: doc.contractNo,
+            v1: doc.customerName ? ` · ${doc.customerName}` : '',
+          })}
+          fileName={t('leads.contractFile', {
+            v0: doc.customerName || t('leads.customerFallback'),
+            v1: doc.contractNo,
+          })}
           onClose={() => setDoc(null)}
         />
       )}
