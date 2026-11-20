@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import styles from './CopyText.module.css';
@@ -39,6 +40,7 @@ export function CopyText({ value, children }: Props) {
     }
   };
 
+  const { t } = useTranslation();
   const copy = async (e: React.MouseEvent) => {
     // 표의 행 클릭(상세 열기)이 같이 발동하지 않도록.
     e.stopPropagation();
@@ -60,8 +62,9 @@ export function CopyText({ value, children }: Props) {
         type="button"
         className={[styles.button, copied ? styles.copied : ''].filter(Boolean).join(' ')}
         onClick={copy}
-        title={copied ? '복사됨' : '복사'}
-        aria-label={`${value} 복사`}
+        title={copied ? t('ui.copied') : t('ui.copy')}
+        aria-label={t('ui.copyOf', { v: value })}
+        data-copy=""
       >
         {copied ? <Check size={15} /> : <Copy size={15} />}
       </button>

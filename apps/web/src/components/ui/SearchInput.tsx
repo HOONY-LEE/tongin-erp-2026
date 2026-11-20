@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import { Search } from 'lucide-react';
 
@@ -9,7 +10,7 @@ import { Search } from 'lucide-react';
 export function SearchInput({
   value,
   onChange,
-  placeholder = '검색',
+  placeholder,
   ariaLabel,
   autoFocus,
   width,
@@ -28,6 +29,8 @@ export function SearchInput({
   className?: string;
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
 }) {
+  const { t } = useTranslation();
+  const ph = placeholder ?? t('ui.search');
   return (
     <div
       className={`sft-toolbar__search-wrap${className ? ` ${className}` : ''}`}
@@ -40,8 +43,8 @@ export function SearchInput({
         className="sft-toolbar__search"
         type="search"
         value={value}
-        placeholder={placeholder}
-        aria-label={ariaLabel ?? placeholder}
+        placeholder={ph}
+        aria-label={ariaLabel ?? ph}
         autoFocus={autoFocus}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}

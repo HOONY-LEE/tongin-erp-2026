@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button, Modal, PasswordInput, useToast } from '../ui';
 import { api, ApiError } from '../../lib/api';
 import { APPLE } from '../../lib/palette';
@@ -7,16 +8,16 @@ import styles from './account.module.css';
 
 /** 새 비밀번호 규칙 — 서버(ChangePasswordDto)와 같다: 8자 이상 + 영문 + 숫자 */
 const RULES = [
-  { label: '8자 이상', ok: (v: string) => v.length >= 8 },
-  { label: '영문 포함', ok: (v: string) => /[A-Za-z]/.test(v) },
-  { label: '숫자 포함', ok: (v: string) => /[0-9]/.test(v) },
-  { label: '특수문자 포함(권장)', ok: (v: string) => /[^A-Za-z0-9]/.test(v), optional: true },
-];
+  { key: 'len', ok: (v: string) => v.length >= 8 },
+  { key: 'alpha', ok: (v: string) => /[A-Za-z]/.test(v) },
+  { key: 'digit', ok: (v: string) => /[0-9]/.test(v) },
+  { key: 'special', ok: (v: string) => /[^A-Za-z0-9]/.test(v), optional: true },
+] as const;
 
 /** 비밀번호 세기 — 0 없음 · 1 위험 · 2 보통 · 3 안전 */
 export function passwordStrength(v: string): 0 | 1 | 2 | 3 {
   if (!v) return 0;
-  const required = RULES.filter((r) => !r.optional).every((r) => r.ok(v));
+  const required = RULES.filter((r) => !('optional' in r)).every((r) => r.ok(v));
   if (!required) return 1;
   const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) => re.test(v)).length;
   // 같은 글자 반복·연속 숫자만 잔뜩이면 한 단계 낮춘다
@@ -27,9 +28,9 @@ export function passwordStrength(v: string): 0 | 1 | 2 | 3 {
 }
 const STRENGTH = [
   null,
-  { label: '위험', color: APPLE.red },
-  { label: '보통', color: APPLE.orange },
-  { label: '안전', color: APPLE.green },
+  { key: 'weak', color: APPLE.red },
+  { key: 'fair', color: APPLE.orange },
+  { key: 'strong', color: APPLE.green },
 ] as const;
 
 /**
@@ -38,6 +39,7 @@ const STRENGTH = [
  */
 export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [cur, setCur] = useState('');
   const [next, setNext] = useState('');
@@ -56,7 +58,7 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
 
   const strength = passwordStrength(next);
   const s = STRENGTH[strength];
-  const rulesOk = RULES.filter((r) => !r.optional).every((r) => r.ok(next));
+  const rulesOk = RULES.filter((r) => !('optional' in r)).every((r) => r.ok(next));
   const match = !!again && next === again;
   const ready = rulesOk && match && next !== cur;
 
@@ -70,7 +72,7 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
       });
       setStep(2);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '확인하지 못했습니다');
+      setError(e instanceof ApiError ? e.message : t('account.pw.verifyFailed'));
     } finally {
       setBusy(false);
     }
@@ -83,10 +85,10 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
         method: 'POST',
         body: JSON.stringify({ currentPassword: cur, newPassword: next }),
       });
-      toast({ type: 'success', title: '비밀번호를 바꿨습니다' });
+      toast({ type: 'success', title: t('account.pw.saved') });
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '바꾸지 못했습니다');
+      setError(e instanceof ApiError ? e.message : t('account.pw.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -96,29 +98,29 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
     <Modal
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="비밀번호 변경"
-      description={step === 1 ? '먼저 지금 비밀번호를 확인합니다.' : '새 비밀번호를 정해 주세요.'}
+      title={t('account.pw.title')}
+      description={step === 1 ? t('account.pw.descVerify') : t('account.pw.descNew')}
       size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={step === 2 ? () => setStep(1) : onClose}>
-            {step === 2 ? '이전' : '취소'}
+            {step === 2 ? t('account.pw.prev') : t('account.pw.cancel')}
           </Button>
           {step === 1 ? (
             <Button variant="primary" disabled={!cur || busy} onClick={() => void verify()}>
-              다음
+              {t('account.pw.next')}
             </Button>
           ) : (
             <Button variant="primary" disabled={!ready || busy} onClick={() => void save()}>
-              {busy ? '바꾸는 중…' : '비밀번호 변경'}
+              {busy ? t('account.pw.saving') : t('account.pw.title')}
             </Button>
           )}
         </>
       }
     >
       <div className={styles.steps} aria-hidden>
-        <span className={styles.stepOn}>1 지금 비밀번호</span>
-        <span className={step === 2 ? styles.stepOn : undefined}>2 새 비밀번호</span>
+        <span className={styles.stepOn}>{t('account.pw.stepCurrent')}</span>
+        <span className={step === 2 ? styles.stepOn : undefined}>{t('account.pw.stepNew')}</span>
       </div>
       {step === 1 ? (
         <form
@@ -129,7 +131,7 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
           }}
         >
           <label className={styles.field}>
-            <span>지금 비밀번호</span>
+            <span>{t('account.pw.current')}</span>
             <PasswordInput
               value={cur}
               onChange={(e) => setCur(e.target.value)}
@@ -147,7 +149,7 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
           }}
         >
           <label className={styles.field}>
-            <span>새 비밀번호</span>
+            <span>{t('account.pw.new')}</span>
             <PasswordInput
               value={next}
               onChange={(e) => setNext(e.target.value)}
@@ -162,27 +164,27 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
                 <span key={i} style={{ background: s && strength >= i ? s.color : undefined }} />
               ))}
             </div>
-            <b style={{ color: s?.color }}>{s ? s.label : ' '}</b>
+            <b style={{ color: s?.color }}>{s ? t(`account.pw.strength.${s.key}`) : ' '}</b>
           </div>
           <ul className={styles.rules}>
             {RULES.map((r) => {
               const ok = r.ok(next);
               return (
-                <li key={r.label} className={ok ? styles.ruleOk : undefined}>
+                <li key={r.key} className={ok ? styles.ruleOk : undefined}>
                   {ok ? <Check size={13} /> : <X size={13} />}
-                  {r.label}
+                  {t(`account.pw.rule.${r.key}`)}
                 </li>
               );
             })}
             {next && next === cur && (
               <li>
                 <X size={13} />
-                지금 비밀번호와 달라야 합니다
+                {t('account.pw.mustDiffer')}
               </li>
             )}
           </ul>
           <label className={styles.field}>
-            <span>새 비밀번호 확인</span>
+            <span>{t('account.pw.again')}</span>
             <PasswordInput
               value={again}
               onChange={(e) => setAgain(e.target.value)}
@@ -192,7 +194,7 @@ export function PasswordChangeModal({ open, onClose }: { open: boolean; onClose:
           {again && (
             <p className={match ? styles.matchOk : styles.matchNo}>
               {match ? <Check size={13} /> : <X size={13} />}
-              {match ? '비밀번호가 같습니다' : '비밀번호가 다릅니다'}
+              {match ? t('account.pw.match') : t('account.pw.mismatch')}
             </p>
           )}
         </form>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { tDyn } from '../i18n';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
@@ -199,7 +200,7 @@ export default function Support() {
                   size="sm"
                   onClick={() => transition(d.id, n.to)}
                 >
-                  {t(n.labelKey)}
+                  {tDyn(n.labelKey)}
                 </Button>
               ))}
             </>

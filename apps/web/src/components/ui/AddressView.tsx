@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { MapPin } from 'lucide-react';
 import { fs } from '../../lib/fontScale';
 
@@ -25,6 +26,7 @@ export function AddressView({
   map = true,
   nowrap = false,
 }: Props) {
+  const { t } = useTranslation();
   if (!addr) {
     return (
       <span style={{ color: 'var(--ark-color-text-tertiary)' }}>{label ? `${label} ` : ''}-</span>
@@ -76,7 +78,7 @@ export function AddressView({
           }}
         >
           <MapPin size={12} />
-          지도
+          {t('ui.map')}
         </a>
       )}
     </span>
