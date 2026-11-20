@@ -29,6 +29,7 @@ export interface CallRow {
   endedAt: string | null;
   durationSec: number | null;
   hasRecording: boolean;
+  hasTranscript?: boolean;
   memo: string | null;
   request: string | null;
 }

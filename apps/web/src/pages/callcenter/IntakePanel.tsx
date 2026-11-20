@@ -25,6 +25,7 @@ import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
 import { MemoPresetPicker } from './MemoPresets';
 import { Recording } from './Recording';
+import { Transcript } from './Transcript';
 import { SmsModal } from './SmsModal';
 
 export interface IntakeCall {
@@ -51,6 +52,7 @@ export interface ReadOnlyInfo {
   agentName: string | null;
   durationSec: number | null;
   hasRecording: boolean;
+  hasTranscript?: boolean;
   /** 이 콜로 등록한 접수 내용(있으면 입력 칸을 그대로 채운다) */
   lead: {
     serviceLine: string | null;
@@ -460,6 +462,7 @@ export function IntakePanel({
       {readOnly && call.id && (
         <Recording callId={call.id} callNo={call.callNo} available={readOnly.hasRecording} />
       )}
+      {readOnly && call.id && readOnly.hasTranscript && <Transcript callId={call.id} />}
       {/* 접수 입력 — 읽기 모드면 통째로 잠근다 */}
       <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
         <label className={styles.field}>

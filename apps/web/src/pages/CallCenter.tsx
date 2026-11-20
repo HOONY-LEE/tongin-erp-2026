@@ -843,6 +843,7 @@ function CallPage({
                 agentName: d.call.agentName,
                 durationSec: d.call.durationSec,
                 hasRecording: d.call.hasRecording,
+                hasTranscript: d.call.hasTranscript,
                 lead: d.lead,
               }
         }

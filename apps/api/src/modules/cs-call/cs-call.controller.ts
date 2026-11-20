@@ -297,6 +297,13 @@ export class CsCallController {
     Readable.fromWeb(r.body as unknown as WebReadableStream).pipe(res);
   }
 
+  /** 통화 받아쓰기 원문 — 상담 기록에서 본다 */
+  @Get(':id/transcript')
+  @RequirePermissions('LEAD.CREATE')
+  transcript(@Param('id', ParseUUIDPipe) id: string) {
+    return this.calls.transcript(id);
+  }
+
   /** 시험 전화 — 실제 전화 시스템이 붙기 전 배분·아웃콜 확인용 */
   @Post('simulate')
   @RequirePermissions('LEAD.CREATE')
@@ -381,6 +388,23 @@ export class CsCallController {
     await this.calls
       .statusEvent(body ?? {})
       .catch((e: unknown) => this.log.warn(`통화 상태 알림 처리 실패: ${String(e)}`));
+  }
+
+  /**
+   * 통화 받아쓰기 알림 — 한국AI통신 webhooks(transcript.completed)에 이 주소(+?key=)를 등록한다.
+   * 통화 받아쓰기 부가서비스와 번호 녹음이 켜져 있어야 온다.
+   */
+  @Public()
+  @Post('voice/transcript')
+  @HttpCode(204)
+  async voiceTranscript(
+    @Query('key') key: string | undefined,
+    @Body() body: Record<string, string>,
+  ) {
+    if (!(await this.calls.checkSecret(key))) return;
+    await this.calls
+      .transcriptEvent(body ?? {})
+      .catch((e: unknown) => this.log.warn(`받아쓰기 처리 실패: ${String(e)}`));
   }
 
   /**
