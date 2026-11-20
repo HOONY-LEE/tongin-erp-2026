@@ -31,6 +31,16 @@ export class AuthService {
   /**
    * 내 비밀번호 바꾸기 — 지금 비밀번호를 확인한다. 틀려도 401이 아니라 400(401은 화면이 로그아웃으로 받는다)
    */
+  /** 지금 비밀번호 확인(바꾸기 1단계) */
+  async verifyPassword(userId: string, password: string) {
+    const user = await this.prisma.appUser.findUnique({ where: { id: userId } });
+    if (!user?.passwordHash)
+      throw new BadRequestException('이 계정은 비밀번호로 로그인하지 않습니다.');
+    if (!(await bcrypt.compare(password, user.passwordHash)))
+      throw new BadRequestException('지금 비밀번호가 맞지 않습니다.');
+    return { ok: true };
+  }
+
   async changePassword(userId: string, current: string, next: string) {
     const user = await this.prisma.appUser.findUnique({ where: { id: userId } });
     if (!user?.passwordHash)

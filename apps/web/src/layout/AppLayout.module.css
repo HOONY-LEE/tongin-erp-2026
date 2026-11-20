@@ -358,7 +358,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 32px 36px 40px;
+  padding: 24px 28px 28px;
 }
 /* 내용이 화면보다 긴 페이지 — 상자가 내용만큼 늘어나야 아래 여백(padding-bottom)이 스크롤 끝에 남는다.
    (줄어들게 두면 상자는 화면 높이에 멈추고 내용만 넘쳐서 표 아래 페이지 버튼이 화면 끝에 붙는다)

@@ -51,6 +51,7 @@ const CampaignEditor = lazy(() => import('./pages/CampaignEditor'));
 const OrgUnits = lazy(() => import('./pages/OrgUnits'));
 const ProductMgmt = lazy(() => import('./pages/ProductMgmt'));
 const OrgMgmt = lazy(() => import('./pages/OrgMgmt'));
+const Profile = lazy(() => import('./pages/Profile'));
 const PaymentConfirm = lazy(() => import('./pages/PaymentConfirm'));
 const Duties = lazy(() => import('./pages/Duties'));
 const Franchise = lazy(() => import('./pages/Franchise'));
@@ -181,6 +182,9 @@ function Shell() {
         <Route path="/extensions" element={page(<Extensions />)} />
         <Route path="/move-closures" element={<Navigate to="/calendar?only=closure" replace />} />
         <Route path="/org-mgmt" element={page(<OrgMgmt />)} />
+        {/* 프로필 — 내 프로필(/profile)과 다른 직원(/profile/:id), 로그인한 직원이면 누구나 */}
+        <Route path="/profile" element={page(<Profile />)} />
+        <Route path="/profile/:id" element={page(<Profile />)} />
         <Route path="/payments-confirm" element={page(<PaymentConfirm />)} />
         <Route path="/branches" element={page(<Branches />)} />
         <Route path="/approvals" element={page(<Approvals />)} />

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react';
-import { Download, Loader2, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Loader2, Settings, ChevronLeft, ChevronRight, UserRound } from 'lucide-react';
 import {
   LayoutSidebar,
   SidebarGroup,
@@ -121,12 +121,16 @@ export default function AppLayout() {
     }),
   );
   // 탭·선택 표시는 사이드바에서 숨긴 메뉴도 알아야 한다(링크로 들어간 화면) — 권한 있는 전체 메뉴 기준
-  const allItems: NavItem[] = MENU_CATALOG.filter((m) => canSeeMenu(m.key)).map((m) => ({
-    to: m.path,
-    label: menuLabel(m.key),
-    icon: menuIcon(m),
-    owns: m.owns,
-  }));
+  const allItems: NavItem[] = [
+    ...MENU_CATALOG.filter((m) => canSeeMenu(m.key)).map((m) => ({
+      to: m.path,
+      label: menuLabel(m.key),
+      icon: menuIcon(m),
+      owns: m.owns,
+    })),
+    // 메뉴에 없는 화면 — 헤더 프로필·직원 칩에서 들어간다(탭 이름만, 사이드바엔 안 보임)
+    { to: '/profile', label: '프로필', icon: UserRound },
+  ];
 
   // 메뉴 검색 — 권한 있는 전체 메뉴(사이드바에서 숨긴 것도). 설명·묶음 이름으로도 찾는다
   const searchItems: SearchMenu[] = MENU_CATALOG.filter((m) => canSeeMenu(m.key)).map((m) => ({
@@ -339,7 +343,7 @@ export default function AppLayout() {
               // 머리 = 로고 줄(옆 탭 머리와 같은 높이) + 검색 — 메뉴 스크롤과 따로
               <div className={styles.sideHead}>
                 <div className={styles.sideBrand}>
-                  {/* 색 있는 통인 호랑이 로고만(배경 상자 없이). 흰색은 /brand/tongin-logo-white.png */}
+                  {/* 앱 아이콘(주황 바탕 흰 호랑이) + 통인웍스 */}
                   {collapsed ? (
                     // 접힌 사이드바 — 로고 자리에 펴기 '>' 버튼
                     <button
@@ -352,14 +356,16 @@ export default function AppLayout() {
                       <ChevronRight size={16} />
                     </button>
                   ) : (
+                    // 파비콘과 같은 앱 아이콘 — 통인 주황 바탕 + 흰 호랑이
                     <img
-                      src="/brand/tongin-logo-color.png"
+                      src="/apple-touch-icon.png"
                       alt="통인익스프레스"
-                      width={22}
-                      height={22}
+                      width={24}
+                      height={24}
                       style={{
                         display: 'block',
                         flexShrink: 0,
+                        borderRadius: 6,
                       }}
                     />
                   )}
@@ -373,7 +379,7 @@ export default function AppLayout() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      TONGIN WORKS
+                      통인웍스
                     </span>
                   )}
                   {/* 사이드바 접기 — 머리 오른쪽 끝 '<' (접힌 상태에서는 로고를 누르면 편다) */}
