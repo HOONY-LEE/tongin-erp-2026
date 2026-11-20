@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowUp, FileSpreadsheet, Paperclip, Sparkles, X } from 'lucide-react';
@@ -9,16 +11,14 @@ import styles from './agentBuilder.module.css';
 import ai from './aiAgent.module.css';
 
 const EXAMPLES = [
-  '매주 월요일 아침에 지점별 지난주 실적을 우리 주간 보고 양식으로 만들어 줘',
-  '이번 주 미계약 고객에게 재안내 문자를 보내는 에이전트. 보내기 전에 꼭 내가 승인하게 해 줘',
-  '어제 들어온 접수 중 담당자가 없는 건을 찾아 지점별로 요약해 줘',
-  '새 CS 티켓이 들어오면 긴급도를 분류해서 긴급이면 담당자 배정 전에 승인을 받아',
+  i18n.t('ai.create.ex1'),
+  i18n.t('ai.create.ex2'),
+  i18n.t('ai.create.ex3'),
+  i18n.t('ai.create.ex4'),
 ];
 
 const GREETING =
-  '안녕하세요! 어떤 일을 하는 에이전트를 만들까요?\n' +
-  '하고 싶은 일을 편하게 말씀해 주시면, 만드는 데 필요한 내용(대상·조건·언제 실행할지·결과물)을 제가 여쭤보면서 함께 완성할게요.\n' +
-  '보고서처럼 파일을 만드는 일이라면 실제로 쓰시는 양식(엑셀·CSV)을 올려 주세요 — 그 양식 그대로 채워서 만들어 드려요.';
+  i18n.t('ai.create.hello1') + i18n.t('ai.create.hello2') + i18n.t('ai.create.hello3');
 
 interface RefFile {
   id: string;
@@ -43,7 +43,7 @@ const readBase64 = (f: File) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-    r.onerror = () => reject(new Error('파일을 읽지 못했습니다'));
+    r.onerror = () => reject(new Error(i18n.t('ai.fileFailed')));
     r.readAsDataURL(f);
   });
 
@@ -52,6 +52,7 @@ const readBase64 = (f: File) =>
  * 정리가 끝나면 노드 블루프린트로 설계해 저장하고 편집 화면(노드로 세부 수정)으로 간다.
  */
 export default function AgentCreate() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const toast = useToast();
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
@@ -90,7 +91,7 @@ export default function AgentCreate() {
       setLast(r);
       setMsgs((p) => [...p, { role: 'assistant', text: r.reply }]);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : 'AI가 답하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ai.noAnswer') });
     } finally {
       setThinking(false);
       inputRef.current?.focus();
@@ -137,7 +138,7 @@ export default function AgentCreate() {
         ...msgs,
         {
           role: 'user' as const,
-          text: `참고 양식 파일을 올렸어요: ${ref.name}${typed ? `\n${typed}` : ''}`,
+          text: t('ai.templateUploaded', { v0: ref.name, v1: typed ? `\n${typed}` : '' }),
           file: { id: ref.id, name: ref.name, size: ref.size },
         },
       ];
@@ -145,7 +146,7 @@ export default function AgentCreate() {
       setDraft('');
       void ask(next, files);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ai.uploadFailed') });
     } finally {
       setUploading(false);
     }
@@ -183,7 +184,7 @@ export default function AgentCreate() {
       // 편집 화면(자연어 모드)에서 시험 실행 → 오류면 AI가 스스로 고쳐 저장까지 한다
       navigate(`/agent-builder/${b.id}?mode=nl`, { replace: true, state: { autoTest: true } });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ai.createFailed') });
       setBuilding(false);
     }
   };
@@ -192,11 +193,11 @@ export default function AgentCreate() {
     try {
       const b = await api<{ id: string }>('/agent-blueprints', {
         method: 'POST',
-        body: JSON.stringify({ name: '새 에이전트', visibility: 'PRIVATE' }),
+        body: JSON.stringify({ name: t('ai.newAgent'), visibility: 'PRIVATE' }),
       });
       navigate(`/agent-builder/${b.id}`, { replace: true });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ai.createFailed') });
     }
   };
 
@@ -210,16 +211,14 @@ export default function AgentCreate() {
           type="button"
           className={styles.iconBtn}
           onClick={() => navigate('/agent-builder')}
-          title="목록으로"
-          aria-label="목록으로"
+          title={t('ai.toList')}
+          aria-label={t('ai.toList')}
         >
           <ArrowLeft size={16} />
         </button>
         <div style={{ minWidth: 0 }}>
-          <h1 className={styles.createTitle}>새 에이전트 만들기</h1>
-          <p className={styles.note}>
-            AI와 대화로 만들고, 만든 뒤에는 편집 화면에서 노드로 세부 내용을 고칠 수 있습니다.
-          </p>
+          <h1 className={styles.createTitle}>{t('ai.createTitle')}</h1>
+          <p className={styles.note}>{t('ai.createSub')}</p>
         </div>
         <PopoutButton className={styles.chatHeadPopout} />
       </div>
@@ -227,12 +226,12 @@ export default function AgentCreate() {
       {aiConfigured === false ? (
         <div className={styles.createSection}>
           <div className={styles.warnNote}>
-            서버에 ANTHROPIC_API_KEY가 없어 대화로 만들 수 없습니다. 빈 캔버스에서 노드를 직접 이어
-            만들 수는 있습니다.
+            {t('ai.createNoKey1')}
+            {t('ai.createNoKey2')}
           </div>
           <div>
             <Button variant="outline" onClick={() => void startBlank()}>
-              빈 캔버스로 시작
+              {t('ai.blankStart')}
             </Button>
           </div>
         </div>
@@ -241,7 +240,7 @@ export default function AgentCreate() {
         <div className={`${ai.main} ${styles.createChat}`}>
           {msgs.length === 0 && !thinking ? (
             <div className={ai.welcome}>
-              <h2 className={ai.greeting}>어떤 에이전트를 만들까요?</h2>
+              <h2 className={ai.greeting}>{t('ai.whatAgent')}</h2>
               <p className={styles.createLead}>{GREETING.split('\n').slice(1).join(' ')}</p>
               <div className={ai.suggestions}>
                 {EXAMPLES.map((ex) => (
@@ -288,27 +287,27 @@ export default function AgentCreate() {
                 {thinking && (
                   <div className={ai.working} role="status">
                     <span className={ai.spark} aria-hidden />
-                    생각하는 중…
+                    {t('ai.thinking')}
                   </div>
                 )}
                 {last?.askForFile && !thinking && !building && (
                   <div className={styles.askFile}>
                     <FileSpreadsheet size={16} />
-                    <span>실제로 쓰는 양식 파일(엑셀 .xlsx · CSV)을 올려 주세요.</span>
+                    <span>{t('ai.uploadTemplateHint')}</span>
                     <Button
                       variant="outline"
                       size="sm"
                       loading={uploading}
                       onClick={() => fileRef.current?.click()}
                     >
-                      양식 올리기
+                      {t('ai.uploadTemplate')}
                     </Button>
                   </div>
                 )}
                 {ready && (
                   <div className={styles.readyCard}>
                     <div className={styles.readyHead}>
-                      <b>{last.name || '새 에이전트'}</b>
+                      <b>{last.name || t('ai.newAgent')}</b>
                       {last.description && <span className={styles.note}>{last.description}</span>}
                     </div>
                     {refs.length > 0 && (
@@ -322,9 +321,7 @@ export default function AgentCreate() {
                     )}
                     <div className={styles.readyActions}>
                       <span className={styles.note}>
-                        {building
-                          ? 'AI가 설계하고 있어요(30초~1분) — 만든 뒤 시험 실행까지 해 볼게요…'
-                          : '바꿀 점이 있으면 아래에 말씀해 주세요. 만든 뒤에도 노드에서 고칠 수 있어요.'}
+                        {building ? t('ai.designing') : t('ai.changeHint')}
                       </span>
                       <Button
                         variant="primary"
@@ -332,7 +329,7 @@ export default function AgentCreate() {
                         leftIcon={<Sparkles size={14} />}
                         onClick={() => void build()}
                       >
-                        이대로 만들기
+                        {t('ai.buildAsIs')}
                       </Button>
                     </div>
                   </div>
@@ -355,7 +352,7 @@ export default function AgentCreate() {
                       <button
                         type="button"
                         className={ai.fileRemove}
-                        aria-label={`${r.name} 빼기`}
+                        aria-label={t('ai.removeOf', { v0: r.name })}
                         onClick={() => setRefs((p) => p.filter((x) => x.id !== r.id))}
                         disabled={busy}
                       >
@@ -371,11 +368,7 @@ export default function AgentCreate() {
                 rows={1}
                 value={draft}
                 autoFocus
-                placeholder={
-                  msgs.length
-                    ? '답하거나 바꿀 점을 말씀해 주세요'
-                    : '어떤 일을 하는 에이전트인가요?'
-                }
+                placeholder={msgs.length ? t('ai.replyPh') : t('ai.whatDoPh')}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -384,7 +377,7 @@ export default function AgentCreate() {
                   }
                 }}
                 disabled={building}
-                aria-label="에이전트 만들기 대화"
+                aria-label={t('ai.createChat')}
               />
               <div className={ai.composerBar}>
                 <span className={ai.barLeft}>
@@ -393,8 +386,8 @@ export default function AgentCreate() {
                     className={ai.iconBtn}
                     onClick={() => fileRef.current?.click()}
                     disabled={busy || aiConfigured === null}
-                    title="참고 양식 올리기(엑셀·CSV)"
-                    aria-label="참고 양식 올리기"
+                    title={t('ai.uploadRefTip')}
+                    aria-label={t('ai.uploadRef')}
                   >
                     <Paperclip size={18} />
                   </button>
@@ -404,7 +397,7 @@ export default function AgentCreate() {
                   className={ai.sendBtn}
                   onClick={() => send()}
                   disabled={!draft.trim() || busy}
-                  aria-label="보내기"
+                  aria-label={t('ai.send')}
                 >
                   <ArrowUp size={20} strokeWidth={2.4} />
                 </button>
@@ -421,9 +414,7 @@ export default function AgentCreate() {
                 }}
               />
             </div>
-            <div className={ai.footnote}>
-              만든 에이전트는 사용 전에 편집 화면에서 단계를 확인할 수 있습니다.
-            </div>
+            <div className={ai.footnote}>{t('ai.createFooter')}</div>
           </div>
         </div>
       )}

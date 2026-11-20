@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -130,6 +131,7 @@ export default function AgentBuilder() {
 }
 
 function Editor() {
+  const { t } = useTranslation();
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -180,7 +182,7 @@ function Editor() {
       const dataBase64 = await new Promise<string>((resolve, reject) => {
         const r = new FileReader();
         r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-        r.onerror = () => reject(new Error('파일을 읽지 못했습니다'));
+        r.onerror = () => reject(new Error(t('agent.fileFailed')));
         r.readAsDataURL(file);
       });
       const ref = await api<ReferenceOpt>('/agent-blueprints/reference-files', {
@@ -193,10 +195,10 @@ function Editor() {
         }),
       });
       setReferences((p) => [...p, { id: ref.id, name: ref.name }]);
-      toast({ type: 'success', title: `양식을 올렸습니다 — ${ref.name}` });
+      toast({ type: 'success', title: t('agent.formUploaded', { v0: ref.name }) });
       return ref;
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.uploadFailed') });
       return null;
     }
   };
@@ -225,7 +227,7 @@ function Editor() {
         setNlMode(ng.nodes.length ? 'refine' : 'new');
         setNlOpen(!ng.nodes.length);
       } catch (e) {
-        toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.loadFailed') });
         navigate('/agent-builder');
       } finally {
         if (alive) setLoading(false);
@@ -407,7 +409,7 @@ function Editor() {
       const copy: AgentNode = {
         ...JSON.parse(JSON.stringify(n)),
         id: newAgentId(n.type),
-        label: `${n.label} 복사`,
+        label: t('agent.copyOf', { v0: n.label }),
         position: { x: n.position.x + 40, y: n.position.y + 60 },
       };
       commit((g) => ({ ...g, nodes: [...g.nodes, copy] }));
@@ -604,7 +606,7 @@ function Editor() {
   const save = useCallback(async () => {
     if (!meta) return;
     if (!meta.canEdit) {
-      toast({ type: 'warning', title: '만든 사람만 저장할 수 있습니다. 복제해서 고쳐 쓰세요.' });
+      toast({ type: 'warning', title: t('agent.ownerOnly') });
       return;
     }
     setSaving(true);
@@ -625,12 +627,10 @@ function Editor() {
       setMeta((m) => (m ? { ...m, updatedAt: b.updatedAt } : m));
       toast({
         type: errorCount ? 'warning' : 'success',
-        title: errorCount
-          ? `저장했습니다 — 오류 ${errorCount}개가 남아 있어 실행은 안 됩니다`
-          : '저장했습니다',
+        title: errorCount ? t('agent.savedWithErrors', { v0: errorCount }) : t('agent.saved'),
       });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -638,31 +638,27 @@ function Editor() {
 
   // ── 복제·삭제(목록 행 끝에 있던 동작) ── 복제는 저장된 내용 기준, 누구나 / 삭제는 만든 사람만
   const duplicate = async () => {
-    if (dirty && !window.confirm('저장하지 않은 변경은 복사본에 들어가지 않습니다. 복제할까요?'))
-      return;
+    if (dirty && !window.confirm(t('agent.dupQ'))) return;
     try {
       const copy = await api<{ id: string }>(`/agent-blueprints/${id}/duplicate`, {
         method: 'POST',
       });
-      toast({ type: 'success', title: '복제했습니다 — 내 개인용 초안으로 만들었습니다' });
+      toast({ type: 'success', title: t('agent.duplicated') });
       navigate(`/agent-builder/${copy.id}`);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '복제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.dupFailed') });
     }
   };
 
   const remove = async () => {
     if (!meta?.canEdit) return;
-    if (
-      !window.confirm(`'${meta.name}' 에이전트를 삭제할까요? 테스트 실행 기록도 함께 지워집니다.`)
-    )
-      return;
+    if (!window.confirm(t('agent.deleteQ', { v0: meta.name }))) return;
     try {
       await api(`/agent-blueprints/${id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
+      toast({ type: 'success', title: t('agent.deleted') });
       navigate('/agent-builder');
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.deleteFailed') });
     }
   };
 
@@ -715,7 +711,7 @@ function Editor() {
       });
       setPreview(res);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.createFailed') });
     } finally {
       setNlLoading(false);
     }
@@ -726,7 +722,7 @@ function Editor() {
     setMeta({
       ...meta,
       prompt: nlText.trim(),
-      ...(meta.name === '새 에이전트' || !graph.nodes.length
+      ...(meta.name === t('agent.newAgent') || !graph.nodes.length
         ? { name: preview.name || meta.name, description: preview.description || meta.description }
         : {}),
     });
@@ -745,7 +741,7 @@ function Editor() {
   }) => {
     if (errorCount) {
       setShowIssues(true);
-      toast({ type: 'error', title: `오류 ${errorCount}개를 먼저 고쳐 주세요` });
+      toast({ type: 'error', title: t('agent.fixErrorsFirst', { v0: errorCount }) });
       return;
     }
     setRunning(true);
@@ -758,7 +754,7 @@ function Editor() {
         }),
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '실행하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.runFailed') });
     } finally {
       setRunning(false);
     }
@@ -774,7 +770,7 @@ function Editor() {
         }),
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '처리하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.processFailed') });
     } finally {
       setRunning(false);
     }
@@ -792,7 +788,7 @@ function Editor() {
     });
     commit(res.graph);
     setMeta((m) =>
-      m && (m.name === '새 에이전트' || !base.nodes.length)
+      m && (m.name === t('agent.newAgent') || !base.nodes.length)
         ? { ...m, name: res.name || m.name, description: res.description || m.description }
         : m,
     );
@@ -827,9 +823,12 @@ function Editor() {
         say({
           role: 'assistant',
           test: 'fail',
-          text: `검사 오류 ${errs.length}개가 남아 있어 다시 고칩니다:\n${errs.map((e) => `- ${e.message}`).join('\n')}`,
+          text: t('agent.chat.retryErrors', {
+            v0: errs.length,
+            v1: errs.map((e) => `- ${e.message}`).join('\n'),
+          }),
         });
-        setWorking('검사 오류를 고치는 중…');
+        setWorking(t('agent.working.fixErrors'));
         const res = await requestFix(
           `검사에서 이런 오류가 났습니다. 모두 고쳐 주세요:\n${errs.map((e) => `- ${e.message}`).join('\n')}`,
           cur,
@@ -838,21 +837,25 @@ function Editor() {
         errs = res.issues.filter((i) => i.level === 'error');
         continue;
       }
-      setWorking('시험 실행 중(쓰기 안 함 · AI는 흉내)…');
-      const t = await testGraph(cur);
-      if ('skipped' in t) {
+      setWorking(t('agent.working.test'));
+      const tr = await testGraph(cur);
+      if ('skipped' in tr) {
         say({
           role: 'assistant',
-          text: `꼭 넣어야 하는 입력값(${t.skipped!.join(', ')})이 있어 자동 시험은 건너뛰었습니다. 오른쪽 **입력값·실제 실행 옵션**에서 값을 넣고 시험해 보세요.`,
+          text: t('agent.chat.skipped', { v0: tr.skipped!.join(', ') }),
         });
         return cur;
       }
-      if (!t.failed) {
+      if (!tr.failed) {
         const llm = cur.nodes.filter(callsLlm).length;
         say({
           role: 'assistant',
           test: 'ok',
-          text: `시험 실행 통과 — ${t.run.trace.length}단계를 끝까지 돌았습니다. 실행할 때마다 AI 호출 ${llm}곳${llm ? '' : '(AI 없이 도구·규칙만으로 돕니다)'}.`,
+          text: t('agent.chat.passed', {
+            v0: tr.run.trace.length,
+            v1: llm,
+            v2: llm ? '' : t('agent.chat.noAi'),
+          }),
         });
         if (autoSave && meta?.canEdit) {
           const b = await api<Blueprint>(`/agent-blueprints/${id}`, {
@@ -868,11 +871,11 @@ function Editor() {
       say({
         role: 'assistant',
         test: 'fail',
-        text: `시험 실행에서 문제가 났습니다 — 스스로 고쳐 볼게요:\n${t.problems.map((x) => `- ${x}`).join('\n')}`,
+        text: t('agent.chat.testFailed', { v0: tr.problems.map((x) => `- ${x}`).join('\n') }),
       });
-      setWorking('시험 오류를 고치는 중…');
+      setWorking(t('agent.working.fixTest'));
       const res = await requestFix(
-        `시험 실행(쓰기 안 함)에서 이런 오류가 났습니다. 원인을 고친 그래프를 주세요:\n${t.problems.map((x) => `- ${x}`).join('\n')}`,
+        `시험 실행(쓰기 안 함)에서 이런 오류가 났습니다. 원인을 고친 그래프를 주세요:\n${tr.problems.map((x) => `- ${x}`).join('\n')}`,
         cur,
       );
       cur = res.graph;
@@ -881,13 +884,13 @@ function Editor() {
     say({
       role: 'assistant',
       test: 'fail',
-      text: '두 번 고쳐도 문제가 남았습니다. 무엇이 필요한지 말씀해 주시거나 **블루프린트**에서 해당 노드를 직접 고쳐 주세요.',
+      text: t('agent.chat.gaveUp'),
     });
     return cur;
   };
   const nlSend = async (text: string) => {
     say({ role: 'user', text });
-    setWorking(graph.nodes.length ? 'AI가 고치는 중(30초 안팎)…' : 'AI가 설계하는 중(30초~1분)…');
+    setWorking(graph.nodes.length ? t('agent.working.fixing') : t('agent.working.designing'));
     try {
       const res = await requestFix(text, graph);
       setMeta((m) => (m ? { ...m, prompt: text } : m));
@@ -897,16 +900,21 @@ function Editor() {
         role: 'assistant',
         text:
           `${res.summary}\n\n` +
-          `추가 ${ch.added.length} · 변경 ${ch.changed.length} · 삭제 ${ch.removed.length} · AI 호출 ${llm}곳` +
+          t('agent.chat.changes', {
+            v0: ch.added.length,
+            v1: ch.changed.length,
+            v2: ch.removed.length,
+            v3: llm,
+          }) +
           (res.fixes.length ? `\n${res.fixes.map((f) => `- ${f}`).join('\n')}` : '') +
-          '\n\n바뀐 내용은 아직 저장 전입니다(⌘Z로 되돌리기).',
+          t('agent.chat.unsaved'),
       });
       await verify(res.graph, res.issues, false);
     } catch (e) {
       say({
         role: 'assistant',
         test: 'fail',
-        text: e instanceof ApiError ? e.message : '고치지 못했습니다',
+        text: e instanceof ApiError ? e.message : t('agent.fixFailed'),
       });
     } finally {
       setWorking(null);
@@ -920,7 +928,7 @@ function Editor() {
       say({
         role: 'assistant',
         test: 'fail',
-        text: e instanceof ApiError ? e.message : '시험하지 못했습니다',
+        text: e instanceof ApiError ? e.message : t('agent.testFailed'),
       });
     } finally {
       setRunning(false);
@@ -936,7 +944,7 @@ function Editor() {
     navigate('.', { replace: true, state: null });
     say({
       role: 'assistant',
-      text: `**${meta.name}** 에이전트를 만들었습니다. 저장하기 전에 시험 실행을 돌려 볼게요.`,
+      text: t('agent.chat.created', { v0: meta.name }),
     });
     setRunning(true);
     void verify(graph, issues, true)
@@ -944,7 +952,7 @@ function Editor() {
         say({
           role: 'assistant',
           test: 'fail',
-          text: e instanceof ApiError ? e.message : '시험하지 못했습니다',
+          text: e instanceof ApiError ? e.message : t('agent.testFailed'),
         }),
       )
       .finally(() => {
@@ -974,7 +982,7 @@ function Editor() {
           type="button"
           className={styles.iconBtn}
           onClick={() => navigate('/agent-builder')}
-          title="목록으로"
+          title={t('agent.toList')}
         >
           <ArrowLeft size={14} />
         </button>
@@ -982,7 +990,7 @@ function Editor() {
           className={styles.nameInput}
           value={meta.name}
           onChange={(e) => setMeta({ ...meta, name: e.target.value })}
-          aria-label="에이전트 이름"
+          aria-label={t('agent.agentName')}
         />
         <SegmentedControl
           className={styles.modeTabs}
@@ -993,8 +1001,8 @@ function Editor() {
               setTimeout(() => rf.fitView({ padding: 0.2, duration: 200 }), 60);
           }}
           options={[
-            { value: 'nl', label: '자연어' },
-            { value: 'blueprint', label: '블루프린트' },
+            { value: 'nl', label: t('agent.mode.nl') },
+            { value: 'blueprint', label: t('agent.mode.blueprint') },
           ]}
         />
         <SegmentedControl
@@ -1002,11 +1010,11 @@ function Editor() {
           value={meta.status}
           onChange={(v) => meta.canEdit && setMeta({ ...meta, status: v as 'DRAFT' | 'ACTIVE' })}
           options={[
-            { value: 'DRAFT', label: '초안', disabled: !meta.canEdit },
-            { value: 'ACTIVE', label: '사용중', disabled: !meta.canEdit },
+            { value: 'DRAFT', label: t('agent.st.DRAFT'), disabled: !meta.canEdit },
+            { value: 'ACTIVE', label: t('agent.st.ACTIVE'), disabled: !meta.canEdit },
           ]}
         />
-        {dirty && <span className={styles.dirty}>저장 안 됨</span>}
+        {dirty && <span className={styles.dirty}>{t('agent.unsaved')}</span>}
         <span className={styles.spacer} />
         {mode === 'blueprint' && (
           <>
@@ -1014,7 +1022,7 @@ function Editor() {
               type="button"
               className={`${styles.iconBtn} ${leftOpen ? styles.iconBtnActive : ''}`}
               onClick={() => setLeftOpen((v) => !v)}
-              title="노드·도구 패널 접기/펴기"
+              title={t('agent.togglePanel')}
             >
               <PanelLeft size={14} />
             </button>
@@ -1023,7 +1031,7 @@ function Editor() {
               className={styles.iconBtn}
               onClick={undo}
               disabled={!past.length}
-              title="되돌리기(⌘Z)"
+              title={t('agent.undo')}
             >
               <Undo2 size={14} />
             </button>
@@ -1032,20 +1040,20 @@ function Editor() {
               className={styles.iconBtn}
               onClick={redo}
               disabled={!future.length}
-              title="다시하기(⇧⌘Z)"
+              title={t('agent.redo')}
             >
               <Redo2 size={14} />
             </button>
             <button
               type="button"
               className={styles.iconBtn}
-              title="자동 정렬"
+              title={t('agent.autoLayout')}
               onClick={() => {
                 commit((g) => autoLayout(g));
                 setTimeout(() => rf.fitView({ padding: 0.2, duration: 300 }), 30);
               }}
             >
-              <LayoutGrid size={14} /> 정렬
+              <LayoutGrid size={14} /> {t('agent.layout')}
             </button>
             <button
               type="button"
@@ -1053,18 +1061,19 @@ function Editor() {
               title="데이터선({{변수}} 참조) 보이기"
               onClick={() => setShowData((v) => !v)}
             >
-              <Spline size={14} /> 데이터선
+              <Spline size={14} /> {t('agent.dataLines')}
             </button>
             <div style={{ position: 'relative' }}>
               <button
                 type="button"
                 className={`${styles.iconBtn} ${showIssues ? styles.iconBtnActive : ''}`}
                 onClick={() => setShowIssues((v) => !v)}
-                title="검사 결과"
+                title={t('agent.checkResults')}
               >
                 <CircleAlert size={14} />
                 <span className={styles.issueCount}>
-                  검사 {errorCount > 0 && <span className={styles.errDot}>{errorCount}</span>}
+                  {t('agent.check')}{' '}
+                  {errorCount > 0 && <span className={styles.errDot}>{errorCount}</span>}
                   {warnCount > 0 && <span className={styles.warnDot}>{warnCount}</span>}
                   {!issues.length && '✓'}
                 </span>
@@ -1076,7 +1085,7 @@ function Editor() {
                 >
                   {!issues.length && (
                     <div className={styles.note} style={{ padding: 6 }}>
-                      문제가 없습니다.
+                      {t('agent.noIssues')}
                     </div>
                   )}
                   <div className={styles.issueList}>
@@ -1088,7 +1097,7 @@ function Editor() {
                         onClick={() => i.nodeId && focusNode(i.nodeId)}
                       >
                         <span className={i.level === 'error' ? styles.errDot : styles.warnDot}>
-                          {i.level === 'error' ? '오류' : '경고'}
+                          {i.level === 'error' ? t('agent.error') : t('agent.warning')}
                         </span>
                         <span>{i.message}</span>
                       </button>
@@ -1102,14 +1111,15 @@ function Editor() {
               className={`${styles.iconBtn} ${nlOpen ? styles.iconBtnActive : ''}`}
               onClick={() => setNlOpen((v) => !v)}
             >
-              <Sparkles size={14} /> 자연어로 {graph.nodes.length ? '수정하기' : '만들기'}
+              <Sparkles size={14} /> {t('agent.byNl')}{' '}
+              {graph.nodes.length ? t('agent.edit') : t('agent.create')}
             </button>
             <button
               type="button"
               className={`${styles.iconBtn} ${runOpen ? styles.iconBtnActive : ''}`}
               onClick={() => setRunOpen((v) => !v)}
             >
-              <Play size={14} /> 테스트 실행
+              <Play size={14} /> {t('agent.testRun')}
             </button>
           </>
         )}
@@ -1117,27 +1127,27 @@ function Editor() {
           type="button"
           className={styles.iconBtn}
           onClick={() => setShareOpen(true)}
-          title="누가 쓸 수 있는지(공개 범위)"
+          title={t('agent.whoCanUse')}
         >
           <VisIcon size={14} /> {AGENT_VISIBILITY_LABEL[meta.visibility]}
-          {meta.visibility === 'SHARED' ? ` ${meta.shares.length}명` : ''}
+          {meta.visibility === 'SHARED' ? t('agent.nPeople', { v0: meta.shares.length }) : ''}
         </button>
         <button
           type="button"
           className={styles.iconBtn}
           onClick={() => void duplicate()}
-          title="내 개인용 초안으로 복사"
+          title={t('agent.copyToDraft')}
         >
-          <Copy size={14} /> 복제
+          <Copy size={14} /> {t('agent.duplicate')}
         </button>
         {meta.canEdit && (
           <button
             type="button"
             className={styles.iconBtn}
             onClick={() => void remove()}
-            title="에이전트 삭제"
+            title={t('agent.deleteAgent')}
           >
-            <Trash2 size={14} /> 삭제
+            <Trash2 size={14} /> {t('agent.delete')}
           </button>
         )}
         <Button
@@ -1148,14 +1158,16 @@ function Editor() {
           leftIcon={<Save size={13} />}
           onClick={() => void save()}
         >
-          저장
+          {t('agent.save')}
         </Button>
         <PopoutButton />
       </div>
       {!meta.canEdit && (
         <div className={styles.readonlyBar}>
-          {meta.createdByName ?? '다른 사람'}님이 만든 에이전트라 보기·테스트만 할 수 있습니다. 고쳐
-          쓰려면 위의 <b>복제</b>를 누르세요.
+          {meta.createdByName ?? t('agent.someone')}
+          {t('agent.readonly1')}
+          {t('agent.readonly2')} <b>{t('agent.duplicate')}</b>
+          {t('agent.pickTool2')}
         </div>
       )}
 
@@ -1194,15 +1206,11 @@ function Editor() {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void generate();
               }}
               placeholder={
-                nlMode === 'refine' && graph.nodes.length
-                  ? '고칠 내용을 말해 주세요. 예: 문자 보내기 전에 수신자를 30명으로 제한하고, 대상이 없으면 담당자에게 알려 줘'
-                  : '어떤 일을 하는 에이전트인지 말해 주세요. 예: 매일 아침 어제 들어온 접수 중 상담 배정이 안 된 건을 찾아 지점장에게 문자로 알려 줘'
+                nlMode === 'refine' && graph.nodes.length ? t('agent.nlEditPh') : t('agent.nlNewPh')
               }
             />
             <div className={styles.nlHint}>
-              {aiConfigured
-                ? 'Claude가 실제 호출 가능한 도구 목록을 보고 노드·분기·가드레일까지 설계합니다. 결과는 미리 보고 적용합니다(⌘+Enter).'
-                : 'ANTHROPIC_API_KEY가 설정되지 않아 자연어 생성은 쓸 수 없습니다. 왼쪽 팔레트·도구로 직접 만들 수 있습니다.'}
+              {aiConfigured ? t('agent.nlHint') : t('agent.nlNoKey')}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1212,8 +1220,8 @@ function Editor() {
                 value={nlMode}
                 onChange={(v) => setNlMode(v as 'refine' | 'new')}
                 options={[
-                  { value: 'refine', label: '지금 것 수정' },
-                  { value: 'new', label: '새로 만들기' },
+                  { value: 'refine', label: t('agent.editCurrent') },
+                  { value: 'new', label: t('agent.createNew') },
                 ]}
               />
             )}
@@ -1225,7 +1233,9 @@ function Editor() {
               leftIcon={<Sparkles size={13} />}
               onClick={() => void generate()}
             >
-              {nlMode === 'refine' && graph.nodes.length ? '수정안 만들기' : '블루프린트 만들기'}
+              {nlMode === 'refine' && graph.nodes.length
+                ? t('agent.makeRevision')
+                : t('agent.makeBlueprint')}
             </Button>
           </div>
         </div>
@@ -1236,7 +1246,7 @@ function Editor() {
       >
         {/* ── 왼쪽: 노드 팔레트 + 도구 탐색기 ── */}
         <aside className={styles.left} hidden={!leftOpen}>
-          <div className={styles.sectionTitle}>노드 — 끌어다 놓거나 누르기</div>
+          <div className={styles.sectionTitle}>{t('agent.nodesPalette')}</div>
           <div className={styles.palette}>
             {AGENT_NODE_TYPES.map((t) => {
               const Icon = NODE_ICON[t];
@@ -1259,7 +1269,7 @@ function Editor() {
             })}
           </div>
           <div className={styles.explorer}>
-            <div className={styles.sectionTitle}>도구 탐색기</div>
+            <div className={styles.sectionTitle}>{t('agent.toolExplorer')}</div>
             {tools ? (
               <ToolExplorer tools={tools} onPick={(t) => addNode('tool', undefined, t)} />
             ) : (
@@ -1329,10 +1339,10 @@ function Editor() {
             </ReactFlow>
             {!graph.nodes.length && (
               <div className={styles.emptyCanvas}>
-                빈 캔버스입니다.
+                {t('agent.emptyCanvas')}
                 <br />
-                위의 &quot;자연어로 만들기&quot;로 시작하거나, 왼쪽에서 시작 노드부터 끌어다 놓고
-                포트를 이어 보세요.
+                {t('agent.emptyHint1')}
+                {t('agent.emptyHint2')}
               </div>
             )}
           </div>
@@ -1372,25 +1382,27 @@ function Editor() {
           ) : (
             <div className={styles.inspector}>
               <label className={styles.label}>
-                <span>설명</span>
+                <span>{t('agent.desc')}</span>
                 <textarea
                   className={styles.textarea}
                   value={meta.description}
                   onChange={(e) => setMeta({ ...meta, description: e.target.value })}
-                  placeholder="이 에이전트가 하는 일"
+                  placeholder={t('agent.descPh')}
                 />
               </label>
               {meta.prompt && (
                 <div className={styles.box}>
-                  <div className={styles.boxHead}>마지막 자연어 요청</div>
+                  <div className={styles.boxHead}>{t('agent.lastPrompt')}</div>
                   <div className={styles.note}>{meta.prompt}</div>
                 </div>
               )}
               <div className={styles.box}>
-                <div className={styles.boxHead}>구성</div>
+                <div className={styles.boxHead}>{t('agent.composition')}</div>
                 <div className={styles.note}>
-                  노드 {graph.nodes.length}개 · 실행선 {graph.edges.length}개 · 도구{' '}
-                  {graph.nodes.filter((n) => n.type === 'tool').length}개(쓰기{' '}
+                  {t('agent.nodes')} {graph.nodes.length}
+                  {t('agent.edgesSep')} {graph.edges.length}
+                  {t('agent.toolsSep')} {graph.nodes.filter((n) => n.type === 'tool').length}
+                  {t('agent.writesOpen')}{' '}
                   {
                     graph.nodes.filter(
                       (n) =>
@@ -1402,11 +1414,16 @@ function Editor() {
                 </div>
               </div>
               <div className={styles.emptyInspector} style={{ padding: 0 }}>
-                노드를 누르면 여기서 자세히 고칩니다.
-                <br />• 포트를 끌어 다른 노드의 왼쪽 입력에 이으면 실행선이 생깁니다.
-                <br />• 선·노드를 고르고 Delete로 지웁니다.
-                <br />• 결과 변수는 뒤 노드에서 {'{{변수}}'}로 씁니다(점선이 데이터 흐름).
-                <br />• ⌘Z 되돌리기 · ⇧⌘Z 다시하기 · ⌘S 저장
+                {t('agent.help1')}
+                <br />
+                {t('agent.help2')}
+                <br />
+                {t('agent.help3')}
+                <br />
+                {t('agent.help4')} {'{{변수}}'}
+                {t('agent.help5')}
+                <br />
+                {t('agent.help6')}
               </div>
             </div>
           )}
@@ -1433,15 +1450,17 @@ function Editor() {
         onOpenChange={(o) => !o && setPreview(null)}
         size="lg"
         title={
-          nlMode === 'refine' && graph.nodes.length ? '수정안 미리보기' : '만든 블루프린트 미리보기'
+          nlMode === 'refine' && graph.nodes.length
+            ? t('agent.revisionPreview')
+            : t('agent.blueprintPreview')
         }
         footer={
           <>
             <Button variant="ghost" onClick={() => setPreview(null)}>
-              버리기
+              {t('agent.discard')}
             </Button>
             <Button variant="primary" onClick={applyPreview}>
-              캔버스에 적용
+              {t('agent.apply')}
             </Button>
           </>
         }
@@ -1454,30 +1473,30 @@ function Editor() {
             </div>
             <div className={styles.diffSummary}>{preview.summary}</div>
             <div className={styles.diffRow}>
-              <b className={styles.plus}>추가</b>
-              <span>{preview.changes.added.join(', ') || '없음'}</span>
+              <b className={styles.plus}>{t('agent.added')}</b>
+              <span>{preview.changes.added.join(', ') || t('agent.none')}</span>
             </div>
             {graph.nodes.length > 0 && nlMode === 'refine' && (
               <>
                 <div className={styles.diffRow}>
-                  <b className={styles.tilde}>변경</b>
-                  <span>{preview.changes.changed.join(', ') || '없음'}</span>
+                  <b className={styles.tilde}>{t('agent.changed')}</b>
+                  <span>{preview.changes.changed.join(', ') || t('agent.none')}</span>
                 </div>
                 <div className={styles.diffRow}>
-                  <b className={styles.minus}>삭제</b>
-                  <span>{preview.changes.removed.join(', ') || '없음'}</span>
+                  <b className={styles.minus}>{t('agent.delete')}</b>
+                  <span>{preview.changes.removed.join(', ') || t('agent.none')}</span>
                 </div>
               </>
             )}
             <div className={styles.diffRow}>
-              <b>실행선</b>
+              <b>{t('agent.edges')}</b>
               <span>
                 +{preview.changes.edgesAdded} / −{preview.changes.edgesRemoved}
               </span>
             </div>
             {preview.fixes.length > 0 && (
               <div className={styles.box}>
-                <div className={styles.boxHead}>서버가 바로잡은 것</div>
+                <div className={styles.boxHead}>{t('agent.serverFixes')}</div>
                 {preview.fixes.map((f, i) => (
                   <div key={i} className={styles.note}>
                     • {f}
@@ -1487,23 +1506,24 @@ function Editor() {
             )}
             {preview.issues.length > 0 && (
               <div className={styles.box}>
-                <div className={styles.boxHead}>검사 결과 — 적용한 뒤 고칠 수 있습니다</div>
+                <div className={styles.boxHead}>{t('agent.checkAfter')}</div>
                 {preview.issues.map((i, k) => (
                   <div
                     key={k}
                     className={i.level === 'error' ? styles.errDot : styles.warnDot}
                     style={{ fontWeight: 400, fontSize: fs(12) }}
                   >
-                    {i.level === 'error' ? '오류' : '경고'} · {i.message}
+                    {i.level === 'error' ? t('agent.error') : t('agent.warning')} · {i.message}
                   </div>
                 ))}
               </div>
             )}
             <div className={styles.note}>
-              노드 {preview.graph.nodes.length}개 · 토큰 입력{' '}
-              {preview.usage.inputTokens.toLocaleString()}(캐시{' '}
-              {preview.usage.cacheReadTokens.toLocaleString()}) / 출력{' '}
-              {preview.usage.outputTokens.toLocaleString()} · 적용해도 ⌘Z로 되돌릴 수 있습니다.
+              {t('agent.nodes')} {preview.graph.nodes.length}
+              {t('agent.tokensIn')} {preview.usage.inputTokens.toLocaleString()}
+              {t('agent.cacheOpen')} {preview.usage.cacheReadTokens.toLocaleString()}
+              {t('agent.outSep')} {preview.usage.outputTokens.toLocaleString()}{' '}
+              {t('agent.undoNote')}
             </div>
           </div>
         )}
@@ -1528,6 +1548,7 @@ function ShareModal({
   onClose: () => void;
   onSaved: (b: { visibility: AgentVisibility; shares: BlueprintShare[] }) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [vis, setVis] = useState(visibility);
   const [ids, setIds] = useState(shares.map((s) => s.employeeId));
@@ -1544,11 +1565,11 @@ function ShareModal({
       });
       toast({
         type: 'success',
-        title: `공개 범위를 '${AGENT_VISIBILITY_LABEL[vis]}'(으)로 저장했습니다`,
+        title: t('agent.visSaved', { v0: AGENT_VISIBILITY_LABEL[vis] }),
       });
       onSaved({ visibility: b.visibility, shares: b.shares });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -1557,12 +1578,12 @@ function ShareModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title="누가 쓸 수 있나요"
+      title={t('agent.whoTitle')}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            {canEdit ? '취소' : '닫기'}
+            {canEdit ? t('agent.cancel') : t('agent.close')}
           </Button>
           {canEdit && (
             <Button
@@ -1571,7 +1592,7 @@ function ShareModal({
               disabled={vis === 'SHARED' && ids.length === 0}
               onClick={() => void save()}
             >
-              저장
+              {t('agent.save')}
             </Button>
           )}
         </>

@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import {
   CheckCircle2,
@@ -35,10 +37,10 @@ type CodeItem = Extract<ChatItem, { kind: 'code' }>;
 type FileItem = Extract<ChatItem, { kind: 'file' }>;
 
 const STATUS_VIEW: Record<string, { label: string; icon: typeof Clock; cls: string }> = {
-  PENDING: { label: '승인 대기', icon: Clock, cls: styles.stPending },
-  DONE: { label: '완료', icon: CheckCircle2, cls: styles.stDone },
-  ERROR: { label: '실패', icon: XCircle, cls: styles.stError },
-  REJECTED: { label: '거절됨', icon: CircleSlash, cls: styles.stRejected },
+  PENDING: { label: i18n.t('ai.awaitingApproval'), icon: Clock, cls: styles.stPending },
+  DONE: { label: i18n.t('ai.done'), icon: CheckCircle2, cls: styles.stDone },
+  ERROR: { label: i18n.t('ai.failed'), icon: XCircle, cls: styles.stError },
+  REJECTED: { label: i18n.t('ai.rejected'), icon: CircleSlash, cls: styles.stRejected },
 };
 
 const pretty = (v: unknown) => {
@@ -54,6 +56,7 @@ const pretty = (v: unknown) => {
 
 /** AI가 실행한 도구 한 줄 — 눌러서 입력·결과를 펼쳐 본다 */
 export function ToolRow({ item, tools }: { item: ToolItem; tools: Map<string, AiToolInfo> }) {
+  const { t } = useTranslation();
   const write = tools.get(item.name)?.mode === 'WRITE' || item.name === 'send_sms';
   const st = STATUS_VIEW[item.status] ?? STATUS_VIEW.DONE;
   const Icon = write ? PenLine : Search;
@@ -69,11 +72,13 @@ export function ToolRow({ item, tools }: { item: ToolItem; tools: Map<string, Ai
         </span>
       </summary>
       <div className={styles.toolBody}>
-        <div className={styles.toolLabel}>입력 · {item.name}</div>
+        <div className={styles.toolLabel}>
+          {t('ai.inputSep')} {item.name}
+        </div>
         <pre className={styles.pre}>{pretty(item.input)}</pre>
         {item.result !== undefined && (
           <>
-            <div className={styles.toolLabel}>결과</div>
+            <div className={styles.toolLabel}>{t('ai.resultLabel')}</div>
             <pre className={styles.pre}>{pretty(item.result)}</pre>
           </>
         )}
@@ -84,13 +89,14 @@ export function ToolRow({ item, tools }: { item: ToolItem; tools: Map<string, Ai
 
 const CODE_STATUS: Record<CodeItem['status'], { label: string; icon: typeof Clock; cls: string }> =
   {
-    RUNNING: { label: '실행 중', icon: Loader2, cls: styles.stPending },
-    DONE: { label: '완료', icon: CheckCircle2, cls: styles.stDone },
-    ERROR: { label: '실패', icon: XCircle, cls: styles.stError },
+    RUNNING: { label: i18n.t('ai.runningLabel'), icon: Loader2, cls: styles.stPending },
+    DONE: { label: i18n.t('ai.done'), icon: CheckCircle2, cls: styles.stDone },
+    ERROR: { label: i18n.t('ai.failed'), icon: XCircle, cls: styles.stError },
   };
 
 /** 코드 실행 한 줄 — 눌러서 실행한 코드와 출력을 펼쳐 본다 */
 export function CodeRow({ item }: { item: CodeItem }) {
+  const { t } = useTranslation();
   const st = CODE_STATUS[item.status] ?? CODE_STATUS.DONE;
   const StIcon = st.icon;
   const Icon = item.tool === 'bash' ? Terminal : FileCode2;
@@ -99,7 +105,7 @@ export function CodeRow({ item }: { item: CodeItem }) {
       <summary className={styles.toolHead}>
         <Icon size={14} className={styles.toolIcon} aria-hidden />
         <span className={styles.toolName}>
-          코드 실행
+          {t('ai.codeExec')}
           {item.title && <span className={styles.codeTitle}> · {item.title}</span>}
         </span>
         <span className={[styles.toolStatus, st.cls].join(' ')}>
@@ -108,12 +114,14 @@ export function CodeRow({ item }: { item: CodeItem }) {
         </span>
       </summary>
       <div className={styles.toolBody}>
-        <div className={styles.toolLabel}>{item.tool === 'bash' ? '명령·코드' : '파일 내용'}</div>
-        <pre className={styles.pre}>{item.code || '(내용 없음)'}</pre>
+        <div className={styles.toolLabel}>
+          {item.tool === 'bash' ? t('ai.command') : t('ai.fileContent')}
+        </div>
+        <pre className={styles.pre}>{item.code || t('ai.noContent')}</pre>
         {item.output !== undefined && (
           <>
-            <div className={styles.toolLabel}>출력</div>
-            <pre className={styles.pre}>{item.output || '(출력 없음)'}</pre>
+            <div className={styles.toolLabel}>{t('ai.output')}</div>
+            <pre className={styles.pre}>{item.output || t('ai.noOutput')}</pre>
           </>
         )}
       </div>
@@ -124,11 +132,15 @@ export function CodeRow({ item }: { item: CodeItem }) {
 const fileKind = (name: string, mediaType: string) => {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
   if (['xlsx', 'xls', 'csv'].includes(ext) || mediaType.includes('spreadsheet'))
-    return { icon: FileSpreadsheet, label: ext === 'csv' ? 'CSV' : '엑셀', cls: styles.fileXls };
+    return {
+      icon: FileSpreadsheet,
+      label: ext === 'csv' ? 'CSV' : i18n.t('ai.excel'),
+      cls: styles.fileXls,
+    };
   if (ext === 'pdf') return { icon: FileText, label: 'PDF', cls: styles.filePdf };
   if (mediaType.startsWith('image/'))
-    return { icon: FileImage, label: '이미지', cls: styles.fileImg };
-  return { icon: FileIcon, label: ext.toUpperCase() || '파일', cls: '' };
+    return { icon: FileImage, label: i18n.t('ai.image'), cls: styles.fileImg };
+  return { icon: FileIcon, label: ext.toUpperCase() || i18n.t('ai.file'), cls: '' };
 };
 
 const fmtSize = (n: number) =>
@@ -147,6 +159,7 @@ export function FileCard({
   /** 내려받을 주소(기본: AI 비서 대화 파일) — 에이전트 실행 파일은 실행 쪽 주소 */
   downloadPath?: string;
 }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const k = fileKind(item.name, item.mediaType);
@@ -157,7 +170,7 @@ export function FileCard({
     try {
       await downloadFile(downloadPath ?? `/ai/files/${item.id}`, item.name);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '다운로드에 실패했습니다');
+      setError(e instanceof Error ? e.message : t('ai.downloadFailed'));
     } finally {
       setBusy(false);
     }
@@ -182,9 +195,9 @@ export function FileCard({
         loading={busy}
         leftIcon={<Download size={14} />}
         onClick={() => void download()}
-        aria-label={`${item.name} 다운로드`}
+        aria-label={t('ai.downloadOf', { v0: item.name })}
       >
-        다운로드
+        {t('ai.download')}
       </Button>
     </div>
   );
@@ -205,14 +218,21 @@ function MessageEditor({
   onChange: (v: string) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const parts = value.split('{고객명}');
   const edited = value.trim() !== original.trim();
   return (
     <div className={styles.recipientEditor}>
       <div className={styles.toolLabel}>
-        문자 내용 · {value.length}자{edited && <span className={styles.editedTag}> · 고침</span>}
-        <span className={styles.sub}> — {'{고객명}'}은 받는 사람 이름으로 바뀝니다</span>
+        {t('ai.smsContent')} {value.length}
+        {t('ai.chars')}
+        {edited && <span className={styles.editedTag}> {t('ai.edited')}</span>}
+        <span className={styles.sub}>
+          {' '}
+          — {'{고객명}'}
+          {t('ai.nameReplaced')}
+        </span>
       </div>
       {editing ? (
         <textarea
@@ -220,7 +240,7 @@ function MessageEditor({
           value={value}
           maxLength={1000}
           rows={5}
-          aria-label="문자 내용"
+          aria-label={t('ai.smsContentAria')}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -228,7 +248,7 @@ function MessageEditor({
         <div className={styles.smsBubble}>
           {parts.map((p, i) => (
             <span key={i}>
-              {i > 0 && <mark className={styles.token}>고객명</mark>}
+              {i > 0 && <mark className={styles.token}>{t('ai.customerName')}</mark>}
               {p}
             </span>
           ))}
@@ -242,11 +262,11 @@ function MessageEditor({
           disabled={disabled}
           onClick={() => setEditing((v) => !v)}
         >
-          {editing ? '미리보기' : '문구 고치기'}
+          {editing ? t('ai.preview') : t('ai.editText')}
         </Button>
         {edited && (
           <Button variant="ghost" size="sm" disabled={disabled} onClick={() => onChange(original)}>
-            AI 문구로 되돌리기
+            {t('ai.revertAi')}
           </Button>
         )}
       </div>
@@ -272,6 +292,7 @@ export function ApprovalCard({
   busy: boolean;
   onDecide: (decisions: Decision[]) => void;
 }) {
+  const { t } = useTranslation();
   const writes = pending.filter((p) => p.mode === 'WRITE');
   /** 문자 받는 사람 — 직원이 빼거나 더한 명단(도구 호출별) */
   const [lists, setLists] = useState<Record<string, Recipient[]>>(() =>
@@ -330,13 +351,13 @@ export function ApprovalCard({
   const allBroken = writes.every((w) => previewError(w.preview));
 
   return (
-    <div className={styles.approval} role="region" aria-label="승인이 필요한 작업">
+    <div className={styles.approval} role="region" aria-label={t('ai.approvalAria')}>
       <div className={styles.approvalTitle}>
-        <PenLine size={16} aria-hidden /> 실행 전에 확인해 주세요
+        <PenLine size={16} aria-hidden /> {t('ai.checkBefore')}
       </div>
       <div className={styles.approvalSub}>
-        AI가 아래 작업을 하려고 합니다. 내용을 확인·수정한 뒤 승인해야 실행되며, 승인 전에는
-        아무것도 바뀌거나 보내지지 않습니다.
+        {t('ai.approvalHelp1')}
+        {t('ai.approvalHelp2')}
       </div>
 
       {writes.map((w) => {
@@ -349,7 +370,7 @@ export function ApprovalCard({
                   disabled={!!previewError(preview)}
                   checked={!!checked[w.toolUseId]}
                   onCheckedChange={(v) => setChecked((c) => ({ ...c, [w.toolUseId]: v === true }))}
-                  aria-label={`${toolLabel(w.name, tools)} 선택`}
+                  aria-label={t('ai.selectOf', { v0: toolLabel(w.name, tools) })}
                 />
               )}
               <span className={styles.approvalName}>{toolLabel(w.name, tools)}</span>
@@ -358,8 +379,9 @@ export function ApprovalCard({
 
             {previewError(preview) ? (
               <div className={styles.approvalError} role="alert">
-                <b>이 작업은 실행할 수 없습니다.</b> 대상을 확인하는 중에 문제가 생겼습니다(
-                {previewError(preview)}). 거절하면 AI에게 다시 찾도록 요청할 수 있습니다.
+                <b>{t('ai.cannotRun')}</b> {t('ai.targetError1')}
+                {previewError(preview)}
+                {t('ai.targetError2')}
               </div>
             ) : isSms(preview) ? (
               <div className={styles.smsPreview}>
@@ -378,7 +400,9 @@ export function ApprovalCard({
                   disabled={busy}
                 />
                 {preview.skipped.length > 0 && (
-                  <div className={styles.sub}>제외: {preview.skipped.join(', ')}</div>
+                  <div className={styles.sub}>
+                    {t('ai.excluded')} {preview.skipped.join(', ')}
+                  </div>
                 )}
               </div>
             ) : (
@@ -390,7 +414,7 @@ export function ApprovalCard({
 
       <div className={styles.approvalActions}>
         <Button variant="outline" size="sm" disabled={busy} onClick={() => decide(false)}>
-          {multi ? '모두 거절' : '거절'}
+          {multi ? t('ai.rejectAll') : t('ai.reject')}
         </Button>
         <Button
           variant="primary"
@@ -399,7 +423,7 @@ export function ApprovalCard({
           disabled={(multi && selected === 0) || emptySms || allBroken}
           onClick={() => decide(multi ? undefined : true)}
         >
-          {multi ? `선택한 ${selected}건 실행` : '승인하고 실행'}
+          {multi ? t('ai.runSelected', { v0: selected }) : t('ai.approveRun')}
         </Button>
       </div>
     </div>
@@ -423,6 +447,7 @@ function RecipientEditor({
   disabled?: boolean;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [found, setFound] = useState<Recipient[]>([]);
   // 처음 명단 + 더한 사람을 한 목록에 보여 주고, 체크로 넣고 뺀다
@@ -458,8 +483,10 @@ function RecipientEditor({
   return (
     <div className={styles.recipientEditor}>
       <div className={styles.toolLabel}>
-        받는 사람 {value.length}명{edited && <span className={styles.editedTag}> · 고침</span>}
-        <span className={styles.sub}> — 체크를 풀면 빠집니다</span>
+        {t('ai.recipients')} {value.length}
+        {t('ai.peopleSuffix')}
+        {edited && <span className={styles.editedTag}> {t('ai.edited')}</span>}
+        <span className={styles.sub}> {t('ai.uncheckHint')}</span>
       </div>
       <ul className={styles.recipients}>
         {shown.map((r) => (
@@ -480,8 +507,8 @@ function RecipientEditor({
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="받는 사람 더하기 — 이름·전화번호로 찾기"
-            aria-label="받는 사람 찾기"
+            placeholder={t('ai.addRecipientPh')}
+            aria-label={t('ai.findRecipient')}
             disabled={disabled}
           />
         </div>
@@ -493,7 +520,9 @@ function RecipientEditor({
               <button type="button" onClick={() => add(r)} disabled={on.has(r.customerId)}>
                 <span>{r.name}</span>
                 <span className={styles.sub}>{r.phone ? formatPhone(r.phone) : ''}</span>
-                <span className={styles.sub}>{on.has(r.customerId) ? '이미 있음' : '더하기'}</span>
+                <span className={styles.sub}>
+                  {on.has(r.customerId) ? t('ai.already') : t('ai.add')}
+                </span>
               </button>
             </li>
           ))}

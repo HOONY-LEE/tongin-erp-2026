@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
 import { SegmentedControl } from '../ui';
@@ -56,12 +58,20 @@ export interface ReferenceOpt {
   name: string;
 }
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const WEEKDAYS = [
+  i18n.t('agent.dow.0'),
+  i18n.t('agent.dow.1'),
+  i18n.t('agent.dow.2'),
+  i18n.t('agent.dow.3'),
+  i18n.t('agent.dow.4'),
+  i18n.t('agent.dow.5'),
+  i18n.t('agent.dow.6'),
+];
 const CRON_PRESETS = [
-  { cron: '0 9 * * 1', label: '매주 월 9시' },
-  { cron: '0 9 * * *', label: '매일 9시' },
-  { cron: '0 18 * * 1-5', label: '평일 18시' },
-  { cron: '0 8 1 * *', label: '매월 1일 8시' },
+  { cron: '0 9 * * 1', label: i18n.t('agent.cron.weeklyMon') },
+  { cron: '0 9 * * *', label: i18n.t('agent.cron.daily') },
+  { cron: '0 18 * * 1-5', label: i18n.t('agent.cron.weekdays') },
+  { cron: '0 8 1 * *', label: i18n.t('agent.cron.monthly') },
 ];
 
 function Label({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -87,6 +97,7 @@ export function Inspector({
   references,
   onUploadReference,
 }: Props) {
+  const { t } = useTranslation();
   const set = <K extends keyof AgentNode>(k: K, v: AgentNode[K]) => onChange({ ...node, [k]: v });
   const cfg = <T,>() => node.config as T;
   const patch = (p: Record<string, unknown>) =>
@@ -101,13 +112,18 @@ export function Inspector({
         <b style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {node.label}
         </b>
-        <button type="button" className={styles.iconBtn} title="복제" onClick={onDuplicate}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          title={t('agent.duplicate')}
+          onClick={onDuplicate}
+        >
           <Copy size={13} />
         </button>
         <button
           type="button"
           className={`${styles.iconBtn} ${styles.dangerBtn}`}
-          title="삭제(Delete)"
+          title={t('agent.deleteKey')}
           onClick={onDelete}
         >
           <Trash2 size={13} />
@@ -123,13 +139,13 @@ export function Inspector({
               className={i.level === 'error' ? styles.errDot : styles.warnDot}
               style={{ fontWeight: 400, fontSize: fs(12) }}
             >
-              {i.level === 'error' ? '오류' : '경고'} · {i.message}
+              {i.level === 'error' ? t('agent.error') : t('agent.warning')} · {i.message}
             </div>
           ))}
         </div>
       )}
 
-      <Label title="이름">
+      <Label title={t('agent.name')}>
         <input
           className={styles.input}
           value={node.label}
@@ -159,10 +175,7 @@ export function Inspector({
         <GuardrailFields c={cfg<GuardrailConfig>()} patch={patch} tools={tools} />
       )}
       {node.type === 'approval' && (
-        <Label
-          title="승인 요청 문구"
-          hint="실제 실행에서는 여기서 멈추고 승인·거절을 기다립니다. 테스트 실행은 승인으로 가정합니다."
-        >
+        <Label title={t('agent.approvalText')} hint={t('agent.approvalHint')}>
           <TemplateInput
             multiline
             value={cfg<ApprovalConfig>().message}
@@ -174,7 +187,7 @@ export function Inspector({
       {node.type === 'output' && (
         <>
           <Label
-            title="최종 응답"
+            title={t('agent.finalReply')}
             hint="{{변수}}로 결과를 끼워 넣습니다. 반복 안에 두면 항목마다 덮어씁니다."
           >
             <TemplateInput
@@ -198,11 +211,12 @@ export function Inspector({
 type Patch = (p: Record<string, unknown>) => void;
 
 function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
+  const { t } = useTranslation();
   const setField = (i: number, p: Partial<TriggerConfig['inputFields'][number]>) =>
     patch({ inputFields: c.inputFields.map((f, k) => (k === i ? { ...f, ...p } : f)) });
   return (
     <>
-      <Label title="시작 방식">
+      <Label title={t('agent.triggerKind')}>
         <select
           className={styles.select}
           value={c.kind}
@@ -216,7 +230,7 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
         </select>
       </Label>
       {c.kind === 'schedule' && (
-        <Label title="크론식" hint="분 시 일 월 요일 (한국 시간)">
+        <Label title={t('agent.cronExpr')} hint={t('agent.cronHint')}>
           <input
             className={`${styles.input} ${styles.mono}`}
             value={c.cron}
@@ -235,13 +249,13 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
             ))}
           </div>
           <small>
-            '사용중'으로 바꾸면 이 시간마다 만든 사람 권한으로 자동 실행됩니다. 데이터를 바꾸는
-            단계는 실행 기록에서 승인해야 이어집니다.
+            t('agent.st.ACTIVE'){t('agent.scheduleHint1')}
+            {t('agent.scheduleHint2')}
           </small>
         </Label>
       )}
       {c.kind === 'event' && (
-        <Label title="이벤트">
+        <Label title={t('agent.event')}>
           <select
             className={styles.select}
             value={c.event}
@@ -254,20 +268,15 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
             ))}
           </select>
           <small>
-            '사용중'으로 바꾸면 이 일이 생길 때마다 만든 사람 권한으로 자동 실행됩니다. 받는 값:{' '}
-            {'{{input.event.…}}'} —{' '}
+            t('agent.st.ACTIVE'){t('agent.eventHint')} {'{{input.event.…}}'} —{' '}
             {TRIGGER_EVENT_FIELDS[c.event as keyof typeof TRIGGER_EVENT_FIELDS] ?? 'id, type'}
           </small>
         </Label>
       )}
-      {c.kind === 'chat' && (
-        <div className={styles.note}>
-          AI 비서 대화에서 이 에이전트를 불러 쓸 때의 입력값을 정합니다.
-        </div>
-      )}
+      {c.kind === 'chat' && <div className={styles.note}>{t('agent.inputsHint')}</div>}
       <div className={styles.box}>
         <div className={styles.boxHead}>
-          입력값 <span className={styles.note}>{'{{input.이름}}'}</span>
+          {t('agent.inputs')} <span className={styles.note}>{'{{input.이름}}'}</span>
           <button
             type="button"
             className={styles.smallBtn}
@@ -285,10 +294,10 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
               })
             }
           >
-            + 추가
+            {t('agent.addInput')}
           </button>
         </div>
-        {!c.inputFields.length && <div className={styles.note}>입력값 없음</div>}
+        {!c.inputFields.length && <div className={styles.note}>{t('agent.noInputs')}</div>}
         {c.inputFields.map((f, i) => (
           <div key={i} className={styles.box} style={{ background: 'var(--ark-color-bg)' }}>
             <div className={styles.row}>
@@ -296,7 +305,7 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
                 className={`${styles.input} ${styles.mono}`}
                 value={f.name}
                 onChange={(e) => setField(i, { name: e.target.value })}
-                placeholder="이름(영문)"
+                placeholder={t('agent.nameEn')}
               />
               <select
                 className={styles.select}
@@ -314,7 +323,7 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
                 className={styles.input}
                 value={f.description}
                 onChange={(e) => setField(i, { description: e.target.value })}
-                placeholder="설명"
+                placeholder={t('agent.desc')}
               />
               <label className={styles.check} style={{ whiteSpace: 'nowrap' }}>
                 <input
@@ -322,14 +331,14 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
                   checked={f.required}
                   onChange={(e) => setField(i, { required: e.target.checked })}
                 />
-                필수
+                {t('agent.required')}
               </label>
               <button
                 type="button"
                 className={`${styles.smallBtn} ${styles.dangerBtn}`}
                 onClick={() => patch({ inputFields: c.inputFields.filter((_, k) => k !== i) })}
               >
-                삭제
+                {t('agent.delete')}
               </button>
             </div>
           </div>
@@ -340,6 +349,7 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
 }
 
 function ModelSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
   // Claude에서 받아 둔 모델 목록(이 계정에 열린 것만 고를 수 있음)
   const models = useAiModels();
   const cur = models.find((m) => m.id === value);
@@ -356,8 +366,11 @@ function ModelSelect({ value, onChange }: { value: string; onChange: (v: string)
       </select>
       {(!cur || !cur.enabled) && fallback && (
         <span className={styles.hint}>
-          {cur?.label ?? value}은(는) 지금 쓸 수 없어 실행할 때는 기본 모델({fallback.label})로
-          돕니다.
+          {cur?.label ?? value}
+          {t('agent.fallback1')}
+          {fallback.label}
+          {t('agent.fallback2')}
+          {t('agent.fallback3')}
         </span>
       )}
     </>
@@ -365,28 +378,26 @@ function ModelSelect({ value, onChange }: { value: string; onChange: (v: string)
 }
 
 function LlmFields({ c, patch, vars }: { c: LlmConfig; patch: Patch; vars: AgentVar[] }) {
+  const { t } = useTranslation();
   return (
     <>
-      <Label title="모델">
+      <Label title={t('agent.model')}>
         <ModelSelect value={c.model} onChange={(v) => patch({ model: v })} />
       </Label>
-      <Label
-        title="생각 깊이(effort)"
-        hint="낮을수록 빠르고 쌉니다. 글쓰기·요약은 보통 낮음으로 충분합니다."
-      >
+      <Label title={t('agent.effortLabel')} hint={t('agent.effortHint')}>
         <SegmentedControl
           size="sm"
           fullWidth
           value={c.effort}
           onChange={(v) => patch({ effort: v })}
           options={[
-            { value: 'low', label: '낮음' },
-            { value: 'medium', label: '보통' },
-            { value: 'high', label: '높음' },
+            { value: 'low', label: t('agent.effort.low') },
+            { value: 'medium', label: t('agent.effort.medium') },
+            { value: 'high', label: t('agent.effort.high') },
           ]}
         />
       </Label>
-      <Label title="지시문(역할·규칙)">
+      <Label title={t('agent.instructions')}>
         <TemplateInput
           multiline
           rows={4}
@@ -395,7 +406,7 @@ function LlmFields({ c, patch, vars }: { c: LlmConfig; patch: Patch; vars: Agent
           vars={vars}
         />
       </Label>
-      <Label title="이번 내용" hint="'{{'를 치면 위쪽 노드의 결과 변수가 나옵니다.">
+      <Label title={t('agent.inputContent')} hint="'{{'를 치면 위쪽 노드의 결과 변수가 나옵니다.">
         <TemplateInput
           multiline
           rows={4}
@@ -405,22 +416,22 @@ function LlmFields({ c, patch, vars }: { c: LlmConfig; patch: Patch; vars: Agent
         />
       </Label>
       <VarChips vars={vars} onPick={(n) => patch({ prompt: `${c.prompt}{{${n}}}` })} />
-      <Label title="결과 형식">
+      <Label title={t('agent.outputFormat')}>
         <SegmentedControl
           size="sm"
           fullWidth
           value={c.outputFormat}
           onChange={(v) => patch({ outputFormat: v })}
           options={[
-            { value: 'text', label: '글' },
-            { value: 'json', label: 'JSON(구조화)' },
+            { value: 'text', label: t('agent.fmt.text') },
+            { value: 'json', label: t('agent.fmt.json') },
           ]}
         />
       </Label>
       {c.outputFormat === 'json' && (
         <div className={styles.box}>
           <div className={styles.boxHead}>
-            결과 필드
+            {t('agent.outputFields')}
             <button
               type="button"
               className={styles.smallBtn}
@@ -433,7 +444,7 @@ function LlmFields({ c, patch, vars }: { c: LlmConfig; patch: Patch; vars: Agent
                 })
               }
             >
-              + 추가
+              {t('agent.addInput')}
             </button>
           </div>
           {c.jsonFields.map((f, i) => (
@@ -467,7 +478,7 @@ function LlmFields({ c, patch, vars }: { c: LlmConfig; patch: Patch; vars: Agent
               </select>
               <input
                 className={styles.input}
-                placeholder="설명"
+                placeholder={t('agent.desc')}
                 value={f.description}
                 onChange={(e) =>
                   patch({
@@ -488,7 +499,7 @@ function LlmFields({ c, patch, vars }: { c: LlmConfig; patch: Patch; vars: Agent
           ))}
         </div>
       )}
-      <Label title="결과 변수">
+      <Label title={t('agent.outputVar')}>
         <input
           className={`${styles.input} ${styles.mono}`}
           value={c.outputVar}
@@ -516,6 +527,7 @@ function ToolFields({
   references: ReferenceOpt[];
   onUploadReference?: (file: File) => Promise<ReferenceOpt | null>;
 }) {
+  const { t } = useTranslation();
   const [picking, setPicking] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -539,9 +551,9 @@ function ToolFields({
     <>
       <div className={styles.box}>
         <div className={styles.boxHead}>
-          도구
+          {t('agent.tool')}
           <button type="button" className={styles.smallBtn} onClick={() => setPicking(true)}>
-            {c.tool ? '바꾸기' : '고르기'}
+            {c.tool ? t('agent.change') : t('agent.pick')}
           </button>
         </div>
         {c.tool ? (
@@ -554,37 +566,39 @@ function ToolFields({
               <div className={styles.toolDesc}>{info.description}</div>
             ) : (
               <div className={styles.errDot} style={{ fontSize: fs(12), fontWeight: 400 }}>
-                이 계정에서 쓸 수 없는 도구입니다(권한 없음 또는 이름 오류).
+                {t('agent.toolUnavailable')}
               </div>
             )}
             {info?.mode === 'WRITE' && (
               <div className={styles.warnNote}>
-                데이터를 바꾸는 쓰기 도구입니다. 테스트 실행에서는 실제로 실행하지 않고, 실제 실행은
-                사람 승인 뒤에만 됩니다.
+                {t('agent.writeTool1')}
+                {t('agent.writeTool2')}
               </div>
             )}
           </>
         ) : (
-          <div className={styles.note}>왼쪽 도구 탐색기에서 끌어 오거나 "고르기"를 누르세요.</div>
+          <div className={styles.note}>
+            {t('agent.pickTool1')} t('agent.pick'){t('agent.pickTool2')}
+          </div>
         )}
       </div>
 
       {info && (
         <div className={styles.box}>
-          <div className={styles.boxHead}>인자 연결</div>
+          <div className={styles.boxHead}>{t('agent.args')}</div>
           <div className={styles.note}>
-            값은 글자·숫자·JSON(예: false, 50, {'{"a":1}'})이나 {'{{변수}}'} 템플릿. 값 전체가{' '}
-            {'{{경로}}'}면 목록·객체가 그대로 넘어갑니다. 목록에서 한 칸씩 뽑기:{' '}
-            {'{{leads.rows[*].customerId}}'}
+            {t('agent.argsHint1')} {'{"a":1}'}
+            {t('agent.argsHint2')} {'{{변수}}'} {t('agent.argsHint3')} {'{{경로}}'}
+            {t('agent.argsHint4')} {'{{leads.rows[*].customerId}}'}
           </div>
-          {!Object.keys(props).length && <div className={styles.note}>인자 없음</div>}
+          {!Object.keys(props).length && <div className={styles.note}>{t('agent.noArgs')}</div>}
           {Object.entries(props).map(([k, s]) => (
             <Label
               key={k}
               title={`${k}${req.has(k) ? ' *' : ''}`}
               hint={[
                 s.description,
-                s.enum ? `값: ${s.enum.join(', ')}` : '',
+                s.enum ? t('agent.values', { v0: s.enum.join(', ') }) : '',
                 s.type ? `(${String(s.type)})` : '',
               ]
                 .filter(Boolean)
@@ -598,14 +612,14 @@ function ToolFields({
                     value={c.args[k] ?? ''}
                     onChange={(e) => setArg(k, e.target.value)}
                   >
-                    <option value="">양식 고르기</option>
+                    <option value="">{t('agent.pickTemplate')}</option>
                     {references.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.name}
                       </option>
                     ))}
                     {c.args[k] && !references.some((r) => r.id === c.args[k]) && (
-                      <option value={c.args[k]}>(목록에 없는 양식)</option>
+                      <option value={c.args[k]}>{t('agent.unknownTemplate')}</option>
                     )}
                   </select>
                   {onUploadReference && (
@@ -616,7 +630,7 @@ function ToolFields({
                         disabled={uploading}
                         onClick={() => fileRef.current?.click()}
                       >
-                        {uploading ? '올리는 중…' : '새 양식 올리기'}
+                        {uploading ? t('agent.uploading') : t('agent.uploadTemplate')}
                       </button>
                       <input
                         ref={fileRef}
@@ -648,8 +662,8 @@ function ToolFields({
                     s.properties
                       ? '{ "필드": "값 또는 {{변수}}" }'
                       : req.has(k)
-                        ? '필수'
-                        : '비우면 보내지 않음'
+                        ? t('agent.required')
+                        : t('agent.blankSkip')
                   }
                 />
               )}
@@ -660,7 +674,7 @@ function ToolFields({
                   style={{ alignSelf: 'flex-start' }}
                   onClick={() => bodySkeleton(k)}
                 >
-                  필드 틀 채우기
+                  {t('agent.fillFields')}
                 </button>
               )}
             </Label>
@@ -668,7 +682,7 @@ function ToolFields({
           {extra.map((k) => (
             <div key={k} className={styles.row}>
               <span className={styles.argName}>{k}</span>
-              <span className={styles.warnNote}>이 도구에 없는 인자</span>
+              <span className={styles.warnNote}>{t('agent.unknownArgs')}</span>
               <button
                 type="button"
                 className={`${styles.smallBtn} ${styles.dangerBtn}`}
@@ -678,16 +692,13 @@ function ToolFields({
                   patch({ args: next });
                 }}
               >
-                삭제
+                {t('agent.delete')}
               </button>
             </div>
           ))}
         </div>
       )}
-      <Label
-        title="결과 변수"
-        hint="도구 응답이 이 이름으로 남습니다. 실패 포트를 이으면 실패해도 멈추지 않고 그쪽으로 갑니다."
-      >
+      <Label title={t('agent.outputVar')} hint={t('agent.toolOutHint')}>
         <input
           className={`${styles.input} ${styles.mono}`}
           value={c.outputVar}
@@ -695,13 +706,13 @@ function ToolFields({
         />
       </Label>
 
-      <Modal open={picking} onOpenChange={setPicking} title="도구 고르기" size="lg">
+      <Modal open={picking} onOpenChange={setPicking} title={t('agent.pickToolTitle')} size="lg">
         <div style={{ height: 460, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <ToolExplorer
             tools={tools}
             draggable={false}
             autoFocus
-            pickLabel="이 도구로"
+            pickLabel={t('agent.useTool')}
             onPick={(t) => {
               const keep = Object.fromEntries(
                 Object.entries(c.args).filter(([k]) => k in (t.inputSchema.properties ?? {})),
@@ -718,6 +729,7 @@ function ToolFields({
 }
 
 function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars: AgentVar[] }) {
+  const { t } = useTranslation();
   const setCase = (i: number, p: Partial<BranchCase>) =>
     patch({ cases: c.cases.map((k, j) => (j === i ? { ...k, ...p } : k)) });
   const move = (i: number, d: number) => {
@@ -729,21 +741,21 @@ function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars:
   };
   return (
     <>
-      <Label title="분기 방식">
+      <Label title={t('agent.branchKind')}>
         <SegmentedControl
           size="sm"
           fullWidth
           value={c.mode}
           onChange={(v) => patch({ mode: v })}
           options={[
-            { value: 'condition', label: '조건식' },
-            { value: 'classify', label: 'AI 분류' },
+            { value: 'condition', label: t('agent.branch.expr') },
+            { value: 'classify', label: t('agent.branch.ai') },
           ]}
         />
       </Label>
       {c.mode === 'classify' && (
         <>
-          <Label title="분류할 내용">
+          <Label title={t('agent.classifyInput')}>
             <TemplateInput
               multiline
               value={c.input}
@@ -751,17 +763,17 @@ function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars:
               vars={vars}
             />
           </Label>
-          <Label title="분류 기준(지시문)">
+          <Label title={t('agent.classifyRule')}>
             <textarea
               className={styles.textarea}
               value={c.instructions}
               onChange={(e) => patch({ instructions: e.target.value })}
             />
           </Label>
-          <Label title="모델">
+          <Label title={t('agent.model')}>
             <ModelSelect value={c.model} onChange={(v) => patch({ model: v })} />
           </Label>
-          <Label title="결과 변수(고른 갈래 id)">
+          <Label title={t('agent.classifyVar')}>
             <input
               className={`${styles.input} ${styles.mono}`}
               value={c.outputVar}
@@ -772,7 +784,7 @@ function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars:
       )}
       <div className={styles.box}>
         <div className={styles.boxHead}>
-          갈래(출력 포트) — 위에서부터
+          {t('agent.cases')}
           <button
             type="button"
             className={styles.smallBtn}
@@ -782,7 +794,7 @@ function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars:
                   ...c.cases,
                   {
                     id: `case${c.cases.length + 1}`,
-                    label: `갈래 ${c.cases.length + 1}`,
+                    label: t('agent.caseN', { v0: c.cases.length + 1 }),
                     expr: '',
                     description: '',
                   },
@@ -790,15 +802,16 @@ function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars:
               })
             }
           >
-            + 갈래
+            {t('agent.addCase')}
           </button>
         </div>
         {c.mode === 'condition' && (
           <div className={styles.note}>
-            조건식 예: <code>leads.total &gt; 0</code>,{' '}
+            {t('agent.exprEx')} <code>leads.total &gt; 0</code>,{' '}
             <code>contains(category, &apos;이사&apos;)</code>,{' '}
-            <code>!empty(result.rows) &amp;&amp; result.total &lt; 100</code>. 처음 참인 갈래로
-            가고, 모두 거짓이면 &quot;그 외&quot;.
+            <code>!empty(result.rows) &amp;&amp; result.total &lt; 100</code>
+            {t('agent.exprHint1')}
+            {t('agent.exprHint2')}
           </div>
         )}
         {c.cases.map((k, i) => (
@@ -808,20 +821,20 @@ function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars:
                 className={styles.input}
                 value={k.label}
                 onChange={(e) => setCase(i, { label: e.target.value })}
-                placeholder="이름"
+                placeholder={t('agent.name')}
               />
               <input
                 className={`${styles.input} ${styles.mono}`}
                 style={{ width: 90 }}
                 value={k.id}
                 onChange={(e) => setCase(i, { id: e.target.value.replace(/[^A-Za-z0-9_]/g, '') })}
-                title="포트 id(영문)"
+                title={t('agent.portId')}
               />
               <button
                 type="button"
                 className={styles.smallBtn}
                 onClick={() => move(i, -1)}
-                title="위로"
+                title={t('agent.up')}
               >
                 ↑
               </button>
@@ -840,31 +853,29 @@ function BranchFields({ c, patch, vars }: { c: BranchConfig; patch: Patch; vars:
                 value={k.expr}
                 onChange={(v) => setCase(i, { expr: v })}
                 vars={vars}
-                placeholder="조건식"
+                placeholder={t('agent.branch.expr')}
               />
             ) : (
               <input
                 className={styles.input}
                 value={k.description}
                 onChange={(e) => setCase(i, { description: e.target.value })}
-                placeholder="이 갈래를 고르는 기준"
+                placeholder={t('agent.caseRule')}
               />
             )}
           </div>
         ))}
-        <div className={styles.note}>+ &quot;그 외(else)&quot; 포트는 항상 있습니다.</div>
+        <div className={styles.note}>{t('agent.elseNote')}</div>
       </div>
     </>
   );
 }
 
 function LoopFields({ c, patch, vars }: { c: LoopConfig; patch: Patch; vars: AgentVar[] }) {
+  const { t } = useTranslation();
   return (
     <>
-      <Label
-        title="반복할 목록"
-        hint="예: leads.rows — '항목마다' 포트에 이은 노드들이 항목 수만큼 실행되고, 다 돌면 '끝나면' 포트로 갑니다."
-      >
+      <Label title={t('agent.loopList')} hint={t('agent.loopHint')}>
         <TemplateInput
           bare
           mono
@@ -874,7 +885,7 @@ function LoopFields({ c, patch, vars }: { c: LoopConfig; patch: Patch; vars: Age
         />
       </Label>
       <Label
-        title="항목 변수"
+        title={t('agent.itemVar')}
         hint={`본문에서 {{${c.itemVar || 'item'}}}, 순번은 {{${c.itemVar || 'item'}Index}}`}
       >
         <input
@@ -883,7 +894,7 @@ function LoopFields({ c, patch, vars }: { c: LoopConfig; patch: Patch; vars: Age
           onChange={(e) => patch({ itemVar: e.target.value })}
         />
       </Label>
-      <Label title="최대 항목 수(안전 한도)">
+      <Label title={t('agent.maxItems')}>
         <input
           className={styles.input}
           type="number"
@@ -906,6 +917,7 @@ function GuardrailFields({
   patch: Patch;
   tools: AgentToolInfo[];
 }) {
+  const { t } = useTranslation();
   const [adding, setAdding] = useState<GuardrailKind>('maxSteps');
   const setRule = (i: number, p: Partial<GuardrailRule>) =>
     patch({ rules: c.rules.map((r, j) => (j === i ? { ...r, ...p } : r)) });
@@ -930,8 +942,8 @@ function GuardrailFields({
   return (
     <>
       <div className={styles.note}>
-        가드레일을 지난 뒤의 모든 단계에 규칙이 걸립니다. 어기면 실행이 &quot;가드레일
-        차단&quot;으로 멈춥니다.
+        {t('agent.guardHint1')}
+        {t('agent.guardHint2')}
       </div>
       {c.rules.map((r, i) => (
         <div key={i} className={styles.box}>
@@ -968,7 +980,7 @@ function GuardrailFields({
                       .filter(Boolean),
                   })
                 }
-                placeholder="도구 이름을 쉼표로"
+                placeholder={t('agent.toolsCsv')}
               />
               <datalist id="agent-tool-names">
                 {tools.map((t) => (
@@ -989,7 +1001,7 @@ function GuardrailFields({
                     .filter(Boolean),
                 })
               }
-              placeholder="고객 id를 줄마다"
+              placeholder={t('agent.customerIds')}
             />
           )}
           {r.kind === 'timeWindow' && (
@@ -1003,7 +1015,7 @@ function GuardrailFields({
                   value={r.startHour ?? 0}
                   onChange={(e) => setRule(i, { startHour: Number(e.target.value) })}
                 />
-                <span>시 ~</span>
+                <span>{t('agent.hourTo')}</span>
                 <input
                   className={styles.input}
                   type="number"
@@ -1012,7 +1024,7 @@ function GuardrailFields({
                   value={r.endHour ?? 24}
                   onChange={(e) => setRule(i, { endHour: Number(e.target.value) })}
                 />
-                <span>시</span>
+                <span>{t('agent.hour')}</span>
               </div>
               <div className={styles.weekdays}>
                 {WEEKDAYS.map((d, k) => (
@@ -1035,15 +1047,9 @@ function GuardrailFields({
             </>
           )}
           {r.kind === 'requireApproval' && (
-            <div className={styles.note}>
-              이후 쓰기 도구는 호출할 때마다 사람이 승인해야 실행됩니다.
-            </div>
+            <div className={styles.note}>{t('agent.approveAfter')}</div>
           )}
-          {r.kind === 'piiMask' && (
-            <div className={styles.note}>
-              AI에 넘기는 글과 실행 기록에서 전화번호·이메일을 가립니다.
-            </div>
-          )}
+          {r.kind === 'piiMask' && <div className={styles.note}>{t('agent.maskPii')}</div>}
         </div>
       ))}
       <div className={styles.row}>
@@ -1064,7 +1070,7 @@ function GuardrailFields({
           style={{ whiteSpace: 'nowrap' }}
           onClick={() => patch({ rules: [...c.rules, fresh(adding)] })}
         >
-          + 규칙
+          {t('agent.addRule')}
         </button>
       </div>
     </>

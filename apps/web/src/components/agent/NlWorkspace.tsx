@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, Bot, CheckCircle2, CircleAlert, Cpu, Play, Wrench } from 'lucide-react';
 import {
@@ -68,6 +69,7 @@ interface Props {
  * 블루프린트 모드(노드 캔버스)와 같은 그래프를 본다.
  */
 export function NlWorkspace(p: Props) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [testOpen, setTestOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -91,13 +93,7 @@ export function NlWorkspace(p: Props) {
         <div className={ai.scroll} aria-live="polite">
           <div className={ai.thread}>
             <div className={ai.aiMsg}>
-              <Markdown
-                text={
-                  p.graph.nodes.length
-                    ? '바꾸고 싶은 점을 말씀해 주세요. 고친 뒤에는 제가 **시험 실행**까지 돌려 보고, 오류가 나면 스스로 다시 고칩니다.\n노드를 직접 다듬으려면 위의 **블루프린트**로 넘어가세요.'
-                    : '어떤 일을 하는 에이전트인지 말씀해 주세요. 설계하고 시험 실행까지 해 볼게요.'
-                }
-              />
+              <Markdown text={p.graph.nodes.length ? t('ai.nl.editHello') : t('ai.nl.newHello')} />
             </div>
             {p.turns.map((m, i) =>
               m.role === 'user' ? (
@@ -130,10 +126,10 @@ export function NlWorkspace(p: Props) {
               value={draft}
               placeholder={
                 !p.aiConfigured
-                  ? 'ANTHROPIC_API_KEY가 없어 말로 고칠 수 없습니다 — 블루프린트에서 직접 고쳐 주세요'
+                  ? t('ai.nl.noKey')
                   : !p.canEdit
-                    ? '보기 전용입니다 — 복제한 뒤 고칠 수 있습니다'
-                    : '예: 대상이 없으면 나에게 알려 주고, 문자는 30명까지만 보내게 해 줘'
+                    ? t('ai.nl.readonly')
+                    : t('ai.nl.ph')
               }
               disabled={!p.canEdit || !p.aiConfigured}
               onChange={(e) => setDraft(e.target.value)}
@@ -143,7 +139,7 @@ export function NlWorkspace(p: Props) {
                   send();
                 }
               }}
-              aria-label="에이전트 고치기 대화"
+              aria-label={t('ai.nl.chat')}
             />
             <div className={ai.composerBar}>
               <span className={ai.barLeft} />
@@ -152,7 +148,7 @@ export function NlWorkspace(p: Props) {
                 className={ai.sendBtn}
                 onClick={send}
                 disabled={!draft.trim() || !!p.working}
-                aria-label="보내기"
+                aria-label={t('ai.send')}
               >
                 <ArrowUp size={20} strokeWidth={2.4} />
               </button>
@@ -163,30 +159,32 @@ export function NlWorkspace(p: Props) {
 
       <aside className={styles.nlSide}>
         <div className={styles.nlSideHead}>
-          <b>지금 에이전트가 하는 일</b>
+          <b>{t('ai.nl.doing')}</b>
           {p.description && <span className={styles.note}>{p.description}</span>}
           <div className={styles.nlStats}>
             <span>
-              <Wrench size={12} /> 도구·규칙 {steps.length - llmSteps.length}단계
+              <Wrench size={12} /> {t('ai.nl.toolsRules')} {steps.length - llmSteps.length}
+              {t('ai.stepsLabel')}
             </span>
             <span className={llmSteps.length ? styles.nlLlm : ''}>
-              <Cpu size={12} /> AI 호출 {llmSteps.length}곳
+              <Cpu size={12} /> {t('ai.nl.aiCalls')} {llmSteps.length}
+              {t('ai.nl.places')}
             </span>
             {errors.length > 0 ? (
               <span className={styles.nlErr}>
-                <CircleAlert size={12} /> 오류 {errors.length}
+                <CircleAlert size={12} /> {t('ai.st.error')} {errors.length}
               </span>
             ) : (
               p.graph.nodes.length > 0 && (
                 <span className={styles.nlGood}>
-                  <CheckCircle2 size={12} /> 검사 통과
+                  <CheckCircle2 size={12} /> {t('ai.nl.passed')}
                 </span>
               )
             )}
           </div>
           <span className={styles.note}>
-            도구·조건·반복은 정해진 대로 돌아 AI를 부르지 않습니다. AI는 판단이 필요한 곳에서만
-            부릅니다.
+            {t('ai.nl.aiNote1')}
+            {t('ai.nl.aiNote2')}
           </span>
         </div>
         <ol className={styles.nlSteps}>
@@ -206,14 +204,14 @@ export function NlWorkspace(p: Props) {
                       {n.label}
                       {callsLlm(n) ? (
                         <Badge variant="subtle" size="sm" color="primary">
-                          <Bot size={10} /> AI 판단
+                          <Bot size={10} /> {t('ai.nl.aiStep')}
                         </Badge>
                       ) : (
                         <span className={styles.note}>{AGENT_NODE_LABEL[n.type]}</span>
                       )}
                       {s.mode === 'WRITE' && (
                         <Badge variant="subtle" size="sm" color="warning">
-                          쓰기
+                          {t('ai.write')}
                         </Badge>
                       )}
                     </span>
@@ -224,7 +222,7 @@ export function NlWorkspace(p: Props) {
               </li>
             );
           })}
-          {!steps.length && <li className={styles.note}>아직 단계가 없습니다.</li>}
+          {!steps.length && <li className={styles.note}>{t('ai.nl.noSteps')}</li>}
         </ol>
         <div className={styles.nlTestBar}>
           <Button
@@ -235,10 +233,10 @@ export function NlWorkspace(p: Props) {
             disabled={!p.graph.nodes.length || !!p.working}
             onClick={p.onTest}
           >
-            시험 실행
+            {t('ai.testRun')}
           </Button>
           <button type="button" className={styles.linkBtn} onClick={() => setTestOpen((v) => !v)}>
-            {testOpen ? '자세히 닫기' : '입력값·실제 실행 옵션'}
+            {testOpen ? t('ai.nl.hideDetails') : t('ai.nl.runOptions')}
           </button>
         </div>
         {(testOpen || p.run) && (

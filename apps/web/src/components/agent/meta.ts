@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import type { LucideIcon } from 'lucide-react';
 import { aiModelLabel } from '../../lib/aiModels';
 import {
@@ -84,7 +85,11 @@ export function nodeSummary(
         lines: [
           `${TRIGGER_KIND_LABEL[c.kind]}${extra ? ` · ${extra}` : ''}`,
           ...(c.inputFields.length
-            ? [`입력: ${c.inputFields.map((f) => `${f.name}${f.required ? '*' : ''}`).join(', ')}`]
+            ? [
+                i18n.t('agent.m.inputs', {
+                  v0: c.inputFields.map((f) => `${f.name}${f.required ? '*' : ''}`).join(', '),
+                }),
+              ]
             : []),
         ],
         outVar: 'input',
@@ -94,8 +99,8 @@ export function nodeSummary(
       const c = node.config as LlmConfig;
       return {
         lines: [
-          `${modelLabel(c.model)} · ${c.outputFormat === 'json' ? 'JSON' : '글'}`,
-          cut(c.prompt || c.instructions || '(지시문 없음)'),
+          `${modelLabel(c.model)} · ${c.outputFormat === 'json' ? 'JSON' : i18n.t('agent.fmt.text')}`,
+          cut(c.prompt || c.instructions || i18n.t('agent.m.noInstr')),
         ],
         outVar: c.outputVar,
       };
@@ -105,7 +110,7 @@ export function nodeSummary(
       const info = tools.get(c.tool);
       const args = Object.entries(c.args).filter(([, v]) => String(v).trim());
       return {
-        mono: c.tool || '(도구 선택 안 함)',
+        mono: c.tool || i18n.t('agent.m.noTool'),
         mode: info?.mode,
         lines: args.length
           ? [cut(args.map(([k, v]) => `${k}=${v}`).join(', '), 80)]
@@ -120,15 +125,21 @@ export function nodeSummary(
       return {
         lines:
           c.mode === 'condition'
-            ? c.cases.map((k) => `${k.label}: ${k.expr || '(조건 없음)'}`).slice(0, 3)
-            : [`AI 분류 · ${modelLabel(c.model)}`, cut(c.input || '(분류할 내용 없음)')],
+            ? c.cases.map((k) => `${k.label}: ${k.expr || i18n.t('agent.m.noCond')}`).slice(0, 3)
+            : [
+                i18n.t('agent.m.aiClassify', { v0: modelLabel(c.model) }),
+                cut(c.input || i18n.t('agent.m.noClassify')),
+              ],
         outVar: c.mode === 'classify' ? c.outputVar : undefined,
       };
     }
     case 'loop': {
       const c = node.config as LoopConfig;
       return {
-        lines: [`${c.listVar || '(목록 없음)'}의 항목마다`, `최대 ${c.maxItems}개`],
+        lines: [
+          i18n.t('agent.m.eachOf', { v0: c.listVar || i18n.t('agent.m.noList') }),
+          i18n.t('agent.m.maxN', { v0: c.maxItems }),
+        ],
         outVar: c.itemVar,
       };
     }
@@ -141,18 +152,20 @@ export function nodeSummary(
                 r.value !== undefined
                   ? ` ${r.value}`
                   : r.list?.length
-                    ? ` ${r.list.length}개`
+                    ? i18n.t('agent.m.countN', { v0: r.list.length })
                     : r.kind === 'timeWindow'
-                      ? ` ${r.startHour ?? 0}~${r.endHour ?? 24}시`
+                      ? i18n.t('agent.m.hours', { v0: r.startHour ?? 0, v1: r.endHour ?? 24 })
                       : '';
               return `• ${GUARDRAIL_LABEL[r.kind].split('(')[0]}${v}`;
             })
-          : ['(규칙 없음)'],
+          : [i18n.t('agent.m.noRules')],
       };
     }
     case 'approval':
-      return { lines: [cut((node.config as ApprovalConfig).message || '(승인 문구 없음)')] };
+      return {
+        lines: [cut((node.config as ApprovalConfig).message || i18n.t('agent.m.noApproval'))],
+      };
     case 'output':
-      return { lines: [cut((node.config as OutputConfig).template || '(응답 없음)')] };
+      return { lines: [cut((node.config as OutputConfig).template || i18n.t('agent.m.noReply'))] };
   }
 }

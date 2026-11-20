@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
@@ -44,8 +45,8 @@ const readView = (): View => {
 };
 
 const STATUS_MAP: StatusMap = {
-  DRAFT: { label: '초안', color: 'neutral' },
-  ACTIVE: { label: '사용중', color: 'success' },
+  DRAFT: { label: i18n.t('ai.st.DRAFT'), color: 'neutral' },
+  ACTIVE: { label: i18n.t('ai.st.ACTIVE'), color: 'success' },
 };
 
 const dt = (v: unknown) => fmtDateTime(v) || '-';
@@ -60,13 +61,14 @@ const triggerText = (r: Row) => {
 
 /** 공개 범위 배지 — 표의 '공개 범위' 칸과 카드 메타가 같이 쓴다 */
 function VisibilityBadge({ row }: { row: Row }) {
+  const { t } = useTranslation();
   const v = String(row.visibility) as AgentVisibility;
   const Icon = VISIBILITY_ICON[v] ?? VISIBILITY_ICON.PRIVATE;
   return (
     <span className={styles.visBadge}>
       <Icon size={13} aria-hidden />
       {AGENT_VISIBILITY_LABEL[v] ?? v}
-      {v === 'SHARED' ? ` ${Number(row.shareCount ?? 0)}명` : ''}
+      {v === 'SHARED' ? t('ai.nPeople', { v0: Number(row.shareCount ?? 0) }) : ''}
     </span>
   );
 }
@@ -130,30 +132,45 @@ export default function AgentBlueprints() {
 
   const columns: Column[] = [
     {
-      title: '에이전트',
+      title: t('ai.agents'),
       dataIndex: 'name',
       minWidth: 180,
       render: (r) => <b className={styles.nameCell}>{String(r.name)}</b>,
     },
     // 설명은 이름 아래 둘째 줄 대신 자기 칸으로 — 한 칸에 한 줄
     {
-      title: '설명',
+      title: t('ai.desc'),
       dataIndex: 'description',
       flex: 1,
       minWidth: 200,
       render: (r) => (r.description ? String(r.description) : '-'),
     },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS_MAP} /> },
-    { title: '공개 범위', render: (r) => <VisibilityBadge row={r} /> },
     {
-      title: '만든 사람',
-      render: (r) => (r.isMine ? '나' : String(r.createdByName ?? '-')),
+      title: t('ai.status'),
+      render: (r) => <StatusBadge value={String(r.status)} map={STATUS_MAP} />,
     },
-    { title: '시작', render: triggerText },
-    { title: '노드', numeric: true, render: (r) => `${Number(r.nodeCount ?? 0)}개` },
-    { title: '도구', numeric: true, render: (r) => `${Number(r.toolCount ?? 0)}개` },
-    { title: '테스트', numeric: true, render: (r) => `${Number(r.runCount ?? 0)}회` },
-    { title: '수정', dataIndex: 'updatedAt', render: (r) => dt(r.updatedAt) },
+    { title: t('ai.visibility'), render: (r) => <VisibilityBadge row={r} /> },
+    {
+      title: t('ai.creator'),
+      render: (r) => (r.isMine ? t('ai.me') : String(r.createdByName ?? '-')),
+    },
+    { title: t('ai.trigger'), render: triggerText },
+    {
+      title: t('ai.nodes'),
+      numeric: true,
+      render: (r) => t('ai.countN', { v0: Number(r.nodeCount ?? 0) }),
+    },
+    {
+      title: t('ai.tools'),
+      numeric: true,
+      render: (r) => t('ai.countN', { v0: Number(r.toolCount ?? 0) }),
+    },
+    {
+      title: t('ai.tests'),
+      numeric: true,
+      render: (r) => t('ai.timesN', { v0: Number(r.runCount ?? 0) }),
+    },
+    { title: t('ai.updated'), dataIndex: 'updatedAt', render: (r) => dt(r.updatedAt) },
   ];
 
   // 목록을 나누는 탭 — 툴바 셋째 줄 왼쪽
@@ -162,9 +179,9 @@ export default function AgentBlueprints() {
       value={filter}
       onChange={(v) => setFilter(v as Filter)}
       options={[
-        { value: 'all', label: `전체 ${rows.length}` },
-        { value: 'mine', label: `내 에이전트 ${rows.filter((r) => r.isMine).length}` },
-        { value: 'shared', label: `공유받은 ${rows.filter((r) => !r.isMine).length}` },
+        { value: 'all', label: t('ai.allN', { v0: rows.length }) },
+        { value: 'mine', label: t('ai.mineN', { v0: rows.filter((r) => r.isMine).length }) },
+        { value: 'shared', label: t('ai.sharedN', { v0: rows.filter((r) => !r.isMine).length }) },
       ]}
     />
   );
@@ -175,12 +192,12 @@ export default function AgentBlueprints() {
       className={styles.viewToggle}
       value={view}
       onChange={(v) => changeView(v as View)}
-      aria-label="보기 방식"
+      aria-label={t('ai.viewMode')}
       options={[
         {
           value: 'cards',
           label: (
-            <span title="카드형" aria-label="카드형">
+            <span title={t('ai.cards')} aria-label={t('ai.cards')}>
               <LayoutGrid size={15} aria-hidden />
             </span>
           ),
@@ -188,7 +205,7 @@ export default function AgentBlueprints() {
         {
           value: 'table',
           label: (
-            <span title="목록형" aria-label="목록형">
+            <span title={t('ai.list')} aria-label={t('ai.list')}>
               <List size={15} aria-hidden />
             </span>
           ),
@@ -199,14 +216,14 @@ export default function AgentBlueprints() {
   // 툴바 셋째 줄 오른쪽 — 새 에이전트
   const actions = (
     <Button variant="primary" size="sm" onClick={() => navigate('/agent-builder/new')}>
-      + 새 에이전트
+      {t('ai.newAgentBtn')}
     </Button>
   );
 
   return (
     <ListPage
       title={t('nav.aiAgents')}
-      subtitle="자연어로 말하거나 직접 노드를 이어, ERP 도구를 실제로 호출하는 AI 에이전트를 만듭니다. 사용중인 에이전트는 AI 에이전트 화면에서 불러 씁니다."
+      subtitle={t('ai.blueprintsSub')}
       onRefresh={load}
       updatedAt={updatedAt}
     >
@@ -226,7 +243,9 @@ export default function AgentBlueprints() {
           {/* 표 툴바와 같은 자리(ListToolbar) — 검색칸은 표 검색과 같은 모양(.dt-wrap 아래 softium 클래스) */}
           <div className="dt-wrap">
             <ListToolbar
-              search={<SearchInput value={query} onChange={setQuery} ariaLabel="에이전트 검색" />}
+              search={
+                <SearchInput value={query} onChange={setQuery} ariaLabel={t('ai.searchAgents')} />
+              }
               viewSwitch={viewSwitch}
               tabs={tabs}
               actions={actions}
@@ -244,9 +263,7 @@ export default function AgentBlueprints() {
             </div>
           ) : cards.length === 0 ? (
             <div className={styles.cardEmpty}>
-              {rows.length === 0
-                ? '아직 만든 에이전트가 없습니다. 「+ 새 에이전트」로 시작해 보세요.'
-                : '조건에 맞는 에이전트가 없습니다.'}
+              {rows.length === 0 ? t('ai.noAgentsYet') : t('ai.noMatch')}
             </div>
           ) : (
             <div className={styles.cardGrid}>
@@ -262,7 +279,7 @@ export default function AgentBlueprints() {
                     <StatusBadge value={String(r.status)} map={STATUS_MAP} />
                   </div>
                   <p className={styles.agentCardDesc}>
-                    {r.description ? String(r.description) : '설명 없음'}
+                    {r.description ? String(r.description) : t('ai.noDesc')}
                   </p>
                   <div className={styles.agentCardMeta}>
                     <span>{triggerText(r)}</span>

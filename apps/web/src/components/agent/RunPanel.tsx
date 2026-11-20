@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Play, X } from 'lucide-react';
 import { AGENT_RUN_STATUS_LABEL, type TriggerConfig } from '@tongin/shared';
@@ -51,12 +53,12 @@ const STATUS_COLOR: Record<string, 'success' | 'error' | 'warning' | 'info' | 'n
   RUNNING: 'info',
 };
 const STEP_LABEL: Record<TraceStep['status'], string> = {
-  ok: '실행',
-  dry: '시험',
-  error: '오류',
-  pending: '대기',
-  blocked: '차단',
-  skipped: '건너뜀',
+  ok: i18n.t('ai.run'),
+  dry: i18n.t('ai.st.test'),
+  error: i18n.t('ai.st.error'),
+  pending: i18n.t('ai.st.waiting'),
+  blocked: i18n.t('ai.st.blocked'),
+  skipped: i18n.t('ai.st.skipped'),
 };
 const STEP_COLOR: Record<
   TraceStep['status'],
@@ -94,6 +96,7 @@ export function RunPanel({
   onSelectNode,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
   const [dryRun, setDryRun] = useState(true);
   const [mockLlm, setMockLlm] = useState(!aiConfigured);
@@ -129,9 +132,9 @@ export function RunPanel({
     <div className={styles.runPanel}>
       <div className={styles.runForm}>
         <div className={styles.runHead}>
-          <b>테스트 실행</b>
+          <b>{t('ai.testRunTitle')}</b>
           <span className={styles.spacer} />
-          <button type="button" className={styles.iconBtn} onClick={onClose} title="닫기">
+          <button type="button" className={styles.iconBtn} onClick={onClose} title={t('ai.close')}>
             <X size={13} />
           </button>
         </div>
@@ -150,12 +153,10 @@ export function RunPanel({
             />
           </label>
         ))}
-        {!trigger?.inputFields.length && (
-          <div className={styles.note}>입력값이 없는 에이전트입니다.</div>
-        )}
+        {!trigger?.inputFields.length && <div className={styles.note}>{t('ai.noInputsAgent')}</div>}
         <label className={styles.check}>
           <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-          시험 실행(쓰기 도구는 실행하지 않고 기록만)
+          {t('ai.dryRunOpt')}
         </label>
         <label className={styles.check}>
           <input
@@ -164,17 +165,13 @@ export function RunPanel({
             disabled={!aiConfigured}
             onChange={(e) => setMockLlm(e.target.checked)}
           />
-          AI 호출 건너뛰기(비용 없이 흐름만)
+          {t('ai.skipAi')}
         </label>
-        {!aiConfigured && (
-          <div className={styles.warnNote}>
-            ANTHROPIC_API_KEY가 없어 AI 판단은 예시 응답으로 대신합니다.
-          </div>
-        )}
+        {!aiConfigured && <div className={styles.warnNote}>{t('ai.noKeyMock')}</div>}
         {!dryRun && (
           <div className={styles.warnNote}>
-            실제 실행입니다. 쓰기 도구(문자 발송·수정 등)는 승인 노드나 그 자리 승인 뒤 실제로
-            실행됩니다.
+            {t('ai.realRun1')}
+            {t('ai.realRun2')}
           </div>
         )}
         <Button
@@ -185,20 +182,14 @@ export function RunPanel({
           onClick={start}
           disabled={!canSubmit || running}
         >
-          {dryRun ? '시험 실행' : '실제 실행'}
+          {dryRun ? t('ai.testRun') : t('ai.realRun')}
         </Button>
-        <div className={styles.note}>
-          읽기 도구는 시험 실행에서도 실제 데이터를 조회합니다(내 권한 범위).
-        </div>
+        <div className={styles.note}>{t('ai.readToolsNote')}</div>
       </div>
 
       <div className={styles.runResult}>
-        {!run && !running && (
-          <div className={styles.note}>
-            실행하면 노드별 입력·출력·소요 시간이 여기에 쌓이고, 지나간 경로가 캔버스에 표시됩니다.
-          </div>
-        )}
-        {running && !run && <div className={styles.note}>실행 중…</div>}
+        {!run && !running && <div className={styles.note}>{t('ai.runHint')}</div>}
+        {running && !run && <div className={styles.note}>{t('ai.runningDots')}</div>}
         {run && (
           <>
             <div className={styles.runHead}>
@@ -206,8 +197,9 @@ export function RunPanel({
                 {AGENT_RUN_STATUS_LABEL[run.status] ?? run.status}
               </Badge>
               <span className={styles.note}>
-                {run.dryRun ? '시험 실행' : '실제 실행'} · {run.trace.length}단계
-                {tokens ? ` · 토큰 ${tokens.toLocaleString()}` : ''}
+                {run.dryRun ? t('ai.testRun') : t('ai.realRun')} · {run.trace.length}
+                {t('ai.stepsLabel')}
+                {tokens ? t('ai.tokensN', { v0: tokens.toLocaleString() }) : ''}
               </span>
               {run.error && (
                 <span className={styles.errDot} style={{ fontWeight: 400, fontSize: fs(12) }}>
@@ -217,7 +209,7 @@ export function RunPanel({
             </div>
             {run.pending && (
               <div className={styles.pendingBox}>
-                <b>승인이 필요합니다</b>
+                <b>{t('ai.needApproval')}</b>
                 <span>{run.pending.message}</span>
                 {run.pending.args !== undefined && (
                   <pre className={styles.pre}>{show(run.pending.args)}</pre>
@@ -232,7 +224,7 @@ export function RunPanel({
                     loading={running}
                     onClick={() => onDecide(true)}
                   >
-                    승인하고 계속
+                    {t('ai.approveContinue')}
                   </Button>
                   <Button
                     size="sm"
@@ -240,7 +232,7 @@ export function RunPanel({
                     disabled={running}
                     onClick={() => onDecide(false)}
                   >
-                    거절
+                    {t('ai.reject')}
                   </Button>
                 </div>
               </div>
@@ -280,10 +272,14 @@ export function RunPanel({
                   {open === s.seq && (
                     <>
                       {s.input !== undefined && (
-                        <pre className={styles.pre}>입력 {show(s.input)}</pre>
+                        <pre className={styles.pre}>
+                          {t('ai.input')} {show(s.input)}
+                        </pre>
                       )}
                       {s.output !== undefined && (
-                        <pre className={styles.pre}>출력 {show(s.output)}</pre>
+                        <pre className={styles.pre}>
+                          {t('ai.output')} {show(s.output)}
+                        </pre>
                       )}
                     </>
                   )}

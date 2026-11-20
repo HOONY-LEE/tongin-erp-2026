@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useSearchParams } from 'react-router-dom';
@@ -109,7 +110,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => {
   d.setUTCMonth(d.getUTCMonth() - i);
   return d.toISOString().slice(0, 7);
 });
-const monthLabel = (m: string) => `${m.slice(0, 4)}년 ${Number(m.slice(5))}월`;
+const monthLabel = (m: string) =>
+  i18n.t('aiadm.yearMonth', { v0: m.slice(0, 4), v1: Number(m.slice(5)) });
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
@@ -122,10 +124,10 @@ export default function AiAdmin() {
   const { updatedAt, touch } = useUpdatedAt();
   const [refreshKey, setRefreshKey] = useState(0);
   const tabs: { value: Tab; label: string }[] = [
-    { value: 'overview', label: '사용 현황' },
-    { value: 'users', label: '사용자 권한' },
-    { value: 'usage', label: '사용 기록' },
-    { value: 'settings', label: '모델 설정' },
+    { value: 'overview', label: t('aiadm.tab.usage') },
+    { value: 'users', label: t('aiadm.tab.users') },
+    { value: 'usage', label: t('aiadm.tab.logs') },
+    { value: 'settings', label: t('aiadm.tab.models') },
   ];
   const { tab, setTab } = useTabParam<Tab>('overview');
   // 사용자·사용 기록 상세를 열면 머리글·탭을 숨긴다(다른 관리 화면과 같게)
@@ -161,8 +163,8 @@ export default function AiAdmin() {
       )}
       {settings && !settings.configured && !inDetail && (
         <p className={`${styles.notice} ${styles.warn}`}>
-          서버에 Claude API 키(ANTHROPIC_API_KEY)가 없어 AI를 쓸 수 없습니다. 설정은 미리 해 둘 수
-          있습니다.
+          {t('aiadm.noKey1')}
+          {t('aiadm.noKey2')}
         </p>
       )}
       {tab === 'overview' ? (
@@ -189,6 +191,7 @@ const modelName = (models: ModelDef[], id: string) => models.find((m) => m.id ==
 // ── 사용 현황 ──
 
 function Overview({ models }: { models: ModelDef[] }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [month, setMonth] = useState(thisMonth());
   const [s, setS] = useState<Summary | null>(null);
@@ -198,7 +201,7 @@ function Overview({ models }: { models: ModelDef[] }) {
     setLoading(true);
     api<Summary>(`/ai-admin/summary?month=${month}`)
       .then(setS)
-      .catch((e) => toast({ type: 'error', title: errText(e, '불러오지 못했습니다') }))
+      .catch((e) => toast({ type: 'error', title: errText(e, t('aiadm.loadFailed')) }))
       .finally(() => setLoading(false));
   }, [month, toast]);
 
@@ -221,31 +224,33 @@ function Overview({ models }: { models: ModelDef[] }) {
             value={month}
             onValueChange={setMonth}
             options={MONTHS.map((m) => ({ value: m, label: monthLabel(m) }))}
-            aria-label="달"
+            aria-label={t('aiadm.month')}
           />
         </div>
       </div>
       <div className={styles.cards}>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>AI 호출</span>
+          <span className={styles.cardLabel}>{t('aiadm.calls')}</span>
           <span className={styles.cardValue}>{s ? num(s.total.calls) : '—'}</span>
         </div>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>사용 토큰</span>
+          <span className={styles.cardLabel}>{t('aiadm.tokens')}</span>
           <span className={styles.cardValue}>{s ? num(s.total.tokens) : '—'}</span>
-          <span className={styles.cardSub}>입력 + 출력(캐시 읽기 제외)</span>
+          <span className={styles.cardSub}>{t('aiadm.tokensHint')}</span>
         </div>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>예상 비용</span>
+          <span className={styles.cardLabel}>{t('aiadm.cost')}</span>
           <span className={styles.cardValue}>{s ? usd(s.total.cost) : '—'}</span>
-          <span className={styles.cardSub}>모델 설정의 단가 기준</span>
+          <span className={styles.cardSub}>{t('aiadm.costHint')}</span>
         </div>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>쓴 사람</span>
-          <span className={styles.cardValue}>{s ? `${num(s.total.users)}명` : '—'}</span>
+          <span className={styles.cardLabel}>{t('aiadm.users')}</span>
+          <span className={styles.cardValue}>
+            {s ? t('aiadm.peopleN', { v0: num(s.total.users) }) : '—'}
+          </span>
         </div>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>실패한 호출</span>
+          <span className={styles.cardLabel}>{t('aiadm.failed')}</span>
           <span className={`${styles.cardValue} ${s?.total.failed ? styles.errorValue : ''}`}>
             {s ? num(s.total.failed) : '—'}
           </span>
@@ -253,7 +258,7 @@ function Overview({ models }: { models: ModelDef[] }) {
       </div>
       <div className={styles.breakdowns}>
         <Breakdown
-          title="모델별"
+          title={t('aiadm.byModel')}
           loading={loading}
           rows={modelRows.map((r) => ({
             key: r.id,
@@ -265,7 +270,7 @@ function Overview({ models }: { models: ModelDef[] }) {
           showCost
         />
         <Breakdown
-          title="기능별"
+          title={t('aiadm.byFeature')}
           loading={loading}
           rows={featureRows.map((r) => ({
             key: r.id,
@@ -291,19 +296,18 @@ function Breakdown({
   loading: boolean;
   showCost?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <section className={styles.section}>
       <h3 className={styles.sectionTitle}>{title}</h3>
       {rows.length === 0 ? (
-        <p className={styles.hint}>
-          {loading ? '불러오는 중…' : '이 달에는 사용 기록이 없습니다.'}
-        </p>
+        <p className={styles.hint}>{loading ? t('aiadm.loading') : t('aiadm.noUsage')}</p>
       ) : (
         <div className={styles.breakdown} data-cost={showCost ? '' : undefined}>
-          <span className={styles.modelHead}>이름</span>
-          <span className={styles.modelHead}>호출</span>
-          <span className={styles.modelHead}>토큰</span>
-          {showCost && <span className={styles.modelHead}>예상 비용</span>}
+          <span className={styles.modelHead}>{t('aiadm.col.name')}</span>
+          <span className={styles.modelHead}>{t('aiadm.col.calls')}</span>
+          <span className={styles.modelHead}>{t('aiadm.col.tokens')}</span>
+          {showCost && <span className={styles.modelHead}>{t('aiadm.cost')}</span>}
           {rows.map((r) => (
             <Fragment key={r.key}>
               <span>{r.name}</span>
@@ -323,19 +327,20 @@ function Breakdown({
 const accessBadge = (r: UserRow) =>
   r.access === 'BLOCK' ? (
     <Badge variant="subtle" color="error">
-      막음
+      {i18n.t('aiadm.blocked')}
     </Badge>
   ) : r.canUse ? (
     <Badge variant="subtle" color="success">
-      {r.access === 'ALLOW' ? '허용' : '사용 가능'}
+      {r.access === 'ALLOW' ? i18n.t('aiadm.allowed') : i18n.t('aiadm.usable')}
     </Badge>
   ) : (
     <Badge variant="subtle" color="neutral">
-      권한 없음
+      {i18n.t('aiadm.noAccess')}
     </Badge>
   );
 
 function Users({ settings }: { settings: SettingsRes | null }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [month, setMonth] = useState(thisMonth());
   const [rows, setRows] = useState<UserRow[]>([]);
@@ -355,7 +360,7 @@ function Users({ settings }: { settings: SettingsRes | null }) {
     try {
       setRows(await api<UserRow[]>(`/ai-admin/users?month=${month}`));
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '불러오지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('aiadm.loadFailed')) });
     } finally {
       setLoading(false);
     }
@@ -367,7 +372,9 @@ function Users({ settings }: { settings: SettingsRes | null }) {
   const limitOf = (r: UserRow) => r.monthlyTokenLimit ?? companyLimit;
   const limitText = (r: UserRow) => {
     const l = limitOf(r);
-    return l == null ? '무제한' : `${num(l)}${r.monthlyTokenLimit == null ? ' (회사 기본)' : ''}`;
+    return l == null
+      ? t('aiadm.unlimited')
+      : `${num(l)}${r.monthlyTokenLimit == null ? t('aiadm.companyDefault') : ''}`;
   };
   // 따로 고르지 않았으면 회사에 열린 모델 — 어느 모델인지 이름으로
   const companyModels = settings?.setting.allowed ?? [];
@@ -396,12 +403,12 @@ function Users({ settings }: { settings: SettingsRes | null }) {
           changes: [...draft.entries()].map(([userId, c]) => ({ userId, ...c })),
         }),
       });
-      toast({ type: 'success', title: `${draft.size}명의 권한을 저장했습니다` });
+      toast({ type: 'success', title: t('aiadm.savedN', { v0: draft.size }) });
       setDraft(new Map());
       setEditMode(false);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '저장하지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('aiadm.saveFailed')) });
     } finally {
       setSavingDraft(false);
     }
@@ -418,22 +425,24 @@ function Users({ settings }: { settings: SettingsRes | null }) {
         className={`${styles.checkCell} ${changed ? styles.checkChanged : ''}`}
         title={
           r.superUser
-            ? '전체 권한 계정이라 끌 수 없습니다'
+            ? t('aiadm.superCannotOff')
             : how === 'DEFAULT'
-              ? '권한 그룹을 따름'
-              : `개인 설정(${AI_ACCESS[how]})`
+              ? t('aiadm.followRole')
+              : t('aiadm.personal', { v0: AI_ACCESS[how] })
         }
         onClick={(e) => e.stopPropagation()}
       >
         <Checkbox
           checked={on}
           disabled={!editMode || r.superUser}
-          aria-label={kind === 'use' ? 'AI 비서 사용' : '에이전트 빌더 사용'}
+          aria-label={kind === 'use' ? t('aiadm.useAssistant') : t('aiadm.useBuilder')}
           onCheckedChange={(c) =>
             setDraftOf(r, kind === 'use' ? { use: c === true } : { builder: c === true })
           }
         />
-        {how !== 'DEFAULT' && !changed && <span className={styles.ownMark}>개인</span>}
+        {how !== 'DEFAULT' && !changed && (
+          <span className={styles.ownMark}>{t('aiadm.personalMark')}</span>
+        )}
       </span>
     );
   };
@@ -449,49 +458,49 @@ function Users({ settings }: { settings: SettingsRes | null }) {
     ...r,
     id: r.userId,
     who: r.name ?? r.loginId,
-    org: r.isExternal ? '외부 업체' : (r.orgUnitName ?? ''),
+    org: r.isExternal ? t('aiadm.external') : (r.orgUnitName ?? ''),
     position: r.positionName ?? '',
-    accessText: r.canUse ? '사용' : '안 씀',
-    builderText: r.canBuild ? '사용' : '안 씀',
+    accessText: r.canUse ? t('aiadm.on') : t('aiadm.off'),
+    builderText: r.canBuild ? t('aiadm.on') : t('aiadm.off'),
     modelsText: modelsText(r),
     limitText: limitText(r),
   }));
 
   const columns: Column[] = [
-    { title: '이름', dataIndex: 'who', width: 120 },
+    { title: t('aiadm.col.name'), dataIndex: 'who', width: 120 },
     { title: 'ID', dataIndex: 'loginId', width: 130 },
-    { title: '소속', dataIndex: 'org', minWidth: 120, flex: 1 },
-    { title: '직책', dataIndex: 'position', width: 80 },
+    { title: t('aiadm.col.org'), dataIndex: 'org', minWidth: 120, flex: 1 },
+    { title: t('aiadm.col.position'), dataIndex: 'position', width: 80 },
     {
-      title: 'AI 비서',
+      title: t('aiadm.col.assistant'),
       dataIndex: 'accessText',
       width: 90,
       render: (r) => checkCell(r as unknown as UserRow, 'use'),
     },
     {
-      title: '에이전트 빌더',
+      title: t('aiadm.col.builder'),
       dataIndex: 'builderText',
       width: 130,
       render: (r) => checkCell(r as unknown as UserRow, 'builder'),
     },
-    { title: '쓸 수 있는 모델', dataIndex: 'modelsText', minWidth: 140, flex: 1 },
-    { title: '월 한도(토큰)', dataIndex: 'limitText', width: 170 },
+    { title: t('aiadm.col.models'), dataIndex: 'modelsText', minWidth: 140, flex: 1 },
+    { title: t('aiadm.col.limit'), dataIndex: 'limitText', width: 170 },
     {
-      title: '호출',
+      title: t('aiadm.col.calls'),
       dataIndex: 'calls',
       width: 80,
       numeric: true,
       render: (r) => num(Number(r.calls)),
     },
     {
-      title: '사용 토큰',
+      title: t('aiadm.tokens'),
       dataIndex: 'tokens',
       width: 130,
       numeric: true,
       render: (r) => num(Number(r.tokens)),
     },
     {
-      title: '예상 비용',
+      title: t('aiadm.cost'),
       dataIndex: 'cost',
       width: 110,
       numeric: true,
@@ -518,13 +527,13 @@ function Users({ settings }: { settings: SettingsRes | null }) {
       <>
         <RecordDetail
           loading={!detail && loading}
-          title={detail ? (detail.name ?? detail.loginId) : '계정을 찾을 수 없습니다'}
-          backLabel="사용자 권한"
+          title={detail ? (detail.name ?? detail.loginId) : t('aiadm.notFound')}
+          backLabel={t('aiadm.tab.users')}
           onBack={close}
           actions={
             detail ? (
               <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
-                권한·한도 편집
+                {t('aiadm.editAccess')}
               </Button>
             ) : undefined
           }
@@ -532,46 +541,49 @@ function Users({ settings }: { settings: SettingsRes | null }) {
             detail
               ? [
                   {
-                    title: '계정',
+                    title: t('aiadm.account'),
                     items: [
                       { label: 'ID', value: detail.loginId },
-                      { label: '소속', value: detail.orgUnitName },
-                      { label: '직책', value: detail.positionName },
+                      { label: t('aiadm.col.org'), value: detail.orgUnitName },
+                      { label: t('aiadm.col.position'), value: detail.positionName },
                     ],
                   },
                   {
-                    title: 'AI 권한',
+                    title: t('aiadm.aiAccess'),
                     items: [
-                      { label: 'AI 비서', value: accessBadge(detail) },
-                      { label: '정하는 방법', value: AI_ACCESS[detail.access] },
+                      { label: t('aiadm.col.assistant'), value: accessBadge(detail) },
+                      { label: t('aiadm.howSet'), value: AI_ACCESS[detail.access] },
                       {
-                        label: '에이전트 빌더',
+                        label: t('aiadm.col.builder'),
                         value: (
                           <Badge variant="subtle" color={detail.canBuild ? 'success' : 'neutral'}>
-                            {detail.canBuild ? '사용 가능' : '권한 없음'}
+                            {detail.canBuild ? t('aiadm.usable') : t('aiadm.noAccess')}
                           </Badge>
                         ),
                       },
-                      { label: '정하는 방법', value: AI_ACCESS[detail.builderAccess] },
+                      { label: t('aiadm.howSet'), value: AI_ACCESS[detail.builderAccess] },
                       {
-                        label: '권한 그룹',
+                        label: t('aiadm.roleGroup'),
                         value: [
-                          detail.roleAllows ? "'AI 비서 사용' 있음" : "'AI 비서 사용' 없음",
+                          detail.roleAllows ? t('aiadm.roleHasUse') : t('aiadm.roleNoUse'),
                           detail.roleAllowsBuilder
-                            ? "'에이전트 빌더' 있음"
-                            : "'에이전트 빌더' 없음",
+                            ? t('aiadm.roleHasBuilder')
+                            : t('aiadm.roleNoBuilder'),
                         ].join(' · '),
                       },
-                      { label: '쓸 수 있는 모델', value: modelsText(detail) },
-                      { label: '월 한도(토큰)', value: limitText(detail) },
+                      { label: t('aiadm.col.models'), value: modelsText(detail) },
+                      { label: t('aiadm.col.limit'), value: limitText(detail) },
                     ],
                   },
                   {
-                    title: `${monthLabel(month)} 사용량`,
+                    title: t('aiadm.usageOf', { v0: monthLabel(month) }),
                     items: [
-                      { label: '호출', value: `${num(detail.calls)}번` },
                       {
-                        label: '사용 토큰',
+                        label: t('aiadm.col.calls'),
+                        value: t('aiadm.timesN', { v0: num(detail.calls) }),
+                      },
+                      {
+                        label: t('aiadm.tokens'),
                         value: (() => {
                           const l = limitOf(detail);
                           return l
@@ -579,7 +591,7 @@ function Users({ settings }: { settings: SettingsRes | null }) {
                             : num(detail.tokens);
                         })(),
                       },
-                      { label: '예상 비용', value: usd(detail.cost) },
+                      { label: t('aiadm.cost'), value: usd(detail.cost) },
                     ],
                   },
                 ]
@@ -601,7 +613,7 @@ function Users({ settings }: { settings: SettingsRes | null }) {
         loading={loading}
         onRowClick={editMode ? undefined : (r) => open(String(r.id))}
         exportable
-        exportFileName={`AI-사용자-${month}`}
+        exportFileName={t('aiadm.exportUsers', { v0: month })}
         toolbarActions={
           editMode ? (
             <>
@@ -613,7 +625,7 @@ function Users({ settings }: { settings: SettingsRes | null }) {
                   setEditMode(false);
                 }}
               >
-                취소
+                {t('aiadm.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -622,12 +634,13 @@ function Users({ settings }: { settings: SettingsRes | null }) {
                 disabled={!draft.size}
                 onClick={() => void saveDraft()}
               >
-                저장{draft.size ? ` (${draft.size}명)` : ''}
+                {t('aiadm.save')}
+                {draft.size ? t('aiadm.nPeople', { v0: draft.size }) : ''}
               </Button>
             </>
           ) : (
             <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
-              편집
+              {t('aiadm.edit')}
             </Button>
           )
         }
@@ -638,13 +651,13 @@ function Users({ settings }: { settings: SettingsRes | null }) {
                 value={month}
                 onValueChange={setMonth}
                 options={MONTHS.map((m) => ({ value: m, label: monthLabel(m) }))}
-                aria-label="달"
+                aria-label={t('aiadm.month')}
               />
             </div>
             <Checkbox
               checked={onlyActive}
               onCheckedChange={(c) => setOnlyActive(c === true)}
-              label="쓰는 계정만"
+              label={t('aiadm.activeOnly')}
             />
           </>
         }
@@ -667,6 +680,7 @@ function PolicyModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [access, setAccess] = useState<AiAccess>(user.access);
   const [builderAccess, setBuilderAccess] = useState<AiAccess>(user.builderAccess);
@@ -692,10 +706,10 @@ function PolicyModal({
           monthlyTokenLimit: limitMode === 'company' ? null : limitNum,
         }),
       });
-      toast({ type: 'success', title: '저장했습니다' });
+      toast({ type: 'success', title: t('aiadm.saved') });
       onSaved();
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '저장하지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('aiadm.saveFailed')) });
     } finally {
       setBusy(false);
     }
@@ -705,11 +719,11 @@ function PolicyModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`${user.name ?? user.loginId} — AI 권한`}
+      title={t('aiadm.accessTitle', { v0: user.name ?? user.loginId })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('aiadm.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -717,14 +731,14 @@ function PolicyModal({
             disabled={!limitOk || !modelsOk}
             onClick={() => void save()}
           >
-            저장
+            {t('aiadm.save')}
           </Button>
         </>
       }
     >
       <div className={styles.form}>
         <div className={styles.field}>
-          AI 사용
+          {t('aiadm.aiUse')}
           <ChoiceChips
             value={access}
             onChange={(v) => setAccess(v as AiAccess)}
@@ -735,14 +749,14 @@ function PolicyModal({
           />
           <p className={styles.hint}>
             {access === 'DEFAULT'
-              ? `권한 그룹의 'AI 비서 사용'을 따릅니다 — 지금 ${user.roleAllows ? '있음(사용 가능)' : '없음(사용 못 함)'}`
+              ? t('aiadm.followUse', { v0: user.roleAllows ? t('aiadm.hasUse') : t('aiadm.noUse') })
               : access === 'ALLOW'
-                ? '권한 그룹과 상관없이 AI 비서를 쓸 수 있습니다'
-                : 'AI 비서·에이전트 AI 단계를 쓸 수 없습니다'}
+                ? t('aiadm.allowHint')
+                : t('aiadm.blockHint')}
           </p>
         </div>
         <div className={styles.field}>
-          에이전트 빌더
+          {t('aiadm.col.builder')}
           <ChoiceChips
             value={builderAccess}
             onChange={(v) => setBuilderAccess(v as AiAccess)}
@@ -753,20 +767,22 @@ function PolicyModal({
           />
           <p className={styles.hint}>
             {builderAccess === 'DEFAULT'
-              ? `권한 그룹의 '에이전트 빌더'를 따릅니다 — 지금 ${user.roleAllowsBuilder ? '있음(만들 수 있음)' : '없음(만들 수 없음)'}`
+              ? t('aiadm.followBuilder', {
+                  v0: user.roleAllowsBuilder ? t('aiadm.hasBuilder') : t('aiadm.noBuilder'),
+                })
               : builderAccess === 'ALLOW'
-                ? '권한 그룹과 상관없이 에이전트를 만들고 고칠 수 있습니다'
-                : '에이전트를 만들거나 고칠 수 없습니다(쓰기만)'}
+                ? t('aiadm.allowBuilderHint')
+                : t('aiadm.blockBuilderHint')}
           </p>
         </div>
         <div className={styles.field}>
-          쓸 수 있는 모델
+          {t('aiadm.col.models')}
           <ChoiceChips
             value={allModels ? 'all' : 'pick'}
             onChange={(v) => setAllModels(v === 'all')}
             options={[
-              { value: 'all', label: '회사에 열린 모델 전부' },
-              { value: 'pick', label: '골라서 주기' },
+              { value: 'all', label: t('aiadm.allModels') },
+              { value: 'pick', label: t('aiadm.pickModels') },
             ]}
           />
           {!allModels && (
@@ -785,19 +801,21 @@ function PolicyModal({
               ))}
             </div>
           )}
-          {!modelsOk && <p className={styles.hint}>모델을 하나 이상 골라 주세요.</p>}
+          {!modelsOk && <p className={styles.hint}>{t('aiadm.pickOneModel')}</p>}
         </div>
         <div className={styles.field}>
-          월 한도(토큰)
+          {t('aiadm.col.limit')}
           <ChoiceChips
             value={limitMode}
             onChange={setLimitMode}
             options={[
               {
                 value: 'company',
-                label: `회사 기본 따르기(${companyLimit == null ? '무제한' : num(companyLimit)})`,
+                label: t('aiadm.followCompany', {
+                  v0: companyLimit == null ? t('aiadm.unlimited') : num(companyLimit),
+                }),
               },
-              { value: 'own', label: '따로 정하기' },
+              { value: 'own', label: t('aiadm.customLimit') },
             ]}
           />
           {limitMode === 'own' && (
@@ -806,15 +824,15 @@ function PolicyModal({
                 className={styles.limitInput}
                 inputMode="numeric"
                 value={limit}
-                placeholder="예: 2000000"
+                placeholder={t('aiadm.limitPh')}
                 onChange={(e) => setLimit(e.target.value.replace(/[^\d,]/g, ''))}
               />
-              <span className={styles.muted}>토큰 / 달 (0이면 못 씀)</span>
+              <span className={styles.muted}>{t('aiadm.perMonth')}</span>
             </div>
           )}
           <p className={styles.hint}>
-            이번 달 {num(user.tokens)} 토큰을 썼습니다. 한도를 넘으면 다음 달 1일(한국 시간)까지
-            AI를 쓸 수 없습니다.
+            {t('aiadm.thisMonth')} {num(user.tokens)} {t('aiadm.usedNote1')}
+            {t('aiadm.usedNote2')}
           </p>
         </div>
       </div>
@@ -825,6 +843,7 @@ function PolicyModal({
 // ── 사용 기록 ──
 
 function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [from, setFrom] = useState(daysAgo(6));
   const [to, setTo] = useState(kstToday());
@@ -851,7 +870,7 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
         setRows(r.rows);
         setTruncated(r.truncated);
       })
-      .catch((e) => toast({ type: 'error', title: errText(e, '불러오지 못했습니다') }))
+      .catch((e) => toast({ type: 'error', title: errText(e, t('aiadm.loadFailed')) }))
       .finally(() => setLoading(false));
   }, [from, to, feature, userId, toast]);
 
@@ -862,48 +881,48 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
         at: when(r.createdAt),
         featureName: AI_FEATURES[r.feature] ?? r.feature,
         modelName: modelName(models, r.model),
-        result: r.ok ? '성공' : '실패',
+        result: r.ok ? t('aiadm.ok') : t('aiadm.fail'),
         seconds: (r.durationMs / 1000).toFixed(1),
       })),
     [rows, models],
   );
 
   const columns: Column[] = [
-    { title: '시각', dataIndex: 'at', width: 170 },
-    ...(userId ? [] : [{ title: '사용자', dataIndex: 'userName', width: 110 }]),
-    { title: '기능', dataIndex: 'featureName', width: 140 },
-    { title: '모델', dataIndex: 'modelName', minWidth: 140, flex: 1 },
+    { title: t('aiadm.col.at'), dataIndex: 'at', width: 170 },
+    ...(userId ? [] : [{ title: t('aiadm.col.user'), dataIndex: 'userName', width: 110 }]),
+    { title: t('aiadm.col.feature'), dataIndex: 'featureName', width: 140 },
+    { title: t('aiadm.col.model'), dataIndex: 'modelName', minWidth: 140, flex: 1 },
     {
-      title: '입력',
+      title: t('aiadm.col.input'),
       dataIndex: 'inputTokens',
       width: 100,
       numeric: true,
       render: (r) => num(Number(r.inputTokens)),
     },
     {
-      title: '출력',
+      title: t('aiadm.col.output'),
       dataIndex: 'outputTokens',
       width: 100,
       numeric: true,
       render: (r) => num(Number(r.outputTokens)),
     },
     {
-      title: '캐시 읽기',
+      title: t('aiadm.col.cacheRead'),
       dataIndex: 'cacheReadTokens',
       width: 110,
       numeric: true,
       render: (r) => num(Number(r.cacheReadTokens)),
     },
     {
-      title: '비용',
+      title: t('aiadm.col.cost'),
       dataIndex: 'cost',
       width: 100,
       numeric: true,
       render: (r) => usd(r.cost as number | null),
     },
-    { title: '걸린 시간(초)', dataIndex: 'seconds', width: 110, numeric: true },
+    { title: t('aiadm.col.seconds'), dataIndex: 'seconds', width: 110, numeric: true },
     {
-      title: '결과',
+      title: t('aiadm.col.result'),
       dataIndex: 'result',
       width: 80,
       render: (r) => (
@@ -922,37 +941,51 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
         title={
           detail
             ? `${AI_FEATURES[detail.feature] ?? detail.feature} · ${when(detail.createdAt)}`
-            : '기록을 찾을 수 없습니다'
+            : t('aiadm.logNotFound')
         }
-        backLabel="사용 기록"
+        backLabel={t('aiadm.tab.logs')}
         onBack={close}
         sections={
           detail
             ? [
                 {
-                  title: '호출',
+                  title: t('aiadm.col.calls'),
                   items: [
-                    { label: '사용자', value: detail.userName },
-                    { label: '기능', value: AI_FEATURES[detail.feature] ?? detail.feature },
-                    { label: '모델', value: modelName(models, detail.model) },
-                    { label: '결과', value: detail.ok ? '성공' : '실패' },
-                    { label: '걸린 시간', value: `${(detail.durationMs / 1000).toFixed(1)}초` },
-                    { label: '대화·실행 id', value: detail.refId },
+                    { label: t('aiadm.col.user'), value: detail.userName },
+                    {
+                      label: t('aiadm.col.feature'),
+                      value: AI_FEATURES[detail.feature] ?? detail.feature,
+                    },
+                    { label: t('aiadm.col.model'), value: modelName(models, detail.model) },
+                    {
+                      label: t('aiadm.col.result'),
+                      value: detail.ok ? t('aiadm.ok') : t('aiadm.fail'),
+                    },
+                    {
+                      label: t('aiadm.duration'),
+                      value: t('aiadm.secondsN', { v0: (detail.durationMs / 1000).toFixed(1) }),
+                    },
+                    { label: t('aiadm.runId'), value: detail.refId },
                   ],
                 },
                 {
-                  title: '토큰',
+                  title: t('aiadm.col.tokens'),
                   items: [
-                    { label: '입력', value: num(detail.inputTokens) },
-                    { label: '출력', value: num(detail.outputTokens) },
-                    { label: '캐시 쓰기', value: num(detail.cacheWriteTokens) },
-                    { label: '캐시 읽기', value: num(detail.cacheReadTokens) },
-                    { label: '한도에 센 토큰', value: num(detail.tokens) },
-                    { label: '예상 비용', value: usd(detail.cost) },
+                    { label: t('aiadm.col.input'), value: num(detail.inputTokens) },
+                    { label: t('aiadm.col.output'), value: num(detail.outputTokens) },
+                    { label: t('aiadm.cacheWrite'), value: num(detail.cacheWriteTokens) },
+                    { label: t('aiadm.col.cacheRead'), value: num(detail.cacheReadTokens) },
+                    { label: t('aiadm.countedTokens'), value: num(detail.tokens) },
+                    { label: t('aiadm.cost'), value: usd(detail.cost) },
                   ],
                 },
                 ...(detail.error
-                  ? [{ title: '오류', items: [{ label: '내용', value: detail.error, wide: true }] }]
+                  ? [
+                      {
+                        title: t('aiadm.error'),
+                        items: [{ label: t('aiadm.content'), value: detail.error, wide: true }],
+                      },
+                    ]
                   : []),
               ]
             : []
@@ -963,16 +996,14 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
 
   return (
     <div className={styles.stack}>
-      {truncated && (
-        <p className={styles.notice}>기록이 많아 최근 2,000건만 보입니다. 기간을 줄여 보세요.</p>
-      )}
+      {truncated && <p className={styles.notice}>{t('aiadm.tooMany')}</p>}
       <DataTable
         columns={columns}
         rows={tableRows as unknown as Row[]}
         loading={loading}
         onRowClick={compact ? undefined : (r) => open(String(r.id))}
         exportable
-        exportFileName={`AI-사용기록-${from}-${to}`}
+        exportFileName={t('aiadm.exportLogs', { v0: from, v1: to })}
         filters={
           <>
             <Input
@@ -980,7 +1011,7 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
               className={styles.dateInput}
               value={from}
               max={to}
-              aria-label="시작일"
+              aria-label={t('aiadm.from')}
               onChange={(e) => e.target.value && setFrom(e.target.value)}
             />
             <span className={styles.muted}>~</span>
@@ -989,15 +1020,15 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
               className={styles.dateInput}
               value={to}
               min={from}
-              aria-label="종료일"
+              aria-label={t('aiadm.to')}
               onChange={(e) => e.target.value && setTo(e.target.value)}
             />
             <Select
               value={feature}
               onValueChange={setFeature}
-              aria-label="기능"
+              aria-label={t('aiadm.col.feature')}
               options={[
-                { value: 'ALL', label: '모든 기능' },
+                { value: 'ALL', label: t('aiadm.allFeatures') },
                 ...Object.entries(AI_FEATURES).map(([value, label]) => ({ value, label })),
               ]}
             />
@@ -1011,6 +1042,7 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
 // ── 모델 설정 ──
 
 function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: SettingsRes) => void }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [allowed, setAllowed] = useState<string[]>(data.setting.allowed);
   const [def, setDef] = useState(data.setting.defaultModel);
@@ -1044,11 +1076,14 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
       const added = res.models.filter((m) => !data.models.some((x) => x.id === m.id)).length;
       toast({
         type: 'success',
-        title: `모델 ${res.models.length}개를 받았습니다${added ? ` — 새 모델 ${added}개(켜야 쓸 수 있음)` : ''}`,
+        title: t('aiadm.fetched', {
+          v0: res.models.length,
+          v1: added ? t('aiadm.newModels', { v0: added }) : '',
+        }),
       });
       onSaved(res);
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '모델 목록을 받지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('aiadm.fetchFailed')) });
     } finally {
       setFetching(false);
     }
@@ -1077,10 +1112,10 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
         method: 'PUT',
         body: JSON.stringify(body),
       });
-      toast({ type: 'success', title: '저장했습니다' });
+      toast({ type: 'success', title: t('aiadm.saved') });
       onSaved(res);
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '저장하지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('aiadm.saveFailed')) });
     } finally {
       setBusy(false);
     }
@@ -1090,11 +1125,13 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
     <div className={styles.form}>
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <h3 className={styles.sectionTitle}>쓸 모델</h3>
+          <h3 className={styles.sectionTitle}>{t('aiadm.enabledModels')}</h3>
           <span className={styles.muted}>
             {data.catalog.live
-              ? `Claude에서 받은 목록 · ${data.catalog.fetchedAt ? when(data.catalog.fetchedAt) : ''}`
-              : '기본 목록(아직 Claude에서 받지 못함)'}
+              ? t('aiadm.fromClaude', {
+                  v0: data.catalog.fetchedAt ? when(data.catalog.fetchedAt) : '',
+                })
+              : t('aiadm.defaultList')}
           </span>
           <Button
             variant="outline"
@@ -1103,19 +1140,19 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
             disabled={!data.configured}
             onClick={() => void refreshModels()}
           >
-            모델 목록 새로 받기
+            {t('aiadm.refetch')}
           </Button>
         </div>
         <p className={styles.hint}>
-          목록은 Claude(Models API)에서 6시간마다 자동으로 받습니다 — 새 모델이 나오면 여기에
-          생기고(켜야 쓰임), 은퇴한 모델은 빠집니다. 켠 모델만 AI 비서·에이전트에서 고를 수
-          있습니다. 단가(달러 / 100만 토큰)를 넣으면 사용 현황에 예상 비용이 나옵니다 — Anthropic
-          콘솔 요금표의 값을 넣으세요.
+          {t('aiadm.modelsHelp1')}
+          {t('aiadm.modelsHelp2')}
+          {t('aiadm.modelsHelp3')}
+          {t('aiadm.modelsHelp4')}
         </p>
         <div className={`${styles.modelRow} ${styles.modelHead}`}>
-          <span>모델</span>
-          <span>입력 단가($)</span>
-          <span>출력 단가($)</span>
+          <span>{t('aiadm.col.model')}</span>
+          <span>{t('aiadm.inPrice')}</span>
+          <span>{t('aiadm.outPrice')}</span>
         </div>
         {data.models.map((m) => (
           <div key={m.id} className={styles.modelRow}>
@@ -1128,19 +1165,19 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
                 label={m.label}
               />
               <span className={styles.modelHint}>
-                {m.hint || (m.chat ? '대화·에이전트' : '짧은 분류·요약')}
+                {m.hint || (m.chat ? t('aiadm.use.chat') : t('aiadm.use.light'))}
               </span>
               {m.lifecycle === 'deprecated' && (
                 <Badge variant="subtle" color="warning" size="sm">
-                  곧 종료
+                  {t('aiadm.retiring')}
                 </Badge>
               )}
             </div>
             <Input
               inputMode="decimal"
               value={prices[m.id]?.input ?? ''}
-              placeholder="비움"
-              aria-label={`${m.label} 입력 단가`}
+              placeholder={t('aiadm.empty')}
+              aria-label={t('aiadm.inPriceOf', { v0: m.label })}
               onChange={(e) =>
                 setPrices((p) => ({
                   ...p,
@@ -1151,8 +1188,8 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
             <Input
               inputMode="decimal"
               value={prices[m.id]?.output ?? ''}
-              placeholder="비움"
-              aria-label={`${m.label} 출력 단가`}
+              placeholder={t('aiadm.empty')}
+              aria-label={t('aiadm.outPriceOf', { v0: m.label })}
               onChange={(e) =>
                 setPrices((p) => ({
                   ...p,
@@ -1162,35 +1199,33 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
             />
           </div>
         ))}
-        {!allowed.length && <p className={styles.hint}>모델을 하나 이상 켜 두어야 합니다.</p>}
-        {priceBad && <p className={styles.hint}>단가는 입력·출력을 함께 넣어 주세요.</p>}
+        {!allowed.length && <p className={styles.hint}>{t('aiadm.needOneModel')}</p>}
+        {priceBad && <p className={styles.hint}>{t('aiadm.pricePair')}</p>}
       </section>
 
       <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>기본 모델</h3>
-        <p className={styles.hint}>
-          AI 비서 새 대화와 에이전트 만들기에 쓰는 모델입니다. 켜 둔 대화용 모델 중에서 고릅니다.
-        </p>
+        <h3 className={styles.sectionTitle}>{t('aiadm.defaultModel')}</h3>
+        <p className={styles.hint}>{t('aiadm.defaultModelHint')}</p>
         <ChoiceChips
           value={def}
           onChange={setDef}
           options={chatModels.map((m) => ({ value: m.id, label: m.label }))}
         />
-        {!defOk && <p className={styles.hint}>기본 모델을 골라 주세요.</p>}
+        {!defOk && <p className={styles.hint}>{t('aiadm.pickDefault')}</p>}
       </section>
 
       <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>기본 월 한도</h3>
+        <h3 className={styles.sectionTitle}>{t('aiadm.defaultLimit')}</h3>
         <p className={styles.hint}>
-          사람마다 따로 정하지 않은 계정에 쓰는 한 달 한도입니다(입력 + 출력 토큰, 캐시 읽기 제외).
-          사람별 한도는 &apos;사용자 권한&apos;에서 정합니다.
+          {t('aiadm.defaultLimitHint1')}
+          {t('aiadm.defaultLimitHint2')}
         </p>
         <ChoiceChips
           value={limitMode}
           onChange={setLimitMode}
           options={[
-            { value: 'none', label: '무제한' },
-            { value: 'limit', label: '한도 정하기' },
+            { value: 'none', label: t('aiadm.unlimited') },
+            { value: 'limit', label: t('aiadm.setLimit') },
           ]}
         />
         {limitMode === 'limit' && (
@@ -1199,10 +1234,10 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
               className={styles.limitInput}
               inputMode="numeric"
               value={limit}
-              placeholder="예: 5000000"
+              placeholder={t('aiadm.limitPh2')}
               onChange={(e) => setLimit(e.target.value.replace(/[^\d,]/g, ''))}
             />
-            <span className={styles.muted}>토큰 / 사람 / 달</span>
+            <span className={styles.muted}>{t('aiadm.perPersonMonth')}</span>
           </div>
         )}
       </section>
@@ -1210,7 +1245,7 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
       <div className={styles.actions}>
         {data.setting.updatedAt && (
           <span className={styles.muted} style={{ marginRight: 'auto' }}>
-            마지막 저장 {when(data.setting.updatedAt)}
+            {t('aiadm.lastSaved')} {when(data.setting.updatedAt)}
           </span>
         )}
         <Button
@@ -1219,7 +1254,7 @@ function SettingsForm({ data, onSaved }: { data: SettingsRes; onSaved: (s: Setti
           disabled={!allowed.length || !defOk || !limitOk || priceBad}
           onClick={() => void save()}
         >
-          저장
+          {t('aiadm.save')}
         </Button>
       </div>
     </div>
