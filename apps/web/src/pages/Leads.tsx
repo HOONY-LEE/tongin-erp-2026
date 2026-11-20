@@ -212,7 +212,7 @@ export default function Leads() {
         return emp ? (
           <EmployeeChip emp={emp} />
         ) : (
-          <span style={{ color: 'var(--ark-color-text-tertiary)' }}>미배정</span>
+          <span style={{ color: 'var(--ark-color-text-tertiary)' }}>-</span>
         );
       },
       exportValue: (r) => (r.ownerEmp as EmployeeBrief | null)?.name ?? '',
