@@ -104,7 +104,7 @@ function cellMeasure(c: Column, r: Row) {
             .trim()
         : cellText(c, r);
   // 상태 칩(좌우 여백 18px) · 복사 아이콘(15px + 4px) · 직원 칩(동그라미·여백 40px)
-  const copy = html.includes('복사"');
+  const copy = html.includes('data-copy');
   const extra =
     (html.includes('sft-chip') ? 20 : 0) + (copy ? 20 : 0) + (html.includes('emp-chip') ? 40 : 0);
   return { text, extra, mono: copy };

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { CSSProperties } from 'react';
 import styles from './skeleton.module.css';
 
@@ -40,8 +41,9 @@ export function SkeletonText({ lines = 3, gap = 8 }: { lines?: number; gap?: num
 export function TableSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: number }) {
   // 열마다 폭을 조금씩 달리해 진짜 표처럼 보이게
   const widths = ['70%', '55%', '80%', '45%', '65%', '50%', '75%'];
+  const { t } = useTranslation();
   return (
-    <div className={styles.table} role="status" aria-label="불러오는 중">
+    <div className={styles.table} role="status" aria-label={t('ui.loadingShort')}>
       <div className={styles.toolbar}>
         <Skeleton width={220} height={32} radius={8} />
         <Skeleton width={90} height={32} radius={8} />
@@ -64,8 +66,9 @@ export function TableSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: nu
 
 /** 상세 화면 자리 — 제목·태그·카드 몇 개 */
 export function PageSkeleton({ cards = 2 }: { cards?: number }) {
+  const { t } = useTranslation();
   return (
-    <div className={styles.page} role="status" aria-label="불러오는 중">
+    <div className={styles.page} role="status" aria-label={t('ui.loadingShort')}>
       <div className={styles.header}>
         <Skeleton width={260} height={28} radius={8} />
         <span className={styles.row}>

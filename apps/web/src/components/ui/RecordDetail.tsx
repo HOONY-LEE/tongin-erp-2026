@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { PageHeader } from './PageHeader';
 import { Skeleton } from './Skeleton';
@@ -39,10 +40,11 @@ export function RecordDetail({
   /** 항목 카드 아래에 더 둘 내용(관련 목록 등) */
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
-        title={loading ? '불러오는 중…' : title}
+        title={loading ? t('ui.loading') : title}
         breadcrumbs={[{ label: backLabel, onClick: onBack }]}
         actions={actions}
       />

@@ -199,7 +199,7 @@ export function AddressField({ addrPrefix, label, values, setField, required }: 
                       fontSize: fs(13),
                     }}
                   >
-                    불러오는 중…
+                    {t('ui.loading')}
                   </div>
                 )}
                 <div ref={containerRef} style={{ width: '100%', height: '100%' }} />

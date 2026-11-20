@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ImagePlus, RotateCw, Undo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button, Modal } from '../ui';
@@ -24,6 +25,7 @@ export function PhotoCropModal({
   /** 잘라 만든 사진(JPEG base64, 미리보기용 blob URL) */
   onSave: (jpegBase64: string, previewUrl: string) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [img, setImg] = useState<Img | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -72,13 +74,13 @@ export function PhotoCropModal({
     if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
       setError(
         file.type === 'image/heic' || /\.heic$/i.test(file.name)
-          ? 'HEIC 사진은 바로 쓸 수 없습니다. JPG·PNG로 바꿔 올려 주세요.'
-          : 'JPG·PNG·WebP 사진만 쓸 수 있습니다.',
+          ? t('employee.photo.heic')
+          : t('employee.photo.type'),
       );
       return;
     }
     if (file.size > 20 * 1024 * 1024) {
-      setError('20MB보다 작은 사진을 골라 주세요.');
+      setError(t('employee.photo.size'));
       return;
     }
     const url = URL.createObjectURL(file);
@@ -94,7 +96,7 @@ export function PhotoCropModal({
     };
     el.onerror = () => {
       URL.revokeObjectURL(url);
-      setError('사진을 열 수 없습니다.');
+      setError(t('employee.photo.openFailed'));
     };
     el.src = url;
   };
@@ -155,14 +157,14 @@ export function PhotoCropModal({
     ctx.scale(scale, scale);
     ctx.drawImage(img.el, -img.w / 2, -img.h / 2);
     const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.9));
-    if (!blob) return setError('사진을 만들지 못했습니다.');
+    if (!blob) return setError(t('employee.photo.makeFailed'));
     const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
     setSaving(true);
     try {
       await onSave(base64, URL.createObjectURL(blob));
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '저장하지 못했습니다.');
+      setError(e instanceof Error ? e.message : t('employee.photo.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -183,15 +185,15 @@ export function PhotoCropModal({
     <Modal
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="프로필 사진"
+      title={t('employee.photo.title')}
       size="md"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('employee.photo.cancel')}
           </Button>
           <Button variant="primary" onClick={() => void save()} disabled={!img || saving}>
-            {saving ? '저장 중…' : '저장'}
+            {saving ? t('employee.photo.saving') : t('employee.photo.save')}
           </Button>
         </>
       }
@@ -236,8 +238,8 @@ export function PhotoCropModal({
           ) : (
             <div className={styles.empty}>
               <ImagePlus size={28} aria-hidden />
-              <b>사진 고르기</b>
-              <span>누르거나 여기로 끌어다 놓으세요</span>
+              <b>{t('employee.photo.pick')}</b>
+              <span>{t('employee.photo.drop')}</span>
             </div>
           )}
         </div>
@@ -250,13 +252,11 @@ export function PhotoCropModal({
               </div>
             ))}
           </div>
-          <p className={styles.hint}>
-            사진을 끌어서 위치를 맞추고, 아래 막대나 마우스 휠로 크기를 조절하세요.
-          </p>
+          <p className={styles.hint}>{t('employee.photo.hint')}</p>
           <div className={styles.zoom}>
             <button
               type="button"
-              aria-label="축소"
+              aria-label={t('employee.photo.zoomOut')}
               disabled={!img}
               onClick={() => setZoomKeep(zoom - 0.2)}
             >
@@ -270,11 +270,11 @@ export function PhotoCropModal({
               value={zoom}
               disabled={!img}
               onChange={(e) => setZoomKeep(Number(e.target.value))}
-              aria-label="확대"
+              aria-label={t('employee.photo.zoomIn')}
             />
             <button
               type="button"
-              aria-label="확대"
+              aria-label={t('employee.photo.zoomIn')}
               disabled={!img}
               onClick={() => setZoomKeep(zoom + 0.2)}
             >
@@ -288,7 +288,7 @@ export function PhotoCropModal({
               disabled={!img}
               onClick={() => setRot((r) => (r + 90) % 360)}
             >
-              <RotateCw size={14} /> 90° 회전
+              <RotateCw size={14} /> {t('employee.photo.rotate')}
             </Button>
             <Button
               variant="outline"
@@ -300,10 +300,10 @@ export function PhotoCropModal({
                 setPos({ x: 0, y: 0 });
               }}
             >
-              <Undo2 size={14} /> 처음대로
+              <Undo2 size={14} /> {t('employee.photo.reset')}
             </Button>
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-              <ImagePlus size={14} /> 다른 사진
+              <ImagePlus size={14} /> {t('employee.photo.other')}
             </Button>
           </div>
           {error && <p className={styles.error}>{error}</p>}

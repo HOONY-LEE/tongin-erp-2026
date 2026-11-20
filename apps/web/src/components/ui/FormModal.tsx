@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button, Combobox, Input, Modal, Select, Textarea, useToast } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import type { FormField } from './types';
 import { AddressField } from './AddressField';
 import { PhoneInput } from './PhoneInput';
@@ -156,7 +157,8 @@ export function FormModal({
               }}
             >
               {showOptional ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              선택 항목 {showOptional ? '접기' : `더보기 (${hiddenFields.length})`}
+              {t('ui.optional')}{' '}
+              {showOptional ? t('ui.collapse') : t('ui.more', { n: hiddenFields.length })}
             </button>
             {showOptional && renderRows(hiddenFields, values, setField)}
           </>
@@ -280,9 +282,9 @@ function renderControl(
               ? f.optionGroups.flatMap((g) => g.options.map((o) => ({ ...o, group: g.label })))
               : (f.options ?? [])
           }
-          placeholder={f.placeholder ?? '이름으로 찾기'}
-          searchPlaceholder="찾기"
-          emptyMessage="찾는 항목이 없습니다"
+          placeholder={f.placeholder ?? i18n.t('ui.findByName')}
+          searchPlaceholder={i18n.t('ui.find')}
+          emptyMessage={i18n.t('ui.noMatch')}
           clearable
           disabled={f.disabled}
         />
@@ -295,8 +297,8 @@ function renderControl(
             f.options ??
             (f.type === 'boolean'
               ? [
-                  { value: 'true', label: '사용' },
-                  { value: 'false', label: '사용 안 함' },
+                  { value: 'true', label: i18n.t('ui.use') },
+                  { value: 'false', label: i18n.t('ui.notUse') },
                 ]
               : [])
           }

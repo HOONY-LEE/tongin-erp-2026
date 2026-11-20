@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n, { tDyn } from '../../i18n';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { createPortal } from 'react-dom';
 import { ExternalLink, History, Printer, X } from 'lucide-react';
@@ -21,19 +23,14 @@ interface Revision {
   approval: { docNo: string; status: string } | null;
 }
 
-const KIND: Record<string, { label: string; color: string }> = {
-  BASE: { label: '처음', color: APPLE.gray },
-  EDIT: { label: '수정', color: APPLE.blue },
-  PRICE_REQUEST: { label: '금액 승인 요청', color: APPLE.orange },
-  PRICE_APPROVED: { label: '금액 승인 반영', color: APPLE.green },
-  PRICE_REJECTED: { label: '금액 반려', color: APPLE.red },
-  PRICE_CANCELED: { label: '요청 취소', color: APPLE.gray },
-};
-const APPROVAL_STATUS: Record<string, string> = {
-  PENDING: '결재 중',
-  APPROVED: '승인',
-  REJECTED: '반려',
-  CANCELED: '취소',
+/** 이력 종류 색 — 이름은 ui.doc.kind.* */
+const KIND_COLOR: Record<string, string> = {
+  BASE: APPLE.gray,
+  EDIT: APPLE.blue,
+  PRICE_REQUEST: APPLE.orange,
+  PRICE_APPROVED: APPLE.green,
+  PRICE_REJECTED: APPLE.red,
+  PRICE_CANCELED: APPLE.gray,
 };
 const when = (iso: string) => fmtDateTime(iso);
 
@@ -45,7 +42,7 @@ async function fetchHtml(path: string) {
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new ApiError(res.status, body?.message ?? '문서를 불러오지 못했습니다');
+    throw new ApiError(res.status, body?.message ?? i18n.t('ui.doc.loadFailed'));
   }
   return res.text();
 }
@@ -72,6 +69,7 @@ export function DocumentViewer({
   estimatePath?: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const frame = useRef<HTMLIFrameElement>(null);
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +112,8 @@ export function DocumentViewer({
   }, [onClose]);
 
   /** 저장 파일 이름 — 이력 문서면 뒤에 '_수정N' */
-  const revLabel = (r: Revision) => (r.kind === 'BASE' ? '처음' : `수정${r.seq}`);
+  const revLabel = (r: Revision) =>
+    r.kind === 'BASE' ? t('ui.doc.revFirst') : t('ui.doc.revN', { n: r.seq });
   const saveName = fileName ? `${fileName}${viewing ? `_${revLabel(viewing)}` : ''}` : title;
   const esc = (t: string) => t.replace(/[<>&]/g, '');
   // 문서 안의 자체 인쇄 막대는 숨기고(이 창 위쪽 막대에 같은 버튼), 제목을 저장 파일 이름으로
@@ -158,22 +157,23 @@ export function DocumentViewer({
                 aria-pressed={historyOpen}
               >
                 <History size={15} aria-hidden />
-                수정 이력
+                {t('ui.doc.history')}
               </button>
             )}
-            <button
-              type="button"
-              disabled={!html}
-              onClick={print}
-              title="인쇄 창에서 'PDF로 저장'을 고르면 PDF 파일로 저장됩니다"
-            >
+            <button type="button" disabled={!html} onClick={print} title={t('ui.doc.printTip')}>
               <Printer size={15} aria-hidden />
-              PDF 저장 · 인쇄
+              {t('ui.doc.print')}
             </button>
             <button type="button" disabled={!html} onClick={openNew}>
-              <ExternalLink size={15} aria-hidden />새 창
+              <ExternalLink size={15} aria-hidden />
+              {t('ui.doc.newWindow')}
             </button>
-            <button type="button" className={styles.close} onClick={onClose} aria-label="닫기">
+            <button
+              type="button"
+              className={styles.close}
+              onClick={onClose}
+              aria-label={t('ui.close')}
+            >
               <X size={18} />
             </button>
           </div>
@@ -183,11 +183,13 @@ export function DocumentViewer({
             {viewing && (
               <div className={styles.past}>
                 <span>
-                  {when(viewing.createdAt)} 기준 계약서({revLabel(viewing)}) — 지금 계약서가
-                  아닙니다
+                  {t('ui.doc.pastNotice', {
+                    when: when(viewing.createdAt),
+                    rev: revLabel(viewing),
+                  })}
                 </span>
                 <button type="button" onClick={() => setViewing(null)}>
-                  지금 계약서 보기
+                  {t('ui.doc.viewCurrent')}
                 </button>
               </div>
             )}
@@ -209,21 +211,21 @@ export function DocumentViewer({
             )}
           </div>
           {historyOpen && (
-            <aside className={styles.history} aria-label="수정 이력">
-              <h3>수정 이력</h3>
+            <aside className={styles.history} aria-label={t('ui.doc.history')}>
+              <h3>{t('ui.doc.history')}</h3>
               {!revisions ? (
                 <div className={styles.historyMsg}>
                   <Spinner size="sm" />
                 </div>
               ) : revisions.length === 0 ? (
-                <p className={styles.historyMsg}>
-                  아직 고친 적이 없습니다. 계약서를 고치면 누가·언제·무엇을 바꿨는지 여기에
-                  남습니다.
-                </p>
+                <p className={styles.historyMsg}>{t('ui.doc.noHistory')}</p>
               ) : (
                 <ol className={styles.revList}>
                   {revisions.map((r) => {
-                    const k = KIND[r.kind] ?? { label: r.kind, color: APPLE.gray };
+                    const k = {
+                      label: tDyn(`ui.doc.kind.${r.kind}`, r.kind),
+                      color: KIND_COLOR[r.kind] ?? APPLE.gray,
+                    };
                     return (
                       <li
                         key={r.id}
@@ -232,14 +234,15 @@ export function DocumentViewer({
                         <div className={styles.revHead}>
                           <StatusChip color={k.color}>{k.label}</StatusChip>
                           <span className={styles.revWho}>
-                            {r.byName ?? (r.kind === 'BASE' ? '원본' : '-')}
+                            {r.byName ?? (r.kind === 'BASE' ? t('ui.doc.original') : '-')}
                           </span>
                           <time className="id-mono">{when(r.createdAt)}</time>
                         </div>
                         {r.approval && (
                           <div className={styles.revMeta}>
-                            결재 <span className="id-mono">{r.approval.docNo}</span> ·{' '}
-                            {APPROVAL_STATUS[r.approval.status] ?? r.approval.status}
+                            {t('ui.doc.approval')}{' '}
+                            <span className="id-mono">{r.approval.docNo}</span> ·{' '}
+                            {tDyn(`ui.doc.approvalStatus.${r.approval.status}`, r.approval.status)}
                           </div>
                         )}
                         {r.summary && r.kind === 'BASE' && (
@@ -264,7 +267,7 @@ export function DocumentViewer({
                             className={styles.revView}
                             onClick={() => setViewing(viewing?.id === r.id ? null : r)}
                           >
-                            {viewing?.id === r.id ? '지금 계약서 보기' : '이 시점 계약서 보기'}
+                            {viewing?.id === r.id ? t('ui.doc.viewCurrent') : t('ui.doc.viewThis')}
                           </button>
                         )}
                       </li>

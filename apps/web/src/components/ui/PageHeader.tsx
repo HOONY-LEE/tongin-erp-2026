@@ -90,8 +90,8 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
     <button
       type="button"
       onClick={back.onClick}
-      aria-label={`${back.label}(으)로 돌아가기`}
-      title={`${back.label}(으)로`}
+      aria-label={t('ui.backTo', { label: back.label })}
+      title={t('ui.backToShort', { label: back.label })}
       style={{
         display: 'grid',
         placeItems: 'center',

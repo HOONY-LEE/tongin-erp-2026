@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { Button, Modal } from '@sunghoon_lee/akron-ui';
 
@@ -6,7 +7,7 @@ export function ConfirmModal({
   open,
   title,
   children,
-  confirmLabel = '확인',
+  confirmLabel,
   danger = false,
   busy = false,
   onConfirm,
@@ -21,6 +22,7 @@ export function ConfirmModal({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal
       open={open}
@@ -29,10 +31,10 @@ export function ConfirmModal({
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            취소
+            {t('ui.cancel')}
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} disabled={busy}>
-            {confirmLabel}
+            {confirmLabel ?? t('ui.confirm')}
           </Button>
         </>
       }

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { tDyn } from '../i18n';
 import { PageCard, PageHeader } from '../components/ui';
 import { fs } from '../lib/fontScale';
 
@@ -7,8 +8,8 @@ export default function Placeholder({ titleKey }: { titleKey: string }) {
   const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader title={t(titleKey)} />
-      <PageCard title="안내">
+      <PageHeader title={tDyn(titleKey)} />
+      <PageCard title={t('ui.notice')}>
         <div
           style={{
             padding: '56px 0',
@@ -17,7 +18,7 @@ export default function Placeholder({ titleKey }: { titleKey: string }) {
             fontSize: fs(14),
           }}
         >
-          화면 준비 중입니다 — 곧 제공될 예정입니다.
+          {t('ui.comingSoon')}
         </div>
       </PageCard>
     </div>

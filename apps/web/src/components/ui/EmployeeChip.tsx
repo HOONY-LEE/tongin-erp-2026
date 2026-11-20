@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -21,11 +22,12 @@ export interface EmployeeBrief {
 
 /** 재직 상태 — 퇴사일이 있으면 퇴사, 아니면 활성 여부 */
 const statusOf = (e: EmployeeBrief) =>
-  e.resignDate ? '퇴사' : e.isActive === false ? '비활성' : '재직';
+  e.resignDate ? 'resigned' : e.isActive === false ? 'inactive' : 'active';
 
 /** 직원 칩 — 누르면 프로필 요약(이름·직책·소속·연락처)이 뜨고, '자세히'는 직원 상세 화면으로 */
 export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const btn = useRef<HTMLButtonElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -82,7 +84,7 @@ export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
           <div
             ref={pop}
             role="dialog"
-            aria-label={`${emp.name} 프로필`}
+            aria-label={t('ui.emp.profileOf', { name: emp.name })}
             className={styles.pop}
             style={pos ?? { visibility: 'hidden', top: 0, left: 0 }}
             onClick={(e) => e.stopPropagation()}
@@ -93,9 +95,9 @@ export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
                 <b>
                   {emp.name}
                   <span
-                    className={`${styles.status} ${statusOf(emp) === '재직' ? styles.statusOn : ''}`}
+                    className={`${styles.status} ${statusOf(emp) === 'active' ? styles.statusOn : ''}`}
                   >
-                    {statusOf(emp)}
+                    {t(`ui.emp.${statusOf(emp)}`)}
                   </span>
                 </b>
                 {sub && <small>{sub}</small>}
@@ -105,18 +107,18 @@ export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
               <dl className={styles.info}>
                 <div>
                   <dt>
-                    <Phone size={13} aria-label="연락처" />
+                    <Phone size={13} aria-label={t('ui.emp.phone')} />
                   </dt>
                   <dd className={emp.phone ? 'dt-num' : styles.none}>
-                    {emp.phone ? formatPhone(emp.phone) : '연락처 없음'}
+                    {emp.phone ? formatPhone(emp.phone) : t('ui.emp.noPhone')}
                   </dd>
                 </div>
                 <div>
                   <dt>
-                    <Mail size={13} aria-label="이메일" />
+                    <Mail size={13} aria-label={t('ui.emp.email')} />
                   </dt>
                   <dd className={emp.email ? undefined : styles.none}>
-                    {emp.email ?? '이메일 없음'}
+                    {emp.email ?? t('ui.emp.noEmail')}
                   </dd>
                 </div>
               </dl>
@@ -129,7 +131,7 @@ export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
                 navigate(`/profile/${encodeURIComponent(emp.id)}`);
               }}
             >
-              자세히
+              {t('ui.emp.detail')}
               <ChevronRight size={14} aria-hidden />
             </button>
           </div>,

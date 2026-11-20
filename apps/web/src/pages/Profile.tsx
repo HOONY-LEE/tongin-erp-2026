@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Camera, KeyRound, Pencil } from 'lucide-react';
 import { EMPLOYMENT_TYPE_LABEL, type EmploymentType } from '@tongin/shared';
+import { codeLabel } from '../i18n';
 import { Badge, Button, FormModal, PageHeader, Spinner, useToast } from '../components/ui';
 import type { FormField } from '../components/ui/types';
 import { EmployeeAvatar } from '../components/employee/EmployeeAvatar';
@@ -46,6 +48,7 @@ export default function Profile() {
   const { id: paramId } = useParams();
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
   const id = paramId ?? user?.employeeId ?? null;
   const [p, setP] = useState<ProfileData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,9 +62,9 @@ export default function Profile() {
       setP(await api<ProfileData>(`/employees/${id}/profile`));
       setError(null);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '프로필을 불러오지 못했습니다');
+      setError(e instanceof ApiError ? e.message : t('profile.loadFailed'));
     }
-  }, [id]);
+  }, [id, t]);
   useEffect(() => {
     setP(null);
     void load();
@@ -70,60 +73,60 @@ export default function Profile() {
   if (!id)
     return (
       <>
-        <PageHeader title="프로필" />
-        <p style={{ color: 'var(--ark-color-text-secondary)' }}>
-          직원과 연결된 계정이 아니라 프로필이 없습니다.
-        </p>
+        <PageHeader title={t('profile.title')} />
+        <p style={{ color: 'var(--ark-color-text-secondary)' }}>{t('profile.noEmployee')}</p>
       </>
     );
   if (error)
     return (
       <>
-        <PageHeader title="프로필" />
+        <PageHeader title={t('profile.title')} />
         <p style={{ color: 'var(--ark-color-text-secondary)' }}>{error}</p>
       </>
     );
   if (!p)
     return (
       <>
-        <PageHeader title="프로필" />
+        <PageHeader title={t('profile.title')} />
         <Spinner size="md" />
       </>
     );
 
   const status = p.resignDate ? (
     <Badge variant="subtle" color="neutral">
-      퇴사 {d10(p.resignDate)}
+      {t('profile.resigned', { date: d10(p.resignDate) ?? '' })}
     </Badge>
   ) : (
     <Badge variant="subtle" color={p.isActive ? 'success' : 'neutral'}>
-      {p.isActive ? '재직' : '비활성'}
+      {p.isActive ? t('profile.active') : t('profile.inactive')}
     </Badge>
   );
   const showPrivate = p.addr !== undefined;
   // 프로필 항목 — 이름 · ID · 사번 · 입사일 · 고용 형태 · 연락처 · 직책 · 소속 · 상태 · 주소 · 이메일 · 메모 · 권한
   const items: { label: string; value: React.ReactNode; wide?: boolean }[] = [
-    { label: '이름', value: p.name },
+    { label: t('profile.f.name'), value: p.name },
     {
-      label: 'ID',
+      label: t('profile.f.id'),
       value: p.loginIds.length
-        ? p.loginIds.map((u) => `${u.loginId}${u.isActive ? '' : ' (로그인 막힘)'}`).join(', ')
-        : '계정 없음',
+        ? p.loginIds
+            .map((u) => `${u.loginId}${u.isActive ? '' : t('profile.loginBlocked')}`)
+            .join(', ')
+        : t('profile.noAccount'),
     },
-    { label: '사번', value: p.empNo },
-    { label: '입사일', value: d10(p.hireDate) },
+    { label: t('profile.f.empNo'), value: p.empNo },
+    { label: t('profile.f.hireDate'), value: d10(p.hireDate) },
     {
-      label: '고용 형태',
-      value: EMPLOYMENT_TYPE_LABEL[p.employmentType] ?? p.employmentType,
+      label: t('profile.f.employmentType'),
+      value: codeLabel('employmentType', p.employmentType, EMPLOYMENT_TYPE_LABEL),
     },
-    { label: '연락처', value: p.phone ? formatPhone(p.phone) : null },
-    { label: '직책', value: p.position?.name },
-    { label: '소속', value: p.orgUnit?.name },
-    { label: '상태', value: status },
+    { label: t('profile.f.phone'), value: p.phone ? formatPhone(p.phone) : null },
+    { label: t('profile.f.position'), value: p.position?.name },
+    { label: t('profile.f.orgUnit'), value: p.orgUnit?.name },
+    { label: t('profile.f.status'), value: status },
     ...(showPrivate
       ? [
           {
-            label: '주소',
+            label: t('profile.f.address'),
             wide: true,
             value: p.addr
               ? `${p.addr}${p.addrDetail ? ` ${p.addrDetail}` : ''}${p.zipcode ? `(${p.zipcode})` : ''}`
@@ -131,10 +134,10 @@ export default function Profile() {
           },
         ]
       : []),
-    { label: '이메일', value: p.email },
-    ...(showPrivate ? [{ label: '메모', wide: true, value: p.memo }] : []),
+    { label: t('profile.f.email'), value: p.email },
+    ...(showPrivate ? [{ label: t('profile.f.memo'), wide: true, value: p.memo }] : []),
     {
-      label: '권한',
+      label: t('profile.f.roles'),
       wide: true,
       value: p.roles.length ? (
         <span className={styles.roles}>
@@ -149,23 +152,23 @@ export default function Profile() {
   ];
 
   const editFields: FormField[] = [
-    { name: 'phone', label: '연락처', type: 'tel' },
-    { name: 'email', label: '이메일' },
-    { name: 'address', label: '주소', type: 'address', addrPrefix: '' },
+    { name: 'phone', label: t('profile.f.phone'), type: 'tel' },
+    { name: 'email', label: t('profile.f.email') },
+    { name: 'address', label: t('profile.f.address'), type: 'address', addrPrefix: '' },
   ];
 
   return (
     <>
       <PageHeader
-        title={p.self ? '내 프로필' : `${p.name} 프로필`}
+        title={p.self ? t('profile.mine') : t('profile.ofName', { name: p.name })}
         actions={
           p.self ? (
             <>
               <Button variant="outline" size="sm" onClick={() => setPwOpen(true)}>
-                <KeyRound size={14} /> 비밀번호 변경
+                <KeyRound size={14} /> {t('profile.changePw')}
               </Button>
               <Button variant="primary" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil size={14} /> 수정
+                <Pencil size={14} /> {t('profile.edit')}
               </Button>
             </>
           ) : undefined
@@ -179,8 +182,8 @@ export default function Profile() {
               type="button"
               className={styles.photoEdit}
               onClick={() => setCropOpen(true)}
-              aria-label="프로필 사진 바꾸기"
-              title="프로필 사진 바꾸기"
+              aria-label={t('profile.changePhoto')}
+              title={t('profile.changePhoto')}
             >
               <Camera size={14} />
             </button>
@@ -215,7 +218,7 @@ export default function Profile() {
           <FormModal
             open={editOpen}
             onOpenChange={setEditOpen}
-            title="내 프로필 수정"
+            title={t('profile.editTitle')}
             size="sm"
             fields={editFields}
             initialValues={{
@@ -239,11 +242,11 @@ export default function Profile() {
                     }),
                   }),
                 );
-                toast({ type: 'success', title: '프로필을 고쳤습니다' });
+                toast({ type: 'success', title: t('profile.saved') });
               } catch (e) {
                 toast({
                   type: 'error',
-                  title: e instanceof ApiError ? e.message : '고치지 못했습니다',
+                  title: e instanceof ApiError ? e.message : t('profile.saveFailed'),
                 });
                 throw e;
               }
@@ -260,7 +263,7 @@ export default function Profile() {
               });
               primeEmployeePhoto(p.id, r.photoAt, previewUrl);
               setP((cur) => (cur ? { ...cur, photoAt: r.photoAt } : cur));
-              toast({ type: 'success', title: '프로필 사진을 바꿨습니다' });
+              toast({ type: 'success', title: t('profile.photoSaved') });
             }}
           />
         </>
