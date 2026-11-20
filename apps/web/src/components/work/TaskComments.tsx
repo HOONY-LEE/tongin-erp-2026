@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { Trash2 } from 'lucide-react';
@@ -43,6 +44,7 @@ function Body({ text, names }: { text: string; names: string[] }) {
  * 작업관리 댓글 — '@'를 치면 직원을 골라 부를 수 있다(멘션). 부른 사람과 담당자·요청자에게 알림이 간다.
  */
 export function TaskComments({ taskId }: { taskId: string }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { people } = useDirectory();
   const [rows, setRows] = useState<Comment[]>([]);
@@ -115,7 +117,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '댓글을 남기지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('task.commentFailed'),
       });
     } finally {
       setSending(false);
@@ -127,7 +129,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
       await api(`/tasks/${taskId}/comments/${c.id}`, { method: 'DELETE' });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('task.deleteFailed2') });
     }
   };
 
@@ -180,7 +182,9 @@ export function TaskComments({ taskId }: { taskId: string }) {
 
   return (
     <section className="rd-card">
-      <h3 className="rd-title">댓글 {rows.length > 0 && rows.length}</h3>
+      <h3 className="rd-title">
+        {t('task.comments')} {rows.length > 0 && rows.length}
+      </h3>
       {rows.length > 0 && (
         <ul className={styles.list}>
           {rows.map((c) => (
@@ -192,8 +196,8 @@ export function TaskComments({ taskId }: { taskId: string }) {
                   <button
                     type="button"
                     className={styles.del}
-                    title="댓글 지우기"
-                    aria-label="댓글 지우기"
+                    title={t('task.commentDelete')}
+                    aria-label={t('task.commentDelete')}
                     onClick={() => void remove(c)}
                   >
                     <Trash2 size={13} />
@@ -214,15 +218,15 @@ export function TaskComments({ taskId }: { taskId: string }) {
           value={text}
           rows={3}
           maxLength={2000}
-          placeholder="댓글을 남기세요. @이름으로 동료를 부르면 알림이 갑니다 (⌘/Ctrl+Enter로 등록)"
-          aria-label="댓글"
+          placeholder={t('task.commentPh')}
+          aria-label={t('task.comments')}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           onCompositionEnd={pickAfterComposition}
           onBlur={() => setTimeout(() => setQuery(null), 150)}
         />
         {matches.length > 0 && (
-          <ul className={styles.picker} role="listbox" aria-label="부를 사람">
+          <ul className={styles.picker} role="listbox" aria-label={t('task.mention')}>
             {matches.map((p, i) => (
               <li key={p.id}>
                 <button
@@ -252,7 +256,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
             disabled={!text.trim()}
             onClick={() => void send()}
           >
-            댓글 등록
+            {t('task.commentPost')}
           </Button>
         </div>
       </div>

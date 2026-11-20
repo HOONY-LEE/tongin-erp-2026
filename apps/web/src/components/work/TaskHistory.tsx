@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { Combobox } from '@sunghoon_lee/akron-ui';
@@ -24,6 +25,7 @@ const when = (iso: string) => fmtDateTime(iso);
  * reloadKey가 바뀌면 다시 읽는다(넘기기·상태 변경 뒤)
  */
 export function TaskHistory({ taskId, reloadKey }: { taskId: string; reloadKey?: unknown }) {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<Event[] | null>(null);
   const load = useCallback(() => {
     api<Event[]>(`/tasks/${taskId}/history`)
@@ -37,7 +39,7 @@ export function TaskHistory({ taskId, reloadKey }: { taskId: string; reloadKey?:
   if (!rows) return null;
   return (
     <section className={styles.history}>
-      <h3 className={styles.historyTitle}>이력</h3>
+      <h3 className={styles.historyTitle}>{t('task.history')}</h3>
       {rows.length ? (
         <ol className={styles.timeline}>
           {rows.map((e) => (
@@ -55,30 +57,37 @@ export function TaskHistory({ taskId, reloadKey }: { taskId: string; reloadKey?:
               </span>
               <div className={styles.tlBody}>
                 <span>
-                  <b>{e.actor ?? '알 수 없음'}</b>
+                  <b>{e.actor ?? t('task.unknown')}</b>
                   {e.kind === 'CREATED' ? (
                     <>
-                      님이 업무를 만들었습니다
+                      {t('task.h.created')}
                       {e.to && (
                         <>
                           {' '}
-                          · 담당 <b>{e.to}</b>
+                          {t('task.h.owner')} <b>{e.to}</b>
                         </>
                       )}
                     </>
                   ) : e.kind === 'ASSIGNED' ? (
                     <>
-                      님이 {e.from ? <b>{e.from}</b> : '담당 없음'}
-                      <ArrowRight size={12} className={styles.tlArrow} aria-label="에서" />
-                      {e.to ? <b>{e.to}</b> : '담당 없음'}에게 넘겼습니다
+                      {t('task.h.handed')} {e.from ? <b>{e.from}</b> : t('task.h.none')}
+                      <ArrowRight
+                        size={12}
+                        className={styles.tlArrow}
+                        aria-label={t('task.h.from')}
+                      />
+                      {e.to ? <b>{e.to}</b> : t('task.h.none')}
+                      {t('task.h.handedTo')}
                     </>
                   ) : e.kind === 'TEAM' ? (
                     <>
-                      님이 팀을 {e.from ?? '없음'} → {e.to ?? '없음'}(으)로 바꿨습니다
+                      {t('task.h.team')} {e.from ?? t('task.none')} → {e.to ?? t('task.none')}
+                      {t('task.h.changedTo')}
                     </>
                   ) : (
                     <>
-                      님이 상태를 {e.from} → <b>{e.to}</b>(으)로 바꿨습니다
+                      {t('task.h.status')} {e.from} → <b>{e.to}</b>
+                      {t('task.h.changedTo')}
                     </>
                   )}
                 </span>
@@ -89,7 +98,7 @@ export function TaskHistory({ taskId, reloadKey }: { taskId: string; reloadKey?:
           ))}
         </ol>
       ) : (
-        <p className={styles.tlTime}>기록이 없습니다.</p>
+        <p className={styles.tlTime}>{t('task.h.empty')}</p>
       )}
     </section>
   );
@@ -107,6 +116,7 @@ export function AssignModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { people } = useDirectory();
   const [to, setTo] = useState<string | null>(null);
@@ -119,7 +129,7 @@ export function AssignModal({
         .map((p) => ({
           value: p.id,
           label: `${p.name}${p.positionName ? ` ${p.positionName}` : ''}`,
-          group: p.orgUnitName ?? '소속 없음',
+          group: p.orgUnitName ?? t('task.noOrg'),
         })),
     [people, currentEmpId],
   );
@@ -131,10 +141,10 @@ export function AssignModal({
         method: 'POST',
         body: JSON.stringify({ assigneeEmpId: to, note: note.trim() || null }),
       });
-      toast({ type: 'success', title: '업무를 넘겼습니다' });
+      toast({ type: 'success', title: t('task.handedOff') });
       onDone();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '넘기지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('task.handOffFailed') });
     } finally {
       setBusy(false);
     }
@@ -144,41 +154,41 @@ export function AssignModal({
       open
       onOpenChange={(o) => !o && onClose()}
       size="sm"
-      title="담당 넘기기"
+      title={t('task.handOff')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('task.cancel')}
           </Button>
           <Button variant="primary" loading={busy} disabled={!to} onClick={() => void save()}>
-            넘기기
+            {t('task.handOffBtn')}
           </Button>
         </>
       }
     >
       <div className={styles.assignForm}>
         <label className={styles.assignField}>
-          받을 사람
+          {t('task.receiver')}
           <Combobox
             value={to}
             onChange={setTo}
             options={options}
-            placeholder="이름으로 찾기"
-            searchPlaceholder="찾기"
-            emptyMessage="찾는 사람이 없습니다"
+            placeholder={t('task.findByName')}
+            searchPlaceholder={t('task.find')}
+            emptyMessage={t('task.noPerson')}
           />
         </label>
         <label className={styles.assignField}>
-          남길 말(선택)
+          {t('task.note')}
           <Textarea
             rows={3}
             value={note}
             maxLength={500}
-            placeholder="예: 견적 확인까지 마쳤습니다. 계약서만 부탁드려요."
+            placeholder={t('task.notePh')}
             onChange={(e) => setNote(e.target.value)}
           />
         </label>
-        <p className={styles.tlTime}>받는 사람에게 알림이 가고, 업무 이력에 남습니다.</p>
+        <p className={styles.tlTime}>{t('task.handOffHint')}</p>
       </div>
     </Modal>
   );
