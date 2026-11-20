@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { memo, useEffect } from 'react';
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from '@xyflow/react';
 import { AGENT_NODE_LABEL, hasInputPort, outputPorts, type AgentNode } from '@tongin/shared';
@@ -29,6 +30,7 @@ const RUN_CLASS: Record<RunMark, string> = {
 
 /** 블루프린트 노드 카드 — 머리(종류 색·아이콘·이름), 요약, 출력 포트 줄, 결과 변수 */
 function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
+  const { t } = useTranslation();
   const { node, summary } = data;
   const Icon = NODE_ICON[node.type];
   const ports = outputPorts(node);
@@ -50,7 +52,7 @@ function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
       {(data.errors > 0 || data.warnings > 0) && (
         <span
           className={`${styles.issueBadge} ${data.errors ? styles.issueErr : styles.issueWarn}`}
-          title={`오류 ${data.errors} · 경고 ${data.warnings}`}
+          title={t('ai.issues', { v0: data.errors, v1: data.warnings })}
         >
           {data.errors || data.warnings}
         </span>
@@ -96,7 +98,7 @@ function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
               <span
                 className={`${styles.modeBadge} ${summary.mode === 'WRITE' ? styles.modeWrite : styles.modeRead}`}
               >
-                {summary.mode === 'WRITE' ? '쓰기' : '읽기'}
+                {summary.mode === 'WRITE' ? t('ai.write') : t('ai.read')}
               </span>
             )}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{summary.mono}</span>

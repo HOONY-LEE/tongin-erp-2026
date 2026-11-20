@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { AlertTriangle, Check, CircleDot, Play, ShieldCheck, X } from 'lucide-react';
@@ -60,6 +61,7 @@ const dt = (v: string) => fmtDateTime(v);
  * 데이터를 바꾸는 도구 앞에서는 멈추고 승인을 받는다. 도구는 부르는 사람 본인 권한으로 실행된다.
  */
 export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClose: () => void }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [dryRun, setDryRun] = useState(false);
@@ -92,7 +94,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
       const raw = values[f.name]?.trim();
       if (!raw) {
         if (f.required) {
-          toast({ type: 'warning', title: `'${f.description || f.name}'을(를) 입력해 주세요` });
+          toast({ type: 'warning', title: t('ai.enterValue', { v0: f.description || f.name }) });
           return;
         }
         continue;
@@ -118,7 +120,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
       );
       loadHistory();
     } catch (e) {
-      fail(e, '실행하지 못했습니다');
+      fail(e, t('ai.runFailed'));
     } finally {
       setBusy(false);
     }
@@ -136,7 +138,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
       );
       loadHistory();
     } catch (e) {
-      fail(e, '처리하지 못했습니다');
+      fail(e, t('ai.processFailed'));
     } finally {
       setBusy(false);
     }
@@ -146,7 +148,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
     try {
       setRun(await api<AgentRunView>(`/agents/runs/${id}`));
     } catch (e) {
-      fail(e, '불러오지 못했습니다');
+      fail(e, t('ai.loadFailed'));
     }
   };
 
@@ -160,20 +162,21 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
           {agent.description && <p>{agent.description}</p>}
           <span className={styles.meta}>
             <VisIcon size={12} aria-hidden /> {AGENT_VISIBILITY_LABEL[agent.visibility]} ·{' '}
-            {agent.isMine ? '내가 만듦' : `${agent.ownerName ?? '알 수 없음'} 만듦`} · 도구{' '}
-            {agent.toolCount}개
+            {agent.isMine ? t('ai.byMe') : t('ai.byOf', { v0: agent.ownerName ?? t('ai.unknown') })}{' '}
+            {t('ai.toolsSep')} {agent.toolCount}
+            {t('ai.countSuffix')}
           </span>
         </div>
-        <button type="button" className={styles.close} onClick={onClose} aria-label="닫기">
+        <button type="button" className={styles.close} onClick={onClose} aria-label={t('ai.close')}>
           <X size={18} />
         </button>
       </div>
 
       <div className={styles.body}>
         <section className={styles.card}>
-          <b className={styles.cardTitle}>입력</b>
+          <b className={styles.cardTitle}>{t('ai.input')}</b>
           {agent.inputFields.length === 0 ? (
-            <span className={styles.hint}>입력값 없이 바로 실행하는 에이전트입니다.</span>
+            <span className={styles.hint}>{t('ai.noInputs')}</span>
           ) : (
             agent.inputFields.map((f) => (
               <label key={f.name} className={styles.field}>
@@ -187,9 +190,9 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
                     value={values[f.name] ?? ''}
                     onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
                   >
-                    <option value="">선택 안 함</option>
-                    <option value="true">예</option>
-                    <option value="false">아니오</option>
+                    <option value="">{t('ai.none')}</option>
+                    <option value="true">{t('ai.yes')}</option>
+                    <option value="false">{t('ai.no')}</option>
                   </select>
                 ) : (
                   <input
@@ -197,7 +200,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
                     type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
                     value={values[f.name] ?? ''}
                     placeholder={
-                      f.type === 'list' ? '쉼표로 나눠 입력' : f.type === 'object' ? 'JSON' : f.name
+                      f.type === 'list' ? t('ai.csvPh') : f.type === 'object' ? 'JSON' : f.name
                     }
                     onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
                   />
@@ -207,7 +210,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
           )}
           <label className={styles.check}>
             <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-            시험 실행 — 데이터를 바꾸는 도구(문자 발송·등록 등)는 실제로 실행하지 않고 기록만
+            {t('ai.dryRunNote')}
           </label>
           <div className={styles.actions}>
             <Button
@@ -217,7 +220,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
               onClick={() => void start()}
               disabled={!canSubmit || busy}
             >
-              {busy && !run ? '실행하는 중…' : '실행'}
+              {busy && !run ? t('ai.running2') : t('ai.run')}
             </Button>
           </div>
         </section>
@@ -225,13 +228,13 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
         {run && (
           <section className={styles.card}>
             <div className={styles.runHead}>
-              <b className={styles.cardTitle}>실행 결과</b>
+              <b className={styles.cardTitle}>{t('ai.result')}</b>
               <Badge variant="subtle" color={STATUS_COLOR[run.status] ?? 'neutral'}>
                 {AGENT_RUN_STATUS_LABEL[run.status] ?? run.status}
               </Badge>
               {run.dryRun && (
                 <Badge variant="subtle" color="info">
-                  시험 실행
+                  {t('ai.testRun')}
                 </Badge>
               )}
             </div>
@@ -239,7 +242,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
             {run.pending && (
               <div className={styles.approval}>
                 <div className={styles.approvalTitle}>
-                  <ShieldCheck size={16} /> 승인이 필요합니다
+                  <ShieldCheck size={16} /> {t('ai.needApproval')}
                 </div>
                 <p>{run.pending.message}</p>
                 {run.pending.args !== undefined && (
@@ -250,10 +253,10 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
                 )}
                 <div className={styles.actions}>
                   <Button variant="ghost" disabled={busy} onClick={() => void decide(false)}>
-                    거절
+                    {t('ai.reject')}
                   </Button>
                   <Button variant="primary" loading={busy} onClick={() => void decide(true)}>
-                    승인하고 계속
+                    {t('ai.approveContinue')}
                   </Button>
                 </div>
               </div>
@@ -281,7 +284,10 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
             ))}
 
             <details className={styles.steps}>
-              <summary>진행 단계 {run.trace.length}개</summary>
+              <summary>
+                {t('ai.steps')} {run.trace.length}
+                {t('ai.countSuffix')}
+              </summary>
               <ol>
                 {run.trace.map((s) => {
                   const Icon = STEP_ICON[s.status] ?? CircleDot;
@@ -308,7 +314,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
 
         {history.length > 0 && (
           <section className={styles.card}>
-            <b className={styles.cardTitle}>내 실행 기록</b>
+            <b className={styles.cardTitle}>{t('ai.myRuns')}</b>
             <div className={styles.history}>
               {history.map((h) => (
                 <button
@@ -321,7 +327,7 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
                     {AGENT_RUN_STATUS_LABEL[h.status] ?? h.status}
                   </Badge>
                   <span>{dt(h.createdAt)}</span>
-                  {h.dryRun && <span className={styles.hint}>시험</span>}
+                  {h.dryRun && <span className={styles.hint}>{t('ai.st.test')}</span>}
                 </button>
               ))}
             </div>

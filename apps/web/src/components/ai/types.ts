@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 /** API(/api/ai) 응답 모양 — apps/api/src/ai/ai.service.ts view()와 맞춘다 */
 
 export interface AiModelOption {
@@ -114,10 +115,10 @@ export interface Conversation {
 /** "[견적] 견적 금액 저장(…). 견적 — …" → "견적 · 견적 금액 저장(…)" */
 export function toolLabel(name: string, tools: Map<string, AiToolInfo>) {
   const BUILTIN: Record<string, string> = {
-    search_leads: '접수·고객 조회',
-    search_customers: '고객 찾기',
-    send_sms: '문자 발송',
-    create_report_file: '보고서 파일 만들기',
+    search_leads: i18n.t('ai.tool.lookup'),
+    search_customers: i18n.t('ai.tool.findCustomer'),
+    send_sms: i18n.t('ai.tool.sms'),
+    create_report_file: i18n.t('ai.tool.report'),
   };
   if (BUILTIN[name]) return BUILTIN[name];
   const d = tools.get(name)?.description;

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { Globe2, Lock, Users, X } from 'lucide-react';
@@ -41,6 +42,7 @@ export function SharePicker({
   /** 이미 공유된 직원 정보(목록을 불러오기 전에도 이름을 보여 주려고) */
   known?: ShareCandidate[];
 }) {
+  const { t } = useTranslation();
   const [candidates, setCandidates] = useState<ShareCandidate[] | null>(null);
   const [q, setQ] = useState('');
 
@@ -99,7 +101,7 @@ export function SharePicker({
         <div className={styles.picker}>
           <div className={styles.chips}>
             {shareIds.length === 0 ? (
-              <span className={styles.hint}>아직 고른 직원이 없습니다.</span>
+              <span className={styles.hint}>{t('ai.share.none')}</span>
             ) : (
               shareIds.map((id) => {
                 const c = byId.get(id);
@@ -110,7 +112,7 @@ export function SharePicker({
                     {!disabled && (
                       <button
                         type="button"
-                        aria-label={`${c?.name ?? ''} 빼기`}
+                        aria-label={t('ai.removeOf', { v0: c?.name ?? '' })}
                         onClick={() => toggle(id, false)}
                       >
                         <X size={12} />
@@ -127,8 +129,8 @@ export function SharePicker({
                 <SearchInput
                   value={q}
                   onChange={setQ}
-                  placeholder="이름·지점·직책으로 찾기"
-                  ariaLabel="공유할 직원 찾기"
+                  placeholder={t('ai.share.searchPh')}
+                  ariaLabel={t('ai.share.search')}
                   style={{ flex: 1 }}
                 />
                 <button
@@ -138,15 +140,15 @@ export function SharePicker({
                   disabled={!shown.length}
                 >
                   {allShownOn
-                    ? '보이는 직원 모두 빼기'
-                    : `보이는 직원 모두 고르기(${shown.length})`}
+                    ? t('ai.share.removeAll')
+                    : t('ai.share.addAll', { v0: shown.length })}
                 </button>
               </div>
               <div className={styles.list} role="list">
                 {candidates === null ? (
-                  <span className={styles.hint}>직원 목록을 불러오는 중…</span>
+                  <span className={styles.hint}>{t('ai.share.loading')}</span>
                 ) : shown.length === 0 ? (
-                  <span className={styles.hint}>맞는 직원이 없습니다.</span>
+                  <span className={styles.hint}>{t('ai.share.noMatch')}</span>
                 ) : (
                   shown.map((c) => (
                     <label key={c.id} className={styles.item} role="listitem">
@@ -163,8 +165,9 @@ export function SharePicker({
                 )}
               </div>
               <span className={styles.hint}>
-                {shareIds.length}명 선택 · 로그인 계정이 있는 직원만 보입니다. 공유받은 사람도 자기
-                권한 안에서만 도구를 실행합니다.
+                {shareIds.length}
+                {t('ai.share.note1')}
+                {t('ai.share.note2')}
               </span>
             </>
           )}

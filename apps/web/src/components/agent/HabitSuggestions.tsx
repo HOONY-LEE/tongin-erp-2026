@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock, Repeat, Sparkles, X, Zap } from 'lucide-react';
@@ -20,9 +22,9 @@ export interface HabitSuggestion {
 }
 
 const KIND = {
-  routine: { label: '정해진 시간', Icon: CalendarClock },
-  reaction: { label: '이벤트 뒤 대응', Icon: Zap },
-  sequence: { label: '이어서 하는 일', Icon: Repeat },
+  routine: { label: i18n.t('ai.habit.SCHEDULE'), Icon: CalendarClock },
+  reaction: { label: i18n.t('ai.habit.EVENT'), Icon: Zap },
+  sequence: { label: i18n.t('ai.habit.SEQUENCE'), Icon: Repeat },
 } as const;
 
 /** 숨긴 제안 — 사람(계정)별·브라우저별 편의 설정 */
@@ -40,6 +42,7 @@ const readHidden = (userId: string): string[] => {
  * 「에이전트로 만들기」를 누르면 만들기 대화에 그 내용을 첫 요청으로 넣어 시작한다.
  */
 export function HabitSuggestions() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
@@ -66,11 +69,11 @@ export function HabitSuggestions() {
   if (!shown.length) return null;
 
   return (
-    <section className={styles.habits} aria-label="반복 작업 제안">
+    <section className={styles.habits} aria-label={t('ai.habit.aria')}>
       <header className={styles.habitsHead}>
         <Sparkles size={16} aria-hidden />
-        <b>자주 반복하는 일, 에이전트에게 맡겨 볼까요?</b>
-        <span className={styles.habitsMeta}>최근 30일 동안 직접 한 일에서 찾았어요</span>
+        <b>{t('ai.habit.title')}</b>
+        <span className={styles.habitsMeta}>{t('ai.habit.sub')}</span>
       </header>
       <div className={styles.habitGrid}>
         {shown.map((s) => {
@@ -85,8 +88,8 @@ export function HabitSuggestions() {
                 <button
                   type="button"
                   className={styles.habitHide}
-                  title="이 제안 숨기기"
-                  aria-label="이 제안 숨기기"
+                  title={t('ai.habit.hide')}
+                  aria-label={t('ai.habit.hide')}
                   onClick={() => hide(s.id)}
                 >
                   <X size={14} />
@@ -95,13 +98,15 @@ export function HabitSuggestions() {
               <b className={styles.habitTitle}>{s.title}</b>
               <p className={styles.habitReason}>{s.reason}</p>
               <div className={styles.habitFoot}>
-                <span className={styles.habitTrigger}>시작: {s.trigger.label}</span>
+                <span className={styles.habitTrigger}>
+                  {t('ai.habit.start')} {s.trigger.label}
+                </span>
                 <Button
                   size="sm"
                   variant="primary"
                   onClick={() => navigate('/agent-builder/new', { state: { prompt: s.prompt } })}
                 >
-                  에이전트로 만들기
+                  {t('ai.habit.make')}
                 </Button>
               </div>
             </article>

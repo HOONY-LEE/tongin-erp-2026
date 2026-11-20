@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMemo, useState, type DragEvent } from 'react';
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 // 좁은 패널용 작은 세그먼트 — 공용 래퍼(components/ui)는 큰 크기로 고정돼 있어 원본을 쓴다
@@ -8,11 +9,12 @@ import styles from '../../pages/agentBuilder.module.css';
 export const DND_MIME = 'application/x-agent-node';
 
 export function ModeBadge({ mode }: { mode: 'READ' | 'WRITE' }) {
+  const { t } = useTranslation();
   return (
     <span
       className={`${styles.modeBadge} ${mode === 'WRITE' ? styles.modeWrite : styles.modeRead}`}
     >
-      {mode === 'WRITE' ? '쓰기' : '읽기'}
+      {mode === 'WRITE' ? t('ai.write') : t('ai.read')}
     </span>
   );
 }
@@ -23,9 +25,10 @@ const typeOf = (s: AgentJsonSchema) =>
     : String(s.type ?? 'any');
 
 export function SchemaPreview({ schema }: { schema: AgentJsonSchema }) {
+  const { t } = useTranslation();
   const req = new Set(schema.required ?? []);
   const props = Object.entries(schema.properties ?? {});
-  if (!props.length) return <div className={styles.schema}>인자 없음</div>;
+  if (!props.length) return <div className={styles.schema}>{t('ai.noArgs')}</div>;
   return (
     <div className={styles.schema}>
       {props.map(([k, v]) => (
@@ -68,18 +71,13 @@ interface Props {
 }
 
 /** 도구 탐색기 — 업무별로 묶은 실제 호출 가능 도구. 끌어다 캔버스에 놓으면 도구 노드가 된다 */
-export function ToolExplorer({
-  tools,
-  onPick,
-  pickLabel = '캔버스에 추가',
-  draggable = true,
-  autoFocus,
-}: Props) {
+export function ToolExplorer({ tools, onPick, pickLabel, draggable = true, autoFocus }: Props) {
+  const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [mode, setMode] = useState('ALL');
   const [open, setOpen] = useState<string | null>(null);
   // 처음엔 업무 도구 묶음만 펼친다(ERP API 도구는 180개 가까이 된다). 검색 중에는 모두 펼친다
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['AI 업무 도구']));
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set([t('ai.aiTools')]));
 
   const groups = useMemo(() => {
     const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -95,7 +93,7 @@ export function ToolExplorer({
     }
     // 업무 도구를 맨 위에
     return [...m.entries()].sort(([a], [b]) =>
-      a === 'AI 업무 도구' ? -1 : b === 'AI 업무 도구' ? 1 : a.localeCompare(b, 'ko'),
+      a === t('ai.aiTools') ? -1 : b === t('ai.aiTools') ? 1 : a.localeCompare(b, 'ko'),
     );
   }, [tools, q, mode]);
 
@@ -126,7 +124,7 @@ export function ToolExplorer({
             value={q}
             autoFocus={autoFocus}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={`도구 ${tools.length}개 검색 (예: 미수금, 문자, 견적)`}
+            placeholder={t('ai.searchTools', { v0: tools.length })}
           />
         </div>
         <SegmentedControl
@@ -135,16 +133,16 @@ export function ToolExplorer({
           value={mode}
           onChange={setMode}
           options={[
-            { value: 'ALL', label: '전체' },
-            { value: 'READ', label: '읽기' },
-            { value: 'WRITE', label: '쓰기' },
+            { value: 'ALL', label: t('ai.all') },
+            { value: 'READ', label: t('ai.read') },
+            { value: 'WRITE', label: t('ai.write') },
           ]}
         />
       </div>
       <div className={styles.toolList}>
         {!total && (
           <div className={styles.note} style={{ padding: 8 }}>
-            맞는 도구가 없습니다.
+            {t('ai.noTools')}
           </div>
         )}
         {groups.map(([g, list]) => {
@@ -168,34 +166,34 @@ export function ToolExplorer({
                 <span>{list.length}</span>
               </button>
               {!closed &&
-                list.map((t) => (
+                list.map((tool) => (
                   <div
-                    key={t.name}
-                    className={`${styles.toolItem} ${open === t.name ? styles.toolItemOpen : ''}`}
+                    key={tool.name}
+                    className={`${styles.toolItem} ${open === tool.name ? styles.toolItemOpen : ''}`}
                     draggable={draggable}
-                    onDragStart={(e) => onDragStart(e, t)}
-                    onClick={() => setOpen(open === t.name ? null : t.name)}
-                    title={draggable ? '끌어다 캔버스에 놓으세요' : undefined}
+                    onDragStart={(e) => onDragStart(e, tool)}
+                    onClick={() => setOpen(open === tool.name ? null : tool.name)}
+                    title={draggable ? t('ai.dragToCanvas') : undefined}
                   >
                     <div className={styles.toolName}>
-                      <ModeBadge mode={t.mode} />
-                      {t.name}
+                      <ModeBadge mode={tool.mode} />
+                      {tool.name}
                     </div>
                     <div className={styles.toolDesc}>
-                      {t.description.replace(/^\[[^\]]*\]\s*/, '')}
+                      {tool.description.replace(/^\[[^\]]*\]\s*/, '')}
                     </div>
-                    {open === t.name && (
+                    {open === tool.name && (
                       <>
-                        <SchemaPreview schema={t.inputSchema} />
+                        <SchemaPreview schema={tool.inputSchema} />
                         <button
                           type="button"
                           className={`${styles.smallBtn} ${styles.addTool}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onPick(t);
+                            onPick(tool);
                           }}
                         >
-                          {pickLabel}
+                          {pickLabel ?? t('ai.addToCanvas')}
                         </button>
                       </>
                     )}

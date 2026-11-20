@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import {
   useCallback,
   useEffect,
@@ -42,11 +44,11 @@ import styles from './aiAgent.module.css';
 import { AI_ATTACHMENT_MAX_BYTES, AI_ATTACHMENT_MAX_COUNT, AI_TITLE_MAX } from '@tongin/shared';
 
 const SUGGESTIONS = [
-  '이번 주 미계약 고객들에게 계약 안내 문자 한 번 더 보내줘',
-  '다음 주 이사 예정인 건 지점별로 정리해줘',
-  '견적만 받고 계약 안 한 고객이 몇 명이야?',
-  '이번 달 미수금이 많은 고객 5명 알려줘',
-  '접수건수 대비 미계약 처리가 많은 의심되는 지점들 리스트 뽑아줘',
+  i18n.t('ai.sug.1'),
+  i18n.t('ai.sug.2'),
+  i18n.t('ai.sug.3'),
+  i18n.t('ai.sug.4'),
+  i18n.t('ai.sug.5'),
 ];
 
 /** 올릴 수 있는 파일 — 서버 ATTACHMENT_TYPES와 맞춘다 */
@@ -105,6 +107,7 @@ const readFile = (f: File) =>
  * 화면은 Claude 대화 화면처럼: 왼쪽 대화 목록, 가운데 대화, 아래 늘어나는 입력칸(첨부·보내기 포함).
  */
 export default function AiAssistant() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const activeId = params.get('c');
@@ -228,7 +231,7 @@ export default function AiAssistant() {
   useEffect(() => {
     if (!convId || !convRunning) return;
     let alive = true;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       api<Conversation>(`/ai/conversations/${convId}`)
         .then((c) => {
           if (!alive) return;
@@ -239,7 +242,7 @@ export default function AiAssistant() {
     }, 1500);
     return () => {
       alive = false;
-      clearInterval(t);
+      clearInterval(timer);
     };
   }, [convId, convRunning, loadList]);
 
@@ -288,7 +291,7 @@ export default function AiAssistant() {
       loadList();
       pokeAiActivity();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : 'AI 요청에 실패했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ai.requestFailed') });
       // 서버에 남은 상태(오류·대기)를 다시 읽어 화면을 맞춘다
       const id = conv?.id ?? activeId;
       if (id)
@@ -305,29 +308,28 @@ export default function AiAssistant() {
     const list = [...(e.target.files ?? [])];
     e.target.value = '';
     const room = MAX_FILES - files.length;
-    if (list.length > room)
-      toast({ type: 'warning', title: `파일은 ${MAX_FILES}개까지 올릴 수 있습니다` });
+    if (list.length > room) toast({ type: 'warning', title: t('ai.fileMax', { v0: MAX_FILES }) });
     const ok: Draft[] = [];
     for (const f of list.slice(0, Math.max(0, room))) {
       const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
       if (!BY_EXT[ext]) {
         toast({
           type: 'warning',
-          title: `${f.name}: 이미지·PDF·텍스트(csv·md·json)만 올릴 수 있습니다`,
+          title: t('ai.fileType', { v0: f.name }),
         });
         continue;
       }
       if (f.size > MAX_BYTES) {
         toast({
           type: 'warning',
-          title: `${f.name}: ${MAX_BYTES / 1048576}MB까지 올릴 수 있습니다`,
+          title: t('ai.fileSize', { v0: f.name, v1: MAX_BYTES / 1048576 }),
         });
         continue;
       }
       try {
         ok.push(await readFile(f));
       } catch {
-        toast({ type: 'error', title: `${f.name}을(를) 읽지 못했습니다` });
+        toast({ type: 'error', title: t('ai.fileRead', { v0: f.name }) });
       }
     }
     setFiles((cur) => [...cur, ...ok]);
@@ -335,13 +337,13 @@ export default function AiAssistant() {
   };
 
   const send = async (text: string) => {
-    const t = text.trim();
-    if ((!t && !files.length) || working) return;
+    const msg = text.trim();
+    if ((!msg && !files.length) || working) return;
     const attachments = files;
     setDraft('');
     setFiles([]);
     setEcho({
-      text: t,
+      text: msg,
       attachments: attachments.map((a) => ({
         name: a.name,
         kind: a.preview ? 'image' : 'file',
@@ -356,7 +358,7 @@ export default function AiAssistant() {
       return api<Conversation>(`/ai/conversations/${id}/messages`, {
         method: 'POST',
         body: JSON.stringify({
-          text: t,
+          text: msg,
           attachments: attachments.map(({ name, mediaType, data }) => ({ name, mediaType, data })),
           model: chatModel || undefined,
         }),
@@ -383,17 +385,20 @@ export default function AiAssistant() {
     editDone.current = true;
     const { id, title } = editing;
     setEditing(null);
-    const t = title.trim();
+    const nextTitle = title.trim();
     const before = rows.find((r) => r.id === id)?.title;
-    if (!t || t === before) return;
-    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, title: t } : r)));
+    if (!nextTitle || nextTitle === before) return;
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, title: nextTitle } : r)));
     try {
-      await api(`/ai/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title: t }) });
-      setConv((c) => (c && c.id === id ? { ...c, title: t } : c));
+      await api(`/ai/conversations/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title: nextTitle }),
+      });
+      setConv((c) => (c && c.id === id ? { ...c, title: nextTitle } : c));
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '제목을 바꾸지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('ai.renameFailed'),
       });
     }
     loadList();
@@ -417,7 +422,7 @@ export default function AiAssistant() {
       if (id === activeId) select(null);
       loadList();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ai.deleteFailed') });
     }
   };
 
@@ -481,7 +486,7 @@ export default function AiAssistant() {
                 <button
                   type="button"
                   className={styles.fileRemove}
-                  aria-label={`${f.name} 빼기`}
+                  aria-label={t('ai.removeOf', { v0: f.name })}
                   onClick={() => setFiles((fs) => fs.filter((_, k) => k !== i))}
                 >
                   <X size={12} />
@@ -497,25 +502,25 @@ export default function AiAssistant() {
           rows={1}
           placeholder={
             working
-              ? 'AI가 처리하는 중입니다… 다른 화면으로 가도 계속 진행됩니다'
+              ? t('ai.busyPh')
               : awaiting
-                ? '위 작업을 승인·거절하거나, 새 요청을 입력하세요(대기 중인 작업은 취소됩니다)'
+                ? t('ai.pendingPh')
                 : nextUp.length
                   ? `${nextUp[0]}   ⇥ Tab`
-                  : 'AI 에이전트에게 일을 시켜 보세요'
+                  : t('ai.inputPh')
           }
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKey}
           disabled={notReady}
-          aria-label="AI에게 보낼 메시지"
+          aria-label={t('ai.inputAria')}
         />
         <div className={styles.composerBar}>
           <span className={styles.barLeft}>
             <button
               type="button"
               className={styles.iconBtn}
-              aria-label="파일 첨부"
-              title="파일 첨부 (이미지·PDF·텍스트)"
+              aria-label={t('ai.attach')}
+              title={t('ai.attachTip')}
               onClick={() => fileRef.current?.click()}
               disabled={notReady || files.length >= MAX_FILES}
             >
@@ -534,14 +539,14 @@ export default function AiAssistant() {
                 className={styles.modelSelect}
                 value={chatModel}
                 onChange={(e) => pickModel(e.target.value)}
-                aria-label="AI 모델"
-                title="AI 모델"
+                aria-label={t('ai.model')}
+                title={t('ai.model')}
                 disabled={notReady}
               >
                 {chatModels.map((m) => (
                   <option key={m.id} value={m.id} disabled={!m.enabled}>
                     {m.label}
-                    {m.enabled ? '' : ' (준비 중)'}
+                    {m.enabled ? '' : t('ai.comingSoon')}
                   </option>
                 ))}
               </select>
@@ -550,7 +555,7 @@ export default function AiAssistant() {
           <button
             type="button"
             className={styles.sendBtn}
-            aria-label="보내기"
+            aria-label={t('ai.send')}
             disabled={!canSend}
             onClick={() => void send(draft)}
           >
@@ -558,31 +563,29 @@ export default function AiAssistant() {
           </button>
         </div>
       </div>
-      <div className={styles.footnote}>
-        AI는 실수할 수 있습니다. 등록·수정·문자 발송은 실행 전에 확인을 받습니다.
-      </div>
+      <div className={styles.footnote}>{t('ai.disclaimer')}</div>
     </div>
   );
 
   return (
     <div className={styles.page}>
-      <aside className={styles.side} aria-label="대화 목록">
+      <aside className={styles.side} aria-label={t('ai.chats')}>
         <button type="button" className={styles.newChat} onClick={() => select(null)}>
-          <SquarePen size={16} /> 새 채팅
+          <SquarePen size={16} /> {t('ai.newChat')}
         </button>
         <div className={styles.sideLabel}>
-          에이전트
+          {t('ai.agents')}
           {can('AI.MANAGE') && (
             <Link className={styles.sideLink} to="/agent-builder/new">
-              + 만들기
+              {t('ai.createAgent')}
             </Link>
           )}
         </div>
-        <nav className={styles.agentList} aria-label="에이전트">
+        <nav className={styles.agentList} aria-label={t('ai.agents')}>
           {agents === null ? (
-            <div className={styles.sideEmpty}>불러오는 중…</div>
+            <div className={styles.sideEmpty}>{t('ai.loading')}</div>
           ) : agents.length === 0 ? (
-            <div className={styles.sideEmpty}>쓸 수 있는 에이전트가 없습니다</div>
+            <div className={styles.sideEmpty}>{t('ai.noAgents')}</div>
           ) : (
             agents.map((a) => (
               <div
@@ -602,14 +605,14 @@ export default function AiAssistant() {
             ))
           )}
         </nav>
-        <div className={styles.sideLabel}>최근</div>
+        <div className={styles.sideLabel}>{t('ai.recent')}</div>
         <nav className={styles.convList}>
           {!listLoaded ? (
             <div className={styles.sideEmpty} role="status">
-              <span className={styles.spark} aria-hidden /> 대화 목록을 불러오는 중…
+              <span className={styles.spark} aria-hidden /> {t('ai.chatsLoading')}
             </div>
           ) : (
-            rows.length === 0 && <div className={styles.sideEmpty}>아직 대화가 없습니다</div>
+            rows.length === 0 && <div className={styles.sideEmpty}>{t('ai.noChats')}</div>
           )}
           {rows.map((r) => (
             <div
@@ -626,7 +629,7 @@ export default function AiAssistant() {
                   onChange={(e) => setEditing({ id: r.id, title: e.target.value })}
                   onKeyDown={onTitleKey}
                   onBlur={() => void saveTitle()}
-                  aria-label="대화 제목"
+                  aria-label={t('ai.chatTitle')}
                 />
               ) : (
                 <>
@@ -638,17 +641,21 @@ export default function AiAssistant() {
                   >
                     <span className={styles.convTitle}>{r.title}</span>
                     {r.status === 'RUNNING' && (
-                      <span className={styles.runDot} title="진행 중" aria-label="진행 중" />
+                      <span
+                        className={styles.runDot}
+                        title={t('ai.running')}
+                        aria-label={t('ai.running')}
+                      />
                     )}
                     {r.status === 'AWAITING_APPROVAL' && (
-                      <span className={styles.dot} title="승인 대기" />
+                      <span className={styles.dot} title={t('ai.awaitingApproval')} />
                     )}
                   </button>
                   <button
                     type="button"
                     className={styles.convDel}
-                    aria-label={`${r.title} 제목 바꾸기`}
-                    title="제목 바꾸기"
+                    aria-label={t('ai.renameOf', { v0: r.title })}
+                    title={t('ai.rename')}
                     onClick={() => startEdit(r.id, r.title)}
                   >
                     <Pencil size={14} />
@@ -658,8 +665,8 @@ export default function AiAssistant() {
               <button
                 type="button"
                 className={styles.convDel}
-                aria-label={`${r.title} 삭제`}
-                title="삭제"
+                aria-label={t('ai.deleteOf', { v0: r.title })}
+                title={t('ai.delete')}
                 onClick={() => void remove(r.id)}
               >
                 <Trash2 size={14} />
@@ -682,11 +689,11 @@ export default function AiAssistant() {
               if (v.startsWith('agent:')) openAgent(v.slice(6));
               else select(v || null);
             }}
-            aria-label="최근 대화·에이전트"
+            aria-label={t('ai.recentAll')}
           >
-            <option value="">새 채팅</option>
+            <option value="">{t('ai.newChat')}</option>
             {!!agents?.length && (
-              <optgroup label="에이전트">
+              <optgroup label={t('ai.agents')}>
                 {agents.map((a) => (
                   <option key={a.id} value={`agent:${a.id}`}>
                     {a.name}
@@ -694,7 +701,7 @@ export default function AiAssistant() {
                 ))}
               </optgroup>
             )}
-            <optgroup label="최근 대화">
+            <optgroup label={t('ai.recentChats')}>
               {rows.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.title}
@@ -705,7 +712,7 @@ export default function AiAssistant() {
           <button
             type="button"
             className={styles.iconBtn}
-            aria-label="새 채팅"
+            aria-label={t('ai.newChat')}
             onClick={() => select(null)}
           >
             <SquarePen size={18} />
@@ -715,8 +722,9 @@ export default function AiAssistant() {
           <div className={styles.banner} role="status">
             <AlertTriangle size={16} aria-hidden />
             <span>
-              AI 에이전트가 아직 연결되지 않았습니다. 서버에 <code>ANTHROPIC_API_KEY</code>를 넣고
-              다시 시작하면 사용할 수 있습니다.
+              {t('ai.noKey1')} <code>ANTHROPIC_API_KEY</code>
+              {t('ai.noKey2')}
+              {t('ai.noKey3')}
             </span>
           </div>
         )}
@@ -729,10 +737,10 @@ export default function AiAssistant() {
               <div className={styles.working}>
                 {agents === null ? (
                   <>
-                    <span className={styles.spark} aria-hidden /> 에이전트를 불러오는 중…
+                    <span className={styles.spark} aria-hidden /> {t('ai.agentLoading')}
                   </>
                 ) : (
-                  '이 에이전트를 쓸 수 없습니다 — 사용중이 아니거나 공유가 해제되었습니다.'
+                  t('ai.agentUnavailable')
                 )}
               </div>
             </div>
@@ -741,13 +749,13 @@ export default function AiAssistant() {
           <div className={styles.welcome} role="status">
             <div className={styles.working}>
               <span className={styles.spark} aria-hidden />
-              대화를 불러오는 중…
+              {t('ai.chatLoading')}
             </div>
           </div>
         ) : empty ? (
           <>
             <div className={styles.welcome}>
-              <h1 className={styles.greeting}>무엇을 도와드릴까요?</h1>
+              <h1 className={styles.greeting}>{t('ai.greeting')}</h1>
               <div className={styles.suggestions}>
                 {SUGGESTIONS.map((s) => (
                   <button
@@ -784,7 +792,7 @@ export default function AiAssistant() {
                               <img
                                 key={k}
                                 src={a.src}
-                                alt="첨부 이미지"
+                                alt={t('ai.attachedImage')}
                                 className={styles.userImg}
                               />
                             ) : (
@@ -803,7 +811,8 @@ export default function AiAssistant() {
                     </div>
                   ) : it.kind === 'search' ? (
                     <div key={i} className={styles.searchRow}>
-                      <Search size={12} aria-hidden /> 기능 찾는 중 · “{it.query}”
+                      <Search size={12} aria-hidden /> {t('ai.findingTool')}
+                      {it.query}”
                     </div>
                   ) : it.kind === 'code' ? (
                     <CodeRow key={i} item={it} />
@@ -817,12 +826,12 @@ export default function AiAssistant() {
                 {working && (
                   <div className={styles.working} role="status">
                     <span className={styles.spark} aria-hidden />
-                    생각하는 중…
+                    {t('ai.thinking')}
                   </div>
                 )}
 
                 {nextUp.length > 0 && (
-                  <div className={styles.nextList} role="list" aria-label="이어서 할 일">
+                  <div className={styles.nextList} role="list" aria-label={t('ai.followUps')}>
                     {nextUp.map((q, i) => (
                       <button
                         key={q}
@@ -852,14 +861,14 @@ export default function AiAssistant() {
                 {!working && conv?.status === 'ERROR' && (
                   <div className={styles.errorBox} role="alert">
                     <AlertTriangle size={16} aria-hidden />
-                    <span>{conv.lastError ?? '처리 중 오류가 났습니다.'}</span>
+                    <span>{conv.lastError ?? t('ai.error')}</span>
                     <Button
                       variant="outline"
                       size="sm"
                       leftIcon={<RotateCcw size={14} />}
                       onClick={() => void retry()}
                     >
-                      다시 시도
+                      {t('ai.retry')}
                     </Button>
                   </div>
                 )}
@@ -875,18 +884,16 @@ export default function AiAssistant() {
 
 /** 이번 달 AI 사용량 — 한도가 있으면 막대·%·남은 토큰, 없으면 쓴 토큰만 */
 function QuotaBar({ quota }: { quota: { limit: number | null; used: number } }) {
+  const { t } = useTranslation();
   const n = (x: number) => x.toLocaleString('ko-KR');
   const { limit, used } = quota;
   const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : null;
   return (
-    <div
-      className={styles.quota}
-      title="입력 + 출력 토큰(캐시 읽기 제외) · 매달 1일 다시 채워집니다"
-    >
+    <div className={styles.quota} title={t('ai.usageTip')}>
       <div className={styles.quotaHead}>
-        <span>이번 달 사용량</span>
+        <span>{t('ai.usage')}</span>
         <b className={pct !== null && pct >= 90 ? styles.quotaHot : undefined}>
-          {pct === null ? '한도 없음' : `${pct}%`}
+          {pct === null ? t('ai.noLimit') : `${pct}%`}
         </b>
       </div>
       {pct !== null && (
@@ -904,7 +911,9 @@ function QuotaBar({ quota }: { quota: { limit: number | null; used: number } }) 
         </div>
       )}
       <span className={styles.quotaText}>
-        {limit ? `남은 ${n(Math.max(0, limit - used))} / ${n(limit)} 토큰` : `${n(used)} 토큰 사용`}
+        {limit
+          ? t('ai.remaining', { v0: n(Math.max(0, limit - used)), v1: n(limit) })
+          : t('ai.usedN', { v0: n(used) })}
       </span>
     </div>
   );
