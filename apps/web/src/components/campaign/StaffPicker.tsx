@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -51,6 +52,7 @@ export function StaffPicker({
   extras: Map<string, ExtraPick>;
   onToggleExtra: (pick: ExtraPick, on: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   // 시연 번호는 전체 문자 허용목록이라 권한 관리자만 고친다
@@ -88,7 +90,10 @@ export function StaffPicker({
         }),
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '직원을 찾지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('camp.staffSearchFailed'),
+      });
     } finally {
       setLoading(false);
     }
@@ -122,7 +127,7 @@ export function StaffPicker({
   const addNumber = async () => {
     const phone = newPhone.trim();
     if (!PHONE_RE.test(phone)) {
-      toast({ type: 'warning', title: '전화번호 형식이 아닙니다(예: 010-1234-5678).' });
+      toast({ type: 'warning', title: t('camp.phoneInvalid') });
       return;
     }
     setAdding(true);
@@ -131,9 +136,12 @@ export function StaffPicker({
       onToggleExtra({ name: saved.name, phone: saved.phone }, true);
       setNewName('');
       setNewPhone('');
-      toast({ type: 'success', title: `${saved.name}(${formatPhone(saved.phone)})을 담았습니다` });
+      toast({
+        type: 'success',
+        title: t('camp.addedOne', { v0: saved.name, v1: formatPhone(saved.phone) }),
+      });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '추가하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.addOneFailed') });
     } finally {
       setAdding(false);
     }
@@ -142,25 +150,20 @@ export function StaffPicker({
   const allowStaff = async (r: StaffRow) => {
     try {
       await saveDemo(r.name, r.phone);
-      toast({ type: 'success', title: `${r.name} 번호를 시연 번호로 허용했습니다` });
+      toast({ type: 'success', title: t('camp.allowed', { v0: r.name }) });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '허용하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.allowFailed') });
     }
   };
 
   const removeDemo = async (d: DemoNumber) => {
-    if (
-      !window.confirm(
-        `시연 번호 ${d.name}(${formatPhone(d.phone)})을 지울까요? 이 번호로는 문자가 나가지 않습니다.`,
-      )
-    )
-      return;
+    if (!window.confirm(t('camp.demoDeleteQ', { v0: d.name, v1: formatPhone(d.phone) }))) return;
     try {
       await api(`/campaigns/demo-numbers/${d.code}`, { method: 'DELETE' });
       onToggleExtra({ name: d.name, phone: d.phone }, false);
       await Promise.all([loadDemo(), loadStaff()]);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.removeFailed') });
     }
   };
 
@@ -170,18 +173,19 @@ export function StaffPicker({
     <div className={styles.col}>
       {data?.restricted && (
         <div className={styles.notice}>
-          지금은 시연 중이라 <b>허용 번호</b>(시연 번호로 등록한 번호 · 서버 허용 번호)로만 실제
-          문자가 나갑니다. 고객 번호와 허용되지 않은 직원 번호는 보내지 않고 실패로 남습니다.
+          {t('camp.demoNote1')} <b>{t('camp.demoNote2')}</b>
+          {t('camp.demoNote3')}
+          {t('camp.demoNote4')}
         </div>
       )}
 
       <div className={styles.field}>
-        <span className={styles.label}>직원 찾기</span>
+        <span className={styles.label}>{t('camp.findStaff')}</span>
         <Input
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="이름·전화번호 (하이픈 없이 숫자만 넣어도 됩니다)"
-          aria-label="직원 이름·전화번호 검색"
+          placeholder={t('camp.staffSearchPh')}
+          aria-label={t('camp.staffSearch')}
         />
       </div>
 
@@ -190,11 +194,11 @@ export function StaffPicker({
           <thead>
             <tr>
               <th style={{ width: 36 }} />
-              <th>이름</th>
-              <th>연락처</th>
-              <th>지점</th>
-              <th>직책</th>
-              {data?.restricted && <th>문자 발송</th>}
+              <th>{t('camp.col.name')}</th>
+              <th>{t('camp.col.phone')}</th>
+              <th>{t('camp.col.branch')}</th>
+              <th>{t('camp.col.position')}</th>
+              {data?.restricted && <th>{t('camp.col.sms')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -211,7 +215,7 @@ export function StaffPicker({
                           v === true ? { name: r.name, phone: r.phone, orgUnit: r.orgUnit } : null,
                         )
                       }
-                      aria-label={`${r.name} 선택`}
+                      aria-label={t('camp.selectOf', { v0: r.name })}
                     />
                   </td>
                   <td>{r.name}</td>
@@ -222,21 +226,21 @@ export function StaffPicker({
                     <td>
                       {r.allowed ? (
                         <Badge variant="subtle" color="success">
-                          허용
+                          {t('camp.allow')}
                         </Badge>
                       ) : (
                         <span className={styles.inline}>
                           <Badge variant="subtle" color="warning">
-                            차단
+                            {t('camp.block')}
                           </Badge>
                           {canWrite && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              title="실제 번호가 맞는지 확인한 뒤 허용하세요"
+                              title={t('camp.allowTip')}
                               onClick={() => void allowStaff(r)}
                             >
-                              허용하기
+                              {t('camp.allowBtn')}
                             </Button>
                           )}
                         </span>
@@ -249,7 +253,7 @@ export function StaffPicker({
             {!rows.length && (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
-                  {loading ? '찾는 중…' : '맞는 직원이 없습니다(재직 중·번호 있는 직원만).'}
+                  {loading ? t('camp.searching') : t('camp.noStaff')}
                 </td>
               </tr>
             )}
@@ -259,7 +263,8 @@ export function StaffPicker({
       {data && data.total > SIZE && (
         <div className={styles.pager}>
           <span>
-            {data.total}명 중 {(page - 1) * SIZE + 1}–{Math.min(page * SIZE, data.total)}
+            {data.total}
+            {t('camp.ofPeople')} {(page - 1) * SIZE + 1}–{Math.min(page * SIZE, data.total)}
           </span>
           <div className={styles.inline}>
             <Button
@@ -268,7 +273,7 @@ export function StaffPicker({
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
             >
-              이전
+              {t('camp.prev')}
             </Button>
             <Button
               variant="outline"
@@ -276,14 +281,14 @@ export function StaffPicker({
               disabled={page * SIZE >= data.total}
               onClick={() => setPage((p) => p + 1)}
             >
-              다음
+              {t('camp.next')}
             </Button>
           </div>
         </div>
       )}
 
       <div className={styles.field}>
-        <span className={styles.label}>시연 번호 (대표님 등 직원 목록에 없는 번호)</span>
+        <span className={styles.label}>{t('camp.demoNumbers')}</span>
         {demo.length > 0 && (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -298,7 +303,7 @@ export function StaffPicker({
                           onCheckedChange={(v) =>
                             onToggleExtra({ name: d.name, phone: d.phone }, v === true)
                           }
-                          aria-label={`${d.name} 선택`}
+                          aria-label={t('camp.selectOf', { v0: d.name })}
                         />
                       </td>
                       <td>{d.name}</td>
@@ -308,8 +313,8 @@ export function StaffPicker({
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={`${d.name} 시연 번호 지우기`}
-                            title="시연 번호에서 지우기"
+                            aria-label={t('camp.demoDeleteOf', { v0: d.name })}
+                            title={t('camp.demoDelete')}
                             onClick={() => void removeDemo(d)}
                           >
                             <Trash2 size={14} />
@@ -329,9 +334,9 @@ export function StaffPicker({
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="이름 (예: 대표님)"
+                placeholder={t('camp.demoNamePh')}
                 maxLength={30}
-                aria-label="추가할 이름"
+                aria-label={t('camp.demoName')}
               />
             </div>
             <div style={{ width: 180 }}>
@@ -339,7 +344,7 @@ export function StaffPicker({
                 value={newPhone}
                 onChange={setNewPhone}
                 onKeyUp={(e) => e.key === 'Enter' && void addNumber()}
-                aria-label="추가할 전화번호"
+                aria-label={t('camp.demoPhone')}
               />
             </div>
             <Button
@@ -350,13 +355,13 @@ export function StaffPicker({
               disabled={!newPhone.trim()}
               onClick={() => void addNumber()}
             >
-              번호 직접 추가
+              {t('camp.addNumber')}
             </Button>
           </div>
         )}
         <span className={styles.sub}>
-          추가한 번호는 시연 번호로 저장되어 다음 캠페인에서도 고를 수 있고, 문자 허용 번호에
-          들어갑니다.
+          {t('camp.addNumberHint1')}
+          {t('camp.addNumberHint2')}
         </span>
       </div>
     </div>

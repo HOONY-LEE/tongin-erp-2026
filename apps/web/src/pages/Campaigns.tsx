@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
@@ -17,11 +18,11 @@ import {
 } from '../components/ui';
 
 export const CAMPAIGN_STATUS_MAP: StatusMap = {
-  DRAFT: { label: '작성 중', color: 'neutral' },
-  SCHEDULED: { label: '예약됨', color: 'info' },
-  SENDING: { label: '발송 중', color: 'warning' },
-  SENT: { label: '발송 완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  DRAFT: { label: i18n.t('camp.cst.DRAFT'), color: 'neutral' },
+  SCHEDULED: { label: i18n.t('camp.cst.SCHEDULED'), color: 'info' },
+  SENDING: { label: i18n.t('camp.cst.SENDING'), color: 'warning' },
+  SENT: { label: i18n.t('camp.cst.SENT'), color: 'success' },
+  CANCELED: { label: i18n.t('camp.cancel'), color: 'error' },
 };
 
 const dt = (v: unknown) => fmtDateTime(v) || '-';
@@ -52,28 +53,33 @@ export default function Campaigns() {
   }, [load]);
 
   const columns: Column[] = [
-    { title: '캠페인', dataIndex: 'name', flex: 1, minWidth: 180 },
+    { title: t('camp.campaign'), dataIndex: 'name', flex: 1, minWidth: 180 },
     {
-      title: '채널',
+      title: t('camp.col.channel'),
       render: (r) => CAMPAIGN_CHANNEL_LABEL[r.channel as CampaignChannel] ?? String(r.channel),
     },
     {
-      title: '상태',
+      title: t('camp.col.status'),
       render: (r) => <StatusBadge value={String(r.status)} map={CAMPAIGN_STATUS_MAP} />,
     },
-    { title: '받는 사람', numeric: true, render: (r) => `${Number(r.recipientCount ?? 0)}명` },
     {
-      title: '결과',
+      title: t('camp.recipients'),
+      numeric: true,
+      render: (r) => t('camp.peopleN', { v0: Number(r.recipientCount ?? 0) }),
+    },
+    {
+      title: t('camp.col.result'),
       render: (r) =>
         r.status === 'SENT'
-          ? `성공 ${Number(r.sentCount ?? 0)} · 실패 ${Number(r.failedCount ?? 0)}`
+          ? t('camp.resultN', { v0: Number(r.sentCount ?? 0), v1: Number(r.failedCount ?? 0) })
           : '-',
     },
     {
-      title: '발송(예약) 시각',
-      render: (r) => (r.status === 'SCHEDULED' ? `${dt(r.scheduledAt)} 예약` : dt(r.sentAt)),
+      title: t('camp.col.sendAt'),
+      render: (r) =>
+        r.status === 'SCHEDULED' ? t('camp.scheduledOf', { v0: dt(r.scheduledAt) }) : dt(r.sentAt),
     },
-    { title: '작성', render: (r) => dt(r.createdAt) },
+    { title: t('camp.col.createdAt'), render: (r) => dt(r.createdAt) },
   ];
 
   return (
@@ -85,7 +91,7 @@ export default function Campaigns() {
         onRowClick={(r) => navigate(`/campaigns/${String(r.id)}`)}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => navigate('/campaigns/new')}>
-            + 캠페인 등록
+            {t('camp.createBtn')}
           </Button>
         }
       />

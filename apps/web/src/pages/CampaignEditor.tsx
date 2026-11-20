@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { SearchInput } from '../components/ui/SearchInput';
@@ -69,21 +71,21 @@ const PAGE_SIZE = 50;
 /** Select는 빈 값을 못 받아서 '전체'를 따로 표시한다 */
 const ALL = '__ALL__';
 /** 알림톡은 카카오 채널·템플릿 연동 전 — 저장·발송을 막고 안내만 보인다(서버도 같은 문구로 막는다) */
-const ALIMTALK_NOT_READY = '아직 알림톡 연결이 안되었습니다.';
+const ALIMTALK_NOT_READY = i18n.t('camp.notConnected.KAKAO');
 /** 화면에서 고르는 채널 — 이메일·인스타그램은 아직 연결 전(미리보기만) */
 type UiChannel = CampaignChannel | 'EMAIL' | 'INSTAGRAM';
 const CHANNEL_OPTIONS: { value: UiChannel; label: string }[] = [
-  { value: 'SMS', label: '문자 (SMS·LMS)' },
-  { value: 'ALIMTALK', label: '카카오 알림톡' },
-  { value: 'EMAIL', label: '이메일' },
-  { value: 'INSTAGRAM', label: '인스타그램' },
+  { value: 'SMS', label: i18n.t('camp.ch.SMS') },
+  { value: 'ALIMTALK', label: i18n.t('camp.ch.KAKAO') },
+  { value: 'EMAIL', label: i18n.t('camp.ch.EMAIL') },
+  { value: 'INSTAGRAM', label: i18n.t('camp.ch.INSTAGRAM') },
 ];
 /** 아직 연결 안 된 채널의 안내(null = 보낼 수 있음) */
 const NOT_CONNECTED: Record<UiChannel, string | null> = {
   SMS: null,
   ALIMTALK: ALIMTALK_NOT_READY,
-  EMAIL: '아직 이메일 발송이 연결되지 않았습니다.',
-  INSTAGRAM: '아직 인스타그램(DM) 연결이 안되었습니다.',
+  EMAIL: i18n.t('camp.notConnected.EMAIL'),
+  INSTAGRAM: i18n.t('camp.notConnected.INSTAGRAM'),
 };
 /** 문자 발신번호(고객 휴대폰에 보이는 번호) */
 const SENDER_NO = '1899-0123';
@@ -93,9 +95,9 @@ const normalizeUrl = (u: string) =>
 type RecipientKind = 'CUSTOMER' | 'EMPLOYEE' | 'EXTRA';
 const KIND_LABEL: Record<RecipientKind, { label: string; color: 'neutral' | 'info' | 'primary' }> =
   {
-    CUSTOMER: { label: '고객', color: 'neutral' },
-    EMPLOYEE: { label: '직원', color: 'info' },
-    EXTRA: { label: '직접', color: 'primary' },
+    CUSTOMER: { label: i18n.t('camp.kind.CUSTOMER'), color: 'neutral' },
+    EMPLOYEE: { label: i18n.t('camp.kind.EMPLOYEE'), color: 'info' },
+    EXTRA: { label: i18n.t('camp.kind.EXTRA'), color: 'primary' },
   };
 
 interface Button2 {
@@ -162,9 +164,10 @@ const dt = (v: string | null) => fmtDateTime(v) || '-';
 /** 캠페인 발송 잠시 막음 — 운영 실발송을 켰지만 아직 시연 고객 데이터가 섞여 있어 고객에게 일괄 발송은 막는다
  * (상담 콘솔의 1:1 문자는 보낼 수 있다). 풀 때 false로 */
 const CAMPAIGN_SEND_BLOCKED = true;
-const CAMPAIGN_BLOCK_MSG = '지금은 캠페인 발송을 막아 두었습니다(실제 고객 데이터 정리 후 열림)';
+const CAMPAIGN_BLOCK_MSG = i18n.t('camp.blocked');
 
 export default function CampaignEditor() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const isNew = !id || id === 'new';
   const navigate = useNavigate();
@@ -257,7 +260,7 @@ export default function CampaignEditor() {
     try {
       fill(await api<CampaignData>(`/campaigns/${id}`));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -286,7 +289,7 @@ export default function CampaignEditor() {
       } catch (e) {
         toast({
           type: 'error',
-          title: e instanceof ApiError ? e.message : '고객을 찾지 못했습니다',
+          title: e instanceof ApiError ? e.message : t('camp.customerSearchFailed'),
         });
       } finally {
         setSearching(false);
@@ -393,9 +396,9 @@ export default function CampaignEditor() {
         for (const i of ids) if (!n.has(i)) n.set(i, null);
         return n;
       });
-      toast({ type: 'success', title: `검색 결과 ${ids.length}명을 담았습니다` });
+      toast({ type: 'success', title: t('camp.addedAll', { v0: ids.length }) });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '담지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.addFailed') });
     }
   };
 
@@ -464,9 +467,9 @@ export default function CampaignEditor() {
     const err = notReady
       ? notReady
       : !name.trim()
-        ? '캠페인 이름을 입력하세요.'
+        ? t('camp.nameReq')
         : !message.trim()
-          ? '본문을 입력하세요.'
+          ? t('camp.bodyReq')
           : null;
     if (err) toast({ type: 'warning', title: err });
     else setStep(2);
@@ -474,13 +477,12 @@ export default function CampaignEditor() {
 
   const check = () => {
     if (notReady) return notReady;
-    if (periodStart && periodEnd && periodEnd < periodStart)
-      return '캠페인 기간의 끝 날짜가 시작 날짜보다 빠릅니다.';
-    if (!name.trim()) return '캠페인 이름을 입력하세요.';
-    if (!message.trim()) return '본문을 입력하세요.';
-    if (when === 'LATER' && !scheduledAt) return '예약 시각을 고르세요.';
+    if (periodStart && periodEnd && periodEnd < periodStart) return t('camp.periodInvalid');
+    if (!name.trim()) return t('camp.nameReq');
+    if (!message.trim()) return t('camp.bodyReq');
+    if (when === 'LATER' && !scheduledAt) return t('camp.scheduleReq');
     if (when === 'LATER' && new Date(scheduledAt).getTime() < Date.now())
-      return '예약 시각이 지났습니다.';
+      return t('camp.schedulePast');
     return null;
   };
 
@@ -499,10 +501,10 @@ export default function CampaignEditor() {
         : await api<CampaignData>('/campaigns', { method: 'POST', body });
       fill(c);
       if (isNew) navigate(`/campaigns/${c.id}`, { replace: true });
-      if (!silent) toast({ type: 'success', title: '임시저장했습니다' });
+      if (!silent) toast({ type: 'success', title: t('camp.drafted') });
       return c;
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.saveFailed') });
       return null;
     } finally {
       setSaving(false);
@@ -523,10 +525,10 @@ export default function CampaignEditor() {
       setConfirm(false);
       toast({
         type: 'success',
-        title: next.status === 'SCHEDULED' ? '예약했습니다' : '발송을 시작했습니다',
+        title: next.status === 'SCHEDULED' ? t('camp.scheduled') : t('camp.sending'),
       });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '보내지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.sendFailed') });
     } finally {
       setSaving(false);
     }
@@ -536,24 +538,20 @@ export default function CampaignEditor() {
     if (!loaded) return;
     try {
       fill(await api<CampaignData>(`/campaigns/${loaded.id}/cancel`, { method: 'POST' }));
-      toast({ type: 'success', title: '예약을 취소했습니다(작성 중으로)' });
+      toast({ type: 'success', title: t('camp.unscheduled') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '취소하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.cancelFailed') });
     }
   };
 
   const remove = async () => {
-    if (
-      !loaded ||
-      !window.confirm('이 캠페인을 삭제할까요? 받는 사람 목록도 함께 지워지며 되돌릴 수 없습니다.')
-    )
-      return;
+    if (!loaded || !window.confirm(t('camp.deleteQ'))) return;
     try {
       await api(`/campaigns/${loaded.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '캠페인을 삭제했습니다' });
+      toast({ type: 'success', title: t('camp.deleted') });
       navigate('/campaigns');
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('camp.deleteFailed') });
     }
   };
 
@@ -567,14 +565,14 @@ export default function CampaignEditor() {
 
   const header = (
     <PageHeader
-      title={isNew ? '캠페인 등록' : name || '캠페인'}
-      breadcrumbs={[{ label: '마케팅', onClick: () => navigate('/campaigns') }]}
+      title={isNew ? t('camp.createTitle') : name || t('camp.campaign')}
+      breadcrumbs={[{ label: t('camp.marketing'), onClick: () => navigate('/campaigns') }]}
       tags={loaded ? <StatusBadge value={loaded.status} map={CAMPAIGN_STATUS_MAP} /> : undefined}
       actions={
         // 목록 행 끝에 있던 삭제 — 발송 중이 아닌 기존 캠페인만, 삭제 권한(MARKETING.DELETE)
         loaded && loaded.status !== 'SENDING' && can('MARKETING.DELETE') ? (
           <Button variant="ghost" size="sm" onClick={() => void remove()}>
-            삭제
+            {t('camp.delete')}
           </Button>
         ) : undefined
       }
@@ -590,18 +588,22 @@ export default function CampaignEditor() {
           <div className={styles.col}>
             <div className={styles.panel}>
               <h3 className={styles.panelTitle}>
-                받는 사람 <span className={styles.sub}>{loaded.recipients.length}명</span>
+                {t('camp.recipients')}{' '}
+                <span className={styles.sub}>
+                  {loaded.recipients.length}
+                  {t('camp.peopleSuffix')}
+                </span>
               </h3>
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: 56 }}>구분</th>
-                      <th>이름</th>
-                      <th>연락처</th>
-                      <th>결과</th>
-                      <th>보낸 시각</th>
-                      <th>사유</th>
+                      <th style={{ width: 56 }}>{t('camp.col.kind')}</th>
+                      <th>{t('camp.col.name')}</th>
+                      <th>{t('camp.col.phone')}</th>
+                      <th>{t('camp.col.result')}</th>
+                      <th>{t('camp.col.sentAt')}</th>
+                      <th>{t('camp.col.reason')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -609,7 +611,7 @@ export default function CampaignEditor() {
                       <tr key={r.id}>
                         <td>
                           <Badge variant="subtle" color={KIND_LABEL[r.kind]?.color ?? 'neutral'}>
-                            {KIND_LABEL[r.kind]?.label ?? '고객'}
+                            {KIND_LABEL[r.kind]?.label ?? t('camp.kind.CUSTOMER')}
                           </Badge>
                         </td>
                         <td>{r.name}</td>
@@ -618,9 +620,9 @@ export default function CampaignEditor() {
                           <StatusBadge
                             value={r.status}
                             map={{
-                              PENDING: { label: '대기', color: 'neutral' },
-                              SENT: { label: '성공', color: 'success' },
-                              FAILED: { label: '실패', color: 'error' },
+                              PENDING: { label: t('camp.st.PENDING'), color: 'neutral' },
+                              SENT: { label: t('camp.st.SENT'), color: 'success' },
+                              FAILED: { label: t('camp.st.FAILED'), color: 'error' },
                             }}
                           />
                         </td>
@@ -635,32 +637,35 @@ export default function CampaignEditor() {
           </div>
           <div className={styles.sticky}>
             <div className={styles.panel}>
-              <h3 className={styles.panelTitle}>요약</h3>
+              <h3 className={styles.panelTitle}>{t('camp.summary')}</h3>
               <div className={styles.summary}>
                 <div>
-                  <span>채널</span>
+                  <span>{t('camp.col.channel')}</span>
                   <span>{CAMPAIGN_CHANNEL_LABEL[loaded.channel]}</span>
                 </div>
                 <div>
-                  <span>받는 사람</span>
-                  <b>{loaded.recipientCount}명</b>
+                  <span>{t('camp.recipients')}</span>
+                  <b>
+                    {loaded.recipientCount}
+                    {t('camp.peopleSuffix')}
+                  </b>
                 </div>
                 {loaded.status === 'SCHEDULED' && (
                   <div>
-                    <span>예약 시각</span>
+                    <span>{t('camp.scheduledAt')}</span>
                     <span>{dt(loaded.scheduledAt)}</span>
                   </div>
                 )}
                 {loaded.status !== 'SCHEDULED' && (
                   <>
                     <div>
-                      <span>성공 / 실패</span>
+                      <span>{t('camp.successFail')}</span>
                       <span>
                         {loaded.sentCount} / {loaded.failedCount}
                       </span>
                     </div>
                     <div>
-                      <span>발송 시각</span>
+                      <span>{t('camp.sentAt')}</span>
                       <span>{dt(loaded.sentAt)}</span>
                     </div>
                   </>
@@ -668,12 +673,12 @@ export default function CampaignEditor() {
               </div>
               {loaded.status === 'SENDING' && (
                 <div className={styles.inline}>
-                  <Spinner size="sm" /> 보내는 중입니다…
+                  <Spinner size="sm" /> {t('camp.sendingNow')}
                 </div>
               )}
               {loaded.status === 'SCHEDULED' && (
                 <Button variant="outline" onClick={() => void cancelSchedule()}>
-                  예약 취소하고 고치기
+                  {t('camp.unscheduleEdit')}
                 </Button>
               )}
             </div>
@@ -699,7 +704,7 @@ export default function CampaignEditor() {
     <div className={styles.col}>
       {header}
       <ol className={styles.steps}>
-        {(['메시지 작성', '받는 사람 · 발송'] as const).map((label, i) => (
+        {([t('camp.step.compose'), t('camp.step.send')] as const).map((label, i) => (
           <li key={label}>
             <button
               type="button"
@@ -718,27 +723,27 @@ export default function CampaignEditor() {
           {step === 1 ? (
             // 캠페인 기본 정보 + 메시지 — 한 카드(경계선으로 나눔), 높이는 미리보기 카드와 같게
             <section className={`${styles.panel} ${styles.composeCard}`}>
-              <h3 className={styles.panelTitle}>캠페인 기본 정보</h3>
+              <h3 className={styles.panelTitle}>{t('camp.basic')}</h3>
               <div className={styles.row2}>
                 <label className={styles.field}>
                   <span className={styles.label}>
-                    캠페인 이름 <span className={styles.req}>*</span>
+                    {t('camp.name')} <span className={styles.req}>*</span>
                   </span>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="예: 11월 이사 예정 고객 사다리차 할인"
+                    placeholder={t('camp.namePh')}
                   />
                 </label>
                 <div className={styles.field}>
-                  <span className={styles.label}>캠페인 기간</span>
+                  <span className={styles.label}>{t('camp.period')}</span>
                   <div className={styles.period}>
                     <input
                       type="date"
                       className={styles.dateInput}
                       value={periodStart}
                       onChange={(e) => setPeriodStart(e.target.value)}
-                      aria-label="캠페인 시작일"
+                      aria-label={t('camp.periodStart')}
                     />
                     <span className={styles.sub}>~</span>
                     <input
@@ -747,14 +752,14 @@ export default function CampaignEditor() {
                       value={periodEnd}
                       min={periodStart || undefined}
                       onChange={(e) => setPeriodEnd(e.target.value)}
-                      aria-label="캠페인 종료일"
+                      aria-label={t('camp.periodEnd')}
                     />
                   </div>
                 </div>
               </div>
               <div className={styles.field}>
                 <span className={styles.label}>
-                  채널 <span className={styles.req}>*</span>
+                  {t('camp.col.channel')} <span className={styles.req}>*</span>
                 </span>
                 <SegmentedControl
                   className={styles.fitSeg}
@@ -767,16 +772,12 @@ export default function CampaignEditor() {
               <hr className={styles.divider} />
 
               <h3 className={styles.panelTitle}>
-                메시지{' '}
-                {channel === 'SMS' && (
-                  <span className={styles.sub}>
-                    90바이트(한글 45자)를 넘으면 장문(LMS)으로 보냅니다
-                  </span>
-                )}
+                {t('camp.message')}{' '}
+                {channel === 'SMS' && <span className={styles.sub}>{t('camp.lmsHint')}</span>}
               </h3>
               {notReady && (
                 <div className={styles.warn} role="status">
-                  {notReady} 문구와 미리보기는 만들어 볼 수 있지만, 보내기는 연결 후에 열립니다.
+                  {notReady} {t('camp.notConnectedHint')}
                 </div>
               )}
 
@@ -786,34 +787,34 @@ export default function CampaignEditor() {
                   <label className={styles.field}>
                     <span className={styles.label}>
                       {channel === 'SMS'
-                        ? '장문 제목 (LMS일 때)'
+                        ? t('camp.subjectLms')
                         : channel === 'ALIMTALK'
-                          ? '강조 제목'
-                          : '메일 제목'}
+                          ? t('camp.subjectKakao')
+                          : t('camp.subjectEmail')}
                     </span>
                     <Input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       maxLength={40}
-                      placeholder="예: [통인익스프레스] 가을 이사 할인"
+                      placeholder={t('camp.subjectPh')}
                     />
                   </label>
                 )}
                 <label className={styles.field}>
-                  <span className={styles.label}>무료수신거부 문구</span>
+                  <span className={styles.label}>{t('camp.optOut')}</span>
                   <Input
                     value={optOut}
                     onChange={(e) => setOptOut(e.target.value)}
                     placeholder={DEFAULT_OPT_OUT}
                     disabled={!isAd}
-                    aria-label="수신거부 문구"
+                    aria-label={t('camp.optOutAria')}
                   />
                 </label>
                 <div className={styles.adCheck}>
                   <Checkbox
                     checked={isAd}
                     onCheckedChange={(v) => setIsAd(v === true)}
-                    label="광고성 문자"
+                    label={t('camp.adMessage')}
                   />
                 </div>
               </div>
@@ -821,7 +822,7 @@ export default function CampaignEditor() {
               <div className={`${styles.field} ${styles.bodyField}`}>
                 <div className={styles.counter}>
                   <span className={styles.label}>
-                    본문 <span className={styles.req}>*</span>
+                    {t('camp.body')} <span className={styles.req}>*</span>
                   </span>
                   <span className={styles.inline}>
                     <Button
@@ -830,7 +831,7 @@ export default function CampaignEditor() {
                       leftIcon={<Plus size={13} />}
                       onClick={insertName}
                     >
-                      고객명 넣기
+                      {t('camp.insertName')}
                     </Button>
                     <Button
                       variant="outline"
@@ -838,7 +839,7 @@ export default function CampaignEditor() {
                       leftIcon={<Plus size={13} />}
                       onClick={() => setLinkOpen(true)}
                     >
-                      링크 넣기
+                      {t('camp.insertLink')}
                     </Button>
                   </span>
                 </div>
@@ -848,15 +849,16 @@ export default function CampaignEditor() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={`[통인익스프레스] ${NAME_TOKEN}님, 안녕하세요.`}
-                  aria-label="본문"
+                  aria-label={t('camp.body')}
                 />
                 <div className={styles.counter}>
                   <span>
-                    {NAME_TOKEN}는 받는 사람마다 이름으로 바뀝니다. 링크는 눌러서 열립니다.
+                    {NAME_TOKEN}
+                    {t('camp.nameTokenHint')}
                   </span>
                   {channel === 'SMS' && (
                     <span>
-                      {bytes} byte · <b>{isLms ? 'LMS(장문)' : 'SMS(단문)'}</b>
+                      {bytes} byte · <b>{isLms ? t('camp.lms') : t('camp.sms')}</b>
                     </span>
                   )}
                 </div>
@@ -866,7 +868,11 @@ export default function CampaignEditor() {
             <>
               <section className={styles.panel}>
                 <h3 className={styles.panelTitle}>
-                  받는 사람 <span className={styles.sub}>{totalPicked}명 담음</span>
+                  {t('camp.recipients')}{' '}
+                  <span className={styles.sub}>
+                    {totalPicked}
+                    {t('camp.addedN')}
+                  </span>
                 </h3>
 
                 {/* 세그먼트는 영역 전체가 아니라 내용 폭만큼 */}
@@ -875,10 +881,17 @@ export default function CampaignEditor() {
                   value={recipientTab}
                   onChange={(v) => setRecipientTab(v as 'CUSTOMER' | 'STAFF')}
                   options={[
-                    { value: 'CUSTOMER', label: `고객${picked.size ? ` (${picked.size})` : ''}` },
+                    {
+                      value: 'CUSTOMER',
+                      label: t('camp.tab.customers', {
+                        v0: picked.size ? ` (${picked.size})` : '',
+                      }),
+                    },
                     {
                       value: 'STAFF',
-                      label: `직원·시연 번호${others.length ? ` (${others.length})` : ''}`,
+                      label: t('camp.tab.staff', {
+                        v0: others.length ? ` (${others.length})` : '',
+                      }),
                     },
                   ]}
                 />
@@ -899,18 +912,18 @@ export default function CampaignEditor() {
                       <SearchInput
                         value={filter.keyword ?? ''}
                         onChange={(v) => setF('keyword', v)}
-                        placeholder="이름·전화번호 검색"
+                        placeholder={t('camp.searchPh')}
                         width={260}
                       />
                       <FilterMenu
-                        label="지역"
+                        label={t('camp.region')}
                         columns={3}
                         options={SIDO.map((v) => ({ value: v, label: v }))}
                         value={filter.sido ?? []}
                         onChange={(v) => applyF('sido', v.length ? v : undefined)}
                       />
                       <FilterMenu
-                        label="접수 상태"
+                        label={t('camp.leadStatus')}
                         options={LEAD_STATUS.map((v) => ({
                           value: v,
                           label: LEAD_STATUS_LABEL[v],
@@ -919,26 +932,26 @@ export default function CampaignEditor() {
                         onChange={(v) => applyF('leadStatuses', v.length ? v : undefined)}
                       />
                       <FilterMenu
-                        label="고객 등급"
+                        label={t('camp.grade')}
                         options={grades}
                         value={filter.grades ?? []}
                         onChange={(v) => applyF('grades', v.length ? v : undefined)}
                       />
                       <FilterPopover
-                        label="기간"
+                        label={t('camp.dateRange')}
                         summary={periodCount ? String(periodCount) : undefined}
                         active={periodCount > 0}
                         width={280}
                       >
                         <div className={fstyles.dateRow}>
-                          이사일
+                          {t('camp.moveDate')}
                           <div>
                             <input
                               type="date"
                               className={fstyles.date}
                               value={filter.moveDateFrom ?? ''}
                               onChange={(e) => applyF('moveDateFrom', e.target.value || undefined)}
-                              aria-label="이사일 시작"
+                              aria-label={t('camp.moveFrom')}
                             />
                             ~
                             <input
@@ -946,19 +959,19 @@ export default function CampaignEditor() {
                               className={fstyles.date}
                               value={filter.moveDateTo ?? ''}
                               onChange={(e) => applyF('moveDateTo', e.target.value || undefined)}
-                              aria-label="이사일 끝"
+                              aria-label={t('camp.moveTo')}
                             />
                           </div>
                         </div>
                         <div className={fstyles.dateRow}>
-                          접수일
+                          {t('camp.receivedDate')}
                           <div>
                             <input
                               type="date"
                               className={fstyles.date}
                               value={filter.receivedFrom ?? ''}
                               onChange={(e) => applyF('receivedFrom', e.target.value || undefined)}
-                              aria-label="접수일 시작"
+                              aria-label={t('camp.receivedFrom')}
                             />
                             ~
                             <input
@@ -966,7 +979,7 @@ export default function CampaignEditor() {
                               className={fstyles.date}
                               value={filter.receivedTo ?? ''}
                               onChange={(e) => applyF('receivedTo', e.target.value || undefined)}
-                              aria-label="접수일 끝"
+                              aria-label={t('camp.receivedTo')}
                             />
                           </div>
                         </div>
@@ -975,8 +988,8 @@ export default function CampaignEditor() {
                         <Select
                           value={filter.orgUnitId ?? ALL}
                           onValueChange={(v) => applyF('orgUnitId', v === ALL ? undefined : v)}
-                          options={[{ value: ALL, label: '전체 지점' }, ...orgs]}
-                          aria-label="담당 지점"
+                          options={[{ value: ALL, label: t('camp.allBranches') }, ...orgs]}
+                          aria-label={t('camp.ownerBranch')}
                         />
                       </div>
                       <div className={styles.filterSelectWide}>
@@ -984,17 +997,17 @@ export default function CampaignEditor() {
                           value={String(filter.excludeRecentDays ?? 0)}
                           onValueChange={(v) => applyF('excludeRecentDays', Number(v) || undefined)}
                           options={[
-                            { value: '0', label: '최근 수신자 포함' },
-                            { value: '7', label: '최근 7일 받은 고객 제외' },
-                            { value: '14', label: '최근 14일 받은 고객 제외' },
-                            { value: '30', label: '최근 30일 받은 고객 제외' },
+                            { value: '0', label: t('camp.recent.include') },
+                            { value: '7', label: t('camp.recent.7') },
+                            { value: '14', label: t('camp.recent.14') },
+                            { value: '30', label: t('camp.recent.30') },
                           ]}
-                          aria-label="최근 캠페인 받은 고객 제외"
+                          aria-label={t('camp.recentAria')}
                         />
                       </div>
                       {hasFilter && (
                         <Button variant="ghost" size="sm" onClick={resetFilter}>
-                          초기화
+                          {t('camp.reset')}
                         </Button>
                       )}
                     </div>
@@ -1002,20 +1015,22 @@ export default function CampaignEditor() {
                     <div className={styles.inline}>
                       <span className={styles.sub}>
                         {searching
-                          ? '찾는 중…'
+                          ? t('camp.searching')
                           : result
-                            ? `${result.total.toLocaleString()}명`
+                            ? t('camp.peopleN', { v0: result.total.toLocaleString() })
                             : ''}
                       </span>
                       <span style={{ flex: 1 }} />
                       {result && result.total > 0 && (
                         <Button variant="outline" size="sm" onClick={() => void pickAllResults()}>
-                          검색 결과 전체 담기 ({result.total.toLocaleString()}명)
+                          {t('camp.addAll1')}
+                          {result.total.toLocaleString()}
+                          {t('camp.addAll2')}
                         </Button>
                       )}
                       {picked.size > 0 && (
                         <Button variant="ghost" size="sm" onClick={() => setPicked(new Map())}>
-                          담은 고객 비우기
+                          {t('camp.clearPicked')}
                         </Button>
                       )}
                     </div>
@@ -1028,15 +1043,15 @@ export default function CampaignEditor() {
                               <Checkbox
                                 checked={pageAllOn}
                                 onCheckedChange={(v) => togglePage(v === true)}
-                                aria-label="이 페이지 전체 선택"
+                                aria-label={t('camp.selectPage')}
                               />
                             </th>
-                            <th>이름</th>
-                            <th>연락처</th>
-                            <th>주소</th>
-                            <th>최근 접수</th>
-                            <th>이사일</th>
-                            <th>지점</th>
+                            <th>{t('camp.col.name')}</th>
+                            <th>{t('camp.col.phone')}</th>
+                            <th>{t('camp.col.address')}</th>
+                            <th>{t('camp.col.recentLead')}</th>
+                            <th>{t('camp.moveDate')}</th>
+                            <th>{t('camp.col.branch')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1048,7 +1063,7 @@ export default function CampaignEditor() {
                                   <Checkbox
                                     checked={on}
                                     onCheckedChange={(v) => togglePick(r, v === true)}
-                                    aria-label={`${r.name} 선택`}
+                                    aria-label={t('camp.selectOf', { v0: r.name })}
                                   />
                                 </td>
                                 <td>{r.name}</td>
@@ -1069,7 +1084,7 @@ export default function CampaignEditor() {
                           {!pageRows.length && (
                             <tr>
                               <td colSpan={7} style={{ textAlign: 'center', padding: 24 }}>
-                                {searching ? '찾는 중…' : '조건에 맞는 고객이 없습니다.'}
+                                {searching ? t('camp.searching') : t('camp.noMatch')}
                               </td>
                             </tr>
                           )}
@@ -1079,7 +1094,8 @@ export default function CampaignEditor() {
                     {result && result.total > PAGE_SIZE && (
                       <div className={styles.pager}>
                         <span>
-                          {result.total}명 중 {(page - 1) * PAGE_SIZE + 1}–
+                          {result.total}
+                          {t('camp.ofPeople')} {(page - 1) * PAGE_SIZE + 1}–
                           {Math.min(page * PAGE_SIZE, result.total)}
                         </span>
                         <div className={styles.inline}>
@@ -1089,7 +1105,7 @@ export default function CampaignEditor() {
                             disabled={page <= 1}
                             onClick={() => setPage((p) => p - 1)}
                           >
-                            이전
+                            {t('camp.prev')}
                           </Button>
                           <Button
                             variant="outline"
@@ -1097,7 +1113,7 @@ export default function CampaignEditor() {
                             disabled={page * PAGE_SIZE >= result.total}
                             onClick={() => setPage((p) => p + 1)}
                           >
-                            다음
+                            {t('camp.next')}
                           </Button>
                         </div>
                       </div>
@@ -1108,7 +1124,7 @@ export default function CampaignEditor() {
 
               {/* 발송 — 받는 사람 아래 맨 끝. 최종 명단은 보내기를 누르면 확인 창에서 한 번 더 보여 준다 */}
               <section className={styles.panel}>
-                <h3 className={styles.panelTitle}>발송</h3>
+                <h3 className={styles.panelTitle}>{t('camp.send')}</h3>
                 {notReady && <div className={styles.warn}>{notReady}</div>}
                 <div className={styles.sendRow}>
                   <SegmentedControl
@@ -1116,8 +1132,8 @@ export default function CampaignEditor() {
                     value={when}
                     onChange={(v) => setWhen(v as 'NOW' | 'LATER')}
                     options={[
-                      { value: 'NOW', label: '바로 보내기' },
-                      { value: 'LATER', label: '예약 발송' },
+                      { value: 'NOW', label: t('camp.sendNow') },
+                      { value: 'LATER', label: t('camp.sendLater') },
                     ]}
                   />
                   {when === 'LATER' && (
@@ -1126,32 +1142,36 @@ export default function CampaignEditor() {
                       className={styles.dateInput}
                       value={scheduledAt}
                       onChange={(e) => setScheduledAt(e.target.value)}
-                      aria-label="예약 시각"
+                      aria-label={t('camp.scheduledAt')}
                     />
                   )}
                   <span className={styles.sendSummary}>
-                    받는 사람 <b>{totalPicked.toLocaleString()}명</b>
+                    {t('camp.recipients')}{' '}
+                    <b>
+                      {totalPicked.toLocaleString()}
+                      {t('camp.peopleSuffix')}
+                    </b>
                     {' · '}
                     {channel === 'SMS'
                       ? isLms
-                        ? '문자 · 장문(LMS)'
-                        : '문자 · 단문(SMS)'
+                        ? t('camp.smsLms')
+                        : t('camp.smsSms')
                       : CHANNEL_OPTIONS.find((o) => o.value === channel)?.label}
                   </span>
                 </div>
                 {channel === 'SMS' && isLms && !title && (
-                  <div className={styles.warn}>장문이라 제목을 넣는 게 좋습니다.</div>
+                  <div className={styles.warn}>{t('camp.lmsTitleHint')}</div>
                 )}
                 <div className={styles.stepNav}>
                   <Button variant="ghost" onClick={() => setStep(1)}>
-                    ← 메시지 수정
+                    {t('camp.backToCompose')}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => void save()}
                     disabled={saving || !!notReady}
                   >
-                    임시저장
+                    {t('camp.saveDraft')}
                   </Button>
                   <Button
                     variant="primary"
@@ -1163,7 +1183,7 @@ export default function CampaignEditor() {
                       else setConfirm(true);
                     }}
                   >
-                    {when === 'LATER' ? '예약하기' : '보내기'}
+                    {when === 'LATER' ? t('camp.schedule') : t('camp.sendBtn')}
                   </Button>
                   {CAMPAIGN_SEND_BLOCKED && (
                     <span style={{ color: 'var(--ark-color-text-secondary)', fontSize: 12.5 }}>
@@ -1185,7 +1205,7 @@ export default function CampaignEditor() {
             lms={channel === 'SMS' && isLms}
             title={title}
             body={composed}
-            placeholder="본문을 입력하세요"
+            placeholder={t('camp.bodyPh')}
             to={sampleName}
             at={when === 'LATER' && scheduledAt ? new Date(scheduledAt) : undefined}
             width={286}
@@ -1194,10 +1214,10 @@ export default function CampaignEditor() {
         {step === 1 && (
           <div className={`${styles.stepNav} ${styles.stepNavSpan}`}>
             <Button variant="outline" onClick={() => void save()} disabled={saving || !!notReady}>
-              임시저장
+              {t('camp.saveDraft')}
             </Button>
             <Button variant="primary" onClick={goStep2} disabled={!!notReady}>
-              다음: 받는 사람·발송 →
+              {t('camp.nextStep')}
             </Button>
           </div>
         )}
@@ -1206,30 +1226,28 @@ export default function CampaignEditor() {
       <Modal
         open={linkOpen}
         onOpenChange={setLinkOpen}
-        title="링크 넣기"
+        title={t('camp.insertLink')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setLinkOpen(false)}>
-              취소
+              {t('camp.cancel')}
             </Button>
             <Button variant="primary" disabled={!linkUrl.trim()} onClick={insertLink}>
-              넣기
+              {t('camp.insert')}
             </Button>
           </>
         }
       >
         <label className={styles.field}>
-          <span className={styles.label}>주소</span>
+          <span className={styles.label}>{t('camp.col.address')}</span>
           <Input
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && insertLink()}
-            placeholder="예: tongin.co.kr/event"
+            placeholder={t('camp.linkPh')}
             autoFocus
           />
-          <span className={styles.sub}>
-            본문의 커서 자리에 들어가고, 고객 휴대폰에서 밑줄 링크로 눌러 열립니다.
-          </span>
+          <span className={styles.sub}>{t('camp.linkHint')}</span>
         </label>
       </Modal>
 
@@ -1237,11 +1255,11 @@ export default function CampaignEditor() {
         open={confirm}
         onOpenChange={setConfirm}
         size="lg"
-        title={when === 'LATER' ? '예약할까요?' : '지금 보낼까요?'}
+        title={when === 'LATER' ? t('camp.scheduleQ') : t('camp.sendQ')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirm(false)}>
-              취소
+              {t('camp.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -1249,31 +1267,36 @@ export default function CampaignEditor() {
               disabled={totalPicked === 0}
               onClick={() => void send()}
             >
-              {when === 'LATER' ? '예약하기' : '보내기'} ({totalPicked.toLocaleString()}명)
+              {when === 'LATER' ? t('camp.schedule') : t('camp.sendBtn')} (
+              {totalPicked.toLocaleString()}
+              {t('camp.addAll2')}
             </Button>
           </>
         }
       >
         <div className={styles.summary}>
           <div>
-            <span>캠페인</span>
+            <span>{t('camp.campaign')}</span>
             <span>{name}</span>
           </div>
           <div>
-            <span>채널</span>
+            <span>{t('camp.col.channel')}</span>
             <span>{CAMPAIGN_CHANNEL_LABEL[channel as CampaignChannel]}</span>
           </div>
           <div>
-            <span>받는 사람</span>
-            <b>{totalPicked}명</b>
+            <span>{t('camp.recipients')}</span>
+            <b>
+              {totalPicked}
+              {t('camp.peopleSuffix')}
+            </b>
           </div>
           <div>
-            <span>시각</span>
-            <span>{when === 'LATER' ? dt(new Date(scheduledAt).toISOString()) : '지금'}</span>
+            <span>{t('camp.time')}</span>
+            <span>
+              {when === 'LATER' ? dt(new Date(scheduledAt).toISOString()) : t('camp.now')}
+            </span>
           </div>
-          <div className={styles.warn}>
-            보낸 뒤에는 되돌릴 수 없습니다. 번호가 없는 고객은 빠지고, 같은 번호는 한 번만 보냅니다.
-          </div>
+          <div className={styles.warn}>{t('camp.sendWarn')}</div>
         </div>
         {/* 최종 발송 명단 — 여기서 이름·번호로 찾아 뺄 수 있다 */}
         <PickedList

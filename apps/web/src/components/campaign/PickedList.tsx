@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -25,9 +27,9 @@ export interface OtherRecipient {
 
 const SIZE = 20;
 const KIND_BADGE = {
-  CUSTOMER: { label: '고객', color: 'neutral' },
-  EMPLOYEE: { label: '직원', color: 'info' },
-  EXTRA: { label: '직접', color: 'primary' },
+  CUSTOMER: { label: i18n.t('camp.kind.CUSTOMER'), color: 'neutral' },
+  EMPLOYEE: { label: i18n.t('camp.kind.EMPLOYEE'), color: 'info' },
+  EXTRA: { label: i18n.t('camp.kind.EXTRA'), color: 'primary' },
 } as const;
 
 function KindBadge({ kind }: { kind: keyof typeof KIND_BADGE }) {
@@ -57,6 +59,7 @@ export function PickedList({
   onRemoveOther?: (o: OtherRecipient) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const [keyword, setKeyword] = useState('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -109,25 +112,26 @@ export function PickedList({
   return (
     <div className={styles.picked}>
       <div className={styles.pickedHead}>
-        <b>최종 발송 명단</b>
+        <b>{t('camp.finalList')}</b>
         <span className={styles.sub}>
-          {totalCount.toLocaleString()}명
+          {totalCount.toLocaleString()}
+          {t('camp.peopleSuffix')}
           {others.length > 0 &&
-            ` (고객 ${ids.length.toLocaleString()} · 직원·직접 ${others.length})`}
+            t('camp.listBreakdown', { v0: ids.length.toLocaleString(), v1: others.length })}
         </span>
         <span style={{ flex: 1 }} />
         <div className={styles.pickedSearch}>
           <SearchInput
             value={keyword}
             onChange={setKeyword}
-            placeholder="명단에서 이름·전화번호 찾기"
-            ariaLabel="명단에서 찾기"
+            placeholder={t('camp.listSearchPh')}
+            ariaLabel={t('camp.listSearch')}
           />
         </div>
       </div>
       {totalCount === 0 ? (
         <div className={styles.pickedEmpty}>
-          아직 담은 사람이 없습니다. 위 검색 결과에서 체크하거나 '전체 담기'를 누르세요.
+          {t('camp.emptyList1')} t('camp.addAllShort'){t('camp.emptyList2')}
         </div>
       ) : (
         <>
@@ -135,11 +139,11 @@ export function PickedList({
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th style={{ width: 56 }}>구분</th>
-                  <th>이름</th>
-                  <th>연락처</th>
-                  <th>주소</th>
-                  <th>지점</th>
+                  <th style={{ width: 56 }}>{t('camp.col.kind')}</th>
+                  <th>{t('camp.col.name')}</th>
+                  <th>{t('camp.col.phone')}</th>
+                  <th>{t('camp.col.address')}</th>
+                  <th>{t('camp.col.branch')}</th>
                   {!readOnly && <th style={{ width: 60 }} />}
                 </tr>
               </thead>
@@ -159,8 +163,8 @@ export function PickedList({
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={`${o.name} 빼기`}
-                            title="명단에서 빼기"
+                            aria-label={t('camp.removeOf', { v0: o.name })}
+                            title={t('camp.removeFromList')}
                             onClick={() => onRemoveOther?.(o)}
                           >
                             <X size={14} />
@@ -183,8 +187,8 @@ export function PickedList({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label={`${r.name} 빼기`}
-                          title="명단에서 빼기"
+                          aria-label={t('camp.removeOf', { v0: r.name })}
+                          title={t('camp.removeFromList')}
                           onClick={() => onRemove?.(r.id)}
                         >
                           <X size={14} />
@@ -196,7 +200,7 @@ export function PickedList({
                 {data && data.rows.length === 0 && shownOthers.length === 0 && (
                   <tr>
                     <td colSpan={readOnly ? 5 : 6} className={styles.sub}>
-                      명단에 '{q}'에 맞는 사람이 없습니다.
+                      {t('camp.noMatchIn1')} '{q}'{t('camp.noMatchIn2')}
                     </td>
                   </tr>
                 )}
@@ -206,8 +210,8 @@ export function PickedList({
           {data && data.total > SIZE && (
             <div className={styles.pager}>
               <span>
-                {data.total.toLocaleString()}명 중 {(page - 1) * SIZE + 1}–
-                {Math.min(page * SIZE, data.total)}
+                {data.total.toLocaleString()}
+                {t('camp.ofPeople')} {(page - 1) * SIZE + 1}–{Math.min(page * SIZE, data.total)}
               </span>
               <div className={styles.inline}>
                 <Button
@@ -216,7 +220,7 @@ export function PickedList({
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                 >
-                  이전
+                  {t('camp.prev')}
                 </Button>
                 <Button
                   variant="outline"
@@ -224,7 +228,7 @@ export function PickedList({
                   disabled={page * SIZE >= data.total}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  다음
+                  {t('camp.next')}
                 </Button>
               </div>
             </div>

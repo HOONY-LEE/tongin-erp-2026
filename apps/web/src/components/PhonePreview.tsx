@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import {
   Archive,
@@ -29,7 +31,7 @@ export type PreviewChannel = 'SMS' | 'ALIMTALK' | 'EMAIL' | 'INSTAGRAM';
 const hhmm = (d: Date) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 const ampm = (d: Date) => {
   const h = d.getHours();
-  return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${h < 12 ? i18n.t('camp.am') : i18n.t('camp.pm')} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
 const URL_RE = /(https?:\/\/[^\s]+)/g;
@@ -71,13 +73,14 @@ interface Props {
 
 /** 고객 휴대폰(아이폰) 화면 그대로의 미리보기 — 채널마다 그 앱의 화면으로 */
 export function PhonePreview(props: Props) {
+  const { t } = useTranslation();
   const { channel = 'SMS', compact } = props;
   const at = props.at ?? new Date();
   return (
     <div
       className={`${styles.frame} ${compact ? styles.compact : ''}`}
       style={props.width ? ({ '--w': `${props.width}px` } as CSSProperties) : undefined}
-      aria-label="휴대폰 미리보기"
+      aria-label={t('camp.phonePreview')}
     >
       <div className={`${styles.screen} ${styles[`screen${channel}`] ?? ''}`}>
         <div className={styles.status}>
@@ -107,6 +110,7 @@ const bodyOf = (p: Props) =>
 
 /** 아이폰 기본 메시지 앱 — 저장 안 된 번호에서 온 문자 */
 function SmsScreen(p: Props & { at: Date }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className={styles.smsNav}>
@@ -124,9 +128,11 @@ function SmsScreen(p: Props & { at: Date }) {
         </div>
       </div>
       <div className={styles.thread}>
-        <div className={styles.smsMeta}>(오늘) {ampm(p.at)}</div>
+        <div className={styles.smsMeta}>
+          {t('camp.todayParen')} {ampm(p.at)}
+        </div>
         <div className={styles.smsBubble}>
-          {p.lms && <b className={styles.smsSubject}>{p.title?.trim() || '제목없음'}</b>}
+          {p.lms && <b className={styles.smsSubject}>{p.title?.trim() || t('camp.untitled')}</b>}
           <span>[Web발신]</span>
           {'\n'}
           {bodyOf(p)}
@@ -137,7 +143,7 @@ function SmsScreen(p: Props & { at: Date }) {
           <Plus size={17} />
         </span>
         <span className={styles.smsInput}>
-          문자 메시지 · SMS
+          {t('camp.smsHeader')}
           <Mic size={14} />
         </span>
       </div>
@@ -147,6 +153,7 @@ function SmsScreen(p: Props & { at: Date }) {
 
 /** 카카오톡 — 알림톡 */
 function KakaoScreen(p: Props & { at: Date }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className={styles.kNav}>
@@ -163,12 +170,12 @@ function KakaoScreen(p: Props & { at: Date }) {
             <span className={styles.kName}>{p.sender}</span>
             <div className={styles.kTimeRow}>
               <div className={styles.kCard}>
-                <div className={styles.kHead}>알림톡 도착</div>
+                <div className={styles.kHead}>{t('camp.kakaoArrived')}</div>
                 <div className={styles.kBody}>
                   {p.title?.trim() && <b className={styles.kTitle}>{p.title}</b>}
                   {bodyOf(p)}
                 </div>
-                <div className={styles.kButton}>자세히 보기</div>
+                <div className={styles.kButton}>{t('camp.viewDetails')}</div>
               </div>
               <span className={styles.kTime}>{ampm(p.at)}</span>
             </div>
@@ -187,11 +194,12 @@ function KakaoScreen(p: Props & { at: Date }) {
 
 /** 아이폰 메일 앱 — 받은 메일 한 통 */
 function MailScreen(p: Props & { at: Date }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className={styles.mNav}>
         <span className={styles.mBack}>
-          <ChevronLeft size={18} /> 받은 편지함
+          <ChevronLeft size={18} /> {t('camp.inbox')}
         </span>
         <span className={styles.mArrows}>
           <ChevronUp size={18} />
@@ -203,11 +211,13 @@ function MailScreen(p: Props & { at: Date }) {
           <span className={styles.mAvatar}>{p.sender.slice(0, 1)}</span>
           <div className={styles.mFromText}>
             <b>{p.sender}</b>
-            <span>받는 사람: {p.to ?? '고객'}</span>
+            <span>
+              {t('camp.toLabel')} {p.to ?? t('camp.kind.CUSTOMER')}
+            </span>
           </div>
           <span className={styles.mDate}>{ampm(p.at)}</span>
         </div>
-        <b className={styles.mSubject}>{p.title?.trim() || '(제목 없음)'}</b>
+        <b className={styles.mSubject}>{p.title?.trim() || t('camp.noSubject')}</b>
         <div className={styles.mBody}>{bodyOf(p)}</div>
       </div>
       <div className={styles.mToolbar}>
@@ -222,6 +232,7 @@ function MailScreen(p: Props & { at: Date }) {
 
 /** 인스타그램 DM */
 function InstaScreen(p: Props & { at: Date }) {
+  const { t } = useTranslation();
   return (
     <>
       <div className={styles.iNav}>
@@ -249,7 +260,7 @@ function InstaScreen(p: Props & { at: Date }) {
         <span className={styles.iCam}>
           <Camera size={15} />
         </span>
-        <span className={styles.iInput}>메시지 보내기...</span>
+        <span className={styles.iInput}>{t('camp.sendMessagePh')}</span>
         <Mic size={16} />
         <Image size={16} />
       </div>

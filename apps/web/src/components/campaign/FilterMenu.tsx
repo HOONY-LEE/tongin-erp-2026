@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Popover } from '@sunghoon_lee/akron-ui';
@@ -56,6 +57,7 @@ export function FilterMenu<T extends string>({
   /** 선택지가 많으면(시·도 17개) 2~3열로 */
   columns?: 1 | 2 | 3;
 }) {
+  const { t } = useTranslation();
   const toggle = (v: T, on: boolean) => onChange(on ? [...value, v] : value.filter((x) => x !== v));
   return (
     <FilterPopover
@@ -77,7 +79,7 @@ export function FilterMenu<T extends string>({
       </div>
       {value.length > 0 && (
         <button type="button" className={styles.clear} onClick={() => onChange([])}>
-          선택 해제
+          {t('camp.deselect')}
         </button>
       )}
     </FilterPopover>
