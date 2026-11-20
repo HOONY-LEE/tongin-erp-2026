@@ -1,0 +1,121 @@
+.wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+/* 자르는 칸 — 정사각형, 원 밖은 어둡게 */
+.stage {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #1d1d1f;
+  touch-action: none;
+  user-select: none;
+}
+.stage:not(.stageReady) {
+  border: 1.5px dashed var(--ark-color-border-strong, #c7c7cc);
+  background: var(--ark-color-bg-muted, #f5f5f7);
+  cursor: pointer;
+}
+.stageReady {
+  cursor: grab;
+}
+.stageReady:active {
+  cursor: grabbing;
+}
+.stageDrop {
+  border-color: var(--ark-color-text-secondary, #6e6e73);
+  background: #ebebf0;
+}
+.img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  transform-origin: center;
+  pointer-events: none;
+}
+.mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  color: var(--ark-color-text-secondary, #6e6e73);
+  font-size: 13px;
+}
+.empty b {
+  color: var(--ark-color-text-primary, #1d1d1f);
+  font-size: 14px;
+}
+
+.side {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 200px;
+}
+.previews {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--ark-color-bg-muted, #f5f5f7);
+  box-shadow: 0 0 0 1px var(--ark-color-border, #e5e5ea);
+}
+.hint {
+  margin: 0;
+  color: var(--ark-color-text-secondary, #6e6e73);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zoom input {
+  flex: 1;
+  accent-color: #1d1d1f;
+}
+.zoom button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary, #6e6e73);
+  cursor: pointer;
+}
+.zoom button:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted, #f5f5f7);
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.error {
+  margin: 0;
+  color: #ff3b30;
+  font-size: 12.5px;
+}

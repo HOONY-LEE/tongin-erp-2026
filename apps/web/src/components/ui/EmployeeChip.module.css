@@ -130,3 +130,22 @@
 .more:hover {
   background: var(--ark-color-bg-muted, #f5f5f7);
 }
+
+.status {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-muted, #f5f5f7);
+  color: var(--ark-color-text-secondary, #6e6e73);
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: 2px;
+}
+.statusOn {
+  background: rgba(52, 199, 89, 0.14);
+  color: #248a3d;
+}
+.none {
+  color: var(--ark-color-text-tertiary, #aeaeb2);
+}

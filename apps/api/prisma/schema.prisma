@@ -91,6 +91,10 @@ model Employee {
   emergencyPhone    String?   @map("emergency_phone")
   emergencyRelation String?   @map("emergency_relation")
   memo              String?
+  /// 프로필 사진(정사각형 JPEG) — S3면 photoKey, 아니면 photoBytes. photoAt은 바뀐 시각(화면 캐시 구분)
+  photoBytes        Bytes?    @map("photo_bytes")
+  photoKey          String?   @map("photo_key")
+  photoAt           DateTime? @map("photo_at") @db.Timestamptz(6)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   appUsers          AppUser[]
   ownedLeads        Lead[]

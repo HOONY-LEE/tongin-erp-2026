@@ -133,6 +133,11 @@ export class FileStoreService implements OnModuleInit {
         );
         for (const r of rows) used.add(r.k);
       }
+      // 직원 프로필 사진(칸 이름이 다르다)
+      const photos = await this.prisma.$queryRawUnsafe<{ k: string }[]>(
+        `SELECT photo_key AS k FROM employee WHERE photo_key IS NOT NULL`,
+      );
+      for (const r of photos) used.add(r.k);
       const cutoff = Date.now() - ORPHAN_GRACE_MS;
       const stale: string[] = [];
       let token: string | undefined;

@@ -8,8 +8,12 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import type { AuthPrincipal } from '@tongin/shared';
 import { EmployeeService } from './employee.service';
 import {
@@ -17,6 +21,7 @@ import {
   ChecklistTemplateDto,
   ChecklistToggleDto,
   CreateEmployeeDto,
+  EmployeePhotoDto,
   ResignEmployeeDto,
 } from './dto/create-employee.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -56,6 +61,35 @@ export class EmployeeController {
     @Body() dto: UpdateEmployeeDto,
   ) {
     return this.employeeService.update(id, dto, p.userId);
+  }
+
+  /** 프로필 사진 — 로그인한 직원이면 누구나 본다(사내 연락처처럼) */
+  @Get(':id/photo')
+  async photo(@Param('id', ParseUUIDPipe) id: string, @Res({ passthrough: true }) res: Response) {
+    const p = await this.employeeService.photo(id);
+    res.set({
+      'Content-Type': p.mediaType,
+      'Content-Length': String(p.bytes.length),
+      // 주소에 ?v=바뀐시각 이 붙어 사진이 바뀌면 주소도 바뀐다
+      'Cache-Control': 'private, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return new StreamableFile(p.bytes);
+  }
+
+  /** 사진 바꾸기 — 인사 수정 권한이 있거나 본인(권한 검사는 서비스에서) */
+  @Put(':id/photo')
+  setPhoto(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: EmployeePhotoDto,
+  ) {
+    return this.employeeService.setPhoto(id, p, dto.data);
+  }
+
+  @Delete(':id/photo')
+  removePhoto(@CurrentUser() p: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.employeeService.removePhoto(id, p);
   }
 
   /** 인사기록 카드 — 인사 정보·입퇴사 체크리스트·발령 이력 */

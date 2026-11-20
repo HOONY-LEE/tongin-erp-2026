@@ -1,11 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FileStoreService } from '../../prisma/file-store.service';
+import { PERMISSION_WILDCARD, type AuthPrincipal } from '@tongin/shared';
 import { PrincipalCache } from '../../auth/principal-cache.service';
 import { CreateEmployeeDto, ChecklistTemplateDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
@@ -16,7 +19,60 @@ export class EmployeeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly principals: PrincipalCache,
+    private readonly store: FileStoreService,
   ) {}
+
+  // ── 프로필 사진 ──
+
+  /** 사진 바꾸기 — 인사 수정 권한이 있거나 본인만 */
+  async setPhoto(id: string, p: AuthPrincipal, data: string) {
+    this.assertPhotoEditor(id, p);
+    const bytes = Buffer.from(data, 'base64');
+    if (!bytes.length) throw new BadRequestException('사진 내용이 비어 있습니다.');
+    if (bytes.length > 2 * 1024 * 1024)
+      throw new BadRequestException('사진은 2MB까지 올릴 수 있습니다.');
+    const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+    const png = bytes[0] === 0x89 && bytes[1] === 0x50;
+    if (!jpeg && !png) throw new BadRequestException('JPG·PNG 사진만 올릴 수 있습니다.');
+    const exists = await this.prisma.employee.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) throw new NotFoundException('직원을 찾을 수 없습니다.');
+    const stored = await this.store.put(bytes, jpeg ? 'image/jpeg' : 'image/png');
+    const row = await this.prisma.employee.update({
+      where: { id },
+      data: { photoBytes: stored.bytes, photoKey: stored.storageKey, photoAt: new Date() },
+      select: { photoAt: true },
+    });
+    return { photoAt: row.photoAt };
+  }
+
+  async removePhoto(id: string, p: AuthPrincipal) {
+    this.assertPhotoEditor(id, p);
+    await this.prisma.employee.update({
+      where: { id },
+      data: { photoBytes: null, photoKey: null, photoAt: null },
+    });
+    return { photoAt: null };
+  }
+
+  /** 사진 받기 — 로그인한 직원이면 누구나(사내 연락처처럼) */
+  async photo(id: string) {
+    const e = await this.prisma.employee.findUnique({
+      where: { id },
+      select: { photoBytes: true, photoKey: true },
+    });
+    if (!e || (!e.photoBytes && !e.photoKey)) throw new NotFoundException('사진이 없습니다.');
+    const bytes = await this.store.read({ bytes: e.photoBytes, storageKey: e.photoKey });
+    return { bytes, mediaType: bytes[0] === 0x89 ? 'image/png' : 'image/jpeg' };
+  }
+
+  private assertPhotoEditor(id: string, p: AuthPrincipal) {
+    const ok =
+      p.employeeId === id ||
+      p.permissions.includes(PERMISSION_WILDCARD) ||
+      p.permissions.includes('EMPLOYEE.UPDATE');
+    if (!ok)
+      throw new ForbiddenException('본인 사진이나 인사 수정 권한이 있을 때만 바꿀 수 있습니다.');
+  }
 
   findAll(orgUnitId?: string) {
     return this.prisma.employee.findMany({
@@ -173,7 +229,13 @@ export class EmployeeService {
           },
           orderBy: { createdAt: 'asc' },
         },
-        appUsers: { select: { loginId: true, isActive: true } },
+        appUsers: {
+          select: {
+            loginId: true,
+            isActive: true,
+            userRoles: { select: { role: { select: { name: true } } } },
+          },
+        },
         checklistItems: { orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }] },
         histories: { orderBy: [{ effectiveDate: 'desc' }, { createdAt: 'desc' }] },
       },

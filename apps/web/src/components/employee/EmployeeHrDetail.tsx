@@ -28,6 +28,10 @@ import { BalanceCards, LeaveRequestTable, type LeaveBalance } from '../../pages/
 import { MonthDays } from '../../pages/Attendance';
 import astyles from '../approval/approval.module.css';
 import styles from './employee.module.css';
+import { EmployeeAvatar } from './EmployeeAvatar';
+import { PhotoCropModal } from './PhotoCropModal';
+import { primeEmployeePhoto } from '../../lib/employeePhoto';
+import { Camera } from 'lucide-react';
 
 export interface HrRecord {
   id: string;
@@ -50,6 +54,8 @@ export interface HrRecord {
   emergencyPhone: string | null;
   emergencyRelation: string | null;
   memo: string | null;
+  /** 프로필 사진이 바뀐 시각(없으면 사진 없음) */
+  photoAt: string | null;
   position: { name: string } | null;
   orgUnit: { name: string; type: string } | null;
   concurrentOrgs: {
@@ -58,7 +64,7 @@ export interface HrRecord {
     orgUnit: { name: string; type: string };
     position: { name: string } | null;
   }[];
-  appUsers: { loginId: string; isActive: boolean }[];
+  appUsers: { loginId: string; isActive: boolean; userRoles: { role: { name: string } }[] }[];
   checklistItems: {
     id: string;
     kind: ChecklistKind;
@@ -99,7 +105,7 @@ export function EmployeeHrDetail({
   reloadKey?: number;
 }) {
   const toast = useToast();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [rec, setRec] = useState<HrRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('info');
@@ -121,6 +127,28 @@ export function EmployeeHrDetail({
   }, [load, reloadKey]);
 
   const canEdit = can('EMPLOYEE.UPDATE');
+  /** 사진은 인사 수정 권한이 있거나 본인이면 바꿀 수 있다 */
+  const canPhoto = canEdit || (!!user?.employeeId && user.employeeId === id);
+  const [cropOpen, setCropOpen] = useState(false);
+
+  const savePhoto = async (data: string, previewUrl: string) => {
+    const r = await api<{ photoAt: string }>(`/employees/${id}/photo`, {
+      method: 'PUT',
+      body: JSON.stringify({ data }),
+    });
+    primeEmployeePhoto(id, r.photoAt, previewUrl);
+    setRec((cur) => (cur ? { ...cur, photoAt: r.photoAt } : cur));
+    toast({ type: 'success', title: '프로필 사진을 바꿨습니다' });
+  };
+  const removePhoto = async () => {
+    try {
+      await api(`/employees/${id}/photo`, { method: 'DELETE' });
+      setRec((cur) => (cur ? { ...cur, photoAt: null } : cur));
+      toast({ type: 'success', title: '프로필 사진을 지웠습니다' });
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+    }
+  };
   const tabs = [
     { value: 'info', label: '기본·인사' },
     ...(can('LEAVE.READ') ? [{ value: 'leave', label: '휴가' }] : []),
@@ -129,12 +157,66 @@ export function EmployeeHrDetail({
     { value: 'checklist', label: '입·퇴사 체크리스트' },
   ];
 
+  const statusBadge = rec ? (
+    rec.resignDate ? (
+      <Badge variant="subtle" color="neutral">
+        퇴사 {d10(rec.resignDate)}
+        {rec.resignReason ? ` · ${rec.resignReason}` : ''}
+      </Badge>
+    ) : (
+      <Badge variant="subtle" color={rec.isActive ? 'success' : 'neutral'}>
+        {rec.isActive ? '재직' : '비활성'}
+      </Badge>
+    )
+  ) : null;
+  const roles = rec
+    ? [...new Set(rec.appUsers.flatMap((u) => u.userRoles.map((r) => r.role.name)))]
+    : [];
+
+  // 프로필 항목 — 이름 · ID · 사번 · 입사일 · 고용 형태 · 연락처 · 직책 · 소속 · 상태 · 주소 · 이메일 · 메모 · 권한
   const info: DetailItem[] = rec
     ? [
-        { label: '직원명', value: rec.name },
+        { label: '이름', value: rec.name },
+        {
+          label: 'ID',
+          value: rec.appUsers.length
+            ? rec.appUsers
+                .map((u) => `${u.loginId}${u.isActive ? '' : ' (로그인 막힘)'}`)
+                .join(', ')
+            : '계정 없음',
+        },
         { label: '사번', value: rec.empNo },
+        { label: '입사일', value: d10(rec.hireDate) },
+        {
+          label: '고용 형태',
+          value: EMPLOYMENT_TYPE_LABEL[rec.employmentType] ?? rec.employmentType,
+        },
+        { label: '연락처', value: rec.phone ? formatPhone(rec.phone) : null },
         { label: '직책', value: rec.position?.name },
         { label: '소속', value: rec.orgUnit?.name },
+        { label: '상태', value: statusBadge },
+        {
+          label: '주소',
+          wide: true,
+          value: rec.addr
+            ? `${rec.addr}${rec.addrDetail ? ` ${rec.addrDetail}` : ''}${rec.zipcode ? `(${rec.zipcode})` : ''}`
+            : null,
+        },
+        { label: '이메일', value: rec.email },
+        { label: '메모', wide: true, value: rec.memo },
+        {
+          label: '권한',
+          wide: true,
+          value: roles.length ? (
+            <span className={styles.roles}>
+              {roles.map((r) => (
+                <Badge key={r} variant="subtle" color="neutral">
+                  {r}
+                </Badge>
+              ))}
+            </span>
+          ) : null,
+        },
         {
           label: '겸직',
           value: rec.concurrentOrgs.length
@@ -143,49 +225,13 @@ export function EmployeeHrDetail({
                 .join(', ')
             : null,
         },
-        {
-          label: '고용 형태',
-          value: EMPLOYMENT_TYPE_LABEL[rec.employmentType] ?? rec.employmentType,
-        },
-        { label: '입사일', value: d10(rec.hireDate) },
         { label: '생년월일', value: d10(rec.birthDate) },
-        { label: '연락처', value: rec.phone ? formatPhone(rec.phone) : null },
-        { label: '이메일', value: rec.email },
-        {
-          label: '주소',
-          wide: true,
-          value: rec.addr
-            ? `${rec.addr}${rec.addrDetail ? ` ${rec.addrDetail}` : ''}${rec.zipcode ? `(${rec.zipcode})` : ''}`
-            : null,
-        },
         {
           label: '비상 연락처',
           value: rec.emergencyName
             ? `${rec.emergencyName}${rec.emergencyRelation ? `(${rec.emergencyRelation})` : ''}${rec.emergencyPhone ? ` · ${formatPhone(rec.emergencyPhone)}` : ''}`
             : null,
         },
-        {
-          label: '계정',
-          value: rec.appUsers.length
-            ? rec.appUsers
-                .map((u) => `${u.loginId}${u.isActive ? '' : ' (로그인 막힘)'}`)
-                .join(', ')
-            : '계정 없음',
-        },
-        {
-          label: '상태',
-          value: rec.resignDate ? (
-            <Badge variant="subtle" color="neutral">
-              퇴사 {d10(rec.resignDate)}
-              {rec.resignReason ? ` · ${rec.resignReason}` : ''}
-            </Badge>
-          ) : (
-            <Badge variant="subtle" color={rec.isActive ? 'success' : 'neutral'}>
-              {rec.isActive ? '재직' : '비활성'}
-            </Badge>
-          ),
-        },
-        { label: '메모', wide: true, value: rec.memo },
       ]
     : [];
 
@@ -214,6 +260,43 @@ export function EmployeeHrDetail({
       >
         {rec && (
           <>
+            <section className={`rd-card ${styles.profile}`}>
+              <div className={styles.photoWrap}>
+                <EmployeeAvatar id={rec.id} name={rec.name} photoAt={rec.photoAt} size={88} />
+                {canPhoto && (
+                  <button
+                    type="button"
+                    className={styles.photoEdit}
+                    onClick={() => setCropOpen(true)}
+                    aria-label="프로필 사진 바꾸기"
+                    title="프로필 사진 바꾸기"
+                  >
+                    <Camera size={14} />
+                  </button>
+                )}
+              </div>
+              <div className={styles.profileText}>
+                <b>
+                  {rec.name} {statusBadge}
+                </b>
+                <span>
+                  {[rec.position?.name, rec.orgUnit?.name].filter(Boolean).join(' · ') || '-'}
+                </span>
+                {canPhoto && (
+                  <div className={styles.photoActions}>
+                    <Button variant="outline" size="sm" onClick={() => setCropOpen(true)}>
+                      {rec.photoAt ? '사진 바꾸기' : '사진 올리기'}
+                    </Button>
+                    {rec.photoAt && (
+                      <Button variant="ghost" size="sm" onClick={() => void removePhoto()}>
+                        사진 지우기
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+            <PhotoCropModal open={cropOpen} onClose={() => setCropOpen(false)} onSave={savePhoto} />
             <SegmentedControl value={tab} onChange={(v) => setTab(v as Tab)} options={tabs} />
             {tab === 'info' && (
               <section className="rd-card">

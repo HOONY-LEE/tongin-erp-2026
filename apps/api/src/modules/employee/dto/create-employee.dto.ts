@@ -144,3 +144,10 @@ export class ChecklistTemplateDto {
   @IsBoolean()
   isActive?: boolean;
 }
+
+/** 프로필 사진 — 잘라 만든 JPEG(base64). 2MB 이하 */
+export class EmployeePhotoDto {
+  @IsString()
+  @MaxLength(3_000_000)
+  data!: string;
+}

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Mail, Phone } from 'lucide-react';
 import { formatPhone } from '../../lib/phone';
+import { EmployeeAvatar } from '../employee/EmployeeAvatar';
 import styles from './EmployeeChip.module.css';
 
 export interface EmployeeBrief {
@@ -12,7 +13,15 @@ export interface EmployeeBrief {
   email?: string | null;
   position?: { name: string } | null;
   orgUnit?: { name: string } | null;
+  /** 프로필 사진이 바뀐 시각(없으면 사진 없음) */
+  photoAt?: string | null;
+  isActive?: boolean;
+  resignDate?: string | null;
 }
+
+/** 재직 상태 — 퇴사일이 있으면 퇴사, 아니면 활성 여부 */
+const statusOf = (e: EmployeeBrief) =>
+  e.resignDate ? '퇴사' : e.isActive === false ? '비활성' : '재직';
 
 /** 직원 칩 — 누르면 프로필 요약(이름·직책·소속·연락처)이 뜨고, '자세히'는 직원 상세 화면으로 */
 export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
@@ -65,9 +74,7 @@ export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <span className={styles.avatar} aria-hidden>
-          {emp.name.slice(0, 1)}
-        </span>
+        <EmployeeAvatar id={emp.id} name={emp.name} photoAt={emp.photoAt} size={20} />
         {emp.name}
       </button>
       {open &&
@@ -81,34 +88,39 @@ export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className={styles.head}>
-              <span className={styles.avatarLg} aria-hidden>
-                {emp.name.slice(0, 1)}
-              </span>
+              <EmployeeAvatar id={emp.id} name={emp.name} photoAt={emp.photoAt} size={48} />
               <div>
-                <b>{emp.name}</b>
+                <b>
+                  {emp.name}
+                  <span
+                    className={`${styles.status} ${statusOf(emp) === '재직' ? styles.statusOn : ''}`}
+                  >
+                    {statusOf(emp)}
+                  </span>
+                </b>
                 {sub && <small>{sub}</small>}
               </div>
             </div>
-            {(emp.phone || emp.email) && (
+            {
               <dl className={styles.info}>
-                {emp.phone && (
-                  <div>
-                    <dt>
-                      <Phone size={13} aria-label="연락처" />
-                    </dt>
-                    <dd className="dt-num">{formatPhone(emp.phone)}</dd>
-                  </div>
-                )}
-                {emp.email && (
-                  <div>
-                    <dt>
-                      <Mail size={13} aria-label="이메일" />
-                    </dt>
-                    <dd>{emp.email}</dd>
-                  </div>
-                )}
+                <div>
+                  <dt>
+                    <Phone size={13} aria-label="연락처" />
+                  </dt>
+                  <dd className={emp.phone ? 'dt-num' : styles.none}>
+                    {emp.phone ? formatPhone(emp.phone) : '연락처 없음'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>
+                    <Mail size={13} aria-label="이메일" />
+                  </dt>
+                  <dd className={emp.email ? undefined : styles.none}>
+                    {emp.email ?? '이메일 없음'}
+                  </dd>
+                </div>
               </dl>
-            )}
+            }
             <button
               type="button"
               className={styles.more}
