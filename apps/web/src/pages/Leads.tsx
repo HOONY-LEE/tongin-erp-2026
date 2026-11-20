@@ -42,16 +42,21 @@ type LeadContract = {
 };
 
 const isRejected = (r: Row) => !!r.rejectedAt && r.status === 'RECEIVED';
-const statusKey = (r: Row) => (isRejected(r) ? 'REJECTED' : String(r.status));
+/** 화면의 상태 — 반려는 따로, 견적완료(QUOTED)는 계약미승인과 한 단계로 */
+const statusKey = (r: Row) =>
+  isRejected(r) ? 'REJECTED' : r.status === 'QUOTED' ? 'CONTRACT_PENDING' : String(r.status);
 
-// 상태 탭 — 전체 + 모든 상태(반려 포함)
+// 상태 탭 — 전체 + 모든 상태(반려 포함, 견적완료는 계약미승인에 포함)
 const STAGES: { key: string; label: string }[] = [
   { key: 'ALL', label: '전체' },
   { key: 'RECEIVED', label: '접수' },
   { key: 'REJECTED', label: '반려' },
-  ...Object.entries(STATUS)
-    .filter(([k]) => k !== 'RECEIVED')
-    .map(([key, s]) => ({ key, label: s.label })),
+  { key: 'CONSULT_TOSS', label: STATUS.CONSULT_TOSS.label },
+  { key: 'CONTRACT_PENDING', label: STATUS.CONTRACT_PENDING.label },
+  { key: 'CONTRACTED', label: STATUS.CONTRACTED.label },
+  { key: 'WORK_TOSS', label: STATUS.WORK_TOSS.label },
+  { key: 'DONE', label: STATUS.DONE.label },
+  { key: 'CANCELED', label: STATUS.CANCELED.label },
 ];
 const inStage = (r: Row, key: string) => key === 'ALL' || statusKey(r) === key;
 

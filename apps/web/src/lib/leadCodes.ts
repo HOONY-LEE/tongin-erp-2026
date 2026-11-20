@@ -5,25 +5,25 @@ import { APPLE } from './palette';
 export const LEAD_STATUS: StatusMap = {
   RECEIVED: { label: '접수', color: 'neutral' },
   CONSULT_TOSS: { label: '상담토스', color: 'info' },
-  QUOTED: { label: '견적완료', color: 'warning' },
-  CONTRACT_PENDING: { label: '계약 미승인', color: 'warning' },
+  QUOTED: { label: '계약미승인', color: 'warning' }, // 견적서 발송 — 화면에서는 계약미승인과 한 단계
+  CONTRACT_PENDING: { label: '계약미승인', color: 'warning' },
   CONTRACTED: { label: '계약', color: 'primary' },
   WORK_TOSS: { label: '작업토스', color: 'primary' },
   DONE: { label: '작업완료', color: 'success' },
   CANCELED: { label: '취소', color: 'error' },
 };
 
-/** 접수 상태 칩 색 — 애플 시스템 색. 진행 순서대로 차가운 색 → 따뜻한 색 → 완료(초록), 반려·취소는 따로 */
+/** 접수 상태 칩 색 — 진한 바탕 + 흰 글자. 상태마다 확실히 다른 색 */
 export const LEAD_STATUS_COLOR: Record<string, string> = {
-  RECEIVED: APPLE.blue,
-  REJECTED: APPLE.magenta, // 지점 반려(상태는 RECEIVED + rejectedAt)
-  CONSULT_TOSS: APPLE.cyan,
-  QUOTED: APPLE.indigo,
-  CONTRACT_PENDING: APPLE.yellow,
-  CONTRACTED: APPLE.purple,
-  WORK_TOSS: APPLE.orange,
-  DONE: APPLE.green,
-  CANCELED: APPLE.gray,
+  RECEIVED: APPLE.gray, // 접수
+  REJECTED: APPLE.red, // 반려(상태는 RECEIVED + rejectedAt)
+  CONSULT_TOSS: APPLE.blue, // 상담토스
+  QUOTED: APPLE.orange, // 계약미승인(견적서 발송)
+  CONTRACT_PENDING: APPLE.orange, // 계약미승인
+  CONTRACTED: APPLE.green, // 계약
+  WORK_TOSS: '#E0A800', // 작업토스 — 노랑(흰 글자가 읽히게 조금 진하게)
+  DONE: APPLE.purple, // 작업완료
+  CANCELED: '#1D1D1F', // 취소 — 검정
 };
 
 export const SERVICE_LINES = [

@@ -278,7 +278,7 @@ export class EsignService {
       where: { id: c.id },
       data: { signatureImage: dto.signature, signerName: dto.signerName.trim().slice(0, 40) },
     });
-    // 고객이 서명했다 — 본사가 확인해 승인할 때까지 '계약 미승인'
+    // 고객이 서명했다 — 본사가 확인해 승인할 때까지 '계약미승인'
     const t = await this.prisma.$transaction((tx) =>
       this.leads.advanceInTx(tx, c.leadId, 'CONTRACT_PENDING'),
     );
