@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import styles from './dashboard.module.css';
 
@@ -18,9 +19,10 @@ export interface ColumnItem {
  * 값은 막대 위에 직접 쓰고, 마우스를 올리면 자세한 값이 뜬다. 높이는 부모(.plotBox)가 정한다.
  */
 export function ColumnChart({ items, label }: { items: ColumnItem[]; label: string }) {
+  const { t } = useTranslation();
   const [tip, setTip] = useState<{ x: number; y: number; it: ColumnItem } | null>(null);
   const max = Math.max(1, ...items.map((i) => i.value));
-  if (!items.length) return <div className={styles.empty}>데이터가 없습니다</div>;
+  if (!items.length) return <div className={styles.empty}>{t('dash.noData')}</div>;
   return (
     <div className={styles.plot} onMouseLeave={() => setTip(null)}>
       <div className={styles.columns} role="list" aria-label={label}>

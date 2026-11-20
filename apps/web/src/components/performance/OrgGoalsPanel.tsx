@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -12,6 +13,7 @@ import styles from '../../pages/performance.module.css';
  * 업무분장·성과 평가 화면으로 바로 갈 수 있게 잇는다. 성과 지표는 인사 조회 권한이 있을 때만 보인다.
  */
 export function OrgGoalsPanel({ orgId }: { orgId: string }) {
+  const { t } = useTranslation();
   const [mission, setMission] = useState<string | null>(null);
   const [duties, setDuties] = useState<DutyView[] | null>(null);
   const [kpi, setKpi] = useState<KpiResult | null | 'none'>(null);
@@ -36,40 +38,39 @@ export function OrgGoalsPanel({ orgId }: { orgId: string }) {
     <div className={styles.goalPanel}>
       <section className={styles.block}>
         <div className={styles.goalHead}>
-          <h3 className={styles.blockTitle}>역할</h3>
+          <h3 className={styles.blockTitle}>{t('perf.role')}</h3>
           <Link className={styles.goalLink} to={`/duties?tab=org&org=${orgId}`}>
-            업무분장에서 정하기 <ArrowRight size={13} />
+            {t('perf.setInDuties')} <ArrowRight size={13} />
           </Link>
         </div>
-        <p className={mission ? styles.goalText : styles.muted}>
-          {mission ?? '아직 정한 역할이 없습니다.'}
-        </p>
+        <p className={mission ? styles.goalText : styles.muted}>{mission ?? t('perf.noRole')}</p>
       </section>
 
       {kpi !== 'none' && (
         <section className={styles.block}>
           <div className={styles.goalHead}>
             <h3 className={styles.blockTitle}>
-              이번 분기 목표{' '}
+              {t('perf.quarterGoals')}{' '}
               {kpi?.grade && (
                 <Badge variant="subtle" size="sm">
-                  종합 {kpi.score}점 · {kpi.grade}
+                  {t('perf.overall')} {kpi.score}
+                  {t('perf.pointsSep')} {kpi.grade}
                 </Badge>
               )}
             </h3>
             <Link className={styles.goalLink} to={`/performance?scope=ORG&id=${orgId}`}>
-              성과 평가에서 보기 <ArrowRight size={13} />
+              {t('perf.viewInPerf')} <ArrowRight size={13} />
             </Link>
           </div>
           {kpi ? (
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>지표</th>
-                  <th className={styles.num}>목표</th>
-                  <th className={styles.num}>실적</th>
-                  <th className={styles.num}>달성률</th>
-                  <th className={styles.num}>반영</th>
+                  <th>{t('perf.col.metrics')}</th>
+                  <th className={styles.num}>{t('perf.goal')}</th>
+                  <th className={styles.num}>{t('perf.actual')}</th>
+                  <th className={styles.num}>{t('perf.achievement')}</th>
+                  <th className={styles.num}>{t('perf.weightShort')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,20 +93,23 @@ export function OrgGoalsPanel({ orgId }: { orgId: string }) {
               </tbody>
             </table>
           ) : (
-            <p className={styles.muted}>불러오는 중…</p>
+            <p className={styles.muted}>{t('perf.loading')}</p>
           )}
         </section>
       )}
 
       <section className={styles.block}>
         <div className={styles.goalHead}>
-          <h3 className={styles.blockTitle}>업무분장 {duties?.length ?? ''}개</h3>
+          <h3 className={styles.blockTitle}>
+            {t('perf.dutiesShort')} {duties?.length ?? ''}
+            {t('perf.countSuffix')}
+          </h3>
           <Link className={styles.goalLink} to={`/duties?tab=org&org=${orgId}`}>
-            업무분장에서 보기 <ArrowRight size={13} />
+            {t('perf.viewInDuties')} <ArrowRight size={13} />
           </Link>
         </div>
         {duties === null ? (
-          <p className={styles.muted}>불러오는 중…</p>
+          <p className={styles.muted}>{t('perf.loading')}</p>
         ) : duties.length ? (
           <ul className={styles.dutyList}>
             {duties.map((d) => (
@@ -115,14 +119,14 @@ export function OrgGoalsPanel({ orgId }: { orgId: string }) {
                 <span className={styles.muted}>{DUTY_CYCLE_LABEL[d.cycle]}</span>
                 {d.inProgress > 0 && (
                   <Badge variant="subtle" color="warning" size="sm">
-                    진행 중 {d.inProgress}
+                    {t('perf.inProgress')} {d.inProgress}
                   </Badge>
                 )}
               </li>
             ))}
           </ul>
         ) : (
-          <p className={styles.muted}>아직 정한 업무분장이 없습니다.</p>
+          <p className={styles.muted}>{t('perf.noDutiesShort')}</p>
         )}
       </section>
     </div>

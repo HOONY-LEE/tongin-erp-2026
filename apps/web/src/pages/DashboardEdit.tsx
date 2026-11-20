@@ -27,7 +27,7 @@ export default function DashboardEdit() {
     api<MyDashboard>('/dashboards/me')
       .then((m) => {
         if (!m.canCustomize) {
-          toast({ type: 'warning', title: '관리자가 정한 대시보드라 고칠 수 없습니다' });
+          toast({ type: 'warning', title: t('dash.lockedByAdmin') });
           navigate('/dashboard', { replace: true });
           return;
         }
@@ -35,7 +35,7 @@ export default function DashboardEdit() {
         setLayout(m.layout);
       })
       .catch((e) =>
-        toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' }),
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.loadFailed') }),
       );
   }, [navigate, toast]);
 
@@ -44,19 +44,19 @@ export default function DashboardEdit() {
     setSaving(true);
     try {
       await api('/dashboards/me', { method: 'PUT', body: JSON.stringify({ layout }) });
-      toast({ type: 'success', title: '내 대시보드를 저장했습니다' });
+      toast({ type: 'success', title: t('dash.mySaved') });
       setDirty(false);
       postDashEditorMessage({ type: 'saved', scope: 'mine' });
       leaveDashboardEditor(() => navigate('/dashboard'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.saveFailed') });
     } finally {
       setSaving(false);
     }
   };
 
   const leave = () =>
-    (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) &&
+    (!dirty || window.confirm(t('dash.discardQ'))) &&
     leaveDashboardEditor(() => navigate('/dashboard'));
 
   if (!me || !layout) return <PageSkeleton cards={2} />;
@@ -76,8 +76,8 @@ export default function DashboardEdit() {
               {t('dashboard.title')}
             </button>
             <span className={styles.crumbSep}>/</span>
-            <b>내 대시보드 편집</b>
-            <span>{dirty ? ' · 저장 안 됨' : ' · 저장하면 나에게만 적용'}</span>
+            <b>{t('dash.editMine')}</b>
+            <span>{dirty ? t('dash.unsaved') : t('dash.onlyMe')}</span>
           </>
         }
         actions={
@@ -90,10 +90,10 @@ export default function DashboardEdit() {
                 setDirty(true);
               }}
             >
-              기본 구성 불러오기
+              {t('dash.loadPreset')}
             </Button>
             <Button variant="outline" size="sm" onClick={leave}>
-              취소
+              {t('dash.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -102,7 +102,7 @@ export default function DashboardEdit() {
               leftIcon={<Save size={14} />}
               onClick={() => void save()}
             >
-              저장
+              {t('dash.save')}
             </Button>
             <PopoutButton />
           </>
@@ -114,7 +114,7 @@ export default function DashboardEdit() {
             actions={<span style={{ display: 'block', height: 32 }} />}
             tags={
               <Badge variant="subtle" color="primary">
-                내가 꾸민 대시보드
+                {t('dash.src.mine')}
               </Badge>
             }
           />

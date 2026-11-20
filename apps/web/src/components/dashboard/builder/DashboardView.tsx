@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { DASH_ROW_HEIGHT, type DashLayout } from '@tongin/shared';
 import { useDashData } from './useDashData';
 import { WidgetFrame } from './WidgetFrame';
@@ -5,12 +6,13 @@ import styles from './builder.module.css';
 
 /** 보기 화면 — 12칸 격자에 위젯을 놓인 대로(좁은 화면에서는 한 줄씩 위에서부터) */
 export function DashboardView({ layout, refreshKey }: { layout: DashLayout; refreshKey: number }) {
+  const { t } = useTranslation();
   const { results, loading } = useDashData(layout.items, refreshKey);
   const items = [...layout.items].sort((a, b) => a.y - b.y || a.x - b.x);
   if (!items.length) {
     return (
       <div className={styles.emptyBoard}>
-        아직 위젯이 없습니다. '편집'을 눌러 위젯을 놓아 보세요.
+        {t('dash.noWidgets1')} t('dash.editWord'){t('dash.noWidgets2')}
       </div>
     );
   }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 
 export interface RadarDatum {
@@ -27,6 +28,7 @@ export function RadarChart({
   showLabels?: boolean;
   animateMs?: number;
 }) {
+  const { t } = useTranslation();
   const n = Math.max(3, data.length);
   const cx = size / 2;
   const cy = size / 2;
@@ -76,7 +78,7 @@ export function RadarChart({
       viewBox={`0 0 ${size} ${size}`}
       style={{ display: 'block', overflow: 'visible' }}
       role="img"
-      aria-label={data.map((d) => `${d.short} ${d.value ?? '자료 없음'}`).join(', ')}
+      aria-label={data.map((d) => `${d.short} ${d.value ?? t('perf.noData')}`).join(', ')}
     >
       {rings.map((ring) => (
         <polygon

@@ -113,8 +113,8 @@ export default defineNs({
   },
   en: {
     won: '₩{{v0}}',
-    eok: '₩{{v0}}00M',
-    man: '₩{{v0}}0K',
+    eok: '₩{{v0}}×100M',
+    man: '₩{{v0}}×10K',
     overdue: ' (overdue)',
     today: ' (today)',
     loadFailed: 'Could not load',

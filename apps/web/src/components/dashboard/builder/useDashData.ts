@@ -1,3 +1,4 @@
+import i18n from '../../../i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DashDataResult, DashItem } from '@tongin/shared';
 import { DASH_WIDGET_MAP } from '@tongin/shared';
@@ -67,7 +68,7 @@ export function useDashData(items: DashItem[], refreshKey = 0) {
         .catch((e) => {
           const err: DashDataResult = {
             ok: false,
-            error: e instanceof Error ? e.message : '불러오지 못했습니다',
+            error: e instanceof Error ? e.message : i18n.t('dash.loadFailed'),
           };
           if (alive) {
             const out = fromCache();
