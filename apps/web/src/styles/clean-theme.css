@@ -102,7 +102,7 @@ h1 {
 .sft-td[style*='flex: 0 1'] {
   flex-shrink: 0 !important;
 }
-/* 상태 칩(공통) — 진한 색 바탕 + 흰 글자 알약(상태마다 확실히 다른 색).
+/* 상태 칩(공통) — 아주 연한 바탕(색 5%) + 같은 색 글자 알약(테두리로 모양을 잡는다).
    softium Chip(tone)과 StatusChip(--chip 색 직접) 모두 이 모양. 색: 회색 기본 */
 .sft-chip {
   --chip: #8e8e93;
@@ -111,8 +111,10 @@ h1 {
   height: 24px;
   padding: 0 10px;
   border-radius: 999px;
-  background: var(--chip) !important;
-  color: #fff !important;
+  border: 1px solid color-mix(in srgb, var(--chip) 22%, transparent);
+  background: color-mix(in srgb, var(--chip) 5%, transparent) !important;
+  /* 글자는 같은 색을 살짝 진하게(노랑·하늘색도 읽히게) */
+  color: color-mix(in srgb, var(--chip) 82%, #000) !important;
   font-size: calc(12.5px * var(--font-scale, 1));
   font-weight: 600;
   line-height: 1;

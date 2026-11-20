@@ -13,15 +13,15 @@ export const LEAD_STATUS: StatusMap = {
   CANCELED: { label: '취소', color: 'error' },
 };
 
-/** 접수 상태 칩 색 — 진한 바탕 + 흰 글자. 상태마다 확실히 다른 색 */
+/** 접수 상태 칩 색 — 연한 바탕 + 같은 색 글자. 상태마다 확실히 다른 색 */
 export const LEAD_STATUS_COLOR: Record<string, string> = {
   RECEIVED: APPLE.gray, // 접수
   REJECTED: APPLE.red, // 반려(상태는 RECEIVED + rejectedAt)
-  CONSULT_TOSS: APPLE.blue, // 상담토스
+  CONSULT_TOSS: APPLE.cyan, // 상담토스 — 하늘색
   QUOTED: APPLE.orange, // 계약미승인(견적서 발송)
   CONTRACT_PENDING: APPLE.orange, // 계약미승인
   CONTRACTED: APPLE.green, // 계약
-  WORK_TOSS: '#E0A800', // 작업토스 — 노랑(흰 글자가 읽히게 조금 진하게)
+  WORK_TOSS: APPLE.blue, // 작업토스 — 파랑
   DONE: APPLE.purple, // 작업완료
   CANCELED: '#1D1D1F', // 취소 — 검정
 };
