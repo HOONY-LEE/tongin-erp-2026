@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState, type DragEvent } from 'react';
 import {
   ArrowDown,
@@ -43,6 +44,7 @@ export function MenuLayoutEditor({
   onHiddenChange,
   dim,
 }: Props) {
+  const { t } = useTranslation();
   const label = useMenuLabel();
   const [drag, setDrag] = useState<Drag>(null);
   const [over, setOver] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export function MenuLayoutEditor({
     });
 
   const addGroup = () => {
-    onChange([...groups, { label: '새 묶음', items: [] }]);
+    onChange([...groups, { label: t('menu.newGroup'), items: [] }]);
     setTarget(groups.length);
   };
 
@@ -116,7 +118,7 @@ export function MenuLayoutEditor({
   const toggleCatalog = (key: string) => {
     if (used.has(key)) set((gs) => (removeItem(gs, key), gs));
     else if (groups.length) place(key, target);
-    else onChange([{ label: '메뉴', items: [key] }]);
+    else onChange([{ label: t('menu.menus'), items: [key] }]);
   };
 
   // ── 끌어 놓기 ──
@@ -162,16 +164,16 @@ export function MenuLayoutEditor({
                 draggable
                 onDragStart={(e) => onDragStart(e, { kind: 'group', index: gi })}
                 onDragEnd={() => setDrag(null)}
-                title="끌어서 묶음 순서 바꾸기"
+                title={t('menu.dragGroup')}
               >
                 <GripVertical size={14} />
               </span>
-              <label className={styles.groupLabelWrap} title="묶음 이름 바꾸기">
+              <label className={styles.groupLabelWrap} title={t('menu.renameGroup')}>
                 <input
                   className={styles.groupLabel}
                   value={g.label}
                   maxLength={30}
-                  aria-label="묶음 이름"
+                  aria-label={t('menu.groupName')}
                   onChange={(e) => set((gs) => ((gs[gi].label = e.target.value), gs))}
                 />
                 <Pencil size={12} className={styles.labelPencil} aria-hidden />
@@ -179,7 +181,7 @@ export function MenuLayoutEditor({
               <button
                 type="button"
                 className={`${styles.iconBtn} ${g.collapsed ? styles.iconOn : ''}`}
-                title={g.collapsed ? '처음엔 접어 둠(켜짐)' : '처음엔 접어 두기'}
+                title={g.collapsed ? t('menu.collapsedOn') : t('menu.collapsedOff')}
                 aria-pressed={!!g.collapsed}
                 onClick={() => set((gs) => ((gs[gi].collapsed = !gs[gi].collapsed), gs))}
               >
@@ -188,7 +190,7 @@ export function MenuLayoutEditor({
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="묶음 위로"
+                title={t('menu.groupUp')}
                 disabled={gi === 0}
                 onClick={() => moveGroup(gi, -1)}
               >
@@ -197,7 +199,7 @@ export function MenuLayoutEditor({
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="묶음 아래로"
+                title={t('menu.groupDown')}
                 disabled={gi === groups.length - 1}
                 onClick={() => moveGroup(gi, 1)}
               >
@@ -208,8 +210,8 @@ export function MenuLayoutEditor({
                 className={styles.iconBtn}
                 title={
                   mode === 'personal' && g.items.length
-                    ? '묶음 지우기(메뉴는 앞 묶음으로)'
-                    : '묶음 지우기'
+                    ? t('menu.groupDeleteMove')
+                    : t('menu.groupDelete')
                 }
                 disabled={groups.length <= 1}
                 onClick={() => removeGroup(gi)}
@@ -230,7 +232,7 @@ export function MenuLayoutEditor({
                     onDragEnd={() => setDrag(null)}
                     onDragOver={allowDrop(key)}
                     onDrop={(e) => onDropItem(e, gi, key)}
-                    title={dim?.(key) ? '이 사람은 권한이 없어 안 보입니다' : undefined}
+                    title={dim?.(key) ? t('menu.noPermDim') : undefined}
                   >
                     <GripVertical size={14} className={styles.gripIcon} />
                     <Icon size={15} />
@@ -238,7 +240,7 @@ export function MenuLayoutEditor({
                     <button
                       type="button"
                       className={styles.iconBtn}
-                      title="위로"
+                      title={t('menu.up')}
                       disabled={gi === 0 && ii === 0}
                       onClick={() => moveItem(gi, ii, -1)}
                     >
@@ -247,7 +249,7 @@ export function MenuLayoutEditor({
                     <button
                       type="button"
                       className={styles.iconBtn}
-                      title="아래로"
+                      title={t('menu.down')}
                       disabled={gi === groups.length - 1 && ii === g.items.length - 1}
                       onClick={() => moveItem(gi, ii, 1)}
                     >
@@ -257,8 +259,12 @@ export function MenuLayoutEditor({
                       <button
                         type="button"
                         className={`${styles.iconBtn} ${styles.eyeBtn}`}
-                        title={off ? '숨김 — 누르면 다시 보입니다' : '보임 — 누르면 숨깁니다'}
-                        aria-label={off ? `${label(key)} 다시 보이기` : `${label(key)} 숨기기`}
+                        title={off ? t('menu.hiddenTip') : t('menu.shownTip')}
+                        aria-label={
+                          off
+                            ? t('menu.showOf', { v0: label(key) })
+                            : t('menu.hideOf', { v0: label(key) })
+                        }
                         aria-pressed={off}
                         onClick={() => toggleHidden(key)}
                       >
@@ -268,7 +274,7 @@ export function MenuLayoutEditor({
                       <button
                         type="button"
                         className={styles.iconBtn}
-                        title="이 구성에서 빼기"
+                        title={t('menu.removeFromLayout')}
                         onClick={() => toggleCatalog(key)}
                       >
                         <X size={13} />
@@ -277,21 +283,23 @@ export function MenuLayoutEditor({
                   </li>
                 );
               })}
-              {!g.items.length && <li className={styles.empty}>메뉴를 여기로 끌어 놓으세요</li>}
+              {!g.items.length && <li className={styles.empty}>{t('menu.dropHere')}</li>}
             </ul>
           </section>
         ))}
         <button type="button" className={styles.addGroup} onClick={addGroup}>
-          <Plus size={14} /> 묶음 추가
+          <Plus size={14} /> {t('menu.addGroup')}
         </button>
       </div>
 
       {mode === 'admin' ? (
         <aside className={styles.side}>
           <div className={styles.sideHead}>
-            메뉴 고르기
+            {t('menu.pickMenus')}
             <span className={styles.meta}>
-              누르면 「{groups[target]?.label ?? '새 묶음'}」에 추가
+              {t('menu.clickAdd1')}
+              {groups[target]?.label ?? t('menu.newGroup')}
+              {t('menu.clickAdd2')}
             </span>
           </div>
           {MENU_CATEGORIES.map((cat) => (
@@ -327,16 +335,17 @@ export function MenuLayoutEditor({
 
 /** 개인 편집 오른쪽 — 실제 사이드바에 어떻게 보일지(숨긴 메뉴·빈 묶음은 빠진다). 묶음을 눌러 접고 편다 */
 function SidebarPreview({ groups, hidden }: { groups: MenuGroup[]; hidden: string[] }) {
+  const { t } = useTranslation();
   const label = useMenuLabel();
   const [open, setOpen] = useState<Record<number, boolean>>({});
   const shown = groups
     .map((g, gi) => ({ ...g, gi, items: g.items.filter((k) => !hidden.includes(k)) }))
     .filter((g) => g.items.length > 0);
   return (
-    <aside className={`${styles.side} ${styles.preview}`} aria-label="사이드바 미리보기">
+    <aside className={`${styles.side} ${styles.preview}`} aria-label={t('menu.sidebarPreview')}>
       <div className={styles.sideHead}>
-        미리보기
-        <span className={styles.meta}>사이드바에 이렇게 보입니다</span>
+        {t('menu.preview')}
+        <span className={styles.meta}>{t('menu.previewHint')}</span>
       </div>
       {shown.length ? (
         shown.map((g) => {
@@ -367,7 +376,7 @@ function SidebarPreview({ groups, hidden }: { groups: MenuGroup[]; hidden: strin
           );
         })
       ) : (
-        <p className={styles.meta}>보이는 메뉴가 없습니다.</p>
+        <p className={styles.meta}>{t('menu.noMenusDot')}</p>
       )}
     </aside>
   );

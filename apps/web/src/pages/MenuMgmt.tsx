@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Eye, Trash2, X } from 'lucide-react';
 import {
@@ -50,14 +52,15 @@ type Option = { id: string; name: string; sub?: string };
 
 const KINDS: MenuTargetKind[] = ['ORG', 'ROLE', 'POSITION', 'USER'];
 const KIND_HINT: Record<MenuTargetKind, string> = {
-  ORG: '그 조직과 하위 조직 직원 모두',
-  ROLE: '그 권한 그룹을 가진 계정',
-  POSITION: '그 직책의 직원(예: 대표이사)',
-  USER: '특정 계정 한 명',
+  ORG: i18n.t('menu.target.ORG'),
+  ROLE: i18n.t('menu.target.ROLE'),
+  POSITION: i18n.t('menu.target.POSITION'),
+  USER: i18n.t('menu.target.USER'),
 };
 
 /** 메뉴 관리 — 팀(소속)·권한 그룹·직책·개인별 사이드바 메뉴 구성 */
 export default function MenuMgmt() {
+  const { t } = useTranslation();
   const { can } = useAuth();
   const toast = useToast();
   const { id: detailId, open: openDetail, close } = useDetailParam();
@@ -71,7 +74,7 @@ export default function MenuMgmt() {
       setRows([]);
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '목록을 불러오지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('menu.listFailed'),
       });
     }
   }, [toast]);
@@ -93,7 +96,7 @@ export default function MenuMgmt() {
 
   const columns: Column[] = [
     {
-      title: '구성 이름',
+      title: t('menu.name'),
       dataIndex: 'name',
       minWidth: 160,
       render: (r) => (
@@ -101,50 +104,51 @@ export default function MenuMgmt() {
           {String(r.name)}
           {r.isDefault ? (
             <Badge variant="subtle" color="primary" size="sm">
-              기본
+              {t('menu.default')}
             </Badge>
           ) : null}
         </span>
       ),
     },
-    { title: '적용 대상', dataIndex: 'targetText', minWidth: 220, flex: 1 },
+    { title: t('menu.targets'), dataIndex: 'targetText', minWidth: 220, flex: 1 },
     {
-      title: '메뉴',
+      title: t('menu.menus'),
       dataIndex: 'menuCount',
       width: 80,
       numeric: true,
-      render: (r) => `${String(r.menuCount)}개`,
+      render: (r) => t('menu.countN', { v0: String(r.menuCount) }),
     },
-    { title: '묶음', dataIndex: 'groupText', minWidth: 220, flex: 1 },
-    { title: '우선순위', dataIndex: 'priority', width: 90, numeric: true },
+    { title: t('menu.groups'), dataIndex: 'groupText', minWidth: 220, flex: 1 },
+    { title: t('menu.priority'), dataIndex: 'priority', width: 90, numeric: true },
     {
-      title: '상태',
+      title: t('menu.status'),
       width: 80,
       render: (r) =>
         r.isActive ? (
           <Badge variant="subtle" color="success" size="sm">
-            사용
+            {t('menu.on')}
           </Badge>
         ) : (
           <Badge variant="subtle" color="neutral" size="sm">
-            중지
+            {t('menu.off')}
           </Badge>
         ),
-      exportValue: (r) => (r.isActive ? '사용' : '중지'),
+      exportValue: (r) => (r.isActive ? t('menu.on') : t('menu.off')),
     },
   ];
   const tableRows = (rows ?? []).map((p) => ({
     ...p,
     targetText:
       p.isDefault && !p.targets.length
-        ? '어느 구성에도 걸리지 않는 계정'
-        : p.targets.map((t) => `${MENU_TARGET_LABEL[t.kind]}: ${t.name}`).join(', ') || '대상 없음',
+        ? t('menu.unmatched')
+        : p.targets.map((tg) => `${MENU_TARGET_LABEL[tg.kind]}: ${tg.name}`).join(', ') ||
+          t('menu.noTargets'),
     groupText: p.layout.groups.map((g) => g.label).join(' · '),
   }));
 
   const createFields: FormField[] = [
-    { name: 'name', label: '구성 이름', required: true, placeholder: '예: 고객관리팀' },
-    { name: 'description', label: '설명', placeholder: '이 팀이 주로 하는 일' },
+    { name: 'name', label: t('menu.name'), required: true, placeholder: t('menu.namePh') },
+    { name: 'description', label: t('menu.desc'), placeholder: t('menu.descPh') },
   ];
   const onCreate = async (v: Record<string, unknown>) => {
     const p = await api<Profile>('/menus/profiles', {
@@ -152,7 +156,7 @@ export default function MenuMgmt() {
       body: JSON.stringify({
         name: v.name,
         description: v.description || null,
-        layout: { groups: [{ label: '홈', items: ['dashboard', 'notices', 'tasks'] }] },
+        layout: { groups: [{ label: t('menu.home'), items: ['dashboard', 'notices', 'tasks'] }] },
       }),
     });
     setCreateOpen(false);
@@ -160,10 +164,7 @@ export default function MenuMgmt() {
   };
 
   return (
-    <ListPage
-      title="메뉴 관리"
-      subtitle="팀(소속)·권한 그룹·직책별로 사이드바에 보일 메뉴와 순서를 정합니다. 권한이 없는 메뉴는 구성에 있어도 보이지 않습니다."
-    >
+    <ListPage title={t('menu.title')} subtitle={t('menu.subtitle')}>
       <DataTable
         columns={columns}
         rows={tableRows as unknown as Row[]}
@@ -172,7 +173,7 @@ export default function MenuMgmt() {
         toolbarActions={
           can('MENU.CREATE') ? (
             <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-              + 새 메뉴 구성
+              {t('menu.newBtn')}
             </Button>
           ) : undefined
         }
@@ -180,7 +181,7 @@ export default function MenuMgmt() {
       <FormModal
         open={createOpen}
         onOpenChange={setCreateOpen}
-        title="새 메뉴 구성"
+        title={t('menu.newTitle')}
         size="md"
         fields={createFields}
         onSubmit={onCreate}
@@ -190,6 +191,7 @@ export default function MenuMgmt() {
 }
 
 function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const { t } = useTranslation();
   const { can } = useAuth();
   const toast = useToast();
   const label = useMenuLabel();
@@ -220,7 +222,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
         setGroups(normalizeLayout(row.layout).groups);
         setTargets(row.targets);
       } catch (e) {
-        toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('menu.loadFailed') });
       }
     })();
     // 대상 고르기 목록 — 권한이 없는 목록은 비워 둔다
@@ -246,12 +248,12 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   name: x.name,
                   sub:
                     x.type === 'BRANCH'
-                      ? '지점'
+                      ? t('menu.org.BRANCH')
                       : x.type === 'DEPT'
-                        ? '부서'
+                        ? t('menu.org.DEPT')
                         : x.type === 'TF'
-                          ? 'TF·프로젝트팀'
-                          : '회사·그룹',
+                          ? t('menu.org.TF')
+                          : t('menu.org.COMPANY'),
                 }))
             : [],
         ROLE: r.status === 'fulfilled' ? r.value.map((x) => ({ id: x.id, name: x.name })) : [],
@@ -292,31 +294,25 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
       notifyMenuChanged();
       toast({
         type: 'success',
-        title: `저장했습니다 — 적용 계정 ${row.userCount ?? 0}명의 메뉴가 바로 바뀝니다`,
+        title: t('menu.saved', { v0: row.userCount ?? 0 }),
       });
       if (previewUser) void loadPreview(previewUser);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('menu.saveFailed') });
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async () => {
-    if (
-      !p ||
-      !window.confirm(
-        `'${p.name}' 구성을 지울까요? 적용 대상은 다른 구성(없으면 기본 구성)의 메뉴를 보게 됩니다.`,
-      )
-    )
-      return;
+    if (!p || !window.confirm(t('menu.deleteQ', { v0: p.name }))) return;
     try {
       await api(`/menus/profiles/${id}`, { method: 'DELETE' });
       notifyMenuChanged();
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('menu.deleted') });
       onBack();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('menu.deleteFailed') });
     }
   };
 
@@ -328,7 +324,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '미리보기를 불러오지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('menu.previewFailed'),
       });
     }
   };
@@ -346,8 +342,8 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
-        title={p.name || '이름 없음'}
-        breadcrumbs={[{ label: '메뉴 관리', onClick: onBack }]}
+        title={p.name || t('menu.noName')}
+        breadcrumbs={[{ label: t('menu.title'), onClick: onBack }]}
         actions={
           editable ? (
             <div style={{ display: 'flex', gap: 6 }}>
@@ -357,10 +353,10 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   size="sm"
                   leftIcon={<Trash2 size={14} />}
                   disabled={p.isDefault}
-                  title={p.isDefault ? '기본 구성은 지울 수 없습니다' : undefined}
+                  title={p.isDefault ? t('menu.defaultNoDelete') : undefined}
                   onClick={() => void remove()}
                 >
-                  삭제
+                  {t('menu.delete')}
                 </Button>
               )}
               <Button
@@ -371,7 +367,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 disabled={nameMissing || !dirty}
                 onClick={() => void save()}
               >
-                저장
+                {t('menu.save')}
               </Button>
             </div>
           ) : undefined
@@ -381,11 +377,11 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
       <div className={styles.layout}>
         <div className={styles.main}>
           <section className={styles.card}>
-            <h3 className={styles.cardTitle}>기본 정보</h3>
+            <h3 className={styles.cardTitle}>{t('menu.basic')}</h3>
             <div className={styles.formGrid}>
               <label className={styles.field}>
                 <span>
-                  구성 이름 <b className={styles.req}>*</b>
+                  {t('menu.name')} <b className={styles.req}>*</b>
                 </span>
                 <input
                   className={styles.input}
@@ -396,7 +392,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 />
               </label>
               <label className={styles.field}>
-                <span>우선순위</span>
+                <span>{t('menu.priority')}</span>
                 <input
                   className={styles.input}
                   type="number"
@@ -408,7 +404,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 />
               </label>
               <label className={`${styles.field} ${styles.wide}`}>
-                <span>설명</span>
+                <span>{t('menu.desc')}</span>
                 <input
                   className={styles.input}
                   value={p.description ?? ''}
@@ -419,32 +415,35 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
               </label>
             </div>
             <p className={styles.hint}>
-              한 사람에게 구성이 여러 개 걸리면 우선순위 숫자가 작은 구성의 묶음·순서를 먼저 따르고,
-              나머지 구성의 메뉴를 뒤에 붙입니다.
+              {t('menu.priorityHelp1')}
+              {t('menu.priorityHelp2')}
             </p>
             <div className={styles.checks}>
               <Checkbox
                 checked={p.isActive}
                 disabled={!editable}
                 onCheckedChange={(v) => patch((x) => ({ ...x, isActive: v === true }))}
-                label="사용"
-                description="끄면 이 구성은 아무에게도 적용되지 않습니다."
+                label={t('menu.on')}
+                description={t('menu.offHelp')}
               />
               <Checkbox
                 checked={p.isDefault}
                 disabled={!editable}
                 onCheckedChange={(v) => patch((x) => ({ ...x, isDefault: v === true }))}
-                label="기본 구성"
-                description="어느 구성에도 걸리지 않는 계정이 이 메뉴를 봅니다(하나만)."
+                label={t('menu.defaultLayout')}
+                description={t('menu.defaultHelp')}
               />
             </div>
           </section>
 
           <section className={styles.card}>
             <h3 className={styles.cardTitle}>
-              적용 대상
+              {t('menu.targets')}
               {p.userCount !== undefined && (
-                <span className={styles.meta}>저장 기준 계정 {p.userCount}명</span>
+                <span className={styles.meta}>
+                  {t('menu.savedAccounts')} {p.userCount}
+                  {t('menu.peopleSuffix')}
+                </span>
               )}
             </h3>
             <div className={styles.targets}>
@@ -458,16 +457,18 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       <span className={styles.meta}>{KIND_HINT[kind]}</span>
                     </div>
                     <div className={styles.chips}>
-                      {mine.map((t) => (
-                        <span key={t.targetId} className={styles.chip}>
-                          {t.name}
+                      {mine.map((tg) => (
+                        <span key={tg.targetId} className={styles.chip}>
+                          {tg.name}
                           {editable && (
                             <button
                               type="button"
-                              aria-label={`${t.name} 빼기`}
+                              aria-label={t('menu.removeOf', { v0: tg.name })}
                               onClick={() => {
                                 setTargets((ts) =>
-                                  ts.filter((x) => !(x.kind === kind && x.targetId === t.targetId)),
+                                  ts.filter(
+                                    (x) => !(x.kind === kind && x.targetId === tg.targetId),
+                                  ),
                                 );
                                 setDirty(true);
                               }}
@@ -481,7 +482,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                         <select
                           className={styles.addSelect}
                           value=""
-                          aria-label={`${MENU_TARGET_LABEL[kind]} 추가`}
+                          aria-label={t('menu.addOf', { v0: MENU_TARGET_LABEL[kind] })}
                           onChange={(e) => {
                             const o = opts[kind].find((x) => x.id === e.target.value);
                             if (!o) return;
@@ -489,7 +490,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                             setDirty(true);
                           }}
                         >
-                          <option value="">+ 추가</option>
+                          <option value="">{t('menu.addOpt')}</option>
                           {left.map((o) => (
                             <option key={o.id} value={o.id}>
                               {o.sub ? `${o.name} (${o.sub})` : o.name}
@@ -506,10 +507,8 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
 
           <section className={styles.card}>
             <h3 className={styles.cardTitle}>
-              메뉴 구성
-              <span className={styles.meta}>
-                끌어서 순서를 바꾸고, 오른쪽에서 메뉴를 넣고 뺍니다
-              </span>
+              {t('menu.layout')}
+              <span className={styles.meta}>{t('menu.layoutHint')}</span>
             </h3>
             {editable ? (
               <MenuLayoutEditor
@@ -529,15 +528,15 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <aside className={styles.previewCol}>
           <section className={styles.card}>
             <h3 className={styles.cardTitle}>
-              <Eye size={15} /> 이 사람에게는 이렇게
+              <Eye size={15} /> {t('menu.forPerson')}
             </h3>
             <select
               className={styles.input}
               value={previewUser}
               onChange={(e) => void loadPreview(e.target.value)}
-              aria-label="미리 볼 계정"
+              aria-label={t('menu.previewAccount')}
             >
-              <option value="">계정 고르기</option>
+              <option value="">{t('menu.pickAccount')}</option>
               {opts.USER.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name} ({o.sub})
@@ -548,16 +547,16 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
               <>
                 <p className={styles.meta}>
                   {preview?.profiles.length
-                    ? `받는 구성: ${preview.profiles.map((x) => x.name).join(' + ')}`
-                    : '슈퍼관리자 — 전체 메뉴'}
-                  {dirty && ' · 저장해야 반영됩니다'}
+                    ? t('menu.receives', { v0: preview.profiles.map((x) => x.name).join(' + ') })
+                    : t('menu.superAll')}
+                  {dirty && t('menu.saveToApply')}
                 </p>
                 <SidebarPreview layout={previewLayout} label={label} />
               </>
             ) : (
               <p className={styles.meta}>
-                계정을 고르면 그 사람의 권한·소속·직책·개인 설정까지 반영한 실제 사이드바를 보여
-                줍니다.
+                {t('menu.previewHelp1')}
+                {t('menu.previewHelp2')}
               </p>
             )}
           </section>
@@ -568,6 +567,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
 }
 
 function SidebarPreview({ layout, label }: { layout: MenuLayout; label: (k: string) => string }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.sidebar}>
       {layout.groups.map((g, i) => (
@@ -584,7 +584,7 @@ function SidebarPreview({ layout, label }: { layout: MenuLayout; label: (k: stri
           })}
         </div>
       ))}
-      {!layout.groups.length && <p className={styles.meta}>보이는 메뉴가 없습니다</p>}
+      {!layout.groups.length && <p className={styles.meta}>{t('menu.noMenus')}</p>}
     </div>
   );
 }

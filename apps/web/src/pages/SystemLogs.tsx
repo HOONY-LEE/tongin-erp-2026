@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
@@ -39,8 +40,8 @@ interface Stats {
   total: number;
 }
 
-const LEVEL_LABEL = { ERROR: '오류', WARN: '경고' } as const;
-const SOURCE_LABEL = { API: '서버', WEB: '화면' } as const;
+const LEVEL_LABEL = { ERROR: i18n.t('logs.level.ERROR'), WARN: i18n.t('logs.level.WARN') } as const;
+const SOURCE_LABEL = { API: i18n.t('logs.src.API'), WEB: i18n.t('logs.src.WEB') } as const;
 const when = (iso: string) => fmtDateTime(iso, { seconds: true });
 const kstDate = (offsetDays = 0) =>
   new Date(Date.now() + 9 * 3600_000 - offsetDays * 24 * 3600_000).toISOString().slice(0, 10);
@@ -86,7 +87,7 @@ export default function SystemLogs() {
       setTruncated(r.truncated);
       setStats(s);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('logs.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -110,9 +111,9 @@ export default function SystemLogs() {
   );
 
   const columns: Column[] = [
-    { title: '시각', dataIndex: 'at', width: 170 },
+    { title: t('logs.col.at'), dataIndex: 'at', width: 170 },
     {
-      title: '종류',
+      title: t('logs.col.type'),
       dataIndex: 'levelText',
       width: 76,
       render: (r) => (
@@ -121,11 +122,11 @@ export default function SystemLogs() {
         </Badge>
       ),
     },
-    { title: '출처', dataIndex: 'sourceText', width: 70 },
-    { title: '오류 번호', dataIndex: 'refText', width: 96 },
-    { title: '내용', dataIndex: 'message', minWidth: 240, flex: 2 },
-    { title: '요청', dataIndex: 'where', minWidth: 160, flex: 1 },
-    { title: '사용자', dataIndex: 'who', width: 90 },
+    { title: t('logs.col.source'), dataIndex: 'sourceText', width: 70 },
+    { title: t('logs.col.ref'), dataIndex: 'refText', width: 96 },
+    { title: t('logs.col.message'), dataIndex: 'message', minWidth: 240, flex: 2 },
+    { title: t('logs.col.where'), dataIndex: 'where', minWidth: 160, flex: 1 },
+    { title: t('logs.col.who'), dataIndex: 'who', width: 90 },
   ];
 
   const detail = detailId ? rows.find((r) => r.id === detailId) : null;
@@ -134,9 +135,7 @@ export default function SystemLogs() {
       <RecordDetail
         loading={!detail && loading}
         title={
-          detail
-            ? `${LEVEL_LABEL[detail.level]} · ${when(detail.createdAt)}`
-            : '로그를 찾을 수 없습니다'
+          detail ? `${LEVEL_LABEL[detail.level]} · ${when(detail.createdAt)}` : t('logs.notFound')
         }
         backLabel={t('nav.systemLogs')}
         onBack={close}
@@ -144,22 +143,22 @@ export default function SystemLogs() {
           detail
             ? [
                 {
-                  title: '요약',
+                  title: t('logs.summary'),
                   items: [
-                    { label: '종류', value: LEVEL_LABEL[detail.level] },
-                    { label: '출처', value: SOURCE_LABEL[detail.source] },
+                    { label: t('logs.col.type'), value: LEVEL_LABEL[detail.level] },
+                    { label: t('logs.col.source'), value: SOURCE_LABEL[detail.source] },
                     {
-                      label: '오류 번호',
+                      label: t('logs.col.ref'),
                       value: detail.ref ? <CopyText value={detail.ref} /> : null,
                     },
-                    { label: '로거', value: detail.context },
+                    { label: t('logs.logger'), value: detail.context },
                     {
-                      label: '요청',
+                      label: t('logs.col.where'),
                       value: [detail.method, detail.path].filter(Boolean).join(' '),
                     },
-                    { label: '응답 코드', value: detail.status },
-                    { label: '사용자', value: detail.userName },
-                    { label: '내용', value: detail.message, wide: true },
+                    { label: t('logs.status'), value: detail.status },
+                    { label: t('logs.col.who'), value: detail.userName },
+                    { label: t('logs.col.message'), value: detail.message, wide: true },
                   ],
                 },
               ]
@@ -168,7 +167,7 @@ export default function SystemLogs() {
       >
         {detail?.detail && (
           <section className="rd-card">
-            <h3 className="rd-title">자세한 내용(스택)</h3>
+            <h3 className="rd-title">{t('logs.stack')}</h3>
             <pre className={styles.pre}>{detail.detail}</pre>
           </section>
         )}
@@ -188,43 +187,39 @@ export default function SystemLogs() {
       />
       <div className={`${styles.cards} ${styles.cards3}`}>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>최근 24시간 오류</span>
+          <span className={styles.cardLabel}>{t('logs.errors24')}</span>
           <span className={`${styles.cardValue} ${stats?.errors24h ? styles.errorValue : ''}`}>
             {stats ? stats.errors24h.toLocaleString('ko-KR') : '—'}
           </span>
         </div>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>최근 24시간 경고</span>
+          <span className={styles.cardLabel}>{t('logs.warns24')}</span>
           <span className={styles.cardValue}>
             {stats ? stats.warnings24h.toLocaleString('ko-KR') : '—'}
           </span>
         </div>
         <div className={styles.card}>
-          <span className={styles.cardLabel}>보관 중</span>
+          <span className={styles.cardLabel}>{t('logs.stored')}</span>
           <span className={styles.cardValue}>
-            {stats ? `${stats.total.toLocaleString('ko-KR')}줄` : '—'}
+            {stats ? t('logs.linesN', { v0: stats.total.toLocaleString('ko-KR') }) : '—'}
           </span>
-          <span className={styles.cardSub}>30일 · 최대 2만 줄까지 보관</span>
+          <span className={styles.cardSub}>{t('logs.retention')}</span>
         </div>
       </div>
-      {truncated && (
-        <p className={styles.notice}>
-          로그가 많아 최근 500줄만 보입니다. 기간·종류를 좁히거나 검색해 보세요.
-        </p>
-      )}
+      {truncated && <p className={styles.notice}>{t('logs.tooMany')}</p>}
       <DataTable
         columns={columns}
         rows={tableRows as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => open(String(r.id))}
         exportable
-        exportFileName={`시스템로그-${from}-${to}`}
+        exportFileName={t('logs.exportName', { v0: from, v1: to })}
         filters={
           <>
             <Input
               value={q}
-              placeholder="오류 번호·내용·주소"
-              aria-label="로그 찾기"
+              placeholder={t('logs.searchPh')}
+              aria-label={t('logs.search')}
               onChange={(e) => setQ(e.target.value)}
               style={{ width: 200 }}
             />
@@ -233,7 +228,7 @@ export default function SystemLogs() {
               className={styles.dateInput}
               value={from}
               max={to}
-              aria-label="시작일"
+              aria-label={t('logs.from')}
               onChange={(e) => e.target.value && setFrom(e.target.value)}
             />
             <span className={styles.muted}>~</span>
@@ -242,27 +237,27 @@ export default function SystemLogs() {
               className={styles.dateInput}
               value={to}
               min={from}
-              aria-label="종료일"
+              aria-label={t('logs.to')}
               onChange={(e) => e.target.value && setTo(e.target.value)}
             />
             <Select
               value={level}
               onValueChange={setLevel}
-              aria-label="종류"
+              aria-label={t('logs.col.type')}
               options={[
-                { value: 'ALL', label: '오류·경고' },
-                { value: 'ERROR', label: '오류만' },
-                { value: 'WARN', label: '경고만' },
+                { value: 'ALL', label: t('logs.all') },
+                { value: 'ERROR', label: t('logs.errorsOnly') },
+                { value: 'WARN', label: t('logs.warnsOnly') },
               ]}
             />
             <Select
               value={source}
               onValueChange={setSource}
-              aria-label="출처"
+              aria-label={t('logs.col.source')}
               options={[
-                { value: 'ALL', label: '서버·화면' },
-                { value: 'API', label: '서버' },
-                { value: 'WEB', label: '화면' },
+                { value: 'ALL', label: t('logs.allSrc') },
+                { value: 'API', label: t('logs.src.API') },
+                { value: 'WEB', label: t('logs.src.WEB') },
               ]}
             />
           </>

@@ -22,11 +22,11 @@ export default function Accounts() {
   const [refreshKey, setRefreshKey] = useState(0);
   const { updatedAt, touch } = useUpdatedAt();
   const tabs: { key: Tab; label: string }[] = [
-    ...(can('USER.READ') ? [{ key: 'accounts' as const, label: '계정' }] : []),
+    ...(can('USER.READ') ? [{ key: 'accounts' as const, label: t('acc.accounts') }] : []),
     ...(can('ROLE.READ')
       ? [
-          { key: 'groups' as const, label: '권한 그룹' },
-          { key: 'positions' as const, label: '직책' },
+          { key: 'groups' as const, label: t('acc.groups') },
+          { key: 'positions' as const, label: t('acc.position') },
         ]
       : []),
   ];

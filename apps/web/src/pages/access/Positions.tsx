@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -31,6 +32,7 @@ interface PositionRow {
  * '추천 권한 그룹'을 정해 두면 이 직책의 직원으로 계정을 만들 때 그 그룹이 미리 골라진다.
  */
 export default function Positions() {
+  const { t } = useTranslation();
   const { can } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<PositionRow[]>([]);
@@ -47,7 +49,7 @@ export default function Positions() {
     try {
       setRows(await api<PositionRow[]>('/positions'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -79,10 +81,10 @@ export default function Positions() {
       } else if (editing) {
         await api(`/positions/${editing.id}`, { method: 'PATCH', body: JSON.stringify(body) });
       }
-      toast({ type: 'success', title: '저장했습니다' });
+      toast({ type: 'success', title: t('acc.saved') });
       await load();
     } catch (e) {
-      fail(e, '저장하지 못했습니다');
+      fail(e, t('acc.saveFailed'));
       throw e;
     }
   };
@@ -101,7 +103,7 @@ export default function Positions() {
         }),
       );
     } catch (e) {
-      fail(e, '순서를 바꾸지 못했습니다');
+      fail(e, t('acc.reorderFailed'));
       await load();
     }
   };
@@ -109,31 +111,31 @@ export default function Positions() {
   const remove = async (p: PositionRow) => {
     const msg =
       p.employeeCount > 0
-        ? `'${p.name}' 직책인 직원이 ${p.employeeCount}명 있습니다. 지우면 그 직원들은 '직책 없음'이 됩니다. 지울까요?`
-        : `'${p.name}' 직책을 지울까요?`;
+        ? t('acc.posDeleteInUse', { v0: p.name, v1: p.employeeCount })
+        : t('acc.posDeleteQ', { v0: p.name });
     if (!window.confirm(msg)) return;
     try {
       await api(`/positions/${p.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('acc.deleted') });
       closeDetail();
       await load();
     } catch (e) {
-      fail(e, '지우지 못했습니다');
+      fail(e, t('acc.deleteFailed'));
     }
   };
 
   const fields: FormField[] = useMemo(
     () => [
-      { name: 'name', label: '직책 이름', required: true, placeholder: '예: 이사' },
+      { name: 'name', label: t('acc.posName'), required: true, placeholder: t('acc.posNamePh') },
       {
         name: 'defaultRoleId',
-        label: '추천 권한 그룹(계정 만들 때 미리 골라짐)',
+        label: t('acc.recGroups'),
         type: 'select',
         alwaysShow: true,
         options: roles,
       },
       ...(editing !== 'new'
-        ? [{ name: 'isActive', label: '사용', type: 'boolean' as const, alwaysShow: true }]
+        ? [{ name: 'isActive', label: t('acc.use'), type: 'boolean' as const, alwaysShow: true }]
         : []),
     ],
     [roles, editing],
@@ -141,7 +143,7 @@ export default function Positions() {
 
   const columns: Column[] = [
     {
-      title: '순서',
+      title: t('acc.order'),
       width: 90,
       render: (r) => {
         const idx = rows.findIndex((x) => x.id === r.id);
@@ -151,7 +153,7 @@ export default function Positions() {
               variant="ghost"
               size="sm"
               disabled={idx === 0}
-              aria-label="위로"
+              aria-label={t('acc.up')}
               onClick={(e) => {
                 e.stopPropagation();
                 void move(idx, -1);
@@ -163,7 +165,7 @@ export default function Positions() {
               variant="ghost"
               size="sm"
               disabled={idx === rows.length - 1}
-              aria-label="아래로"
+              aria-label={t('acc.down')}
               onClick={(e) => {
                 e.stopPropagation();
                 void move(idx, 1);
@@ -177,9 +179,9 @@ export default function Positions() {
         );
       },
     },
-    { title: '직책', dataIndex: 'name', flex: 1 },
+    { title: t('acc.position'), dataIndex: 'name', flex: 1 },
     {
-      title: '추천 권한 그룹',
+      title: t('acc.recGroupsCol'),
       flex: 1,
       render: (r) =>
         r.defaultRoleName ? (
@@ -187,16 +189,20 @@ export default function Positions() {
             {String(r.defaultRoleName)}
           </Badge>
         ) : (
-          <span className={styles.muted}>없음</span>
+          <span className={styles.muted}>{t('acc.none')}</span>
         ),
     },
-    { title: '직원 수', width: 90, render: (r) => `${Number(r.employeeCount)}명` },
     {
-      title: '상태',
+      title: t('acc.headcount'),
+      width: 90,
+      render: (r) => t('acc.peopleN', { v0: Number(r.employeeCount) }),
+    },
+    {
+      title: t('acc.col.status'),
       width: 80,
       render: (r) => (
         <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-          {r.isActive ? '사용' : '안 씀'}
+          {r.isActive ? t('acc.use') : t('acc.unused')}
         </Badge>
       ),
     },
@@ -206,7 +212,7 @@ export default function Positions() {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? '직책 추가' : '직책 고치기'}
+      title={editing === 'new' ? t('acc.posAdd') : t('acc.posEdit')}
       size="md"
       fields={fields}
       initialValues={
@@ -229,20 +235,20 @@ export default function Positions() {
       <>
         <RecordDetail
           loading={!detail && loading}
-          title={detail ? detail.name : '직책을 찾을 수 없습니다'}
-          backLabel="직책"
+          title={detail ? detail.name : t('acc.posNotFound')}
+          backLabel={t('acc.position')}
           onBack={closeDetail}
           actions={
             detail && (canUpdate || canDelete) ? (
               <>
                 {canDelete && (
                   <Button variant="outline" size="sm" onClick={() => void remove(detail)}>
-                    삭제
+                    {t('acc.delete')}
                   </Button>
                 )}
                 {canUpdate && (
                   <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
-                    고치기
+                    {t('acc.editBtn')}
                   </Button>
                 )}
               </>
@@ -252,29 +258,32 @@ export default function Positions() {
             detail
               ? [
                   {
-                    title: '직책 정보',
+                    title: t('acc.posInfo'),
                     items: [
-                      { label: '직책', value: detail.name },
+                      { label: t('acc.position'), value: detail.name },
                       {
-                        label: '순서',
-                        value: `${rows.findIndex((x) => x.id === detail.id) + 1}번째`,
+                        label: t('acc.order'),
+                        value: t('acc.nth', { v0: rows.findIndex((x) => x.id === detail.id) + 1 }),
                       },
                       {
-                        label: '추천 권한 그룹',
+                        label: t('acc.recGroupsCol'),
                         value: detail.defaultRoleName ? (
                           <Badge variant="subtle" color="info">
                             {detail.defaultRoleName}
                           </Badge>
                         ) : (
-                          <span className={styles.muted}>없음</span>
+                          <span className={styles.muted}>{t('acc.none')}</span>
                         ),
                       },
-                      { label: '직원 수', value: `${detail.employeeCount}명` },
                       {
-                        label: '상태',
+                        label: t('acc.headcount'),
+                        value: t('acc.peopleN', { v0: detail.employeeCount }),
+                      },
+                      {
+                        label: t('acc.col.status'),
                         value: (
                           <Badge variant="subtle" color={detail.isActive ? 'success' : 'neutral'}>
-                            {detail.isActive ? '사용' : '안 씀'}
+                            {detail.isActive ? t('acc.use') : t('acc.unused')}
                           </Badge>
                         ),
                       },
@@ -292,8 +301,9 @@ export default function Positions() {
   return (
     <div className={styles.section}>
       <div className={styles.notice} style={{ margin: 0 }}>
-        직책은 조직에서의 위치(표시·인사용)이고 <b>권한을 주지 않습니다</b>. 무엇을 할 수 있는지는
-        권한 그룹이 정합니다. 같은 부장이라도 하는 일이 다르면 다른 권한 그룹을 줄 수 있습니다.
+        {t('acc.posHelp1')} <b>{t('acc.posHelp2')}</b>
+        {t('acc.posHelp3')}
+        {t('acc.posHelp4')}
       </div>
       <DataTable
         columns={columns}
@@ -303,7 +313,7 @@ export default function Positions() {
         toolbarActions={
           canCreate ? (
             <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-              + 직책 추가
+              {t('acc.posAddBtn')}
             </Button>
           ) : undefined
         }
