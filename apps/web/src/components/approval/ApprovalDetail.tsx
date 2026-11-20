@@ -27,6 +27,31 @@ function defaultBody(doc: ApprovalDocView): ReactNode {
       />
     );
   }
+  // 계약 금액 변경 — 바뀌는 값(이전 → 새 값)을 표로. 승인하면 계약서에 그대로 반영된다
+  if (doc.docType === 'CONTRACT_PRICE' && Array.isArray(p.changes)) {
+    const changes = p.changes as { label: string; from: string; to: string; price: boolean }[];
+    return (
+      <>
+        <p className={styles.content}>
+          계약 {String(p.contractNo ?? '')}
+          {p.customerName ? ` · ${String(p.customerName)}` : ''} — 승인하면 계약서에 바로
+          반영됩니다.
+        </p>
+        <dl className="rd-grid">
+          {changes.map((c) => (
+            <div key={c.label} className="rd-item rd-wide">
+              <dt>{c.label}</dt>
+              <dd>
+                <span style={{ color: 'var(--ark-color-text-secondary)' }}>{c.from}</span>
+                {' → '}
+                <b style={{ color: c.price ? '#c93400' : undefined }}>{c.to}</b>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </>
+    );
+  }
   const rows: [string, ReactNode][] = [];
   if (doc.docType === 'LEAVE') {
     rows.push(['휴가 종류', String(p.leaveType ?? '-')]);

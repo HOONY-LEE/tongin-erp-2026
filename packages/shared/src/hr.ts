@@ -2,13 +2,20 @@
 // 화면·API가 같이 쓰는 코드표와 순수 계산 함수.
 
 /** 결재 문서 종류 */
-export const APPROVAL_DOC_TYPES = ['LEAVE', 'ATTENDANCE_FIX', 'GENERAL', 'FORM'] as const;
+export const APPROVAL_DOC_TYPES = [
+  'LEAVE',
+  'ATTENDANCE_FIX',
+  'GENERAL',
+  'FORM',
+  'CONTRACT_PRICE',
+] as const;
 export type ApprovalDocType = (typeof APPROVAL_DOC_TYPES)[number];
 export const APPROVAL_DOC_TYPE_LABEL: Record<ApprovalDocType, string> = {
   LEAVE: '휴가 신청',
   ATTENDANCE_FIX: '근태 정정',
   GENERAL: '일반 품의',
   FORM: '결재 양식',
+  CONTRACT_PRICE: '계약 금액 변경',
 };
 
 /**

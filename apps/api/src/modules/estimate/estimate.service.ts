@@ -4,10 +4,12 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  type OnModuleInit,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   optionLabel,
+  PERMISSION_WILDCARD,
   summarizeVolume,
   type AuthPrincipal,
   type EstimateMeta,
@@ -35,9 +37,32 @@ import { CreateCostLineDto } from './dto/cost-line.dto';
 import { SaveBasicDto, SaveItemsDto, SaveOptionsDto } from './dto/estimate-tabs.dto';
 import { renderEstimateDocument } from './estimate-document';
 import { GeoService } from '../geo/geo.service';
+import { ContractRevisionService, type RevisionChange } from './contract-revision.service';
+import { ApprovalService } from '../approval/approval.service';
+
+/** 계약서를 고치는 저장 종류와 그 내용 */
+type ContractOp = {
+  op: 'basic' | 'items' | 'options' | 'conditions' | 'amounts';
+  body: unknown;
+};
+/** 담당자의 금액 변경 — 결재를 올렸다는 응답 */
+export interface PriceRequested {
+  approvalRequested: true;
+  approvalDocId: string;
+  docNo: string;
+  message: string;
+}
+/** 계약 금액 변경 결재 문서의 내용 */
+interface PricePayload {
+  estimateId: string;
+  contractId: string;
+  op: ContractOp['op'];
+  body: unknown;
+  changes: RevisionChange[];
+}
 
 @Injectable()
-export class EstimateService {
+export class EstimateService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly docNo: DocNoService,
@@ -46,6 +71,8 @@ export class EstimateService {
     private readonly leadService: LeadService,
     private readonly moveCatalog: MoveCatalogService,
     private readonly geo: GeoService,
+    private readonly revisions: ContractRevisionService,
+    private readonly approvals: ApprovalService,
   ) {}
 
   async findAll(leadId?: string, principal?: AuthPrincipal) {
@@ -647,8 +674,8 @@ export class EstimateService {
    * 1. 기본정보 저장. 주소·상담일·이사일은 접수(lead)에도 같이 쓴다 —
    * 현장 작업지시서는 접수의 주소를 읽으므로, 견적에서만 고치면 현장에 옛 주소가 간다.
    */
-  async saveBasic(estimateId: string, dto: SaveBasicDto, principal?: AuthPrincipal) {
-    const estimate = await this.findWritable(estimateId, principal);
+  private async applyBasic(estimateId: string, dto: SaveBasicDto, principal?: AuthPrincipal) {
+    const estimate = await this.findOne(estimateId, principal);
     if (dto.productId) {
       const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
       if (!product) throw new BadRequestException('존재하지 않는 상품(productId)입니다.');
@@ -772,8 +799,8 @@ export class EstimateService {
    * 2. 물품정보 저장 — 방·물품을 통째로 바꾼다. 값이 있는 물품(부피 > 0 또는 메모)만 남기고,
    * 기본 틀의 빈 행은 저장하지 않는다. 직접 만든 방은 비어 있어도 남긴다(나중에 채우도록).
    */
-  async saveItems(estimateId: string, dto: SaveItemsDto, principal?: AuthPrincipal) {
-    const current = await this.findWritable(estimateId, principal);
+  private async applyItems(estimateId: string, dto: SaveItemsDto, principal?: AuthPrincipal) {
+    const current = await this.findOne(estimateId, principal);
     const unit = dto.volumeUnit ?? (current.volumeUnit as VolumeUnit);
     // 화면은 체크한 물품만 보낸다 — 기본 부피가 없는 물품도 '넣었다'는 사실은 남긴다
     const rooms = dto.rooms
@@ -830,8 +857,8 @@ export class EstimateService {
    * 3. 옵션선택 저장 — 작업조건과 고른 옵션 전체를 바꾼다.
    * 옵션 이름은 정의에서 만들어 스냅샷으로 남긴다(정의가 바뀌어도 발송한 견적서는 그대로).
    */
-  async saveOptions(estimateId: string, dto: SaveOptionsDto, principal?: AuthPrincipal) {
-    await this.findWritable(estimateId, principal);
+  private async applyOptions(estimateId: string, dto: SaveOptionsDto, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
     const defs = await this.prisma.addonService.findMany({
       where: { id: { in: dto.options.map((o) => o.addonServiceId) } },
     });
@@ -916,8 +943,12 @@ export class EstimateService {
   }
 
   /** 작업조건(전/후 평수·작업방식) 수정. 기타가 아니면 남아 있던 메모를 지운다. */
-  async updateConditions(estimateId: string, dto: UpdateConditionsDto, principal?: AuthPrincipal) {
-    await this.findWritable(estimateId, principal);
+  private async applyConditions(
+    estimateId: string,
+    dto: UpdateConditionsDto,
+    principal?: AuthPrincipal,
+  ) {
+    await this.findOne(estimateId, principal);
     const note = (access: string | undefined, text: string | undefined) =>
       access === undefined ? text : access === 'ETC' ? (text?.trim() ?? null) : null;
     return this.prisma.estimate.update({
@@ -934,8 +965,8 @@ export class EstimateService {
   }
 
   /** 이사비용·부가세·계약금·잔금 확정. 총액은 항상 서버가 다시 계산한다. */
-  async updateAmounts(estimateId: string, dto: UpdateAmountsDto, principal?: AuthPrincipal) {
-    const cur = await this.findWritable(estimateId, principal);
+  private async applyAmounts(estimateId: string, dto: UpdateAmountsDto, principal?: AuthPrincipal) {
+    const cur = await this.findOne(estimateId, principal);
     // 계약금이 총비용보다 크면 잔금이 음수가 된다 — 저장 전에 같은 규칙으로 총비용을 미리 계산해 막는다
     const addonTotal = Number(
       (await this.prisma.estimateAddon.aggregate({ where: { estimateId }, _sum: { amount: true } }))
@@ -965,6 +996,273 @@ export class EstimateService {
       },
     });
     return this.recomputeAmounts(estimateId);
+  }
+
+  // ── 견적 탭 저장(공개) — 계약이 있으면 수정 권한·금액 승인·수정 이력을 거친다 ──
+
+  saveBasic(estimateId: string, dto: SaveBasicDto, principal?: AuthPrincipal) {
+    return this.tracked(estimateId, principal, { op: 'basic', body: dto }, () =>
+      this.applyBasic(estimateId, dto, principal),
+    );
+  }
+  saveItems(estimateId: string, dto: SaveItemsDto, principal?: AuthPrincipal) {
+    return this.tracked(estimateId, principal, { op: 'items', body: dto }, () =>
+      this.applyItems(estimateId, dto, principal),
+    );
+  }
+  saveOptions(estimateId: string, dto: SaveOptionsDto, principal?: AuthPrincipal) {
+    return this.tracked(estimateId, principal, { op: 'options', body: dto }, () =>
+      this.applyOptions(estimateId, dto, principal),
+    );
+  }
+  updateConditions(estimateId: string, dto: UpdateConditionsDto, principal?: AuthPrincipal) {
+    return this.tracked(estimateId, principal, { op: 'conditions', body: dto }, () =>
+      this.applyConditions(estimateId, dto, principal),
+    );
+  }
+  updateAmounts(estimateId: string, dto: UpdateAmountsDto, principal?: AuthPrincipal) {
+    return this.tracked(estimateId, principal, { op: 'amounts', body: dto }, () =>
+      this.applyAmounts(estimateId, dto, principal),
+    );
+  }
+
+  /** 이 견적의 계약(취소된 계약은 없는 것으로) */
+  private contractOf(estimateId: string) {
+    return this.prisma.contract.findFirst({
+      where: { estimateId, status: { not: 'CANCELED' } },
+      select: {
+        id: true,
+        contractNo: true,
+        customer: { select: { name: true } },
+        lead: { select: { ownerEmpId: true } },
+        estimate: { select: { estimatorEmpId: true } },
+      },
+    });
+  }
+
+  /**
+   * 계약이 있는 견적 고치기 — 담당자(접수 담당·견적 작성자) 또는 최고 관리자만.
+   * 금액(이사비용·옵션·부가세·계약금·잔금)이 바뀌면 담당자는 바로 고치지 못하고 결재(승인 요청)를 올린다
+   * — 승인되면 그때 반영된다. 최고 관리자는 바로 고친다. 고칠 때마다 수정 이력(이전 → 새 값 + 그때 계약서)을 남긴다.
+   */
+  private async tracked<T>(
+    estimateId: string,
+    principal: AuthPrincipal | undefined,
+    op: ContractOp,
+    apply: () => Promise<T>,
+  ): Promise<T | PriceRequested> {
+    const contract = await this.contractOf(estimateId);
+    if (!contract) return apply();
+    await this.findOne(estimateId, principal); // 조직 범위
+    const admin = !principal || principal.permissions.includes(PERMISSION_WILDCARD);
+    const owner =
+      !!principal?.employeeId &&
+      (contract.lead.ownerEmpId === principal.employeeId ||
+        contract.estimate.estimatorEmpId === principal.employeeId);
+    if (!admin && !owner)
+      throw new ForbiddenException(
+        '계약서는 담당자나 최고 관리자만 고칠 수 있습니다(계약이 만들어진 뒤에는 담당자에게 요청해 주세요).',
+      );
+    const render = () => this.document(estimateId);
+    const before = await this.revisions.facts(estimateId);
+    await this.revisions.ensureBase(contract.id, render);
+
+    if (!admin) {
+      const predicted = await this.predictPrice(estimateId, op, before);
+      const priceChanges = predicted
+        ? this.revisions.diff(before, predicted).filter((c) => c.price)
+        : [];
+      if (priceChanges.length) {
+        return this.requestPriceChange(contract, estimateId, op, principal!, before, predicted!);
+      }
+    }
+    const result = await apply();
+    const changes = this.revisions.diff(before, await this.revisions.facts(estimateId));
+    if (changes.length) {
+      await this.revisions.record({
+        contractId: contract.id,
+        kind: 'EDIT',
+        changes,
+        html: await render(),
+        byEmpId: principal?.employeeId ?? null,
+      });
+    }
+    return result;
+  }
+
+  /**
+   * 금액을 바꾸는 저장이면 저장 뒤의 값을 미리 계산한다(금액 칸만 바뀐 값으로) — 아니면 null.
+   * 총액 규칙은 recomputeAmounts와 같다: 이사비용 + 옵션 합계(+ 부가세 '포함'일 때).
+   */
+  private async predictPrice(
+    estimateId: string,
+    op: ContractOp,
+    before: Record<string, string>,
+  ): Promise<Record<string, string> | null> {
+    if (op.op !== 'amounts' && op.op !== 'options') return null;
+    const cur = await this.prisma.estimate.findUnique({
+      where: { id: estimateId },
+      select: {
+        moveAmount: true,
+        vatMode: true,
+        vatAmount: true,
+        depositAmount: true,
+        balanceAmount: true,
+        addons: { select: { name: true, variant: true, amount: true } },
+      },
+    });
+    if (!cur) return null;
+    const won = (v: number | null | undefined) =>
+      v == null ? '-' : `${Number(v).toLocaleString('ko-KR')}원`;
+    const num = (v: Prisma.Decimal | null) => (v == null ? null : Number(v));
+    let move = num(cur.moveAmount);
+    let vatMode = cur.vatMode;
+    let vat = num(cur.vatAmount);
+    let deposit = num(cur.depositAmount);
+    let balance = num(cur.balanceAmount);
+    let addons = cur.addons.map((a) => ({
+      label: `옵션 · ${a.name}${a.variant ? `(${a.variant})` : ''}`,
+      amount: Number(a.amount),
+    }));
+    if (op.op === 'amounts') {
+      const d = op.body as UpdateAmountsDto;
+      if (d.moveAmount !== undefined) move = d.moveAmount;
+      if (d.vatMode !== undefined) vatMode = d.vatMode;
+      vat = vatMode === 'EXCLUDED' ? null : d.vatAmount !== undefined ? d.vatAmount : vat;
+      if (d.depositAmount !== undefined) deposit = d.depositAmount;
+      if (d.balanceAmount !== undefined) balance = d.balanceAmount;
+    } else {
+      const d = op.body as SaveOptionsDto;
+      const defs = await this.prisma.addonService.findMany({
+        where: { id: { in: d.options.map((o) => o.addonServiceId) } },
+        select: { id: true, name: true },
+      });
+      const nameOf = new Map(defs.map((x) => [x.id, x.name]));
+      addons = d.options.map((o) => ({
+        label: `옵션 · ${nameOf.get(o.addonServiceId) ?? '옵션'}${o.variant ? `(${o.variant})` : ''}`,
+        amount: Number(o.amount ?? 0),
+      }));
+    }
+    const total =
+      (move ?? 0) +
+      addons.reduce((t, a) => t + a.amount, 0) +
+      (vatMode === 'INCLUDED' ? (vat ?? 0) : 0);
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(before)) if (!k.startsWith('옵션 · ')) out[k] = v;
+    for (const a of addons) out[a.label] = won(a.amount);
+    out['이사비용'] = won(move);
+    out['부가세'] = vatMode === 'INCLUDED' ? `포함 ${won(vat)}` : '불포함';
+    out['총액'] = won(total);
+    out['계약금'] = won(deposit);
+    out['잔금'] = won(balance);
+    return out;
+  }
+
+  /** 담당자의 금액 변경 — 바로 고치지 않고 결재(계약 금액 변경)를 올린다 */
+  private async requestPriceChange(
+    contract: { id: string; contractNo: string; customer: { name: string } | null },
+    estimateId: string,
+    op: ContractOp,
+    principal: AuthPrincipal,
+    before: Record<string, string>,
+    predicted: Record<string, string>,
+  ): Promise<PriceRequested> {
+    if (!principal.employeeId)
+      throw new ForbiddenException('직원과 연결된 계정만 금액 변경 승인을 요청할 수 있습니다.');
+    const pending = await this.revisions.pendingPriceRequest(contract.id);
+    if (pending)
+      throw new ConflictException(
+        `이미 결재 중인 금액 변경 요청이 있습니다(${pending.docNo}). 결재가 끝난 뒤 다시 요청해 주세요.`,
+      );
+    const changes = this.revisions.diff(before, predicted);
+    const name = contract.customer?.name ?? '';
+    const doc = await this.prisma.$transaction((tx) =>
+      this.approvals.submit(tx, {
+        docType: 'CONTRACT_PRICE',
+        title: `계약 금액 변경 — ${contract.contractNo}${name ? ` ${name}` : ''}`,
+        content: changes.map((c) => `${c.label}: ${c.from} → ${c.to}`).join('\n'),
+        payload: {
+          estimateId,
+          contractId: contract.id,
+          contractNo: contract.contractNo,
+          customerName: name,
+          op: op.op,
+          body: op.body as unknown as Record<string, unknown>,
+          changes: changes as unknown as Record<string, unknown>[],
+        },
+        requesterEmpId: principal.employeeId!,
+      }),
+    );
+    await this.revisions.record({
+      contractId: contract.id,
+      kind: 'PRICE_REQUEST',
+      changes,
+      summary: `금액 변경 승인 요청(${doc.docNo})`,
+      byEmpId: principal.employeeId,
+      approvalDocId: doc.id,
+    });
+    return {
+      approvalRequested: true,
+      approvalDocId: doc.id,
+      docNo: doc.docNo,
+      message: `금액 변경은 승인이 필요해 결재(${doc.docNo})를 올렸습니다. 승인되면 계약서에 반영됩니다.`,
+    };
+  }
+
+  /** 결재가 끝난 금액 변경 반영 — 승인이면 고치고 이력(승인), 반려·취소면 이력만 */
+  onModuleInit() {
+    const done =
+      (kind: 'PRICE_REJECTED' | 'PRICE_CANCELED', label: string) =>
+      async (
+        _tx: Prisma.TransactionClient,
+        doc: { id: string; payload: unknown; requesterEmpId: string },
+      ) => {
+        const p = doc.payload as PricePayload;
+        await this.revisions.record({
+          contractId: p.contractId,
+          kind,
+          changes: p.changes,
+          summary: label,
+          byEmpId: doc.requesterEmpId,
+          approvalDocId: doc.id,
+        });
+      };
+    this.approvals.registerHandler('CONTRACT_PRICE', {
+      onApproved: async (_tx, doc) => {
+        const p = doc.payload as PricePayload;
+        const before = await this.revisions.facts(p.estimateId);
+        if (p.op === 'amounts') await this.applyAmounts(p.estimateId, p.body as UpdateAmountsDto);
+        else if (p.op === 'options')
+          await this.applyOptions(p.estimateId, p.body as SaveOptionsDto);
+        await this.revisions.record({
+          contractId: p.contractId,
+          kind: 'PRICE_APPROVED',
+          changes: this.revisions.diff(before, await this.revisions.facts(p.estimateId)),
+          summary: '금액 변경 승인 — 반영',
+          html: await this.document(p.estimateId),
+          byEmpId: doc.requesterEmpId,
+          approvalDocId: doc.id,
+        });
+      },
+      onRejected: done('PRICE_REJECTED', '금액 변경 반려'),
+      onCanceled: done('PRICE_CANCELED', '금액 변경 요청 취소'),
+    });
+  }
+
+  /** 계약서 수정 이력(최근 것부터) */
+  async revisionList(estimateId: string, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
+    const contract = await this.contractOf(estimateId);
+    if (!contract) return { contractId: null, revisions: [] };
+    return { contractId: contract.id, revisions: await this.revisions.list(contract.id) };
+  }
+
+  /** 그 이력 때의 계약서 문서 */
+  async revisionDocument(estimateId: string, revisionId: string, principal?: AuthPrincipal) {
+    await this.findOne(estimateId, principal);
+    const contract = await this.contractOf(estimateId);
+    if (!contract) throw new NotFoundException('계약이 없습니다.');
+    return this.revisions.document(contract.id, revisionId);
   }
 
   /** 고쳐도 되는 견적만 꺼낸다 — 조직 범위 확인 + 서명된 계약 잠금. 견적을 바꾸는 곳은 모두 이걸 쓴다. */

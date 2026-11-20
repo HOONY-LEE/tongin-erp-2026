@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { priceRequested } from './priceRequest';
 import { summarizeVolume, VOLUME_UNIT_LABEL } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { Button, SegmentedControl, useToast } from '../ui';
@@ -89,11 +90,18 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
           balanceAmount: n(form.balanceAmount),
         }),
       });
+      // 계약이 있는 견적의 금액 변경(담당자) — 바로 고치지 않고 결재를 올렸다
+      const requested = priceRequested(next);
       // 금액 저장 응답은 견적 본문만 돌려준다 — 화면이 쓰는 상세(메타 포함)로 다시 읽는다
-      const fresh = next.meta ? next : await api<EstimateDetailData>(`/estimates/${data.id}`);
+      const fresh =
+        !requested && next.meta ? next : await api<EstimateDetailData>(`/estimates/${data.id}`);
       accept(fresh);
       onSaved(fresh);
-      toast({ type: 'success', title: '견적 금액을 저장했습니다' });
+      toast(
+        requested
+          ? { type: 'info', title: requested }
+          : { type: 'success', title: '견적 금액을 저장했습니다' },
+      );
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
     } finally {

@@ -67,10 +67,150 @@
   justify-content: center;
   background: transparent;
 }
-.body {
-  position: relative;
+.viewerWide {
+  width: min(1320px, 100%);
+}
+.main {
+  display: flex;
   flex: 1;
   min-height: 0;
+}
+.body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.actions button.on {
+  background: #fff;
+  color: #1d1d1f;
+}
+/* 이력 문서를 보는 중 — 지금 계약서가 아님을 알린다 */
+.past {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #fff4e5;
+  color: #8a4b00;
+  font-size: 13px;
+}
+.past button {
+  border: 0;
+  border-radius: 6px;
+  background: #1d1d1f;
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+/* 수정 이력 — 오른쪽 칸 */
+.history {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 340px;
+  min-height: 0;
+  background: #fff;
+  color: #1d1d1f;
+}
+.history h3 {
+  margin: 0;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #e5e5ea;
+  font-size: 14px;
+  font-weight: 600;
+}
+.historyMsg {
+  margin: 0;
+  padding: 16px;
+  color: #6e6e73;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.revList {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.rev {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f2f2f4;
+}
+.revOn {
+  background: #f5f5f7;
+}
+.revHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.revWho {
+  font-weight: 600;
+}
+.revHead time {
+  margin-left: auto;
+  color: #6e6e73;
+  font-size: 12px;
+}
+.revMeta {
+  color: #6e6e73;
+  font-size: 12px;
+}
+.changes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+.changes li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.changes b {
+  color: #6e6e73;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+.changes s {
+  color: #8e8e93;
+}
+.changes em {
+  font-style: normal;
+  font-weight: 600;
+}
+.changes .price {
+  color: #c93400;
+}
+.revView {
+  align-self: flex-start;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #e5e5ea;
+  border-radius: 6px;
+  background: #fff;
+  color: #1d1d1f;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.revView:hover {
+  background: #f5f5f7;
 }
 .frame {
   display: block;
