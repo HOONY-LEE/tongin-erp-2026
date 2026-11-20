@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { SearchInput } from '../ui/SearchInput';
 import {
   ChevronLeft,
   ChevronRight,
@@ -1107,22 +1108,12 @@ export default function CalendarGrid({
 
         {searchOpen ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <input
+            <SearchInput
               autoFocus
               value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={onSearchChange}
               placeholder="일정 검색"
-              style={{
-                height: 32,
-                width: 180,
-                padding: '0 10px',
-                borderRadius: 8,
-                border: BORDER,
-                background: 'var(--ark-color-bg)',
-                color: 'var(--ark-color-text)',
-                fontSize: fs(13),
-                outline: 'none',
-              }}
+              width={200}
             />
             <IconBtn
               label="검색 닫기"

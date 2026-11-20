@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { SearchInput } from '../components/ui/SearchInput';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +12,6 @@ import {
   GitBranch,
   ListChecks,
   Palette,
-  Search,
   SlidersHorizontal,
   UserRound,
   X,
@@ -233,16 +233,7 @@ export default function SettingsModal({
         data-settings
       >
         <nav className={styles.nav}>
-          <label className={styles.search}>
-            <Search size={15} aria-hidden />
-            <input
-              className="no-focus-ring"
-              value={q}
-              placeholder="설정 찾기…"
-              onChange={(e) => setQ(e.target.value)}
-              autoFocus
-            />
-          </label>
+          <SearchInput value={q} onChange={setQ} placeholder="설정 찾기" autoFocus />
           {groups.map(({ g, items }) => (
             <div key={g} className={styles.navGroup}>
               <div className={styles.navLabel}>{g}</div>

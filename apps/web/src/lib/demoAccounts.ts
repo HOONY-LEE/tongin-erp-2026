@@ -296,3 +296,12 @@ export function readRemembered(): string | null {
     return null;
   }
 }
+
+/** 데모 계정 찾기 — 이름·부서(묶음)·설명·아이디 어디에 있어도(띄어쓰기·대소문자 무시) */
+export function matchDemo(a: DemoAccount, q: string): boolean {
+  const k = q.replace(/\s+/g, '').toLowerCase();
+  if (!k) return true;
+  return [a.name, a.group, a.desc, a.loginId].some((v) =>
+    v.replace(/\s+/g, '').toLowerCase().includes(k),
+  );
+}

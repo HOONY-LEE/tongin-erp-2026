@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { SearchInput } from '../components/ui/SearchInput';
 import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, UserRound } from 'lucide-react';
 import { PRODUCT_NAME } from '@tongin/shared';
@@ -12,6 +13,7 @@ import {
   REMEMBER_KEY,
   readRemembered,
   useDemoLogin,
+  matchDemo,
   type DemoAccount,
 } from '../lib/demoAccounts';
 import styles from './login.module.css';
@@ -27,6 +29,7 @@ function DemoAccountMenu({
   onPick: (a: DemoAccount) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,10 +69,24 @@ function DemoAccountMenu({
       </button>
       {open && (
         <div className={styles.demoMenu} role="listbox" aria-label="데모 계정">
-          {DEMO_GROUPS.map((g) => (
+          <div className={styles.demoSearch}>
+            <SearchInput
+              value={q}
+              onChange={setQ}
+              placeholder="이름·부서·아이디 검색"
+              autoFocus
+              style={{ width: '100%' }}
+            />
+          </div>
+          {!DEMO_ACCOUNTS.some((a) => matchDemo(a, q)) && (
+            <div className={styles.demoGroup}>찾는 계정이 없습니다</div>
+          )}
+          {DEMO_GROUPS.filter((g) =>
+            DEMO_ACCOUNTS.some((a) => a.group === g && matchDemo(a, q)),
+          ).map((g) => (
             <div key={g} role="group" aria-label={g}>
               <div className={styles.demoGroup}>{g}</div>
-              {DEMO_ACCOUNTS.filter((a) => a.group === g).map((a) => (
+              {DEMO_ACCOUNTS.filter((a) => a.group === g && matchDemo(a, q)).map((a) => (
                 <button
                   key={a.loginId}
                   type="button"

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SearchInput } from '../components/ui/SearchInput';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Settings2, Users } from 'lucide-react';
+import { Settings2, Users } from 'lucide-react';
 import {
   DUTY_CYCLE_LABEL,
   KPI_CATALOG,
@@ -19,7 +20,6 @@ import {
   Button,
   Checkbox,
   DataTable,
-  Input,
   ListToolbar,
   Modal,
   PageHeader,
@@ -253,21 +253,7 @@ export default function Performance() {
         <>
           <div className="dt-wrap">
             <ListToolbar
-              search={
-                <div className="sft-toolbar__search-wrap">
-                  <span className="sft-toolbar__search-icon" aria-hidden="true">
-                    <Search size={15} />
-                  </span>
-                  <input
-                    className="sft-toolbar__search"
-                    type="search"
-                    value={query}
-                    placeholder="조직 찾기"
-                    aria-label="조직 찾기"
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </div>
-              }
+              search={<SearchInput value={query} onChange={setQuery} placeholder="조직 찾기" />}
               filters={groupSwitch}
               tabs={tabs}
             />
@@ -442,7 +428,7 @@ function BulkTargetModal({
           </>
         ) : (
           <>
-            <Input value={q} placeholder="이름·조직 찾기" onChange={(e) => setQ(e.target.value)} />
+            <SearchInput value={q} onChange={setQ} placeholder="이름·조직 찾기" />
             <div className={styles.pickList}>
               {groups.map(([org, list]) => {
                 const all = list.every((p) => picked.has(p.id));

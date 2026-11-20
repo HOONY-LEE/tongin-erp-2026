@@ -9,7 +9,9 @@ import {
   REMEMBER_KEY,
   readRemembered,
   useDemoLogin,
+  matchDemo,
 } from '../lib/demoAccounts';
+import { SearchInput } from '../components/ui/SearchInput';
 import styles from './desktopLogin.module.css';
 
 const REMEMBER_NAME_KEY = 'tongin.rememberName';
@@ -151,6 +153,8 @@ export default function DesktopLogin() {
   });
   const [loginId, setLoginId] = useState(remembered ?? '');
   const [password, setPassword] = useState('');
+  /** 데모 계정 찾기 */
+  const [demoQ, setDemoQ] = useState('');
   const [remember, setRemember] = useState(remembered !== null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -292,12 +296,20 @@ export default function DesktopLogin() {
 
         {showDemo && (
           <>
+            <SearchInput
+              value={demoQ}
+              onChange={setDemoQ}
+              placeholder="이름·부서·아이디 검색"
+              style={{ width: '100%', marginBottom: 8 }}
+            />
             <div className={styles.listWrap}>
               <div className={styles.list} role="list" aria-label="데모 계정">
-                {DEMO_GROUPS.map((g) => (
+                {DEMO_GROUPS.filter((g) =>
+                  DEMO_ACCOUNTS.some((a) => a.group === g && matchDemo(a, demoQ)),
+                ).map((g) => (
                   <div key={g} role="group" aria-label={g}>
                     <div className={styles.group}>{g}</div>
-                    {DEMO_ACCOUNTS.filter((a) => a.group === g).map((a) => (
+                    {DEMO_ACCOUNTS.filter((a) => a.group === g && matchDemo(a, demoQ)).map((a) => (
                       <button
                         key={a.loginId}
                         type="button"

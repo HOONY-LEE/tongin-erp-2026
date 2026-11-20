@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SearchInput } from '../components/ui/SearchInput';
 import { useSearchParams } from 'react-router-dom';
-import { ExternalLink, Pencil, Search, Trash2 } from 'lucide-react';
+import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import {
   DUTY_CYCLES,
   DUTY_CYCLE_LABEL,
@@ -265,19 +266,7 @@ export default function Duties() {
           <div className="dt-wrap">
             <ListToolbar
               search={
-                <div className="sft-toolbar__search-wrap">
-                  <span className="sft-toolbar__search-icon" aria-hidden="true">
-                    <Search size={15} />
-                  </span>
-                  <input
-                    className="sft-toolbar__search"
-                    type="search"
-                    value={query}
-                    placeholder="이름·업무 찾기"
-                    aria-label="이름·업무 찾기"
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </div>
+                <SearchInput value={query} onChange={setQuery} placeholder="이름·업무 찾기" />
               }
               filters={orgSelect}
               actions={addButton}

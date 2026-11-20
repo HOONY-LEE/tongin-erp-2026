@@ -8,6 +8,7 @@ import {
   type DragEvent,
   type ReactNode,
 } from 'react';
+import { SearchInput } from '../../../components/ui/SearchInput';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
@@ -25,7 +26,6 @@ import {
   MoreHorizontal,
   PieChart,
   Plus,
-  Search,
   Table2,
   Trash2,
   Type,
@@ -383,15 +383,7 @@ export function DashboardEditor({
           <b>위젯</b>
           <span className={styles.meta}>{usable.length}개</span>
         </div>
-        <label className={styles.searchBox}>
-          <Search size={14} aria-hidden />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="위젯 찾기"
-            aria-label="위젯 찾기"
-          />
-        </label>
+        <SearchInput value={q} onChange={setQ} placeholder="위젯 찾기" />
         <div className={styles.paletteList}>
           {DASH_GROUPS.map((g) => {
             const list = shown.filter((w) => w.group === g);
