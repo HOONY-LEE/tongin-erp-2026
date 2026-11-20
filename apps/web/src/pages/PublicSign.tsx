@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Check, Copy, Download, Eraser } from 'lucide-react';
@@ -25,7 +27,7 @@ interface View {
   } | null;
 }
 
-const won = (v: number) => `${Math.round(v).toLocaleString('ko-KR')}원`;
+const won = (v: number) => i18n.t('sign.won', { v0: Math.round(v).toLocaleString('ko-KR') });
 const when = (iso: string | null) =>
   iso
     ? new Date(iso).toLocaleString('ko-KR', {
@@ -53,6 +55,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 /** 서명 칸 — 손가락·마우스로 그린다(포인터 이벤트) */
 function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const drawn = useRef(false);
@@ -92,7 +95,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
       <canvas
         ref={ref}
         className={styles.pad}
-        aria-label="서명 칸"
+        aria-label={t('sign.pad')}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           drawing.current = true;
@@ -116,9 +119,9 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
           onChange(e.currentTarget.toDataURL('image/png'));
         }}
       />
-      {!ink && <span className={styles.padHint}>여기에 서명해 주세요</span>}
+      {!ink && <span className={styles.padHint}>{t('sign.signHere')}</span>}
       <button type="button" className={styles.padClear} onClick={clear}>
-        <Eraser size={14} /> 다시 쓰기
+        <Eraser size={14} /> {t('sign.clear')}
       </button>
     </div>
   );
@@ -126,6 +129,7 @@ function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void
 
 /** 견적서 미리보기 — A4 문서를 화면 폭에 맞춰 줄여 보여 준다 */
 function DocPreview({ src }: { src: string }) {
+  const { t } = useTranslation();
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.4);
   useLayoutEffect(() => {
@@ -143,7 +147,7 @@ function DocPreview({ src }: { src: string }) {
   return (
     <div ref={box} className={styles.docBox} style={{ height: H * scale }}>
       <iframe
-        title="견적서"
+        title={t('sign.estimate')}
         src={src}
         className={styles.doc}
         style={{ width: W, height: H, transform: `scale(${scale})` }}
@@ -157,6 +161,7 @@ function DocPreview({ src }: { src: string }) {
  * 약관에 동의해 서명한다. 계약금 계좌도 여기서 다시 확인할 수 있다.
  */
 export default function PublicSign() {
+  const { t } = useTranslation();
   const { token = '' } = useParams<{ token: string }>();
   const [view, setView] = useState<View | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -173,7 +178,7 @@ export default function PublicSign() {
       setView(v);
       setName((n) => n || v.customerName);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '견적서를 열지 못했습니다');
+      setError(e instanceof Error ? e.message : t('sign.openFailed'));
     }
   }, [token]);
 
@@ -194,9 +199,9 @@ export default function PublicSign() {
   const canSubmit = !!signature && !!name.trim() && agree;
 
   const submit = async () => {
-    if (!signature) return setError('서명을 그려 주세요');
-    if (!name.trim()) return setError('서명하시는 분의 이름을 적어 주세요');
-    if (!agree) return setError('이용약관 및 개인정보 수집·활용에 동의해 주세요');
+    if (!signature) return setError(t('sign.drawReq'));
+    if (!name.trim()) return setError(t('sign.nameReq'));
+    if (!agree) return setError(t('sign.agreeReq'));
     setBusy(true);
     setError(null);
     try {
@@ -208,7 +213,7 @@ export default function PublicSign() {
       setDocVer((x) => x + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
-      setError(e instanceof Error ? e.message : '서명하지 못했습니다');
+      setError(e instanceof Error ? e.message : t('sign.signFailed'));
     } finally {
       setBusy(false);
     }
@@ -225,8 +230,9 @@ export default function PublicSign() {
             <div className={styles.errorBig}>
               <p>{error}</p>
               <p className={styles.sub}>
-                문자로 받은 링크를 다시 확인하시거나, 고객센터
-                <a href="tel:1899-0123"> 1899-0123</a>으로 연락 주세요.
+                {t('sign.linkHelp1')}
+                <a href="tel:1899-0123"> 1899-0123</a>
+                {t('sign.linkHelp2')}
               </p>
             </div>
           ) : (
@@ -248,52 +254,57 @@ export default function PublicSign() {
     <div className={styles.page}>
       <header className={styles.top}>
         <span className={styles.brand}>통인익스프레스</span>
-        <span className={styles.no}>견적번호 {view.estimateNo}</span>
+        <span className={styles.no}>
+          {t('sign.estimateNo')} {view.estimateNo}
+        </span>
       </header>
 
       <main className={styles.main}>
         <section className={styles.hero}>
           <h1>
-            {view.customerName}님,
+            {view.customerName}
+            {t('sign.dear')}
             <br />
-            {view.signed ? '계약서 서명이 완료되었습니다' : '이사 견적서를 확인해 주세요'}
+            {view.signed ? t('sign.signedTitle') : t('sign.checkTitle')}
           </h1>
           {view.signed && (
             <p className={styles.done}>
-              <Check size={16} /> {view.signerName} · {when(view.signedAt)} 전자서명
+              <Check size={16} /> {view.signerName} · {when(view.signedAt)} {t('sign.eSign')}
             </p>
           )}
         </section>
 
         <section className={styles.card}>
           <div className={styles.row}>
-            <span>총 비용</span>
+            <span>{t('sign.total')}</span>
             <b className={styles.total}>{won(view.totalAmount)}</b>
           </div>
-          <div className={styles.sub}>{view.vatIncluded ? '부가세 포함' : '부가세 별도'}</div>
+          <div className={styles.sub}>{view.vatIncluded ? t('sign.vatIn') : t('sign.vatEx')}</div>
           <div className={styles.row}>
-            <span>계약금</span>
+            <span>{t('sign.deposit')}</span>
             <b>{won(view.depositAmount)}</b>
           </div>
           <div className={styles.row}>
-            <span>잔금</span>
+            <span>{t('sign.balance')}</span>
             <b>{won(view.balanceAmount)}</b>
           </div>
         </section>
 
         {dep && (
           <section className={[styles.card, dep.paid ? styles.paid : ''].join(' ')}>
-            <h2>계약금 입금</h2>
+            <h2>{t('sign.depositPay')}</h2>
             {dep.paid ? (
               <p className={styles.done}>
-                <Check size={16} /> {when(dep.paidAt)} 입금이 확인되었습니다. 감사합니다.
+                <Check size={16} /> {when(dep.paidAt)} {t('sign.paidThanks')}
               </p>
             ) : (
               <>
                 <div className={styles.account}>
                   <div>
                     <b>{dep.account}</b>
-                    <div className={styles.sub}>예금주 {dep.holder}</div>
+                    <div className={styles.sub}>
+                      {t('sign.holder')} {dep.holder}
+                    </div>
                   </div>
                   <Button
                     variant="outline"
@@ -307,13 +318,15 @@ export default function PublicSign() {
                         .catch(() => undefined);
                     }}
                   >
-                    {copied ? '복사됨' : '계좌 복사'}
+                    {copied ? t('sign.copied') : t('sign.copyAccount')}
                   </Button>
                 </div>
                 <div className={styles.sub}>
-                  {won(view.depositAmount)}을 입금해 주세요
-                  {dep.dueAt ? ` · ${when(dep.dueAt)}까지` : ''}. 입금이 확인되면 이 화면과
-                  담당자에게 바로 표시됩니다.
+                  {won(view.depositAmount)}
+                  {t('sign.payPlease')}
+                  {dep.dueAt ? t('sign.until', { v0: when(dep.dueAt) }) : ''}
+                  {t('sign.paidNote1')}
+                  {t('sign.paidNote2')}
                 </div>
               </>
             )}
@@ -322,9 +335,9 @@ export default function PublicSign() {
 
         <section className={styles.card}>
           <div className={styles.docHead}>
-            <h2>견적서 · 계약서</h2>
+            <h2>{t('sign.docs')}</h2>
             <a className={styles.pdf} href={docSrc} target="_blank" rel="noreferrer">
-              <Download size={14} /> 크게 보기 · PDF 저장
+              <Download size={14} /> {t('sign.enlarge')}
             </a>
           </div>
           <DocPreview key={docVer} src={docSrc} />
@@ -332,10 +345,11 @@ export default function PublicSign() {
 
         {!view.signed && (
           <section className={styles.card}>
-            <h2>전자서명</h2>
+            <h2>{t('sign.eSign')}</h2>
             <label className={styles.field}>
               <span>
-                서명하시는 분<span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>
+                {t('sign.signer')}
+                <span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>
               </span>
               <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
             </label>
@@ -343,7 +357,7 @@ export default function PublicSign() {
             <Checkbox
               checked={agree}
               onCheckedChange={(v) => setAgree(v === true)}
-              label="이용약관 및 개인정보 수집/활용에 동의합니다"
+              label={t('sign.agree')}
             />
             {error && <p className={styles.error}>{error}</p>}
             <Button
@@ -353,7 +367,7 @@ export default function PublicSign() {
               disabled={!canSubmit || busy}
               onClick={() => void submit()}
             >
-              위 내용으로 계약하고 서명하기
+              {t('sign.signBtn')}
             </Button>
           </section>
         )}

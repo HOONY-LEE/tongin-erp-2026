@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -33,7 +35,8 @@ interface Res {
   summary: Record<string, number>;
 }
 
-const won = (n: number | null) => (n === null ? '—' : `${n.toLocaleString('ko-KR')}원`);
+const won = (n: number | null) =>
+  n === null ? '—' : i18n.t('fran.won', { v0: n.toLocaleString('ko-KR') });
 const STATUS_COLOR: Record<FranchiseStatus, 'success' | 'info' | 'warning' | 'neutral'> = {
   OPERATING: 'success',
   PREPARING: 'info',
@@ -42,23 +45,26 @@ const STATUS_COLOR: Record<FranchiseStatus, 'success' | 'info' | 'warning' | 'ne
 };
 
 function Dday({ r }: { r: FranchiseBranchRow }) {
+  const { t } = useTranslation();
   if (!r.contractEnd) return <span className={styles.muted}>—</span>;
   const d = r.daysLeft ?? 0;
   return (
     <span className={d < 0 ? styles.over : r.renewalDue ? styles.soon : ''}>
       {r.contractEnd}
-      {r.status !== 'TERMINATED' && (d < 0 ? ` (만료 ${-d}일)` : r.renewalDue ? ` (D-${d})` : '')}
+      {r.status !== 'TERMINATED' &&
+        (d < 0 ? t('fran.expiredDays', { v0: -d }) : r.renewalDue ? ` (D-${d})` : '')}
     </span>
   );
 }
 
 function Paid({ amount, at }: { amount: number | null; at: string | null }) {
+  const { t } = useTranslation();
   if (!amount) return <span className={styles.muted}>—</span>;
   return (
     <span className={styles.paid}>
       {won(amount)}
       <Badge variant="subtle" color={at ? 'success' : 'warning'} size="sm">
-        {at ? '입금' : '미확인'}
+        {at ? t('fran.paid') : t('fran.unconfirmed')}
       </Badge>
     </span>
   );
@@ -69,6 +75,7 @@ function Paid({ amount, at }: { amount: number | null; at: string | null }) {
  * 재계약 대상(만료 90일 안·지남), 가맹비·보증금 입금 미확인, 계약 정보를 안 넣은 곳을 탭으로 모은다.
  */
 export default function Franchise() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const [data, setData] = useState<Res | null>(null);
@@ -84,7 +91,7 @@ export default function Franchise() {
       setData(await api<Res>('/franchise/branches'));
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('fran.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -114,34 +121,40 @@ export default function Franchise() {
   const fields: FormField[] = [
     {
       name: 'status',
-      label: '상태',
+      label: t('fran.status'),
       type: 'chips',
       options: FRANCHISE_STATUSES.map((v) => ({ value: v, label: FRANCHISE_STATUS_LABEL[v] })),
       alwaysShow: true,
     },
-    { name: 'ownerName', label: '가맹주(대표)', alwaysShow: true, pairWithNext: true },
-    { name: 'ownerPhone', label: '가맹주 연락처', type: 'tel', alwaysShow: true },
+    { name: 'ownerName', label: t('fran.owner'), alwaysShow: true, pairWithNext: true },
+    { name: 'ownerPhone', label: t('fran.ownerPhone'), type: 'tel', alwaysShow: true },
     {
       name: 'contractStart',
-      label: '계약 시작',
+      label: t('fran.contractStart'),
       type: 'date',
       alwaysShow: true,
       pairWithNext: true,
     },
-    { name: 'contractEnd', label: '계약 만료', type: 'date', alwaysShow: true },
+    { name: 'contractEnd', label: t('fran.contractEnd'), type: 'date', alwaysShow: true },
     {
       name: 'franchiseFee',
-      label: '가맹비(원)',
+      label: t('fran.feeWon'),
       type: 'number',
       alwaysShow: true,
       pairWithNext: true,
     },
-    { name: 'feePaidAt', label: '가맹비 입금일', type: 'date', alwaysShow: true },
-    { name: 'deposit', label: '보증금(원)', type: 'number', alwaysShow: true, pairWithNext: true },
-    { name: 'depositPaidAt', label: '보증금 입금일', type: 'date', alwaysShow: true },
-    { name: 'royalty', label: '월 상호사용료(원)', type: 'number', pairWithNext: true },
-    { name: 'bizNo', label: '사업자등록번호' },
-    { name: 'memo', label: '메모', type: 'textarea' },
+    { name: 'feePaidAt', label: t('fran.feePaidAt'), type: 'date', alwaysShow: true },
+    {
+      name: 'deposit',
+      label: t('fran.depositWon'),
+      type: 'number',
+      alwaysShow: true,
+      pairWithNext: true,
+    },
+    { name: 'depositPaidAt', label: t('fran.depositPaidAt'), type: 'date', alwaysShow: true },
+    { name: 'royalty', label: t('fran.royaltyWon'), type: 'number', pairWithNext: true },
+    { name: 'bizNo', label: t('fran.bizNo') },
+    { name: 'memo', label: t('fran.memo'), type: 'textarea' },
   ];
   const save = async (v: Record<string, unknown>) => {
     if (!editing) return;
@@ -165,11 +178,11 @@ export default function Franchise() {
           memo: str('memo'),
         }),
       });
-      toast({ type: 'success', title: '가맹 계약 정보를 저장했습니다' });
+      toast({ type: 'success', title: t('fran.saved') });
       setEditing(null);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('fran.saveFailed') });
       throw e;
     }
   };
@@ -196,7 +209,7 @@ export default function Franchise() {
     <FormModal
       open={!!editing}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={`${editing?.name ?? ''} · 가맹 계약 정보`}
+      title={t('fran.editTitle', { v0: editing?.name ?? '' })}
       size="md"
       fields={fields}
       initialValues={editing ? initial(editing) : undefined}
@@ -210,13 +223,13 @@ export default function Franchise() {
       <>
         <RecordDetail
           loading={!r && loading}
-          title={r ? r.name : '가맹점을 찾을 수 없습니다'}
-          backLabel="가맹점 현황"
+          title={r ? r.name : t('fran.notFound')}
+          backLabel={t('fran.title')}
           onBack={detail.close}
           actions={
             r && can('FRANCHISE.UPDATE') ? (
               <Button variant="primary" size="sm" onClick={() => setEditing(r)}>
-                계약 정보 수정
+                {t('fran.editBtn')}
               </Button>
             ) : undefined
           }
@@ -224,35 +237,47 @@ export default function Franchise() {
             r
               ? [
                   {
-                    title: '가맹점',
+                    title: t('fran.franchise'),
                     items: [
                       {
-                        label: '상태',
+                        label: t('fran.status'),
                         value: (
                           <Badge variant="subtle" color={STATUS_COLOR[r.status]}>
                             {FRANCHISE_STATUS_LABEL[r.status]}
                           </Badge>
                         ),
                       },
-                      { label: '가맹주', value: r.ownerName },
-                      { label: '연락처', value: r.ownerPhone ? formatPhone(r.ownerPhone) : null },
-                      { label: '사업자등록번호', value: r.bizNo },
-                      { label: '소속', value: r.parentName },
-                      { label: '직원', value: `${r.employeeCount}명` },
-                      { label: '주소', value: r.addr, wide: true },
+                      { label: t('fran.ownerShort'), value: r.ownerName },
+                      {
+                        label: t('fran.phone'),
+                        value: r.ownerPhone ? formatPhone(r.ownerPhone) : null,
+                      },
+                      { label: t('fran.bizNo'), value: r.bizNo },
+                      { label: t('fran.org'), value: r.parentName },
+                      {
+                        label: t('fran.employees'),
+                        value: t('fran.peopleN', { v0: r.employeeCount }),
+                      },
+                      { label: t('fran.address'), value: r.addr, wide: true },
                     ],
                   },
                   {
-                    title: '계약·입금',
+                    title: t('fran.contractPay'),
                     items: [
-                      { label: '계약 시작', value: r.contractStart },
-                      { label: '계약 만료', value: <Dday r={r} /> },
-                      { label: '가맹비', value: <Paid amount={r.franchiseFee} at={r.feePaidAt} /> },
-                      { label: '가맹비 입금일', value: r.feePaidAt },
-                      { label: '보증금', value: <Paid amount={r.deposit} at={r.depositPaidAt} /> },
-                      { label: '보증금 입금일', value: r.depositPaidAt },
-                      { label: '월 상호사용료', value: r.royalty ? won(r.royalty) : null },
-                      { label: '메모', value: r.memo, wide: true },
+                      { label: t('fran.contractStart'), value: r.contractStart },
+                      { label: t('fran.contractEnd'), value: <Dday r={r} /> },
+                      {
+                        label: t('fran.fee'),
+                        value: <Paid amount={r.franchiseFee} at={r.feePaidAt} />,
+                      },
+                      { label: t('fran.feePaidAt'), value: r.feePaidAt },
+                      {
+                        label: t('fran.deposit'),
+                        value: <Paid amount={r.deposit} at={r.depositPaidAt} />,
+                      },
+                      { label: t('fran.depositPaidAt'), value: r.depositPaidAt },
+                      { label: t('fran.royalty'), value: r.royalty ? won(r.royalty) : null },
+                      { label: t('fran.memo'), value: r.memo, wide: true },
                     ],
                   },
                 ]
@@ -261,9 +286,9 @@ export default function Franchise() {
         >
           {r && (
             <div className={styles.links}>
-              <Link to={`/branches?detail=${r.orgUnitId}`}>지점관리에서 보기 →</Link>
-              <Link to={`/branch-cases`}>지점 관리 기록(점검·재계약 등) →</Link>
-              <Link to={`/performance?scope=ORG&id=${r.orgUnitId}`}>성과 평가 →</Link>
+              <Link to={`/branches?detail=${r.orgUnitId}`}>{t('fran.viewBranch')}</Link>
+              <Link to={`/branch-cases`}>{t('fran.branchCases')}</Link>
+              <Link to={`/performance?scope=ORG&id=${r.orgUnitId}`}>{t('fran.perf')}</Link>
             </div>
           )}
         </RecordDetail>
@@ -273,14 +298,14 @@ export default function Franchise() {
   }
 
   const columns: Column[] = [
-    { title: '가맹점', dataIndex: 'name', minWidth: 130, flex: 1 },
+    { title: t('fran.franchise'), dataIndex: 'name', minWidth: 130, flex: 1 },
     {
-      title: '상태',
+      title: t('fran.status'),
       width: 90,
       render: (r) => {
         const x = r as unknown as FranchiseBranchRow;
         return x.empty ? (
-          <span className={styles.muted}>정보 없음</span>
+          <span className={styles.muted}>{t('fran.noInfo')}</span>
         ) : (
           <Badge variant="subtle" color={STATUS_COLOR[x.status]} size="sm">
             {FRANCHISE_STATUS_LABEL[x.status]}
@@ -290,29 +315,29 @@ export default function Franchise() {
       exportValue: (r) => FRANCHISE_STATUS_LABEL[(r as unknown as FranchiseBranchRow).status],
     },
     {
-      title: '가맹주',
+      title: t('fran.ownerShort'),
       dataIndex: 'ownerName',
       width: 90,
       render: (r) => (r.ownerName as string) ?? '—',
     },
     {
-      title: '연락처',
+      title: t('fran.phone'),
       render: (r) => (r.ownerPhone ? formatPhone(String(r.ownerPhone)) : '—'),
     },
     {
-      title: '계약 시작',
+      title: t('fran.contractStart'),
       dataIndex: 'contractStart',
       width: 110,
       render: (r) => (r.contractStart as string) ?? '—',
     },
     {
-      title: '계약 만료',
+      title: t('fran.contractEnd'),
       width: 160,
       render: (r) => <Dday r={r as unknown as FranchiseBranchRow} />,
       exportValue: (r) => (r.contractEnd as string) ?? '',
     },
     {
-      title: '가맹비',
+      title: t('fran.fee'),
       width: 160,
       render: (r) => {
         const x = r as unknown as FranchiseBranchRow;
@@ -321,7 +346,7 @@ export default function Franchise() {
       exportValue: (r) => (r.franchiseFee as number) ?? '',
     },
     {
-      title: '보증금',
+      title: t('fran.deposit'),
       width: 160,
       render: (r) => {
         const x = r as unknown as FranchiseBranchRow;
@@ -330,7 +355,7 @@ export default function Franchise() {
       exportValue: (r) => (r.deposit as number) ?? '',
     },
     {
-      title: '상호사용료',
+      title: t('fran.royaltyShort'),
       width: 110,
       numeric: true,
       render: (r) => (r.royalty ? won(r.royalty as number) : '—'),
@@ -352,19 +377,24 @@ export default function Franchise() {
   return (
     <div className="list-page fit">
       <PageHeader
-        title="가맹점 현황"
-        subtitle={`지점(가맹점)마다 가맹주·계약 기간·가맹비·보증금·상호사용료를 관리합니다. 계약 만료 ${FRANCHISE_RENEWAL_DAYS}일 안이면 재계약 대상입니다.`}
+        title={t('fran.title')}
+        subtitle={t('fran.subtitle', { v0: FRANCHISE_RENEWAL_DAYS })}
         onRefresh={load}
         updatedAt={updatedAt}
       />
       <div className={styles.tiles}>
-        {tile('운영·개점 준비', s.total, 'all')}
-        {tile('올해 신규 가맹', s.newThisYear)}
-        {tile(`재계약 대상(${FRANCHISE_RENEWAL_DAYS}일)`, s.renewalDue, 'renewal', 'warn')}
-        {tile('가맹비·보증금 미확인', s.unpaid, 'unpaid', 'warn')}
-        {tile('계약 정보 미입력', s.missing, 'empty')}
+        {tile(t('fran.stat.active'), s.total, 'all')}
+        {tile(t('fran.stat.newThisYear'), s.newThisYear)}
+        {tile(
+          t('fran.stat.renewal', { v0: FRANCHISE_RENEWAL_DAYS }),
+          s.renewalDue,
+          'renewal',
+          'warn',
+        )}
+        {tile(t('fran.stat.unpaid'), s.unpaid, 'unpaid', 'warn')}
+        {tile(t('fran.stat.missing'), s.missing, 'empty')}
         <Link className={styles.tile} to="/franchise-leads">
-          <span>가맹 영업 진행 중 →</span>
+          <span>{t('fran.inSales')}</span>
           <b>{s.leadsOpen ?? '—'}</b>
         </Link>
       </div>
@@ -375,17 +405,17 @@ export default function Franchise() {
         loading={loading}
         fit
         exportable
-        exportFileName="가맹점현황"
+        exportFileName={t('fran.exportName')}
         tabs={
           <SegmentedControl
             value={tab}
             onChange={(v) => setTab(v as Tab)}
             options={[
-              { value: 'all', label: '전체' },
-              { value: 'renewal', label: `재계약 대상 ${s.renewalDue ?? ''}` },
-              { value: 'unpaid', label: `미입금 ${s.unpaid ?? ''}` },
-              { value: 'empty', label: `정보 없음 ${s.missing ?? ''}` },
-              { value: 'ended', label: '해지' },
+              { value: 'all', label: t('fran.all') },
+              { value: 'renewal', label: t('fran.renewalN', { v0: s.renewalDue ?? '' }) },
+              { value: 'unpaid', label: t('fran.unpaidN', { v0: s.unpaid ?? '' }) },
+              { value: 'empty', label: t('fran.missingN', { v0: s.missing ?? '' }) },
+              { value: 'ended', label: t('fran.terminated') },
             ]}
           />
         }

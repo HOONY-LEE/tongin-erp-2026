@@ -32,9 +32,21 @@ import ai from './ai';
 import dash from './dash';
 import perf from './perf';
 import camp from './camp';
+import know from './know';
+import fran from './fran';
+import asset from './asset';
+import biz from './biz';
+import pay from './pay';
+import sign from './sign';
 
 /** 네임스페이스 이름 → 번역 묶음. t('ui.copy')처럼 '이름.키'로 쓴다. 새 화면은 여기 등록. */
 export const NAMESPACES = {
+  sign,
+  pay,
+  biz,
+  asset,
+  fran,
+  know,
   camp,
   perf,
   dash,

@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
@@ -22,9 +23,9 @@ import { fs } from '../lib/fontScale';
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 const STATUS: StatusMap = {
-  AWAITING: { label: '계약금 입금대기', color: 'warning' },
-  DEPOSIT_PAID: { label: '계약금 입금', color: 'info' },
-  COMPLETED: { label: '완료(잔금까지)', color: 'success' },
+  AWAITING: { label: i18n.t('pay.st.waiting'), color: 'warning' },
+  DEPOSIT_PAID: { label: i18n.t('pay.st.deposit'), color: 'info' },
+  COMPLETED: { label: i18n.t('pay.st.done'), color: 'success' },
 };
 
 interface PayRow extends Row {
@@ -78,7 +79,7 @@ export default function PaymentConfirm() {
   const simulate = async (r: Row) => {
     try {
       await api(`/estimates/${String(r.estimateId)}/simulate-deposit`, { method: 'POST' });
-      toast({ type: 'success', title: '입금이 자동으로 확인되었습니다(시뮬레이션)' });
+      toast({ type: 'success', title: t('pay.simulated') });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -94,7 +95,7 @@ export default function PaymentConfirm() {
   const confirm = async (r: Row, kind: 'deposit' | 'balance') => {
     try {
       await api(`/payment-confirmations/${String(r.estimateId)}/${kind}`, { method: 'POST' });
-      toast({ type: 'success', title: '입금이 확인되었습니다' });
+      toast({ type: 'success', title: t('pay.confirmed') });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -103,11 +104,11 @@ export default function PaymentConfirm() {
 
   const columns: Column[] = [
     {
-      title: '고객',
+      title: t('pay.customer'),
       render: (r) => <span style={{ fontWeight: 600 }}>{String(r.customerName)}</span>,
     },
     {
-      title: '견적/계약',
+      title: t('pay.estContract'),
       render: (r) => (
         <span>
           {String(r.estimateNo)}
@@ -116,17 +117,17 @@ export default function PaymentConfirm() {
       ),
     },
     {
-      title: '견적서·서명',
+      title: t('pay.estSign'),
       render: (r) =>
         r.sentAt || r.signed ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {Boolean(r.sentAt) && (
               <span style={{ fontSize: fs(12), color: 'var(--ark-color-text-secondary)' }}>
-                {md(r.sentAt)} 발송
+                {md(r.sentAt)} {t('pay.sent')}
               </span>
             )}
             <Badge variant="subtle" color={r.signed ? 'success' : 'neutral'}>
-              {r.signed ? '서명완료' : '서명대기'}
+              {r.signed ? t('pay.signed') : t('pay.awaitingSign')}
             </Badge>
           </span>
         ) : (
@@ -134,14 +135,14 @@ export default function PaymentConfirm() {
         ),
     },
     {
-      title: '입금 계좌',
+      title: t('pay.account'),
       render: (r) =>
         r.depositAccount ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {String(r.depositAccount)}
             {r.depositProvider === 'TOSS' && (
               <Badge variant="subtle" color="info">
-                자동확인
+                {t('pay.auto')}
               </Badge>
             )}
           </span>
@@ -149,36 +150,39 @@ export default function PaymentConfirm() {
           '-'
         ),
     },
-    { title: '총액', numeric: true, render: (r) => won(r.totalAmount) },
+    { title: t('pay.total'), numeric: true, render: (r) => won(r.totalAmount) },
     {
-      title: '계약금(10%)',
+      title: t('pay.deposit10'),
       numeric: true,
       render: (r) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {won(r.depositAmount)}
           {Boolean(r.depositPaid) && (
             <Badge variant="subtle" color="success">
-              {r.depositPaidAt ? `${md(r.depositPaidAt)} 입금` : '완료'}
+              {r.depositPaidAt ? t('pay.paidOn', { v0: md(r.depositPaidAt) }) : t('pay.done')}
             </Badge>
           )}
         </span>
       ),
     },
     {
-      title: '잔금',
+      title: t('pay.balance'),
       numeric: true,
       render: (r) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {won(r.balanceAmount)}
           {Boolean(r.balancePaid) && (
             <Badge variant="subtle" color="success">
-              완료
+              {t('pay.done')}
             </Badge>
           )}
         </span>
       ),
     },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
+    {
+      title: t('pay.status'),
+      render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
+    },
   ];
 
   // 입금 확인 상세 — 행 끝에 두던 입금 확인·시뮬레이션 버튼과 접수 링크를 머리글로 옮겼다
@@ -187,38 +191,38 @@ export default function PaymentConfirm() {
     const paidBadge = (paid: boolean, at?: string | null) =>
       paid ? (
         <Badge variant="subtle" color="success">
-          {at ? `${md(at)} 입금` : '완료'}
+          {at ? t('pay.paidOn', { v0: md(at) }) : t('pay.done')}
         </Badge>
       ) : (
         <Badge variant="subtle" color="neutral">
-          대기
+          {t('pay.waiting')}
         </Badge>
       );
     return (
       <RecordDetail
         loading={!d && loading}
-        title={d ? `${d.customerName} · ${d.estimateNo}` : '찾을 수 없습니다'}
+        title={d ? `${d.customerName} · ${d.estimateNo}` : t('pay.notFound')}
         backLabel={t('nav.paymentsConfirm')}
         onBack={closeDetail}
         actions={
           d ? (
             <>
               <Button variant="outline" size="sm" onClick={() => navigate(`/leads/${d.leadId}`)}>
-                접수 보기
+                {t('pay.viewLead')}
               </Button>
               {!d.depositPaid && Boolean(d.depositAccount) && d.depositProvider !== 'TOSS' && (
                 <Button variant="outline" size="sm" onClick={() => simulate(d)}>
-                  입금 시뮬레이션
+                  {t('pay.simulate')}
                 </Button>
               )}
               {!d.depositPaid && (
                 <Button variant="primary" size="sm" onClick={() => confirm(d, 'deposit')}>
-                  계약금 확인
+                  {t('pay.confirmDeposit')}
                 </Button>
               )}
               {d.depositPaid && !d.balancePaid && (
                 <Button variant="primary" size="sm" onClick={() => confirm(d, 'balance')}>
-                  잔금 확인
+                  {t('pay.confirmBalance')}
                 </Button>
               )}
             </>
@@ -228,50 +232,59 @@ export default function PaymentConfirm() {
           d
             ? [
                 {
-                  title: '견적·계약',
+                  title: t('pay.estContract2'),
                   items: [
-                    { label: '고객', value: d.customerName },
-                    { label: '견적번호', value: d.estimateNo },
-                    { label: '계약번호', value: d.contractNo },
-                    { label: '상태', value: <StatusBadge value={d.status} map={STATUS} /> },
-                    { label: '견적서 발송', value: md(d.sentAt) },
+                    { label: t('pay.customer'), value: d.customerName },
+                    { label: t('pay.estimateNo'), value: d.estimateNo },
+                    { label: t('pay.contractNo'), value: d.contractNo },
                     {
-                      label: '서명',
+                      label: t('pay.status'),
+                      value: <StatusBadge value={d.status} map={STATUS} />,
+                    },
+                    { label: t('pay.estimateSent'), value: md(d.sentAt) },
+                    {
+                      label: t('pay.signature'),
                       value: (
                         <Badge variant="subtle" color={d.signed ? 'success' : 'neutral'}>
-                          {d.signed ? '서명완료' : '서명대기'}
+                          {d.signed ? t('pay.signed') : t('pay.awaitingSign')}
                         </Badge>
                       ),
                     },
                   ],
                 },
                 {
-                  title: '입금',
+                  title: t('pay.payment'),
                   items: [
                     {
-                      label: '입금 계좌',
+                      label: t('pay.account'),
                       value: d.depositAccount ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           {d.depositAccount}
                           {d.depositProvider === 'TOSS' && (
                             <Badge variant="subtle" color="info">
-                              자동확인
+                              {t('pay.auto')}
                             </Badge>
                           )}
                         </span>
                       ) : null,
                     },
-                    { label: '총액', value: d.totalAmount != null ? won(d.totalAmount) : null },
                     {
-                      label: '계약금(10%)',
+                      label: t('pay.total'),
+                      value: d.totalAmount != null ? won(d.totalAmount) : null,
+                    },
+                    {
+                      label: t('pay.deposit10'),
                       value: d.depositAmount != null ? won(d.depositAmount) : null,
                     },
-                    { label: '계약금 입금', value: paidBadge(d.depositPaid, d.depositPaidAt) },
                     {
-                      label: '잔금',
+                      label: t('pay.st.deposit'),
+                      value: paidBadge(d.depositPaid, d.depositPaidAt),
+                    },
+                    {
+                      label: t('pay.balance'),
                       value: d.balanceAmount != null ? won(d.balanceAmount) : null,
                     },
-                    { label: '잔금 입금', value: paidBadge(d.balancePaid) },
+                    { label: t('pay.balancePaid'), value: paidBadge(d.balancePaid) },
                   ],
                 },
               ]
@@ -285,7 +298,7 @@ export default function PaymentConfirm() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         title={t('nav.paymentsConfirm')}
-        subtitle="고객에게 견적서를 보내면 여기에 올라옵니다 · 계약금이 들어오면 자동으로 '계약금 입금'으로 바뀝니다"
+        subtitle={t('pay.subtitle')}
         onRefresh={load}
         updatedAt={updatedAt}
       />

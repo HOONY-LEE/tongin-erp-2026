@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +26,7 @@ const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '0');
 
 const ACTIVE_FIELD: FormField = {
   name: 'isActive',
-  label: '사용 여부',
+  label: i18n.t('biz.active'),
   type: 'boolean',
   alwaysShow: true,
 };
@@ -78,16 +79,16 @@ export default function Branches() {
   }, [units]);
 
   const fields: FormField[] = [
-    { name: 'name', label: '지점명', required: true },
+    { name: 'name', label: t('biz.branchName'), required: true },
     {
       name: 'parentId',
-      label: '상위 조직',
+      label: t('biz.parent'),
       required: true,
       type: 'select',
       options: parentOptions,
     },
     // 넣어 두면 대시보드 지도에 점으로 찍힌다(주소 검색으로 좌표까지)
-    { name: 'address', label: '위치(주소)', type: 'address', alwaysShow: true },
+    { name: 'address', label: t('biz.location'), type: 'address', alwaysShow: true },
   ];
 
   const editInitial = (id: string): Record<string, string> => {
@@ -123,32 +124,32 @@ export default function Branches() {
   };
 
   const onDelete = async (id: string, name: string) => {
-    if (!window.confirm(`'${name}' 지점을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t('biz.branchDeleteQ', { v0: name }))) return;
     try {
       await api(`/org-units/${id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
+      toast({ type: 'success', title: t('biz.deleted') });
       detail.close();
       await afterChange();
     } catch (e) {
       // 직원·접수 등이 걸려 있으면 서버가 409로 막는다 — 그땐 '사용 안 함'으로 돌리면 된다
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('biz.deleteFailed') });
     }
   };
 
   const columns: Column[] = [
-    { title: '지점', dataIndex: 'name' },
+    { title: t('biz.branch'), dataIndex: 'name' },
     {
-      title: '지역',
+      title: t('biz.region'),
       render: (r) => [r.sido, r.sigungu].filter(Boolean).join(' ') || '-',
     },
-    { title: '계약 건수', numeric: true, render: (r) => String(r.contractCount ?? 0) },
+    { title: t('biz.contracts'), numeric: true, render: (r) => String(r.contractCount ?? 0) },
     {
-      title: '매출(계약)',
+      title: t('biz.revenue'),
       numeric: true,
       render: (r) => <b>{won(r.revenue)}</b>,
     },
     {
-      title: '작업 진행',
+      title: t('biz.workInProgress'),
       numeric: true,
       render: (r) =>
         Number(r.workActive) > 0 ? (
@@ -159,17 +160,17 @@ export default function Branches() {
           '0'
         ),
     },
-    { title: '작업 완료', numeric: true, render: (r) => String(r.workDone ?? 0) },
+    { title: t('biz.workDone'), numeric: true, render: (r) => String(r.workDone ?? 0) },
     {
-      title: '직원',
+      title: t('biz.employees'),
       numeric: true,
-      render: (r) => `${String(r.employeeCount ?? 0)}명`,
+      render: (r) => t('biz.peopleN', { v0: String(r.employeeCount ?? 0) }),
     },
     {
-      title: '상태',
+      title: t('biz.status'),
       render: (r) => (
         <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-          {r.isActive ? '사용' : '사용 안 함'}
+          {r.isActive ? t('biz.on') : t('biz.off')}
         </Badge>
       ),
     },
@@ -179,7 +180,7 @@ export default function Branches() {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? '지점 등록' : '지점 수정'}
+      title={editing === 'new' ? t('biz.branchCreate') : t('biz.branchEdit')}
       size="md"
       fields={editing === 'new' ? fields : [...fields, ACTIVE_FIELD]}
       initialValues={
@@ -209,17 +210,17 @@ export default function Branches() {
       <>
         <RecordDetail
           loading={!unit && (loading || units.length === 0)}
-          title={unit ? name : '지점을 찾을 수 없습니다'}
+          title={unit ? name : t('biz.branchNotFound')}
           backLabel={t('nav.branches')}
           onBack={detail.close}
           actions={
             unit ? (
               <>
                 <Button variant="outline" size="sm" onClick={() => void onDelete(branch.id, name)}>
-                  삭제
+                  {t('biz.delete')}
                 </Button>
                 <Button variant="primary" size="sm" onClick={() => setEditing(branch.id)}>
-                  수정
+                  {t('biz.edit')}
                 </Button>
               </>
             ) : undefined
@@ -228,21 +229,21 @@ export default function Branches() {
             unit
               ? [
                   {
-                    title: '지점 정보',
+                    title: t('biz.branchInfo'),
                     items: [
-                      { label: '지점명', value: name },
-                      { label: '상위 조직', value: parentName ? String(parentName) : null },
-                      { label: '코드', value: unit.code ? String(unit.code) : null },
+                      { label: t('biz.branchName'), value: name },
+                      { label: t('biz.parent'), value: parentName ? String(parentName) : null },
+                      { label: t('biz.code'), value: unit.code ? String(unit.code) : null },
                       {
-                        label: '상태',
+                        label: t('biz.status'),
                         value: (
                           <Badge variant="subtle" color={unit.isActive ? 'success' : 'neutral'}>
-                            {unit.isActive ? '사용' : '사용 안 함'}
+                            {unit.isActive ? t('biz.on') : t('biz.off')}
                           </Badge>
                         ),
                       },
                       {
-                        label: '위치',
+                        label: t('biz.locationShort'),
                         wide: true,
                         value: unit.addr ? (
                           <AddressView
@@ -257,13 +258,16 @@ export default function Branches() {
                     ],
                   },
                   {
-                    title: '실적',
+                    title: t('biz.perf'),
                     items: [
-                      { label: '계약 건수', value: String(perf?.contractCount ?? 0) },
-                      { label: '매출(계약)', value: `${won(perf?.revenue)}원` },
-                      { label: '작업 진행', value: String(perf?.workActive ?? 0) },
-                      { label: '작업 완료', value: String(perf?.workDone ?? 0) },
-                      { label: '재직 직원', value: `${String(perf?.employeeCount ?? 0)}명` },
+                      { label: t('biz.contracts'), value: String(perf?.contractCount ?? 0) },
+                      { label: t('biz.revenue'), value: t('biz.won', { v0: won(perf?.revenue) }) },
+                      { label: t('biz.workInProgress'), value: String(perf?.workActive ?? 0) },
+                      { label: t('biz.workDone'), value: String(perf?.workDone ?? 0) },
+                      {
+                        label: t('biz.activeEmployees'),
+                        value: t('biz.peopleN', { v0: String(perf?.employeeCount ?? 0) }),
+                      },
                     ],
                   },
                 ]
@@ -281,7 +285,7 @@ export default function Branches() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         title={t('nav.branches')}
-        subtitle="지점 등록·수정과 지점별 매출·작업·직원 현황 (직영/가맹점) — 지점을 누르면 소속 직원을 관리합니다"
+        subtitle={t('biz.branchesSub')}
         onRefresh={afterChange}
         updatedAt={updatedAt}
       />
@@ -293,7 +297,7 @@ export default function Branches() {
         onRowClick={(r) => detail.open(String(r.orgUnitId))}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-            + 지점 등록
+            {t('biz.branchCreateBtn')}
           </Button>
         }
       />
