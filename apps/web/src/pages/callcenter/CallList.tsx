@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { StatusChip } from '../../components/ui/StatusChip';
+import { EmployeeChip, type EmployeeBrief } from '../../components/ui/EmployeeChip';
+import { CopyText } from '../../components/ui/CopyText';
+import { APPLE } from '../../lib/palette';
 import { useNavigate } from 'react-router-dom';
-import { FileText, UserRound } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { DateFilter, type DateRange } from './DateFilter';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
@@ -28,6 +32,13 @@ export interface CallRow {
   request: string | null;
 }
 
+/** 콜 상태 칩 색 — 애플 시스템 색(접수 상태 칩과 같은 모양) */
+const CALL_STATUS_COLOR: Record<string, string> = {
+  OPEN: APPLE.orange,
+  OUTCALL: APPLE.yellow,
+  DONE: APPLE.green,
+  CANCELED: APPLE.gray,
+};
 const STATUS_LABEL: Record<string, string> = {
   ASSIGNED: '상담 중',
   CALLBACK: '콜백 중',
@@ -106,46 +117,40 @@ export function CallList({
     {
       title: '콜 번호',
       dataIndex: 'callNo',
-      render: (r) => (r.callNo as string | null) ?? shortId(r.id as string),
+      // 다른 ID(접수번호 등)와 같은 모양 — 고정폭 서체 + 호버 복사
+      render: (r) => <CopyText value={(r.callNo as string | null) ?? shortId(r.id as string)} />,
     },
     {
       title: '고객명',
       dataIndex: 'customerName',
       render: (r) => (r.customerName as string | null) ?? '새 번호',
-      width: 100,
     },
     {
       title: '전화번호',
       dataIndex: 'phone',
       render: (r) => <PhoneCell value={r.phone as string} link={false} />,
-      width: 140,
     },
     {
       title: '상담원',
       dataIndex: 'agentName',
+      // 접수의 담당자 칩과 같은 것 — 누르면 프로필 카드
       render: (r) =>
-        r.agentName ? (
-          <span className={styles.agentChip}>
-            <UserRound size={12} />
-            {r.agentName as string}
-          </span>
+        r.agent ? (
+          <EmployeeChip emp={r.agent as EmployeeBrief} />
         ) : (
           <span className={styles.callState}>-</span>
         ),
-      width: 112,
       mask: false,
     },
     {
       title: '통화시각',
       dataIndex: 'receivedAt',
       render: (r) => when(r.receivedAt as string),
-      width: 116,
     },
     {
       title: '통화시간',
       dataIndex: 'durationSec',
       render: (r) => dur(r.durationSec as number | null),
-      width: 84,
     },
     {
       title: '접수',
@@ -180,12 +185,15 @@ export function CallList({
         // 아직 마무리(상담 종료·접수)하지 않은 상담은 '마무리 전'
         const open = st === 'ASSIGNED' || st === 'CALLBACK';
         return (
-          <span className={`${styles.stChip} ${styles[`st_${open ? 'OPEN' : st}`] ?? ''}`}>
+          <StatusChip color={CALL_STATUS_COLOR[open ? 'OPEN' : st] ?? APPLE.gray}>
             {open ? '마무리 전' : (STATUS_LABEL[st] ?? st)}
-          </span>
+          </StatusChip>
         );
       },
-      width: 96,
+      exportValue: (r) => {
+        const st = r.status as string;
+        return st === 'ASSIGNED' || st === 'CALLBACK' ? '마무리 전' : (STATUS_LABEL[st] ?? st);
+      },
       mask: false,
     },
   ];

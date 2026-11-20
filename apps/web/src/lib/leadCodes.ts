@@ -13,8 +13,8 @@ export const LEAD_STATUS: StatusMap = {
   CANCELED: { label: '취소', color: 'error' },
 };
 
-/** 접수 상태 점 색 — 애플 시스템 색. 진행 순서대로 차가운 색 → 따뜻한 색 → 완료(초록), 반려·취소는 따로 */
-export const LEAD_STATUS_DOT: Record<string, string> = {
+/** 접수 상태 칩 색 — 애플 시스템 색. 진행 순서대로 차가운 색 → 따뜻한 색 → 완료(초록), 반려·취소는 따로 */
+export const LEAD_STATUS_COLOR: Record<string, string> = {
   RECEIVED: APPLE.blue,
   REJECTED: APPLE.magenta, // 지점 반려(상태는 RECEIVED + rejectedAt)
   CONSULT_TOSS: APPLE.cyan,
