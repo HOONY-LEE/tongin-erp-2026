@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import {
   APPROVAL_DOC_TYPE_LABEL,
@@ -64,18 +65,18 @@ export interface ApprovalDocView {
 }
 
 export const APPROVAL_STATUS_MAP: StatusMap = {
-  PENDING: { label: '진행 중', color: 'info' },
-  APPROVED: { label: '승인', color: 'success' },
-  REJECTED: { label: '반려', color: 'error' },
-  CANCELED: { label: '회수', color: 'neutral' },
+  PENDING: { label: i18n.t('appr.st.PENDING'), color: 'info' },
+  APPROVED: { label: i18n.t('appr.st.APPROVED'), color: 'success' },
+  REJECTED: { label: i18n.t('appr.st.REJECTED'), color: 'error' },
+  CANCELED: { label: i18n.t('appr.st.CANCELED'), color: 'neutral' },
 };
 
 export const STEP_STATUS_MAP: StatusMap = {
-  WAITING: { label: '대기', color: 'neutral' },
-  PENDING: { label: '결재 차례', color: 'info' },
-  APPROVED: { label: '승인', color: 'success' },
-  REJECTED: { label: '반려', color: 'error' },
-  SKIPPED: { label: '건너뜀', color: 'neutral' },
+  WAITING: { label: i18n.t('appr.step.WAITING'), color: 'neutral' },
+  PENDING: { label: i18n.t('appr.myTurn'), color: 'info' },
+  APPROVED: { label: i18n.t('appr.st.APPROVED'), color: 'success' },
+  REJECTED: { label: i18n.t('appr.st.REJECTED'), color: 'error' },
+  SKIPPED: { label: i18n.t('appr.step.SKIPPED'), color: 'neutral' },
 };
 
 /** '김수빈 사원 · 마케팅' */
@@ -175,7 +176,7 @@ export function useApprovalForms(all = false) {
 export function lineKeyLabel(key: string, forms: ApprovalFormDef[]) {
   if (key.startsWith('FORM:')) {
     const f = forms.find((x) => x.id === key.slice(5));
-    return f ? `양식 · ${f.name}` : '양식(지워짐)';
+    return f ? i18n.t('appr.formOf', { v0: f.name }) : i18n.t('appr.formDeleted');
   }
   return APPROVAL_DOC_TYPE_LABEL[key as ApprovalDocType] ?? key;
 }

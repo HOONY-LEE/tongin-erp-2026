@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ATTENDANCE_STATUS_LABEL, type AttendanceStatus, type WorkSettings } from '@tongin/shared';
@@ -42,11 +43,23 @@ export const ATT_STATUS_MAP: StatusMap = {
   NOT_TRACKED: { label: ATTENDANCE_STATUS_LABEL.NOT_TRACKED, color: 'neutral' },
 };
 
-const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+const WEEK = [
+  i18n.t('att.dow.0'),
+  i18n.t('att.dow.1'),
+  i18n.t('att.dow.2'),
+  i18n.t('att.dow.3'),
+  i18n.t('att.dow.4'),
+  i18n.t('att.dow.5'),
+  i18n.t('att.dow.6'),
+];
 const dow = (ymd: string) => WEEK[new Date(`${ymd}T00:00:00Z`).getUTCDay()];
 /** 한국 날짜 기준 오늘·이번 달 */
 const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
-const SOURCE_LABEL: Record<string, string> = { WEB: '버튼', IMPORT: '엑셀', FIX: '정정' };
+const SOURCE_LABEL: Record<string, string> = {
+  WEB: i18n.t('att.src.WEB'),
+  IMPORT: i18n.t('att.src.IMPORT'),
+  FIX: i18n.t('att.src.FIX'),
+};
 
 /**
  * 근태 — 내 근태(월별·정정 신청) / 오늘 현황·월간 현황(ATTENDANCE.READ) /
@@ -68,15 +81,15 @@ export default function Attendance() {
   }, []);
 
   const options = [
-    ...(user?.employeeId ? [{ value: 'my', label: '내 근태' }] : []),
+    ...(user?.employeeId ? [{ value: 'my', label: t('att.tab.mine') }] : []),
     ...(can('ATTENDANCE.READ')
       ? [
-          { value: 'daily', label: '일별 현황' },
-          { value: 'monthly', label: '월간 현황' },
+          { value: 'daily', label: t('att.tab.daily') },
+          { value: 'monthly', label: t('att.tab.monthly') },
         ]
       : []),
-    ...(can('ATTENDANCE.IMPORT') ? [{ value: 'import', label: '엑셀 업로드' }] : []),
-    ...(can('ATTENDANCE.UPDATE') ? [{ value: 'settings', label: '근무시간 설정' }] : []),
+    ...(can('ATTENDANCE.IMPORT') ? [{ value: 'import', label: t('att.tab.import') }] : []),
+    ...(can('ATTENDANCE.UPDATE') ? [{ value: 'settings', label: t('att.tab.hours') }] : []),
   ];
 
   return (
@@ -115,6 +128,7 @@ interface DayRow {
 
 /** 한 직원의 한 달 근태(내 근태·직원 상세 공용) */
 export function MonthDays({ employeeId, mine }: { employeeId?: string; mine?: boolean }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [month, setMonth] = useState(kstToday().slice(0, 7));
   const [days, setDays] = useState<DayRow[]>([]);
@@ -131,7 +145,7 @@ export function MonthDays({ employeeId, mine }: { employeeId?: string; mine?: bo
       );
       setDays(r.days);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -150,30 +164,34 @@ export function MonthDays({ employeeId, mine }: { employeeId?: string; mine?: bo
 
   const columns: Column[] = [
     {
-      title: '날짜',
+      title: t('att.col.date'),
       render: (r) => (
         <span
-          className={r.holiday || ['토', '일'].includes(dow(String(r.date))) ? styles.offDay : ''}
+          className={
+            r.holiday || [0, 6].includes(new Date(`${String(r.date)}T00:00:00Z`).getUTCDay())
+              ? styles.offDay
+              : ''
+          }
         >
           {String(r.date).slice(5)} ({dow(String(r.date))})
         </span>
       ),
     },
-    { title: '출근', render: (r) => String(r.clockIn ?? '-') },
-    { title: '퇴근', render: (r) => String(r.clockOut ?? '-') },
+    { title: t('att.in'), render: (r) => String(r.clockIn ?? '-') },
+    { title: t('att.out'), render: (r) => String(r.clockOut ?? '-') },
     {
-      title: '상태',
+      title: t('att.col.status'),
       render: (r) => <StatusBadge value={String(r.status)} map={ATT_STATUS_MAP} />,
     },
     {
-      title: '비고',
+      title: t('att.col.note'),
       flex: 1,
       minWidth: 160,
       render: (r) =>
         [
           r.holiday,
           r.leave,
-          r.source ? `${SOURCE_LABEL[String(r.source)] ?? r.source} 기록` : null,
+          r.source ? t('att.recordBy', { v0: SOURCE_LABEL[String(r.source)] ?? r.source }) : null,
           r.note,
         ]
           .filter(Boolean)
@@ -188,7 +206,7 @@ export function MonthDays({ employeeId, mine }: { employeeId?: string; mine?: bo
           type="month"
           value={month}
           onChange={(e) => e.target.value && setMonth(e.target.value)}
-          aria-label="달"
+          aria-label={t('att.month')}
           style={{ width: 170 }}
         />
         <span className={styles.counts}>
@@ -200,11 +218,7 @@ export function MonthDays({ employeeId, mine }: { employeeId?: string; mine?: bo
               </Badge>
             ))}
         </span>
-        {mine && (
-          <span className={styles.hint}>
-            잘못 찍혔거나 빠진 날은 그 날짜를 눌러 정정 신청하세요(결재 후 반영).
-          </span>
-        )}
+        {mine && <span className={styles.hint}>{t('att.fixHint')}</span>}
       </div>
       <DataTable
         columns={columns}
@@ -243,6 +257,7 @@ function FixRequestModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { user } = useAuth();
   const [clockIn, setClockIn] = useState(day.clockIn ?? '');
@@ -264,10 +279,10 @@ function FixRequestModal({
           line: line ? toLinePayload(line) : undefined,
         }),
       });
-      toast({ type: 'success', title: '정정을 신청했습니다(결재 상신)' });
+      toast({ type: 'success', title: t('att.fixRequested') });
       onDone();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '신청하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.requestFailed') });
     } finally {
       setBusy(false);
     }
@@ -278,11 +293,11 @@ function FixRequestModal({
       open
       onOpenChange={(o) => !o && onClose()}
       size="lg"
-      title={`근태 정정 — ${day.date} (${dow(day.date)})`}
+      title={t('att.fixTitle', { v0: day.date, v1: dow(day.date) })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('att.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -290,32 +305,33 @@ function FixRequestModal({
             disabled={!reason.trim() || (!clockIn && !clockOut)}
             onClick={() => void submit()}
           >
-            정정 신청(결재 상신)
+            {t('att.fixSubmit')}
           </Button>
         </>
       }
     >
       <div className={astyles.formCol}>
         <p className={styles.hint}>
-          지금 기록: 출근 {day.clockIn ?? '-'} · 퇴근 {day.clockOut ?? '-'} — 고칠 시각만 바꾸세요.
+          {t('att.nowIn')} {day.clockIn ?? '-'} {t('att.nowOut')} {day.clockOut ?? '-'}{' '}
+          {t('att.nowHint')}
         </p>
         <div className={styles.row2}>
           <label className={astyles.fieldLabel}>
-            출근
+            {t('att.in')}
             <Input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} />
           </label>
           <label className={astyles.fieldLabel}>
-            퇴근
+            {t('att.out')}
             <Input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} />
           </label>
         </div>
         <label className={astyles.fieldLabel}>
-          사유 (필수)
+          {t('att.reasonReq')}
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={2}
-            placeholder="예: 외근 후 바로 출근, 버튼을 늦게 누름"
+            placeholder={t('att.reasonPh')}
           />
         </label>
         <ApprovalLineEditor
@@ -348,19 +364,21 @@ function ScopeToggle({
   value: 'hq' | 'all';
   onChange: (v: 'hq' | 'all') => void;
 }) {
+  const { t } = useTranslation();
   return (
     <SegmentedControl
       value={value}
       onChange={(v) => onChange(v as 'hq' | 'all')}
       options={[
-        { value: 'hq', label: '본사' },
-        { value: 'all', label: '전체(지점 포함)' },
+        { value: 'hq', label: t('att.hq') },
+        { value: 'all', label: t('att.allIncl') },
       ]}
     />
   );
 }
 
 function Daily() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const [date, setDate] = useState(kstToday());
@@ -376,7 +394,7 @@ function Daily() {
         await api<DailyRow[]>(`/attendance/daily?date=${date}${scope === 'hq' ? '&hq=1' : ''}`),
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -393,18 +411,24 @@ function Daily() {
   }, [rows]);
 
   const columns: Column[] = [
-    { title: '이름', dataIndex: 'name' },
-    { title: '직책', render: (r) => String(r.positionName ?? '-') },
-    { title: '소속', render: (r) => String(r.orgUnitName ?? '-') },
-    { title: '출근', render: (r) => String(r.clockIn ?? '-') },
-    { title: '퇴근', render: (r) => String(r.clockOut ?? '-') },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={ATT_STATUS_MAP} /> },
+    { title: t('att.col.name'), dataIndex: 'name' },
+    { title: t('att.col.position'), render: (r) => String(r.positionName ?? '-') },
+    { title: t('att.col.org'), render: (r) => String(r.orgUnitName ?? '-') },
+    { title: t('att.in'), render: (r) => String(r.clockIn ?? '-') },
+    { title: t('att.out'), render: (r) => String(r.clockOut ?? '-') },
     {
-      title: '비고',
+      title: t('att.col.status'),
+      render: (r) => <StatusBadge value={String(r.status)} map={ATT_STATUS_MAP} />,
+    },
+    {
+      title: t('att.col.note'),
       flex: 1,
       minWidth: 140,
       render: (r) =>
-        [r.leave, r.source ? `${SOURCE_LABEL[String(r.source)] ?? r.source} 기록` : null]
+        [
+          r.leave,
+          r.source ? t('att.recordBy', { v0: SOURCE_LABEL[String(r.source)] ?? r.source }) : null,
+        ]
           .filter(Boolean)
           .join(' · ') || '-',
     },
@@ -417,7 +441,7 @@ function Daily() {
           type="date"
           value={date}
           onChange={(e) => e.target.value && setDate(e.target.value)}
-          aria-label="날짜"
+          aria-label={t('att.col.date')}
           style={{ width: 170 }}
         />
         <span className={styles.counts}>
@@ -433,7 +457,7 @@ function Daily() {
         rows={rows.map((r) => ({ ...r, id: r.employeeId })) as unknown as Row[]}
         loading={loading}
         exportable
-        exportFileName={`근태_${date}`}
+        exportFileName={t('att.exportName', { v0: date })}
         filters={<ScopeToggle value={scope} onChange={setScope} />}
         onRowClick={
           can('ATTENDANCE.UPDATE') ? (r) => setEditing(r as unknown as DailyRow) : undefined
@@ -465,6 +489,7 @@ function EditRecordModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [clockIn, setClockIn] = useState(row.clockIn ?? '');
   const [clockOut, setClockOut] = useState(row.clockOut ?? '');
@@ -484,10 +509,10 @@ function EditRecordModal({
           note: note.trim() || undefined,
         }),
       });
-      toast({ type: 'success', title: '근태를 고쳤습니다' });
+      toast({ type: 'success', title: t('att.edited') });
       onDone();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -497,14 +522,14 @@ function EditRecordModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`${row.name} — ${date} 근태 고치기`}
+      title={t('att.editTitle', { v0: row.name, v1: date })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('att.cancel')}
           </Button>
           <Button variant="primary" loading={busy} onClick={() => void save()}>
-            저장
+            {t('att.save')}
           </Button>
         </>
       }
@@ -512,17 +537,21 @@ function EditRecordModal({
       <div className={astyles.formCol}>
         <div className={styles.row2}>
           <label className={astyles.fieldLabel}>
-            출근
+            {t('att.in')}
             <Input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} />
           </label>
           <label className={astyles.fieldLabel}>
-            퇴근
+            {t('att.out')}
             <Input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} />
           </label>
         </div>
         <label className={astyles.fieldLabel}>
-          메모
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="고친 이유" />
+          {t('att.memo')}
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t('att.memoPh')}
+          />
         </label>
       </div>
     </Modal>
@@ -543,6 +572,7 @@ interface MonthlyRow {
 }
 
 function Monthly() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [month, setMonth] = useState(kstToday().slice(0, 7));
   const [scope, setScope] = useState<'hq' | 'all'>('hq');
@@ -558,7 +588,7 @@ function Monthly() {
         ),
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -570,15 +600,15 @@ function Monthly() {
 
   const n = (v: unknown) => (Number(v) ? String(v) : '-');
   const columns: Column[] = [
-    { title: '이름', dataIndex: 'name' },
-    { title: '직책', render: (r) => String(r.positionName ?? '-') },
-    { title: '소속', render: (r) => String(r.orgUnitName ?? '-') },
-    { title: '출근일', numeric: true, render: (r) => n(r.worked) },
-    { title: '지각', numeric: true, render: (r) => n(r.late) },
-    { title: '조퇴', numeric: true, render: (r) => n(r.early) },
-    { title: '결근', numeric: true, render: (r) => n(r.absent) },
-    { title: '휴가', numeric: true, render: (r) => n(r.leave) },
-    { title: '퇴근 기록 없음', numeric: true, render: (r) => n(r.noOut) },
+    { title: t('att.col.name'), dataIndex: 'name' },
+    { title: t('att.col.position'), render: (r) => String(r.positionName ?? '-') },
+    { title: t('att.col.org'), render: (r) => String(r.orgUnitName ?? '-') },
+    { title: t('att.sum.workDays'), numeric: true, render: (r) => n(r.worked) },
+    { title: t('att.sum.late'), numeric: true, render: (r) => n(r.late) },
+    { title: t('att.sum.early'), numeric: true, render: (r) => n(r.early) },
+    { title: t('att.sum.absent'), numeric: true, render: (r) => n(r.absent) },
+    { title: t('att.sum.leave'), numeric: true, render: (r) => n(r.leave) },
+    { title: t('att.sum.noOut'), numeric: true, render: (r) => n(r.noOut) },
   ];
 
   return (
@@ -588,19 +618,17 @@ function Monthly() {
           type="month"
           value={month}
           onChange={(e) => e.target.value && setMonth(e.target.value)}
-          aria-label="달"
+          aria-label={t('att.month')}
           style={{ width: 170 }}
         />
-        <span className={styles.hint}>
-          오늘까지의 날만 셉니다. 근태 집계 시작일 이전은 세지 않습니다.
-        </span>
+        <span className={styles.hint}>{t('att.sumHint')}</span>
       </div>
       <DataTable
         columns={columns}
         rows={rows.map((r) => ({ ...r, id: r.employeeId })) as unknown as Row[]}
         loading={loading}
         exportable
-        exportFileName={`근태_${month}`}
+        exportFileName={t('att.exportName', { v0: month })}
         filters={<ScopeToggle value={scope} onChange={setScope} />}
       />
     </>
@@ -620,6 +648,7 @@ interface ImportRow {
 }
 
 function ImportTab() {
+  const { t } = useTranslation();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
@@ -642,7 +671,7 @@ function ImportTab() {
       setFileName(f.name);
       setRows(r.rows);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '파일을 읽지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.fileFailed') });
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -666,27 +695,30 @@ function ImportTab() {
       });
       toast({
         type: 'success',
-        title: `${r.saved}건 반영했습니다${r.skipped ? ` (범위 밖 ${r.skipped}건 제외)` : ''}`,
+        title: t('att.imported', {
+          v0: r.saved,
+          v1: r.skipped ? t('att.skipped', { v0: r.skipped }) : '',
+        }),
       });
       setRows(null);
       setFileName('');
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '반영하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.importFailed') });
     } finally {
       setBusy(false);
     }
   };
 
   const columns: Column[] = [
-    { title: '줄', numeric: true, render: (r) => String(r.rowNo) },
-    { title: '사번', render: (r) => String(r.empNo ?? '-') },
-    { title: '이름(파일)', render: (r) => String(r.name ?? '-') },
-    { title: '날짜', render: (r) => String(r.workDate ?? '-') },
-    { title: '출근', render: (r) => String(r.clockIn ?? '-') },
-    { title: '퇴근', render: (r) => String(r.clockOut ?? '-') },
-    { title: '찾은 직원', render: (r) => String(r.employeeName ?? '-') },
+    { title: t('att.col.row'), numeric: true, render: (r) => String(r.rowNo) },
+    { title: t('att.col.empNo'), render: (r) => String(r.empNo ?? '-') },
+    { title: t('att.col.fileName'), render: (r) => String(r.name ?? '-') },
+    { title: t('att.col.date'), render: (r) => String(r.workDate ?? '-') },
+    { title: t('att.in'), render: (r) => String(r.clockIn ?? '-') },
+    { title: t('att.out'), render: (r) => String(r.clockOut ?? '-') },
+    { title: t('att.col.matched'), render: (r) => String(r.employeeName ?? '-') },
     {
-      title: '결과',
+      title: t('att.col.result'),
       flex: 1,
       minWidth: 180,
       render: (r) =>
@@ -694,7 +726,7 @@ function ImportTab() {
           <span className={styles.problem}>{String(r.problem)}</span>
         ) : (
           <Badge variant="subtle" color="success">
-            반영
+            {t('att.apply')}
           </Badge>
         ),
     },
@@ -711,12 +743,12 @@ function ImportTab() {
           onChange={(e) => void pick(e.target.files?.[0])}
         />
         <Button variant="outline" loading={busy && !rows} onClick={() => fileRef.current?.click()}>
-          근태 파일 고르기 (.xlsx · .csv)
+          {t('att.pickFile')}
         </Button>
         <span className={styles.hint}>
-          지문인식기 등에서 내려받은 출퇴근 파일 — 첫 줄 근처에 &apos;일자(날짜)&apos;,
-          &apos;출근&apos;, &apos;퇴근&apos;, &apos;이름(또는 사번)&apos; 칸이 있으면 알아서
-          맞춥니다. 같은 직원·날짜 기록은 파일 값으로 바뀝니다.
+          {t('att.fileHelp1')}
+          {t('att.fileHelp2')}
+          {t('att.fileHelp3')}
         </span>
       </div>
       {rows && (
@@ -725,17 +757,17 @@ function ImportTab() {
             <b>{fileName}</b>
             <span className={styles.counts}>
               <Badge variant="subtle" color="success">
-                반영 {good.length}
+                {t('att.apply')} {good.length}
               </Badge>
               {rows.length - good.length > 0 && (
                 <Badge variant="subtle" color="error">
-                  제외 {rows.length - good.length}
+                  {t('att.excluded')} {rows.length - good.length}
                 </Badge>
               )}
             </span>
             <span style={{ flex: 1 }} />
             <Button variant="ghost" onClick={() => setRows(null)}>
-              취소
+              {t('att.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -743,7 +775,8 @@ function ImportTab() {
               disabled={!good.length}
               onClick={() => void commit()}
             >
-              {good.length}건 반영
+              {good.length}
+              {t('att.applyN')}
             </Button>
           </div>
           <DataTable
@@ -757,6 +790,7 @@ function ImportTab() {
 }
 
 export function SettingsTab() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [s, setS] = useState<WorkSettings | null>(null);
   const [busy, setBusy] = useState(false);
@@ -774,9 +808,9 @@ export function SettingsTab() {
       setS(
         await api<WorkSettings>('/attendance/settings', { method: 'PUT', body: JSON.stringify(s) }),
       );
-      toast({ type: 'success', title: '저장했습니다' });
+      toast({ type: 'success', title: t('att.saved') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('att.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -786,7 +820,7 @@ export function SettingsTab() {
     <section className={`rd-card ${styles.settings}`}>
       <div className={styles.row2}>
         <label className={astyles.fieldLabel}>
-          출근 기준
+          {t('att.std.in')}
           <Input
             type="time"
             value={s.workStart}
@@ -794,22 +828,20 @@ export function SettingsTab() {
           />
         </label>
         <label className={astyles.fieldLabel}>
-          퇴근 기준
+          {t('att.std.out')}
           <Input type="time" value={s.workEnd} onChange={(e) => set('workEnd', e.target.value)} />
         </label>
         <label className={astyles.fieldLabel}>
-          반차 기준
+          {t('att.std.half')}
           <Input
             type="time"
             value={s.halfSplit}
             onChange={(e) => set('halfSplit', e.target.value)}
           />
-          <span className={styles.hint}>
-            오전 반차는 이 시각까지 출근, 오후 반차는 이 시각 이후 퇴근이면 정상
-          </span>
+          <span className={styles.hint}>{t('att.std.halfHint')}</span>
         </label>
         <label className={astyles.fieldLabel}>
-          지각 유예(분)
+          {t('att.std.grace')}
           <Input
             type="number"
             min={0}
@@ -819,20 +851,18 @@ export function SettingsTab() {
           />
         </label>
         <label className={astyles.fieldLabel}>
-          근태 집계 시작일
+          {t('att.std.start')}
           <Input
             type="date"
             value={s.trackFrom}
             onChange={(e) => set('trackFrom', e.target.value)}
           />
-          <span className={styles.hint}>
-            이전 날은 &apos;기록 전&apos;으로 보고 결근으로 세지 않습니다.
-          </span>
+          <span className={styles.hint}>{t('att.std.startHint')}</span>
         </label>
       </div>
       <div>
         <Button variant="primary" loading={busy} onClick={() => void save()}>
-          저장
+          {t('att.save')}
         </Button>
       </div>
     </section>
