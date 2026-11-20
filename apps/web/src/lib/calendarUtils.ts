@@ -1,22 +1,31 @@
+import i18n from '../i18n';
 import { KR_HOLIDAYS } from '@tongin/shared';
 
 // 캘린더 날짜/포맷 유틸 — calendar-app 레퍼런스 구현과 동일한 규칙(일요일 시작, 6주 매트릭스).
 
-export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+export const WEEKDAYS = [
+  i18n.t('misc2.dow.0'),
+  i18n.t('misc2.dow.1'),
+  i18n.t('misc2.dow.2'),
+  i18n.t('misc2.dow.3'),
+  i18n.t('misc2.dow.4'),
+  i18n.t('misc2.dow.5'),
+  i18n.t('misc2.dow.6'),
+];
 const DAY_NAMES = WEEKDAYS;
 export const MONTH_LABELS = [
-  '1월',
-  '2월',
-  '3월',
-  '4월',
-  '5월',
-  '6월',
-  '7월',
-  '8월',
-  '9월',
-  '10월',
-  '11월',
-  '12월',
+  i18n.t('misc2.mon.1'),
+  i18n.t('misc2.mon.2'),
+  i18n.t('misc2.mon.3'),
+  i18n.t('misc2.mon.4'),
+  i18n.t('misc2.mon.5'),
+  i18n.t('misc2.mon.6'),
+  i18n.t('misc2.mon.7'),
+  i18n.t('misc2.mon.8'),
+  i18n.t('misc2.mon.9'),
+  i18n.t('misc2.mon.10'),
+  i18n.t('misc2.mon.11'),
+  i18n.t('misc2.mon.12'),
 ];
 
 export function dateKey(date: Date): string {
@@ -37,9 +46,9 @@ export function isSameDay(a: Date, b: Date): boolean {
 export function formatTime(time?: string | null): string {
   if (!time) return '';
   const [h, m] = time.split(':').map(Number);
-  const period = h < 12 ? '오전' : '오후';
+  const period = h < 12 ? i18n.t('misc2.am') : i18n.t('misc2.pm');
   const hour = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  if (m === 0) return `${period} ${hour}시`;
+  if (m === 0) return i18n.t('misc2.hourOf', { v0: period, v1: hour });
   return `${period} ${hour}:${String(m).padStart(2, '0')}`;
 }
 
@@ -82,11 +91,20 @@ export function addYears(date: Date, n: number): Date {
 // 제목 표기는 "8월 2026"처럼 월(또는 일)을 앞에, 연도를 뒤에 둔다.
 
 export function formatDayTitle(date: Date): string {
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getFullYear()} ${DAY_NAMES[date.getDay()]}요일`;
+  return i18n.t('misc2.dateFull', {
+    v0: date.getMonth() + 1,
+    v1: date.getDate(),
+    v2: date.getFullYear(),
+    v3: DAY_NAMES[date.getDay()],
+  });
 }
 
 export function formatSelectedDate(date: Date): string {
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${DAY_NAMES[date.getDay()]}요일`;
+  return i18n.t('misc2.dateDay', {
+    v0: date.getMonth() + 1,
+    v1: date.getDate(),
+    v2: DAY_NAMES[date.getDay()],
+  });
 }
 
 export function formatWeekTitle(date: Date): string {
@@ -94,13 +112,24 @@ export function formatWeekTitle(date: Date): string {
   const a = w[0];
   const b = w[6];
   if (a.getMonth() === b.getMonth()) {
-    return `${a.getMonth() + 1}월 ${a.getDate()} – ${b.getDate()}일 ${a.getFullYear()}`;
+    return i18n.t('misc2.weekSame', {
+      v0: a.getMonth() + 1,
+      v1: a.getDate(),
+      v2: b.getDate(),
+      v3: a.getFullYear(),
+    });
   }
-  return `${a.getMonth() + 1}월 ${a.getDate()}일 – ${b.getMonth() + 1}월 ${b.getDate()}일 ${b.getFullYear()}`;
+  return i18n.t('misc2.weekCross', {
+    v0: a.getMonth() + 1,
+    v1: a.getDate(),
+    v2: b.getMonth() + 1,
+    v3: b.getDate(),
+    v4: b.getFullYear(),
+  });
 }
 
 export function formatMonthTitle(date: Date): string {
-  return `${date.getMonth() + 1}월 ${date.getFullYear()}`;
+  return i18n.t('misc2.monthYear', { v0: date.getMonth() + 1, v1: date.getFullYear() });
 }
 
 export function formatYearTitle(date: Date): string {

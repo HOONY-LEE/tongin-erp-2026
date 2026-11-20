@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Images } from 'lucide-react';
 import {
@@ -42,6 +43,7 @@ export function FieldPhotos({
   initialKind?: WorkPhotoKind;
   onCounts?: (c: PhotoCounts) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [photos, setPhotos] = useState<WorkPhotoMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export function FieldPhotos({
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '사진 목록을 불러오지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('misc2.photosLoadFailed'),
       });
     } finally {
       setLoading(false);
@@ -100,8 +102,8 @@ export function FieldPhotos({
         ok++;
       } catch (e) {
         const msg =
-          e instanceof ApiError || e instanceof Error ? e.message : '사진을 올리지 못했습니다';
-        toast({ type: 'error', title: `${file.name || '사진'}: ${msg}` });
+          e instanceof ApiError || e instanceof Error ? e.message : t('misc2.photoUploadFailed');
+        toast({ type: 'error', title: `${file.name || t('misc2.photo')}: ${msg}` });
         setPending((p) => p.map((x) => (x.key === key ? { ...x, error: msg } : x)));
         // 실패한 칸은 잠깐 보여 주고 치운다
         const failedUrl = localUrl;
@@ -114,7 +116,7 @@ export function FieldPhotos({
     if (ok > 0) {
       toast({
         type: 'success',
-        title: `${WORK_PHOTO_KIND_LABEL[forKind]} 사진 ${ok}장을 올렸습니다`,
+        title: t('misc2.photosUploaded', { v0: WORK_PHOTO_KIND_LABEL[forKind], v1: ok }),
       });
     }
   };
@@ -133,12 +135,12 @@ export function FieldPhotos({
       await api(`/field/work-orders/${workOrderId}/photos/${photo.id}`, { method: 'DELETE' });
       forgetPhotoUrl(photo.id);
       setPhotos((ps) => ps.filter((p) => p.id !== photo.id));
-      toast({ type: 'success', title: '사진을 지웠습니다' });
+      toast({ type: 'success', title: t('misc2.photoDeleted') });
       return true;
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '사진을 지우지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('misc2.photoDeleteFailed'),
       });
       return false;
     }
@@ -162,7 +164,8 @@ export function FieldPhotos({
       }}
     >
       <h2 style={{ margin: 0, fontSize: fs(14), fontWeight: 700 }}>
-        작업 사진 ({photos.length})
+        {t('misc2.workPhotos')}
+        {photos.length})
         {uploading && (
           <span
             style={{
@@ -172,7 +175,7 @@ export function FieldPhotos({
               color: 'var(--ark-color-text-tertiary)',
             }}
           >
-            올리는 중…
+            {t('misc2.uploading')}
           </span>
         )}
       </h2>
@@ -197,11 +200,11 @@ export function FieldPhotos({
         <>
           <Input
             inputSize="lg"
-            placeholder="사진 설명(선택) — 예: 거실 장식장 모서리 찍힘"
+            placeholder={t('misc2.captionPh')}
             value={caption}
             maxLength={200}
             onChange={(e) => setCaption(e.target.value)}
-            aria-label="사진 설명"
+            aria-label={t('misc2.caption')}
           />
           <div style={{ display: 'flex', gap: 8 }}>
             <Button
@@ -211,7 +214,7 @@ export function FieldPhotos({
               style={{ flex: 2, height: 52, fontSize: fs(16), fontWeight: 700 }}
             >
               <Camera size={20} style={{ marginRight: 6 }} />
-              {WORK_PHOTO_KIND_LABEL[kind]} 사진 찍기
+              {WORK_PHOTO_KIND_LABEL[kind]} {t('misc2.takePhoto')}
             </Button>
             <Button
               variant="outline"
@@ -220,7 +223,7 @@ export function FieldPhotos({
               style={{ flex: 1, height: 52, fontSize: fs(15) }}
             >
               <Images size={18} style={{ marginRight: 6 }} />
-              앨범
+              {t('misc2.album')}
             </Button>
           </div>
           <input
@@ -245,7 +248,7 @@ export function FieldPhotos({
           photos={shown}
           pending={shownPending}
           onDelete={editable ? remove : undefined}
-          emptyText={`${WORK_PHOTO_KIND_LABEL[kind]} 사진이 없습니다`}
+          emptyText={t('misc2.noPhotosOf', { v0: WORK_PHOTO_KIND_LABEL[kind] })}
         />
       )}
     </section>

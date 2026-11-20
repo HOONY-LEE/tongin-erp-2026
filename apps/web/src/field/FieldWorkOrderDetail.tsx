@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ACCESS_LABEL } from '@tongin/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -17,6 +18,7 @@ import { fs } from '../lib/fontScale';
 
 /** 작업지시서 — 현장에서 이 화면 하나로 일이 되게. */
 export default function FieldWorkOrderDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
@@ -30,7 +32,7 @@ export default function FieldWorkOrderDetail() {
     try {
       setD(await api<Detail>(`/field/work-orders/${id}`));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '조회에 실패했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('misc2.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ export default function FieldWorkOrderDetail() {
     if (
       kind === 'complete' &&
       photoCounts?.AFTER === 0 &&
-      !window.confirm('작업 후 사진이 없습니다. 사진 없이 완료할까요?')
+      !window.confirm(t('misc2.noAfterPhotoQ'))
     )
       return;
     setActing(true);
@@ -57,14 +59,14 @@ export default function FieldWorkOrderDetail() {
         type: 'success',
         title:
           kind === 'start'
-            ? '작업을 시작했습니다'
+            ? t('misc2.started')
             : res?.noAfterPhotos
-              ? '작업을 완료했습니다 (작업 후 사진 없음)'
-              : '작업을 완료했습니다',
+              ? t('misc2.doneNoPhoto')
+              : t('misc2.done'),
       });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '처리에 실패했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('misc2.processFailed') });
     } finally {
       setActing(false);
     }
@@ -99,7 +101,7 @@ export default function FieldWorkOrderDetail() {
           cursor: 'pointer',
         }}
       >
-        <ArrowLeft size={16} /> 내 작업
+        <ArrowLeft size={16} /> {t('misc2.myWork')}
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -129,13 +131,13 @@ export default function FieldWorkOrderDetail() {
             textDecoration: 'none',
           }}
         >
-          <Phone size={18} /> 고객 전화 {formatPhone(d.customerPhone)}
+          <Phone size={18} /> {t('misc2.callCustomer')} {formatPhone(d.customerPhone)}
         </a>
       )}
 
-      <Card title="이사 경로">
+      <Card title={t('misc2.route')}>
         <Place
-          label="출발"
+          label={t('misc2.from')}
           addr={d.fromAddr}
           detail={d.fromAddrDetail}
           zipcode={d.fromZipcode}
@@ -147,7 +149,7 @@ export default function FieldWorkOrderDetail() {
         />
         <div style={{ height: 1, background: 'var(--ark-color-gray-200)', margin: '12px 0' }} />
         <Place
-          label="도착"
+          label={t('misc2.to')}
           addr={d.toAddr}
           detail={d.toAddrDetail}
           zipcode={d.toZipcode}
@@ -160,7 +162,7 @@ export default function FieldWorkOrderDetail() {
       </Card>
 
       {d.workInstructions && (
-        <Card title="작업지시">
+        <Card title={t('misc2.instructions')}>
           <p
             style={{
               margin: 0,
@@ -176,7 +178,7 @@ export default function FieldWorkOrderDetail() {
       )}
 
       {d.assignments.length > 0 && (
-        <Card title="배정">
+        <Card title={t('misc2.assignment')}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {d.assignments.map((a) => (
               <Badge
@@ -198,10 +200,10 @@ export default function FieldWorkOrderDetail() {
         onCounts={setPhotoCounts}
       />
 
-      <Card title={`품목 (${allLines.length}) · 총 ${d.totalCbm}CBM`}>
+      <Card title={t('misc2.itemsTotal', { v0: allLines.length, v1: d.totalCbm })}>
         {allLines.length === 0 ? (
           <span style={{ color: 'var(--ark-color-text-tertiary)', fontSize: fs(14) }}>
-            등록된 품목이 없습니다
+            {t('misc2.noItems')}
           </span>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -246,7 +248,7 @@ export default function FieldWorkOrderDetail() {
               onClick={() => void act(d.status === 'ASSIGNED' ? 'start' : 'complete')}
               style={{ width: '100%', height: 52, fontSize: fs(17), fontWeight: 700 }}
             >
-              {d.status === 'ASSIGNED' ? '작업 시작' : '작업 완료'}
+              {d.status === 'ASSIGNED' ? t('misc2.start') : t('misc2.complete')}
             </Button>
           </div>
         </div>
@@ -295,10 +297,11 @@ function Place({
   access: string;
   accessNote: string | null;
 }) {
+  const { t } = useTranslation();
   if (!addr) {
     return (
       <div style={{ fontSize: fs(14), color: 'var(--ark-color-text-tertiary)' }}>
-        {label} · 미입력
+        {label} {t('misc2.notEntered')}
       </div>
     );
   }
@@ -315,7 +318,8 @@ function Place({
         </span>
         {pyeong && (
           <span style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)' }}>
-            {pyeong}평
+            {pyeong}
+            {t('misc2.pyeong')}
           </span>
         )}
         {access !== 'NONE' && (
@@ -353,13 +357,14 @@ function Place({
           textDecoration: 'none',
         }}
       >
-        <MapPin size={14} /> 길찾기
+        <MapPin size={14} /> {t('misc2.directions')}
       </a>
     </div>
   );
 }
 
 function LineList({ lines }: { lines: FieldLine[] }) {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {lines.map((l) => (
@@ -373,7 +378,10 @@ function LineList({ lines }: { lines: FieldLine[] }) {
               {l.handlingName ?? HANDLING_LABEL[l.handling] ?? l.handling}
             </Badge>
           )}
-          <span style={{ fontWeight: 700 }}>{Number(l.qty)}개</span>
+          <span style={{ fontWeight: 700 }}>
+            {Number(l.qty)}
+            {t('misc2.countSuffix')}
+          </span>
         </div>
       ))}
     </div>

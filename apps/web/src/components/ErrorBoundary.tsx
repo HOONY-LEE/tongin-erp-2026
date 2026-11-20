@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { RefreshCw, Wrench } from 'lucide-react';
 import { reportClientError } from '../lib/reportError';
 import styles from './ErrorBoundary.module.css';
+import i18n from '../i18n';
 
 interface Props {
   children: ReactNode;
@@ -46,6 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const { error, ref } = this.state;
     if (!error) return this.props.children;
     const chunk = isChunkError(error);
+    const t = i18n.t;
     return (
       <div className={this.props.fullPage ? styles.full : styles.inline} role="alert">
         <div className={styles.box}>
@@ -54,22 +56,22 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           {chunk ? (
             <>
-              <h2 className={styles.title}>새 버전이 나왔습니다</h2>
-              <p className={styles.desc}>새로고침하면 최신 화면으로 열립니다.</p>
+              <h2 className={styles.title}>{t('ui.err.newVersion')}</h2>
+              <p className={styles.desc}>{t('ui.err.reloadLatest')}</p>
             </>
           ) : (
             <>
-              <h2 className={styles.title}>화면을 여는 중 오류가 났습니다</h2>
+              <h2 className={styles.title}>{t('ui.err.title')}</h2>
               <p className={styles.desc}>
-                새로고침해도 같으면 아래 오류 번호와 함께 관리자(010-5259-6024)에게 알려 주세요.
+                {t('ui.err.contact')}
                 <br />
-                <span className={styles.ref}>오류 번호 {ref}</span>
+                <span className={styles.ref}>{t('ui.err.ref', { ref: ref ?? '' })}</span>
               </p>
             </>
           )}
           <div className={styles.actions}>
             <button type="button" className={styles.primary} onClick={() => location.reload()}>
-              <RefreshCw size={15} /> 새로고침
+              <RefreshCw size={15} /> {t('ui.err.reload')}
             </button>
             {!this.props.fullPage && (
               <button
@@ -77,7 +79,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className={styles.ghost}
                 onClick={() => location.assign('/dashboard')}
               >
-                대시보드로
+                {t('ui.err.toDashboard')}
               </button>
             )}
           </div>

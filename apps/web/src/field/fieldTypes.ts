@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { HANDLING_LABEL as SHARED_HANDLING_LABEL } from '@tongin/shared';
 // 현장 API 응답 타입 — apps/api/src/modules/field/field.service.ts 와 1:1.
 
@@ -50,10 +51,10 @@ export const WORK_STATUS: Record<
   string,
   { label: string; color: 'neutral' | 'info' | 'success' | 'error' }
 > = {
-  ASSIGNED: { label: '배정됨', color: 'neutral' },
-  IN_PROGRESS: { label: '작업중', color: 'info' },
-  DONE: { label: '완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  ASSIGNED: { label: i18n.t('misc2.wo.ASSIGNED'), color: 'neutral' },
+  IN_PROGRESS: { label: i18n.t('misc2.wo.IN_PROGRESS'), color: 'info' },
+  DONE: { label: i18n.t('misc2.wo.DONE'), color: 'success' },
+  CANCELED: { label: i18n.t('misc2.wo.CANCELED'), color: 'error' },
 };
 
 // 작업지시 라인의 handling은 서버에서 오는 문자열이라 넓은 타입으로 다시 노출한다.
@@ -68,9 +69,17 @@ export function todayKey(): string {
 
 /** "8월 12일 (화)" — 현장에서 날짜만 빠르게 읽히도록 */
 export function formatDay(key: string | null): string {
-  if (!key) return '날짜 미정';
+  if (!key) return i18n.t('misc2.noDate');
   const [y, m, d] = key.split('-').map(Number);
   const date = new Date(y, m - 1, d);
-  const dow = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
-  return `${m}월 ${d}일 (${dow})`;
+  const dow = [
+    i18n.t('misc2.dow.0'),
+    i18n.t('misc2.dow.1'),
+    i18n.t('misc2.dow.2'),
+    i18n.t('misc2.dow.3'),
+    i18n.t('misc2.dow.4'),
+    i18n.t('misc2.dow.5'),
+    i18n.t('misc2.dow.6'),
+  ][date.getDay()];
+  return i18n.t('misc2.dayShort', { v0: m, v1: d, v2: dow });
 }

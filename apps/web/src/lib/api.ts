@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 const TOKEN_KEY = 'tongin_token';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
@@ -66,22 +67,21 @@ export class ApiError extends Error {
 }
 
 /** 서버가 응답하지 않을 때(콜드 스타트·배포 중) */
-export const SERVICE_UNAVAILABLE =
-  '서버가 응답하지 않습니다. 서버가 시작하거나 배포 중일 수 있으니 잠시(최대 1분) 후 다시 시도해 주세요.';
+export const SERVICE_UNAVAILABLE = i18n.t('misc2.api.noResponse');
 
 /** 상태 코드만 있고 서버 안내 문장이 없을 때(게이트웨이가 HTML을 돌려준 경우 등) 쓰는 기본 안내 */
 const FALLBACK: Record<number, [ApiErrorCode, string]> = {
-  400: ['VALIDATION', '입력한 내용을 다시 확인해 주세요.'],
-  403: ['FORBIDDEN', '이 작업을 할 권한이 없습니다. 필요하면 관리자에게 권한을 요청해 주세요.'],
-  404: ['NOT_FOUND', '찾는 대상이 없습니다. 이미 지워졌을 수 있습니다.'],
-  409: ['CONFLICT', '다른 데이터와 충돌해 처리하지 못했습니다.'],
-  413: ['TOO_LARGE', '보낸 내용(파일)이 너무 큽니다.'],
-  429: ['RATE_LIMIT', '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.'],
-  500: ['INTERNAL', '서버에서 오류가 났습니다. 잠시 후 다시 시도해 주세요.'],
-  501: ['NOT_IMPLEMENTED', '아직 준비 중인 기능입니다.'],
+  400: ['VALIDATION', i18n.t('misc2.api.400')],
+  403: ['FORBIDDEN', i18n.t('misc2.api.403')],
+  404: ['NOT_FOUND', i18n.t('misc2.api.404')],
+  409: ['CONFLICT', i18n.t('misc2.api.409')],
+  413: ['TOO_LARGE', i18n.t('misc2.api.413')],
+  429: ['RATE_LIMIT', i18n.t('misc2.api.429')],
+  500: ['INTERNAL', i18n.t('misc2.api.500')],
+  501: ['NOT_IMPLEMENTED', i18n.t('misc2.api.501')],
   502: ['NETWORK', SERVICE_UNAVAILABLE],
   503: ['NETWORK', SERVICE_UNAVAILABLE],
-  504: ['NETWORK', '서버 응답이 너무 오래 걸립니다. 잠시 후 다시 시도해 주세요.'],
+  504: ['NETWORK', i18n.t('misc2.api.timeout')],
 };
 
 /** 오류 응답 → ApiError. 서버가 준 code·message를 쓰고, 없으면 상태 코드로 안내한다 */
@@ -100,7 +100,7 @@ export async function toApiError(res: Response, path: string): Promise<ApiError>
     FALLBACK[res.status] ??
     (res.status >= 500
       ? (['INTERNAL', FALLBACK[500][1]] as const)
-      : (['VALIDATION', `요청을 처리하지 못했습니다(${res.status}).`] as const));
+      : (['VALIDATION', i18n.t('misc2.api.failedN', { v0: res.status })] as const));
   // 우리 서버는 오류에 늘 JSON(code·message)을 붙인다 — 5xx인데 본문이 없으면 서버까지 닿지 못한 것
   // (개발 프록시·게이트웨이가 대신 응답: 서버 재시작·배포·콜드 스타트)
   if (res.status >= 500 && !body?.code)
@@ -126,7 +126,7 @@ export async function api<T = unknown>(path: string, opts: RequestInit = {}): Pr
     if ((e as Error)?.name === 'AbortError') throw e;
     console.error(`[api] ${path} 연결 실패`, e);
     throw navigator.onLine === false
-      ? new ApiError(0, '인터넷 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도해 주세요.', 'OFFLINE')
+      ? new ApiError(0, i18n.t('misc2.api.offline'), 'OFFLINE')
       : new ApiError(0, SERVICE_UNAVAILABLE, 'NETWORK');
   }
 
@@ -136,7 +136,7 @@ export async function api<T = unknown>(path: string, opts: RequestInit = {}): Pr
     if (path.startsWith('/auth/login')) throw err;
     setToken(null);
     window.dispatchEvent(new Event('tongin:unauthorized'));
-    throw new ApiError(401, '로그인이 만료되었습니다. 다시 로그인해 주세요.', 'UNAUTHORIZED');
+    throw new ApiError(401, i18n.t('misc2.sessionExpired'), 'UNAUTHORIZED');
   }
   if (!res.ok) throw await toApiError(res, path);
   if ((opts.method ?? 'GET').toUpperCase() !== 'GET') invalidateCache(path);
@@ -146,19 +146,12 @@ export async function api<T = unknown>(path: string, opts: RequestInit = {}): Pr
   } catch (e) {
     // JSON이 아닌 응답(배포 중 HTML 등)
     console.error(`[api] ${path} 응답 해석 실패`, e);
-    throw new ApiError(
-      res.status,
-      '서버 응답을 읽지 못했습니다. 배포 중일 수 있으니 잠시 후 다시 시도해 주세요.',
-      'BAD_RESPONSE',
-    );
+    throw new ApiError(res.status, i18n.t('misc2.api.parse'), 'BAD_RESPONSE');
   }
 }
 
 /** 화면에 띄울 오류 문장 — ApiError면 상황별 안내, 아니면 fallback */
-export function errorMessage(
-  e: unknown,
-  fallback = '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-) {
+export function errorMessage(e: unknown, fallback = i18n.t('misc2.api.generic')) {
   return e instanceof ApiError ? e.message : fallback;
 }
 

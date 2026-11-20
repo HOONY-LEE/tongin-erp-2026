@@ -4,7 +4,17 @@ import { defineNs } from './define';
 export default defineNs({
   ko: {
     loading: '불러오는 중…',
+    err: {
+      newVersion: '새 버전이 나왔습니다',
+      reloadLatest: '새로고침하면 최신 화면으로 열립니다.',
+      title: '화면을 여는 중 오류가 났습니다',
+      contact: '새로고침해도 같으면 아래 오류 번호와 함께 관리자(010-5259-6024)에게 알려 주세요.',
+      ref: '오류 번호 {{ref}}',
+      reload: '새로고침',
+      toDashboard: '대시보드로',
+    },
     notice: '안내',
+    mask: { phone: '전화번호', address: '주소', name: '이름' },
     comingSoon: '화면 준비 중입니다 — 곧 제공될 예정입니다.',
     loadingShort: '불러오는 중',
     confirm: '확인',
@@ -71,7 +81,18 @@ export default defineNs({
   },
   en: {
     loading: 'Loading…',
+    err: {
+      newVersion: 'A new version is available',
+      reloadLatest: 'Refresh to open the latest screen.',
+      title: 'An error occurred while opening the screen',
+      contact:
+        'If it happens again after refreshing, contact the admin (010-5259-6024) with the error number below.',
+      ref: 'Error no. {{ref}}',
+      reload: 'Refresh',
+      toDashboard: 'To dashboard',
+    },
     notice: 'Notice',
+    mask: { phone: 'Phone', address: 'Address', name: 'Name' },
     comingSoon: 'This screen is being prepared and will be available soon.',
     loadingShort: 'Loading',
     confirm: 'OK',
@@ -138,7 +159,17 @@ export default defineNs({
   },
   zh: {
     loading: '加载中…',
+    err: {
+      newVersion: '已有新版本',
+      reloadLatest: '刷新即可打开最新页面。',
+      title: '打开页面时出错',
+      contact: '如刷新后仍相同，请将下方错误编号告知管理员（010-5259-6024）。',
+      ref: '错误编号 {{ref}}',
+      reload: '刷新',
+      toDashboard: '前往仪表板',
+    },
     notice: '提示',
+    mask: { phone: '电话', address: '地址', name: '姓名' },
     comingSoon: '页面准备中，即将推出。',
     loadingShort: '加载中',
     confirm: '确定',

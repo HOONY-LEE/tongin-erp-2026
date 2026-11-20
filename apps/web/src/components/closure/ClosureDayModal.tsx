@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -23,6 +24,7 @@ export function ClosureDayModal({
   onClose: () => void;
   onChanged: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const { options, ownOrgId, unrestricted } = useOrgScope();
@@ -53,7 +55,7 @@ export function ClosureDayModal({
       setMemo('');
       await onChanged();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '마감하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('misc2.closeFailed') });
     } finally {
       setBusy(false);
     }
@@ -64,13 +66,13 @@ export function ClosureDayModal({
       await api(`/move-closures/${c.id}`, { method: 'DELETE' });
       await onChanged();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '마감을 풀지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('misc2.reopenFailed') });
     } finally {
       setBusy(false);
     }
   };
   const orgOptions = [
-    ...(unrestricted ? [{ value: 'ALL', label: '전체(모든 지점)' }] : []),
+    ...(unrestricted ? [{ value: 'ALL', label: t('misc2.allBranches') }] : []),
     ...options.filter((o) => !o.disabled),
   ];
 
@@ -80,7 +82,11 @@ export function ClosureDayModal({
       onOpenChange={(o) => !o && onClose()}
       title={
         date
-          ? `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일 이사일 마감 · 이사 ${leads}건`
+          ? t('misc2.closureTitle', {
+              v0: Number(date.slice(5, 7)),
+              v1: Number(date.slice(8)),
+              v2: leads,
+            })
           : ''
       }
     >
@@ -90,24 +96,24 @@ export function ClosureDayModal({
             <ul className={styles.list}>
               {closures.map((c) => (
                 <li key={c.id}>
-                  <b>{c.orgName ?? '전체(모든 지점)'}</b>
-                  <span className={styles.closed}>마감</span>
+                  <b>{c.orgName ?? t('misc2.allBranches')}</b>
+                  <span className={styles.closed}>{t('misc2.closure')}</span>
                   {c.memo && <span className={styles.memo}>{c.memo}</span>}
                   {editable && (
                     <button
                       type="button"
-                      aria-label="마감 풀기"
+                      aria-label={t('misc2.reopenTip')}
                       disabled={busy}
                       onClick={() => void remove(c)}
                     >
-                      <X size={14} /> 풀기
+                      <X size={14} /> {t('misc2.reopen')}
                     </button>
                   )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className={styles.muted}>마감한 지점이 없습니다.</p>
+            <p className={styles.muted}>{t('misc2.noClosed')}</p>
           )}
           {editable && (
             <div className={styles.addRow}>
@@ -115,17 +121,17 @@ export function ClosureDayModal({
                 value={orgId}
                 onValueChange={setOrgId}
                 options={orgOptions}
-                placeholder="지점"
-                aria-label="마감할 지점"
+                placeholder={t('misc2.branch')}
+                aria-label={t('misc2.branchToClose')}
               />
               <Input
                 value={memo}
-                placeholder="메모(선택) — 예: 차량 마감"
+                placeholder={t('misc2.closureMemoPh')}
                 maxLength={300}
                 onChange={(e) => setMemo(e.target.value)}
               />
               <Button variant="primary" size="sm" disabled={busy} onClick={() => void add()}>
-                추가
+                {t('misc2.add')}
               </Button>
             </div>
           )}

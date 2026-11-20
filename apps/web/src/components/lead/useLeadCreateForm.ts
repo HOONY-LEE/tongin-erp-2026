@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import { useEffect, useState } from 'react';
 import { PARTNER_TYPE_LABEL, type PartnerType } from '@tongin/shared';
 import { api } from '../../lib/api';
@@ -50,16 +51,22 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
   const fields: FormField[] = [
     {
       name: 'customerName',
-      label: '고객명',
+      label: i18n.t('misc2.customerName'),
       required: true,
       alwaysShow: true,
       pairWithNext: true,
-      placeholder: '홍길동',
+      placeholder: i18n.t('misc2.customerNamePh'),
     },
-    { name: 'customerPhone', label: '연락처', required: true, alwaysShow: true, type: 'tel' },
+    {
+      name: 'customerPhone',
+      label: i18n.t('misc2.phone'),
+      required: true,
+      alwaysShow: true,
+      type: 'tel',
+    },
     {
       name: 'orgUnitId',
-      label: '담당 지점',
+      label: i18n.t('misc2.ownerBranch'),
       required: !withCallFields,
       alwaysShow: true,
       pairWithNext: true,
@@ -69,7 +76,7 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     },
     {
       name: 'ownerEmpId',
-      label: '담당자',
+      label: i18n.t('misc2.owner'),
       alwaysShow: true,
       type: 'select',
       options: ownerOptions,
@@ -79,7 +86,7 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     },
     {
       name: 'source',
-      label: '접수경로',
+      label: i18n.t('misc2.source'),
       alwaysShow: true,
       type: 'select',
       options: RECEIPT_SOURCES,
@@ -89,15 +96,15 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     // 상품 — 먼저 종류(일반/제휴/전속)를 고르면 그 종류의 목록이 드롭다운으로 뜬다
     {
       name: 'moveKind',
-      label: '상품 종류',
+      label: i18n.t('misc2.productKind'),
       type: 'segment',
       required: true,
       alwaysShow: true,
       virtual: true,
       options: [
-        { value: 'GENERAL', label: '일반' },
-        { value: 'AFFILIATE', label: '제휴' },
-        { value: 'EXCLUSIVE', label: '전속' },
+        { value: 'GENERAL', label: i18n.t('misc2.kind.GENERAL') },
+        { value: 'AFFILIATE', label: i18n.t('misc2.kind.AFFILIATE') },
+        { value: 'EXCLUSIVE', label: i18n.t('misc2.kind.EXCLUSIVE') },
       ],
       resets: ['partnerId'],
       // 상품 종류 탭과 상품 고르기를 한 줄에
@@ -105,7 +112,7 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     },
     {
       name: 'serviceLine',
-      label: '상품',
+      label: i18n.t('misc2.product'),
       required: true,
       alwaysShow: true,
       type: 'select',
@@ -114,12 +121,12 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     },
     {
       name: 'partnerId',
-      label: '상품(업체) — 전속이사는 본사 부서로만 배정',
+      label: i18n.t('misc2.partnerLabel'),
       required: true,
       alwaysShow: true,
       type: 'select',
       searchable: true,
-      placeholder: '업체명으로 찾기',
+      placeholder: i18n.t('misc2.partnerSearch'),
       optionsBy: {
         field: 'moveKind',
         map: {
@@ -135,26 +142,37 @@ export function useLeadCreateForm({ withCallFields = false }: { withCallFields?:
     },
     {
       name: 'fromAddress',
-      label: '출발지',
+      label: i18n.t('misc2.origin'),
       alwaysShow: true,
       type: 'address',
       addrPrefix: 'from',
       // 출발지·도착지를 한 줄에
       pairWithNext: true,
     },
-    { name: 'toAddress', label: '도착지', alwaysShow: true, type: 'address', addrPrefix: 'to' },
+    {
+      name: 'toAddress',
+      label: i18n.t('misc2.destination'),
+      alwaysShow: true,
+      type: 'address',
+      addrPrefix: 'to',
+    },
     ...(withCallFields
       ? ([
-          { name: 'moveDate', label: '서비스 요청일', type: 'date', alwaysShow: true },
+          { name: 'moveDate', label: i18n.t('misc2.serviceDate'), type: 'date', alwaysShow: true },
           {
             name: 'customerRequest',
-            label: '고객 요청사항',
+            label: i18n.t('misc2.customerRequest'),
             type: 'textarea',
             alwaysShow: true,
             rows: 3,
           },
           // 고른 제휴·전속의 혜택·조건 — 화면엔 안 보이고 접수에 함께 남는다
-          { name: 'productNote', label: '상품 특이사항', type: 'textarea', hidden: true },
+          {
+            name: 'productNote',
+            label: i18n.t('misc2.productNote'),
+            type: 'textarea',
+            hidden: true,
+          },
         ] satisfies FormField[])
       : []),
   ];

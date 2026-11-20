@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import { useEffect, useState } from 'react';
 import { ApiError, getToken, setToken, toApiError } from '../../lib/api';
 
@@ -36,7 +37,7 @@ async function fetchPhoto(id: string): Promise<string> {
   if (res.status === 401) {
     setToken(null);
     window.dispatchEvent(new Event('tongin:unauthorized'));
-    throw new ApiError(401, '로그인이 만료되었습니다. 다시 로그인해 주세요.', 'UNAUTHORIZED');
+    throw new ApiError(401, i18n.t('misc2.sessionExpired'), 'UNAUTHORIZED');
   }
   if (!res.ok) throw await toApiError(res, `/work-photos/${id}`);
   return URL.createObjectURL(await res.blob());
@@ -135,11 +136,7 @@ export async function preparePhoto(file: File): Promise<PreparedPhoto> {
   try {
     decoded = await decode(file);
   } catch {
-    throw new Error(
-      isHeic(file)
-        ? 'HEIC 사진은 이 브라우저에서 열 수 없습니다. "사진 찍기"로 다시 찍거나 JPEG로 올려 주세요.'
-        : '사진을 열 수 없습니다. JPEG·PNG 사진인지 확인해 주세요.',
-    );
+    throw new Error(isHeic(file) ? i18n.t('misc2.heic') : i18n.t('misc2.cannotOpen'));
   }
   try {
     const scale = Math.min(1, MAX_EDGE / Math.max(decoded.w, decoded.h));
@@ -149,7 +146,7 @@ export async function preparePhoto(file: File): Promise<PreparedPhoto> {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('사진을 줄이지 못했습니다.');
+    if (!ctx) throw new Error(i18n.t('misc2.resizeFailed'));
     // JPEG엔 투명이 없다 — PNG 투명 영역이 검게 나오지 않게 흰 바탕
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, width, height);
@@ -157,7 +154,7 @@ export async function preparePhoto(file: File): Promise<PreparedPhoto> {
     const blob = await new Promise<Blob | null>((r) =>
       canvas.toBlob(r, 'image/jpeg', JPEG_QUALITY),
     );
-    if (!blob) throw new Error('사진을 줄이지 못했습니다.');
+    if (!blob) throw new Error(i18n.t('misc2.resizeFailed'));
     return { blob, width, height };
   } finally {
     decoded.done();
@@ -169,7 +166,7 @@ export function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',', 2)[1] ?? '');
-    r.onerror = () => reject(r.error ?? new Error('사진을 읽지 못했습니다.'));
+    r.onerror = () => reject(r.error ?? new Error(i18n.t('misc2.readFailed')));
     r.readAsDataURL(blob);
   });
 }
