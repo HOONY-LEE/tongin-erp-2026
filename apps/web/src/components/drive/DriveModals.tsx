@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { EmployeeAvatar } from '../employee/EmployeeAvatar';
 import { createPortal } from 'react-dom';
@@ -33,6 +34,7 @@ export function NameModal({
   onClose: () => void;
   onSubmit: (name: string) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial);
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -53,7 +55,7 @@ export function NameModal({
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('drive.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -87,6 +89,7 @@ export function NameModal({
 // ── 미리보기 ──
 
 export function PreviewModal({ item, onClose }: { item: DriveItemView; onClose: () => void }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const kind = previewKind(item.mimeType, item.name);
   const [url, setUrl] = useState<string | null>(null);
@@ -125,14 +128,19 @@ export function PreviewModal({ item, onClose }: { item: DriveItemView; onClose: 
 
   const download = () =>
     downloadDriveFile(item).catch((e) =>
-      toast({ type: 'error', title: errText(e, '받지 못했습니다') }),
+      toast({ type: 'error', title: errText(e, t('drive.downloadFailed')) }),
     );
 
   // 사이드바·머리글 위로 — body에 바로 붙인다
   return createPortal(
     <div className={styles.preview} role="dialog" aria-modal aria-label={item.name}>
       <div className={styles.previewHead}>
-        <button type="button" className={styles.iconBtn} aria-label="닫기" onClick={onClose}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          aria-label={t('drive.close')}
+          onClick={onClose}
+        >
           <X size={20} />
         </button>
         <Icon size={20} color={color} aria-hidden />
@@ -140,8 +148,8 @@ export function PreviewModal({ item, onClose }: { item: DriveItemView; onClose: 
         <button
           type="button"
           className={styles.iconBtn}
-          aria-label="받기"
-          title="받기"
+          aria-label={t('drive.download')}
+          title={t('drive.download')}
           onClick={download}
         >
           <Download size={20} />
@@ -154,15 +162,15 @@ export function PreviewModal({ item, onClose }: { item: DriveItemView; onClose: 
         {!kind || failed ? (
           <div className={styles.previewNone}>
             <Icon size={48} color={color} aria-hidden />
-            <span>{failed ? '파일을 열지 못했습니다' : '미리 볼 수 없는 파일입니다'}</span>
+            <span>{failed ? t('drive.openFailed') : t('drive.noPreview')}</span>
             <Button variant="primary" onClick={download}>
-              받기
+              {t('drive.download')}
             </Button>
           </div>
         ) : kind === 'text' ? (
-          <pre className={styles.previewText}>{text ?? '불러오는 중…'}</pre>
+          <pre className={styles.previewText}>{text ?? t('drive.loading')}</pre>
         ) : !url ? (
-          <span>불러오는 중…</span>
+          <span>{t('drive.loading')}</span>
         ) : kind === 'image' ? (
           <img src={url} alt={item.name} />
         ) : kind === 'pdf' ? (
@@ -200,6 +208,7 @@ function PeopleEditor({
   /** 고칠 수 없는 사람(나) */
   lockedId?: string | null;
 }) {
+  const { t } = useTranslation();
   const { people } = useDirectory();
   const options = useMemo(
     () =>
@@ -217,8 +226,8 @@ function PeopleEditor({
       <Combobox
         options={options}
         value={null}
-        placeholder="사람 추가"
-        searchPlaceholder="이름으로 찾기"
+        placeholder={t('drive.addPerson')}
+        searchPlaceholder={t('drive.findByName')}
         onChange={(id) => {
           const p = people.find((x) => x.id === id);
           if (p)
@@ -245,7 +254,10 @@ function PeopleEditor({
               </span>
             </span>
             {p.employeeId === lockedId ? (
-              <span className={styles.muted}>{DRIVE_ROLE[p.role]}(나)</span>
+              <span className={styles.muted}>
+                {DRIVE_ROLE[p.role]}
+                {t('drive.me')}
+              </span>
             ) : (
               <>
                 <div className={styles.roleSelect}>
@@ -259,13 +271,13 @@ function PeopleEditor({
                       )
                     }
                     options={roles.map((r) => ({ value: r, label: DRIVE_ROLE[r] }))}
-                    aria-label={`${p.name} 권한`}
+                    aria-label={t('drive.roleOf', { v0: p.name })}
                   />
                 </div>
                 <button
                   type="button"
                   className={styles.iconBtn}
-                  aria-label={`${p.name} 빼기`}
+                  aria-label={t('drive.removeOf', { v0: p.name })}
                   onClick={() => onChange(value.filter((x) => x.employeeId !== p.employeeId))}
                 >
                   <X size={16} />
@@ -292,6 +304,7 @@ export function ShareModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [list, setList] = useState<Picked[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -301,7 +314,7 @@ export function ShareModal({
     api<DriveShareView[]>(`/drive/items/${item.id}/shares`)
       .then((r) => setList(r))
       .catch((e) => {
-        toast({ type: 'error', title: errText(e, '불러오지 못했습니다') });
+        toast({ type: 'error', title: errText(e, t('drive.loadFailed')) });
         onClose();
       });
   }, [item.id, toast, onClose]);
@@ -318,10 +331,10 @@ export function ShareModal({
             .map((p) => ({ employeeId: p.employeeId, role: p.role })),
         }),
       });
-      toast({ type: 'success', title: '공유했습니다' });
+      toast({ type: 'success', title: t('drive.sharedOk') });
       onSaved();
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '공유하지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('drive.shareFailed')) });
     } finally {
       setBusy(false);
     }
@@ -331,15 +344,15 @@ export function ShareModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`'${item.name}' 공유`}
+      title={t('drive.shareTitle', { v0: item.name })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            {canEdit ? '취소' : '닫기'}
+            {canEdit ? t('drive.cancel') : t('drive.close')}
           </Button>
           {canEdit && (
             <Button variant="primary" loading={busy} disabled={!list} onClick={() => void save()}>
-              저장
+              {t('drive.save')}
             </Button>
           )}
         </>
@@ -347,13 +360,13 @@ export function ShareModal({
     >
       <div className={styles.form}>
         <p className={styles.muted}>
-          {item.kind === 'FOLDER' ? '폴더를 공유하면 그 안의 파일·폴더도 함께 보입니다. ' : ''}
+          {item.kind === 'FOLDER' ? t('drive.shareFolderNote') : ''}
           {item.spaceKind === 'PERSONAL'
-            ? '내 드라이브 파일은 공유한 사람만 볼 수 있습니다.'
-            : `'${item.spaceName}' 드라이브 구성원은 이미 볼 수 있습니다. 여기서는 그 밖의 사람에게 더 줍니다.`}
+            ? t('drive.shareMyNote')
+            : t('drive.shareSpaceNote', { v0: item.spaceName })}
         </p>
         {list === null ? (
-          <span className={styles.muted}>불러오는 중…</span>
+          <span className={styles.muted}>{t('drive.loading')}</span>
         ) : canEdit ? (
           <PeopleEditor value={list} onChange={setList} roles={['VIEWER', 'EDITOR']} />
         ) : (
@@ -365,7 +378,7 @@ export function ShareModal({
                 <span className={styles.muted}>{DRIVE_ROLE[p.role]}</span>
               </div>
             ))}
-            {!list.length && <span className={styles.muted}>공유한 사람이 없습니다.</span>}
+            {!list.length && <span className={styles.muted}>{t('drive.noShares')}</span>}
           </div>
         )}
       </div>
@@ -398,6 +411,7 @@ export function SpaceModal({
   onSaved: (id: string) => void;
   onDeleted?: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [detail, setDetail] = useState<SpaceDetail | null>(null);
   const [name, setName] = useState('');
@@ -417,7 +431,7 @@ export function SpaceModal({
         setMembers(d.members);
       })
       .catch((e) => {
-        toast({ type: 'error', title: errText(e, '불러오지 못했습니다') });
+        toast({ type: 'error', title: errText(e, t('drive.loadFailed')) });
         onClose();
       });
   }, [spaceId, toast, onClose]);
@@ -434,18 +448,18 @@ export function SpaceModal({
           method: 'POST',
           body: JSON.stringify(body),
         });
-        toast({ type: 'success', title: '공유 드라이브를 만들었습니다' });
+        toast({ type: 'success', title: t('drive.spaceCreated') });
         onSaved(r.id);
       } else {
         await api(`/drive/spaces/${spaceId}`, {
           method: 'PATCH',
           body: JSON.stringify(isShared ? body : { members: body.members }),
         });
-        toast({ type: 'success', title: '저장했습니다' });
+        toast({ type: 'success', title: t('drive.saved') });
         onSaved(spaceId);
       }
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '저장하지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('drive.saveFailed')) });
     } finally {
       setBusy(false);
     }
@@ -456,10 +470,10 @@ export function SpaceModal({
     setBusy(true);
     try {
       await api(`/drive/spaces/${spaceId}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '공유 드라이브를 지웠습니다' });
+      toast({ type: 'success', title: t('drive.spaceDeleted') });
       onDeleted?.();
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '지우지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('drive.deleteFailed')) });
     } finally {
       setBusy(false);
     }
@@ -472,7 +486,7 @@ export function SpaceModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? '새 공유 드라이브' : (detail?.name ?? '드라이브')}
+      title={isNew ? t('drive.newShared') : (detail?.name ?? t('drive.drive'))}
       footer={
         <>
           {!isNew && canEdit && isShared && (
@@ -482,11 +496,11 @@ export function SpaceModal({
               loading={busy && confirmDelete}
               onClick={() => (confirmDelete ? void remove() : setConfirmDelete(true))}
             >
-              {confirmDelete ? '안의 파일까지 모두 지우기' : '드라이브 지우기'}
+              {confirmDelete ? t('drive.deleteAll') : t('drive.deleteDrive')}
             </Button>
           )}
           <Button variant="ghost" onClick={onClose}>
-            {canEdit ? '취소' : '닫기'}
+            {canEdit ? t('drive.cancel') : t('drive.close')}
           </Button>
           {canEdit && (
             <Button
@@ -495,7 +509,7 @@ export function SpaceModal({
               disabled={!ready}
               onClick={() => void save()}
             >
-              {isNew ? '만들기' : '저장'}
+              {isNew ? t('drive.create') : t('drive.save')}
             </Button>
           )}
         </>
@@ -504,23 +518,21 @@ export function SpaceModal({
       <div className={styles.form}>
         {isShared && (
           <label className={styles.field}>
-            이름
+            {t('drive.col.name')}
             <Input
               autoFocus={isNew}
               value={name}
               disabled={!canEdit}
               maxLength={200}
-              placeholder="예: 가을 이사 캠페인"
+              placeholder={t('drive.namePh')}
               onChange={(e) => setName(e.target.value)}
             />
           </label>
         )}
         <div className={styles.field}>
-          {isShared ? '구성원' : '따로 둔 관리자·구성원'}
+          {isShared ? t('drive.membersLabel') : t('drive.extraMembers')}
           <p className={styles.muted} style={{ margin: 0, fontWeight: 400 }}>
-            {isShared
-              ? '관리자: 구성원·이름 관리 · 편집자: 올리기·고치기·지우기 · 뷰어: 보기·받기. 만든 사람은 관리자가 됩니다.'
-              : '조직 드라이브는 이 조직과 하위 조직 사람이 모두 편집자입니다. 그 밖의 사람이나 관리자를 따로 둘 때만 넣으세요.'}
+            {isShared ? t('drive.rolesHelp') : t('drive.orgRolesHelp')}
           </p>
           {canEdit ? (
             <PeopleEditor
@@ -541,7 +553,7 @@ export function SpaceModal({
             </div>
           )}
           {isShared && !isNew && canEdit && managers === 0 && (
-            <span className={styles.muted}>관리자를 한 명 이상 두어야 합니다.</span>
+            <span className={styles.muted}>{t('drive.needAdmin')}</span>
           )}
         </div>
       </div>
@@ -573,6 +585,7 @@ export function FolderPickerModal({
   onClose: () => void;
   onConfirm: (target: { spaceId: string; parentId: string | null }) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [tree, setTree] = useState<Tree | null>(null);
   const [target, setTarget] = useState<{ spaceId: string; parentId: string | null } | null>(null);
@@ -588,7 +601,7 @@ export function FolderPickerModal({
         // 지금 있는 드라이브를 펼쳐 둔다
         setOpen(new Set(initialKey ? initialKey.split(',') : []));
       })
-      .catch((e) => toast({ type: 'error', title: errText(e, '불러오지 못했습니다') }));
+      .catch((e) => toast({ type: 'error', title: errText(e, t('drive.loadFailed')) }));
   }, [initialKey, toast]);
 
   const children = (spaceId: string, parentId: string | null) =>
@@ -655,7 +668,7 @@ export function FolderPickerModal({
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('drive.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -670,7 +683,7 @@ export function FolderPickerModal({
     >
       <div className={styles.tree}>
         {!tree ? (
-          <span className={styles.muted}>불러오는 중…</span>
+          <span className={styles.muted}>{t('drive.loading')}</span>
         ) : (
           tree.spaces.map((s) => {
             const isOn = target?.spaceId === s.id && target.parentId === null;
@@ -719,11 +732,16 @@ export function MoveModal({
   onClose: () => void;
   onMoved: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   return (
     <FolderPickerModal
-      title={items.length === 1 ? `'${items[0].name}' 옮기기` : `${items.length}개 옮기기`}
-      confirmLabel="여기로 옮기기"
+      title={
+        items.length === 1
+          ? t('drive.moveOne', { v0: items[0].name })
+          : t('drive.moveN', { v0: items.length })
+      }
+      confirmLabel={t('drive.moveHere')}
       blockedIds={items.map((i) => i.id)}
       initialSpaceIds={[...new Set(items.map((i) => i.spaceId))]}
       onClose={onClose}
@@ -735,10 +753,10 @@ export function MoveModal({
               body: JSON.stringify(target),
             });
           }
-          toast({ type: 'success', title: `${items.length}개를 옮겼습니다` });
+          toast({ type: 'success', title: t('drive.moved', { v0: items.length }) });
           onMoved();
         } catch (e) {
-          toast({ type: 'error', title: errText(e, '옮기지 못했습니다') });
+          toast({ type: 'error', title: errText(e, t('drive.moveFailed')) });
         }
       }}
     />
