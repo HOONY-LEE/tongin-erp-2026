@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -14,9 +15,9 @@ import {
 } from '../components/ui';
 
 export const CONTRACT_STATUS: StatusMap = {
-  DRAFT: { label: '작성중', color: 'neutral' },
-  SIGNED: { label: '서명완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  DRAFT: { label: i18n.t('deals.DRAFT'), color: 'neutral' },
+  SIGNED: { label: i18n.t('deals.SIGNED'), color: 'success' },
+  CANCELED: { label: i18n.t('deals.CANCELED'), color: 'error' },
 };
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
@@ -46,9 +47,9 @@ export default function Contracts() {
   }, [load]);
 
   const columns: Column[] = [
-    { title: '계약번호', dataIndex: 'contractNo' },
+    { title: t('deals.contractNo'), dataIndex: 'contractNo' },
     {
-      title: '상태',
+      title: t('deals.status'),
       render: (r) => <StatusBadge value={String(r.status)} map={CONTRACT_STATUS} />,
     },
     { title: t('contract.total'), numeric: true, render: (r) => won(r.totalAmount) },

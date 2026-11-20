@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import type { EstimateMeta, EstimateOptionDef, MoveCatalog, VolumeUnit } from '@tongin/shared';
 
 /** 거리 할증 기준 — 무료 거리(km)·넘는 1km마다 금액(원) */
@@ -129,7 +130,9 @@ export interface TabProps {
 }
 
 export const won = (v: unknown) =>
-  v == null || v === '' || Number.isNaN(Number(v)) ? '-' : `${Number(v).toLocaleString()}원`;
+  v == null || v === '' || Number.isNaN(Number(v))
+    ? '-'
+    : i18n.t('est.won', { v0: Number(v).toLocaleString() });
 
 /** 숫자 입력 문자열 → 숫자(빈칸은 0). 콤마가 섞여 들어와도 받아 준다. */
 export const toNum = (v: string) => {

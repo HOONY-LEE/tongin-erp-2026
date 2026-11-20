@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { LEAD_STATUS_LABEL } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
@@ -58,6 +59,7 @@ function Info({ label, value }: { label: string; value?: string | null }) {
 
 /** 1. 기본정보 — 견적서 머리 정보. 회색 칸은 다른 단계에서 정해지는 값이라 읽기만 한다. */
 export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
@@ -98,7 +100,7 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         canEditCustomer &&
         (form.customerName !== base.customerName || form.customerPhone !== base.customerPhone)
       ) {
-        if (!form.customerName.trim()) throw new Error('고객명을 입력하세요.');
+        if (!form.customerName.trim()) throw new Error(t('est.nameReq'));
         await api(`/customers/${data.customerId}`, {
           method: 'PATCH',
           body: JSON.stringify({
@@ -124,11 +126,11 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
       });
       accept(next);
       onSaved(next);
-      toast({ type: 'success', title: '기본정보를 저장했습니다' });
+      toast({ type: 'success', title: t('est.basicSaved') });
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError || e instanceof Error ? e.message : '저장하지 못했습니다',
+        title: e instanceof ApiError || e instanceof Error ? e.message : t('est.saveFailed'),
       });
     } finally {
       setSaving(false);
@@ -139,16 +141,16 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
   return (
     <div className={styles.panel} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className={styles.infoBox}>
-        <Info label="계약번호" value={m.contractNo ?? '계약 전'} />
-        <Info label="계약담당자" value={m.estimatorName} />
-        <Info label="담당자연락처" value={m.estimatorPhone} />
-        <Info label="지점명" value={m.orgUnitName} />
+        <Info label={t('est.contractNo')} value={m.contractNo ?? t('est.beforeContract')} />
+        <Info label={t('est.estimator')} value={m.estimatorName} />
+        <Info label={t('est.estimatorPhone')} value={m.estimatorPhone} />
+        <Info label={t('est.branchName')} value={m.orgUnitName} />
       </div>
 
       <div className={styles.row2}>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>
-            고객명
+            {t('est.customerName')}
             {canEditCustomer && <span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>}
           </span>
           <Input
@@ -158,7 +160,7 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
           />
         </label>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>전화번호</span>
+          <span className={styles.fieldLabel}>{t('est.phone')}</span>
           <PhoneInput
             value={form.customerPhone}
             onChange={(v) => set('customerPhone', v)}
@@ -168,13 +170,13 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
       </div>
       {canEdit && !canEditCustomer && (
         <div className={styles.sub} style={{ marginTop: -8 }}>
-          고객명·전화번호는 고객관리 권한이 있어야 고칠 수 있습니다.
+          {t('est.customerPermHint')}
         </div>
       )}
 
       <div className={styles.row2}>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>이사 종류</span>
+          <span className={styles.fieldLabel}>{t('est.moveKind')}</span>
           <Select
             value={form.productId}
             onValueChange={(v) => set('productId', v)}
@@ -183,7 +185,7 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
           />
         </div>
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>진행상태</span>
+          <span className={styles.fieldLabel}>{t('est.status')}</span>
           {/* 진행상태는 견적 확정·계약 전환 같은 실제 처리로만 바뀐다(임의로 고르면 흐름이 꼬인다) */}
           <Input value={m.leadStatus ? LEAD_STATUS_LABEL[m.leadStatus] : '-'} disabled readOnly />
         </div>
@@ -193,13 +195,13 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
 
       <AddressField
         addrPrefix="from"
-        label="전 주소"
+        label={t('est.fromAddr')}
         values={form.addr}
         setField={canEdit ? setAddr : () => undefined}
       />
       <AddressField
         addrPrefix="to"
-        label="후 주소"
+        label={t('est.toAddr')}
         values={form.addr}
         setField={canEdit ? setAddr : () => undefined}
       />
@@ -218,11 +220,11 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
 
       <div className={styles.row2}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>접수일</span>
+          <span className={styles.fieldLabel}>{t('est.receivedDate')}</span>
           <Input value={m.receivedDate ?? '-'} disabled readOnly />
         </label>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>상담일</span>
+          <span className={styles.fieldLabel}>{t('est.consultDate')}</span>
           <Input
             type="date"
             value={form.visitDate}
@@ -231,11 +233,11 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
           />
         </label>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>계약일</span>
-          <Input value={m.contractDate ?? '계약 전'} disabled readOnly />
+          <span className={styles.fieldLabel}>{t('est.contractDate')}</span>
+          <Input value={m.contractDate ?? t('est.beforeContract')} disabled readOnly />
         </label>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>이사일</span>
+          <span className={styles.fieldLabel}>{t('est.moveDate')}</span>
           <Input
             type="date"
             value={form.moveDate}
@@ -252,7 +254,7 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         canSave={canSave}
         onSave={save}
         onReset={reset}
-        hint="주소·상담일·이사일은 접수에도 같이 반영됩니다."
+        hint={t('est.basicHint')}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -39,6 +40,7 @@ export function RouteMapModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [route, setRoute] = useState<Route | null>(null);
   const [error, setError] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -49,7 +51,7 @@ export function RouteMapModal({
     setError(null);
     api<Route>(`/estimates/${estimateId}/route`)
       .then(setRoute)
-      .catch((e) => setError(e instanceof ApiError ? e.message : '경로를 불러오지 못했습니다'));
+      .catch((e) => setError(e instanceof ApiError ? e.message : t('est.routeFailed')));
   }, [open, estimateId]);
 
   useEffect(() => {
@@ -65,26 +67,26 @@ export function RouteMapModal({
       opacity: 0.9,
       dashArray: route.source === 'STRAIGHT' ? '8 8' : undefined,
     }).addTo(map);
-    L.marker([route.from.lat, route.from.lng], { icon: pin('출', '#2563eb') })
-      .bindTooltip(`출발 · ${route.fromAddr}`)
+    L.marker([route.from.lat, route.from.lng], { icon: pin(t('est.pinFrom'), '#2563eb') })
+      .bindTooltip(t('est.fromTip', { v0: route.fromAddr }))
       .addTo(map);
-    L.marker([route.to.lat, route.to.lng], { icon: pin('도', '#ff5c00') })
-      .bindTooltip(`도착 · ${route.toAddr}`)
+    L.marker([route.to.lat, route.to.lng], { icon: pin(t('est.pinTo'), '#ff5c00') })
+      .bindTooltip(t('est.toTip', { v0: route.toAddr }))
       .addTo(map);
     map.fitBounds(line.getBounds(), { padding: [36, 36] });
     // 모달이 열리는 애니메이션 뒤·창 크기가 바뀔 때 크기를 다시 잰다(안 하면 지도 바탕이 비어 보인다)
-    const t = setTimeout(() => map.invalidateSize(), 200);
+    const timer = setTimeout(() => map.invalidateSize(), 200);
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(box.current);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       ro.disconnect();
       map.remove();
     };
   }, [route]);
 
   return (
-    <Modal open={open} onOpenChange={(o) => !o && onClose()} title="이사 경로" size="lg">
+    <Modal open={open} onOpenChange={(o) => !o && onClose()} title={t('est.route')} size="lg">
       {error ? (
         <div className={styles.routeError}>{error}</div>
       ) : !route ? (
@@ -95,17 +97,21 @@ export function RouteMapModal({
         <div className={styles.routeWrap}>
           <div className={styles.routeSummary}>
             <span className={styles.routeKm}>{route.distanceKm.toLocaleString()} km</span>
-            {route.durationMin != null && <span>약 {formatDuration(route.durationMin)}</span>}
+            {route.durationMin != null && (
+              <span>
+                {t('est.about')} {formatDuration(route.durationMin)}
+              </span>
+            )}
             <span className={styles.routeSrc}>
-              {route.source === 'KAKAO' ? '카카오 길찾기 도로 기준' : '직선거리 × 1.3 추정'}
+              {route.source === 'KAKAO' ? t('est.byKakao') : t('est.byStraight')}
             </span>
           </div>
           <div className={styles.routeAddrs}>
             <div>
-              <b className={styles.routeFrom}>출발</b> {route.fromAddr}
+              <b className={styles.routeFrom}>{t('est.from')}</b> {route.fromAddr}
             </div>
             <div>
-              <b className={styles.routeTo}>도착</b> {route.toAddr}
+              <b className={styles.routeTo}>{t('est.to')}</b> {route.toAddr}
             </div>
           </div>
           <div ref={box} className={styles.routeMap} />

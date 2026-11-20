@@ -9,9 +9,13 @@ import leads from './leads';
 import employees from './employees';
 import customers from './customers';
 import cal from './cal';
+import est from './est';
+import deals from './deals';
 
 /** 네임스페이스 이름 → 번역 묶음. t('ui.copy')처럼 '이름.키'로 쓴다. 새 화면은 여기 등록. */
 export const NAMESPACES = {
+  deals,
+  est,
   cal,
   customers,
   employees,

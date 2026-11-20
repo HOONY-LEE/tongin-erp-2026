@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -26,7 +28,7 @@ interface SendResult {
   message: string;
 }
 
-const won = (v: number) => `${Math.round(v).toLocaleString()}원`;
+const won = (v: number) => i18n.t('est.won', { v0: Math.round(v).toLocaleString() });
 
 /**
  * 고객에게 견적서 보내기 — 문자 한 통에 견적서·서명 링크와 계약금 계좌를 담아 보낸다.
@@ -45,6 +47,7 @@ export function SendEstimateModal({
   dirty: boolean;
   onSent: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [sending, setSending] = useState(false);
@@ -59,7 +62,7 @@ export function SendEstimateModal({
     api<Preview>(`/estimates/${data.id}/send`)
       .then(setPreview)
       .catch((e) =>
-        toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' }),
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.loadFailed') }),
       );
   }, [open, data.id, toast]);
 
@@ -71,11 +74,11 @@ export function SendEstimateModal({
       onSent();
       toast(
         r.ok
-          ? { type: 'success', title: '견적서를 보냈습니다' }
-          : { type: 'warning', title: `문자는 보내지 못했습니다 — ${r.reason ?? ''}` },
+          ? { type: 'success', title: t('est.sent') }
+          : { type: 'warning', title: t('est.smsFailed', { v0: r.reason ?? '' }) },
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '보내지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.sendFailed') });
     } finally {
       setSending(false);
     }
@@ -96,16 +99,16 @@ export function SendEstimateModal({
     <Modal
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="고객에게 견적서 보내기"
+      title={t('est.send')}
       footer={
         result ? (
           <Button variant="primary" onClick={onClose}>
-            닫기
+            {t('est.close')}
           </Button>
         ) : (
           <>
             <Button variant="ghost" onClick={onClose}>
-              취소
+              {t('est.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -113,7 +116,7 @@ export function SendEstimateModal({
               loading={sending}
               disabled={!preview || preview.problems.length > 0}
             >
-              {preview?.sentAt ? '다시 보내기' : '보내기'}
+              {preview?.sentAt ? t('est.resendBtn') : t('est.sendBtn')}
             </Button>
           </>
         )
@@ -126,23 +129,23 @@ export function SendEstimateModal({
       ) : result ? (
         <div className={styles.sendBox}>
           <div className={styles.sendRow}>
-            <span>받는 사람</span>
+            <span>{t('est.to2')}</span>
             <b>
               {data.meta.customerName} · {result.to ? formatPhone(result.to) : '-'}
             </b>
           </div>
           <div className={styles.sendRow}>
-            <span>문자</span>
+            <span>{t('est.sms')}</span>
             <b>
               {result.ok
                 ? result.delivered
-                  ? '발송 완료'
-                  : '발송 처리(시연 — 실제 문자는 나가지 않음)'
-                : `발송 안 됨 — ${result.reason ?? ''}`}
+                  ? t('est.smsSent')
+                  : t('est.smsDemo')
+                : t('est.smsNot', { v0: result.reason ?? '' })}
             </b>
           </div>
           <div className={styles.sendRow}>
-            <span>서명 링크</span>
+            <span>{t('est.signLink')}</span>
             <span className={styles.sendLink}>
               <a href={result.link} target="_blank" rel="noreferrer">
                 {result.link}
@@ -150,7 +153,7 @@ export function SendEstimateModal({
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label="링크 복사"
+                aria-label={t('est.copyLink')}
                 onClick={() => void copy(result.link)}
               >
                 {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -161,40 +164,32 @@ export function SendEstimateModal({
         </div>
       ) : (
         <div className={styles.sendBox}>
-          {dirty && (
-            <div className={styles.sendWarn}>
-              저장하지 않은 변경이 있습니다. 저장한 내용으로 보내집니다.
-            </div>
-          )}
+          {dirty && <div className={styles.sendWarn}>{t('est.unsavedSend')}</div>}
           {preview.problems.map((p) => (
             <div key={p} className={styles.sendWarn}>
               {p}
             </div>
           ))}
           <div className={styles.sendRow}>
-            <span>받는 사람</span>
+            <span>{t('est.to2')}</span>
             <b>
-              {data.meta.customerName} · {preview.to ? formatPhone(preview.to) : '연락처 없음'}
+              {data.meta.customerName} · {preview.to ? formatPhone(preview.to) : t('est.noPhone')}
             </b>
           </div>
           <div className={styles.sendRow}>
-            <span>총 비용</span>
+            <span>{t('est.totalCost')}</span>
             <b>{won(preview.totalAmount)}</b>
           </div>
           <div className={styles.sendRow}>
-            <span>계약금</span>
+            <span>{t('est.deposit')}</span>
             <b>{won(preview.depositAmount)}</b>
           </div>
           <ul className={styles.sendList}>
-            <li>문자에 견적서 확인·전자서명 링크와 계약금 입금 계좌가 함께 갑니다.</li>
-            <li>고객은 링크에서 견적서를 보고, PDF로 저장하고, 바로 서명할 수 있습니다.</li>
-            <li>
-              {preview.paymentMode.autoConfirm
-                ? '계약금 계좌는 고객 전용 가상계좌로 발급되어, 입금하면 입금확인에 자동으로 반영됩니다.'
-                : '계약금 계좌는 회사 계좌로 안내됩니다. 입금확인 화면에서 확인(또는 시연용 입금 시뮬레이션)하면 반영됩니다.'}
-            </li>
-            {signed && <li>이미 고객이 서명했습니다 — 다시 보내도 금액은 바뀌지 않습니다.</li>}
-            {!preview.smsVendor && <li>문자 발송사가 연결되지 않아 시연 모드로 처리됩니다.</li>}
+            <li>{t('est.sendNote1')}</li>
+            <li>{t('est.sendNote2')}</li>
+            <li>{preview.paymentMode.autoConfirm ? t('est.sendNote3a') : t('est.sendNote3b')}</li>
+            {signed && <li>{t('est.sendNoteSigned')}</li>}
+            {!preview.smsVendor && <li>{t('est.sendNoteDemo')}</li>}
           </ul>
         </div>
       )}

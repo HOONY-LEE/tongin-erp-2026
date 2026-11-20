@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import {
@@ -119,7 +121,7 @@ const derive = (d: EstimateDetailData): ItemsForm => {
     rooms.push({
       uid: 'loose',
       roomKey: null,
-      name: '미분류',
+      name: i18n.t('est.uncategorized'),
       nameEng: '',
       rows: loose.map((l) => fromLine(l, false)),
     });
@@ -132,6 +134,7 @@ const newUid = (p: string) => `${p}:new${++seq}`;
 
 /** 2. 물품정보 — 방마다 물품을 고르고 부피(또는 무게)·처리방법·메모를 적는다. */
 export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
   const [saving, setSaving] = useState(false);
@@ -145,7 +148,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
   );
   const handlingOptions = catalog.handlings.map((h) => ({
     value: h.code,
-    label: h.isActive ? h.name : `${h.name} (사용 안 함)`,
+    label: h.isActive ? h.name : t('est.inactive', { v0: h.name }),
   }));
   const unit = form.unit;
   const unitText = VOLUME_UNIT_LABEL[unit];
@@ -250,7 +253,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
   const save = async () => {
     const unnamed = form.rooms.some((r) => r.rows.some((row) => row.on && !row.itemName.trim()));
     if (unnamed) {
-      toast({ type: 'warning', title: '직접 추가한 물품의 이름을 입력하세요.' });
+      toast({ type: 'warning', title: t('est.itemNameReq') });
       return;
     }
     setSaving(true);
@@ -278,9 +281,9 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
       });
       accept(next);
       onSaved(next);
-      toast({ type: 'success', title: '물품정보를 저장했습니다' });
+      toast({ type: 'success', title: t('est.itemsSaved') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -298,14 +301,14 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
       <div className={styles.panel}>
         <div className={styles.panelHead}>
           <h3 className={styles.panelTitle} style={{ marginBottom: 0 }}>
-            합계 <span className={styles.sub}>/Total Amount</span>
+            {t('est.total')} <span className={styles.sub}>/Total Amount</span>
           </h3>
           <SegmentedControl
             value={unit}
             onChange={(v) => setForm((f) => ({ ...f, unit: v as VolumeUnit }))}
             options={[
-              { value: 'CBM', label: 'CBM 견적' },
-              { value: 'TON', label: '톤 견적' },
+              { value: 'CBM', label: t('est.unit.CBM') },
+              { value: 'TON', label: t('est.unit.TON') },
             ]}
             size="sm"
             disabled={!canEdit}
@@ -314,10 +317,10 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         <div className={styles.volGrid}>
           {(
             [
-              ['이사물량', total.moving],
-              ['경유물량', total.transit],
-              ['폐기물량', total.discard],
-              ['전체물량', total.total],
+              [t('est.vol.moving'), total.moving],
+              [t('est.vol.transit'), total.transit],
+              [t('est.vol.discard'), total.discard],
+              [t('est.vol.total'), total.total],
             ] as const
           ).map(([label, v], i) => (
             <div key={label} className={[styles.volCard, i === 3 ? styles.volTotal : ''].join(' ')}>
@@ -348,7 +351,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                 {room.nameEng && <div className={styles.roomEng}>/{room.nameEng}</div>}
               </span>
               <span className={[styles.cbmPill, count ? styles.cbmPillOn : ''].join(' ')}>
-                {count ? `${count}개 · ` : ''}
+                {count ? t('est.countDot', { v0: count }) : ''}
                 {roomTotal} {unitText}
               </span>
               {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -357,12 +360,12 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
             {isOpen && (
               <>
                 <div className={[styles.itemGrid, styles.itemHeadRow].join(' ')}>
-                  <span>물품</span>
-                  <span>메모</span>
+                  <span>{t('est.item')}</span>
+                  <span>{t('est.memo')}</span>
                   <span style={{ textAlign: 'right' }}>
-                    {unit === 'TON' ? '무게(톤)' : '부피(CBM)'}
+                    {unit === 'TON' ? t('est.weight') : t('est.volume')}
                   </span>
-                  <span>처리방법</span>
+                  <span>{t('est.handling')}</span>
                   <span />
                 </div>
                 {room.rows.map((row) => {
@@ -390,8 +393,8 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                           className={styles.textInput}
                           value={row.itemName}
                           list={`move-items-${data.id}`}
-                          placeholder="물품명 (목록에서 고르거나 직접 입력)"
-                          aria-label="물품명"
+                          placeholder={t('est.itemPh')}
+                          aria-label={t('est.itemName')}
                           disabled={!canEdit}
                           onChange={(e) => renameRow(room.uid, row, e.target.value)}
                         />
@@ -399,15 +402,15 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                       <input
                         className={styles.textInput}
                         value={row.memo}
-                        placeholder="메모"
-                        aria-label={`${row.itemName || '물품'} 메모`}
+                        placeholder={t('est.memo')}
+                        aria-label={t('est.memoOf', { v0: row.itemName || '물품' })}
                         disabled={!canEdit || !row.on}
                         onChange={(e) => patchRow(room.uid, row.uid, { memo: e.target.value })}
                       />
                       <UnitField
                         value={row[valueKey]}
                         unit={unitText}
-                        ariaLabel={`${row.itemName || '물품'} ${unit === 'TON' ? '무게' : '부피'}`}
+                        ariaLabel={`${row.itemName || t('est.item')} ${unit === 'TON' ? t('est.w') : t('est.v')}`}
                         placeholder={fallback || '0'}
                         disabled={!canEdit || !row.on}
                         onChange={(v) => patchRow(room.uid, row.uid, { [valueKey]: v })}
@@ -424,7 +427,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                         <button
                           type="button"
                           className={styles.iconBtn}
-                          aria-label="물품 삭제"
+                          aria-label={t('est.itemDelete')}
                           disabled={!canEdit}
                           onClick={() => removeRow(room.uid, row.uid)}
                         >
@@ -437,11 +440,11 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                 {canEdit && (
                   <div className={styles.roomFoot}>
                     <Button variant="outline" size="sm" onClick={() => addRow(room.uid)}>
-                      <Plus size={14} /> 물품 추가
+                      <Plus size={14} /> {t('est.itemAdd')}
                     </Button>
                     {!room.roomKey && (
                       <Button variant="ghost" size="sm" onClick={() => removeRoom(room.uid)}>
-                        방 삭제
+                        {t('est.roomDelete')}
                       </Button>
                     )}
                   </div>
@@ -458,13 +461,13 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
             className={styles.textInput}
             style={{ flex: 1, maxWidth: 320 }}
             value={newRoomName}
-            placeholder="방 이름 (예: 드레스룸, 서재)"
-            aria-label="추가할 방 이름"
+            placeholder={t('est.roomPh')}
+            aria-label={t('est.roomNew')}
             onChange={(e) => setNewRoomName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addRoom()}
           />
           <Button variant="outline" onClick={addRoom} disabled={!newRoomName.trim()}>
-            <Plus size={14} /> 방 추가
+            <Plus size={14} /> {t('est.roomAdd')}
           </Button>
         </div>
       )}
@@ -476,7 +479,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         canSave={canSave}
         onSave={save}
         onReset={reset}
-        hint="체크한 물품만 저장됩니다. 체크하면 물품의 기본 부피·무게가 채워지고, 고쳐 쓸 수 있습니다."
+        hint={t('est.itemsHint')}
       />
     </div>
   );
