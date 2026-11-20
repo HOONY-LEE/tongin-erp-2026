@@ -14,9 +14,15 @@ import deals from './deals';
 import att from './att';
 import leave from './leave';
 import appr from './appr';
+import duty from './duty';
+import task from './task';
+import hrp from './hrp';
 
 /** 네임스페이스 이름 → 번역 묶음. t('ui.copy')처럼 '이름.키'로 쓴다. 새 화면은 여기 등록. */
 export const NAMESPACES = {
+  hrp,
+  task,
+  duty,
   appr,
   leave,
   att,

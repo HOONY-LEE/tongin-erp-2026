@@ -181,30 +181,30 @@ export default function Tasks() {
 
   const fields: FormField[] = useMemo(
     () => [
-      { name: 'title', label: '업무', required: true },
+      { name: 'title', label: t('task.f.title'), required: true },
       // 팀과 담당자는 따로 — 담당자가 그 팀 사람이 아니어도 된다(다른 팀에 맡기는 일 등)
       {
         name: 'teamOrgId',
-        label: '팀',
+        label: t('task.f.team'),
         type: 'select',
         options: dir.teamOptions,
         searchable: true,
-        placeholder: '팀 찾기(선택)',
+        placeholder: t('task.f.teamPh'),
         alwaysShow: true,
         pairWithNext: true,
       },
       {
         name: 'assigneeEmpId',
-        label: '담당자',
+        label: t('task.f.assignee'),
         type: 'select',
         optionGroups: dir.peopleGroups,
         searchable: true,
-        placeholder: '이름으로 찾기',
+        placeholder: t('task.findByName'),
         alwaysShow: true,
       },
       {
         name: 'priority',
-        label: '우선순위',
+        label: t('task.f.priority'),
         type: 'select',
         options: (['A', 'B', 'C'] as const).map((v) => ({
           value: v,
@@ -213,32 +213,32 @@ export default function Tasks() {
         alwaysShow: true,
         pairWithNext: true,
       },
-      { name: 'dueDate', label: '기한', type: 'date', alwaysShow: true },
+      { name: 'dueDate', label: t('task.f.due'), type: 'date', alwaysShow: true },
       {
         name: 'status',
-        label: '상태',
+        label: t('task.f.status'),
         type: 'chips',
         options: TASK_STATUS.map((s) => ({ value: s, label: TASK_STATUS_LABEL[s] })),
         // 칸반 칸에서 '+ 업무 추가'로 열면 그 칸 상태로 채워져 있다 — 바로 보이게
         alwaysShow: true,
       },
-      { name: 'project', label: '사업·프로젝트', placeholder: '예: 무브제 컨시어지' },
+      { name: 'project', label: t('task.f.project'), placeholder: t('task.f.projectPh') },
       // 업무분장 항목 — 고르면 그 항목의 '진행 중'에 센다
       {
         name: 'dutyId',
-        label: '업무분장',
+        label: t('task.f.duty'),
         type: 'select',
         optionGroups: dutyGroups,
-        placeholder: '맡은 업무 중 하나라면 고르세요',
+        placeholder: t('task.f.dutyPh'),
       },
       {
         name: 'requesterEmpId',
-        label: '요청자(다른 팀이 맡긴 일)',
+        label: t('task.f.requester'),
         type: 'select',
         optionGroups: dir.peopleGroups,
         searchable: true,
       },
-      { name: 'description', label: '내용', type: 'textarea' },
+      { name: 'description', label: t('task.f.desc'), type: 'textarea' },
     ],
     [dir, dutyGroups],
   );
@@ -250,7 +250,7 @@ export default function Tasks() {
         method: isNew ? 'POST' : 'PATCH',
         body: JSON.stringify(values),
       });
-      toast({ type: 'success', title: isNew ? '업무를 등록했습니다' : '저장했습니다' });
+      toast({ type: 'success', title: isNew ? t('task.created') : t('task.saved') });
       await load();
       if (isNew) detail.open(saved.id);
     } catch (e) {
@@ -262,7 +262,7 @@ export default function Tasks() {
   const changeStatus = async (task: Task, to: TaskStatus) => {
     try {
       await api(`/tasks/${task.id}`, { method: 'PATCH', body: JSON.stringify({ status: to }) });
-      toast({ type: 'success', title: `${TASK_STATUS_LABEL[to]}(으)로 바꿨습니다` });
+      toast({ type: 'success', title: t('task.statusChanged', { v0: TASK_STATUS_LABEL[to] }) });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -270,14 +270,14 @@ export default function Tasks() {
   };
 
   const remove = async (task: Task) => {
-    if (!window.confirm(`'${task.title}' 업무를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t('task.deleteQ', { v0: task.title }))) return;
     try {
       await api(`/tasks/${task.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
+      toast({ type: 'success', title: t('task.deleted') });
       detail.close();
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('task.deleteFailed') });
     }
   };
 
@@ -289,7 +289,7 @@ export default function Tasks() {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? '업무 등록' : '업무 수정'}
+      title={editing === 'new' ? t('task.createTitle') : t('task.editTitle')}
       size="md"
       fields={fields}
       initialValues={
@@ -328,7 +328,7 @@ export default function Tasks() {
       <>
         <RecordDetail
           loading={!d && loading}
-          title={d ? d.title : '찾을 수 없습니다'}
+          title={d ? d.title : t('task.notFound')}
           backLabel={t('nav.tasks')}
           onBack={detail.close}
           actions={
@@ -336,17 +336,17 @@ export default function Tasks() {
               <>
                 {can('TASK.DELETE') && (
                   <Button variant="ghost" size="sm" onClick={() => void remove(d)}>
-                    삭제
+                    {t('task.delete')}
                   </Button>
                 )}
                 {canEdit && (
                   <Button variant="secondary" size="sm" onClick={() => setAssigning(true)}>
-                    담당 넘기기
+                    {t('task.handOff')}
                   </Button>
                 )}
                 {canEdit && (
                   <Button variant="secondary" size="sm" onClick={() => setEditing(d)}>
-                    수정
+                    {t('task.edit')}
                   </Button>
                 )}
                 {canEdit && (
@@ -365,35 +365,35 @@ export default function Tasks() {
               ? [
                   {
                     items: [
-                      { label: '상태', value: <TaskStatusLabel status={d.status} /> },
+                      { label: t('task.f.status'), value: <TaskStatusLabel status={d.status} /> },
                       {
-                        label: '우선순위',
+                        label: t('task.f.priority'),
                         value: <TaskPriorityLabel priority={d.priority} />,
                       },
-                      { label: '번호', value: `T-${d.seq}` },
-                      { label: '팀', value: d.team?.name },
-                      { label: '담당자', value: d.assignee?.name },
-                      { label: '생성자', value: d.creator?.name },
+                      { label: t('task.no'), value: `T-${d.seq}` },
+                      { label: t('task.f.team'), value: d.team?.name },
+                      { label: t('task.f.assignee'), value: d.assignee?.name },
+                      { label: t('task.creator'), value: d.creator?.name },
                       {
-                        label: '요청자',
+                        label: t('task.requester'),
                         value: d.requester
                           ? [d.requester.name, d.requester.orgUnit?.name]
                               .filter(Boolean)
                               .join(' · ')
                           : null,
                       },
-                      { label: '사업·프로젝트', value: d.project },
-                      { label: '업무분장', value: d.duty?.title },
-                      { label: '기한', value: d.dueDate ? <Due t={d} /> : null },
-                      { label: '등록일', value: shortDate(d.createdAt) },
-                      { label: '완료일', value: d.doneAt ? shortDate(d.doneAt) : null },
+                      { label: t('task.f.project'), value: d.project },
+                      { label: t('task.f.duty'), value: d.duty?.title },
+                      { label: t('task.f.due'), value: d.dueDate ? <Due t={d} /> : null },
+                      { label: t('task.createdAt'), value: shortDate(d.createdAt) },
+                      { label: t('task.doneAt'), value: d.doneAt ? shortDate(d.doneAt) : null },
                     ],
                   },
                   {
-                    title: '내용',
+                    title: t('task.f.desc'),
                     items: [
                       {
-                        label: '내용',
+                        label: t('task.f.desc'),
                         value: d.description ? (
                           <p className={styles.body}>{d.description}</p>
                         ) : null,
@@ -435,15 +435,15 @@ export default function Tasks() {
   const count = (s: 'ALL' | TaskStatus) =>
     s === 'ALL' ? rows.length : rows.filter((r) => r.status === s).length;
   const statusOptions = [
-    { value: 'ALL', label: `모든 상태 ${count('ALL')}` },
+    { value: 'ALL', label: t('task.allStatus', { v0: count('ALL') }) },
     ...TASK_STATUS.map((s) => ({ value: s, label: `${TASK_STATUS_LABEL[s]} ${count(s)}` })),
   ];
   const teamOptions = [
-    { value: 'ALL', label: '모든 팀' },
+    { value: 'ALL', label: t('task.allTeams') },
     ...[...new Map(rows.filter((r) => r.team).map((r) => [r.team!.id, r.team!.name])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([value, label]) => ({ value, label })),
-    ...(rows.some((r) => !r.team) ? [{ value: 'NONE', label: '팀 없음(개인)' }] : []),
+    ...(rows.some((r) => !r.team) ? [{ value: 'NONE', label: t('task.noTeam') }] : []),
   ];
   const term = q.trim().toLowerCase();
   const listRows = rows.filter(
@@ -459,51 +459,53 @@ export default function Tasks() {
 
   const columns: Column[] = [
     {
-      title: '번호',
+      title: t('task.no'),
       width: 80,
       render: (r) => <span className={styles.taskNo}>T-{(r as unknown as Task).seq}</span>,
       exportValue: (r) => `T-${(r as unknown as Task).seq}`,
     },
-    { title: '업무', dataIndex: 'title', flex: 1, minWidth: 220 },
+    { title: t('task.f.title'), dataIndex: 'title', flex: 1, minWidth: 220 },
     {
-      title: '우선순위',
+      title: t('task.f.priority'),
       width: 96,
       dataIndex: 'priority',
       render: (r) => <TaskPriorityLabel priority={(r as unknown as Task).priority} />,
       exportValue: (r) => TASK_PRIORITY_META[(r as unknown as Task).priority]?.label ?? '',
     },
     {
-      title: '상태',
+      title: t('task.f.status'),
       width: 100,
       render: (r) => <TaskStatusLabel status={r.status as TaskStatus} />,
       exportValue: (r) => TASK_STATUS_LABEL[r.status as TaskStatus],
     },
     {
-      title: '사업',
+      title: t('task.project'),
       minWidth: 120,
       render: (r) => (r as unknown as Task).project ?? '-',
       exportValue: (r) => (r as unknown as Task).project ?? '',
     },
     {
-      title: '팀',
+      title: t('task.f.team'),
       width: 110,
       render: (r) => (r as unknown as Task).team?.name ?? '-',
       exportValue: (r) => (r as unknown as Task).team?.name ?? '',
     },
     {
-      title: '담당자',
+      title: t('task.f.assignee'),
       width: 96,
-      render: (r) => <PersonChip name={(r as unknown as Task).assignee?.name} empty="미배정" />,
+      render: (r) => (
+        <PersonChip name={(r as unknown as Task).assignee?.name} empty={t('task.unassigned')} />
+      ),
       exportValue: (r) => (r as unknown as Task).assignee?.name ?? '',
     },
     {
-      title: '생성자',
+      title: t('task.creator'),
       width: 96,
       render: (r) => <PersonChip name={(r as unknown as Task).creator?.name} />,
       exportValue: (r) => (r as unknown as Task).creator?.name ?? '',
     },
     {
-      title: '기한',
+      title: t('task.f.due'),
       width: 150,
       dataIndex: 'dueDate',
       render: (r) => <Due t={r as unknown as Task} />,
@@ -520,16 +522,16 @@ export default function Tasks() {
         setEditing('new');
       }}
     >
-      + 업무 등록
+      {t('task.createBtn')}
     </Button>
   ) : undefined;
 
   const scopeOptions = [
-    { value: 'mine', label: '내 업무' },
+    { value: 'mine', label: t('task.scope.mine') },
     ...(canTeam
       ? [
-          { value: 'team', label: '우리 팀' },
-          { value: 'all', label: '전체' },
+          { value: 'team', label: t('task.scope.team') },
+          { value: 'all', label: t('task.scope.all') },
         ]
       : []),
   ];
@@ -547,8 +549,8 @@ export default function Tasks() {
       value={view}
       onChange={(v) => setView(v as View)}
       options={[
-        { value: 'board', label: '칸반' },
-        { value: 'list', label: '리스트' },
+        { value: 'board', label: t('task.view.board') },
+        { value: 'list', label: t('task.view.list') },
       ]}
     />
   );
@@ -566,7 +568,7 @@ export default function Tasks() {
                 className={`${styles.taskStat} ${status === k ? styles.taskStatOn : ''}`}
                 onClick={() => setStatus(status === k && k !== 'ALL' ? 'ALL' : k)}
               >
-                <span>{k === 'ALL' ? '전체 업무' : `${TASK_STATUS_LABEL[k]}`}</span>
+                <span>{k === 'ALL' ? t('task.allTasks') : `${TASK_STATUS_LABEL[k]}`}</span>
                 <b>{count(k)}</b>
                 {k === 'ALL' ? (
                   <i className={styles.taskStatIcon} aria-hidden />
@@ -594,7 +596,7 @@ export default function Tasks() {
                     value={status}
                     onValueChange={(v) => setStatus(v as 'ALL' | TaskStatus)}
                     options={statusOptions}
-                    aria-label="상태"
+                    aria-label={t('task.f.status')}
                   />
                 </div>
                 <div className={styles.statusFilter}>
@@ -602,13 +604,13 @@ export default function Tasks() {
                     value={priority}
                     onValueChange={(v) => setPriority(v as 'ALL' | Task['priority'])}
                     options={[
-                      { value: 'ALL', label: '모든 우선순위' },
+                      { value: 'ALL', label: t('task.allPriority') },
                       ...(['A', 'B', 'C'] as const).map((p) => ({
                         value: p,
                         label: TASK_PRIORITY_META[p].label,
                       })),
                     ]}
-                    aria-label="우선순위"
+                    aria-label={t('task.f.priority')}
                   />
                 </div>
                 {teamOptions.length > 2 && (
@@ -617,7 +619,7 @@ export default function Tasks() {
                       value={teamFilter}
                       onValueChange={setTeamFilter}
                       options={teamOptions}
-                      aria-label="팀"
+                      aria-label={t('task.f.team')}
                     />
                   </div>
                 )}
@@ -625,7 +627,7 @@ export default function Tasks() {
             }
             toolbarActions={addButton}
             exportable
-            exportFileName="작업관리"
+            exportFileName={t('task.exportName')}
           />
         </>
       ) : (
@@ -676,6 +678,7 @@ function Avatar({ id, name }: { id?: string; name: string }) {
 
 /** 칸반 카드 아래 — 우선순위·사업 / 기한·등록일 / 요청 → 담당 */
 function CardFooter({ task }: { task: Task }) {
+  const { t } = useTranslation();
   const info = task.dueDate && task.status !== 'DONE' ? ddayInfo(task.dueDate, 3) : null;
   return (
     <div className={styles.kFooter}>
@@ -689,20 +692,23 @@ function CardFooter({ task }: { task: Task }) {
         <span
           className={`${styles.kDue} ${info?.level === 'over' ? styles.over : info?.level === 'soon' ? styles.soon : ''}`}
         >
-          <CalendarClock size={11} aria-hidden /> 기한 {task.dueDate ? md(task.dueDate) : '—'}
+          <CalendarClock size={11} aria-hidden /> {t('task.f.due')}{' '}
+          {task.dueDate ? md(task.dueDate) : '—'}
           {info && info.level !== 'ok' ? ` · ${info.label}` : ''}
         </span>
-        <span>등록 {md(task.createdAt)}</span>
+        <span>
+          {t('task.created2')} {md(task.createdAt)}
+        </span>
       </div>
       <div className={styles.kPeople}>
         {task.requester ? (
           <>
             <Avatar id={task.requester.id} name={task.requester.name} />
             <span className={styles.kName}>{task.requester.name}</span>
-            <ArrowRight size={12} className={styles.kMuted} aria-label="에게" />
+            <ArrowRight size={12} className={styles.kMuted} aria-label={t('task.to')} />
           </>
         ) : (
-          <span className={styles.kLabel}>담당</span>
+          <span className={styles.kLabel}>{t('task.owner')}</span>
         )}
         {task.assignee ? (
           <>
@@ -710,7 +716,7 @@ function CardFooter({ task }: { task: Task }) {
             <span className={styles.kName}>{task.assignee.name}</span>
           </>
         ) : (
-          <span className={styles.kMuted}>미배정</span>
+          <span className={styles.kMuted}>{t('task.unassigned')}</span>
         )}
       </div>
     </div>
@@ -747,6 +753,7 @@ function Board({
   onMove: (task: Task, to: TaskStatus) => void;
   onOpen: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const term = q.trim().toLowerCase();
   const shown = term
@@ -802,7 +809,7 @@ function Board({
         const task = rows.find((r) => r.id === card.id);
         if (!task || task.status === col.id) continue;
         if (!canMove(task)) {
-          toast({ type: 'error', title: '내가 맡거나 요청한 업무만 상태를 바꿀 수 있습니다' });
+          toast({ type: 'error', title: t('task.onlyMine') });
           setCols(make(shown));
           return;
         }
@@ -815,13 +822,13 @@ function Board({
   return (
     <>
       <ListToolbar
-        search={<SearchInput value={q} onChange={setQ} placeholder="업무·사업·담당자 검색" />}
+        search={<SearchInput value={q} onChange={setQ} placeholder={t('task.search')} />}
         viewSwitch={viewSwitch}
         tabs={tabs}
         actions={addButton}
       />
       {loading && !rows.length ? (
-        <div className={styles.empty}>불러오는 중…</div>
+        <div className={styles.empty}>{t('task.loading')}</div>
       ) : (
         <div ref={wrapRef} className={`task-kanban ${styles.kanbanWrap}`}>
           <KanbanBoard

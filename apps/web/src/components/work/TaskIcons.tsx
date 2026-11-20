@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 import { TASK_STATUS_LABEL, type TaskStatus } from '@tongin/shared';
 
@@ -65,9 +67,9 @@ export const TASK_PRIORITY_META: Record<
   TaskPriority,
   { label: string; color: string; Icon: typeof ArrowUp }
 > = {
-  A: { label: '긴급', color: '#ef4444', Icon: ArrowUp },
-  B: { label: '보통', color: '#f59e0b', Icon: ArrowRight },
-  C: { label: '낮음', color: '#3b82f6', Icon: ArrowDown },
+  A: { label: i18n.t('task.pri.A'), color: '#ef4444', Icon: ArrowUp },
+  B: { label: i18n.t('task.pri.B'), color: '#f59e0b', Icon: ArrowRight },
+  C: { label: i18n.t('task.pri.C'), color: '#3b82f6', Icon: ArrowDown },
 };
 
 export function TaskPriorityLabel({
@@ -79,6 +81,7 @@ export function TaskPriorityLabel({
   size?: number;
   iconOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const m = TASK_PRIORITY_META[priority] ?? TASK_PRIORITY_META.B;
   return (
     <span
@@ -90,7 +93,7 @@ export function TaskPriorityLabel({
         fontWeight: 600,
         whiteSpace: 'nowrap',
       }}
-      title={`우선순위 ${m.label}`}
+      title={t('task.priorityOf', { v0: m.label })}
     >
       <m.Icon size={size} strokeWidth={2.6} aria-hidden />
       {!iconOnly && m.label}
