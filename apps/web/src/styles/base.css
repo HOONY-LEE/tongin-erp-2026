@@ -205,6 +205,13 @@ html[data-font-size='lg'] {
   align-items: center;
   gap: 8px;
 }
+/* 탭이 많은 목록(접수 상태 10개 등) — 칸 좌우 여백을 줄여 한 줄에 담고, 그래도 넘치면 탭 줄만 가로로 민다 */
+.dt-wrap .sft-toolbar .dt-toolbar-tabs [class*='_track_'] button[class*='_segment_'] {
+  padding: 0 10px !important;
+}
+.dt-wrap .dt-toolbar-tabs {
+  scrollbar-width: none;
+}
 .dt-wrap .dt-toolbar-actions,
 .list-toolbar .lt-actions {
   grid-area: actions;
@@ -280,9 +287,8 @@ html[data-font-size='lg'] {
 }
 
 /* ── 화면 높이 맞춤 목록(ListPage fit + DataTable fit) ──
-   콘텐츠 영역(.contentInner)이 flex:1·min-height:0 세로 흐름이라, 목록이 남은 높이만큼만 차지하게
-   이어 준다. 표는 내용 높이만큼만 쓰되(빈 공간으로 늘어나지 않음) 모자라면 줄어들고, 그때 표 본문
-   (.sft-table__scroll)만 스크롤된다 — 툴바·풋터(설정·페이지·N개씩 보기)는 항상 보인다. */
+   콘텐츠 영역(.contentInner)이 flex:1·min-height:0 세로 흐름이라, 목록이 남은 높이를 끝까지 채운다.
+   행이 넘치면 표 본문(.sft-table__scroll)만 스크롤 — 툴바·머리글·풋터(설정·페이지·N개씩 보기)는 늘 보인다. */
 .list-page.fit {
   flex: 1;
   min-height: 0;
@@ -291,13 +297,13 @@ html[data-font-size='lg'] {
 .dt-fit > .sft-table-root {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 .dt-fit .sft-table {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   /* 아주 낮은 창에서도 표가 사라질 만큼 줄지는 않게 — 그 아래로는 페이지가 스크롤된다 */
   min-height: 200px;
 }
@@ -306,9 +312,35 @@ html[data-font-size='lg'] {
   min-height: 0;
   overflow: auto;
 }
+/* 남은 높이를 다 쓰므로 '한 페이지 행 수만큼' 최소 높이는 필요 없다(빈 칸은 표 자리 그대로) */
+.dt-fit .sft-tbody,
+.dt-fit .sft-tbody--empty .sft-empty {
+  min-height: 0;
+}
+.dt-fit .sft-table__scroll:has(.sft-tbody--empty) {
+  display: flex;
+  flex-direction: column;
+}
+.dt-fit .sft-tbody--empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.dt-fit .sft-tbody--empty .sft-empty {
+  flex: 1;
+}
 .dt-fit .sft-toolbar,
 .dt-fit .sft-tfoot {
   flex: none;
+}
+
+/* 표 본문 스크롤 — 세로 스크롤바는 머리글 아래부터(머리글 높이만큼 트랙을 비운다),
+   끝까지 내린 뒤 더 굴려도 바깥 화면이 따라 움직이지 않게(머리글이 딸려 올라가지 않게) 막는다 */
+.sft-table__scroll {
+  overscroll-behavior: none;
+}
+.sft-table__scroll::-webkit-scrollbar-track:vertical {
+  margin-top: var(--sft-table-header-height, 44px);
 }
 
 /* 툴바 세그먼트 탭 높이(38px)는 공용 SegmentedControl이 맞춘다 */
@@ -753,21 +785,29 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   align-self: center;
 }
 
-/* ── 사이드바 스크롤바 — 기본 스크롤바는 트랙 테두리 때문에 사이드바와 사이에 선이 생긴다. 트랙은 투명 ── */
-/* 사이드바 스크롤바 — 한국AI통신 콘솔과 같게: 8px 꽉 찬 막대(둥글기 4px), 선 색(#e5e5ea),
-   막대에 마우스를 올리면 보조 글자색(#6e6e73) 반투명 */
-[class*='_sidebarContent_']::-webkit-scrollbar {
-  width: 8px;
+/* ── 스크롤바(전역 공통) — 한국AI통신 콘솔과 같은 색: 7px 막대(둥글기 4px), 선 색(#e5e5ea),
+   막대에 마우스를 올리면 보조 글자색(#6e6e73) 반투명. 트랙은 투명(사이드바와 사이에 선이 안 생기게).
+   크롬은 scrollbar-width·color(표준 속성)를 주면 아래 ::-webkit 모양을 무시하므로 표준 속성은 파이어폭스만 */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
 }
-[class*='_sidebarContent_']::-webkit-scrollbar-track {
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
 }
-[class*='_sidebarContent_']::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   border-radius: 4px;
   background: var(--ark-color-border, #e5e5ea);
 }
-[class*='_sidebarContent_']::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--ark-color-text-secondary, #6e6e73) 50%, transparent);
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ark-color-border, #e5e5ea) transparent;
+  }
 }
 /* 펼친 사이드바 — 메뉴와 스크롤바 사이 빈 칸을 줄인다(오른쪽 여백 12px → 4px).
    스크롤바 자리는 늘 비워 둬(stable) 스크롤이 생겨도 메뉴 폭이 흔들리지 않는다. 접힌 사이드바는 그대로 */

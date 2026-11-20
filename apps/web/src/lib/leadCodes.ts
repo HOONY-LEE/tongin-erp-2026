@@ -1,5 +1,6 @@
 // 접수(리드) 관련 코드값 — 목록/상세가 같은 라벨을 쓰도록 한 곳에서 관리.
 import type { StatusMap } from '../components/ui';
+import { APPLE } from './palette';
 
 export const LEAD_STATUS: StatusMap = {
   RECEIVED: { label: '접수', color: 'neutral' },
@@ -10,6 +11,19 @@ export const LEAD_STATUS: StatusMap = {
   WORK_TOSS: { label: '작업토스', color: 'primary' },
   DONE: { label: '작업완료', color: 'success' },
   CANCELED: { label: '취소', color: 'error' },
+};
+
+/** 접수 상태 점 색 — 애플 시스템 색. 진행 순서대로 차가운 색 → 따뜻한 색 → 완료(초록), 반려·취소는 따로 */
+export const LEAD_STATUS_DOT: Record<string, string> = {
+  RECEIVED: APPLE.blue,
+  REJECTED: APPLE.magenta, // 지점 반려(상태는 RECEIVED + rejectedAt)
+  CONSULT_TOSS: APPLE.cyan,
+  QUOTED: APPLE.indigo,
+  CONTRACT_PENDING: APPLE.yellow,
+  CONTRACTED: APPLE.purple,
+  WORK_TOSS: APPLE.orange,
+  DONE: APPLE.green,
+  CANCELED: APPLE.gray,
 };
 
 export const SERVICE_LINES = [

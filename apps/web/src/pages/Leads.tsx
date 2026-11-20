@@ -16,32 +16,37 @@ import {
   type Column,
   type Row,
 } from '../components/ui';
-import { LEAD_STATUS, RECEIPT_SOURCES, SERVICE_LINES, codeLabel } from '../lib/leadCodes';
+import {
+  LEAD_STATUS,
+  LEAD_STATUS_DOT,
+  RECEIPT_SOURCES,
+  SERVICE_LINES,
+  codeLabel,
+} from '../lib/leadCodes';
 import { EmployeeChip, type EmployeeBrief } from '../components/ui/EmployeeChip';
-import { Chip, Phone, type ChipTone } from 'softium-ui/table';
+import { Phone } from 'softium-ui/table';
+import { StatusDot } from '../components/ui/StatusDot';
+import { DocumentViewer } from '../components/ui/DocumentViewer';
+import { FileText } from 'lucide-react';
 
 const STATUS = LEAD_STATUS;
 
-// softium-ui Chip은 akron-ui StatusBadge와 톤 이름이 달라 매핑 필요(primary→accent, error→danger)
-const CHIP_TONE: Record<string, ChipTone> = {
-  neutral: 'neutral',
-  info: 'info',
-  warning: 'warning',
-  primary: 'accent',
-  success: 'success',
-  error: 'danger',
-};
+/** 지점에서 반려돼 본사로 돌아온 접수 — 다시 배정할 때까지 상태는 '반려' */
+type LeadContract = { id: string; contractNo: string; status: string; estimateId: string };
 
-// 단계 탭 = lead.status 그룹 (한 케이스가 상태로 전 단계를 관통)
-const STAGES: { key: string; label: string; statuses: string[] | null }[] = [
-  { key: 'ALL', label: '전체', statuses: null },
-  { key: 'INTAKE', label: '접수', statuses: ['RECEIVED', 'CONSULT_TOSS'] },
-  { key: 'QUOTE', label: '견적', statuses: ['QUOTED', 'CONTRACT_PENDING'] },
-  { key: 'CONTRACT', label: '계약', statuses: ['CONTRACTED'] },
-  { key: 'WORK', label: '작업', statuses: ['WORK_TOSS', 'DONE'] },
+const isRejected = (r: Row) => !!r.rejectedAt && r.status === 'RECEIVED';
+const statusKey = (r: Row) => (isRejected(r) ? 'REJECTED' : String(r.status));
+
+// 상태 탭 — 전체 + 모든 상태(반려 포함)
+const STAGES: { key: string; label: string }[] = [
+  { key: 'ALL', label: '전체' },
+  { key: 'RECEIVED', label: '접수' },
+  { key: 'REJECTED', label: '반려' },
+  ...Object.entries(STATUS)
+    .filter(([k]) => k !== 'RECEIVED')
+    .map(([key, s]) => ({ key, label: s.label })),
 ];
-const inStage = (status: string, statuses: string[] | null) =>
-  statuses === null ? true : statuses.includes(status);
+const inStage = (r: Row, key: string) => key === 'ALL' || statusKey(r) === key;
 
 export default function Leads() {
   const { t } = useTranslation();
@@ -60,6 +65,8 @@ export default function Leads() {
     if (fromCall) setCreateOpen(true);
   }, [fromCall]);
   const [stage, setStage] = useState('ALL');
+  /** 계약서 보기 창 */
+  const [doc, setDoc] = useState<LeadContract | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
 
   // 간편접수 창 항목·기본값 — 상담 콘솔과 같은 창
@@ -150,16 +157,16 @@ export default function Leads() {
       title: '상태',
       dataIndex: 'status',
       render: (r) => {
-        const s = STATUS[String(r.status)];
-        const chip = (
-          <Chip tone={CHIP_TONE[s?.color ?? 'neutral']}>{s?.label ?? String(r.status)}</Chip>
+        const key = statusKey(r);
+        return (
+          <StatusDot color={LEAD_STATUS_DOT[key] ?? LEAD_STATUS_DOT.CANCELED}>
+            {key === 'REJECTED' ? '반려' : (STATUS[key]?.label ?? key)}
+          </StatusDot>
         );
-        // 지점에서 반려돼 본사로 돌아온 접수 — 다시 배정할 때까지 상태는 '반려'
-        return r.rejectedAt && r.status === 'RECEIVED' ? (
-          <Chip tone={CHIP_TONE.warning}>반려</Chip>
-        ) : (
-          chip
-        );
+      },
+      exportValue: (r) => {
+        const key = statusKey(r);
+        return key === 'REJECTED' ? '반려' : (STATUS[key]?.label ?? key);
       },
     },
     { title: '접수경로', render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string) },
@@ -184,6 +191,29 @@ export default function Leads() {
       exportValue: (r) => (r.ownerEmp as EmployeeBrief | null)?.name ?? '',
     },
     {
+      title: '계약서',
+      mask: false,
+      render: (r) => {
+        const c = (r.contracts as LeadContract[] | undefined)?.[0];
+        return c ? (
+          <button
+            type="button"
+            className="dt-doc-btn"
+            onClick={(e) => {
+              e.stopPropagation(); // 행 클릭(접수 상세)과 겹치지 않게
+              setDoc(c);
+            }}
+          >
+            <FileText size={14} aria-hidden />
+            보기
+          </button>
+        ) : (
+          <span style={{ color: 'var(--ark-color-text-tertiary)' }}>-</span>
+        );
+      },
+      exportValue: (r) => (r.contracts as LeadContract[] | undefined)?.[0]?.contractNo ?? '',
+    },
+    {
       title: '출발',
       flex: 1,
       minWidth: 220,
@@ -198,10 +228,8 @@ export default function Leads() {
     },
   ];
 
-  const current = STAGES.find((s) => s.key === stage) ?? STAGES[0];
-  const filtered = rows.filter((r) => inStage(String(r.status), current.statuses));
-  const countFor = (statuses: string[] | null) =>
-    rows.filter((r) => inStage(String(r.status), statuses)).length;
+  const filtered = rows.filter((r) => inStage(r, stage));
+  const countFor = (key: string) => rows.filter((r) => inStage(r, key)).length;
 
   return (
     // 화면 높이에 맞춘다 — 기본 20개씩 보기, 화면에 다 안 들어가는 행은 표 안에서 스크롤(풋터는 늘 보임)
@@ -213,7 +241,7 @@ export default function Leads() {
             onChange={setStage}
             options={STAGES.map((s) => ({
               value: s.key,
-              label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.statuses)}`,
+              label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.key)}`,
             }))}
           />
         }
@@ -245,6 +273,13 @@ export default function Leads() {
         initialValues={createInitial}
         onSubmit={onCreate}
       />
+      {doc && (
+        <DocumentViewer
+          path={`/estimates/${doc.estimateId}/document`}
+          title={`계약서 ${doc.contractNo}`}
+          onClose={() => setDoc(null)}
+        />
+      )}
     </ListPage>
   );
 }

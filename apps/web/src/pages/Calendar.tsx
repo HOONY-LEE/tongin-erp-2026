@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
-import { PageHeader, Spinner, useToast } from '../components/ui';
+import { Spinner, useToast } from '../components/ui';
 import CalendarGrid, { type CalendarSource } from '../components/calendar/CalendarGrid';
 import EventModal, { type EventFormValues } from '../components/calendar/EventModal';
 import { ClosureDayModal } from '../components/closure/ClosureDayModal';
@@ -61,7 +61,7 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const { updatedAt, touch } = useUpdatedAt();
+  const { touch } = useUpdatedAt();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -393,13 +393,7 @@ export default function CalendarPage() {
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%', minHeight: 0 }}
     >
-      {/* 연동 상태·일정 추가는 캘린더 툴바(뷰 전환 옆)로 내렸다 — 제목줄은 비워 둔다 */}
-      <PageHeader
-        title={t('nav.calendar')}
-        onRefresh={load}
-        updatedAt={updatedAt}
-        style={{ flexShrink: 0 }}
-      />
+      {/* 제목·새로고침 줄은 두지 않는다 — 캘린더가 화면을 최대한 쓴다(탭 이름이 제목 역할) */}
 
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         {loading && (

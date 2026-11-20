@@ -46,6 +46,12 @@ export class LeadService {
       include: {
         customer: { select: { id: true, name: true, phonePrimary: true } },
         partner: { select: { id: true, name: true, type: true } },
+        // 계약서 칸 — 최근 계약 1건(누르면 계약서 문서)
+        contracts: {
+          select: { id: true, contractNo: true, status: true, estimateId: true, signedAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
         // 담당자 칩 — 누르면 프로필 요약(이름·직책·소속·연락처)
         ownerEmp: {
           select: {
