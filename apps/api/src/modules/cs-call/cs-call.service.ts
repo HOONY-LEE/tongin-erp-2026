@@ -13,7 +13,10 @@ import { Prisma, type CsCall } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EMPLOYEE_BRIEF_SELECT } from '../../common/employee-brief';
-import { CtiRoutingService } from './cti-routing.service';
+import { afterHoursAgentId, CtiRoutingService } from './cti-routing.service';
+
+/** 영업시간 외 AI 상담원이 받은 전화의 채널 이름 */
+const AI_CHANNEL = 'AI 접수(영업시간 외)';
 import { CS_ORG } from './cs-org';
 
 /** 상담원이 들고 있는(통화 중) 콜 상태 */
@@ -525,7 +528,7 @@ export class CsCallService {
    * 받은 전화는 CallSid로, PC에서 건 전화(SIP 단말 발신)는 INVITE에 실은 X-Call-Id(=콜 id)로 찾는다.
    */
   async statusEvent(body: Record<string, string>) {
-    const sid = body.CallSid?.slice(0, 100);
+    const sid = (body.CallSid || body.CallId)?.slice(0, 100);
     const status = body.CallStatus ?? '';
     const headerId = body['SipHeader_X-Call-Id'] ?? body['SipHeader_X-Call-ID'];
     const UUID = /^[0-9a-f-]{36}$/i;
@@ -560,7 +563,8 @@ export class CsCallService {
             data: {
               phone: from,
               status: 'OUTCALL',
-              channel: '대표번호(부재중)',
+              // 영업시간 외에는 AI 상담원이 받는다 — 요약은 통화 요약 알림(aiSummary)이 붙인다
+              channel: afterHoursAgentId() ? AI_CHANNEL : '대표번호(부재중)',
               customerId: customer?.id ?? null,
               katCallSid: sid || null,
               endedAt: new Date(),
@@ -584,6 +588,55 @@ export class CsCallService {
         }),
       },
     });
+    return { ok: true };
+  }
+
+  /**
+   * AI 상담원 통화 요약 알림(한국AI통신 webhooks: summary.completed).
+   * 같은 통화(CallId)의 콜 메모에 'AI 요약'을 남긴다 — 상담원이 다음 날 콜백하며 본다.
+   * 콜이 아직 없으면(상태 알림보다 먼저 오면) 아웃콜 대기로 만든다. 같은 알림이 두 번 와도 한 번만 붙인다.
+   */
+  async aiSummary(body: Record<string, string>) {
+    const sid = (body.CallId || body.CallSid)?.slice(0, 100);
+    if (!sid || body.Event !== 'summary.completed') return { ok: true };
+    let s: { coreSummary?: string; decisions?: string[]; followUps?: string[] } = {};
+    try {
+      s = JSON.parse(body.SummaryJson ?? '{}') as typeof s;
+    } catch {
+      return { ok: true };
+    }
+    const lines = [
+      s.coreSummary?.trim(),
+      ...(s.decisions ?? []).map((d) => `· ${d}`),
+      ...(s.followUps ?? []).map((f) => `→ ${f}`),
+    ].filter(Boolean);
+    if (!lines.length) return { ok: true };
+    const text = `[AI 요약]\n${lines.join('\n')}`.slice(0, 1000);
+    const call = await this.prisma.csCall.findUnique({ where: { katCallSid: sid } });
+    if (call) {
+      if (call.memo?.includes('[AI 요약]')) return { ok: true };
+      await this.prisma.csCall.update({
+        where: { id: call.id },
+        data: { memo: call.memo ? `${call.memo}\n${text}`.slice(0, 1000) : text },
+      });
+      return { ok: true };
+    }
+    const from = digits(body.From ?? '');
+    if (from.length < 8 || from.length > 12) return { ok: true };
+    const customer = await this.customerByPhone(from);
+    await this.prisma.csCall
+      .create({
+        data: {
+          phone: from,
+          status: 'OUTCALL',
+          channel: AI_CHANNEL,
+          customerId: customer?.id ?? null,
+          katCallSid: sid,
+          memo: text,
+          endedAt: new Date(),
+        },
+      })
+      .catch(() => undefined);
     return { ok: true };
   }
 
