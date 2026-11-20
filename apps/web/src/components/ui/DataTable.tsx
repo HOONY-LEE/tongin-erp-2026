@@ -9,7 +9,7 @@ import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
 import type { Column, Row } from './types';
-import { ExportMenu, MaskMenu, nodeText, type MaskableColumn } from './tableExport';
+import { ExportMenu, nodeText, type MaskableColumn } from './tableExport';
 import { guessMaskKind, maskValue, type MaskKind } from '../../lib/mask';
 
 const colKey = (c: Column, i: number) => c.dataIndex ?? `__col_${i}`;
@@ -25,16 +25,6 @@ const cellText = (c: Column, data: Row) =>
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 const cellValue = (v: unknown) =>
   typeof v === 'string' && ISO_TIME.test(v) ? fmtDateTime(v) : String(v ?? '');
-
-/** 화면에서 가린 칸은 화면(주소)마다 기억한다 — 기본은 다 보임 */
-const maskStoreKey = () => `tongin.mask:${window.location.pathname}`;
-function readMasked(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(maskStoreKey()) ?? '[]') as string[]);
-  } catch {
-    return new Set();
-  }
-}
 
 interface Props {
   columns: Column[];
@@ -164,16 +154,7 @@ export function DataTable({
   // 여러 줄 셀이 있는 표 — 행 높이를 내용에 맞춰 늘린다(고정 행 높이 전제의 가상 스크롤은 끈다)
   const multiline = columns.some((c) => c.multiline);
 
-  // 개인정보 가리기 — 화면에서 가린 칸(masked)과, 내려받는 동안만 가릴 칸(exportMask)
-  const [masked, setMaskedState] = useState<Set<string>>(readMasked);
-  const setMasked = (next: Set<string>) => {
-    setMaskedState(next);
-    try {
-      localStorage.setItem(maskStoreKey(), JSON.stringify([...next]));
-    } catch {
-      /* 기억만 못 한다 */
-    }
-  };
+  // 개인정보 가리기 — 화면에서는 늘 다 보이고, 내보낼 때 고른 칸만 가려서 내려받는다(exportMask)
   const exportMask = useRef<Set<string> | null>(null);
   const maskable: MaskableColumn[] = useMemo(
     () =>
@@ -226,7 +207,6 @@ export function DataTable({
     const mapped: ReactColumnDef<Row>[] = columns.map((c, i) => {
       const key = colKey(c, i);
       const kind = maskKindOf(c);
-      const hide = !!kind && masked.has(key);
       const measured = cachedMeasure(c, i);
       // 숫자만 있는 칸은 숫자 서체로(글자·숫자가 섞인 주소 등은 그대로)
       const num = (node: ReactNode) =>
@@ -261,9 +241,6 @@ export function DataTable({
         renderCell: ({ row }) =>
           row.data.__sk ? (
             <Skeleton width={36 + ((i * 23 + Number(row.data.__sk) * 11) % 64)} height={12} />
-          ) : hide && kind ? (
-            // 화면에서 가린 칸 — 그린 글자를 가린 글자로
-            maskValue(kind, cellText(c, row.data))
           ) : c.multiline ? (
             // 여러 줄 셀 — 줄마다 한 줄 말줄임, 행은 내용 높이만큼 늘어난다(base.css .dt-multiline)
             <div className="dt-cell-multiline">
@@ -293,7 +270,7 @@ export function DataTable({
       });
     }
     return mapped;
-  }, [columns, masked, rowsSig]);
+  }, [columns, rowsSig]);
 
   // 처음 불러오기가 끝나기 전에는 '데이터가 없습니다' 대신 표 안에 자리표시 행을 깐다
   // (검색창·내보내기·등록 버튼 같은 툴바는 그대로 보인다).
@@ -380,16 +357,10 @@ export function DataTable({
       table={table}
       fileName={exportFileName ?? 'table'}
       maskable={maskable}
-      screenMasked={masked}
       exportMask={exportMask}
     />
   ) : null;
-  // 전화·주소·이름 칸이 있는 표에만 — 내보내기 버튼 앞
-  const maskMenu =
-    maskable.length > 0 ? (
-      <MaskMenu maskable={maskable} masked={masked} onChange={setMasked} />
-    ) : null;
-  const hasActions = !!(maskMenu || exportable || toolbarActions);
+  const hasActions = !!(exportable || toolbarActions);
 
   return (
     <div
@@ -423,7 +394,6 @@ export function DataTable({
             {(viewSwitch || (!row3 && hasActions)) && (
               <div className="dt-toolbar-view">
                 {viewSwitch}
-                {!row3 && maskMenu}
                 {!row3 && exportable && exportMenu}
                 {!row3 && toolbarActions}
               </div>
@@ -431,7 +401,6 @@ export function DataTable({
             {tabs && <div className="dt-toolbar-tabs">{tabs}</div>}
             {row3 && hasActions && (
               <div className="dt-toolbar-actions">
-                {maskMenu}
                 {exportable && exportMenu}
                 {toolbarActions}
               </div>

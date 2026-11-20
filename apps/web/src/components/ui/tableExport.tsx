@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ChevronDown, Download, EyeOff } from 'lucide-react';
+import { ChevronDown, Download } from 'lucide-react';
 import { buildExportTable, downloadTableExport, type TableInstance } from 'softium-ui/table';
 import { api } from '../../lib/api';
 
@@ -118,21 +118,18 @@ function MaskChecks({
 /**
  * 내보내기 메뉴 — softium 기본 메뉴와 같은 모양(같은 CSS 클래스)이고, CSV만 BOM을 붙여 직접 만든다.
  * Excel(.xlsx)·JSON·XML은 라이브러리 그대로(UTF-8로 잘 열린다).
- * 전화·주소·이름 칸은 '가려서 받기'를 고를 수 있다(처음엔 화면에서 가린 칸이 골라져 있다).
+ * 전화·주소·이름 칸은 '가려서 받기'를 고를 수 있다(화면에서는 늘 다 보인다).
  * 내려받으면 누가 어느 화면에서 몇 건·어떤 칸을 받았는지 접근 기록에 남긴다.
  */
 export function ExportMenu<T>({
   table,
   fileName = 'table',
   maskable = [],
-  screenMasked,
   exportMask,
 }: {
   table: TableInstance<T>;
   fileName?: string;
   maskable?: MaskableColumn[];
-  /** 지금 화면에서 가린 칸 — 메뉴를 열 때 '가려서 받기'의 처음 값 */
-  screenMasked?: Set<string>;
   /** 내보내는 동안 가릴 칸을 표 칸(exportValue)에 알려 주는 자리 */
   exportMask?: MutableRefObject<Set<string> | null>;
 }) {
@@ -174,7 +171,7 @@ export function ExportMenu<T>({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => {
-          if (!open) setMask(new Set(screenMasked ?? []));
+          if (!open) setMask(new Set());
           setOpen((v) => !v);
         }}
       >
@@ -201,57 +198,6 @@ export function ExportMenu<T>({
               {label}
             </button>
           ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** 화면에서 가리기 — 전화·주소·이름 칸을 골라 표에 가려 보인다(기본은 다 보임, 화면마다 기억) */
-export function MaskMenu({
-  maskable,
-  masked,
-  onChange,
-}: {
-  maskable: MaskableColumn[];
-  masked: Set<string>;
-  onChange: (next: Set<string>) => void;
-}) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const rootRef = useCloseOnOutside(open, () => setOpen(false));
-  const on = masked.size > 0;
-  return (
-    <div className="sft-export" ref={rootRef}>
-      <button
-        type="button"
-        className={['sft-export__trigger', on ? 'dt-mask-on' : ''].filter(Boolean).join(' ')}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title={t('table.maskTip')}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <EyeOff size={15} />
-        <span>{on ? t('table.masked', { n: masked.size }) : t('table.mask')}</span>
-        <ChevronDown size={14} />
-      </button>
-      {open && (
-        <div className="sft-export__menu" role="menu">
-          <div className="dt-mask-section">
-            <div className="dt-mask-title">{t('table.maskTitle')}</div>
-            <MaskChecks columns={maskable} checked={masked} onChange={onChange} />
-          </div>
-          <button
-            type="button"
-            className="sft-export__item"
-            onClick={() =>
-              onChange(
-                masked.size === maskable.length ? new Set() : new Set(maskable.map((c) => c.key)),
-              )
-            }
-          >
-            {masked.size === maskable.length ? t('table.unmaskAll') : t('table.maskAll')}
-          </button>
         </div>
       )}
     </div>
