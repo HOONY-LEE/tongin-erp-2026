@@ -465,3 +465,17 @@
   font-size: 12.5px;
   cursor: pointer;
 }
+
+/* 통화가 끝난 뒤 잠깐 — '통화가 종료되었습니다' */
+.ended {
+  animation: endedFade 2.5s ease forwards;
+}
+@keyframes endedFade {
+  0%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

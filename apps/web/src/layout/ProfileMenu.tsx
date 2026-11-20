@@ -30,13 +30,14 @@ const THEMES: { value: ThemeMode; icon: LucideIcon }[] = [
 
 /** 출퇴근 줄 — 직원 계정에만(오늘 기록·버튼) */
 function ClockRow() {
+  const { t } = useTranslation();
   const { today, busy, clock } = useClock();
   if (!today) return null;
   const status = today.leave
-    ? `오늘 ${today.leave}`
+    ? t('shell.todayLeave', { v: today.leave })
     : today.clockIn
-      ? `출근 ${today.clockIn}${today.clockOut ? ` · 퇴근 ${today.clockOut}` : ''}`
-      : '아직 출근 전';
+      ? `${t('shell.clockedIn', { t: today.clockIn })}${today.clockOut ? ` · ${t('shell.clockedOut', { t: today.clockOut })}` : ''}`
+      : t('shell.notClockedIn');
   const action = today.clockOut ? null : today.clockIn ? 'OUT' : today.leave ? null : 'IN';
   return (
     <div className={styles.clockRow}>
@@ -49,7 +50,7 @@ function ClockRow() {
           disabled={busy}
           onClick={() => void clock(action)}
         >
-          {action === 'IN' ? '출근하기' : '퇴근하기'}
+          {action === 'IN' ? t('shell.clockIn') : t('shell.clockOut')}
         </button>
       )}
     </div>
@@ -109,7 +110,7 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={!!pos}
-        title="내 프로필"
+        title={t('shell.myProfile')}
       >
         <EmployeeAvatar id={user?.employeeId} name={name} size={26} />
         <span className={styles.triggerName}>{name}</span>
@@ -122,7 +123,7 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
             className={styles.panel}
             style={{ right: pos.right, top: pos.top }}
             role="menu"
-            aria-label="내 프로필"
+            aria-label={t('shell.myProfile')}
           >
             <div className={styles.head}>
               <EmployeeAvatar id={user?.employeeId} name={name} size={36} />
@@ -141,10 +142,11 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
               onClick={run(() => navigate('/profile'))}
             >
               <UserRound size={15} aria-hidden />
-              프로필
+              {t('shell.profile')}
             </button>
             <button type="button" role="menuitem" className={styles.item} onClick={run(onEditMenu)}>
-              <SlidersHorizontal size={15} aria-hidden />내 메뉴 편집
+              <SlidersHorizontal size={15} aria-hidden />
+              {t('shell.editMenu')}
             </button>
 
             <div className={styles.group}>

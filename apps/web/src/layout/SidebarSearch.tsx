@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X, type LucideIcon } from 'lucide-react';
 import styles from './AppLayout.module.css';
 
@@ -61,6 +62,7 @@ export function SidebarSearch({
   onExpand: () => void;
   onOpen: (to: string) => void;
 }) {
+  const { t } = useTranslation();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -91,8 +93,8 @@ export function SidebarSearch({
       <button
         type="button"
         className={styles.sideSearchIcon}
-        title="검색 (⌘K)"
-        aria-label="검색"
+        title={t('shell.searchShortcut')}
+        aria-label={t('shell.search')}
         onClick={() => {
           onExpand();
           setTimeout(() => input.current?.focus(), 0);
@@ -109,8 +111,8 @@ export function SidebarSearch({
         <input
           ref={input}
           value={q}
-          placeholder="검색"
-          aria-label="검색"
+          placeholder={t('shell.search')}
+          aria-label={t('shell.search')}
           role="combobox"
           aria-expanded={results.length > 0}
           aria-controls="side-search-results"
@@ -133,14 +135,16 @@ export function SidebarSearch({
           }}
         />
         {q && (
-          <button type="button" aria-label="검색어 지우기" onClick={() => setQ('')}>
+          <button type="button" aria-label={t('shell.searchClear')} onClick={() => setQ('')}>
             <X size={13} />
           </button>
         )}
       </div>
       {q.trim() && (
         <ul id="side-search-results" className={styles.sideSearchList} role="listbox">
-          {results.length === 0 && <li className={styles.sideSearchNone}>찾는 메뉴가 없습니다</li>}
+          {results.length === 0 && (
+            <li className={styles.sideSearchNone}>{t('shell.searchNone')}</li>
+          )}
           {results.map((m, i) => (
             <li key={m.to} role="option" aria-selected={i === sel}>
               <button

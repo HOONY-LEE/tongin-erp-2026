@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ChevronDown, Download, EyeOff } from 'lucide-react';
 import { buildExportTable, downloadTableExport, type TableInstance } from 'softium-ui/table';
@@ -135,6 +136,7 @@ export function ExportMenu<T>({
   /** 내보내는 동안 가릴 칸을 표 칸(exportValue)에 알려 주는 자리 */
   exportMask?: MutableRefObject<Set<string> | null>;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [mask, setMask] = useState<Set<string>>(new Set());
   const rootRef = useCloseOnOutside(open, () => setOpen(false));
@@ -177,14 +179,14 @@ export function ExportMenu<T>({
         }}
       >
         <Download size={15} />
-        <span>내보내기</span>
+        <span>{t('table.export')}</span>
         <ChevronDown size={14} />
       </button>
       {open && (
         <div className="sft-export__menu" role="menu">
           {maskable.length > 0 && (
             <div className="dt-mask-section">
-              <div className="dt-mask-title">가려서 받기</div>
+              <div className="dt-mask-title">{t('table.maskExport')}</div>
               <MaskChecks columns={maskable} checked={mask} onChange={setMask} />
             </div>
           )}
@@ -215,6 +217,7 @@ export function MaskMenu({
   masked: Set<string>;
   onChange: (next: Set<string>) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useCloseOnOutside(open, () => setOpen(false));
   const on = masked.size > 0;
@@ -225,17 +228,17 @@ export function MaskMenu({
         className={['sft-export__trigger', on ? 'dt-mask-on' : ''].filter(Boolean).join(' ')}
         aria-haspopup="menu"
         aria-expanded={open}
-        title="전화번호·주소·이름 가리기"
+        title={t('table.maskTip')}
         onClick={() => setOpen((v) => !v)}
       >
         <EyeOff size={15} />
-        <span>{on ? `가림 ${masked.size}` : '가리기'}</span>
+        <span>{on ? t('table.masked', { n: masked.size }) : t('table.mask')}</span>
         <ChevronDown size={14} />
       </button>
       {open && (
         <div className="sft-export__menu" role="menu">
           <div className="dt-mask-section">
-            <div className="dt-mask-title">화면에서 가릴 칸</div>
+            <div className="dt-mask-title">{t('table.maskTitle')}</div>
             <MaskChecks columns={maskable} checked={masked} onChange={onChange} />
           </div>
           <button
@@ -247,7 +250,7 @@ export function MaskMenu({
               )
             }
           >
-            {masked.size === maskable.length ? '모두 보이기' : '모두 가리기'}
+            {masked.size === maskable.length ? t('table.unmaskAll') : t('table.maskAll')}
           </button>
         </div>
       )}

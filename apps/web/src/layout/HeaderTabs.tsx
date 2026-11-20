@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal, Plus, X } from 'lucide-react';
 import { EditorTabs, type EditorTab } from '../components/ui';
@@ -35,6 +36,7 @@ export function HeaderTabs({
   /** 끌어서 놓은 탭 순서 바꾸기 — from을 to의 앞(after=false)·뒤(after=true)로 */
   onReorder?: (from: string, to: string, after: boolean) => void;
 }) {
+  const { t: tr } = useTranslation();
   const boxRef = useRef<HTMLDivElement>(null);
   const fullRef = useRef<HTMLDivElement>(null);
   const compactRef = useRef<HTMLDivElement>(null);
@@ -170,9 +172,9 @@ export function HeaderTabs({
               type="button"
               className={`${styles.moreTabs} ${menu ? styles.moreTabsOn : ''}`}
               onClick={openMenu}
-              aria-label={`탭 ${hidden.length}개 더 보기`}
+              aria-label={tr('shell.moreTabs', { n: hidden.length })}
               aria-expanded={!!menu}
-              title={`탭 ${hidden.length}개 더`}
+              title={tr('shell.moreTabsShort', { n: hidden.length })}
               data-tabs-more
             >
               <MoreHorizontal size={16} />
@@ -182,7 +184,7 @@ export function HeaderTabs({
               type="button"
               className={styles.moreTabs}
               onClick={onTabAdd}
-              aria-label="새 탭 추가"
+              aria-label={tr('shell.newTab')}
             >
               <Plus size={14} />
             </button>
@@ -247,6 +249,7 @@ function TabsMenu({
   onClose: (id: string) => void;
   onDismiss: () => void;
 }) {
+  const { t: tr } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const down = (e: PointerEvent) => {
@@ -282,7 +285,7 @@ function TabsMenu({
             <button
               type="button"
               className={styles.tabsMenuClose}
-              aria-label={`${t.label} 닫기`}
+              aria-label={tr('shell.closeTab', { label: t.label })}
               onClick={() => onClose(t.id)}
             >
               <X size={12} />

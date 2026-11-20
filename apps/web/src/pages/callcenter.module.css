@@ -2362,3 +2362,14 @@ textarea.memoBox {
   color: var(--ark-color-text-secondary) !important;
   cursor: default;
 }
+
+/* 상담 완료 — 초록 */
+.completeBtn {
+  background: #34c759 !important;
+  border-color: #34c759 !important;
+  color: #fff !important;
+}
+.completeBtn:hover:not(:disabled) {
+  background: #2db84f !important;
+  border-color: #2db84f !important;
+}

@@ -1,4 +1,5 @@
 import { forwardRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, Info, RefreshCw } from 'lucide-react';
 import {
   PageHeader as AkronPageHeader,
@@ -20,7 +21,7 @@ export interface PageHeaderProps extends AkronPageHeaderProps {
 
 function formatUpdatedAt(d: Date) {
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())} 업데이트`;
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
 /**
@@ -46,6 +47,7 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
   },
   ref,
 ) {
+  const { t } = useTranslation();
   // 제목 아래 설명 줄은 두지 않는다 — 설명은 제목 옆 (i)에 올리면 보인다
   const info = subtitle ? (
     <Tooltip content={<span style={{ display: 'block', maxWidth: 320 }}>{subtitle}</span>}>
@@ -114,7 +116,7 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
       {actions}
       {updatedAt && (
         <span style={{ fontSize: fs(11), color: 'var(--ark-color-text-tertiary)' }}>
-          {formatUpdatedAt(updatedAt)}
+          {t('table.updated', { t: formatUpdatedAt(updatedAt) })}
         </span>
       )}
       <button
@@ -122,8 +124,8 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
         onClick={handleRefresh}
         disabled={refreshing}
         data-pdf-skip
-        aria-label="새로고침"
-        title="새로고침"
+        aria-label={t('table.refresh')}
+        title={t('table.refresh')}
         style={{
           display: 'flex',
           alignItems: 'center',
