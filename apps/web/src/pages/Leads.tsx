@@ -17,6 +17,7 @@ import {
   type Row,
 } from '../components/ui';
 import { LEAD_STATUS, RECEIPT_SOURCES, SERVICE_LINES, codeLabel } from '../lib/leadCodes';
+import { EmployeeChip, type EmployeeBrief } from '../components/ui/EmployeeChip';
 import { Chip, Phone, type ChipTone } from 'softium-ui/table';
 
 const STATUS = LEAD_STATUS;
@@ -72,6 +73,7 @@ export default function Leads() {
         (await api<Row[]>('/leads')).map((r) => ({
           ...r,
           leadNoSearch: [r.leadNo, r.legacyNo].filter(Boolean).join(' '),
+          ownerName: (r.ownerEmp as EmployeeBrief | null)?.name ?? '',
         })),
       );
       touch();
@@ -166,6 +168,20 @@ export default function Leads() {
       // 상품 이름이 긴 경우가 많다
       minWidth: 160,
       render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string),
+    },
+    {
+      title: '담당자',
+      dataIndex: 'ownerName',
+      mask: false,
+      render: (r) => {
+        const emp = r.ownerEmp as EmployeeBrief | null;
+        return emp ? (
+          <EmployeeChip emp={emp} />
+        ) : (
+          <span style={{ color: 'var(--ark-color-text-tertiary)' }}>미배정</span>
+        );
+      },
+      exportValue: (r) => (r.ownerEmp as EmployeeBrief | null)?.name ?? '',
     },
     {
       title: '출발',

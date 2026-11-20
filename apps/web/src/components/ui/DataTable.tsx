@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from './Skeleton';
 import type { MouseEvent, ReactNode } from 'react';
@@ -82,7 +83,8 @@ function cellMeasure(c: Column, r: Row) {
   if (!c.render) return { text: String(r[c.dataIndex ?? ''] ?? ''), extra: 0, mono: false };
   let html = '';
   try {
-    html = renderToStaticMarkup(<>{c.render(r)}</>);
+    // 화면 이동을 쓰는 셀(직원 칩 등)도 그릴 수 있게 라우터 안에서
+    html = renderToStaticMarkup(<MemoryRouter>{c.render(r)}</MemoryRouter>);
   } catch {
     /* 그릴 수 없는 칸은 글자만 */
   }
@@ -94,9 +96,10 @@ function cellMeasure(c: Column, r: Row) {
             .replace(/\s+/g, ' ')
             .trim()
         : cellText(c, r);
-  // 상태 점(6px + 8px) · 복사 아이콘(15px + 4px)
+  // 상태 점(6px + 8px) · 복사 아이콘(15px + 4px) · 직원 칩(동그라미·여백 40px)
   const copy = html.includes('복사"');
-  const extra = (html.includes('sft-chip') ? 14 : 0) + (copy ? 20 : 0);
+  const extra =
+    (html.includes('sft-chip') ? 14 : 0) + (copy ? 20 : 0) + (html.includes('emp-chip') ? 40 : 0);
   return { text, extra, mono: copy };
 }
 /** 숫자로만 된 값(전화번호·금액·날짜·시간 등) — 이런 칸만 숫자 서체(Geist Mono) */
