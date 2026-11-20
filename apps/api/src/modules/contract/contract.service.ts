@@ -94,7 +94,7 @@ export class ContractService {
           balanceAmount: balance,
         },
       });
-      // 계약서만 만든 단계 — 서명·계약금이 들어와야 '계약 미승인', 본사 승인 뒤 '계약'
+      // 계약서만 만든 단계 — 서명·계약금이 들어와야 '계약미승인', 본사 승인 뒤 '계약'
       const t = await this.leadService.advanceInTx(tx, estimate.leadId, 'QUOTED');
       return { created: row, transition: t };
     });
@@ -110,7 +110,7 @@ export class ContractService {
 
   /**
    * 본사 계약 승인 — 계약금이 들어온(계약금이 없는 계약은 고객이 서명한) 계약을 본사가 확인하고
-   * 접수를 '계약 미승인' → '계약'으로 올린다. 승인한 사람·시각을 남긴다.
+   * 접수를 '계약미승인' → '계약'으로 올린다. 승인한 사람·시각을 남긴다.
    */
   async approve(id: string, principal: AuthPrincipal) {
     const c = await this.prisma.contract.findUnique({ where: { id } });
@@ -276,7 +276,7 @@ export class ContractService {
     if (payment.kind === 'DEPOSIT') {
       const c = await this.prisma.contract.findUnique({ where: { id: payment.contractId } });
       if (c) {
-        // 계약금이 들어왔다 — 본사가 확인해 승인할 때까지 '계약 미승인'
+        // 계약금이 들어왔다 — 본사가 확인해 승인할 때까지 '계약미승인'
         const t = await this.prisma.$transaction((tx) =>
           this.leadService.advanceInTx(tx, c.leadId, 'CONTRACT_PENDING'),
         );

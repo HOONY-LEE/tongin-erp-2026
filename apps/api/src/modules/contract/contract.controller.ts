@@ -36,7 +36,7 @@ export class ContractController {
     return this.contractService.sign(id, user);
   }
 
-  /** 본사 계약 승인 — 계약 미승인 → 계약 */
+  /** 본사 계약 승인 — 계약미승인 → 계약 */
   @Post(':id/approve')
   @RequirePermissions('CONTRACT.APPROVE')
   approve(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
