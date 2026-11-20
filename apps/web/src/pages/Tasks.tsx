@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { EmployeeAvatar } from '../components/employee/EmployeeAvatar';
 import { ArrowRight, CalendarClock } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
@@ -671,8 +672,8 @@ function PersonChip({ name, empty = '-' }: { name?: string | null; empty?: strin
 }
 
 /** 이름 첫 글자 동그라미 */
-function Avatar({ name }: { name: string }) {
-  return <span className={styles.avatar}>{name.slice(0, 1)}</span>;
+function Avatar({ id, name }: { id?: string; name: string }) {
+  return <EmployeeAvatar id={id} name={name} size={20} />;
 }
 
 /** 칸반 카드 아래 — 우선순위·사업 / 기한·등록일 / 요청 → 담당 */
@@ -698,7 +699,7 @@ function CardFooter({ task }: { task: Task }) {
       <div className={styles.kPeople}>
         {task.requester ? (
           <>
-            <Avatar name={task.requester.name} />
+            <Avatar id={task.requester.id} name={task.requester.name} />
             <span className={styles.kName}>{task.requester.name}</span>
             <ArrowRight size={12} className={styles.kMuted} aria-label="에게" />
           </>
@@ -707,7 +708,7 @@ function CardFooter({ task }: { task: Task }) {
         )}
         {task.assignee ? (
           <>
-            <Avatar name={task.assignee.name} />
+            <Avatar id={task.assignee.id} name={task.assignee.name} />
             <span className={styles.kName}>{task.assignee.name}</span>
           </>
         ) : (

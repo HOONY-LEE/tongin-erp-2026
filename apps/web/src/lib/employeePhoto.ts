@@ -24,27 +24,69 @@ function fetchPhoto(id: string, ver: string): Promise<string | null> {
   return p;
 }
 
-/** 방금 올린 사진은 내려받지 않고 화면에서 만든 이미지를 그대로 */
-export function primeEmployeePhoto(id: string, ver: string, objectUrl: string) {
-  cache.set(key(id, ver), Promise.resolve(objectUrl));
+// ── 사진 있는 직원 목록(id → 바뀐 시각) — 한 번 받아 두고, 사진을 바꾸면 고친다 ──
+let index: Record<string, string> | null = null;
+let indexLoad: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+function loadIndex() {
+  if (!indexLoad) {
+    const token = getToken();
+    indexLoad = fetch('/api/employees/photos', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => (r.ok ? (r.json() as Promise<Record<string, string>>) : {}))
+      .catch(() => ({}))
+      .then((m) => {
+        index = m;
+        listeners.forEach((f) => f());
+      });
+  }
+  return indexLoad;
+}
+/** 이 직원 사진의 바뀐 시각(사진 없으면 null) — 목록을 받기 전엔 undefined */
+function useIndexed(id: string | null | undefined, skip: boolean) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (skip || !id) return;
+    const f = () => tick((n) => n + 1);
+    listeners.add(f);
+    void loadIndex();
+    return () => {
+      listeners.delete(f);
+    };
+  }, [id, skip]);
+  if (skip || !id) return undefined;
+  return index ? (index[id] ?? null) : undefined;
 }
 
-/** 사진 주소(없으면 null) — photoAt이 없으면 사진이 없는 직원이라 받지 않는다 */
-export function useEmployeePhoto(
-  id: string | null | undefined,
-  photoAt: string | null | undefined,
-) {
+/** 방금 올린(지운) 사진 — 내려받지 않고 화면에서 만든 이미지를 그대로 쓰고, 목록도 고친다 */
+export function primeEmployeePhoto(id: string, ver: string | null, objectUrl?: string) {
+  if (ver && objectUrl) cache.set(key(id, ver), Promise.resolve(objectUrl));
+  if (index) {
+    if (ver) index[id] = ver;
+    else delete index[id];
+  }
+  listeners.forEach((f) => f());
+}
+
+/**
+ * 사진 주소(없으면 null). photoAt을 주면 그걸, 안 주면(undefined) 사진 있는 직원 목록에서 찾는다 —
+ * 그래서 어디서든 직원 id만 넘기면 사진이 붙는다.
+ */
+export function useEmployeePhoto(id: string | null | undefined, photoAt?: string | null) {
+  const indexed = useIndexed(id, photoAt !== undefined);
+  const ver = photoAt !== undefined ? photoAt : indexed;
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
-    if (!id || !photoAt) {
+    if (!id || !ver) {
       setUrl(null);
       return;
     }
     let alive = true;
-    void fetchPhoto(id, photoAt).then((u) => alive && setUrl(u));
+    void fetchPhoto(id, ver).then((u) => alive && setUrl(u));
     return () => {
       alive = false;
     };
-  }, [id, photoAt]);
+  }, [id, ver]);
   return url;
 }
