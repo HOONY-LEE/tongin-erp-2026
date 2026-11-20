@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { Save, Send, Trash2, Users } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -55,6 +56,7 @@ export function SmsModal({
   moveDate?: string | null;
   callId?: string;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { user } = useAuth();
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -115,16 +117,16 @@ export function SmsModal({
         },
       );
       if (r.ok && r.delivered)
-        toast({ type: 'success', title: `${formatPhone(to)}로 문자를 보냈습니다` });
+        toast({ type: 'success', title: t('cc.smsSent', { v0: formatPhone(to) }) });
       else if (r.ok)
         toast({
           type: 'info',
-          title: `기록했습니다 — ${r.reason ?? '실제로는 나가지 않았습니다'}`,
+          title: t('cc.smsRecorded', { v0: r.reason ?? t('cc.smsNotSent') }),
         });
-      else toast({ type: 'error', title: `보내지 못했습니다 — ${r.reason ?? ''}` });
+      else toast({ type: 'error', title: t('cc.smsFailedOf', { v0: r.reason ?? '' }) });
       if (r.ok) onClose();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '보내지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.smsFailed') });
     } finally {
       setBusy(false);
     }
@@ -138,18 +140,18 @@ export function SmsModal({
       setSaveOpen(false);
       setSaveTitle('');
       await load();
-      toast({ type: 'success', title: '템플릿으로 저장했습니다' });
+      toast({ type: 'success', title: t('cc.templateSaved') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.saveFailed') });
     }
   };
-  const removeTemplate = async (t: Template) => {
+  const removeTemplate = async (tpl: Template) => {
     try {
-      await api(`/cs-sms/templates/${t.id}`, { method: 'DELETE' });
-      if (picked === t.id) setPicked(null);
+      await api(`/cs-sms/templates/${tpl.id}`, { method: 'DELETE' });
+      if (picked === tpl.id) setPicked(null);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.deleteFailed') });
     }
   };
 
@@ -158,19 +160,19 @@ export function SmsModal({
       <Modal
         open={open}
         onOpenChange={(o) => !o && onClose()}
-        title="문자 보내기"
+        title={t('cc.sendSms')}
         size="lg"
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>
-              닫기
+              {t('cc.close')}
             </Button>
             <Button
               variant="primary"
               disabled={busy || !body.trim() || tooLong || to.replace(/\D/g, '').length < 9}
               onClick={() => void send()}
             >
-              <Send size={14} /> 보내기
+              <Send size={14} /> {t('cc.send')}
             </Button>
           </>
         }
@@ -178,31 +180,31 @@ export function SmsModal({
         <div className={`${styles.wrap} sms-modal-wrap`}>
           <div className={styles.left}>
             <div className={styles.section}>
-              <span className={styles.label}>템플릿</span>
+              <span className={styles.label}>{t('cc.templates')}</span>
               <div className={styles.chips}>
-                {templates.map((t) => (
-                  <span key={t.id} className={styles.chipWrap}>
+                {templates.map((tpl) => (
+                  <span key={tpl.id} className={styles.chipWrap}>
                     <button
                       type="button"
                       className={[
                         styles.chip,
-                        t.shared && styles.chipShared,
-                        picked === t.id && styles.chipOn,
+                        tpl.shared && styles.chipShared,
+                        picked === tpl.id && styles.chipOn,
                       ]
                         .filter(Boolean)
                         .join(' ')}
-                      title={t.shared ? '공유 템플릿' : '내 템플릿'}
-                      onClick={() => pick(t)}
+                      title={tpl.shared ? t('cc.sharedTemplates') : t('cc.myTemplates')}
+                      onClick={() => pick(tpl)}
                     >
-                      {t.shared && <Users size={11} />}
-                      {t.title}
+                      {tpl.shared && <Users size={11} />}
+                      {tpl.title}
                     </button>
-                    {(!t.shared || t.employeeId === user?.employeeId) && (
+                    {(!tpl.shared || tpl.employeeId === user?.employeeId) && (
                       <button
                         type="button"
                         className={styles.chipDel}
-                        aria-label={`${t.title} 템플릿 지우기`}
-                        onClick={() => void removeTemplate(t)}
+                        aria-label={t('cc.deleteTemplateOf', { v0: tpl.title })}
+                        onClick={() => void removeTemplate(tpl)}
                       >
                         <Trash2 size={11} />
                       </button>
@@ -212,31 +214,31 @@ export function SmsModal({
               </div>
             </div>
             <label className={styles.section}>
-              <span className={styles.label}>받는 번호</span>
+              <span className={styles.label}>{t('cc.to')}</span>
               <Input value={to} onChange={(e) => setTo(e.target.value)} />
             </label>
             {lms && (
               <label className={styles.section}>
-                <span className={styles.label}>제목(장문)</span>
+                <span className={styles.label}>{t('cc.subject')}</span>
                 <Input
                   value={title}
                   maxLength={40}
-                  placeholder="예: 통인익스프레스 상담 안내"
+                  placeholder={t('cc.subjectPh')}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
             )}
             <label className={`${styles.section} ${styles.grow}`}>
               <span className={styles.label}>
-                내용
+                {t('cc.content')}
                 <span className={`${styles.count} ${tooLong ? styles.over : ''}`}>
-                  {lms ? `장문(LMS) ${body.length}/2,000자` : `단문(SMS) ${size}/90 byte`}
+                  {lms ? t('cc.lmsCount', { v0: body.length }) : t('cc.smsCount', { v0: size })}
                 </span>
               </span>
               <Textarea
                 className={styles.text}
                 value={body}
-                placeholder="템플릿을 고르거나 직접 적어 주세요. 90byte(한글 45자)를 넘으면 장문으로 보냅니다."
+                placeholder={t('cc.bodyPh')}
                 onChange={(e) => {
                   setBody(e.target.value);
                   setPicked(null);
@@ -250,14 +252,15 @@ export function SmsModal({
                 disabled={!body.trim()}
                 onClick={() => setSaveOpen(true)}
               >
-                <Save size={13} /> 템플릿으로 저장
+                <Save size={13} /> {t('cc.saveTemplate')}
               </Button>
               <span className={styles.note}>
                 {status?.vendor
-                  ? `${status.vendor}로 보냅니다${
-                      status.restricted ? ' · 지금은 허용 번호(직원·시연)로만 실제 발송' : ''
-                    }`
-                  : '문자 발송사가 연결되지 않아 기록만 남습니다'}
+                  ? t('cc.sendVia', {
+                      v0: status.vendor,
+                      v1: status.restricted ? t('cc.restricted') : '',
+                    })
+                  : t('cc.noVendor')}
               </span>
             </div>
           </div>
@@ -269,7 +272,7 @@ export function SmsModal({
               lms={lms}
               title={title}
               body={preview}
-              placeholder="보낼 내용이 여기 미리 보입니다"
+              placeholder={t('cc.previewEmpty')}
               width={250}
             />
           </div>
@@ -277,8 +280,8 @@ export function SmsModal({
       </Modal>
       <ConfirmModal
         open={saveOpen}
-        title="템플릿으로 저장"
-        confirmLabel="저장"
+        title={t('cc.saveTemplate')}
+        confirmLabel={t('cc.save')}
         onClose={() => setSaveOpen(false)}
         onConfirm={() => saveTitle.trim() && void saveTemplate()}
       >
@@ -286,15 +289,15 @@ export function SmsModal({
           <Input
             value={saveTitle}
             maxLength={40}
-            placeholder="템플릿 이름 — 예: 견적 일정 확인"
+            placeholder={t('cc.templateNamePh')}
             onChange={(e) => setSaveTitle(e.target.value)}
           />
           <SegmentedControl
             value={saveShared}
             onChange={(v) => setSaveShared(v as 'mine' | 'shared')}
             options={[
-              { value: 'mine', label: '개인' },
-              { value: 'shared', label: '공유' },
+              { value: 'mine', label: t('cc.personal') },
+              { value: 'shared', label: t('cc.shared') },
             ]}
           />
         </div>

@@ -254,7 +254,7 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
 
         <div className={styles.volCard + ' ' + styles.volTotal}>
           <Line
-            label={t('est.totalOf', { v0: included ? ' (부가세 포함)' : '' })}
+            label={t('est.totalOf', { v0: included ? t('est.vatInSuffix') : '' })}
             value={won(total)}
             strong
           />

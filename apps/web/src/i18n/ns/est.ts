@@ -3,6 +3,12 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    grp: {
+      ETC: '기타',
+      LADDER: '사다리차 서비스',
+      LIVING: '생활 서비스',
+      ASSEMBLY: '분해 · 설치',
+    },
     tab: {
       basic: '기본정보',
       items: '물품정보',
@@ -127,11 +133,6 @@ export default defineNs({
     roomAdd: '방 추가',
     itemsHint:
       '체크한 물품만 저장됩니다. 체크하면 물품의 기본 부피·무게가 채워지고, 고쳐 쓸 수 있습니다.',
-    grp: {
-      LADDER: '사다리차 서비스',
-      LIVING: '생활 서비스',
-      ASSEMBLY: '분해 · 설치',
-    },
     optionsSaved: '옵션을 저장했습니다',
     pyeong: '평',
     pyeongOf: '{{v0}} 평수',
@@ -245,8 +246,15 @@ export default defineNs({
     vatOf: '부가세 ({{v0}})',
     separate: '별도',
     total2: '총비용',
+    vatInSuffix: ' (부가세 포함)',
   },
   en: {
+    grp: {
+      ETC: 'Other',
+      LADDER: 'Ladder truck',
+      LIVING: 'Living service',
+      ASSEMBLY: 'Disassembly · Installation',
+    },
     tab: {
       basic: 'Basic info',
       items: 'Items',
@@ -374,11 +382,6 @@ export default defineNs({
     roomAdd: 'Add room',
     itemsHint:
       'Only checked items are saved. Checking fills in the default volume and weight, which you can edit.',
-    grp: {
-      LADDER: 'Ladder truck',
-      LIVING: 'Living service',
-      ASSEMBLY: 'Disassembly · Installation',
-    },
     optionsSaved: 'Options saved',
     pyeong: 'pyeong',
     pyeongOf: '{{v0}} size (pyeong)',
@@ -491,8 +494,15 @@ export default defineNs({
     vatOf: 'VAT ({{v0}})',
     separate: 'Separate',
     total2: 'Total cost',
+    vatInSuffix: ' (VAT incl.)',
   },
   zh: {
+    grp: {
+      ETC: '其他',
+      LADDER: '云梯车服务',
+      LIVING: '生活服务',
+      ASSEMBLY: '拆装',
+    },
     tab: {
       basic: '基本信息',
       items: '物品信息',
@@ -616,11 +626,6 @@ export default defineNs({
     roomNew: '要添加的房间名',
     roomAdd: '添加房间',
     itemsHint: '仅保存勾选的物品。勾选后自动填入默认体积和重量，可修改。',
-    grp: {
-      LADDER: '云梯车服务',
-      LIVING: '生活服务',
-      ASSEMBLY: '拆装',
-    },
     optionsSaved: '选项已保存',
     pyeong: '坪',
     pyeongOf: '{{v0}} 坪数',
@@ -731,5 +736,6 @@ export default defineNs({
     vatOf: '增值税（{{v0}}）',
     separate: '另计',
     total2: '总费用',
+    vatInSuffix: '（含增值税）',
   },
 });

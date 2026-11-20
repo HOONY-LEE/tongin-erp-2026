@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Download, Play } from 'lucide-react';
 import { getToken } from '../../lib/api';
@@ -17,6 +18,7 @@ export function Recording({
   callNo?: string | null;
   available: boolean;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,7 @@ export function Recording({
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(body?.message ?? '녹취를 불러오지 못했습니다');
+        throw new Error(body?.message ?? t('cc.recLoadFailed'));
       }
       const u = URL.createObjectURL(await res.blob());
       setUrl(u);
@@ -45,7 +47,7 @@ export function Recording({
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof Error ? e.message : '녹취를 불러오지 못했습니다',
+        title: e instanceof Error ? e.message : t('cc.recLoadFailed'),
       });
       return null;
     } finally {
@@ -57,28 +59,24 @@ export function Recording({
     if (!u) return;
     const a = document.createElement('a');
     a.href = u;
-    a.download = `녹취_${callNo ?? callId.slice(0, 8).toUpperCase()}.wav`;
+    a.download = t('cc.recFile', { v0: callNo ?? callId.slice(0, 8).toUpperCase() });
     a.click();
   };
 
   return (
     <div className={styles.recording}>
-      <span className={styles.recLabel}>통화 녹취</span>
+      <span className={styles.recLabel}>{t('cc.recording')}</span>
       {url ? (
         <audio controls autoPlay src={url} className={styles.recAudio} />
       ) : (
         <Button variant="outline" size="sm" disabled={loading} onClick={() => void fetchFile()}>
-          <Play size={14} /> {loading ? '불러오는 중…' : '녹취 듣기'}
+          <Play size={14} /> {loading ? t('cc.loading') : t('cc.listen')}
         </Button>
       )}
       <Button variant="ghost" size="sm" disabled={loading} onClick={() => void download()}>
-        <Download size={14} /> 내려받기
+        <Download size={14} /> {t('cc.download')}
       </Button>
-      {!available && (
-        <span className={styles.muted}>
-          녹취를 찾지 못했습니다(통화가 연결되지 않았거나 90일이 지났을 수 있습니다)
-        </span>
-      )}
+      {!available && <span className={styles.muted}>{t('cc.recNotFound')}</span>}
     </div>
   );
 }

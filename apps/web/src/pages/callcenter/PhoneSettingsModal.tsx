@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import {
@@ -16,6 +17,7 @@ const DEFAULT = '__default';
  * PC 전화 소리 설정 — 벨소리(켜기·크기·종류)와 스피커·마이크 장치. 이 PC에만 저장된다.
  */
 export function PhoneSettingsModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const s = usePhoneSettings();
   const [devices, setDevices] = useState<{
     inputs: { value: string; label: string }[];
@@ -33,27 +35,27 @@ export function PhoneSettingsModal({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title="PC 전화 소리 설정"
+      title={t('cc.soundSettings')}
       footer={
         <Button variant="primary" onClick={onClose}>
-          닫기
+          {t('cc.close')}
         </Button>
       }
     >
       <div className={styles.settings}>
         <div className={styles.field}>
-          <span>벨소리</span>
+          <span>{t('cc.ringtone')}</span>
           <SegmentedControl
             value={s.ring ? 'on' : 'off'}
             onChange={(v) => setPhoneSettings({ ring: v === 'on' })}
             options={[
-              { value: 'on', label: '켜기' },
-              { value: 'off', label: '끄기(화면만)' },
+              { value: 'on', label: t('cc.on') },
+              { value: 'off', label: t('cc.off') },
             ]}
           />
         </div>
         <div className={styles.field}>
-          <span>벨소리 종류</span>
+          <span>{t('cc.ringtoneKind')}</span>
           <SegmentedControl
             value={s.ringStyle}
             onChange={(v) => {
@@ -61,14 +63,16 @@ export function PhoneSettingsModal({ onClose }: { onClose: () => void }) {
               previewRingtone(v as RingStyle);
             }}
             options={[
-              { value: 'classic', label: '기본' },
-              { value: 'soft', label: '부드럽게' },
-              { value: 'bell', label: '종소리' },
+              { value: 'classic', label: t('cc.rt.default') },
+              { value: 'soft', label: t('cc.rt.soft') },
+              { value: 'bell', label: t('cc.rt.bell') },
             ]}
           />
         </div>
         <label className={styles.field}>
-          <span>벨소리 크기 · {Math.round(s.volume * 100)}%</span>
+          <span>
+            {t('cc.volume')} {Math.round(s.volume * 100)}%
+          </span>
           <span className={styles.volume}>
             <input
               type="range"
@@ -79,7 +83,7 @@ export function PhoneSettingsModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setPhoneSettings({ volume: Number(e.target.value) / 100 })}
               onPointerUp={() => previewRingtone()}
               onKeyUp={() => previewRingtone()}
-              aria-label="벨소리 크기"
+              aria-label={t('cc.volumeAria')}
               disabled={!s.ring}
             />
             <Button
@@ -88,29 +92,29 @@ export function PhoneSettingsModal({ onClose }: { onClose: () => void }) {
               disabled={!s.ring}
               onClick={() => previewRingtone()}
             >
-              <Volume2 size={14} /> 들어보기
+              <Volume2 size={14} /> {t('cc.preview')}
             </Button>
           </span>
         </label>
         <label className={styles.field}>
-          <span>소리 나는 곳(스피커 · 헤드셋)</span>
+          <span>{t('cc.output')}</span>
           <Select
             value={s.outputDeviceId || DEFAULT}
             onValueChange={(v) => setPhoneSettings({ outputDeviceId: v === DEFAULT ? '' : v })}
-            options={[{ value: DEFAULT, label: '기본 장치' }, ...devices.outputs]}
+            options={[{ value: DEFAULT, label: t('cc.defaultDevice') }, ...devices.outputs]}
           />
         </label>
         <label className={styles.field}>
-          <span>마이크</span>
+          <span>{t('cc.mic')}</span>
           <Select
             value={s.inputDeviceId || DEFAULT}
             onValueChange={(v) => setPhoneSettings({ inputDeviceId: v === DEFAULT ? '' : v })}
-            options={[{ value: DEFAULT, label: '기본 장치' }, ...devices.inputs]}
+            options={[{ value: DEFAULT, label: t('cc.defaultDevice') }, ...devices.inputs]}
           />
         </label>
         <p className={styles.muted}>
-          설정은 이 PC에만 저장됩니다. 장치 이름이 안 보이면 PC 전화를 한 번 켜서 마이크 권한을
-          허용해 주세요. 마이크를 바꾸면 다음 통화부터 적용됩니다.
+          {t('cc.soundNote1')}
+          {t('cc.soundNote2')}
         </p>
       </div>
     </Modal>

@@ -100,7 +100,7 @@ export function DistanceCard({
       <div className={styles.distFee}>
         <span className={styles.infoLabel}>{t('est.distFee')}</span>
         <span className={styles.distValue}>
-          <b>{fee.toLocaleString()}원</b>
+          <b>{t('est.won', { v0: fee.toLocaleString() })}</b>
           <span className={styles.distSrc}>
             {over > 0
               ? t('est.distRule', { v0: rule.freeKm, v1: over, v2: rule.perKm.toLocaleString() })

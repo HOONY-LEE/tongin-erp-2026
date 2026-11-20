@@ -348,7 +348,7 @@ export default function CalendarPage() {
       closures.closures.map((c) => ({
         id: `closure-${c.id}`,
         source: 'CLOSURE',
-        title: t('cal.closure', { v0: c.orgName ?? '전체' }),
+        title: t('cal.closure', { v0: c.orgName ?? t('cal.all') }),
         date: c.date,
         endDate: c.date,
         startTime: null,

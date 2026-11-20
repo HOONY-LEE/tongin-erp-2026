@@ -403,7 +403,7 @@ export function ItemsTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
                         className={styles.textInput}
                         value={row.memo}
                         placeholder={t('est.memo')}
-                        aria-label={t('est.memoOf', { v0: row.itemName || '물품' })}
+                        aria-label={t('est.memoOf', { v0: row.itemName || t('est.item') })}
                         disabled={!canEdit || !row.on}
                         onChange={(e) => patchRow(room.uid, row.uid, { memo: e.target.value })}
                       />

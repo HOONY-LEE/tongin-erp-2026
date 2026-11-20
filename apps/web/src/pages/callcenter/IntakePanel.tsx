@@ -1,3 +1,4 @@
+import i18n from '../../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
@@ -70,18 +71,18 @@ export interface ReadOnlyInfo {
   } | null;
 }
 const CALL_STATUS: Record<string, string> = {
-  DONE: '상담 끝',
-  CANCELED: '취소',
-  OUTCALL: '아웃콜 대기',
-  ASSIGNED: '상담 중',
-  CALLBACK: '콜백 중',
+  DONE: i18n.t('cc.st.ENDED'),
+  CANCELED: i18n.t('cc.canceled'),
+  OUTCALL: i18n.t('cc.outboundWaiting'),
+  ASSIGNED: i18n.t('cc.st.TALKING'),
+  CALLBACK: i18n.t('cc.st.CALLBACK'),
 };
 const durText = (s: number | null) =>
   s == null
     ? '-'
     : s < 60
-      ? `${s}초`
-      : `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초`;
+      ? i18n.t('cc.secN', { v0: s })
+      : i18n.t('cc.msN', { v0: Math.floor(s / 60), v1: String(s % 60).padStart(2, '0') });
 interface RecentLead {
   id: string;
   leadNo: string;
@@ -103,7 +104,11 @@ const HQ_CODE = 'CO-MOVING';
 /** 배정 후 지난 시간 — '방금' · '12분' · '2시간 19분' */
 const elapsed = (ms: number) => {
   const m = Math.max(0, Math.floor(ms / 60_000));
-  return m < 1 ? '방금' : m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간 ${m % 60}분`;
+  return m < 1
+    ? i18n.t('cc.justNow')
+    : m < 60
+      ? i18n.t('cc.minN', { v0: m })
+      : i18n.t('cc.hmN', { v0: Math.floor(m / 60), v1: m % 60 });
 };
 
 /**
@@ -160,7 +165,7 @@ export function IntakePanel({
       // 콘솔이 새 콜을 읽으면 그 상담 화면으로 넘어간다
       window.dispatchEvent(new CustomEvent('tongin:cs-call-changed'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '전화를 걸지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.dialFailed') });
     } finally {
       setBusy(false);
     }
@@ -261,7 +266,7 @@ export function IntakePanel({
       if (ok) toast({ type: 'success', title: ok });
       await onDone();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '처리하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.processFailed') });
     } finally {
       setBusy(false);
     }
@@ -272,7 +277,7 @@ export function IntakePanel({
       if (phone.call) hangup();
       await finish('DONE');
       setEndOpen(false);
-    }, '상담을 종료했습니다');
+    }, t('cc.ended'));
 
   // [접수 등록] → 간편접수 창(접수 화면과 같은 창)에 입력한 값을 넘겨 한 번 더 확인 후 등록
   const leadForm = useLeadCreateForm({ withCallFields: true });
@@ -301,7 +306,9 @@ export function IntakePanel({
     if (v.moveKind !== 'GENERAL' && !v.partnerId) {
       toast({
         type: 'error',
-        title: `${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 상품을 골라 주세요.`,
+        title: t('cc.pickProduct', {
+          v0: v.moveKind === 'AFFILIATE' ? t('cc.kind.AFFILIATE') : t('cc.kind.EXCLUSIVE'),
+        }),
       });
       return;
     }
@@ -331,17 +338,17 @@ export function IntakePanel({
       }).catch(() =>
         toast({
           type: 'warning',
-          title: '접수는 등록했지만 콜에 잇지 못했습니다 — 콜 목록에서 확인해 주세요',
+          title: t('cc.leadNotLinked'),
         }),
       );
       toast({
         type: 'success',
-        title: `접수를 등록했습니다${lead.leadNo ? ` (${lead.leadNo})` : ''} — 상담을 마치면 [상담 완료]를 눌러 주세요`,
+        title: t('cc.leadCreated', { v0: lead.leadNo ? ` (${lead.leadNo})` : '' }),
       });
       setConfirmOpen(false);
       await onSaved?.();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '접수하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.leadFailed') });
       throw e;
     }
   };
@@ -350,9 +357,9 @@ export function IntakePanel({
     <div className={styles.intake}>
       {/* 머리 — 왼쪽 들어온 번호·돌려준 곳(끝난 콜이면 상태·상담원·시각), 오른쪽 [전화하기] [문자] [상담 종료] [접수 등록] */}
       <div className={styles.intakeHead}>
-        <span className={styles.channel}>{call.channel ?? '대표번호'}</span>
+        <span className={styles.channel}>{call.channel ?? t('cc.mainNumber')}</span>
         {call.transferTo && (
-          <span className={styles.transferTag} title="이 통화를 돌려준 곳">
+          <span className={styles.transferTag} title={t('cc.transferredFrom')}>
             <PhoneForwarded size={12} /> {call.transferTo}
           </span>
         )}
@@ -360,7 +367,7 @@ export function IntakePanel({
           <>
             <span className={styles.statePill}>{CALL_STATUS[call.status] ?? call.status}</span>
             <span className={styles.headInfo}>
-              {readOnly.agentName ?? '-'} · {fmtDateTime(startedAt)} · 통화{' '}
+              {readOnly.agentName ?? '-'} · {fmtDateTime(startedAt)} {t('cc.talkSep')}{' '}
               {durText(readOnly.durationSec)}
             </span>
           </>
@@ -372,21 +379,22 @@ export function IntakePanel({
                 type="button"
                 className={styles.leadDone}
                 onClick={() => navigate(`/leads/${call.leadId}`)}
-                title="등록한 접수 열기"
+                title={t('cc.openLead')}
               >
-                접수 완료{call.leadNo ? ` · ${call.leadNo}` : ''}
+                {t('cc.leadDone')}
+                {call.leadNo ? ` · ${call.leadNo}` : ''}
               </button>
             ) : (
-              <span className={styles.noLead}>접수 없음</span>
+              <span className={styles.noLead}>{t('cc.noLead')}</span>
             )}
             {can('LEAD.CREATE') && !phone.call && (
               <Button variant="outline" size="sm" onClick={() => setRecallOpen(true)}>
-                <Phone size={14} /> 전화하기
+                <Phone size={14} /> {t('cc.call')}
               </Button>
             )}
             {can('LEAD.CREATE') && (
               <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
-                <MessageSquare size={14} /> 문자
+                <MessageSquare size={14} /> {t('cc.sms')}
               </Button>
             )}
           </span>
@@ -397,22 +405,22 @@ export function IntakePanel({
                 variant="outline"
                 size="sm"
                 disabled={busy}
-                title="고객이 안 받았으면 다시 아웃콜 대기로 돌립니다"
-                onClick={() => void run(() => finish('RETRY'), '다시 아웃콜로 돌렸습니다')}
+                title={t('cc.requeueTip')}
+                onClick={() => void run(() => finish('RETRY'), t('cc.requeued'))}
               >
-                <RotateCcw size={14} /> 다시 아웃콜 처리
+                <RotateCcw size={14} /> {t('cc.requeue')}
               </Button>
             )}
-            {pending && <span className={styles.muted}>연결 중…</span>}
+            {pending && <span className={styles.muted}>{t('cc.connecting')}</span>}
             {/* 전화가 끊겨 있으면 — 다시 걸기(통화 중 표시·음소거·끊기는 화면 아래 통화 막대에) */}
             {!pending && !phone.call && phone.status === 'ready' && (
               <Button variant="outline" size="sm" onClick={() => setDialOpen(true)}>
-                <Phone size={14} /> 전화하기
+                <Phone size={14} /> {t('cc.call')}
               </Button>
             )}
             {!pending && (
               <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
-                <MessageSquare size={14} /> 문자
+                <MessageSquare size={14} /> {t('cc.sms')}
               </Button>
             )}
             <Button
@@ -429,9 +437,10 @@ export function IntakePanel({
                 type="button"
                 className={styles.leadDone}
                 onClick={() => navigate(`/leads/${call.leadId}`)}
-                title="등록한 접수 열기"
+                title={t('cc.openLead')}
               >
-                접수 완료{call.leadNo ? ` · ${call.leadNo}` : ''}
+                {t('cc.leadDone')}
+                {call.leadNo ? ` · ${call.leadNo}` : ''}
               </button>
             ) : (
               can('LEAD.CREATE') && (
@@ -441,7 +450,7 @@ export function IntakePanel({
                   disabled={busy || pending}
                   onClick={openConfirm}
                 >
-                  접수 등록
+                  {t('cc.registerLead')}
                 </Button>
               )
             )}
@@ -451,10 +460,10 @@ export function IntakePanel({
 
       {stale && !readOnly && (
         <div className={styles.staleWarn} role="alert">
-          <b>끝나지 않은 콜이 있어 새 전화가 배정되지 않습니다.</b>
+          <b>{t('cc.unfinishedWarn')}</b>
           <span>
-            {elapsed(talking)} 전에 배정된 콜입니다. 접수할 콜이면 [접수 등록]을, 아니면 [상담
-            종료]를 눌러 마무리해 주세요.
+            {elapsed(talking)} {t('cc.oldCall1')}
+            {t('cc.oldCall2')}
           </span>
         </div>
       )}
@@ -467,7 +476,7 @@ export function IntakePanel({
       <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
         <label className={styles.field}>
           <span>
-            고객명 <i>*</i>
+            {t('cc.customerName')} <i>*</i>
           </span>
           <Input
             value={v.customerName}
@@ -476,14 +485,14 @@ export function IntakePanel({
           />
         </label>
         <label className={styles.field}>
-          <span>전화번호</span>
+          <span>{t('cc.phone')}</span>
           {/* 콜의 번호 — 고칠 수 없다 */}
           <Input value={formatPhone(call.phone)} readOnly className={styles.readOnlyInput} />
         </label>
         {/* 상품 종류 — 일반이면 일반 상품, 제휴·전속이면 그 업체(업체 자체가 상품) */}
         <div className={styles.field}>
           <span>
-            상품 종류 <i>*</i>
+            {t('cc.productKind')} <i>*</i>
           </span>
           <div className={styles.kindRow}>
             <SegmentedControl
@@ -492,9 +501,9 @@ export function IntakePanel({
                 setV((cur) => ({ ...cur, moveKind: x, partnerId: '', serviceLine: 'MOVING' }))
               }
               options={[
-                { value: 'GENERAL', label: '일반' },
-                { value: 'AFFILIATE', label: '제휴' },
-                { value: 'EXCLUSIVE', label: '전속' },
+                { value: 'GENERAL', label: t('cc.kind.GENERAL') },
+                { value: 'AFFILIATE', label: t('cc.kind.AFFILIATE') },
+                { value: 'EXCLUSIVE', label: t('cc.kind.EXCLUSIVE') },
               ]}
             />
             <div className={styles.kindPick}>
@@ -503,7 +512,7 @@ export function IntakePanel({
                   value={v.serviceLine}
                   onValueChange={(x) => setField('serviceLine', x)}
                   options={SERVICE_LINES}
-                  aria-label="일반 상품"
+                  aria-label={t('cc.generalProduct')}
                 />
               ) : (
                 <Combobox
@@ -513,9 +522,12 @@ export function IntakePanel({
                   options={partners
                     .filter((p) => p.type === v.moveKind)
                     .map((p) => ({ value: p.id, label: p.name }))}
-                  placeholder={`${v.moveKind === 'AFFILIATE' ? '제휴' : '전속'} 상품 고르기`}
-                  searchPlaceholder="업체명으로 찾기"
-                  emptyMessage="찾는 상품이 없습니다"
+                  placeholder={t('cc.pickProductOf', {
+                    v0:
+                      v.moveKind === 'AFFILIATE' ? t('cc.kind.AFFILIATE') : t('cc.kind.EXCLUSIVE'),
+                  })}
+                  searchPlaceholder={t('cc.partnerSearch')}
+                  emptyMessage={t('cc.noProduct')}
                   clearable
                 />
               )}
@@ -523,7 +535,7 @@ export function IntakePanel({
           </div>
         </div>
         <label className={styles.field}>
-          <span>서비스 요청일</span>
+          <span>{t('cc.serviceDate')}</span>
           <Input
             type="date"
             value={v.moveDate}
@@ -532,26 +544,31 @@ export function IntakePanel({
         </label>
         {/* 주소 — 출발지 왼쪽, 도착지 오른쪽 */}
         <div className={styles.field}>
-          <AddressField addrPrefix="from" label="출발지" values={v} setField={setField} />
+          <AddressField addrPrefix="from" label={t('cc.origin')} values={v} setField={setField} />
         </div>
         <div className={styles.field}>
-          <AddressField addrPrefix="to" label="도착지" values={v} setField={setField} />
+          <AddressField
+            addrPrefix="to"
+            label={t('cc.destination')}
+            values={v}
+            setField={setField}
+          />
         </div>
         {/* 왼쪽 고객 요청사항(접수에도 남음) · 오른쪽 상담 메모(콜에만, 머리에 프리셋 칩) — 남는 높이를 다 쓴다 */}
         <div className={`${styles.full} ${styles.memoRow}`}>
           <label className={styles.field}>
-            <span>고객 요청사항</span>
+            <span>{t('cc.customerRequest')}</span>
             <Textarea
               className={styles.memoBox}
               value={v.request}
-              placeholder="예: 피아노 있음, 오전 작업 희망, 에어컨 이전 설치"
+              placeholder={t('cc.requestPh')}
               onChange={(e) => setField('request', e.target.value)}
             />
           </label>
           <div className={styles.field}>
             <span className={styles.memoHead}>
               {readOnly ? (
-                <label htmlFor="cs-memo">상담 메모</label>
+                <label htmlFor="cs-memo">{t('cc.memo')}</label>
               ) : (
                 <MemoPresetPicker current={v.memo} onApply={(b) => setField('memo', b)} />
               )}
@@ -560,8 +577,8 @@ export function IntakePanel({
               id="cs-memo"
               className={styles.memoBox}
               value={v.memo}
-              aria-label="상담 메모"
-              placeholder="상담 메모 — 예: 견적 비교 중, 다음 주 화요일 다시 연락"
+              aria-label={t('cc.memo')}
+              placeholder={t('cc.memoPh')}
               onChange={(e) => setField('memo', e.target.value)}
             />
           </div>
@@ -571,7 +588,7 @@ export function IntakePanel({
       <FormModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="접수 등록 — 상담 콜"
+        title={t('cc.registerLeadTitle')}
         size="md"
         fields={leadForm.fields}
         initialValues={confirmOpen ? formInitial() : undefined}
@@ -605,19 +622,20 @@ export function IntakePanel({
       </ConfirmModal>
       <ConfirmModal
         open={recallOpen}
-        title="고객에게 전화하기"
-        confirmLabel={phone.status === 'ready' ? '전화 걸기' : 'PC 전화 켜고 걸기'}
+        title={t('cc.callCustomer')}
+        confirmLabel={phone.status === 'ready' ? t('cc.dialBtn') : t('cc.enableAndDial')}
         busy={busy}
         onClose={() => setRecallOpen(false)}
         onConfirm={() => void recall()}
       >
         <p style={{ margin: 0, lineHeight: 1.6 }}>
           <b>{formatPhone(call.phone)}</b>
-          {call.customerName ? ` (${call.customerName})` : ''}에게 전화할까요?
+          {call.customerName ? ` (${call.customerName})` : ''}
+          {t('cc.callQ')}
           <br />
           <span className={styles.muted}>
-            새 상담(콜백)으로 열리고, 이번 통화는 새 콜에 기록됩니다.
-            {phone.status !== 'ready' && ' PC 전화가 꺼져 있어 먼저 켭니다(마이크 허용).'}
+            {t('cc.callbackNote')}
+            {phone.status !== 'ready' && t('cc.enableNote')}
           </span>
         </p>
       </ConfirmModal>
@@ -631,13 +649,13 @@ export function IntakePanel({
       >
         <p style={{ margin: 0, lineHeight: 1.6 }}>
           {call.leadId
-            ? `접수(${call.leadNo ?? '등록됨'})가 연결된 이 상담을 끝낼까요?`
-            : '접수 없이 이 상담을 끝낼까요?'}
-          {phone.call ? ' 지금 통화도 함께 끊깁니다.' : ''}
+            ? t('cc.endWithLead', { v0: call.leadNo ?? t('cc.registered') })
+            : t('cc.endNoLead')}
+          {phone.call ? t('cc.endHangup') : ''}
           <br />
           <span className={styles.muted}>
-            적어 둔 메모는 콜 기록에 남습니다. 끝낸 뒤에는 후처리 상태이니, 준비가 되면 [상담
-            가능]을 눌러 주세요.
+            {t('cc.endNote1')}
+            {t('cc.endNote2')}
           </span>
         </p>
       </ConfirmModal>

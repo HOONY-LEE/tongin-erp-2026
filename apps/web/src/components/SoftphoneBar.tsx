@@ -89,12 +89,12 @@ export function SoftphoneBar() {
     answerRef.current?.focus();
     const title = document.title;
     let on = false;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       on = !on;
-      document.title = on ? '📞 전화가 왔습니다' : title;
+      document.title = on ? t('cc.incomingNotice') : title;
     }, 900);
     return () => {
-      clearInterval(t);
+      clearInterval(timer);
       document.title = title;
     };
   }, [ringing]);
@@ -136,7 +136,7 @@ export function SoftphoneBar() {
         </span>
       </div>
     ) : null;
-  const who = call.number ? formatPhone(call.number) : '알 수 없는 번호';
+  const who = call.number ? formatPhone(call.number) : t('cc.unknownNumber');
 
   if (ringing)
     return (
@@ -153,41 +153,45 @@ export function SoftphoneBar() {
           <span className={styles.ringIcon}>
             <PhoneIncoming size={28} />
           </span>
-          <h2 id="incoming-title">전화가 왔습니다</h2>
+          <h2 id="incoming-title">{t('cc.incoming')}</h2>
           <b className={styles.inNumber}>{who}</b>
           {caller === null ? (
-            <p className={styles.inWho}>고객 정보를 찾는 중…</p>
+            <p className={styles.inWho}>{t('cc.findingCustomer')}</p>
           ) : caller.existing ? (
             <p className={styles.inWho}>
-              <span className={`${styles.custTag} ${styles.custOld}`}>기존 고객</span>
+              <span className={`${styles.custTag} ${styles.custOld}`}>{t('cc.existing')}</span>
               <b>{caller.name}</b>
             </p>
           ) : (
             <p className={styles.inWho}>
-              <span className={`${styles.custTag} ${styles.custNew}`}>신규 고객</span>
-              처음 전화한 번호입니다
+              <span className={`${styles.custTag} ${styles.custNew}`}>{t('cc.newCustomer')}</span>
+              {t('cc.firstCall')}
             </p>
           )}
           <div className={styles.inActions}>
             <button type="button" className={styles.hangBig} onClick={hangup}>
-              <PhoneOff size={18} /> 거절
+              <PhoneOff size={18} /> {t('cc.decline')}
             </button>
             <button ref={answerRef} type="button" className={styles.answerBig} onClick={take}>
-              <Phone size={18} /> 받기
+              <Phone size={18} /> {t('cc.answer')}
             </button>
           </div>
-          <small className={styles.inHint}>20초 안에 받지 않으면 다음 상담원에게 넘어갑니다</small>
+          <small className={styles.inHint}>{t('cc.ringTimeout')}</small>
         </div>
       </div>
     );
   const active = call.state === 'active';
   const status =
-    call.state === 'connecting' ? (call.direction === 'out' ? '거는 중…' : '연결 중…') : '통화 중';
+    call.state === 'connecting'
+      ? call.direction === 'out'
+        ? t('cc.dialing')
+        : t('cc.connecting')
+      : t('cc.inCall');
   const custTag =
     caller === null ? null : caller.existing ? (
-      <span className={`${styles.custTag} ${styles.custOld}`}>기존 고객</span>
+      <span className={`${styles.custTag} ${styles.custOld}`}>{t('cc.existing')}</span>
     ) : (
-      <span className={`${styles.custTag} ${styles.custNew}`}>신규 고객</span>
+      <span className={`${styles.custTag} ${styles.custNew}`}>{t('cc.newCustomer')}</span>
     );
 
   return (
@@ -204,22 +208,18 @@ export function SoftphoneBar() {
               {mmss(Date.now() - (call.startedAt ?? Date.now()))}
             </span>
           )}
-          {call.muted && <span className={styles.mutedTag}>음소거 중</span>}
+          {call.muted && <span className={styles.mutedTag}>{t('cc.muted')}</span>}
         </span>
         <span className={styles.line2}>
           <span className={styles.num}>{who}</span>
           {custTag}
           {caller?.name && <span>{caller.name}</span>}
         </span>
-        {call.audioIssue === 'no-media' && (
-          <small className={styles.warn}>
-            고객 음성이 PC로 들어오지 않습니다 — 네트워크(방화벽) 문제일 수 있습니다
-          </small>
-        )}
+        {call.audioIssue === 'no-media' && <small className={styles.warn}>{t('cc.noAudio')}</small>}
       </span>
       {call.audioIssue === 'blocked' && (
         <button type="button" className={styles.answer} onClick={resumeAudio}>
-          소리 켜기
+          {t('cc.unmuteAudio')}
         </button>
       )}
       {active && (
@@ -230,20 +230,20 @@ export function SoftphoneBar() {
             onClick={() => setPadOpen((o) => !o)}
             aria-expanded={padOpen}
           >
-            <Grid3x3 size={16} /> 키패드
+            <Grid3x3 size={16} /> {t('cc.keypad')}
           </button>
           {padOpen && (
             <div
               className={styles.pad}
               role="group"
-              aria-label="키패드"
+              aria-label={t('cc.keypad')}
               tabIndex={-1}
               onKeyDown={(e) => {
                 if (/^[0-9*#]$/.test(e.key)) press(e.key);
                 if (e.key === 'Escape') setPadOpen(false);
               }}
             >
-              <output className={styles.padShow}>{pressed || '번호를 누르세요'}</output>
+              <output className={styles.padShow}>{pressed || t('cc.pressKeys')}</output>
               <div className={styles.padKeys}>
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((k) => (
                   <button key={k} type="button" onClick={() => press(k)}>
@@ -264,11 +264,11 @@ export function SoftphoneBar() {
           aria-pressed={call.muted}
         >
           {call.muted ? <MicOff size={16} /> : <Mic size={16} />}
-          {call.muted ? '음소거 해제' : '음소거'}
+          {call.muted ? t('cc.unmute') : t('cc.mute')}
         </button>
       )}
       <button type="button" className={styles.hang} onClick={hangup}>
-        <PhoneOff size={16} /> {active ? '통화 종료' : '끊기'}
+        <PhoneOff size={16} /> {active ? t('cc.hangupTip') : t('cc.hangup')}
       </button>
     </div>
   );

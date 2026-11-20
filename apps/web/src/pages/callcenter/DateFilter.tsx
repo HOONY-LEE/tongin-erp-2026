@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { ListFilter } from 'lucide-react';
 import { Popover } from '@sunghoon_lee/akron-ui';
 import { Button, Input } from '../../components/ui';
@@ -12,12 +14,12 @@ export interface DateRange {
 const kDay = (offset = 0) =>
   new Date(Date.now() + 9 * 3600_000 - offset * 86400_000).toISOString().slice(0, 10);
 const PRESETS: { label: string; range: () => DateRange }[] = [
-  { label: '오늘', range: () => ({ from: kDay(), to: kDay() }) },
-  { label: '어제', range: () => ({ from: kDay(1), to: kDay(1) }) },
-  { label: '최근 7일', range: () => ({ from: kDay(6), to: kDay() }) },
-  { label: '최근 30일', range: () => ({ from: kDay(29), to: kDay() }) },
+  { label: i18n.t('cc.today'), range: () => ({ from: kDay(), to: kDay() }) },
+  { label: i18n.t('cc.yesterday'), range: () => ({ from: kDay(1), to: kDay(1) }) },
+  { label: i18n.t('cc.last7'), range: () => ({ from: kDay(6), to: kDay() }) },
+  { label: i18n.t('cc.last30'), range: () => ({ from: kDay(29), to: kDay() }) },
   {
-    label: '이번 달',
+    label: i18n.t('cc.thisMonth'),
     range: () => ({ from: `${kDay().slice(0, 8)}01`, to: kDay() }),
   },
 ];
@@ -31,6 +33,7 @@ export function DateFilter({
   value: DateRange;
   onChange: (v: DateRange) => void;
 }) {
+  const { t } = useTranslation();
   const active = !!(value.from || value.to);
   const summary = active
     ? value.from === value.to
@@ -47,8 +50,8 @@ export function DateFilter({
         <button
           type="button"
           className={`${styles.filterBtn} ${active ? styles.filterOn : ''}`}
-          aria-label="필터"
-          title="필터 — 통화 날짜"
+          aria-label={t('cc.filter')}
+          title={t('cc.filterAria')}
         >
           <ListFilter size={16} />
           {summary && <span>{summary}</span>}
@@ -56,7 +59,7 @@ export function DateFilter({
       }
     >
       <div className={styles.filterBody}>
-        <b className={styles.filterTitle}>통화 날짜</b>
+        <b className={styles.filterTitle}>{t('cc.callDate')}</b>
         <div className={styles.filterPresets}>
           {PRESETS.map((p) => {
             const r = p.range();
@@ -79,7 +82,7 @@ export function DateFilter({
             value={value.from}
             max={value.to || undefined}
             onChange={(e) => onChange({ ...value, from: e.target.value })}
-            aria-label="시작일"
+            aria-label={t('cc.from')}
           />
           <span>~</span>
           <Input
@@ -87,12 +90,12 @@ export function DateFilter({
             value={value.to}
             min={value.from || undefined}
             onChange={(e) => onChange({ ...value, to: e.target.value })}
-            aria-label="종료일"
+            aria-label={t('cc.toDate')}
           />
         </div>
         {active && (
           <Button variant="ghost" size="sm" onClick={() => onChange({ from: '', to: '' })}>
-            날짜 필터 지우기
+            {t('cc.clearDate')}
           </Button>
         )}
       </div>

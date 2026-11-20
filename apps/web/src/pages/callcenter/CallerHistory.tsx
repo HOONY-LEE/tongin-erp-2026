@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
@@ -14,16 +16,16 @@ interface Item {
   link?: string | null;
 }
 const KIND_LABEL: Record<string, string> = {
-  customer: '고객',
-  call: '통화',
-  sms: '문자',
-  lead: '접수',
-  owner: '담당',
-  estimate: '견적',
-  contract: '계약',
-  payment: '입금',
-  work: '작업',
-  service: '서비스',
+  customer: i18n.t('cc.customer'),
+  call: i18n.t('cc.h.call'),
+  sms: i18n.t('cc.sms'),
+  lead: i18n.t('cc.lead'),
+  owner: i18n.t('cc.h.owner'),
+  estimate: i18n.t('cc.h.estimate'),
+  contract: i18n.t('cc.h.contract'),
+  payment: i18n.t('cc.h.payment'),
+  work: i18n.t('cc.h.work'),
+  service: i18n.t('cc.h.service'),
   support: 'AS',
 };
 const when = (iso: string) => fmtDateTime(iso);
@@ -33,6 +35,7 @@ const when = (iso: string) => fmtDateTime(iso);
  * 지금 보고 있는 콜은 뺀다. 전체는 고객관리에서.
  */
 export function CallerHistory({ customerId, callId }: { customerId: string; callId: string }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [items, setItems] = useState<Item[] | null>(null);
   useEffect(() => {
@@ -49,7 +52,7 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
     <section className={`${styles.card} ${styles.paneCard} ${styles.historyCard}`}>
       <div className={`${styles.paneHead} ${styles.historyHead}`}>
         <b>
-          <History size={15} /> 고객 이력
+          <History size={15} /> {t('cc.history')}
         </b>
         {items && <span className={styles.count}>{items.length}</span>}
         <button
@@ -57,22 +60,22 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
           className={styles.historyMore}
           onClick={() => navigate(`/customers?detail=${customerId}`)}
         >
-          고객 정보 전체 보기
+          {t('cc.viewCustomer')}
         </button>
       </div>
       <div className={styles.paneBody}>
         {items === null ? (
-          <p className={styles.muted}>불러오는 중…</p>
+          <p className={styles.muted}>{t('cc.loading')}</p>
         ) : items.length === 0 ? (
-          <p className={styles.muted}>이전 기록이 없습니다.</p>
+          <p className={styles.muted}>{t('cc.noHistory')}</p>
         ) : (
           <table className={styles.hTable}>
             <thead>
               <tr>
-                <th style={{ width: 148 }}>일시</th>
-                <th style={{ width: 76 }}>구분</th>
-                <th>내용</th>
-                <th style={{ width: 90 }}>담당</th>
+                <th style={{ width: 148 }}>{t('cc.col.time')}</th>
+                <th style={{ width: 76 }}>{t('cc.col.kind')}</th>
+                <th>{t('cc.content')}</th>
+                <th style={{ width: 90 }}>{t('cc.h.owner')}</th>
               </tr>
             </thead>
             <tbody>

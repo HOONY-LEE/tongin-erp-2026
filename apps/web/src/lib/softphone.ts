@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useSyncExternalStore } from 'react';
 import { UA, WebSocketInterface, debug as jssipDebug } from 'jssip';
 import type { RTCSession } from 'jssip/lib/RTCSession';
@@ -155,7 +156,8 @@ export async function listAudioDevices() {
       )
       .map((d, i) => ({
         value: d.deviceId,
-        label: d.label || `${kind === 'audioinput' ? '마이크' : '스피커'} ${i + 1}`,
+        label:
+          d.label || `${kind === 'audioinput' ? i18n.t('cc.mic') : i18n.t('cc.speaker')} ${i + 1}`,
       }));
   return { inputs: pick('audioinput'), outputs: pick('audiooutput') };
 }
@@ -392,7 +394,7 @@ async function register() {
       set({ status: 'off', error: null });
       return;
     }
-    set({ status: 'error', error: e instanceof Error ? e.message : 'PC 전화를 켜지 못했습니다' });
+    set({ status: 'error', error: e instanceof Error ? e.message : i18n.t('cc.pcFailed') });
     return;
   }
   const c = decodeJwt(res.token);
@@ -412,14 +414,14 @@ async function register() {
   next.on('unregistered', () => ua === next && set({ ringable: false }));
   next.on('registrationFailed', () => {
     if (ua !== next) return;
-    set({ ringable: false, error: '전화 서비스에 등록하지 못했습니다. 다시 켜 주세요.' });
+    set({ ringable: false, error: i18n.t('cc.regFailed') });
   });
   next.on('disconnected', () => {
     if (ua === next && state.status === 'ready')
       set({
         status: 'connecting',
         ringable: false,
-        error: '전화 서비스 연결이 끊겨 다시 잇는 중입니다',
+        error: i18n.t('cc.reconnecting'),
       });
   });
   next.on('connected', () => {
@@ -480,10 +482,10 @@ export async function enablePhone() {
       status: 'error',
       error:
         name === 'NotFoundError' || name === 'OverconstrainedError'
-          ? '마이크(헤드셋)를 찾지 못했습니다. 헤드셋을 연결한 뒤 다시 켜 주세요.'
+          ? i18n.t('cc.noMic')
           : name === 'NotReadableError'
-            ? '다른 프로그램이 마이크를 쓰고 있습니다. 화상회의 등 마이크를 쓰는 프로그램을 닫고 다시 켜 주세요.'
-            : '마이크 사용이 막혀 있습니다. 주소창 왼쪽 아이콘에서 마이크를 허용하고, Mac은 시스템 설정 → 개인정보 보호 및 보안 → 마이크에서 Chrome을 켠 뒤 Chrome을 다시 실행해 주세요.',
+            ? i18n.t('cc.micBusy')
+            : i18n.t('cc.micBlocked'),
     });
     return;
   }
@@ -577,7 +579,7 @@ export function transferCall(number: string): Promise<{ ok: boolean; reason?: st
   const to = number.replace(/\D/g, '');
   const s = session;
   if (!s || state.call?.state !== 'active' || !to)
-    return Promise.resolve({ ok: false, reason: '통화 중이 아닙니다' });
+    return Promise.resolve({ ok: false, reason: i18n.t('cc.notInCall') });
   return new Promise((resolve) => {
     let done = false;
     let sent = false;
@@ -592,7 +594,7 @@ export function transferCall(number: string): Promise<{ ok: boolean; reason?: st
     const onEnded = () => sent && finish({ ok: true });
     s.on('ended', onEnded);
     const timer = setTimeout(
-      () => finish({ ok: false, reason: '상대가 받지 않았습니다(시간 초과)' }),
+      () => finish({ ok: false, reason: i18n.t('cc.noAnswerTimeout') }),
       40_000,
     );
     try {
@@ -604,7 +606,9 @@ export function transferCall(number: string): Promise<{ ok: boolean; reason?: st
           requestFailed: (e: { response?: { status_code?: number } | null; cause?: string }) =>
             finish({
               ok: false,
-              reason: `돌려주기를 받아 주지 않았습니다(${e.response?.status_code ?? e.cause ?? '거절'})`,
+              reason: i18n.t('cc.transferRejected', {
+                v0: e.response?.status_code ?? e.cause ?? i18n.t('cc.decline'),
+              }),
             }),
           accepted: () => {
             finish({ ok: true });
@@ -613,13 +617,17 @@ export function transferCall(number: string): Promise<{ ok: boolean; reason?: st
           failed: (e: { status_line?: { status_code?: number; reason_phrase?: string } }) =>
             finish({
               ok: false,
-              reason:
-                `연결되지 않았습니다(${e.status_line?.status_code ?? ''} ${e.status_line?.reason_phrase ?? ''})`.trim(),
+              reason: i18n
+                .t('cc.notConnected', {
+                  v0: e.status_line?.status_code ?? '',
+                  v1: e.status_line?.reason_phrase ?? '',
+                })
+                .trim(),
             }),
         },
       });
     } catch (e) {
-      finish({ ok: false, reason: e instanceof Error ? e.message : '돌려주지 못했습니다' });
+      finish({ ok: false, reason: e instanceof Error ? e.message : i18n.t('cc.transferFailed') });
     }
   });
 }
