@@ -34,7 +34,7 @@ interface Section {
   id: string;
   label: string;
   icon: LucideIcon;
-  group: '개인' | '인사·결재' | '관리 화면';
+  group: 'personal' | 'hr' | 'admin';
   /** 설명(오른쪽 위) */
   desc?: string;
   render: () => ReactNode;
@@ -69,6 +69,7 @@ export default function SettingsModal({
   const { can } = useAuth();
   const navigate = useNavigate();
   const menuLabel = useMenuLabel();
+  const { t } = useTranslation();
   const [q, setQ] = useState('');
 
   const shortcuts = SHORTCUT_KEYS.map(menuDef).filter(
@@ -78,31 +79,28 @@ export default function SettingsModal({
   const sections: Section[] = [
     {
       id: 'general',
-      label: '일반',
+      label: t('settings.s.general'),
       icon: Palette,
-      group: '개인',
-      desc: '언어·테마·글자 크기 — 이 브라우저에 저장됩니다.',
+      group: 'personal',
+      desc: t('settings.s.generalDesc'),
       render: () => <GeneralSettings />,
     },
     {
       id: 'account',
-      label: '내 계정',
+      label: t('settings.s.account'),
       icon: UserRound,
-      group: '개인',
-      desc: '내 정보와 비밀번호',
+      group: 'personal',
+      desc: t('settings.s.accountDesc'),
       render: () => <AccountSettings />,
     },
     {
       id: 'menu',
-      label: '내 메뉴',
+      label: t('settings.s.menu'),
       icon: SlidersHorizontal,
-      group: '개인',
-      desc: '받은 메뉴 안에서 순서·묶음·숨김을 내 마음대로',
+      group: 'personal',
+      desc: t('settings.s.menuDesc'),
       render: () => (
-        <Row
-          title="내 메뉴 편집"
-          desc="사이드바 메뉴의 순서를 바꾸고, 묶음 이름을 고치고, 안 쓰는 메뉴를 숨깁니다."
-        >
+        <Row title={t('settings.s.menuEdit')} desc={t('settings.s.menuEditDesc')}>
           <Button
             variant="secondary"
             size="sm"
@@ -111,7 +109,7 @@ export default function SettingsModal({
               onEditMenu();
             }}
           >
-            열기
+            {t('settings.open')}
           </Button>
         </Row>
       ),
@@ -120,26 +118,26 @@ export default function SettingsModal({
       ? ([
           {
             id: 'forms',
-            label: '결재 양식',
+            label: t('settings.s.forms'),
             icon: FileText,
-            group: '인사·결재',
-            desc: '지출 결의·구매 품의처럼 회사에서 쓰는 신청서를 항목으로 만듭니다.',
+            group: 'hr',
+            desc: t('settings.s.formsDesc'),
             render: () => <FormsAdmin />,
           },
           {
             id: 'lines',
-            label: '결재선',
+            label: t('settings.s.lines'),
             icon: GitBranch,
-            group: '인사·결재',
-            desc: '문서 종류 × 조직마다 기본 결재선을 정합니다.',
+            group: 'hr',
+            desc: t('settings.s.linesDesc'),
             render: () => <LineTemplates />,
           },
           {
             id: 'leave-form',
-            label: '휴가 신청서',
+            label: t('settings.s.leaveForm'),
             icon: ListChecks,
-            group: '인사·결재',
-            desc: '업무 대리인·사유 필수·추가 항목',
+            group: 'hr',
+            desc: t('settings.s.leaveFormDesc'),
             render: () => <LeaveFormSettings />,
           },
         ] satisfies Section[])
@@ -148,18 +146,18 @@ export default function SettingsModal({
       ? ([
           {
             id: 'leave-types',
-            label: '휴가 종류',
+            label: t('settings.s.leaveTypes'),
             icon: CalendarCog,
-            group: '인사·결재',
-            desc: '연차·반차·반반차·경조사 등 — 단위와 연차 차감 여부',
+            group: 'hr',
+            desc: t('settings.s.leaveTypesDesc'),
             render: () => <LeaveTypes />,
           },
           {
             id: 'leave-grant',
-            label: '연차 부여',
+            label: t('settings.s.leaveGrant'),
             icon: CalendarPlus,
-            group: '인사·결재',
-            desc: '직원·조직 단위로 연차를 더하거나 뺍니다.',
+            group: 'hr',
+            desc: t('settings.s.leaveGrantDesc'),
             render: () => <LeaveGrant />,
           },
         ] satisfies Section[])
@@ -168,10 +166,10 @@ export default function SettingsModal({
       ? ([
           {
             id: 'work-hours',
-            label: '근무시간',
+            label: t('settings.s.workHours'),
             icon: Clock,
-            group: '인사·결재',
-            desc: '출퇴근 기준 시각과 지각·조퇴 판정',
+            group: 'hr',
+            desc: t('settings.s.workHoursDesc'),
             render: () => <WorkHourSettings />,
           },
         ] satisfies Section[])
@@ -181,7 +179,7 @@ export default function SettingsModal({
         id: `go-${m.key}`,
         label: menuLabel(m.key),
         icon: menuIcon(m),
-        group: '관리 화면',
+        group: 'admin',
         desc: m.desc,
         render: () => (
           <Row title={menuLabel(m.key)} desc={m.desc ?? ''}>
@@ -193,7 +191,7 @@ export default function SettingsModal({
                 navigate(m.path);
               }}
             >
-              열기
+              {t('settings.open')}
             </Button>
           </Row>
         ),
@@ -216,7 +214,7 @@ export default function SettingsModal({
     return () => window.removeEventListener('keydown', key);
   }, [onClose]);
 
-  const groups = (['개인', '인사·결재', '관리 화면'] as const)
+  const groups = (['personal', 'hr', 'admin'] as const)
     .map((g) => ({ g, items: shown.filter((s) => s.group === g) }))
     .filter((x) => x.items.length > 0);
 
@@ -229,14 +227,14 @@ export default function SettingsModal({
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
-        aria-label="앱 설정"
+        aria-label={t('settings.title')}
         data-settings
       >
         <nav className={styles.nav}>
-          <SearchInput value={q} onChange={setQ} placeholder="설정 찾기" autoFocus />
+          <SearchInput value={q} onChange={setQ} placeholder={t('settings.find')} autoFocus />
           {groups.map(({ g, items }) => (
             <div key={g} className={styles.navGroup}>
-              <div className={styles.navLabel}>{g}</div>
+              <div className={styles.navLabel}>{t(`settings.group.${g}`)}</div>
               {items.map((s) => (
                 <button
                   key={s.id}
@@ -246,14 +244,14 @@ export default function SettingsModal({
                 >
                   <s.icon size={16} aria-hidden />
                   <span>{s.label}</span>
-                  {s.group === '관리 화면' && (
+                  {s.group === 'admin' && (
                     <ChevronRight size={14} className={styles.navGo} aria-hidden />
                   )}
                 </button>
               ))}
             </div>
           ))}
-          {groups.length === 0 && <p className={styles.empty}>맞는 설정이 없습니다.</p>}
+          {groups.length === 0 && <p className={styles.empty}>{t('settings.none')}</p>}
         </nav>
         <section className={styles.body}>
           <header className={styles.head}>
@@ -261,7 +259,12 @@ export default function SettingsModal({
               <h2>{current.label}</h2>
               {current.desc && <p>{current.desc}</p>}
             </div>
-            <button type="button" className={styles.close} aria-label="닫기" onClick={onClose}>
+            <button
+              type="button"
+              className={styles.close}
+              aria-label={t('settings.close')}
+              onClick={onClose}
+            >
               <X size={18} />
             </button>
           </header>
@@ -295,7 +298,7 @@ function GeneralSettings() {
   const { mode, setMode, fontSize, setFontSize } = useTheme();
   return (
     <div className={styles.card}>
-      <Row title={t('lang.label')} desc="화면에 쓰는 언어">
+      <Row title={t('lang.label')} desc={t('settings.langDesc')}>
         <SegmentedControl
           size="sm"
           value={i18n.language}
@@ -303,7 +306,7 @@ function GeneralSettings() {
           options={SUPPORTED_LANGS.map((l) => ({ value: l.code, label: l.label }))}
         />
       </Row>
-      <Row title={t('theme.label')} desc="시스템을 고르면 컴퓨터 설정(라이트/다크)을 따릅니다.">
+      <Row title={t('theme.label')} desc={t('settings.themeDesc')}>
         <SegmentedControl
           size="sm"
           value={mode}
@@ -311,7 +314,7 @@ function GeneralSettings() {
           options={THEMES.map((m) => ({ value: m, label: t(`theme.${m}`) }))}
         />
       </Row>
-      <Row title={t('fontSize.label')} desc="화면 전체 글자 크기 — 중간이 기본입니다.">
+      <Row title={t('fontSize.label')} desc={t('settings.fontDesc')}>
         <SegmentedControl
           size="sm"
           value={fontSize}

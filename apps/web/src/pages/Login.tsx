@@ -28,6 +28,7 @@ function DemoAccountMenu({
   selected: string | null;
   onPick: (a: DemoAccount) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const box = useRef<HTMLDivElement>(null);
@@ -50,7 +51,7 @@ function DemoAccountMenu({
 
   return (
     <div className={styles.demo} ref={box}>
-      <span className={styles.label}>데모 계정으로 로그인</span>
+      <span className={styles.label}>{t('signin.demoLogin')}</span>
       <button
         type="button"
         className={[styles.demoTrigger, open ? styles.demoOpen : ''].join(' ')}
@@ -61,25 +62,23 @@ function DemoAccountMenu({
       >
         <UserRound size={18} className={styles.demoIcon} />
         <span className={current ? styles.demoValue : styles.demoPlaceholder}>
-          {current
-            ? `${current.group} · ${current.name} (${current.desc})`
-            : '데모 계정을 선택하세요'}
+          {current ? `${current.group} · ${current.name} (${current.desc})` : t('signin.demoPick')}
         </span>
         <ChevronDown size={18} className={styles.demoChevron} />
       </button>
       {open && (
-        <div className={styles.demoMenu} role="listbox" aria-label="데모 계정">
+        <div className={styles.demoMenu} role="listbox" aria-label={t('signin.demo')}>
           <div className={styles.demoSearch}>
             <SearchInput
               value={q}
               onChange={setQ}
-              placeholder="이름·부서·아이디 검색"
+              placeholder={t('signin.demoSearch')}
               autoFocus
               style={{ width: '100%' }}
             />
           </div>
           {!DEMO_ACCOUNTS.some((a) => matchDemo(a, q)) && (
-            <div className={styles.demoGroup}>찾는 계정이 없습니다</div>
+            <div className={styles.demoGroup}>{t('signin.demoNone')}</div>
           )}
           {DEMO_GROUPS.filter((g) =>
             DEMO_ACCOUNTS.some((a) => a.group === g && matchDemo(a, q)),
@@ -145,7 +144,7 @@ export default function Login() {
     } catch (err) {
       toast({
         type: 'error',
-        title: err instanceof ApiError ? err.message : '아이디 또는 비밀번호를 다시 확인해주세요.',
+        title: err instanceof ApiError ? err.message : t('signin.failed'),
       });
       setLoading(false);
     }
@@ -167,13 +166,13 @@ export default function Login() {
           <img src="/brand/tongin-tiger.svg" alt="" />
         </div>
         <div className={styles.copy}>
-          <div className={styles.slogan}>마음까지 통하는 사람들</div>
+          <div className={styles.slogan}>{t('signin.slogan')}</div>
           <div className={styles.title}>{PRODUCT_NAME}</div>
           <div className={styles.lead}>
-            언제 어디서나 빠르고 정확하게.
+            {t('signin.lead1')}
             <br className={styles.wideBr} />
             <span className={styles.narrowSp}> </span>
-            접수부터 정산까지 한 곳에서 관리하세요.
+            {t('signin.lead2')}
           </div>
         </div>
       </div>
@@ -186,7 +185,7 @@ export default function Login() {
         </div>
         <form className={styles.form} onSubmit={onSubmit}>
           <h1 className={styles.h1}>{t('common.login')}</h1>
-          <p className={styles.sub}>계속하려면 계정 정보를 입력해주세요.</p>
+          <p className={styles.sub}>{t('signin.sub')}</p>
 
           <div className={styles.fields}>
             <label className={styles.field}>
@@ -198,7 +197,7 @@ export default function Login() {
                     setLoginId(e.target.value);
                     setDemo(null);
                   }}
-                  placeholder="아이디를 입력해 주세요"
+                  placeholder={t('signin.idPh')}
                   autoComplete="username"
                   autoFocus={!remembered}
                 />
@@ -214,7 +213,7 @@ export default function Login() {
                     setPassword(e.target.value);
                     setDemo(null);
                   }}
-                  placeholder="비밀번호를 입력해 주세요"
+                  placeholder={t('signin.pwPh')}
                   autoComplete="current-password"
                   autoFocus={!!remembered}
                 />
@@ -231,7 +230,7 @@ export default function Login() {
             <span className={[styles.track, remember ? styles.on : ''].join(' ')}>
               <span className={styles.knob} />
             </span>
-            <span className={styles.toggleLabel}>아이디 기억하기</span>
+            <span className={styles.toggleLabel}>{t('signin.remember')}</span>
           </button>
 
           <button
@@ -240,7 +239,7 @@ export default function Login() {
             disabled={!active || loading}
           >
             {loading ? (
-              <span className={styles.spinner} aria-label="로그인 중" />
+              <span className={styles.spinner} aria-label={t('signin.loggingIn')} />
             ) : (
               t('common.login')
             )}
@@ -249,7 +248,7 @@ export default function Login() {
           {showDemo && (
             <>
               <div className={styles.divider}>
-                <span>또는</span>
+                <span>{t('signin.or')}</span>
               </div>
 
               <DemoAccountMenu
@@ -265,7 +264,7 @@ export default function Login() {
             </>
           )}
 
-          <div className={styles.copyright}>© 통인익스프레스. All rights reserved.</div>
+          <div className={styles.copyright}>{t('signin.copyright')}</div>
         </form>
       </div>
     </div>

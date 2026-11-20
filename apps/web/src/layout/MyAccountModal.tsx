@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Modal, PasswordInput, useToast } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
@@ -7,15 +8,16 @@ import styles from './profileMenu.module.css';
 
 /** 내 계정 — 내 정보 보기 + 비밀번호 바꾸기(프로필 메뉴의 창) */
 export function MyAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <Modal
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="내 계정"
+      title={t('settings.s.account')}
       size="sm"
       footer={
         <Button variant="ghost" onClick={onClose}>
-          닫기
+          {t('settings.close')}
         </Button>
       }
     >
@@ -27,6 +29,7 @@ export function MyAccountModal({ open, onClose }: { open: boolean; onClose: () =
 /** 내 정보 + 비밀번호 바꾸기 — 내 계정 창과 설정 창이 같이 쓴다 */
 export function AccountSettings({ onDone }: { onDone?: () => void }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { people } = useDirectory();
   const me = people.find((p) => p.id === user?.employeeId);
@@ -52,21 +55,24 @@ export function AccountSettings({ onDone }: { onDone?: () => void }) {
         method: 'POST',
         body: JSON.stringify({ currentPassword: cur, newPassword: next }),
       });
-      toast({ type: 'success', title: '비밀번호를 바꿨습니다' });
+      toast({ type: 'success', title: t('settings.acct.saved') });
       reset();
       onDone?.();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : t('settings.acct.failed'),
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const rows: [string, string | null | undefined][] = [
-    ['이름', user?.employeeName ?? user?.loginId],
-    ['아이디', user?.loginId],
-    ['소속', me?.orgUnitName],
-    ['직책', user?.positionName ?? me?.positionName],
+    [t('settings.acct.name'), user?.employeeName ?? user?.loginId],
+    [t('settings.acct.loginId'), user?.loginId],
+    [t('settings.acct.orgUnit'), me?.orgUnitName],
+    [t('settings.acct.position'), user?.positionName ?? me?.positionName],
   ];
 
   return (
@@ -79,10 +85,10 @@ export function AccountSettings({ onDone }: { onDone?: () => void }) {
           </div>
         ))}
       </dl>
-      <h4 className={styles.formTitle}>비밀번호 바꾸기</h4>
+      <h4 className={styles.formTitle}>{t('settings.acct.pwTitle')}</h4>
       <div className={styles.form}>
         <label>
-          지금 비밀번호 <span className={styles.req}>*</span>
+          {t('settings.acct.current')} <span className={styles.req}>*</span>
           <PasswordInput
             value={cur}
             autoComplete="current-password"
@@ -90,27 +96,27 @@ export function AccountSettings({ onDone }: { onDone?: () => void }) {
           />
         </label>
         <label>
-          새 비밀번호 <span className={styles.req}>*</span>
+          {t('settings.acct.new')} <span className={styles.req}>*</span>
           <PasswordInput
             value={next}
             autoComplete="new-password"
             onChange={(e) => setNext(e.target.value)}
           />
-          {tooShort && <span className={styles.err}>6자 이상으로 정해 주세요.</span>}
+          {tooShort && <span className={styles.err}>{t('settings.acct.tooShort')}</span>}
         </label>
         <label>
-          새 비밀번호 확인 <span className={styles.req}>*</span>
+          {t('settings.acct.again')} <span className={styles.req}>*</span>
           <PasswordInput
             value={again}
             autoComplete="new-password"
             onChange={(e) => setAgain(e.target.value)}
           />
-          {mismatch && <span className={styles.err}>새 비밀번호와 다릅니다.</span>}
+          {mismatch && <span className={styles.err}>{t('settings.acct.mismatch')}</span>}
         </label>
       </div>
       <div className={styles.formActions}>
         <Button variant="primary" loading={saving} disabled={!ready} onClick={() => void save()}>
-          비밀번호 바꾸기
+          {t('settings.acct.pwTitle')}
         </Button>
       </div>
     </>

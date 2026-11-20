@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { PRODUCT_NAME } from '@tongin/shared';
@@ -142,6 +143,7 @@ function SignInRing({
  */
 export default function DesktopLogin() {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const remembered = readRemembered();
   const [picked, setPicked] = useState<Picked | null>(() => {
     try {
@@ -178,7 +180,7 @@ export default function DesktopLogin() {
         /* 기억하기만 건너뛴다 */
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '아이디 또는 비밀번호를 다시 확인해 주세요.');
+      setError(e instanceof ApiError ? e.message : t('signin.failed'));
       setLoading(false);
     }
   };
@@ -210,7 +212,7 @@ export default function DesktopLogin() {
             className={`${styles.input} ${error ? styles.inputError : ''}`}
             type="password"
             value={password}
-            placeholder="비밀번호"
+            placeholder={t('signin.pw')}
             autoFocus
             autoComplete="current-password"
             onChange={(e) => {
@@ -220,7 +222,7 @@ export default function DesktopLogin() {
           />
           {error && <p className={styles.error}>{error}</p>}
           <button type="submit" className={styles.primary} disabled={loading || !password}>
-            {loading ? '로그인 중…' : '로그인'}
+            {loading ? t('signin.loggingInDots') : t('signin.login')}
           </button>
           <button
             type="button"
@@ -231,7 +233,7 @@ export default function DesktopLogin() {
               setError('');
             }}
           >
-            다른 계정으로 로그인
+            {t('signin.other')}
           </button>
         </form>
       </div>
@@ -243,7 +245,7 @@ export default function DesktopLogin() {
       <div className={styles.landing}>
         <div className={styles.head}>
           <SignInRing size={180} center={<LockIcon />} />
-          <h1 className={styles.title}>{PRODUCT_NAME} 로그인</h1>
+          <h1 className={styles.title}>{t('signin.loginTo', { name: PRODUCT_NAME })}</h1>
         </div>
 
         <form
@@ -256,7 +258,7 @@ export default function DesktopLogin() {
           <input
             className={styles.input}
             value={loginId}
-            placeholder="아이디"
+            placeholder={t('signin.id')}
             autoComplete="username"
             autoFocus={!loginId}
             onChange={(e) => {
@@ -268,7 +270,7 @@ export default function DesktopLogin() {
             className={`${styles.input} ${error ? styles.inputError : ''}`}
             type="password"
             value={password}
-            placeholder="비밀번호"
+            placeholder={t('signin.pw')}
             autoComplete="current-password"
             autoFocus={!!loginId}
             onChange={(e) => {
@@ -282,7 +284,7 @@ export default function DesktopLogin() {
             className={styles.primary}
             disabled={loading || loginId.trim().length < 2 || password.length < 2}
           >
-            {loading ? '로그인 중…' : '로그인'}
+            {loading ? t('signin.loggingInDots') : t('signin.login')}
           </button>
           <label className={styles.remember}>
             <input
@@ -290,7 +292,7 @@ export default function DesktopLogin() {
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
             />
-            아이디 기억하기
+            {t('signin.remember')}
           </label>
         </form>
 
@@ -299,11 +301,11 @@ export default function DesktopLogin() {
             <SearchInput
               value={demoQ}
               onChange={setDemoQ}
-              placeholder="이름·부서·아이디 검색"
+              placeholder={t('signin.demoSearch')}
               style={{ width: '100%', marginBottom: 8 }}
             />
             <div className={styles.listWrap}>
-              <div className={styles.list} role="list" aria-label="데모 계정">
+              <div className={styles.list} role="list" aria-label={t('signin.demo')}>
                 {DEMO_GROUPS.filter((g) =>
                   DEMO_ACCOUNTS.some((a) => a.group === g && matchDemo(a, demoQ)),
                 ).map((g) => (
@@ -335,7 +337,7 @@ export default function DesktopLogin() {
                 ))}
               </div>
             </div>
-            <p className={styles.hint}>데모 계정을 고르면 바로 로그인할 수 있습니다</p>
+            <p className={styles.hint}>{t('signin.demoHint')}</p>
           </>
         )}
       </div>
