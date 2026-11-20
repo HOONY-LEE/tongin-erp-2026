@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { lazy, Suspense, useState } from 'react';
 import { Map as MapIcon, Settings } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -11,7 +13,11 @@ import { fs } from '../../lib/fontScale';
 const RouteMapModal = lazy(() => import('./RouteMap').then((m) => ({ default: m.RouteMapModal })));
 
 export const formatDuration = (min: number | null) =>
-  min == null ? null : min >= 60 ? `${Math.floor(min / 60)}시간 ${min % 60}분` : `${min}분`;
+  min == null
+    ? null
+    : min >= 60
+      ? i18n.t('est.dur.hm', { v0: Math.floor(min / 60), v1: min % 60 })
+      : i18n.t('est.dur.m', { v0: min });
 
 /** 거리 할증 — 무료 거리를 넘는 km × km당 금액(천 원 단위 반올림) */
 export function distanceSurcharge(km: number | null, rule: DistanceRule) {
@@ -33,6 +39,7 @@ export function DistanceCard({
   onRuleSaved?: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   const { can } = useAuth();
   const toast = useToast();
   const [mapOpen, setMapOpen] = useState(false);
@@ -59,11 +66,11 @@ export function DistanceCard({
           perKm: Math.round(Number(form.perKm.replace(/,/g, '')) || 0),
         }),
       });
-      toast({ type: 'success', title: '거리 할증 기준을 저장했습니다' });
+      toast({ type: 'success', title: t('est.distSaved') });
       setRuleOpen(false);
       onRuleSaved?.();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -72,29 +79,32 @@ export function DistanceCard({
   return (
     <div className={[styles.distCard, compact ? styles.distCompact : ''].join(' ')}>
       <div className={styles.distMain}>
-        <span className={styles.infoLabel}>이사 거리</span>
+        <span className={styles.infoLabel}>{t('est.distance')}</span>
         {km != null ? (
           <span className={styles.distValue}>
             <b>{km.toLocaleString()} km</b>
-            {data.durationMin != null && <span> · 약 {formatDuration(data.durationMin)}</span>}
+            {data.durationMin != null && (
+              <span>
+                {' '}
+                {t('est.approx')} {formatDuration(data.durationMin)}
+              </span>
+            )}
             <span className={styles.distSrc}>
-              {data.distanceSource === 'KAKAO' ? '도로 기준' : '직선 추정'}
+              {data.distanceSource === 'KAKAO' ? t('est.byRoad') : t('est.straight')}
             </span>
           </span>
         ) : (
-          <span className={styles.distEmpty}>
-            {hasAddr ? '주소로 위치를 찾지 못했습니다' : '출발지·도착지 주소를 넣으면 계산됩니다'}
-          </span>
+          <span className={styles.distEmpty}>{hasAddr ? t('est.geoFail') : t('est.geoNeed')}</span>
         )}
       </div>
       <div className={styles.distFee}>
-        <span className={styles.infoLabel}>거리 할증(예상)</span>
+        <span className={styles.infoLabel}>{t('est.distFee')}</span>
         <span className={styles.distValue}>
           <b>{fee.toLocaleString()}원</b>
           <span className={styles.distSrc}>
             {over > 0
-              ? `${rule.freeKm}km 초과 ${over}km × ${rule.perKm.toLocaleString()}원`
-              : `${rule.freeKm}km까지 할증 없음`}
+              ? t('est.distRule', { v0: rule.freeKm, v1: over, v2: rule.perKm.toLocaleString() })
+              : t('est.distFree', { v0: rule.freeKm })}
           </span>
         </span>
       </div>
@@ -106,14 +116,14 @@ export function DistanceCard({
           disabled={!hasAddr}
           onClick={() => setMapOpen(true)}
         >
-          지도
+          {t('est.map')}
         </Button>
         {can('COMMON_CODE.UPDATE') && (
           <Button
             variant="ghost"
             size="sm"
-            aria-label="거리 할증 기준"
-            title="거리 할증 기준"
+            aria-label={t('est.distRuleTitle')}
+            title={t('est.distRuleTitle')}
             onClick={() => {
               setForm({ freeKm: String(rule.freeKm), perKm: String(rule.perKm) });
               setRuleOpen(true);
@@ -132,33 +142,33 @@ export function DistanceCard({
       <Modal
         open={ruleOpen}
         onOpenChange={(o) => !o && setRuleOpen(false)}
-        title="거리 할증 기준"
+        title={t('est.distRuleTitle')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setRuleOpen(false)}>
-              취소
+              {t('est.cancel')}
             </Button>
             <Button variant="primary" loading={saving} onClick={() => void saveRule()}>
-              저장
+              {t('est.save')}
             </Button>
           </>
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input
-            label="무료 거리(km)"
+            label={t('est.freeKm')}
             inputMode="numeric"
             value={form.freeKm}
             onChange={(e) => setForm((f) => ({ ...f, freeKm: e.target.value.replace(/\D/g, '') }))}
           />
           <Input
-            label="넘는 1km마다(원)"
+            label={t('est.perKm')}
             inputMode="numeric"
             value={form.perKm}
             onChange={(e) => setForm((f) => ({ ...f, perKm: e.target.value.replace(/\D/g, '') }))}
           />
           <div style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)' }}>
-            예: 30km · 3,000원이면 45km 이사는 15km × 3,000원 = 45,000원(천 원 단위 반올림).
+            {t('est.distExample')}
           </div>
         </div>
       </Modal>

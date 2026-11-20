@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -21,11 +22,14 @@ import {
 import { CONTRACT_STATUS } from './Contracts';
 
 const PAY_STATUS: StatusMap = {
-  PENDING: { label: '대기', color: 'warning' },
-  PAID: { label: '완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  PENDING: { label: i18n.t('deals.PENDING'), color: 'warning' },
+  PAID: { label: i18n.t('deals.PAID'), color: 'success' },
+  CANCELED: { label: i18n.t('deals.CANCELED'), color: 'error' },
 };
-const KIND: Record<string, string> = { DEPOSIT: '계약금', BALANCE: '잔금' };
+const KIND: Record<string, string> = {
+  DEPOSIT: i18n.t('deals.DEPOSIT'),
+  BALANCE: i18n.t('deals.BALANCE'),
+};
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 interface Payment {
@@ -117,10 +121,13 @@ export default function ContractDetail() {
     (p) => p.kind === 'BALANCE' && (p.status === 'PENDING' || p.status === 'PAID'),
   );
   const payColumns: Column[] = [
-    { title: '구분', render: (r) => KIND[r.kind as string] ?? String(r.kind) },
-    { title: '금액', numeric: true, render: (r) => won(r.amount) },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={PAY_STATUS} /> },
-    { title: '가상계좌', render: (r) => String(r.virtualAccount ?? '-') },
+    { title: t('deals.kind'), render: (r) => KIND[r.kind as string] ?? String(r.kind) },
+    { title: t('deals.amount'), numeric: true, render: (r) => won(r.amount) },
+    {
+      title: t('deals.status'),
+      render: (r) => <StatusBadge value={String(r.status)} map={PAY_STATUS} />,
+    },
+    { title: t('deals.vaccount'), render: (r) => String(r.virtualAccount ?? '-') },
     {
       title: '',
       render: (r) =>
@@ -157,7 +164,7 @@ export default function ContractDetail() {
           <div style={{ display: 'flex', gap: 8 }}>
             {data.leadId && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/leads/${data.leadId}`)}>
-                접수 보기
+                {t('deals.viewLead')}
               </Button>
             )}
             {data.status === 'SIGNED' && (

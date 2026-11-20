@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMemo, useState, type ReactNode } from 'react';
 import { priceRequested } from './priceRequest';
 import { summarizeVolume, VOLUME_UNIT_LABEL } from '@tongin/shared';
@@ -42,6 +43,7 @@ function Line({ label, value, strong }: { label: ReactNode; value: string; stron
  * 총비용은 입력값으로 바로 미리 보여주고, 저장하면 서버가 같은 규칙으로 다시 계산한다.
  */
 export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason }: TabProps) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
   const [saving, setSaving] = useState(false);
@@ -100,10 +102,10 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
       toast(
         requested
           ? { type: 'info', title: requested }
-          : { type: 'success', title: '견적 금액을 저장했습니다' },
+          : { type: 'success', title: t('est.amountSaved') },
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -113,15 +115,15 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className={styles.panel}>
         <h3 className={styles.panelTitle}>
-          물량 <span className={styles.sub}>/Volume</span>
+          {t('est.vol.title')} <span className={styles.sub}>/Volume</span>
         </h3>
         <div className={[styles.volGrid, styles.volGrid4].join(' ')}>
           {(
             [
-              ['이사물량', volume.moving],
-              ['경유물량', volume.transit],
-              ['폐기물량', volume.discard],
-              ['전체물량', volume.total],
+              [t('est.vol.moving'), volume.moving],
+              [t('est.vol.transit'), volume.transit],
+              [t('est.vol.discard'), volume.discard],
+              [t('est.vol.total'), volume.total],
             ] as const
           ).map(([label, v], i) => (
             <div key={label} className={[styles.volCard, i === 3 ? styles.volTotal : ''].join(' ')}>
@@ -136,12 +138,10 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
 
       <div className={styles.panel}>
         <h3 className={styles.panelTitle}>
-          옵션 비용 <span className={styles.sub}>/Option</span>
+          {t('est.optCost')} <span className={styles.sub}>/Option</span>
         </h3>
         {data.addons.length === 0 ? (
-          <div className={styles.sub}>
-            선택한 옵션이 없습니다. 3단계(옵션선택)에서 고를 수 있습니다.
-          </div>
+          <div className={styles.sub}>{t('est.noOptStep')}</div>
         ) : (
           <>
             {data.addons.map((a) => (
@@ -151,7 +151,10 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
                   <>
                     {a.name}
                     {a.serviceDate && (
-                      <span className={styles.sub}> · 요청일 {a.serviceDate.slice(0, 10)}</span>
+                      <span className={styles.sub}>
+                        {' '}
+                        {t('est.reqDate')} {a.serviceDate.slice(0, 10)}
+                      </span>
                     )}
                     {a.memo && <span className={styles.sub}> · {a.memo}</span>}
                   </>
@@ -160,7 +163,7 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
               />
             ))}
             <div style={{ borderTop: '1px solid var(--ark-color-border)', marginTop: 4 }}>
-              <Line label="옵션 합계" value={won(optionTotal)} />
+              <Line label={t('est.optTotal')} value={won(optionTotal)} />
             </div>
           </>
         )}
@@ -168,18 +171,18 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
 
       <div className={styles.panel} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h3 className={styles.panelTitle} style={{ marginBottom: 0 }}>
-          견적 금액 <span className={styles.sub}>/Amount</span>
+          {t('est.amount')} <span className={styles.sub}>/Amount</span>
         </h3>
         <DistanceCard data={data} compact />
         <div className={styles.row2}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>이사비용 (이사물량 · 옵션 제외)</span>
+            <span className={styles.fieldLabel}>{t('est.moveCostLabel')}</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
                 <UnitField
                   value={form.moveAmount}
                   unit="원"
-                  ariaLabel="이사비용"
+                  ariaLabel={t('est.moveCost')}
                   disabled={!canEdit}
                   placeholder={suggested ? String(suggested) : '0'}
                   onChange={(v) => set('moveAmount', v)}
@@ -191,29 +194,30 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
                   size="sm"
                   onClick={() => set('moveAmount', String(suggested))}
                 >
-                  물량×단가
+                  {t('est.volXPrice')}
                 </Button>
               )}
               {canEdit && distFee > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
-                  title={`거리 할증 ${won(distFee)}을 이사비용에 더합니다`}
+                  title={t('est.addDistTip', { v0: won(distFee) })}
                   onClick={() => set('moveAmount', String(toNum(form.moveAmount) + distFee))}
                 >
-                  + 거리 할증
+                  {t('est.addDist')}
                 </Button>
               )}
             </div>
             {unitPrice > 0 && (
               <span className={styles.sub}>
-                전체물량 {volume.total}
-                {unitText} × {unitText}당 {won(unitPrice)} = {won(suggested)}
+                {t('est.vol.total')} {volume.total}
+                {unitText} × {unitText}
+                {t('est.per')} {won(unitPrice)} = {won(suggested)}
               </span>
             )}
           </div>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>부가세</span>
+            <span className={styles.fieldLabel}>{t('est.vat')}</span>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <SegmentedControl
                 value={form.vatMode}
@@ -225,8 +229,8 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
                   }))
                 }
                 options={[
-                  { value: 'EXCLUDED', label: '불포함' },
-                  { value: 'INCLUDED', label: '포함' },
+                  { value: 'EXCLUDED', label: t('est.vatEx') },
+                  { value: 'INCLUDED', label: t('est.vatIn') },
                 ]}
                 size="sm"
                 disabled={!canEdit}
@@ -236,7 +240,7 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
                   <UnitField
                     value={form.vatAmount}
                     unit="원"
-                    ariaLabel="부가세 금액"
+                    ariaLabel={t('est.vatAmount')}
                     disabled={!canEdit}
                     placeholder={String(Math.round((toNum(form.moveAmount) + optionTotal) * 0.1))}
                     onChange={(v) => set('vatAmount', v)}
@@ -244,37 +248,37 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
                 </div>
               )}
             </div>
-            {included && !form.vatAmount && (
-              <span className={styles.sub}>
-                비워 두면 0원 — 흐린 숫자는 공급가의 10% 참고값입니다.
-              </span>
-            )}
+            {included && !form.vatAmount && <span className={styles.sub}>{t('est.vatHint')}</span>}
           </div>
         </div>
 
         <div className={styles.volCard + ' ' + styles.volTotal}>
-          <Line label={`총비용${included ? ' (부가세 포함)' : ''}`} value={won(total)} strong />
+          <Line
+            label={t('est.totalOf', { v0: included ? ' (부가세 포함)' : '' })}
+            value={won(total)}
+            strong
+          />
         </div>
 
         <div className={styles.row2}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>계약금</span>
+            <span className={styles.fieldLabel}>{t('est.deposit')}</span>
             <UnitField
               value={form.depositAmount}
               unit="원"
-              ariaLabel="계약금"
+              ariaLabel={t('est.deposit')}
               disabled={!canEdit}
               onChange={(v) => set('depositAmount', v)}
             />
           </div>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>잔금</span>
+            <span className={styles.fieldLabel}>{t('est.balance')}</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
                 <UnitField
                   value={form.balanceAmount}
                   unit="원"
-                  ariaLabel="잔금"
+                  ariaLabel={t('est.balance')}
                   disabled={!canEdit}
                   placeholder={deposit ? String(Math.max(0, total - deposit)) : '0'}
                   onChange={(v) => set('balanceAmount', v)}
@@ -286,7 +290,7 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
                   size="sm"
                   onClick={() => set('balanceAmount', String(Math.max(0, total - deposit)))}
                 >
-                  총비용−계약금
+                  {t('est.totalMinusDeposit')}
                 </Button>
               )}
             </div>
@@ -294,9 +298,10 @@ export function SummaryTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
         </div>
         {balanceGap !== 0 && (
           <div style={{ fontSize: fs(13), color: 'var(--ark-color-warning-600, #d97706)' }}>
-            계약금 + 잔금이 총비용과 {won(Math.abs(balanceGap))}{' '}
-            {balanceGap > 0 ? '많습니다' : '적습니다'}. 계약 전환 시 잔금은 총비용 − 계약금으로
-            정해집니다.
+            {t('est.gap1')} {won(Math.abs(balanceGap))}{' '}
+            {balanceGap > 0 ? t('est.gapMore') : t('est.gapLess')}
+            {t('est.gap2')}
+            {t('est.gap3')}
           </div>
         )}
       </div>

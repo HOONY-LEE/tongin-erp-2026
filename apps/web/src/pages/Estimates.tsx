@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -14,8 +15,8 @@ import {
 } from '../components/ui';
 
 const STATUS: StatusMap = {
-  DRAFT: { label: '작성중', color: 'neutral' },
-  QUOTED: { label: '발송됨', color: 'success' },
+  DRAFT: { label: i18n.t('deals.DRAFT'), color: 'neutral' },
+  QUOTED: { label: i18n.t('deals.QUOTED'), color: 'success' },
 };
 
 export default function Estimates() {
@@ -43,11 +44,14 @@ export default function Estimates() {
   }, [load]);
 
   const columns: Column[] = [
-    { title: '견적번호', dataIndex: 'estimateNo' },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS} /> },
+    { title: t('deals.estimateNo'), dataIndex: 'estimateNo' },
+    {
+      title: t('deals.status'),
+      render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
+    },
     { title: t('estimate.totalCbm'), numeric: true, render: (r) => String(r.totalCbm) },
     {
-      title: '총액',
+      title: t('deals.total'),
       numeric: true,
       render: (r) => (r.totalAmount != null ? Number(r.totalAmount).toLocaleString() : '-'),
     },

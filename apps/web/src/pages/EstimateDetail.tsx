@@ -1,3 +1,5 @@
+import { codeLabel } from '../i18n';
+import i18n from '../i18n';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { Send } from 'lucide-react';
@@ -35,10 +37,10 @@ import type { EstimateDetailData } from '../components/estimate/types';
 
 /** 견적서 작성 순서 — 현장 견적사원이 실제로 채워 가는 순서 그대로 */
 const STEPS: StepDef[] = [
-  { key: 'basic', label: '기본정보' },
-  { key: 'items', label: '물품정보' },
-  { key: 'options', label: '옵션선택' },
-  { key: 'summary', label: '견적·계약서' },
+  { key: 'basic', label: i18n.t('est.tab.basic') },
+  { key: 'items', label: i18n.t('est.tab.items') },
+  { key: 'options', label: i18n.t('est.tab.options') },
+  { key: 'summary', label: i18n.t('est.tab.summary') },
 ];
 type StepKey = 'basic' | 'items' | 'options' | 'summary';
 
@@ -46,22 +48,27 @@ const shortDate = (iso: string | null) => (iso ? fmtDateTime(iso) : null);
 
 /** 진행 — 접수 → 견적서 발송 → 고객 서명 → 계약금 입금 → 작업. 단계는 저절로 넘어간다 */
 function FlowBar({ data }: { data: EstimateDetailData }) {
+  const { t } = useTranslation();
   const m = data.meta;
   const done = m.leadStatus === 'DONE';
   const steps = [
-    { label: '접수', when: m.receivedDate, ok: true },
+    { label: t('est.flow.received'), when: m.receivedDate, ok: true },
     // 문자가 막혀도 링크를 직접 전해 서명했다면 발송된 것으로 본다
-    { label: '견적서 발송', when: shortDate(m.sentAt), ok: !!m.sentAt || !!m.signedAt },
-    { label: '고객 서명', when: shortDate(m.signedAt), ok: !!m.signedAt },
-    { label: '계약금 입금', when: shortDate(m.depositPaidAt), ok: !!m.depositPaidAt },
+    { label: t('est.flow.sent'), when: shortDate(m.sentAt), ok: !!m.sentAt || !!m.signedAt },
+    { label: t('est.flow.signed'), when: shortDate(m.signedAt), ok: !!m.signedAt },
+    { label: t('est.flow.deposit'), when: shortDate(m.depositPaidAt), ok: !!m.depositPaidAt },
     // 본사가 확인해 승인해야 '계약' — 그 전은 '계약미승인'
-    { label: '계약 승인', when: shortDate(m.contractApprovedAt), ok: !!m.contractApprovedAt },
-    { label: '작업', when: m.workDate, ok: !!m.workOrderId || done },
-    { label: '완료', when: null, ok: done },
+    {
+      label: t('est.flow.approved'),
+      when: shortDate(m.contractApprovedAt),
+      ok: !!m.contractApprovedAt,
+    },
+    { label: t('est.flow.work'), when: m.workDate, ok: !!m.workOrderId || done },
+    { label: t('est.flow.done'), when: null, ok: done },
   ];
   const current = steps.findIndex((s) => !s.ok);
   return (
-    <div className={estStyles.flow} aria-label="진행 상황">
+    <div className={estStyles.flow} aria-label={t('est.flow.title')}>
       {steps.map((s, i) => (
         <Fragment key={s.label}>
           {i > 0 && <span className={[estStyles.flowLine, s.ok ? estStyles.done : ''].join(' ')} />}
@@ -177,7 +184,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
 
   const openDoc = () =>
     openDocument(`/estimates/${id}/document`).catch((e) =>
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '문서 오류' }),
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.docError') }),
     );
 
   const leadStatus = data.meta.leadStatus;
@@ -187,7 +194,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
     if (!data.lead) return;
     try {
       await api(`/leads/${data.lead.id}/cancel`, { method: 'POST', body: JSON.stringify(values) });
-      toast({ type: 'success', title: '접수를 취소했습니다' });
+      toast({ type: 'success', title: t('est.canceled') });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -199,7 +206,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
     if (!data.lead) return;
     try {
       await api(`/leads/${data.lead.id}/reject`, { method: 'POST', body: JSON.stringify(values) });
-      toast({ type: 'success', title: '본사로 반려했습니다' });
+      toast({ type: 'success', title: t('est.rejected') });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -230,11 +237,11 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
   const approve = async () => {
     try {
       await api(`/contracts/${data.meta.contractId}/approve`, { method: 'POST' });
-      toast({ type: 'success', title: '계약을 승인했습니다' });
+      toast({ type: 'success', title: t('est.approved') });
       setApproveOpen(false);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '승인하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.approveFailed') });
     }
   };
   const createWorkOrder = async (values: Record<string, unknown>) => {
@@ -243,7 +250,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         method: 'POST',
         body: JSON.stringify({ contractId: data.meta.contractId, ...values }),
       });
-      toast({ type: 'success', title: '작업을 만들었습니다' });
+      toast({ type: 'success', title: t('est.workCreated') });
       await load();
       navigate(`/work-orders/${wo.id}`);
     } catch (e) {
@@ -256,12 +263,12 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
     <>
       {canEdit && !closed && data.lead && (
         <Button variant="ghost" size="sm" onClick={() => setCancelOpen(true)}>
-          접수 취소
+          {t('est.cancelLead')}
         </Button>
       )}
       {canReject && (
         <Button variant="outline" size="sm" onClick={() => setRejectOpen(true)}>
-          반려
+          {t('est.reject')}
         </Button>
       )}
       <Button variant="outline" size="sm" onClick={openDoc}>
@@ -273,12 +280,12 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           size="sm"
           onClick={() => navigate(`/contracts/${data.meta.contractId}`)}
         >
-          계약 보기
+          {t('est.viewContract')}
         </Button>
       )}
       {canApprove && (
         <Button variant="primary" size="sm" onClick={() => setApproveOpen(true)}>
-          계약 승인
+          {t('est.flow.approved')}
         </Button>
       )}
       {data.meta.workOrderId ? (
@@ -287,7 +294,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           size="sm"
           onClick={() => navigate(`/work-orders/${data.meta.workOrderId}`)}
         >
-          작업 보기
+          {t('est.viewWork')}
         </Button>
       ) : (
         canEdit &&
@@ -295,7 +302,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         contractReady &&
         can('WORK_ORDER.CREATE') && (
           <Button variant="primary" size="sm" onClick={() => setWoOpen(true)}>
-            작업 만들기
+            {t('est.createWork')}
           </Button>
         )
       )}
@@ -307,7 +314,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           leftIcon={<Send size={14} />}
           onClick={() => setSendOpen(true)}
         >
-          {data.meta.sentAt || data.meta.signedAt ? '견적서 다시 보내기' : '고객에게 견적서 보내기'}
+          {data.meta.sentAt || data.meta.signedAt ? t('est.resend') : t('est.send')}
         </Button>
       )}
     </>
@@ -315,9 +322,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
 
   const tabProps = { data, canEdit, onSaved };
   // 고객이 서명한 견적은 금액·상품을 바꾸지 않는다(서명한 계약서와 달라지므로) — 서버도 막는다
-  const signedLock = data.meta.signedAt
-    ? '고객이 서명한 견적이라 금액·상품은 바꿀 수 없습니다.'
-    : undefined;
+  const signedLock = data.meta.signedAt ? t('est.signedLocked') : undefined;
   const priceProps = { ...tabProps, canEdit: canEdit && !signedLock, lockedReason: signedLock };
 
   return (
@@ -337,7 +342,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
               </Badge>
             )}
             <Badge variant="subtle" color="neutral">
-              견적 {data.estimateNo}
+              {t('est.estimate')} {data.estimateNo}
             </Badge>
           </>
         }
@@ -355,10 +360,10 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
       {/* 지점 반려 안내 — 본사에서 다시 배정할 때 사유를 보게 */}
       {data.lead?.rejectedAt && data.lead.orgUnitId === hqId && !closed && (
         <div className={estStyles.rejectNote}>
-          <b>지점 반려</b>
+          <b>{t('est.branchReject')}</b>
           <span>
-            {orgName(data.lead.rejectedFromOrgId) || '지점'} · {data.lead.rejectKind} ·{' '}
-            {fmtDateTime(data.lead.rejectedAt)}
+            {orgName(data.lead.rejectedFromOrgId) || t('est.branch')} ·{' '}
+            {codeLabel('reason', data.lead.rejectKind ?? '')} · {fmtDateTime(data.lead.rejectedAt)}
           </span>
           {data.lead.rejectReason && <p>{data.lead.rejectReason}</p>}
         </div>
@@ -366,7 +371,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
       {/* 취소 사유 */}
       {leadStatus === 'CANCELED' && data.lead?.cancelKind && (
         <div className={estStyles.cancelNote}>
-          <b>접수 취소</b>
+          <b>{t('est.cancelLead')}</b>
           <span>{data.lead.cancelKind}</span>
           {data.lead.cancelReason && <p>{data.lead.cancelReason}</p>}
         </div>
@@ -383,7 +388,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
             whiteSpace: 'pre-line',
           }}
         >
-          <b>고객 요청사항</b> · {data.lead.customerRequest}
+          <b>{t('est.customerRequest')}</b> · {data.lead.customerRequest}
         </div>
       )}
 
@@ -425,31 +430,31 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
 
       <ConfirmModal
         open={approveOpen}
-        title="계약을 승인할까요?"
-        confirmLabel="계약 승인"
+        title={t('est.approveQ')}
+        confirmLabel={t('est.flow.approved')}
         onClose={() => setApproveOpen(false)}
         onConfirm={() => void approve()}
       >
-        계약금 입금을 확인했다면 승인하세요. 승인하면 접수가 &apos;계약&apos;이 되고 작업을 잡을 수
-        있습니다.
+        {t('est.approveHelp1')}
+        {t('est.approveHelp2')}
       </ConfirmModal>
       <FormModal
         open={rejectOpen}
         onOpenChange={setRejectOpen}
-        title="상담 반려 — 본사로 되돌리기"
+        title={t('est.rejectTitle')}
         size="sm"
         fields={[
           {
             name: 'kind',
-            label: '반려 사유',
+            label: t('est.rejectReason'),
             type: 'select',
             required: true,
             alwaysShow: true,
-            options: REJECT_KINDS.map((k) => ({ value: k, label: k })),
+            options: REJECT_KINDS.map((k) => ({ value: k, label: codeLabel('reason', k) })),
           },
           {
             name: 'reason',
-            label: '메모(선택 · 본사에서 다시 배정할 때 봅니다)',
+            label: t('est.rejectMemo'),
             type: 'textarea',
             alwaysShow: true,
           },
@@ -459,20 +464,20 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
       <FormModal
         open={cancelOpen}
         onOpenChange={setCancelOpen}
-        title="접수 취소"
+        title={t('est.cancelLead')}
         size="sm"
         fields={[
           {
             name: 'kind',
-            label: '취소 형태',
+            label: t('est.cancelKind'),
             type: 'select',
             required: true,
             alwaysShow: true,
-            options: CANCEL_KINDS.map((k) => ({ value: k, label: k })),
+            options: CANCEL_KINDS.map((k) => ({ value: k, label: codeLabel('reason', k) })),
           },
           {
             name: 'reason',
-            label: '취소 사유(취소하면 되돌릴 수 없습니다)',
+            label: t('est.cancelReason'),
             type: 'textarea',
             required: true,
             alwaysShow: true,
@@ -483,12 +488,12 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
       <FormModal
         open={woOpen}
         onOpenChange={setWoOpen}
-        title="작업 만들기"
+        title={t('est.createWork')}
         initialValues={data.lead?.moveDate ? { scheduledDate: data.lead.moveDate } : undefined}
         fields={[
           {
             name: 'scheduledDate',
-            label: '작업일(이사일)',
+            label: t('est.workDate'),
             type: 'date',
             required: true,
             alwaysShow: true,
@@ -515,6 +520,7 @@ function PartnerNotice({
   /** 접수에 남긴 상품 특이사항 — 있으면 이것을, 없으면 업체의 지금 혜택을 */
   note?: string | null;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const kind = MOVE_KIND_LABEL[moveKindOf(partner.type)];
   const text = (note?.trim() || partner.benefit?.trim()) ?? '';
@@ -537,10 +543,12 @@ function PartnerNotice({
         </Badge>
         <b>{partner.name}</b>
         {partner.type === 'EXCLUSIVE' && (
-          <span style={{ color: 'var(--ark-color-text-secondary)' }}>본사에서만 배정</span>
+          <span style={{ color: 'var(--ark-color-text-secondary)' }}>{t('est.hqOnly')}</span>
         )}
         {partner.intake && (
-          <span style={{ color: 'var(--ark-color-text-secondary)' }}>· 접수 {partner.intake}</span>
+          <span style={{ color: 'var(--ark-color-text-secondary)' }}>
+            {t('est.intake')} {partner.intake}
+          </span>
         )}
         {text.length > 120 && (
           <button
@@ -555,7 +563,7 @@ function PartnerNotice({
               cursor: 'pointer',
             }}
           >
-            {open ? '접기' : '내용 모두 보기'}
+            {open ? t('est.collapse') : t('est.expand')}
           </button>
         )}
       </div>

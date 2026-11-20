@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { priceRequested } from './priceRequest';
 import { X } from 'lucide-react';
@@ -17,9 +19,9 @@ import styles from './estimate.module.css';
 
 const ACCESS_OPTIONS = ACCESS_METHODS.map((a) => ({ value: a, label: ACCESS_LABEL[a] }));
 const GROUPS: { key: EstimateOptionGroup; title: string; sub: string }[] = [
-  { key: 'LADDER', title: '사다리차 서비스', sub: '/Ladder Truck' },
-  { key: 'LIVING', title: '생활 서비스', sub: '/Living Service' },
-  { key: 'ASSEMBLY', title: '분해 · 설치', sub: '/Disassembly & Installation' },
+  { key: 'LADDER', title: i18n.t('est.grp.LADDER'), sub: '/Ladder Truck' },
+  { key: 'LIVING', title: i18n.t('est.grp.LIVING'), sub: '/Living Service' },
+  { key: 'ASSEMBLY', title: i18n.t('est.grp.ASSEMBLY'), sub: '/Disassembly & Installation' },
   { key: 'ETC', title: '기타', sub: '/Etc' },
 ];
 
@@ -83,6 +85,7 @@ const derive = (d: EstimateDetailData): OptionsForm => {
  * 상품·구성은 상품관리에서 관리한다(서버가 견적 상세와 함께 내려준다). 가격은 견적마다 적는다.
  */
 export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason }: TabProps) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { form, setForm, dirty, reset, accept } = useTabForm(data, derive, onDirtyChange);
   const [saving, setSaving] = useState(false);
@@ -149,7 +152,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
         note: s.access === 'ETC' ? s.note.trim() || undefined : undefined,
       });
       const f = side(form.from);
-      const t = side(form.to);
+      const to = side(form.to);
       const chosen = [...bundled.map((d) => d.id), ...form.extras].filter(
         (id) => form.options[id]?.selected,
       );
@@ -159,9 +162,9 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
           fromPyeong: f.pyeong,
           fromAccess: f.access,
           fromAccessNote: f.note,
-          toPyeong: t.pyeong,
-          toAccess: t.access,
-          toAccessNote: t.note,
+          toPyeong: to.pyeong,
+          toAccess: to.access,
+          toAccessNote: to.note,
           options: chosen.map((id) => {
             const d = byId.get(id)!;
             const o = form.options[id];
@@ -183,10 +186,10 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
       toast(
         requested
           ? { type: 'info', title: requested }
-          : { type: 'success', title: '옵션을 저장했습니다' },
+          : { type: 'success', title: t('est.optionsSaved') },
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('est.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -200,8 +203,8 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
         <div className={styles.row2}>
           <UnitField
             value={c.pyeong}
-            unit="평"
-            ariaLabel={`${title} 평수`}
+            unit={t('est.pyeong')}
+            ariaLabel={t('est.pyeongOf', { v0: title })}
             disabled={!canEdit}
             onChange={(v) => setSide(side, { pyeong: v })}
           />
@@ -215,7 +218,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
         {c.access === 'ETC' && (
           <Input
             value={c.note}
-            placeholder="작업방식 내용 (예: 곤돌라)"
+            placeholder={t('est.accessPh')}
             onChange={(e) => setSide(side, { note: e.target.value })}
             disabled={!canEdit}
           />
@@ -229,7 +232,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
     if (!o) return null;
     const required = def.role === 'REQUIRED';
     const off = !o.selected;
-    const label = def.isActive ? def.name : `${def.name} (사용 안 함)`;
+    const label = def.isActive ? def.name : t('est.inactive', { v0: def.name });
     return (
       <div key={def.id}>
         <div className={[styles.optRow, off ? styles.optOff : ''].filter(Boolean).join(' ')}>
@@ -263,7 +266,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
           {def.hasDate ? (
             <Input
               type="date"
-              aria-label={`${def.name} 요청일`}
+              aria-label={t('est.dateOf', { v0: def.name })}
               value={o.serviceDate}
               onChange={(e) => setOpt(def.id, { serviceDate: e.target.value })}
               disabled={!canEdit || off}
@@ -276,7 +279,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
               <UnitField
                 value={o.amount}
                 unit="원"
-                ariaLabel={`${def.name} 금액`}
+                ariaLabel={t('est.amountOf', { v0: def.name })}
                 disabled={!canEdit || off}
                 onChange={(v) => setOpt(def.id, { amount: v })}
               />
@@ -285,7 +288,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
               <button
                 type="button"
                 className={styles.iconBtn}
-                aria-label={`${def.name} 빼기`}
+                aria-label={t('est.removeOf', { v0: def.name })}
                 onClick={() => removeExtra(def.id)}
               >
                 <X size={15} />
@@ -296,7 +299,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
         {def.hasNote && o.selected && (
           <Input
             value={o.memo}
-            placeholder={def.groupCode === 'ETC' ? '보관 기간·물량 등' : '내용을 적어 주세요'}
+            placeholder={def.groupCode === 'ETC' ? t('est.etcPh') : t('est.notePh')}
             onChange={(e) => setOpt(def.id, { memo: e.target.value })}
             disabled={!canEdit}
             style={{ marginBottom: 8 }}
@@ -310,11 +313,11 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className={styles.panel}>
         <h3 className={styles.panelTitle}>
-          작업 조건 <span className={styles.sub}>/Work Condition</span>
+          {t('est.conditions')} <span className={styles.sub}>/Work Condition</span>
         </h3>
         <div className={styles.row2} style={{ gap: 20 }}>
-          {conditionBox('from', '전 작업조건 (출발지)')}
-          {conditionBox('to', '후 작업조건 (도착지)')}
+          {conditionBox('from', t('est.condFrom'))}
+          {conditionBox('to', t('est.condTo'))}
         </div>
       </div>
 
@@ -332,14 +335,14 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
       })}
       {bundled.length === 0 && (
         <div className={styles.sub}>
-          이 상품 구성에 들어 있는 상품이 없습니다. 상품관리 › 상품구성에서 넣거나, 아래에서 추가
-          상품으로 고르세요.
+          {t('est.noBundle1')}
+          {t('est.noBundle2')}
         </div>
       )}
 
       <div className={styles.panel}>
         <h3 className={styles.panelTitle}>
-          추가 상품 <span className={styles.sub}>/구성 밖에서 더 파는 상품</span>
+          {t('est.extra')} <span className={styles.sub}>{t('est.extraSub')}</span>
         </h3>
         {form.extras.map((id) => {
           const d = byId.get(id);
@@ -351,19 +354,21 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
               value=""
               onValueChange={addExtra}
               options={extraCandidates.map((d) => ({ value: d.id, label: d.name }))}
-              placeholder="상품 추가…"
+              placeholder={t('est.extraAdd')}
             />
           </div>
         )}
         {!form.extras.length && !extraCandidates.length && (
-          <div className={styles.sub}>더 고를 상품이 없습니다.</div>
+          <div className={styles.sub}>{t('est.extraNone')}</div>
         )}
       </div>
 
       {legacy.length > 0 && (
         <div className={styles.sub}>
-          예전 방식으로 직접 입력한 옵션 {legacy.length}건({legacy.map((a) => a.name).join(', ')})은
-          저장하면 정리됩니다. 필요하면 위 목록에서 다시 골라 주세요.
+          {t('est.legacy1')} {legacy.length}
+          {t('est.legacy2')}
+          {legacy.map((a) => a.name).join(', ')})은
+          {t('est.legacy3')}
         </div>
       )}
 
@@ -374,7 +379,7 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
         canEdit={canEdit}
         onSave={save}
         onReset={reset}
-        hint={`선택한 상품 합계 ${won(total)}`}
+        hint={t('est.selectedTotal', { v0: won(total) })}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { Button } from '../ui';
 import styles from './estimate.module.css';
@@ -22,6 +23,7 @@ export function StepTabs({
   onChange: (key: string) => void;
   dirty: Record<string, boolean>;
 }) {
+  const { t } = useTranslation();
   const onKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     e.preventDefault();
@@ -32,7 +34,7 @@ export function StepTabs({
     )?.focus();
   };
   return (
-    <div className={styles.steps} role="tablist" aria-label="견적 단계">
+    <div className={styles.steps} role="tablist" aria-label={t('est.steps')}>
       {steps.map((s, i) => {
         const active = s.key === value;
         return (
@@ -50,7 +52,7 @@ export function StepTabs({
           >
             <span className={styles.stepNo}>{i + 1}.</span>
             {s.label}
-            {dirty[s.key] && <span className={styles.dirtyDot} aria-label="저장 안 됨" />}
+            {dirty[s.key] && <span className={styles.dirtyDot} aria-label={t('est.unsaved')} />}
           </button>
         );
       })}
@@ -123,25 +125,24 @@ export function SaveBar({
   /** 필수 항목이 다 채워졌는지 — false면 저장 버튼을 막는다 */
   canSave?: boolean;
 }) {
+  const { t } = useTranslation();
   if (!canEdit || lockedReason) {
     return (
       <div className={styles.saveBar}>
-        <span className={styles.saveHint}>
-          {lockedReason ?? '견적 작성 권한이 없어 볼 수만 있습니다.'}
-        </span>
+        <span className={styles.saveHint}>{lockedReason ?? t('est.readonly')}</span>
       </div>
     );
   }
   return (
     <div className={styles.saveBar}>
-      <span className={styles.saveHint}>{dirty ? '저장하지 않은 변경이 있습니다.' : hint}</span>
+      <span className={styles.saveHint}>{dirty ? t('est.unsavedChanges') : hint}</span>
       {dirty && (
         <Button variant="ghost" onClick={onReset} disabled={saving}>
-          되돌리기
+          {t('est.revert')}
         </Button>
       )}
       <Button variant="primary" onClick={onSave} disabled={!dirty || !canSave || saving}>
-        {saving ? '저장 중…' : '저장'}
+        {saving ? t('est.saving') : t('est.save')}
       </Button>
     </div>
   );
