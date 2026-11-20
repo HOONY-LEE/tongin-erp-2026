@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   useCallback,
   useEffect,
@@ -123,6 +124,7 @@ export function DashboardEditor({
   heading?: ReactNode;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const items = layout.items;
   const set = useCallback((next: DashItem[]) => onChange({ version: 1, items: next }), [onChange]);
   const { results, loading } = useDashData(items);
@@ -375,15 +377,18 @@ export function DashboardEditor({
             type="button"
             className={styles.iconBtn}
             onClick={onBack}
-            aria-label="나가기"
-            title="나가기"
+            aria-label={t('dash.exit')}
+            title={t('dash.exit')}
           >
             <ArrowLeft size={16} />
           </button>
-          <b>위젯</b>
-          <span className={styles.meta}>{usable.length}개</span>
+          <b>{t('dash.widgets')}</b>
+          <span className={styles.meta}>
+            {usable.length}
+            {t('dash.countSuffix')}
+          </span>
         </div>
-        <SearchInput value={q} onChange={setQ} placeholder="위젯 찾기" />
+        <SearchInput value={q} onChange={setQ} placeholder={t('dash.findWidget')} />
         <div className={styles.paletteList}>
           {DASH_GROUPS.map((g) => {
             const list = shown.filter((w) => w.group === g);
@@ -405,7 +410,7 @@ export function DashboardEditor({
                       setGhost(null);
                       dragKey.current = null;
                     }}
-                    title={`${w.description}\n끌어다 놓거나 +를 누르세요`}
+                    title={t('dash.widgetTip', { v0: w.description })}
                   >
                     <GripVertical size={14} className={styles.grip} aria-hidden />
                     <span className={styles.paletteText}>
@@ -420,7 +425,7 @@ export function DashboardEditor({
                     <button
                       type="button"
                       className={styles.addBtn}
-                      aria-label={`${w.title} 추가`}
+                      aria-label={t('dash.addOf', { v0: w.title })}
                       onClick={() => addToBottom(w.key)}
                     >
                       <Plus size={14} />
@@ -432,7 +437,8 @@ export function DashboardEditor({
           })}
           {hidden > 0 && (
             <div className={styles.paletteNote}>
-              권한이 없는 데이터의 위젯 {hidden}개는 보이지 않습니다.
+              {t('dash.hiddenWidgets1')} {hidden}
+              {t('dash.hiddenWidgets2')}
             </div>
           )}
         </div>
@@ -443,17 +449,17 @@ export function DashboardEditor({
         <div className={styles.crumbs}>{crumbs}</div>
         <span className={styles.spacer} />
         <span className={`${styles.meta} ${styles.studioWidth}`}>
-          실제 화면 폭 {cw.toLocaleString()}px
+          {t('dash.actualWidth')} {cw.toLocaleString()}px
           {scale < 0.995 ? ` · ${Math.round(scale * 100)}%` : ''}
         </span>
-        <span className={styles.zoomToggle} role="group" aria-label="보기 크기">
+        <span className={styles.zoomToggle} role="group" aria-label={t('dash.viewSize')}>
           <button
             type="button"
             aria-pressed={!fit}
             className={!fit ? styles.zoomOn : undefined}
             onClick={() => setFit(false)}
           >
-            실제 크기
+            {t('dash.actualSize')}
           </button>
           <button
             type="button"
@@ -461,7 +467,7 @@ export function DashboardEditor({
             className={fit ? styles.zoomOn : undefined}
             onClick={() => setFit(true)}
           >
-            화면 맞춤
+            {t('dash.fit')}
           </button>
         </span>
         {actions}
@@ -500,7 +506,7 @@ export function DashboardEditor({
               onPointerDown={(e) => e.target === e.currentTarget && setSelectedId(null)}
             >
               {!items.length && !ghost && (
-                <div className={styles.canvasEmpty}>왼쪽에서 위젯을 끌어다 여기에 놓으세요</div>
+                <div className={styles.canvasEmpty}>{t('dash.dropHere')}</div>
               )}
               {/* 놓일 자리 */}
               {(ghost || drag) &&
@@ -547,17 +553,17 @@ export function DashboardEditor({
                           dragHandleProps={{
                             onPointerDown: (e) => startDrag(e, it, 'move'),
                             style: { cursor: dragging ? 'grabbing' : 'grab' },
-                            title: '끌어서 옮기기',
+                            title: t('dash.dragMove'),
                           }}
                           actions={
                             <>
                               <button
                                 type="button"
                                 className={`${styles.iconBtn} ${menu?.id === it.id ? styles.iconBtnOn : ''}`}
-                                aria-label="위젯 설정"
+                                aria-label={t('dash.widgetSettings')}
                                 aria-haspopup="dialog"
                                 aria-expanded={menu?.id === it.id}
-                                title="위젯 설정"
+                                title={t('dash.widgetSettings')}
                                 data-menu-trigger
                                 onClick={(e) => {
                                   if (menu?.id === it.id) return setMenu(null);
@@ -577,8 +583,8 @@ export function DashboardEditor({
                               <button
                                 type="button"
                                 className={styles.iconBtn}
-                                aria-label="빼기"
-                                title="빼기"
+                                aria-label={t('dash.remove')}
+                                title={t('dash.remove')}
                                 onClick={() => remove(it.id)}
                               >
                                 <X size={14} />
@@ -589,7 +595,7 @@ export function DashboardEditor({
                         <div
                           className={styles.resize}
                           onPointerDown={(e) => startDrag(e, it, 'resize')}
-                          title="끌어서 크기 바꾸기"
+                          title={t('dash.dragResize')}
                           aria-hidden
                         />
                       </div>
@@ -597,11 +603,7 @@ export function DashboardEditor({
                   })}
             </div>
           </div>
-          {items.length > 0 && (
-            <div className={styles.studioHint}>
-              위젯 제목줄을 끌어 순서를 바꾸고, 모서리로 크기를 바꾸고, 우클릭으로 설정합니다.
-            </div>
-          )}
+          {items.length > 0 && <div className={styles.studioHint}>{t('dash.editorHint')}</div>}
         </div>
       </main>
 
@@ -637,6 +639,7 @@ function WidgetMenu({
   onDuplicate: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const def = DASH_WIDGET_MAP.get(item.widget)!;
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: at.x, top: at.y });
@@ -678,15 +681,20 @@ function WidgetMenu({
     <div
       ref={ref}
       role="dialog"
-      aria-label="위젯 설정"
+      aria-label={t('dash.widgetSettings')}
       className={styles.ctxMenu}
       style={pos}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className={styles.paletteHead}>
-        <b>위젯 설정</b>
+        <b>{t('dash.widgetSettings')}</b>
         <span className={styles.spacer} />
-        <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="닫기">
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={onClose}
+          aria-label={t('dash.close')}
+        >
           <X size={14} />
         </button>
       </div>
@@ -696,7 +704,7 @@ function WidgetMenu({
           <div className={styles.meta}>{def.description}</div>
         </div>
         <label className={styles.field}>
-          제목
+          {t('dash.title')}
           <input
             className={styles.input}
             value={item.title ?? ''}
@@ -707,7 +715,7 @@ function WidgetMenu({
         </label>
         {def.viz.length > 1 && (
           <div className={styles.field}>
-            보기 방식
+            {t('dash.viz')}
             <div className={styles.vizGrid}>
               {def.viz.map((v) => {
                 const I = VIZ_ICON[v];
@@ -729,7 +737,7 @@ function WidgetMenu({
         )}
         {def.period && (
           <label className={styles.field}>
-            기간
+            {t('dash.period')}
             <select
               className={styles.input}
               value={item.period ?? def.period}
@@ -745,7 +753,7 @@ function WidgetMenu({
         )}
         {def.metric && (
           <label className={styles.field}>
-            지표
+            {t('dash.metric')}
             <select
               className={styles.input}
               value={item.metric ?? def.metric}
@@ -761,22 +769,22 @@ function WidgetMenu({
         )}
         {def.shape === 'text' && (
           <label className={styles.field}>
-            내용
+            {t('dash.content')}
             <textarea
               className={styles.input}
               rows={6}
               maxLength={2000}
               value={item.text ?? ''}
-              placeholder="예: 이번 달 목표 — 계약 120건"
+              placeholder={t('dash.contentPh')}
               onChange={(e) => onChange({ text: e.target.value })}
             />
           </label>
         )}
         <div className={styles.field}>
-          크기(칸)
+          {t('dash.sizeCells')}
           <div className={styles.sizeRow}>
             <label>
-              가로
+              {t('dash.width')}
               <input
                 className={styles.input}
                 type="number"
@@ -789,7 +797,7 @@ function WidgetMenu({
               />
             </label>
             <label>
-              세로
+              {t('dash.height')}
               <input
                 className={styles.input}
                 type="number"
@@ -802,21 +810,17 @@ function WidgetMenu({
               />
             </label>
           </div>
-          <span className={styles.meta}>
-            가로 12칸이 화면 전체 폭입니다. 모서리를 끌어도 됩니다.
-          </span>
+          <span className={styles.meta}>{t('dash.widthHint')}</span>
         </div>
         <div className={styles.inspectorActions}>
           <button type="button" className={styles.textBtn} onClick={onDuplicate}>
-            <Copy size={14} /> 복제
+            <Copy size={14} /> {t('dash.duplicate')}
           </button>
           <button type="button" className={`${styles.textBtn} ${styles.danger}`} onClick={onRemove}>
-            <Trash2 size={14} /> 빼기
+            <Trash2 size={14} /> {t('dash.remove')}
           </button>
         </div>
-        <span className={styles.meta}>
-          위젯을 고른 뒤 화살표 키로 순서를 바꾸고 Delete로 뺄 수 있습니다.
-        </span>
+        <span className={styles.meta}>{t('dash.keyboardHint')}</span>
       </div>
     </div>,
     document.body,

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import {
@@ -47,6 +48,7 @@ export function KpiConfigModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [lines, setLines] = useState<Line[]>(() =>
     current.metrics.map((m) => ({
@@ -116,13 +118,11 @@ export function KpiConfigModal({
         });
       toast({
         type: 'success',
-        title: bulk
-          ? `${bulk.scopeIds.length}명에게 지표를 정했습니다`
-          : '성과 지표를 저장했습니다',
+        title: bulk ? t('perf.bulkSaved', { v0: bulk.scopeIds.length }) : t('perf.saved'),
       });
       onSaved();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('perf.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -139,11 +139,11 @@ export function KpiConfigModal({
       else await api(`/kpi/${scope}/${scopeId}?period=${period}`, { method: 'DELETE' });
       toast({
         type: 'success',
-        title: scope === 'ORG' ? '기본 구성으로 되돌렸습니다' : '소속 조직 구성을 따르게 했습니다',
+        title: scope === 'ORG' ? t('perf.resetDefault') : t('perf.resetOrg'),
       });
       onSaved();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '되돌리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('perf.resetFailed') });
     } finally {
       setBusy(false);
     }
@@ -154,33 +154,37 @@ export function KpiConfigModal({
       open
       onOpenChange={(o) => !o && onClose()}
       size="lg"
-      title={`${name} · ${bulk ? '지표 한꺼번에 정하기' : '지표 구성·실적 입력'} (${period.replace('-Q', '년 ')}분기)`}
+      title={t('perf.modalTitle', {
+        v0: name,
+        v1: bulk ? t('perf.bulkSet') : t('perf.configure'),
+        v2: period.replace('-Q', '년 '),
+      })}
       footer={
         <>
           {(bulk || current.source === 'OWN') && (
             <Button variant="ghost" onClick={() => void reset()} style={{ marginRight: 'auto' }}>
               {scope === 'ORG'
-                ? '기본 구성으로 되돌리기'
+                ? t('perf.resetDefaultBtn')
                 : bulk
-                  ? '모두 조직 구성 따르기'
-                  : '조직 구성 따르기'}
+                  ? t('perf.allFollowOrg')
+                  : t('perf.followOrgBtn')}
             </Button>
           )}
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('perf.cancel')}
           </Button>
           <Button variant="primary" loading={busy} disabled={invalid} onClick={() => void save()}>
-            저장
+            {t('perf.save')}
           </Button>
         </>
       }
     >
       <div className={styles.cfg}>
         <div className={`${styles.cfgRow} ${styles.cfgHead}`}>
-          <span>지표</span>
-          <span>목표</span>
-          <span>가중치(반영 비율)</span>
-          <span>실적(직접 지표)</span>
+          <span>{t('perf.col.metrics')}</span>
+          <span>{t('perf.goal')}</span>
+          <span>{t('perf.weightLabel')}</span>
+          <span>{t('perf.actualManual')}</span>
           <span />
         </div>
         {lines.map((l, i) => (
@@ -188,19 +192,21 @@ export function KpiConfigModal({
             {l.auto ? (
               <span className={styles.cfgName}>
                 <b>{l.label}</b>
-                <span className={styles.muted}>자동 · {l.unit}</span>
+                <span className={styles.muted}>
+                  {t('perf.autoSep')} {l.unit}
+                </span>
               </span>
             ) : (
               <span className={styles.cfgCustom}>
                 <Input
                   value={l.label}
-                  placeholder="지표 이름(예: 신규 가맹)"
+                  placeholder={t('perf.metricNamePh')}
                   maxLength={40}
                   onChange={(e) => set(i, { label: e.target.value })}
                 />
                 <Input
                   value={l.unit}
-                  placeholder="단위"
+                  placeholder={t('perf.unit')}
                   maxLength={10}
                   onChange={(e) => set(i, { unit: e.target.value })}
                 />
@@ -209,35 +215,35 @@ export function KpiConfigModal({
             <Input
               inputMode="decimal"
               value={l.target}
-              aria-label={`${l.label} 목표`}
+              aria-label={t('perf.goalOf', { v0: l.label })}
               onChange={(e) => set(i, { target: e.target.value })}
             />
             <span className={styles.cfgWeight}>
               <Input
                 inputMode="numeric"
                 value={l.weight}
-                aria-label={`${l.label} 가중치`}
+                aria-label={t('perf.weightOf', { v0: l.label })}
                 onChange={(e) => set(i, { weight: e.target.value })}
               />
               <span className={styles.muted}>{share(l)}</span>
             </span>
             {l.auto ? (
-              <span className={styles.muted}>ERP 기록에서 계산</span>
+              <span className={styles.muted}>{t('perf.fromErp')}</span>
             ) : bulk ? (
-              <span className={styles.muted}>사람마다 상세에서 입력</span>
+              <span className={styles.muted}>{t('perf.perPerson')}</span>
             ) : (
               <Input
                 inputMode="decimal"
                 value={l.actual}
-                placeholder="실적"
-                aria-label={`${l.label} 실적`}
+                placeholder={t('perf.actual')}
+                aria-label={t('perf.actualOf', { v0: l.label })}
                 onChange={(e) => set(i, { actual: e.target.value })}
               />
             )}
             <button
               type="button"
               className={styles.iconBtn}
-              aria-label={`${l.label || '지표'} 빼기`}
+              aria-label={t('perf.removeOf', { v0: l.label || t('perf.col.metrics') })}
               disabled={lines.length <= KPI_MIN_METRICS}
               onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
             >
@@ -251,7 +257,7 @@ export function KpiConfigModal({
             <div style={{ width: 220 }}>
               <Select
                 value=""
-                placeholder="자동 지표 더하기"
+                placeholder={t('perf.addAuto')}
                 disabled={full}
                 onValueChange={(k) => {
                   const c = catalog.find((x) => x.key === k);
@@ -293,20 +299,21 @@ export function KpiConfigModal({
               ])
             }
           >
-            직접 지표 더하기
+            {t('perf.addManual')}
           </Button>
           <span className={styles.muted}>
-            {lines.length}/{KPI_MAX_METRICS}개 · 최소 {KPI_MIN_METRICS}개
+            {lines.length}/{KPI_MAX_METRICS}
+            {t('perf.minSep')} {KPI_MIN_METRICS}
+            {t('perf.countSuffix')}
           </span>
         </div>
         <p className={styles.hint}>
-          목표는 이 분기 기준입니다. 달성률 = 실적 ÷ 목표(100%에서 잘라 점수에 반영), 종합 점수 =
-          달성률의 가중 평균 · 등급 S(95~) A(85~) B(70~) C(55~) D.
-          {lines.some((l) => !isKpiAutoKey(l.key)) &&
-            ' 직접 지표는 이 조직·직원에게만 쓰입니다(직원에게 이어지지 않음).'}
+          {t('perf.formula1')}
+          {t('perf.formula2')}
+          {lines.some((l) => !isKpiAutoKey(l.key)) && t('perf.manualNote')}
         </p>
         <label className={styles.cfgNote}>
-          메모
+          {t('perf.memo')}
           <Textarea
             rows={2}
             value={note}

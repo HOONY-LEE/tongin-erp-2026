@@ -1,3 +1,5 @@
+import i18n from '../../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
@@ -12,8 +14,8 @@ export function fmt(v: number, f: DashFormat | 'date' | 'text' | undefined): str
   if (f === 'percent') return `${(v * 100).toFixed(1)}%`;
   if (f === 'won') {
     const a = Math.abs(v);
-    if (a >= 1e8) return `${(v / 1e8).toFixed(a >= 1e10 ? 0 : 1)}억`;
-    if (a >= 1e4) return `${Math.round(v / 1e4).toLocaleString()}만`;
+    if (a >= 1e8) return i18n.t('dash.eok', { v0: (v / 1e8).toFixed(a >= 1e10 ? 0 : 1) });
+    if (a >= 1e4) return i18n.t('dash.man', { v0: Math.round(v / 1e4).toLocaleString() });
     return v.toLocaleString();
   }
   return v.toLocaleString();
@@ -21,8 +23,8 @@ export function fmt(v: number, f: DashFormat | 'date' | 'text' | undefined): str
 /** 툴팁·표에 쓰는 정확한 값 */
 export function fmtExact(v: number, f: DashFormat | 'date' | 'text' | undefined): string {
   if (f === 'percent') return `${(v * 100).toFixed(1)}%`;
-  if (f === 'won') return `${Math.round(v).toLocaleString()}원`;
-  return `${v.toLocaleString()}${f === 'count' ? '건' : ''}`;
+  if (f === 'won') return i18n.t('dash.won', { v0: Math.round(v).toLocaleString() });
+  return `${v.toLocaleString()}${f === 'count' ? i18n.t('dash.countWord') : ''}`;
 }
 const fmtDate = (s: unknown) => {
   if (!s) return '-';
@@ -87,12 +89,13 @@ function useTip() {
   return { tip: node, show: setTip, hide: () => setTip(null) };
 }
 
-const Empty = ({ children = '표시할 데이터가 없습니다' }: { children?: ReactNode }) => (
+const Empty = ({ children = i18n.t('dash.noDisplayData') }: { children?: ReactNode }) => (
   <div className={styles.empty}>{children}</div>
 );
 
 // ═══════════ 숫자 카드 ═══════════
 function CardViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
+  const { t } = useTranslation();
   const prev = d.previous;
   const diff = prev != null && prev !== 0 ? (d.value - prev) / prev : null;
   const Icon =
@@ -101,7 +104,9 @@ function CardViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
     <div className={styles.card}>
       <div className={styles.hero} title={fmtExact(d.value, d.format)}>
         {fmt(d.value, d.format)}
-        {d.format === 'won' && <span style={{ fontSize: '0.5em', marginLeft: 2 }}>원</span>}
+        {d.format === 'won' && (
+          <span style={{ fontSize: '0.5em', marginLeft: 2 }}>{t('dash.wonUnit')}</span>
+        )}
       </div>
       {Icon && diff != null ? (
         <span className={styles.delta}>
@@ -109,10 +114,10 @@ function CardViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
             <Icon size={13} aria-hidden style={{ verticalAlign: -2 }} /> {diff > 0 ? '+' : ''}
             {(diff * 100).toFixed(1)}%
           </span>
-          앞 기간 {fmt(prev!, d.format)}
+          {t('dash.prevPeriod')} {fmt(prev!, d.format)}
         </span>
       ) : prev === 0 ? (
-        <span className={styles.delta}>앞 기간 0</span>
+        <span className={styles.delta}>{t('dash.prevPeriodZero')}</span>
       ) : null}
       {d.hint && <span className={styles.hint}>{d.hint}</span>}
     </div>
@@ -463,6 +468,7 @@ function PieViz({
   format: DashFormat;
   donut?: boolean;
 }) {
+  const { t } = useTranslation();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
   const colors = useMemo(() => colorMap(items.map((i) => i.key)), [items]);
@@ -543,7 +549,7 @@ function PieViz({
             {donut && (
               <>
                 <text x={r} y={r - 4} textAnchor="middle" className={styles.axisText}>
-                  합계
+                  {t('dash.total')}
                 </text>
                 <text
                   x={r}
@@ -585,6 +591,7 @@ function FunnelViz({
   items: { key: string; label: string; value: number }[];
   format: DashFormat;
 }) {
+  const { t } = useTranslation();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
   if (!items.length || !items[0].value) return <Empty />;
@@ -619,7 +626,9 @@ function FunnelViz({
                     content: (
                       <>
                         {it.label} · <b>{fmtExact(it.value, format)}</b>
-                        {prev ? ` · 앞 단계의 ${((it.value / prev) * 100).toFixed(0)}%` : ''}
+                        {prev
+                          ? t('dash.ofPrevStep', { v0: ((it.value / prev) * 100).toFixed(0) })
+                          : ''}
                       </>
                     ),
                   })
@@ -759,6 +768,7 @@ function HeatmapViz({ d }: { d: Extract<DashData, { shape: 'matrix' }> }) {
 
 // ═══════════ 지도(시도 단계 구분도 · 지점 점) ═══════════
 function MapViz({ d }: { d: Extract<DashData, { shape: 'category' | 'points' }> }) {
+  const { t } = useTranslation();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
   const bySido = useMemo(() => {
@@ -859,14 +869,16 @@ function MapViz({ d }: { d: Extract<DashData, { shape: 'category' | 'points' }> 
       <div className={styles.mapScale}>
         {d.shape === 'category' ? (
           <>
-            적음
+            {t('dash.less')}
             {Array.from({ length: 7 }, (_, i) => (
               <i key={i} style={{ background: `var(--seq-${i + 1})` }} />
             ))}
-            많음 · 최대 {fmt(max, d.format)}
+            {t('dash.moreMax')} {fmt(max, d.format)}
           </>
         ) : (
-          <>원 크기 = 값 · 최대 {fmt(max, d.format)}</>
+          <>
+            {t('dash.bubbleSize')} {fmt(max, d.format)}
+          </>
         )}
       </div>
     </div>
@@ -875,23 +887,28 @@ function MapViz({ d }: { d: Extract<DashData, { shape: 'category' | 'points' }> 
 
 // ═══════════ 표 ═══════════
 function TableViz({ d }: { d: DashData }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   let head: { label: string; num?: boolean }[] = [];
   let body: (string | number)[][] = [];
   let links: (string | null)[] = [];
   if (d.shape === 'value') {
-    head = [{ label: '값', num: true }];
+    head = [{ label: t('dash.value'), num: true }];
     body = [[fmtExact(d.value, d.format)]];
   } else if (d.shape === 'category') {
     const total = d.items.reduce((s, i) => s + i.value, 0);
-    head = [{ label: '항목' }, { label: '값', num: true }, { label: '비중', num: true }];
+    head = [
+      { label: t('dash.item') },
+      { label: t('dash.value'), num: true },
+      { label: t('dash.share'), num: true },
+    ];
     body = d.items.map((i) => [
       i.label,
       fmtExact(i.value, d.format),
       total ? `${((i.value / total) * 100).toFixed(1)}%` : '-',
     ]);
   } else if (d.shape === 'series') {
-    head = [{ label: '기간' }, { label: '값', num: true }];
+    head = [{ label: t('dash.period') }, { label: t('dash.value'), num: true }];
     body = [...d.points].reverse().map((p) => [p.label, fmtExact(p.value, d.format)]);
   } else if (d.shape === 'matrix') {
     head = [{ label: '' }, ...d.cols.map((c) => ({ label: c, num: true }))];
@@ -900,7 +917,7 @@ function TableViz({ d }: { d: DashData }) {
       ...d.cols.map((_, ci) => (d.cells[ri]?.[ci] ?? 0).toLocaleString()),
     ]);
   } else if (d.shape === 'points') {
-    head = [{ label: '지점' }, { label: '값', num: true }];
+    head = [{ label: t('dash.branch') }, { label: t('dash.value'), num: true }];
     body = [...d.points]
       .sort((a, b) => b.value - a.value)
       .map((p) => [p.label, fmtExact(p.value, d.format)]);
@@ -966,8 +983,9 @@ const rowHref = (
 
 // ═══════════ 목록 ═══════════
 function ListViz({ d }: { d: Extract<DashData, { shape: 'rows' }> }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  if (!d.rows.length) return <Empty>해당하는 항목이 없습니다</Empty>;
+  if (!d.rows.length) return <Empty>{t('dash.noItems')}</Empty>;
   const dateCol = d.columns.find((c) => c.format === 'date');
   const numCol = [...d.columns].reverse().find((c) => c.format === 'won' || c.format === 'count');
   // 첫 칸은 제목(title)과 같은 값이라 빼고, 날짜·숫자는 오른쪽에 따로 보인다
@@ -1020,12 +1038,11 @@ export function VizBody({
   data: DashData | null;
   item: DashItem;
 }) {
+  const { t } = useTranslation();
   if (viz === 'text') {
     return (
       <div className={`${styles.vizRoot} ${styles.text}`}>
-        {item.text?.trim() || (
-          <span style={{ color: 'var(--muted)' }}>내용을 입력하세요(편집에서 위젯을 누르세요)</span>
-        )}
+        {item.text?.trim() || <span style={{ color: 'var(--muted)' }}>{t('dash.textEmpty')}</span>}
       </div>
     );
   }

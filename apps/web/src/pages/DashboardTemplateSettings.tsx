@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Search, Trash2 } from 'lucide-react';
@@ -37,6 +38,7 @@ interface Targets {
  * 한 사람에게는 템플릿 하나 — 다른 템플릿에 지정돼 있던 대상을 고르면 이 템플릿으로 옮겨 온다.
  */
 export default function DashboardTemplateSettings() {
+  const { t } = useTranslation();
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -62,7 +64,7 @@ export default function DashboardTemplateSettings() {
         setAll(rows);
       })
       .catch((e) => {
-        toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.loadFailed') });
         navigate('/dashboard-admin');
       });
   }, [id, navigate, toast]);
@@ -105,10 +107,10 @@ export default function DashboardTemplateSettings() {
         method: 'PUT',
         body: JSON.stringify({ roleIds: tpl.roleIds, userIds: tpl.userIds }),
       });
-      toast({ type: 'success', title: '저장했습니다 — 지정된 사람들에게 바로 보입니다' });
+      toast({ type: 'success', title: t('dash.savedVisible') });
       navigate('/dashboard-admin');
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -116,19 +118,13 @@ export default function DashboardTemplateSettings() {
 
   // 목록 행 끝에 있던 삭제 — 템플릿 상세(위젯 배치·이 설정 화면) 머리글로 옮겼다
   const remove = async () => {
-    if (
-      !tpl ||
-      !window.confirm(
-        `'${tpl.name}' 템플릿을 지울까요? 지정된 사람들은 기본 대시보드를 보게 됩니다.`,
-      )
-    )
-      return;
+    if (!tpl || !window.confirm(t('dash.deleteQ', { v0: tpl.name }))) return;
     try {
       await api(`/dashboards/templates/${id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('dash.deleted') });
       navigate('/dashboard-admin');
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.deleteFailed') });
     }
   };
 
@@ -148,8 +144,8 @@ export default function DashboardTemplateSettings() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
-        title={`${tpl.name} — 공개·지정 설정`}
-        subtitle="2단계: 누구에게 이 대시보드를 보여 줄지 정합니다. 볼 수 없는 데이터의 위젯은 사람마다 자동으로 빠집니다."
+        title={t('dash.visibilityTitle', { v0: tpl.name })}
+        subtitle={t('dash.step2Sub')}
         actions={
           <div style={{ display: 'flex', gap: 6 }}>
             {canDelete && (
@@ -159,7 +155,7 @@ export default function DashboardTemplateSettings() {
                 leftIcon={<Trash2 size={14} />}
                 onClick={() => void remove()}
               >
-                삭제
+                {t('dash.delete')}
               </Button>
             )}
             <Button
@@ -168,7 +164,7 @@ export default function DashboardTemplateSettings() {
               leftIcon={<ArrowLeft size={14} />}
               onClick={() => navigate(`/dashboard-admin/${id}`)}
             >
-              위젯 배치로
+              {t('dash.toLayout')}
             </Button>
             {editable && (
               <Button
@@ -178,7 +174,7 @@ export default function DashboardTemplateSettings() {
                 leftIcon={<Check size={14} />}
                 onClick={() => void save()}
               >
-                저장하고 마치기
+                {t('dash.saveFinish')}
               </Button>
             )}
           </div>
@@ -190,7 +186,7 @@ export default function DashboardTemplateSettings() {
             <LayoutThumb items={preview} color={tpl.color} />
           </div>
           <label className={styles.field}>
-            이름
+            {t('dash.name')}
             <input
               className={styles.input}
               value={tpl.name}
@@ -199,7 +195,7 @@ export default function DashboardTemplateSettings() {
             />
           </label>
           <label className={styles.field}>
-            설명
+            {t('dash.desc')}
             <input
               className={styles.input}
               value={tpl.description}
@@ -209,9 +205,9 @@ export default function DashboardTemplateSettings() {
           </label>
           <div className={styles.field}>
             <span>
-              색상 <span className={styles.meta}>· {colorLabel}</span>
+              {t('dash.color')} <span className={styles.meta}>· {colorLabel}</span>
             </span>
-            <div className={styles.swatches} role="radiogroup" aria-label="대시보드 색상">
+            <div className={styles.swatches} role="radiogroup" aria-label={t('dash.dashColor')}>
               {DASH_COLORS.map((c) => (
                 <button
                   key={c.key}
@@ -238,19 +234,19 @@ export default function DashboardTemplateSettings() {
           <Checkbox
             checked={tpl.isDefault}
             onCheckedChange={(v) => patch({ isDefault: v === true })}
-            label="기본 템플릿"
-            description="지정된 템플릿이 없는 모든 사람에게 보여 줍니다(하나만 기본)."
+            label={t('dash.defaultTemplate')}
+            description={t('dash.defaultTemplateHint')}
           />
           <Checkbox
             checked={tpl.allowPersonal}
             onCheckedChange={(v) => patch({ allowPersonal: v === true })}
-            label="개인 수정 허용"
-            description="끄면 받은 사람이 자기 대시보드로 고칠 수 없고 이 화면 그대로 봅니다."
+            label={t('dash.allowPersonal')}
+            description={t('dash.allowPersonalHint')}
           />
         </section>
         <section className={styles.settingsCard}>
-          <b>권한 그룹에 지정</b>
-          <span className={styles.meta}>그룹에 속한 사람 모두에게 보입니다.</span>
+          <b>{t('dash.assignRoles')}</b>
+          <span className={styles.meta}>{t('dash.assignRolesHint')}</span>
           <div className={styles.checkList} style={{ maxHeight: 420 }}>
             {targets.roles.map((r) => (
               <label key={r.id} className={styles.checkRow}>
@@ -260,24 +256,27 @@ export default function DashboardTemplateSettings() {
                 />
                 <span>{r.name}</span>
                 {elsewhere.get(r.id) && !tpl.roleIds.includes(r.id) && (
-                  <span className={styles.meta}>현재: {elsewhere.get(r.id)}</span>
+                  <span className={styles.meta}>
+                    {t('dash.current')} {elsewhere.get(r.id)}
+                  </span>
                 )}
               </label>
             ))}
           </div>
         </section>
         <section className={styles.settingsCard}>
-          <b>사용자에게 직접 지정</b>
+          <b>{t('dash.assignUsers')}</b>
           <span className={styles.meta}>
-            권한 그룹 지정보다 먼저 적용됩니다 · {tpl.userIds.length}명 선택
+            {t('dash.assignUsersHint')} {tpl.userIds.length}
+            {t('dash.selectedPeople')}
           </span>
           <label className={styles.searchBox} style={{ margin: 0 }}>
             <Search size={14} aria-hidden />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="이름·아이디·지점·직책"
-              aria-label="사용자 찾기"
+              placeholder={t('dash.userSearchPh')}
+              aria-label={t('dash.userSearch')}
             />
           </label>
           <div className={styles.checkList} style={{ maxHeight: 380 }}>
@@ -291,7 +290,7 @@ export default function DashboardTemplateSettings() {
                 <span className={styles.meta}>
                   {[u.positionName, u.orgUnitName].filter(Boolean).join(' · ') || u.loginId}
                   {elsewhere.get(u.id) && !tpl.userIds.includes(u.id)
-                    ? ` · 현재: ${elsewhere.get(u.id)}`
+                    ? t('dash.currentOf', { v0: elsewhere.get(u.id) ?? '' })
                     : ''}
                 </span>
               </label>

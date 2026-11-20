@@ -38,7 +38,7 @@ export default function DashboardTemplateEdit() {
     api<Template>(`/dashboards/templates/${id}`)
       .then(setTpl)
       .catch((e) => {
-        toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.loadFailed') });
         navigate('/dashboard-admin');
       });
   }, [id, navigate, toast]);
@@ -58,44 +58,38 @@ export default function DashboardTemplateEdit() {
         leaveDashboardEditor(() => navigate(`/dashboard-admin/${id}/settings`));
       } else {
         postDashEditorMessage({ type: 'saved', scope: 'template', id });
-        toast({ type: 'success', title: '위젯 배치를 저장했습니다' });
+        toast({ type: 'success', title: t('dash.layoutSaved') });
       }
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.saveFailed') });
     } finally {
       setSaving(false);
     }
   };
 
   const leave = () =>
-    (!dirty || window.confirm('저장하지 않은 변경을 버릴까요?')) &&
+    (!dirty || window.confirm(t('dash.discardQ'))) &&
     leaveDashboardEditor(() => navigate('/dashboard-admin'));
 
   // 목록 행 끝에 있던 설정·삭제 — 행을 누르면 이 화면이 열리므로 여기 머리글에 둔다
   const openSettings = () => {
-    if (dirty && !window.confirm('저장하지 않은 변경을 버리고 설정으로 갈까요?')) return;
+    if (dirty && !window.confirm(t('dash.discardToSettings'))) return;
     // 편집 창이면 원래 창이 설정 단계로 넘어가고 이 창은 닫힌다
     postDashEditorMessage({ type: 'next', id });
     leaveDashboardEditor(() => navigate(`/dashboard-admin/${id}/settings`));
   };
 
   const remove = async () => {
-    if (
-      !tpl ||
-      !window.confirm(
-        `'${tpl.name}' 템플릿을 지울까요? 지정된 사람들은 기본 대시보드를 보게 됩니다.`,
-      )
-    )
-      return;
+    if (!tpl || !window.confirm(t('dash.deleteQ', { v0: tpl.name }))) return;
     try {
       await api(`/dashboards/templates/${id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('dash.deleted') });
       setDirty(false);
       // 원래 창의 목록을 새로 불러오게 알린다
       postDashEditorMessage({ type: 'saved', scope: 'template', id });
       leaveDashboardEditor(() => navigate('/dashboard-admin'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.deleteFailed') });
     }
   };
 
@@ -113,14 +107,14 @@ export default function DashboardTemplateEdit() {
         crumbs={
           <>
             <button type="button" onClick={leave}>
-              대시보드 관리
+              {t('dash.manage')}
             </button>
             <span className={styles.crumbSep}>/</span>
             <input
               className={styles.crumbInput}
               value={tpl.name}
               maxLength={60}
-              aria-label="템플릿 이름"
+              aria-label={t('dash.templateName')}
               size={Math.max(8, tpl.name.length + 2)}
               onChange={(e) => {
                 setTpl({ ...tpl, name: e.target.value });
@@ -128,7 +122,10 @@ export default function DashboardTemplateEdit() {
               }}
             />
             <span className={styles.crumbSep}>/</span>
-            <span>1단계 위젯 배치{dirty ? ' · 저장 안 됨' : ''}</span>
+            <span>
+              {t('dash.step1')}
+              {dirty ? t('dash.unsaved') : ''}
+            </span>
           </>
         }
         actions={
@@ -140,7 +137,7 @@ export default function DashboardTemplateEdit() {
                 leftIcon={<Trash2 size={14} />}
                 onClick={() => void remove()}
               >
-                삭제
+                {t('dash.delete')}
               </Button>
             )}
             {editable && (
@@ -150,7 +147,7 @@ export default function DashboardTemplateEdit() {
                 leftIcon={<Settings2 size={14} />}
                 onClick={openSettings}
               >
-                설정
+                {t('dash.settingsBtn')}
               </Button>
             )}
             {editable && (
@@ -162,7 +159,7 @@ export default function DashboardTemplateEdit() {
                 leftIcon={<Save size={14} />}
                 onClick={() => void save(false)}
               >
-                저장
+                {t('dash.save')}
               </Button>
             )}
             {editable && (
@@ -174,7 +171,7 @@ export default function DashboardTemplateEdit() {
                 rightIcon={<ArrowRight size={14} />}
                 onClick={() => void save(true)}
               >
-                저장하고 다음
+                {t('dash.saveNext')}
               </Button>
             )}
             <PopoutButton />

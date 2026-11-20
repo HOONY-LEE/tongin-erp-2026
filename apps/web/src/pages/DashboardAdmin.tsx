@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDate } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
@@ -57,7 +59,7 @@ function Targets({ t, max = 3 }: { t: TemplateRow; max?: number }) {
   if (!t.roles.length && !t.users.length) {
     return (
       <span style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)' }}>
-        {t.isDefault ? '지정 없는 모든 사람' : '지정 없음'}
+        {t.isDefault ? i18n.t('dash.everyoneElse') : i18n.t('dash.noTarget')}
       </span>
     );
   }
@@ -75,7 +77,8 @@ function Targets({ t, max = 3 }: { t: TemplateRow; max?: number }) {
       ))}
       {t.users.length > max && (
         <Badge variant="subtle" color="neutral" size="sm">
-          +{t.users.length - max}명
+          +{t.users.length - max}
+          {i18n.t('dash.peopleSuffix')}
         </Badge>
       )}
     </>
@@ -87,6 +90,7 @@ function Targets({ t, max = 3 }: { t: TemplateRow; max?: number }) {
  * 카드에는 실제 구성을 추상화한 그림이 보인다.
  */
 export default function DashboardAdmin() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const toast = useToast();
   const { can, user } = useAuth();
@@ -100,7 +104,7 @@ export default function DashboardAdmin() {
       setRows(await api<TemplateRow[]>('/dashboards/templates'));
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.loadFailed') });
       setRows([]);
     }
   }, [toast, touch]);
@@ -129,16 +133,13 @@ export default function DashboardAdmin() {
   };
 
   const remove = async (r: TemplateRow) => {
-    if (
-      !window.confirm(`'${r.name}' 템플릿을 지울까요? 지정된 사람들은 기본 대시보드를 보게 됩니다.`)
-    )
-      return;
+    if (!window.confirm(t('dash.deleteQ', { v0: r.name }))) return;
     try {
       await api(`/dashboards/templates/${r.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('dash.deleted') });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.deleteFailed') });
     }
   };
 
@@ -148,7 +149,7 @@ export default function DashboardAdmin() {
 
   const columns: Column[] = [
     {
-      title: '템플릿',
+      title: t('dash.template'),
       dataIndex: 'name',
       minWidth: 250,
       render: (r) => (
@@ -164,16 +165,16 @@ export default function DashboardAdmin() {
           </b>
           {r.isDefault ? (
             <Badge variant="subtle" color="primary" size="sm">
-              기본
+              {t('dash.defaultBadge')}
             </Badge>
           ) : null}
         </div>
       ),
     },
     // 설명은 따로 한 줄 칸으로(이름 아래 두 줄로 쌓지 않는다)
-    { title: '설명', dataIndex: 'description', flex: 1, minWidth: 200 },
+    { title: t('dash.desc'), dataIndex: 'description', flex: 1, minWidth: 200 },
     {
-      title: '지정 대상',
+      title: t('dash.targets'),
       minWidth: 240,
       render: (r) => (
         // 한 줄로 — 권한 그룹 + 직원 1명 + '+N명'
@@ -182,10 +183,18 @@ export default function DashboardAdmin() {
         </div>
       ),
     },
-    { title: '위젯', width: 70, render: (r) => `${Number(r.widgetCount)}개` },
-    { title: '개인 수정', width: 90, render: (r) => (r.allowPersonal ? '허용' : '잠금') },
     {
-      title: '수정일',
+      title: t('dash.widgets'),
+      width: 70,
+      render: (r) => t('dash.countN', { v0: Number(r.widgetCount) }),
+    },
+    {
+      title: t('dash.personalEdit'),
+      width: 90,
+      render: (r) => (r.allowPersonal ? t('dash.allowed') : t('dash.locked')),
+    },
+    {
+      title: t('dash.updatedAt'),
       width: 110,
       render: (r) => fmtDate(r.updatedAt),
     },
@@ -197,22 +206,22 @@ export default function DashboardAdmin() {
       value={view}
       onChange={(v) => changeView(v as View)}
       options={[
-        { value: 'card', label: '카드' },
-        { value: 'list', label: '목록' },
+        { value: 'card', label: t('dash.cards') },
+        { value: 'list', label: t('dash.list') },
       ]}
     />
   );
   const createButton = canCreate ? (
     <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setOpen(true)}>
-      새 템플릿
+      {t('dash.newTemplateBtn')}
     </Button>
   ) : undefined;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
-        title="대시보드 관리"
-        subtitle="대시보드 템플릿을 만들어 권한 그룹이나 사용자에게 기본으로 보여 줍니다. 사람마다 볼 수 없는 데이터의 위젯은 자동으로 빠집니다."
+        title={t('dash.manage')}
+        subtitle={t('dash.manageSub')}
         onRefresh={load}
         updatedAt={updatedAt}
       />
@@ -232,43 +241,44 @@ export default function DashboardAdmin() {
         <>
           <ListToolbar viewSwitch={viewSwitch} actions={createButton} />
           <div className={styles.cardGrid}>
-            {rows.map((t) => (
+            {rows.map((tpl) => (
               <article
-                key={t.id}
+                key={tpl.id}
                 className={styles.tplCard}
-                onClick={() => editLayout(t.id)}
-                aria-label={t.name}
+                onClick={() => editLayout(tpl.id)}
+                aria-label={tpl.name}
               >
                 <div className={styles.tplPreview}>
-                  <LayoutThumb items={t.preview} color={t.color} />
+                  <LayoutThumb items={tpl.preview} color={tpl.color} />
                 </div>
                 <div className={styles.tplBody}>
                   <span className={styles.tplName}>
-                    {t.name}
-                    {t.isDefault && (
+                    {tpl.name}
+                    {tpl.isDefault && (
                       <Badge variant="subtle" color="primary" size="sm">
-                        기본
+                        {t('dash.defaultBadge')}
                       </Badge>
                     )}
-                    {!t.allowPersonal && (
+                    {!tpl.allowPersonal && (
                       <Badge variant="subtle" color="neutral" size="sm">
-                        잠금
+                        {t('dash.locked')}
                       </Badge>
                     )}
                   </span>
-                  <span className={styles.tplDesc}>{t.description || '설명 없음'}</span>
+                  <span className={styles.tplDesc}>{tpl.description || t('dash.noDesc')}</span>
                   <div className={styles.tplTags}>
-                    <Targets t={t} />
+                    <Targets t={tpl} />
                   </div>
                   <div className={styles.tplFoot} onClick={(e) => e.stopPropagation()}>
-                    위젯 {t.widgetCount}개 · {fmtDate(t.updatedAt)}
+                    {t('dash.widgets')} {tpl.widgetCount}
+                    {t('dash.countSep')} {fmtDate(tpl.updatedAt)}
                     <span className={styles.spacer} />
                     <button
                       type="button"
                       className={styles.iconBtn}
-                      title="위젯 편집"
-                      aria-label={`${t.name} 위젯 편집`}
-                      onClick={() => editLayout(t.id)}
+                      title={t('dash.editWidgets')}
+                      aria-label={t('dash.editWidgetsOf', { v0: tpl.name })}
+                      onClick={() => editLayout(tpl.id)}
                     >
                       <Pencil size={14} />
                     </button>
@@ -276,9 +286,9 @@ export default function DashboardAdmin() {
                       <button
                         type="button"
                         className={styles.iconBtn}
-                        title="이름·지정 설정"
-                        aria-label={`${t.name} 설정`}
-                        onClick={() => navigate(`/dashboard-admin/${t.id}/settings`)}
+                        title={t('dash.nameTargets')}
+                        aria-label={t('dash.settingsOf', { v0: tpl.name })}
+                        onClick={() => navigate(`/dashboard-admin/${tpl.id}/settings`)}
                       >
                         <Settings2 size={14} />
                       </button>
@@ -287,9 +297,9 @@ export default function DashboardAdmin() {
                       <button
                         type="button"
                         className={styles.iconBtn}
-                        title="삭제"
-                        aria-label={`${t.name} 삭제`}
-                        onClick={() => void remove(t)}
+                        title={t('dash.delete')}
+                        aria-label={t('dash.deleteOf', { v0: tpl.name })}
+                        onClick={() => void remove(tpl)}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -300,7 +310,8 @@ export default function DashboardAdmin() {
             ))}
             {canCreate && (
               <button type="button" className={styles.newCard} onClick={() => setOpen(true)}>
-                <Plus size={22} />새 템플릿 만들기
+                <Plus size={22} />
+                {t('dash.createTemplate')}
               </button>
             )}
           </div>
@@ -336,6 +347,7 @@ function CreateModal({
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -346,28 +358,28 @@ function CreateModal({
   const picked = templates.find((t) => t.id === copyFrom);
 
   const options: { key: Start; title: string; desc: string; items: ThumbItem[] }[] = [
-    { key: 'blank', title: '빈 화면에서 시작', desc: '위젯을 하나씩 직접 놓습니다', items: [] },
+    { key: 'blank', title: t('dash.start.blank'), desc: t('dash.start.blankDesc'), items: [] },
     {
       key: 'default',
-      title: '기본 구성',
-      desc: '자주 보는 지표로 미리 채웁니다',
+      title: t('dash.src.preset'),
+      desc: t('dash.start.presetDesc'),
       items: defaultItems,
     },
     {
       key: 'copy',
-      title: '다른 템플릿 가져오기',
-      desc: '있는 템플릿을 복사해 고칩니다',
+      title: t('dash.start.copy'),
+      desc: t('dash.start.copyDesc'),
       items: picked?.preview ?? templates[0]?.preview ?? [],
     },
   ];
 
   const create = async () => {
     if (!name.trim()) {
-      toast({ type: 'warning', title: '이름을 입력해 주세요' });
+      toast({ type: 'warning', title: t('dash.nameReq') });
       return;
     }
     if (start === 'copy' && !copyFrom) {
-      toast({ type: 'warning', title: '가져올 템플릿을 골라 주세요' });
+      toast({ type: 'warning', title: t('dash.pickTemplateReq') });
       return;
     }
     setBusy(true);
@@ -389,7 +401,7 @@ function CreateModal({
       });
       onCreated(d.id);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.createFailed') });
     } finally {
       setBusy(false);
     }
@@ -399,12 +411,12 @@ function CreateModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title="새 대시보드 템플릿"
+      title={t('dash.newTemplate')}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            취소
+            {t('dash.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -412,7 +424,7 @@ function CreateModal({
             disabled={!name.trim()}
             onClick={() => void create()}
           >
-            만들고 위젯 놓기
+            {t('dash.createAndPlace')}
           </Button>
         </>
       }
@@ -420,23 +432,23 @@ function CreateModal({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className={styles.sizeRow} style={{ gap: 12 }}>
           <Input
-            label="이름 *"
+            label={t('dash.nameLabel')}
             value={name}
             maxLength={60}
             onChange={(e) => setName(e.target.value)}
-            placeholder="예: 지점장용 대시보드"
+            placeholder={t('dash.namePh')}
           />
           <Input
-            label="설명"
+            label={t('dash.desc')}
             value={description}
             maxLength={300}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="누가 무엇을 보는 대시보드인지"
+            placeholder={t('dash.descPh')}
           />
         </div>
         <div className={styles.field}>
-          시작 구성
-          <div className={styles.startOpts} role="radiogroup" aria-label="시작 구성">
+          {t('dash.startLayout')}
+          <div className={styles.startOpts} role="radiogroup" aria-label={t('dash.startLayout')}>
             {options.map((o) => (
               <button
                 key={o.key}
@@ -452,7 +464,7 @@ function CreateModal({
                 </div>
                 <b>{o.title}</b>
                 <span>
-                  {o.key === 'copy' && templates.length === 0 ? '아직 템플릿이 없습니다' : o.desc}
+                  {o.key === 'copy' && templates.length === 0 ? t('dash.noTemplates') : o.desc}
                 </span>
               </button>
             ))}
@@ -460,13 +472,13 @@ function CreateModal({
         </div>
         {start === 'copy' && (
           <Select
-            label="가져올 템플릿"
+            label={t('dash.copyFrom')}
             value={copyFrom || undefined}
-            placeholder="템플릿 고르기"
+            placeholder={t('dash.pickTemplate')}
             onValueChange={setCopyFrom}
-            options={templates.map((t) => ({
-              value: t.id,
-              label: `${t.name} · 위젯 ${t.widgetCount}개`,
+            options={templates.map((tpl) => ({
+              value: tpl.id,
+              label: t('dash.templateOpt', { v0: tpl.name, v1: tpl.widgetCount }),
             }))}
           />
         )}

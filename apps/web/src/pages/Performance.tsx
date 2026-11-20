@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SearchInput } from '../components/ui/SearchInput';
 import { useSearchParams } from 'react-router-dom';
@@ -61,18 +63,23 @@ const GRADE_COLOR: Record<KpiGrade, 'success' | 'primary' | 'info' | 'warning' |
   C: 'warning',
   D: 'error',
 };
-const SOURCE_LABEL = { OWN: '직접 구성', ORG: '조직 구성', DEFAULT: '기본 구성' } as const;
+const SOURCE_LABEL = {
+  OWN: i18n.t('perf.src.OWN'),
+  ORG: i18n.t('perf.src.ORG'),
+  DEFAULT: i18n.t('perf.src.DEFAULT'),
+} as const;
 
 const radarOf = (metrics: KpiResolved[]): RadarDatum[] =>
   metrics.map((m) => ({
     key: m.key,
     short: m.short,
     value: m.achievement === null ? null : Math.min(100, m.achievement),
-    caption: m.achievement === null ? '자료 없음' : `${Math.round(m.achievement)}%`,
+    caption: m.achievement === null ? i18n.t('perf.noData') : `${Math.round(m.achievement)}%`,
   }));
 
 function GradeBadge({ r }: { r: Pick<KpiResult, 'score' | 'grade'> }) {
-  if (r.score === null || !r.grade) return <span className={styles.muted}>자료 없음</span>;
+  const { t } = useTranslation();
+  if (r.score === null || !r.grade) return <span className={styles.muted}>{t('perf.noData')}</span>;
   return (
     <span className={styles.gradeRow}>
       <b className={styles.score}>{r.score}</b>
@@ -101,6 +108,7 @@ function MetricChips({ metrics }: { metrics: KpiResolved[] }) {
  * 주소: ?tab=org|person &group=HQ|BRANCH &period=2026-Q4 &scope=ORG|EMPLOYEE&id=…(상세)
  */
 export default function Performance() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'person' ? 'person' : 'org';
@@ -137,7 +145,7 @@ export default function Performance() {
       setData(await api<Overview>(`/kpi?period=${period}&group=${group}`));
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('perf.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -177,8 +185,8 @@ export default function Performance() {
       value={tab}
       onChange={(v) => setParam({ tab: v })}
       options={[
-        { value: 'org', label: '조직별' },
-        { value: 'person', label: '개인별' },
+        { value: 'org', label: t('perf.view.org') },
+        { value: 'person', label: t('perf.view.person') },
       ]}
     />
   );
@@ -187,36 +195,36 @@ export default function Performance() {
       value={group}
       onChange={(v) => setParam({ group: v })}
       options={[
-        { value: 'HQ', label: '본사' },
-        { value: 'BRANCH', label: '지점' },
+        { value: 'HQ', label: t('perf.hq') },
+        { value: 'BRANCH', label: t('perf.branch') },
       ]}
     />
   );
 
   const columns: Column[] = [
-    { title: '이름', dataIndex: 'name', width: 110 },
-    { title: '소속', dataIndex: 'orgUnitName', width: 130 },
-    { title: '직책', dataIndex: 'sub', width: 90 },
+    { title: t('perf.col.name'), dataIndex: 'name', width: 110 },
+    { title: t('perf.col.org'), dataIndex: 'orgUnitName', width: 130 },
+    { title: t('perf.col.position'), dataIndex: 'sub', width: 90 },
     {
-      title: '지표',
+      title: t('perf.col.metrics'),
       flex: 1,
       minWidth: 200,
       render: (r) => <MetricChips metrics={(r as unknown as KpiResult).metrics} />,
       exportValue: (r) => (r as unknown as KpiResult).metrics.map((m) => m.label).join(', '),
     },
     {
-      title: '구성',
+      title: t('perf.col.setup'),
       width: 90,
       render: (r) => SOURCE_LABEL[(r as unknown as KpiResult).source],
     },
     {
-      title: '종합 점수',
+      title: t('perf.col.score'),
       width: 100,
       numeric: true,
       render: (r) => {
         const x = r as unknown as KpiResult;
         return x.score === null ? (
-          <span className={styles.muted}>자료 없음</span>
+          <span className={styles.muted}>{t('perf.noData')}</span>
         ) : (
           <b>{x.score}</b>
         );
@@ -224,7 +232,7 @@ export default function Performance() {
       exportValue: (r) => (r as unknown as KpiResult).score,
     },
     {
-      title: '등급',
+      title: t('perf.col.grade'),
       width: 70,
       render: (r) => {
         const g = (r as unknown as KpiResult).grade;
@@ -243,8 +251,8 @@ export default function Performance() {
   return (
     <div className={`list-page ${tab === 'person' ? 'fit' : ''}`}>
       <PageHeader
-        title="성과 평가"
-        subtitle="조직·직원마다 지표 3~8개와 목표를 정하면, ERP 기록(계약·입금·작업·작업관리 업무·근태)과 직접 넣은 실적으로 달성률·종합 점수·등급(S~D)을 냅니다. 다각형 바깥 점선이 목표 100%입니다."
+        title={t('perf.title')}
+        subtitle={t('perf.subtitle')}
         onRefresh={load}
         updatedAt={updatedAt}
         actions={periodSelect}
@@ -253,7 +261,9 @@ export default function Performance() {
         <>
           <div className="dt-wrap">
             <ListToolbar
-              search={<SearchInput value={query} onChange={setQuery} placeholder="조직 찾기" />}
+              search={
+                <SearchInput value={query} onChange={setQuery} placeholder={t('perf.findOrg')} />
+              }
               filters={groupSwitch}
               tabs={tabs}
             />
@@ -274,19 +284,20 @@ export default function Performance() {
                     <span className={styles.orgHead}>
                       <b className={styles.orgName}>{o.name}</b>
                       <span className={styles.members}>
-                        <Users size={13} /> {o.memberCount ?? 0}명
+                        <Users size={13} /> {o.memberCount ?? 0}
+                        {t('perf.peopleSuffix')}
                       </span>
                     </span>
                     <span className={styles.sourceText}>{SOURCE_LABEL[o.source]}</span>
                     <MetricChips metrics={o.metrics} />
                     <span className={styles.orgFoot}>
-                      <span>종합</span>
+                      <span>{t('perf.overall')}</span>
                       <GradeBadge r={o} />
                     </span>
                   </span>
                 </button>
               ))}
-              {!orgs.length && <div className={styles.empty}>조직이 없습니다</div>}
+              {!orgs.length && <div className={styles.empty}>{t('perf.noOrgs')}</div>}
             </div>
           )}
         </>
@@ -297,13 +308,13 @@ export default function Performance() {
           loading={loading}
           fit
           exportable
-          exportFileName={`성과평가_${period}`}
+          exportFileName={t('perf.exportName', { v0: period })}
           filters={groupSwitch}
           tabs={tabs}
           toolbarActions={
             data?.canEdit ? (
               <Button variant="primary" size="sm" onClick={() => setBulkPick(true)}>
-                지표 한꺼번에 정하기
+                {t('perf.bulkSet')}
               </Button>
             ) : undefined
           }
@@ -354,6 +365,7 @@ function BulkTargetModal({
   onClose: () => void;
   onNext: (ids: string[], label: string) => void;
 }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'org' | 'pick'>('org');
   const [orgId, setOrgId] = useState(orgs[0]?.id ?? '');
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -364,7 +376,7 @@ function BulkTargetModal({
     for (const p of people) {
       if (q.trim() && !p.name.includes(q.trim()) && !(p.orgUnitName ?? '').includes(q.trim()))
         continue;
-      const k = p.orgUnitName ?? '소속 없음';
+      const k = p.orgUnitName ?? t('perf.noOrg');
       by.set(k, [...(by.get(k) ?? []), p]);
     }
     return [...by.entries()];
@@ -381,22 +393,24 @@ function BulkTargetModal({
   const ids = mode === 'org' ? orgMembers.map((p) => p.id) : [...picked];
   const label =
     mode === 'org'
-      ? `${orgs.find((o) => o.id === orgId)?.name ?? ''} 구성원 ${ids.length}명`
-      : `고른 ${ids.length}명`;
+      ? t('perf.orgMembers', { v0: orgs.find((o) => o.id === orgId)?.name ?? '', v1: ids.length })
+      : t('perf.pickedN', { v0: ids.length });
 
   return (
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
       size="md"
-      title="지표 한꺼번에 정하기 — 대상 고르기"
+      title={t('perf.bulkPick')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('perf.cancel')}
           </Button>
           <Button variant="primary" disabled={!ids.length} onClick={() => onNext(ids, label)}>
-            다음 ({ids.length}명)
+            {t('perf.nextOpen')}
+            {ids.length}
+            {t('perf.peopleClose')}
           </Button>
         </>
       }
@@ -406,8 +420,8 @@ function BulkTargetModal({
           value={mode}
           onChange={(v) => setMode(v as 'org' | 'pick')}
           options={[
-            { value: 'org', label: '소속 조직 전체' },
-            { value: 'pick', label: '직접 고르기' },
+            { value: 'org', label: t('perf.wholeOrg') },
+            { value: 'pick', label: t('perf.pickManually') },
           ]}
         />
         {mode === 'org' ? (
@@ -417,18 +431,21 @@ function BulkTargetModal({
               onValueChange={setOrgId}
               options={orgs.map((o) => ({
                 value: o.id,
-                label: `${o.name} (${people.filter((p) => p.orgUnitId === o.id).length}명)`,
+                label: t('perf.orgCount', {
+                  v0: o.name,
+                  v1: people.filter((p) => p.orgUnitId === o.id).length,
+                }),
               }))}
             />
             <p className={styles.hint}>
               {orgMembers.length
                 ? orgMembers.map((p) => p.name).join(', ')
-                : '이 조직에 바로 속한 직원이 없습니다.'}
+                : t('perf.noDirectMembers')}
             </p>
           </>
         ) : (
           <>
-            <SearchInput value={q} onChange={setQ} placeholder="이름·조직 찾기" />
+            <SearchInput value={q} onChange={setQ} placeholder={t('perf.findNameOrg')} />
             <div className={styles.pickList}>
               {groups.map(([org, list]) => {
                 const all = list.every((p) => picked.has(p.id));
@@ -461,8 +478,8 @@ function BulkTargetModal({
           </>
         )}
         <p className={styles.hint}>
-          고른 사람 모두에게 같은 지표·목표·반영 비율을 정합니다. 처음 값은 첫 사람의 지금 구성이고,
-          직접 지표 실적은 사람마다 상세에서 넣습니다.
+          {t('perf.bulkHint1')}
+          {t('perf.bulkHint2')}
         </p>
       </div>
     </Modal>
@@ -484,6 +501,7 @@ function PerformanceDetail({
   onBack: () => void;
   onOpen: (scope: 'ORG' | 'EMPLOYEE', id: string) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [d, setD] = useState<Detail | null>(null);
   const [editing, setEditing] = useState(false);
@@ -493,7 +511,7 @@ function PerformanceDetail({
       setD(await api<Detail>(`/kpi/${scope}/${id}?period=${period}`));
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('perf.loadFailed') });
     }
   }, [scope, id, period, toast, touch]);
   useEffect(() => {
@@ -508,8 +526,13 @@ function PerformanceDetail({
     const worst = sorted[0];
     const best = sorted[sorted.length - 1];
     if ((worst.achievement ?? 0) >= 100)
-      return `모든 지표가 목표를 넘었습니다. 특히 ${best.label}(${Math.round(best.achievement ?? 0)}%)이 좋습니다.`;
-    return `${worst.label} 달성률이 ${Math.round(worst.achievement ?? 0)}%로 가장 낮습니다 — 먼저 챙길 곳입니다. ${best.label}은 ${Math.round(best.achievement ?? 0)}%.`;
+      return t('perf.insightAll', { v0: best.label, v1: Math.round(best.achievement ?? 0) });
+    return t('perf.insightWorst', {
+      v0: worst.label,
+      v1: Math.round(worst.achievement ?? 0),
+      v2: best.label,
+      v3: Math.round(best.achievement ?? 0),
+    });
   }, [d]);
 
   if (!d) return <PageSkeleton cards={2} />;
@@ -520,18 +543,19 @@ function PerformanceDetail({
     <div className={styles.detail}>
       <PageHeader
         title={r.name}
-        breadcrumbs={[{ label: '성과 평가', onClick: onBack }]}
+        breadcrumbs={[{ label: t('perf.title'), onClick: onBack }]}
         hideBreadcrumbs
         subtitle={
           scope === 'EMPLOYEE'
             ? `${r.orgUnitName ?? ''}${r.sub ? ` · ${r.sub}` : ''}`
-            : `구성원 ${r.memberCount ?? d.members.length}명`
+            : t('perf.membersN', { v0: r.memberCount ?? d.members.length })
         }
         tags={
           <>
             {r.grade && (
               <Badge color={GRADE_COLOR[r.grade]} size="sm">
-                종합 {r.score}점 · {r.grade}
+                {t('perf.overall')} {r.score}
+                {t('perf.pointsSep')} {r.grade}
               </Badge>
             )}
             <Badge variant="subtle" color="neutral" size="sm">
@@ -551,7 +575,7 @@ function PerformanceDetail({
                 leftIcon={<Settings2 size={14} />}
                 onClick={() => setEditing(true)}
               >
-                지표 구성·실적 입력
+                {t('perf.configure')}
               </Button>
             )}
           </>
@@ -563,10 +587,10 @@ function PerformanceDetail({
           <RadarChart data={radarOf(r.metrics)} size={320} />
           <div className={styles.legend}>
             <span>
-              <i className={styles.legendTarget} /> 목표 100%
+              <i className={styles.legendTarget} /> {t('perf.goal100')}
             </span>
             <span>
-              <i className={styles.legendActual} /> 달성률
+              <i className={styles.legendActual} /> {t('perf.achievement')}
             </span>
           </div>
         </section>
@@ -574,12 +598,12 @@ function PerformanceDetail({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>지표</th>
-                <th>구분</th>
-                <th className={styles.num}>실적</th>
-                <th className={styles.num}>목표</th>
-                <th className={styles.num}>가중치</th>
-                <th>달성률</th>
+                <th>{t('perf.col.metrics')}</th>
+                <th>{t('perf.kind')}</th>
+                <th className={styles.num}>{t('perf.actual')}</th>
+                <th className={styles.num}>{t('perf.goal')}</th>
+                <th className={styles.num}>{t('perf.weight')}</th>
+                <th>{t('perf.achievement')}</th>
               </tr>
             </thead>
             <tbody>
@@ -590,7 +614,7 @@ function PerformanceDetail({
                   </td>
                   <td>
                     <Badge variant="subtle" color={m.auto ? 'info' : 'warning'} size="sm">
-                      {m.auto ? '자동' : '직접'}
+                      {m.auto ? t('perf.auto') : t('perf.manual')}
                     </Badge>
                   </td>
                   <td className={styles.num}>{fmtKpi(m.actual, m.unit)}</td>
@@ -598,7 +622,9 @@ function PerformanceDetail({
                   <td className={styles.num}>{m.weight}</td>
                   <td>
                     {m.achievement === null ? (
-                      <span className={styles.muted}>{m.auto ? '자료 없음' : '실적 미입력'}</span>
+                      <span className={styles.muted}>
+                        {m.auto ? t('perf.noData') : t('perf.noActual')}
+                      </span>
                     ) : (
                       <span className={styles.barRow}>
                         <span className={styles.bar}>
@@ -618,20 +644,26 @@ function PerformanceDetail({
           {insight && <p className={styles.insight}>{insight}</p>}
           {missing > 0 && (
             <p className={styles.hint}>
-              실적이 없는 지표 {missing}개는 종합 점수에서 뺐습니다.
+              {t('perf.excluded1')} {missing}
+              {t('perf.excluded2')}
               {r.source !== 'OWN' &&
-                (scope === 'EMPLOYEE'
-                  ? ' 지금은 소속 조직 구성(금액·건수 목표는 인원으로 나눔)을 따릅니다.'
-                  : ' 지금은 기본 구성입니다.')}
+                (scope === 'EMPLOYEE' ? t('perf.followsOrg') : t('perf.isDefault'))}
             </p>
           )}
-          {r.note && <p className={styles.hint}>메모: {r.note}</p>}
+          {r.note && (
+            <p className={styles.hint}>
+              {t('perf.memoColon')} {r.note}
+            </p>
+          )}
         </section>
       </div>
 
       {scope === 'ORG' && d.members.length > 0 && (
         <section className={styles.block}>
-          <h3 className={styles.blockTitle}>구성원 {d.members.length}명</h3>
+          <h3 className={styles.blockTitle}>
+            {t('perf.members')} {d.members.length}
+            {t('perf.peopleSuffix')}
+          </h3>
           <div className={styles.memberGrid}>
             {d.members.map((m) => (
               <button
@@ -653,36 +685,37 @@ function PerformanceDetail({
 
       <section className={styles.block}>
         <h3 className={styles.blockTitle}>
-          {scope === 'EMPLOYEE' ? '맡은 업무(업무분장)' : '조직 업무분장'} {d.duties.length}개
+          {scope === 'EMPLOYEE' ? t('perf.duties') : t('perf.orgDuties')} {d.duties.length}
+          {t('perf.countSuffix')}
         </h3>
         {d.duties.length ? (
           <ul className={styles.dutyList}>
-            {d.duties.map((t) => (
-              <li key={t.id}>
-                <span className={styles.dutyTitle}>{t.title}</span>
+            {d.duties.map((duty) => (
+              <li key={duty.id}>
+                <span className={styles.dutyTitle}>{duty.title}</span>
                 {scope === 'EMPLOYEE' && (
                   <Badge
                     variant="subtle"
-                    color={t.ownerEmpId === id ? 'primary' : 'neutral'}
+                    color={duty.ownerEmpId === id ? 'primary' : 'neutral'}
                     size="sm"
                   >
-                    {t.ownerEmpId === id ? '주' : '부'}
+                    {duty.ownerEmpId === id ? t('perf.primary') : t('perf.backup')}
                   </Badge>
                 )}
-                {scope === 'ORG' && t.ownerName && (
-                  <span className={styles.muted}>{t.ownerName}</span>
+                {scope === 'ORG' && duty.ownerName && (
+                  <span className={styles.muted}>{duty.ownerName}</span>
                 )}
-                <span className={styles.muted}>{DUTY_CYCLE_LABEL[t.cycle]}</span>
-                {t.inProgress > 0 && (
+                <span className={styles.muted}>{DUTY_CYCLE_LABEL[duty.cycle]}</span>
+                {duty.inProgress > 0 && (
                   <Badge variant="subtle" color="warning" size="sm">
-                    진행 중 {t.inProgress}
+                    {t('perf.inProgress')} {duty.inProgress}
                   </Badge>
                 )}
               </li>
             ))}
           </ul>
         ) : (
-          <p className={styles.muted}>아직 정한 업무분장이 없습니다(업무분장 메뉴에서 정합니다).</p>
+          <p className={styles.muted}>{t('perf.noDuties')}</p>
         )}
       </section>
 

@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -26,11 +27,11 @@ export interface MyDashboard {
 }
 
 const SOURCE_LABEL: Record<MyDashboard['source'], string> = {
-  PERSONAL: '내가 꾸민 대시보드',
-  USER: '나에게 지정된 대시보드',
-  ROLE: '권한 그룹에 지정된 대시보드',
-  DEFAULT: '기본 대시보드',
-  BUILTIN: '기본 구성',
+  PERSONAL: i18n.t('dash.src.mine'),
+  USER: i18n.t('dash.src.user'),
+  ROLE: i18n.t('dash.src.role'),
+  DEFAULT: i18n.t('dash.src.default'),
+  BUILTIN: i18n.t('dash.src.preset'),
 };
 
 /**
@@ -52,7 +53,7 @@ export default function Dashboard() {
       setRefreshKey((k) => k + 1);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.loadFailed') });
     }
   }, [toast, touch]);
 
@@ -66,12 +67,12 @@ export default function Dashboard() {
   });
 
   const reset = async () => {
-    if (!window.confirm('내가 꾸민 대시보드를 지우고 기본으로 되돌릴까요?')) return;
+    if (!window.confirm(t('dash.resetQ'))) return;
     try {
       setMe(await api<MyDashboard>('/dashboards/me', { method: 'DELETE' }));
-      toast({ type: 'success', title: '기본 대시보드로 되돌렸습니다' });
+      toast({ type: 'success', title: t('dash.resetDone') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '되돌리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('dash.resetFailed') });
     }
   };
 
@@ -84,7 +85,7 @@ export default function Dashboard() {
     try {
       await downloadDashboardPdf(pageRef.current, t('dashboard.title'));
     } catch {
-      toast({ type: 'error', title: 'PDF를 만들지 못했습니다' });
+      toast({ type: 'error', title: t('dash.pdfFailed') });
     } finally {
       setPdfBusy(false);
     }
@@ -110,8 +111,8 @@ export default function Dashboard() {
               <button
                 type="button"
                 className="header-icon-btn"
-                aria-label="PDF로 받기"
-                title="PDF로 받기(인쇄용)"
+                aria-label={t('dash.pdf')}
+                title={t('dash.pdfTip')}
                 disabled={pdfBusy}
                 onClick={() => void savePdf()}
               >
@@ -123,16 +124,14 @@ export default function Dashboard() {
                   ...(can('DASHBOARD.READ')
                     ? [
                         {
-                          label: '대시보드 관리',
+                          label: t('dash.manage'),
                           icon: <LayoutTemplate size={15} />,
                           onClick: () => navigate('/dashboard-admin'),
                         },
                       ]
                     : []),
                   {
-                    label: me.canCustomize
-                      ? '대시보드 편집'
-                      : '대시보드 편집 (관리자가 정한 대시보드)',
+                    label: me.canCustomize ? t('dash.edit') : t('dash.editLocked'),
                     icon: <Pencil size={15} />,
                     disabled: !me.canCustomize,
                     onClick: () =>
@@ -142,7 +141,7 @@ export default function Dashboard() {
                     ? [
                         { type: 'separator' as const },
                         {
-                          label: '기본 대시보드로 되돌리기',
+                          label: t('dash.reset'),
                           icon: <RotateCcw size={15} />,
                           onClick: () => void reset(),
                         },
@@ -153,8 +152,8 @@ export default function Dashboard() {
                   <button
                     type="button"
                     className="header-icon-btn"
-                    aria-label="대시보드 설정"
-                    title="대시보드 설정"
+                    aria-label={t('dash.settings')}
+                    title={t('dash.settings')}
                   >
                     <Settings size={14} />
                   </button>

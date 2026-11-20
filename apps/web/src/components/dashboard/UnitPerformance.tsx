@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   STATS_METRICS,
@@ -18,12 +20,12 @@ const MIN_R = 4;
 /** 시·도 확대 애니메이션 길이(ms) */
 const ZOOM_MS = 450;
 
-const won = (n: number) => `${n.toLocaleString()}원`;
+const won = (n: number) => i18n.t('dash.won', { v0: n.toLocaleString() });
 /** 막대·지도 위 짧은 표기 — 1,103만 / 2.4억 */
 const short = (n: number, metric: StatsMetric) => {
-  if (metric !== 'revenue') return `${n.toLocaleString()}건`;
-  if (n >= 1e8) return `${(n / 1e8).toFixed(1)}억`;
-  if (n >= 1e4) return `${Math.round(n / 1e4).toLocaleString()}만`;
+  if (metric !== 'revenue') return i18n.t('dash.countUnit', { v0: n.toLocaleString() });
+  if (n >= 1e8) return i18n.t('dash.eok', { v0: (n / 1e8).toFixed(1) });
+  if (n >= 1e4) return i18n.t('dash.man', { v0: Math.round(n / 1e4).toLocaleString() });
   return n.toLocaleString();
 };
 
@@ -131,6 +133,7 @@ function useAnimatedBox() {
  * 시·도를 누르면 그 시·도로 확대해 시군구 경계와 그 안의 지점만 보여 준다(← 전국 / Esc 로 돌아감).
  */
 export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
+  const { t } = useTranslation();
   const [metric, setMetric] = useState<StatsMetric>('revenue');
   const [view, setView] = useState<'map' | 'bar'>('map');
   const [tip, setTip] = useState<Tip | null>(null);
@@ -294,8 +297,8 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
   }, [dots, rest, kRest, metric]);
 
   const detail = (r: StatsByUnit) => [
-    `접수 ${r.leadCount}건 · 계약 ${r.contractCount}건`,
-    `작업 ${r.workCount}건 · 매출 ${won(r.revenue)}`,
+    t('dash.leadsContracts', { v0: r.leadCount, v1: r.contractCount }),
+    t('dash.workRevenue', { v0: r.workCount, v1: won(r.revenue) }),
   ];
   const showTip = (e: React.MouseEvent, title: string, lines: string[]) => {
     const el = e.currentTarget.closest(`.${styles.plot}`) as HTMLElement;
@@ -304,7 +307,11 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
   };
 
   const area = sel ? `${sel} ` : '';
-  const title = `${area}지점별 ${STATS_METRIC_LABEL[metric]}${view === 'bar' ? ` (상위 ${TOP_N})` : ''}`;
+  const title = t('dash.byBranch', {
+    v0: area,
+    v1: STATS_METRIC_LABEL[metric],
+    v2: view === 'bar' ? t('dash.topN', { v0: TOP_N }) : '',
+  });
   const hoveredLabel = hoverMuni
     ? muni?.labels.find((l) => hoverMuni === l.name || hoverMuni.startsWith(l.name))?.name
     : undefined;
@@ -318,10 +325,10 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
               type="button"
               className={styles.backBtn}
               onClick={back}
-              aria-label="전국 지도로 돌아가기"
-              title="전국 지도로 (Esc)"
+              aria-label={t('dash.backToKorea')}
+              title={t('dash.backToKoreaTip')}
             >
-              ← 전국
+              {t('dash.national')}
             </button>
             {title}
           </span>
@@ -346,8 +353,8 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
               setTip(null);
             }}
             options={[
-              { value: 'map', label: '지도' },
-              { value: 'bar', label: '막대' },
+              { value: 'map', label: t('dash.map') },
+              { value: 'bar', label: t('dash.bar') },
             ]}
             size="sm"
           />
@@ -355,11 +362,14 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
       }
     >
       {byBranch.length === 0 ? (
-        <div className={styles.empty}>데이터가 없습니다</div>
+        <div className={styles.empty}>{t('dash.noData')}</div>
       ) : view === 'bar' ? (
         <div className={styles.plotBox}>
           {bars.length === 0 ? (
-            <div className={styles.empty}>{regionName.get(sel ?? '')}에 지점이 없습니다</div>
+            <div className={styles.empty}>
+              {regionName.get(sel ?? '')}
+              {t('dash.noBranchesIn')}
+            </div>
           ) : (
             <ColumnChart
               label={title}
@@ -379,7 +389,7 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
             viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
             className={styles.map}
             role="img"
-            aria-label={`${title} 지도`}
+            aria-label={t('dash.mapOf', { v0: title })}
           >
             {KOREA_MAP.regions.map((r) => {
               const isSel = r.sido === sel;
@@ -395,7 +405,7 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
                   vectorEffect="non-scaling-stroke"
                   role={isSel ? undefined : 'button'}
                   tabIndex={isSel ? undefined : 0}
-                  aria-label={isSel ? undefined : `${r.name} 확대`}
+                  aria-label={isSel ? undefined : t('dash.zoomOf', { v0: r.name })}
                   onClick={isSel ? undefined : () => zoomTo(r.sido)}
                   onKeyDown={
                     isSel
@@ -447,7 +457,7 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
                 onMouseMove={(e) =>
                   showTip(e, d.b.orgUnitName, [
                     ...detail(d.b),
-                    ...(d.approx ? ['위치 미등록 — 시·도 중심에 표시'] : []),
+                    ...(d.approx ? [t('dash.noLocation')] : []),
                   ])
                 }
               >
@@ -483,9 +493,9 @@ export function UnitPerformance({ byBranch }: { byBranch: StatsByUnit[] }) {
           {!moving && (
             <div className={styles.mapNote}>
               {!sel
-                ? '시·도를 누르면 확대합니다'
+                ? t('dash.clickToZoom')
                 : dots.length === 0
-                  ? `${regionName.get(sel)}에 지점이 없습니다`
+                  ? t('dash.noBranchesOf', { v0: regionName.get(sel) ?? '' })
                   : null}
             </div>
           )}

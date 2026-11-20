@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { DashViz } from '@tongin/shared';
 import { DASH_COLS } from '@tongin/shared';
 import styles from './builder.module.css';
@@ -246,6 +247,7 @@ export function LayoutThumb({
   /** 템플릿 색 — 그림도 그 색으로 */
   color?: string | null;
 }) {
+  const { t } = useTranslation();
   const rows = Math.max(
     6,
     items.reduce((m, i) => Math.max(m, i.y + i.h), 0),
@@ -262,7 +264,7 @@ export function LayoutThumb({
       >
         {items.length === 0 ? (
           <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={7} fill="var(--thumb-soft)">
-            빈 화면
+            {t('dash.blank')}
           </text>
         ) : (
           items.map((it, i) => {
