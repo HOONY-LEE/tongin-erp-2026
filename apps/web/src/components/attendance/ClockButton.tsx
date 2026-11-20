@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -39,21 +41,27 @@ export function useClock() {
   }, [load]);
 
   const clock = async (type: 'IN' | 'OUT') => {
-    if (type === 'OUT' && !window.confirm('퇴근을 기록할까요?')) return;
+    if (type === 'OUT' && !window.confirm(i18n.t('att.outQ'))) return;
     setBusy(true);
     try {
-      const t = await api<Today>('/attendance/clock', {
+      const res = await api<Today>('/attendance/clock', {
         method: 'POST',
         body: JSON.stringify({ type }),
       });
-      setToday(t);
+      setToday(res);
       toast({
         type: 'success',
-        title: type === 'IN' ? `출근 ${t.clockIn} 기록했습니다` : `퇴근 ${t.clockOut} 기록했습니다`,
+        title:
+          type === 'IN'
+            ? i18n.t('att.inDone', { v0: res.clockIn ?? '' })
+            : i18n.t('att.outDone', { v0: res.clockOut ?? '' }),
       });
       window.dispatchEvent(new Event('attendance:changed'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '기록하지 못했습니다' });
+      toast({
+        type: 'error',
+        title: e instanceof ApiError ? e.message : i18n.t('att.recordFailed'),
+      });
     } finally {
       setBusy(false);
     }
@@ -67,14 +75,15 @@ export function useClock() {
  * 퇴근 뒤엔 두 시각만 보인다(잘못 눌렀으면 근태 정정 신청). 시각은 서버 시계로 기록한다.
  */
 export function ClockButton({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation();
   const { today, busy, clock } = useClock();
 
   if (!today) return null;
   if (today.leave && !today.clockIn)
     return (
-      <span className={styles.wrap} title="오늘 휴가">
+      <span className={styles.wrap} title={t('att.todayLeave')}>
         <Clock size={14} aria-hidden />
-        {compact ? '휴가' : `오늘 ${today.leave}`}
+        {compact ? t('att.sum.leave') : t('att.todayOf', { v0: today.leave })}
       </span>
     );
 
@@ -83,8 +92,8 @@ export function ClockButton({ compact = false }: { compact?: boolean }) {
       {today.clockIn && (
         <span className={styles.times}>
           <Clock size={14} aria-hidden />
-          출근 {today.clockIn}
-          {today.clockOut && ` · 퇴근 ${today.clockOut}`}
+          {t('att.in')} {today.clockIn}
+          {today.clockOut && t('att.outAt', { v0: today.clockOut })}
         </span>
       )}
       {!today.clockIn ? (
@@ -94,7 +103,7 @@ export function ClockButton({ compact = false }: { compact?: boolean }) {
           disabled={busy}
           onClick={() => void clock('IN')}
         >
-          출근하기
+          {t('att.clockIn')}
         </button>
       ) : (
         !today.clockOut && (
@@ -104,7 +113,7 @@ export function ClockButton({ compact = false }: { compact?: boolean }) {
             disabled={busy}
             onClick={() => void clock('OUT')}
           >
-            퇴근하기
+            {t('att.clockOut')}
           </button>
         )
       )}

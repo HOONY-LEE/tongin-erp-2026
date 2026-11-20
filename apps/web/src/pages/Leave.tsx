@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -92,7 +93,8 @@ const STATUS_MAP: StatusMap = {
 };
 const d10 = (v: unknown) => String(v ?? '').slice(0, 10);
 const num = (v: unknown) => Number(v ?? 0);
-const fmtDays = (n: number) => `${Number.isInteger(n) ? n : String(Number(n.toFixed(2)))}일`;
+const fmtDays = (n: number) =>
+  i18n.t('leave.days', { v0: Number.isInteger(n) ? n : String(Number(n.toFixed(2))) });
 
 /**
  * 휴가 — 내 휴가(잔여·신청·내역) / 전 직원 현황(LEAVE.READ, 조정은 LEAVE.UPDATE) / 휴가 종류(LEAVE.UPDATE).
@@ -106,15 +108,15 @@ export default function Leave() {
   const { updatedAt, touch } = useUpdatedAt();
 
   const options = [
-    ...(user?.employeeId ? [{ value: 'my', label: '내 휴가' }] : []),
-    ...(can('LEAVE.READ') ? [{ value: 'all', label: '전 직원 현황' }] : []),
+    ...(user?.employeeId ? [{ value: 'my', label: t('leave.tab.mine') }] : []),
+    ...(can('LEAVE.READ') ? [{ value: 'all', label: t('leave.tab.all') }] : []),
     ...(can('LEAVE.UPDATE')
       ? [
-          { value: 'types', label: '휴가 종류' },
-          { value: 'grant', label: '연차 부여' },
+          { value: 'types', label: t('leave.tab.types') },
+          { value: 'grant', label: t('leave.tab.grant') },
         ]
       : []),
-    ...(can('APPROVAL.MANAGE') ? [{ value: 'form', label: '신청서 양식' }] : []),
+    ...(can('APPROVAL.MANAGE') ? [{ value: 'form', label: t('leave.tab.form') }] : []),
   ];
 
   return (
@@ -142,12 +144,13 @@ export default function Leave() {
 
 /** 잔여 연차 카드 줄 — 직원 한 명 기준(내 휴가·직원 상세) */
 export function BalanceCards({ b }: { b: LeaveBalance }) {
+  const { t } = useTranslation();
   const items: [string, string, string?][] = [
-    ['남은 연차', fmtDays(b.remaining), 'strong'],
-    ['발생', fmtDays(b.granted)],
-    ['조정', `${b.adjusted > 0 ? '+' : ''}${fmtDays(b.adjusted)}`],
-    ['사용', fmtDays(b.used)],
-    ['결재 중', fmtDays(b.pending)],
+    [t('leave.remain'), fmtDays(b.remaining), 'strong'],
+    [t('leave.accrued'), fmtDays(b.granted)],
+    [t('leave.adjusted'), `${b.adjusted > 0 ? '+' : ''}${fmtDays(b.adjusted)}`],
+    [t('leave.used'), fmtDays(b.used)],
+    [t('leave.pending'), fmtDays(b.pending)],
   ];
   return (
     <div className={styles.balance}>
@@ -161,8 +164,13 @@ export function BalanceCards({ b }: { b: LeaveBalance }) {
       </div>
       <p className={styles.period}>
         {b.hireDate
-          ? `입사 ${b.hireDate} · ${b.firstYear ? '1년 미만(매달 1일씩)' : `${b.years}년차`} · 이번 연차 기간 ${b.periodStart} ~ ${b.periodEnd}`
-          : '입사일이 없어 연차를 계산하지 못했습니다 — 인사 담당자에게 입사일 입력을 요청하세요.'}
+          ? t('leave.basis', {
+              v0: b.hireDate,
+              v1: b.firstYear ? t('leave.firstYear') : t('leave.yearN', { v0: b.years }),
+              v2: b.periodStart,
+              v3: b.periodEnd,
+            })
+          : t('leave.noHire')}
       </p>
     </div>
   );
@@ -178,20 +186,29 @@ export function LeaveRequestTable({
   loading?: boolean;
   toolbarActions?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const columns: Column[] = [
-    { title: '종류', render: (r) => (r as unknown as LeaveRequestRow).leaveType.name },
+    { title: t('leave.col.type'), render: (r) => (r as unknown as LeaveRequestRow).leaveType.name },
     {
-      title: '기간',
+      title: t('leave.col.period'),
       minWidth: 200,
       render: (r) =>
         d10(r.startDate) === d10(r.endDate)
           ? d10(r.startDate)
           : `${d10(r.startDate)} ~ ${d10(r.endDate)}`,
     },
-    { title: '일수', numeric: true, render: (r) => fmtDays(num(r.days)) },
-    { title: '사유', flex: 1, minWidth: 160, render: (r) => String(r.reason ?? '-') },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={STATUS_MAP} /> },
+    { title: t('leave.col.days'), numeric: true, render: (r) => fmtDays(num(r.days)) },
+    {
+      title: t('leave.col.reason'),
+      flex: 1,
+      minWidth: 160,
+      render: (r) => String(r.reason ?? '-'),
+    },
+    {
+      title: t('leave.col.status'),
+      render: (r) => <StatusBadge value={String(r.status)} map={STATUS_MAP} />,
+    },
   ];
   return (
     <DataTable
@@ -246,7 +263,7 @@ function MyLeave() {
         loading={loading}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-            + 휴가 신청
+            {t('leave.requestBtn')}
           </Button>
         }
       />
@@ -299,6 +316,7 @@ function RequestModal({
   onDone: () => void;
   onEdit?: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { user } = useAuth();
   const [types, setTypes] = useState<LeaveType[]>([]);
@@ -340,7 +358,7 @@ function RequestModal({
     return end && end >= start ? countWorkdays(start, end) : 0;
   }, [type, half, start, end]);
   const available = balance ? balance.remaining - balance.pending : 0;
-  const blocked = balance ? null : '직원과 연결된 계정만 휴가를 신청할 수 있습니다';
+  const blocked = balance ? null : t('leave.needEmployee');
 
   const submit = async () => {
     setBusy(true);
@@ -359,10 +377,10 @@ function RequestModal({
           line: line ? toLinePayload(line) : undefined,
         }),
       });
-      toast({ type: 'success', title: '휴가를 신청했습니다(결재 상신)' });
+      toast({ type: 'success', title: t('leave.requested') });
       onDone();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '신청하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('leave.requestFailed') });
     } finally {
       setBusy(false);
     }
@@ -373,17 +391,17 @@ function RequestModal({
       open
       onOpenChange={(o) => !o && onClose()}
       size="lg"
-      title="휴가 신청"
+      title={t('leave.requestTitle')}
       footer={
         <>
           {onEdit && (
             <Button variant="outline" onClick={onEdit} style={{ marginRight: 'auto' }}>
-              결재 양식 편집하기
+              {t('leave.editForm')}
             </Button>
           )}
           {blocked && <span className={astyles.muted}>{blocked}</span>}
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('leave.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -401,31 +419,31 @@ function RequestModal({
             }
             onClick={() => void submit()}
           >
-            {onEdit ? '결재 올리기' : '신청(결재 상신)'}
+            {onEdit ? t('leave.submit') : t('leave.submitNew')}
           </Button>
         </>
       }
     >
       <div className={astyles.formCol}>
         <label className={astyles.fieldLabel}>
-          휴가 종류
+          {t('leave.tab.types')}
           <Select
             value={typeId}
             onValueChange={setTypeId}
             options={types.map((x) => ({
               value: x.id,
-              label: `${x.name}${x.deducts ? '' : ' (연차 차감 없음)'}`,
+              label: `${x.name}${x.deducts ? '' : t('leave.noDeduct')}`,
             }))}
           />
         </label>
         <div className={styles.dates}>
           <label className={astyles.fieldLabel}>
-            {half ? '날짜' : '시작일'}
+            {half ? t('leave.date') : t('leave.start')}
             <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           </label>
           {!half && (
             <label className={astyles.fieldLabel}>
-              끝일
+              {t('leave.end')}
               <Input
                 type="date"
                 value={end}
@@ -435,11 +453,11 @@ function RequestModal({
             </label>
           )}
           <div className={styles.daysBox}>
-            <span className={styles.cardLabel}>쓰는 일수(주말·공휴일 제외)</span>
+            <span className={styles.cardLabel}>{t('leave.useDays')}</span>
             <b>{fmtDays(days)}</b>
             {type?.deducts && (
               <span className={days > available ? styles.over : styles.cardLabel}>
-                쓸 수 있는 연차 {fmtDays(available)}
+                {t('leave.available')} {fmtDays(available)}
               </span>
             )}
           </div>
@@ -447,9 +465,9 @@ function RequestModal({
         {half && !fixedSlot && slots.length > 0 && (
           <div className={astyles.fieldLabel}>
             <span>
-              시간대 <span className={styles.over}>*</span>
+              {t('leave.slot')} <span className={styles.over}>*</span>
             </span>
-            <div className={astyles.choiceChips} role="radiogroup" aria-label="시간대">
+            <div className={astyles.choiceChips} role="radiogroup" aria-label={t('leave.slot')}>
               {slots.map((x) => (
                 <button
                   key={x}
@@ -466,29 +484,33 @@ function RequestModal({
           </div>
         )}
         <label className={astyles.fieldLabel}>
-          <span>사유{reasonRequired && <span className={styles.over}> *</span>}</span>
+          <span>
+            {t('leave.col.reason')}
+            {reasonRequired && <span className={styles.over}> *</span>}
+          </span>
           <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
         </label>
         {subMode !== 'NONE' && (
           <div className={astyles.fieldLabel}>
             <span>
-              업무 대리인{subMode === 'REQUIRED' && <span className={styles.over}> *</span>}
+              {t('leave.delegate')}
+              {subMode === 'REQUIRED' && <span className={styles.over}> *</span>}
             </span>
             <PersonPicker
               value={substitute}
               onChange={(v) => setSubstitute(v.filter((x) => x !== user?.employeeId).slice(-1))}
             />
-            <span className={styles.cardLabel}>휴가가 승인되면 대리인에게 알림이 갑니다.</span>
+            <span className={styles.cardLabel}>{t('leave.delegateHint')}</span>
           </div>
         )}
         {substitute.length > 0 && (
           <label className={astyles.fieldLabel}>
-            인수인계
+            {t('leave.handover')}
             <Textarea
               rows={2}
               value={handover}
               maxLength={1000}
-              placeholder="대리인이 챙길 일(진행 중인 건·연락처 등)"
+              placeholder={t('leave.handoverPh')}
               onChange={(e) => setHandover(e.target.value)}
             />
           </label>
@@ -513,6 +535,7 @@ interface SummaryRow extends LeaveBalance {
 }
 
 function LeaveSummary() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const [scope, setScope] = useState<'hq' | 'all'>('hq');
@@ -525,7 +548,7 @@ function LeaveSummary() {
     try {
       setRows(await api<SummaryRow[]>(`/leave/summary${scope === 'hq' ? '?hq=1' : ''}`));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('leave.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -536,21 +559,21 @@ function LeaveSummary() {
   }, [load]);
 
   const columns: Column[] = [
-    { title: '이름', dataIndex: 'name' },
-    { title: '직책', render: (r) => String(r.positionName ?? '-') },
-    { title: '소속', render: (r) => String(r.orgUnitName ?? '-') },
-    { title: '입사일', render: (r) => String(r.hireDate ?? '입사일 없음') },
+    { title: t('leave.col.name'), dataIndex: 'name' },
+    { title: t('leave.col.position'), render: (r) => String(r.positionName ?? '-') },
+    { title: t('leave.col.org'), render: (r) => String(r.orgUnitName ?? '-') },
+    { title: t('leave.col.hire'), render: (r) => String(r.hireDate ?? t('leave.noHireShort')) },
     {
-      title: '연차 기간',
+      title: t('leave.col.leaveYear'),
       minWidth: 190,
       render: (r) => (r.hireDate ? `${String(r.periodStart)} ~ ${String(r.periodEnd)}` : '-'),
     },
-    { title: '발생', numeric: true, render: (r) => fmtDays(num(r.granted)) },
-    { title: '조정', numeric: true, render: (r) => fmtDays(num(r.adjusted)) },
-    { title: '사용', numeric: true, render: (r) => fmtDays(num(r.used)) },
-    { title: '결재 중', numeric: true, render: (r) => fmtDays(num(r.pending)) },
+    { title: t('leave.accrued'), numeric: true, render: (r) => fmtDays(num(r.granted)) },
+    { title: t('leave.adjusted'), numeric: true, render: (r) => fmtDays(num(r.adjusted)) },
+    { title: t('leave.used'), numeric: true, render: (r) => fmtDays(num(r.used)) },
+    { title: t('leave.pending'), numeric: true, render: (r) => fmtDays(num(r.pending)) },
     {
-      title: '남은 연차',
+      title: t('leave.remain'),
       numeric: true,
       render: (r) => <b>{fmtDays(num(r.remaining))}</b>,
     },
@@ -563,7 +586,7 @@ function LeaveSummary() {
         rows={rows as unknown as Row[]}
         loading={loading}
         exportable
-        exportFileName="연차현황"
+        exportFileName={t('leave.statusTitle')}
         onRowClick={
           can('LEAVE.UPDATE') ? (r) => setAdjusting(r as unknown as SummaryRow) : undefined
         }
@@ -572,8 +595,8 @@ function LeaveSummary() {
             value={scope}
             onChange={(v) => setScope(v as 'hq' | 'all')}
             options={[
-              { value: 'hq', label: '본사' },
-              { value: 'all', label: '전체(지점 포함)' },
+              { value: 'hq', label: t('leave.hq') },
+              { value: 'all', label: t('leave.allIncl') },
             ]}
           />
         }
@@ -601,6 +624,7 @@ function AdjustModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [days, setDays] = useState('');
   const [reason, setReason] = useState('');
@@ -613,10 +637,10 @@ function AdjustModal({
         method: 'POST',
         body: JSON.stringify({ employeeId: row.id, days: Number(days), reason: reason.trim() }),
       });
-      toast({ type: 'success', title: '연차를 조정했습니다' });
+      toast({ type: 'success', title: t('leave.adjustedOk') });
       onDone();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '조정하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('leave.adjustFailed') });
     } finally {
       setBusy(false);
     }
@@ -626,11 +650,11 @@ function AdjustModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`${row.name} 연차 조정`}
+      title={t('leave.adjustTitle', { v0: row.name })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('leave.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -638,7 +662,7 @@ function AdjustModal({
             disabled={!Number(days) || !reason.trim()}
             onClick={() => void save()}
           >
-            조정
+            {t('leave.adjusted')}
           </Button>
         </>
       }
@@ -646,21 +670,21 @@ function AdjustModal({
       <div className={astyles.formCol}>
         <BalanceCards b={row} />
         <label className={astyles.fieldLabel}>
-          조정 일수 (+ 더하기 / − 빼기, 0.5 단위)
+          {t('leave.adjustDays')}
           <Input
             type="number"
             step={0.5}
             value={days}
             onChange={(e) => setDays(e.target.value)}
-            placeholder="예: 1 또는 -0.5"
+            placeholder={t('leave.adjustDaysPh')}
           />
         </label>
         <label className={astyles.fieldLabel}>
-          사유
+          {t('leave.col.reason')}
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="예: 결근 차감, 전년도 이월, 포상"
+            placeholder={t('leave.adjustReasonPh')}
           />
         </label>
       </div>
@@ -669,6 +693,7 @@ function AdjustModal({
 }
 
 export function LeaveTypes() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [rows, setRows] = useState<LeaveType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -679,7 +704,7 @@ export function LeaveTypes() {
     try {
       setRows(await api<LeaveType[]>('/leave/types?all=1'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('leave.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -689,46 +714,48 @@ export function LeaveTypes() {
     void load();
   }, [load]);
 
-  const yesNo = (v: unknown) => (v ? '예' : '아니오');
+  const yesNo = (v: unknown) => (v ? t('leave.yes') : t('leave.no'));
   const columns: Column[] = [
-    { title: '이름', dataIndex: 'name' },
+    { title: t('leave.col.name'), dataIndex: 'name' },
     {
-      title: '단위',
+      title: t('leave.unitLabel'),
       render: (r) =>
         num(r.unitDays) >= 1
-          ? '하루 단위'
+          ? t('leave.unit.DAY')
           : num(r.unitDays) >= 0.5
-            ? '반차(0.5일)'
-            : '반반차(0.25일)',
+            ? t('leave.unit.HALF')
+            : t('leave.unit.QUARTER'),
     },
-    { title: '연차 차감', render: (r) => yesNo(r.deducts) },
-    { title: '유급', render: (r) => yesNo(r.paid) },
+    { title: t('leave.deducts'), render: (r) => yesNo(r.deducts) },
+    { title: t('leave.paid'), render: (r) => yesNo(r.paid) },
     {
-      title: '상태',
+      title: t('leave.col.status'),
       render: (r) => (
         <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-          {r.isActive ? '사용' : '사용 안 함'}
+          {r.isActive ? t('leave.used') : t('leave.off')}
         </Badge>
       ),
     },
   ];
 
   const fields: FormField[] = [
-    { name: 'name', label: '이름', required: true },
+    { name: 'name', label: t('leave.col.name'), required: true },
     {
       name: 'unitDays',
-      label: '단위',
+      label: t('leave.unitLabel'),
       required: true,
       type: 'select',
       options: [
-        { value: '1', label: '하루 단위(기간)' },
-        { value: '0.5', label: '반차(0.5일, 오전/오후 고름)' },
-        { value: '0.25', label: '반반차(0.25일, 시간대 고름)' },
+        { value: '1', label: t('leave.unitL.DAY') },
+        { value: '0.5', label: t('leave.unitL.HALF') },
+        { value: '0.25', label: t('leave.unitL.QUARTER') },
       ],
     },
-    { name: 'deducts', label: '연차에서 차감', type: 'boolean', alwaysShow: true },
-    { name: 'paid', label: '유급', type: 'boolean', alwaysShow: true },
-    ...(editing !== 'new' ? [{ name: 'isActive', label: '사용', type: 'boolean' as const }] : []),
+    { name: 'deducts', label: t('leave.deductsL'), type: 'boolean', alwaysShow: true },
+    { name: 'paid', label: t('leave.paid'), type: 'boolean', alwaysShow: true },
+    ...(editing !== 'new'
+      ? [{ name: 'isActive', label: t('leave.used'), type: 'boolean' as const }]
+      : []),
   ];
 
   const onSubmit = async (v: Record<string, unknown>) => {
@@ -745,11 +772,11 @@ export function LeaveTypes() {
       if (editing && editing !== 'new')
         await api(`/leave/types/${editing.id}`, { method: 'PATCH', body: JSON.stringify(body) });
       else await api('/leave/types', { method: 'POST', body: JSON.stringify(body) });
-      toast({ type: 'success', title: '저장했습니다' });
+      toast({ type: 'success', title: t('leave.saved') });
       setEditing(null);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('leave.saveFailed') });
       throw e;
     }
   };
@@ -763,14 +790,14 @@ export function LeaveTypes() {
         onRowClick={(r) => setEditing(r as unknown as LeaveType)}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-            + 휴가 종류
+            {t('leave.typeAddBtn')}
           </Button>
         }
       />
       <FormModal
         open={editing !== null}
         onOpenChange={(o) => !o && setEditing(null)}
-        title={editing === 'new' ? '휴가 종류 추가' : '휴가 종류 수정'}
+        title={editing === 'new' ? t('leave.typeAdd') : t('leave.typeEdit')}
         fields={fields}
         initialValues={
           editing && editing !== 'new'
@@ -803,6 +830,7 @@ interface AdjustmentRow {
  * 포상·이월·특별휴가·결근 차감 등. 아래에 최근 부여·조정 내역.
  */
 export function LeaveGrant() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { orgs } = useDirectory();
   const [mode, setMode] = useState<'people' | 'orgs'>('people');
@@ -852,7 +880,12 @@ export function LeaveGrant() {
       });
       toast({
         type: 'success',
-        title: `${r.count}명에게 연차 ${n > 0 ? '+' : ''}${n}일을 ${n > 0 ? '부여' : '차감'}했습니다`,
+        title: t('leave.granted', {
+          v0: r.count,
+          v1: n > 0 ? '+' : '',
+          v2: n,
+          v3: n > 0 ? t('leave.grantWord') : t('leave.deductWord'),
+        }),
       });
       setPeople([]);
       setOrgIds([]);
@@ -860,16 +893,16 @@ export function LeaveGrant() {
       setReason('');
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '부여하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('leave.grantFailed') });
     } finally {
       setBusy(false);
     }
   };
 
   const columns: Column[] = [
-    { title: '날짜', width: 110, render: (r) => d10(r.effectiveDate) },
+    { title: t('leave.date'), width: 110, render: (r) => d10(r.effectiveDate) },
     {
-      title: '직원',
+      title: t('leave.employee'),
       minWidth: 140,
       render: (r) => {
         const a = r as unknown as AdjustmentRow;
@@ -877,43 +910,43 @@ export function LeaveGrant() {
       },
     },
     {
-      title: '일수',
+      title: t('leave.col.days'),
       width: 90,
       numeric: true,
       render: (r) => `${num(r.days) > 0 ? '+' : ''}${fmtDays(num(r.days))}`,
     },
-    { title: '사유', dataIndex: 'reason', flex: 1, minWidth: 200 },
+    { title: t('leave.col.reason'), dataIndex: 'reason', flex: 1, minWidth: 200 },
   ];
 
   return (
     <>
       <section className="rd-card" style={{ marginBottom: 16 }}>
-        <h3 className="rd-title">연차 부여·차감</h3>
+        <h3 className="rd-title">{t('leave.grantTitle')}</h3>
         <div className={astyles.formCol}>
           <SegmentedControl
             size="sm"
             value={mode}
             onChange={(v) => setMode(v as 'people' | 'orgs')}
             options={[
-              { value: 'people', label: '직원 고르기' },
-              { value: 'orgs', label: '조직 전체' },
+              { value: 'people', label: t('leave.pickEmployees') },
+              { value: 'orgs', label: t('leave.wholeOrg') },
             ]}
           />
           {mode === 'people' ? (
             <div className={astyles.fieldLabel}>
-              대상 직원
+              {t('leave.targetEmployees')}
               <PersonPicker value={people} onChange={setPeople} />
             </div>
           ) : (
             <div className={astyles.fieldLabel}>
-              대상 조직(하위 조직 포함)
+              {t('leave.targetOrg')}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                 {orgIds.map((id) => (
                   <Badge key={id} variant="subtle" color="info">
                     {orgName.get(id)}{' '}
                     <button
                       type="button"
-                      aria-label="빼기"
+                      aria-label={t('leave.remove')}
                       style={{ border: 0, background: 'none', cursor: 'pointer' }}
                       onClick={() => setOrgIds(orgIds.filter((x) => x !== id))}
                     >
@@ -924,7 +957,7 @@ export function LeaveGrant() {
                 <Combobox
                   options={orgOptions}
                   value={null}
-                  placeholder="조직 찾기"
+                  placeholder={t('leave.findOrg')}
                   onChange={(v) => v && setOrgIds([...orgIds, v])}
                 />
               </div>
@@ -933,32 +966,30 @@ export function LeaveGrant() {
           <div className={styles.dates}>
             <label className={astyles.fieldLabel}>
               <span>
-                일수 <span className={styles.over}>*</span>
+                {t('leave.col.days')} <span className={styles.over}>*</span>
               </span>
               <Input
                 inputMode="decimal"
                 value={days}
-                placeholder="예: 1, 0.5, -1"
+                placeholder={t('leave.grantDaysPh')}
                 onChange={(e) => setDays(e.target.value.replace(/[^\d.-]/g, ''))}
               />
-              <span className={styles.cardLabel}>+는 부여, -는 차감(0.25일 단위)</span>
+              <span className={styles.cardLabel}>{t('leave.grantDaysHint')}</span>
             </label>
             <label className={astyles.fieldLabel}>
-              적용 날짜
+              {t('leave.applyDate')}
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              <span className={styles.cardLabel}>
-                그 날짜가 속한 연차 기간에 들어갑니다(비우면 오늘)
-              </span>
+              <span className={styles.cardLabel}>{t('leave.applyDateHint')}</span>
             </label>
           </div>
           <label className={astyles.fieldLabel}>
             <span>
-              사유 <span className={styles.over}>*</span>
+              {t('leave.col.reason')} <span className={styles.over}>*</span>
             </span>
             <Input
               value={reason}
               maxLength={200}
-              placeholder="예: 창립기념 특별휴가, 우수사원 포상"
+              placeholder={t('leave.grantReasonPh')}
               onChange={(e) => setReason(e.target.value)}
             />
           </label>
@@ -970,7 +1001,7 @@ export function LeaveGrant() {
               disabled={!ready}
               onClick={() => void submit()}
             >
-              {n < 0 ? '차감하기' : '부여하기'}
+              {n < 0 ? t('leave.deductBtn') : t('leave.grantBtn')}
             </Button>
           </div>
         </div>
