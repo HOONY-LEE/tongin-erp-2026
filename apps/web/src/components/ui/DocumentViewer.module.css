@@ -1,0 +1,89 @@
+/* 문서 보기 창 — 어두운 배경 위에 A4 문서를 크게(PDF 뷰어 느낌) */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.viewer {
+  display: flex;
+  flex-direction: column;
+  width: min(980px, 100%);
+  height: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #3a3a3c;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 52px;
+  padding: 0 10px 0 18px;
+  background: #2c2c2e;
+  color: #fff;
+}
+.bar b {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.actions button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.actions .close {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+  background: transparent;
+}
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #e5e5ea;
+}
+.msg {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+}
