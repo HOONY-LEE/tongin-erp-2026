@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { FileText, FileUp, RefreshCw, Search, Sparkles } from 'lucide-react';
@@ -67,23 +69,24 @@ function KindTag({ k }: { k: KnowledgeConceptKind }) {
   );
 }
 function Status({ d }: { d: Pick<KnowledgeDocRow, 'analyzeStatus' | 'analyzeError'> }) {
+  const { t } = useTranslation();
   if (d.analyzeStatus === 'PENDING')
     return (
       <Badge variant="subtle" color="info" size="sm">
-        AI 정리 중
+        {t('know.st.running')}
       </Badge>
     );
   if (d.analyzeStatus === 'ERROR')
     return (
       <span title={d.analyzeError ?? undefined}>
         <Badge variant="subtle" color="error" size="sm">
-          정리 실패
+          {t('know.st.failed')}
         </Badge>
       </span>
     );
   return (
     <Badge variant="subtle" color="success" size="sm">
-      정리됨
+      {t('know.st.done')}
     </Badge>
   );
 }
@@ -93,6 +96,7 @@ function Status({ d }: { d: Pick<KnowledgeDocRow, 'analyzeStatus' | 'analyzeErro
  * 온톨로지 그래프(옵시디언 그래프 뷰)로 보여 준다. AI 비서·에이전트는 일할 때 여기서 기준을 찾아 근거로 쓴다.
  */
 export default function Knowledge() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const [docs, setDocs] = useState<KnowledgeDocRow[]>([]);
@@ -117,7 +121,7 @@ export default function Knowledge() {
       setGraph(g);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('know.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -144,7 +148,7 @@ export default function Knowledge() {
 
   const addButton = canCreate ? (
     <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-      + 문서 추가
+      {t('know.addBtn')}
     </Button>
   ) : undefined;
   const modal = (
@@ -179,8 +183,8 @@ export default function Knowledge() {
       value={view}
       onChange={(v) => setView(v as View)}
       options={[
-        { value: 'graph', label: '그래프' },
-        { value: 'list', label: '문서 목록' },
+        { value: 'graph', label: t('know.view.graph') },
+        { value: 'list', label: t('know.view.list') },
       ]}
     />
   );
@@ -193,35 +197,39 @@ export default function Knowledge() {
         className="sft-toolbar__search"
         type="search"
         value={q}
-        placeholder={view === 'graph' ? '문서·개념 찾기' : '제목·요약·키워드'}
-        aria-label="지식 찾기"
+        placeholder={view === 'graph' ? t('know.searchGraph') : t('know.searchList')}
+        aria-label={t('know.search')}
         onChange={(e) => setQ(e.target.value)}
       />
     </div>
   );
   const columns: Column[] = [
-    { title: '제목', dataIndex: 'title', flex: 1, minWidth: 180 },
+    { title: t('know.col.title'), dataIndex: 'title', flex: 1, minWidth: 180 },
     {
-      title: '분류',
+      title: t('know.col.category'),
       width: 110,
       render: (r) => <CategoryTag c={r.category as KnowledgeCategory} />,
       exportValue: (r) => KNOWLEDGE_CATEGORY_LABEL[r.category as KnowledgeCategory],
     },
     {
-      title: '요약',
+      title: t('know.col.summary'),
       flex: 2,
       minWidth: 220,
       render: (r) => <span className={styles.clip}>{(r.summary as string) ?? '—'}</span>,
       exportValue: (r) => (r.summary as string) ?? '',
     },
-    { title: '개념', width: 70, render: (r) => `${r.conceptCount as number}개` },
     {
-      title: 'AI 정리',
+      title: t('know.col.concepts'),
+      width: 70,
+      render: (r) => t('know.countN', { v0: r.conceptCount as number }),
+    },
+    {
+      title: t('know.col.ai'),
       width: 90,
       render: (r) => <Status d={r as unknown as KnowledgeDocRow} />,
     },
     {
-      title: '수정',
+      title: t('know.col.updated'),
       width: 150,
       render: (r) => `${when(String(r.updatedAt))}`,
       exportValue: (r) => String(r.updatedAt),
@@ -232,8 +240,8 @@ export default function Knowledge() {
   return (
     <ListPage
       fit
-      title="지식베이스"
-      subtitle="회사 지침·규정·원칙을 모아 두면 AI가 개념과 관계를 정리하고, AI 비서·에이전트가 일할 때 여기서 기준을 찾아 근거로 씁니다."
+      title={t('know.title')}
+      subtitle={t('know.subtitle')}
       onRefresh={load}
       updatedAt={updatedAt}
     >
@@ -244,7 +252,7 @@ export default function Knowledge() {
           rows={filtered as unknown as Row[]}
           loading={loading}
           exportable
-          exportFileName="지식베이스"
+          exportFileName={t('know.title')}
           viewSwitch={viewSwitch}
           toolbarActions={addButton}
           onRowClick={(r) => detail.open(String(r.id))}
@@ -264,11 +272,7 @@ export default function Knowledge() {
                   onSelect={setSelected}
                 />
               ) : (
-                <div className={styles.empty}>
-                  {loading
-                    ? '불러오는 중…'
-                    : '아직 문서가 없습니다. 회사 지침이나 규정을 올려 보세요.'}
-                </div>
+                <div className={styles.empty}>{loading ? t('know.loading') : t('know.empty')}</div>
               )}
             </div>
             <aside className={styles.side}>
@@ -284,26 +288,26 @@ export default function Knowledge() {
                 <div className={styles.peek}>
                   <div className={styles.stats}>
                     <span>
-                      문서 <b>{docCount}</b>
+                      {t('know.docs')} <b>{docCount}</b>
                     </span>
                     <span>
-                      개념 <b>{graph.nodes.length - docCount}</b>
+                      {t('know.col.concepts')} <b>{graph.nodes.length - docCount}</b>
                     </span>
                     <span>
-                      연결 <b>{graph.links.length}</b>
+                      {t('know.links')} <b>{graph.links.length}</b>
                     </span>
                   </div>
                   <div className={styles.howto}>
                     <Sparkles size={14} />
                     <div>
-                      <b>AI가 이렇게 씁니다</b>
+                      <b>{t('know.howUsed')}</b>
                       <p>
-                        AI 비서나 에이전트가 휴가·고객 응대·문자·정산처럼 회사 기준이 걸린 일을 할
-                        때 먼저 지식베이스를 찾아 읽고, 그 기준대로 처리한 뒤 근거 문서를 밝힙니다.
+                        {t('know.howUsed1')}
+                        {t('know.howUsed2')}
                       </p>
                     </div>
                   </div>
-                  <h3 className={styles.peekTitle}>최근 문서</h3>
+                  <h3 className={styles.peekTitle}>{t('know.recent')}</h3>
                   <ul className={styles.docList}>
                     {docs.slice(0, 12).map((d) => (
                       <li key={d.id}>
@@ -315,7 +319,7 @@ export default function Knowledge() {
                       </li>
                     ))}
                   </ul>
-                  <p className={styles.muted}>점을 누르면 내용과 이어진 개념을 봅니다.</p>
+                  <p className={styles.muted}>{t('know.clickDot')}</p>
                 </div>
               )}
             </aside>
@@ -337,6 +341,7 @@ function DocPeek({
   onOpen: () => void;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [d, setD] = useState<KnowledgeDocView | null>(null);
   useEffect(() => {
     setD(null);
@@ -344,7 +349,7 @@ function DocPeek({
       .then(setD)
       .catch(() => undefined);
   }, [id]);
-  if (!d) return <div className={styles.peek}>불러오는 중…</div>;
+  if (!d) return <div className={styles.peek}>{t('know.loading')}</div>;
   const rules = d.concepts.filter((c) => c.kind === 'RULE');
   const others = d.concepts.filter((c) => c.kind !== 'RULE');
   return (
@@ -366,7 +371,7 @@ function DocPeek({
       )}
       {rules.length > 0 && (
         <>
-          <h3 className={styles.peekTitle}>규칙</h3>
+          <h3 className={styles.peekTitle}>{t('know.rules')}</h3>
           <ul className={styles.rules}>
             {rules.map((c) => (
               <li key={c.id}>
@@ -381,7 +386,7 @@ function DocPeek({
       )}
       {others.length > 0 && (
         <>
-          <h3 className={styles.peekTitle}>개념</h3>
+          <h3 className={styles.peekTitle}>{t('know.col.concepts')}</h3>
           <div className={styles.chips}>
             {others.map((c) => (
               <button
@@ -400,14 +405,17 @@ function DocPeek({
       )}
       {d.related.length > 0 && (
         <>
-          <h3 className={styles.peekTitle}>이어진 문서</h3>
+          <h3 className={styles.peekTitle}>{t('know.linkedDocs')}</h3>
           <ul className={styles.docList}>
             {d.related.map((r) => (
               <li key={r.id}>
                 <button type="button" onClick={() => onSelect(`d:${r.id}`)}>
                   <FileText size={13} />
                   <span>{r.title}</span>
-                  <span className={styles.muted}>개념 {r.shared}개 공유</span>
+                  <span className={styles.muted}>
+                    {t('know.col.concepts')} {r.shared}
+                    {t('know.sharedN')}
+                  </span>
                 </button>
               </li>
             ))}
@@ -415,7 +423,7 @@ function DocPeek({
         </>
       )}
       <Button variant="outline" size="sm" onClick={onOpen}>
-        본문 보기
+        {t('know.viewBody')}
       </Button>
     </div>
   );
@@ -423,6 +431,7 @@ function DocPeek({
 
 /** 그래프 옆 — 개념 미리보기 */
 function ConceptPeek({ id, onSelect }: { id: string; onSelect: (id: string) => void }) {
+  const { t } = useTranslation();
   const [c, setC] = useState<ConceptView | null>(null);
   useEffect(() => {
     setC(null);
@@ -430,7 +439,7 @@ function ConceptPeek({ id, onSelect }: { id: string; onSelect: (id: string) => v
       .then(setC)
       .catch(() => undefined);
   }, [id]);
-  if (!c) return <div className={styles.peek}>불러오는 중…</div>;
+  if (!c) return <div className={styles.peek}>{t('know.loading')}</div>;
   return (
     <div className={styles.peek}>
       <div className={styles.peekHead}>
@@ -440,7 +449,7 @@ function ConceptPeek({ id, onSelect }: { id: string; onSelect: (id: string) => v
       {c.description && <p className={styles.summary}>{c.description}</p>}
       {c.relations.length > 0 && (
         <>
-          <h3 className={styles.peekTitle}>관계</h3>
+          <h3 className={styles.peekTitle}>{t('know.relations')}</h3>
           <ul className={styles.relations}>
             {c.relations.map((r, i) => (
               <li key={i}>
@@ -450,7 +459,7 @@ function ConceptPeek({ id, onSelect }: { id: string; onSelect: (id: string) => v
           </ul>
         </>
       )}
-      <h3 className={styles.peekTitle}>나오는 문서</h3>
+      <h3 className={styles.peekTitle}>{t('know.appearsIn')}</h3>
       <ul className={styles.docList}>
         {c.docs.map((d) => (
           <li key={d.id}>
@@ -479,6 +488,7 @@ function DocDetail({
   onChanged: () => Promise<void> | void;
   onOpen: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const [d, setD] = useState<KnowledgeDocView | null>(null);
@@ -486,7 +496,7 @@ function DocDetail({
     try {
       setD(await api<KnowledgeDocView>(`/knowledge/docs/${id}`));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('know.loadFailed') });
     }
   }, [id, toast]);
   useEffect(() => {
@@ -501,24 +511,20 @@ function DocDetail({
   const reanalyze = async () => {
     try {
       await api(`/knowledge/docs/${id}/analyze`, { method: 'POST' });
-      toast({ type: 'success', title: 'AI가 다시 정리하고 있습니다' });
+      toast({ type: 'success', title: t('know.reanalyzing') });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('know.failed') });
     }
   };
   const remove = async () => {
-    if (
-      !d ||
-      !window.confirm(`'${d.title}'을(를) 지울까요? AI가 이 문서를 더는 참고하지 않습니다.`)
-    )
-      return;
+    if (!d || !window.confirm(t('know.deleteQ', { v0: d.title }))) return;
     try {
       await api(`/knowledge/docs/${id}`, { method: 'DELETE' });
       await onChanged();
       onBack();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('know.deleteFailed') });
     }
   };
 
@@ -531,14 +537,14 @@ function DocDetail({
     <RecordDetail
       loading={!d}
       title={d?.title ?? ''}
-      backLabel="지식베이스"
+      backLabel={t('know.title')}
       onBack={onBack}
       actions={
         d ? (
           <>
             {can('KNOWLEDGE.DELETE') && (
               <Button variant="ghost" size="sm" onClick={() => void remove()}>
-                삭제
+                {t('know.delete')}
               </Button>
             )}
             {d.canEdit && (
@@ -548,12 +554,12 @@ function DocDetail({
                 leftIcon={<RefreshCw size={13} />}
                 onClick={() => void reanalyze()}
               >
-                AI 다시 정리
+                {t('know.reanalyze')}
               </Button>
             )}
             {d.canEdit && (
               <Button variant="secondary" size="sm" onClick={() => onEdit(d)}>
-                수정
+                {t('know.col.updated')}
               </Button>
             )}
           </>
@@ -564,21 +570,21 @@ function DocDetail({
           ? [
               {
                 items: [
-                  { label: '분류', value: <CategoryTag c={d.category} /> },
-                  { label: 'AI 정리', value: <Status d={d} /> },
-                  { label: '요약', value: d.summary, wide: true },
+                  { label: t('know.col.category'), value: <CategoryTag c={d.category} /> },
+                  { label: t('know.col.ai'), value: <Status d={d} /> },
+                  { label: t('know.col.summary'), value: d.summary, wide: true },
                   {
-                    label: '키워드',
+                    label: t('know.keywords'),
                     value: d.keywords.length ? d.keywords.map((k) => `#${k}`).join(' ') : null,
                     wide: true,
                   },
-                  { label: '올린 파일', value: d.sourceName },
+                  { label: t('know.file'), value: d.sourceName },
                   {
-                    label: '마지막 수정',
+                    label: t('know.lastUpdated'),
                     value: `${when(d.updatedAt)}${d.updatedByName ? ` · ${d.updatedByName}` : ''}`,
                   },
                   ...(d.analyzeStatus === 'ERROR'
-                    ? [{ label: '정리 실패 이유', value: d.analyzeError, wide: true }]
+                    ? [{ label: t('know.failReason'), value: d.analyzeError, wide: true }]
                     : []),
                 ],
               },
@@ -590,7 +596,7 @@ function DocDetail({
         <>
           {byKind.length > 0 && (
             <section className={styles.block}>
-              <h3 className={styles.blockTitle}>AI가 정리한 개념</h3>
+              <h3 className={styles.blockTitle}>{t('know.aiConcepts')}</h3>
               <div className={styles.kinds}>
                 {byKind.map((g) => (
                   <div key={g.k}>
@@ -619,7 +625,7 @@ function DocDetail({
           )}
           {d.related.length > 0 && (
             <section className={styles.block}>
-              <h3 className={styles.blockTitle}>이어진 문서</h3>
+              <h3 className={styles.blockTitle}>{t('know.linkedDocs')}</h3>
               <div className={styles.chips}>
                 {d.related.map((r) => (
                   <button
@@ -635,7 +641,7 @@ function DocDetail({
             </section>
           )}
           <section className={`${styles.block} ${styles.content}`}>
-            <h3 className={styles.blockTitle}>본문</h3>
+            <h3 className={styles.blockTitle}>{t('know.body')}</h3>
             <Markdown text={d.content} />
           </section>
         </>
@@ -648,7 +654,7 @@ const readBase64 = (f: File) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-    r.onerror = () => reject(new Error('파일을 읽지 못했습니다'));
+    r.onerror = () => reject(new Error(i18n.t('know.fileFailed')));
     r.readAsDataURL(f);
   });
 
@@ -662,6 +668,7 @@ function DocModal({
   onClose: () => void;
   onSaved: (id: string | null) => Promise<void> | void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const isNew = editing === 'new';
   const [mode, setMode] = useState<'write' | 'file'>('write');
@@ -718,11 +725,11 @@ function DocModal({
       }
       toast({
         type: 'success',
-        title: '저장했습니다 — AI가 개념과 관계를 정리하고 있어요',
+        title: t('know.saved'),
       });
       await onSaved(id);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('know.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -732,15 +739,15 @@ function DocModal({
     <Modal
       open={editing !== null}
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? '지식 문서 추가' : '문서 수정'}
+      title={isNew ? t('know.addTitle') : t('know.editTitle')}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('know.cancel')}
           </Button>
           <Button variant="primary" loading={busy} disabled={!ready} onClick={() => void save()}>
-            {mode === 'file' && isNew ? '올리기' : '저장'}
+            {mode === 'file' && isNew ? t('know.upload') : t('know.save')}
           </Button>
         </>
       }
@@ -751,41 +758,44 @@ function DocModal({
             value={mode}
             onChange={(v) => setMode(v as 'write' | 'file')}
             options={[
-              { value: 'write', label: '직접 쓰기' },
-              { value: 'file', label: '파일 올리기' },
+              { value: 'write', label: t('know.mode.write') },
+              { value: 'file', label: t('know.mode.file') },
             ]}
           />
         )}
         <div className={styles.row2}>
           <label className={styles.field}>
-            <span>제목{mode === 'file' && isNew ? '(비우면 파일 이름)' : ''}</span>
+            <span>
+              {t('know.col.title')}
+              {mode === 'file' && isNew ? t('know.titleOpt') : ''}
+            </span>
             <Input
               value={title}
               maxLength={120}
-              placeholder="예: 연차·휴가 사용 지침"
+              placeholder={t('know.titlePh')}
               onChange={(e) => setTitle(e.target.value)}
             />
           </label>
           <label className={styles.field}>
-            <span>분류</span>
+            <span>{t('know.col.category')}</span>
             <Select
               value={category}
               onValueChange={(v) => setCategory(v as KnowledgeCategory)}
               options={KNOWLEDGE_CATEGORIES.map((c) => ({
                 value: c,
-                label: c === 'ETC' ? '기타(AI가 고름)' : KNOWLEDGE_CATEGORY_LABEL[c],
+                label: c === 'ETC' ? t('know.categoryAuto') : KNOWLEDGE_CATEGORY_LABEL[c],
               }))}
-              aria-label="분류"
+              aria-label={t('know.col.category')}
             />
           </label>
         </div>
         {mode === 'file' && isNew ? (
           <div className={styles.drop} onClick={() => fileRef.current?.click()} role="button">
             <FileUp size={22} />
-            <b>{file ? file.name : '파일 고르기'}</b>
+            <b>{file ? file.name : t('know.pickFile')}</b>
             <span className={styles.muted}>
-              PDF · Word(.docx) · 엑셀(.xlsx) · 텍스트(.md·.txt), 15MB까지. PDF는 AI가 읽어 글로
-              옮깁니다.
+              {t('know.fileHint1')}
+              {t('know.fileHint2')}
             </span>
             <input
               ref={fileRef}
@@ -797,7 +807,7 @@ function DocModal({
           </div>
         ) : (
           <label className={styles.field}>
-            <span>내용(마크다운 — # 제목, - 목록)</span>
+            <span>{t('know.bodyLabel')}</span>
             <Textarea
               rows={16}
               value={content}
@@ -809,8 +819,8 @@ function DocModal({
           </label>
         )}
         <p className={styles.muted}>
-          저장하면 AI가 요약·키워드와 개념(용어·규칙·역할·절차), 개념 사이 관계를 뽑아 그래프에
-          잇습니다.
+          {t('know.saveHint1')}
+          {t('know.saveHint2')}
         </p>
       </div>
     </Modal>

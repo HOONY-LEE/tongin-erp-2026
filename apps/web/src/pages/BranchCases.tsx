@@ -126,7 +126,7 @@ export default function BranchCases() {
     () => [
       {
         name: 'branchId',
-        label: '지점',
+        label: t('biz.branch'),
         required: true,
         type: 'select',
         options: branchOptions,
@@ -134,17 +134,23 @@ export default function BranchCases() {
       },
       {
         name: 'kind',
-        label: '종류',
+        label: t('biz.kind'),
         required: true,
         type: 'select',
         options: BRANCH_CASE_KIND.map((k) => ({ value: k, label: BRANCH_CASE_KIND_LABEL[k] })),
       },
-      { name: 'title', label: '제목', required: true },
-      { name: 'occurredAt', label: '발생일', required: true, type: 'date', pairWithNext: true },
-      { name: 'dueDate', label: '처리 기한', type: 'date', alwaysShow: true },
+      { name: 'title', label: t('biz.title'), required: true },
+      {
+        name: 'occurredAt',
+        label: t('biz.occurredAt'),
+        required: true,
+        type: 'date',
+        pairWithNext: true,
+      },
+      { name: 'dueDate', label: t('biz.dueAt'), type: 'date', alwaysShow: true },
       {
         name: 'status',
-        label: '상태',
+        label: t('biz.status'),
         type: 'select',
         options: BRANCH_CASE_STATUS.map((s) => ({ value: s, label: BRANCH_CASE_STATUS_LABEL[s] })),
         alwaysShow: true,
@@ -152,13 +158,13 @@ export default function BranchCases() {
       },
       {
         name: 'assigneeEmpId',
-        label: '담당자',
+        label: t('biz.owner'),
         type: 'select',
         optionGroups: dir.peopleGroups,
         alwaysShow: true,
       },
-      { name: 'amount', label: '금액(원) — 보험금·합의금 등', type: 'number' },
-      { name: 'content', label: '내용', type: 'textarea', alwaysShow: true },
+      { name: 'amount', label: t('biz.amountLabel'), type: 'number' },
+      { name: 'content', label: t('biz.content'), type: 'textarea', alwaysShow: true },
     ],
     [branchOptions, dir.peopleGroups],
   );
@@ -170,7 +176,7 @@ export default function BranchCases() {
         isNew ? '/branch-cases' : `/branch-cases/${(editing as BranchCase).id}`,
         { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(values) },
       );
-      toast({ type: 'success', title: isNew ? '등록했습니다' : '저장했습니다' });
+      toast({ type: 'success', title: isNew ? t('biz.created') : t('biz.saved') });
       await load();
       if (isNew) detail.open(saved.id);
     } catch (e) {
@@ -182,7 +188,10 @@ export default function BranchCases() {
   const changeStatus = async (c: BranchCase, to: BranchCaseStatus) => {
     try {
       await api(`/branch-cases/${c.id}`, { method: 'PATCH', body: JSON.stringify({ status: to }) });
-      toast({ type: 'success', title: `${BRANCH_CASE_STATUS_LABEL[to]}(으)로 바꿨습니다` });
+      toast({
+        type: 'success',
+        title: t('biz.statusChanged', { v0: BRANCH_CASE_STATUS_LABEL[to] }),
+      });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -190,14 +199,14 @@ export default function BranchCases() {
   };
 
   const remove = async (c: BranchCase) => {
-    if (!window.confirm(`'${c.title}' 기록을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t('biz.caseDeleteQ', { v0: c.title }))) return;
     try {
       await api(`/branch-cases/${c.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
+      toast({ type: 'success', title: t('biz.deleted') });
       detail.close();
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('biz.deleteFailed') });
     }
   };
 
@@ -205,7 +214,7 @@ export default function BranchCases() {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? '지점 관리 기록 등록' : '지점 관리 기록 수정'}
+      title={editing === 'new' ? t('biz.caseCreate') : t('biz.caseEdit')}
       size="md"
       fields={fields}
       initialValues={
@@ -228,7 +237,7 @@ export default function BranchCases() {
       <>
         <RecordDetail
           loading={!d && loading}
-          title={d ? `${d.branch?.name ?? ''} · ${d.title}` : '찾을 수 없습니다'}
+          title={d ? `${d.branch?.name ?? ''} · ${d.title}` : t('biz.notFound')}
           backLabel={t('nav.branchCases')}
           onBack={detail.close}
           actions={
@@ -236,13 +245,13 @@ export default function BranchCases() {
               <>
                 {can('BRANCH_CASE.DELETE') && (
                   <Button variant="ghost" size="sm" onClick={() => void remove(d)}>
-                    삭제
+                    {t('biz.delete')}
                   </Button>
                 )}
                 {can('BRANCH_CASE.UPDATE') && (
                   <>
                     <Button variant="secondary" size="sm" onClick={() => setEditing(d)}>
-                      수정
+                      {t('biz.edit')}
                     </Button>
                     <SegmentedControl
                       size="sm"
@@ -265,21 +274,24 @@ export default function BranchCases() {
               ? [
                   {
                     items: [
-                      { label: '지점', value: d.branch?.name },
-                      { label: '종류', value: <StatusBadge value={d.kind} map={KIND} /> },
-                      { label: '상태', value: <StatusBadge value={d.status} map={STATUS} /> },
-                      { label: '발생일', value: ymd(d.occurredAt) },
-                      { label: '처리 기한', value: d.dueDate ? <Due c={d} /> : null },
-                      { label: '담당자', value: d.assignee?.name },
-                      { label: '금액', value: won(d.amount) },
-                      { label: '등록일', value: shortDate(d.createdAt) },
+                      { label: t('biz.branch'), value: d.branch?.name },
+                      { label: t('biz.kind'), value: <StatusBadge value={d.kind} map={KIND} /> },
+                      {
+                        label: t('biz.status'),
+                        value: <StatusBadge value={d.status} map={STATUS} />,
+                      },
+                      { label: t('biz.occurredAt'), value: ymd(d.occurredAt) },
+                      { label: t('biz.dueAt'), value: d.dueDate ? <Due c={d} /> : null },
+                      { label: t('biz.owner'), value: d.assignee?.name },
+                      { label: t('biz.amount'), value: won(d.amount) },
+                      { label: t('biz.createdAt'), value: shortDate(d.createdAt) },
                     ],
                   },
                   {
-                    title: '내용',
+                    title: t('biz.content'),
                     items: [
                       {
-                        label: '내용',
+                        label: t('biz.content'),
                         value: d.content ? <p className={styles.body}>{d.content}</p> : null,
                         wide: true,
                       },
@@ -299,53 +311,57 @@ export default function BranchCases() {
     s === 'ALL' ? true : s === 'ACTIVE' ? c.status !== 'CLOSED' : c.status === s;
   const statusCount = (s: typeof status) => byKind.filter((r) => statusMatch(r, s)).length;
   const kindOptions = [
-    { value: 'ALL', label: `전체 ${rows.length}` },
+    { value: 'ALL', label: t('biz.allN', { v0: rows.length }) },
     ...BRANCH_CASE_KIND.map((k) => ({
       value: k,
       label: `${BRANCH_CASE_KIND_LABEL[k]} ${rows.filter((r) => r.kind === k).length}`,
     })),
   ];
   const statusOptions = [
-    { value: 'ACTIVE', label: `미결 ${statusCount('ACTIVE')}` },
+    { value: 'ACTIVE', label: t('biz.openN', { v0: statusCount('ACTIVE') }) },
     ...BRANCH_CASE_STATUS.map((s) => ({
       value: s,
       label: `${BRANCH_CASE_STATUS_LABEL[s]} ${statusCount(s)}`,
     })),
-    { value: 'ALL', label: '전체' },
+    { value: 'ALL', label: t('biz.all') },
   ];
 
   const columns: Column[] = [
     {
-      title: '발생일',
+      title: t('biz.occurredAt'),
       dataIndex: 'occurredAt',
       width: 110,
       render: (r) => ymd(r.occurredAt),
     },
-    { title: '지점', width: 130, render: (r) => (r as unknown as BranchCase).branch?.name ?? '-' },
     {
-      title: '종류',
+      title: t('biz.branch'),
+      width: 130,
+      render: (r) => (r as unknown as BranchCase).branch?.name ?? '-',
+    },
+    {
+      title: t('biz.kind'),
       width: 100,
       render: (r) => <StatusBadge value={String(r.kind)} map={KIND} />,
     },
-    { title: '제목', dataIndex: 'title', flex: 1, minWidth: 240 },
+    { title: t('biz.title'), dataIndex: 'title', flex: 1, minWidth: 240 },
     {
-      title: '상태',
+      title: t('biz.status'),
       width: 100,
       render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
     },
     {
-      title: '처리 기한',
+      title: t('biz.dueAt'),
       width: 160,
       dataIndex: 'dueDate',
       render: (r) => <Due c={r as unknown as BranchCase} />,
       exportValue: (r) => ymd(r.dueDate) || null,
     },
     {
-      title: '담당',
+      title: t('biz.ownerShort'),
       width: 90,
       render: (r) => (r as unknown as BranchCase).assignee?.name ?? '-',
     },
-    { title: '금액', numeric: true, width: 120, render: (r) => won(r.amount) || '-' },
+    { title: t('biz.amount'), numeric: true, width: 120, render: (r) => won(r.amount) || '-' },
   ];
 
   return (
@@ -373,12 +389,12 @@ export default function BranchCases() {
         toolbarActions={
           can('BRANCH_CASE.CREATE') ? (
             <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-              + 기록 등록
+              {t('biz.caseCreateBtn')}
             </Button>
           ) : undefined
         }
         exportable
-        exportFileName="지점관리기록"
+        exportFileName={t('biz.caseExport')}
       />
       {formModal}
     </ListPage>

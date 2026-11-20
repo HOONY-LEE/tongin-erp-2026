@@ -61,13 +61,17 @@ const amountText = (a: Asset) =>
     : `${a.amountUnit ? `${ASSET_AMOUNT_UNIT_LABEL[a.amountUnit]} ` : ''}${won(a.amount)}`;
 
 function DDay({ date }: { date: string | null }) {
+  const { t } = useTranslation();
   const info = ddayInfo(date, WARN_DAYS);
   if (!info) return <>-</>;
   return (
     <StatusBadge
       value={info.level}
       map={{
-        [info.level]: { label: info.level === 'over' ? '만료됨' : info.label, color: info.color },
+        [info.level]: {
+          label: info.level === 'over' ? t('asset.expired') : info.label,
+          color: info.color,
+        },
       }}
     />
   );
@@ -109,38 +113,50 @@ export default function Assets() {
     () => [
       {
         name: 'kind',
-        label: '종류',
+        label: t('asset.kind'),
         required: true,
         type: 'select',
         options: ASSET_KIND.map((k) => ({ value: k, label: ASSET_KIND_LABEL[k] })),
         pairWithNext: true,
       },
-      { name: 'name', label: '이름', required: true, placeholder: '예: 서초 사옥 임대차' },
+      { name: 'name', label: t('asset.name'), required: true, placeholder: t('asset.namePh') },
       {
         name: 'counterparty',
-        label: '상대방',
-        placeholder: '임대인·보험사·특허청 등',
+        label: t('asset.counterparty'),
+        placeholder: t('asset.counterpartyPh'),
         alwaysShow: true,
         pairWithNext: true,
       },
-      { name: 'refNo', label: '등록·계약 번호', alwaysShow: true },
-      { name: 'startDate', label: '시작일', type: 'date', alwaysShow: true, pairWithNext: true },
-      { name: 'endDate', label: '만료·갱신일', type: 'date', alwaysShow: true },
-      { name: 'amount', label: '금액(원)', type: 'number', alwaysShow: true, pairWithNext: true },
+      { name: 'refNo', label: t('asset.refNo'), alwaysShow: true },
+      {
+        name: 'startDate',
+        label: t('asset.start'),
+        type: 'date',
+        alwaysShow: true,
+        pairWithNext: true,
+      },
+      { name: 'endDate', label: t('asset.end'), type: 'date', alwaysShow: true },
+      {
+        name: 'amount',
+        label: t('asset.amountWon'),
+        type: 'number',
+        alwaysShow: true,
+        pairWithNext: true,
+      },
       {
         name: 'amountUnit',
-        label: '금액 기준',
+        label: t('asset.amountBasis'),
         type: 'select',
         options: ASSET_AMOUNT_UNIT.map((u) => ({ value: u, label: ASSET_AMOUNT_UNIT_LABEL[u] })),
         alwaysShow: true,
       },
       {
         name: 'managerEmpId',
-        label: '관리 담당자',
+        label: t('asset.manager'),
         type: 'select',
         optionGroups: dir.peopleGroups,
       },
-      { name: 'memo', label: '메모', type: 'textarea' },
+      { name: 'memo', label: t('asset.memo'), type: 'textarea' },
     ],
     [dir],
   );
@@ -152,7 +168,7 @@ export default function Assets() {
         method: isNew ? 'POST' : 'PATCH',
         body: JSON.stringify(values),
       });
-      toast({ type: 'success', title: isNew ? '등록했습니다' : '저장했습니다' });
+      toast({ type: 'success', title: isNew ? t('asset.created') : t('asset.saved') });
       await load();
       if (isNew) detail.open(saved.id);
     } catch (e) {
@@ -162,14 +178,14 @@ export default function Assets() {
   };
 
   const remove = async (a: Asset) => {
-    if (!window.confirm(`'${a.name}'을(를) 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t('asset.deleteQ', { v0: a.name }))) return;
     try {
       await api(`/assets/${a.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
+      toast({ type: 'success', title: t('asset.deleted') });
       detail.close();
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('asset.deleteFailed') });
     }
   };
 
@@ -177,7 +193,7 @@ export default function Assets() {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? '계약·자산 등록' : '계약·자산 수정'}
+      title={editing === 'new' ? t('asset.createTitle') : t('asset.editTitle')}
       size="md"
       fields={fields}
       initialValues={
@@ -198,7 +214,7 @@ export default function Assets() {
       <>
         <RecordDetail
           loading={!d && loading}
-          title={d ? d.name : '찾을 수 없습니다'}
+          title={d ? d.name : t('asset.notFound')}
           backLabel={t('nav.assets')}
           onBack={detail.close}
           actions={
@@ -206,12 +222,12 @@ export default function Assets() {
               <>
                 {can('ASSET.DELETE') && (
                   <Button variant="ghost" size="sm" onClick={() => void remove(d)}>
-                    삭제
+                    {t('asset.delete')}
                   </Button>
                 )}
                 {can('ASSET.UPDATE') && (
                   <Button variant="primary" size="sm" onClick={() => setEditing(d)}>
-                    수정
+                    {t('asset.edit')}
                   </Button>
                 )}
               </>
@@ -222,21 +238,24 @@ export default function Assets() {
               ? [
                   {
                     items: [
-                      { label: '종류', value: <StatusBadge value={d.kind} map={KIND} /> },
-                      { label: '상대방', value: d.counterparty },
-                      { label: '등록·계약 번호', value: d.refNo },
-                      { label: '시작일', value: ymd(d.startDate) },
-                      { label: '만료·갱신일', value: ymd(d.endDate) },
-                      { label: '남은 기간', value: d.endDate ? <DDay date={d.endDate} /> : null },
-                      { label: '금액', value: amountText(d) },
-                      { label: '관리 담당자', value: d.manager?.name },
+                      { label: t('asset.kind'), value: <StatusBadge value={d.kind} map={KIND} /> },
+                      { label: t('asset.counterparty'), value: d.counterparty },
+                      { label: t('asset.refNo'), value: d.refNo },
+                      { label: t('asset.start'), value: ymd(d.startDate) },
+                      { label: t('asset.end'), value: ymd(d.endDate) },
+                      {
+                        label: t('asset.remaining'),
+                        value: d.endDate ? <DDay date={d.endDate} /> : null,
+                      },
+                      { label: t('asset.amount'), value: amountText(d) },
+                      { label: t('asset.manager'), value: d.manager?.name },
                     ],
                   },
                   {
-                    title: '메모',
+                    title: t('asset.memo'),
                     items: [
                       {
-                        label: '메모',
+                        label: t('asset.memo'),
                         value: d.memo ? <p className={styles.body}>{d.memo}</p> : null,
                         wide: true,
                       },
@@ -259,7 +278,7 @@ export default function Assets() {
     return f === 'SOON' ? lv === 'soon' : lv === 'over';
   };
   const kindOptions = [
-    { value: 'ALL', label: `전체 ${rows.length}` },
+    { value: 'ALL', label: t('asset.allN', { v0: rows.length }) },
     ...ASSET_KIND.map((k) => ({
       value: k,
       label: `${ASSET_KIND_LABEL[k]} ${rows.filter((r) => r.kind === k).length}`,
@@ -267,39 +286,43 @@ export default function Assets() {
   ];
   const dueCount = (f: DueFilter) => byKind.filter((r) => dueMatch(r, f)).length;
   const dueOptions = [
-    { value: 'ALL', label: '전체' },
-    { value: 'SOON', label: `${WARN_DAYS}일 이내 ${dueCount('SOON')}` },
-    { value: 'OVER', label: `만료됨 ${dueCount('OVER')}` },
+    { value: 'ALL', label: t('asset.all') },
+    { value: 'SOON', label: t('asset.withinN', { v0: WARN_DAYS, v1: dueCount('SOON') }) },
+    { value: 'OVER', label: t('asset.expiredN', { v0: dueCount('OVER') }) },
   ];
 
   const columns: Column[] = [
     {
-      title: '종류',
+      title: t('asset.kind'),
       width: 100,
       render: (r) => <StatusBadge value={String(r.kind)} map={KIND} />,
     },
-    { title: '이름', dataIndex: 'name', flex: 1, minWidth: 220 },
-    { title: '상대방', dataIndex: 'counterparty', minWidth: 140 },
-    { title: '번호', dataIndex: 'refNo', width: 150 },
+    { title: t('asset.name'), dataIndex: 'name', flex: 1, minWidth: 220 },
+    { title: t('asset.counterparty'), dataIndex: 'counterparty', minWidth: 140 },
+    { title: t('asset.no'), dataIndex: 'refNo', width: 150 },
     {
-      title: '만료·갱신일',
+      title: t('asset.end'),
       dataIndex: 'endDate',
       width: 120,
       render: (r) => ymd(r.endDate) || '-',
     },
     {
-      title: '남은 기간',
+      title: t('asset.remaining'),
       width: 110,
       render: (r) => <DDay date={(r as unknown as Asset).endDate} />,
       exportValue: (r) => ddayInfo(r.endDate)?.label ?? null,
     },
     {
-      title: '금액',
+      title: t('asset.amount'),
       numeric: true,
       width: 160,
       render: (r) => amountText(r as unknown as Asset) || '-',
     },
-    { title: '담당', width: 90, render: (r) => (r as unknown as Asset).manager?.name ?? '-' },
+    {
+      title: t('asset.owner'),
+      width: 90,
+      render: (r) => (r as unknown as Asset).manager?.name ?? '-',
+    },
   ];
 
   return (
@@ -327,12 +350,12 @@ export default function Assets() {
         toolbarActions={
           can('ASSET.CREATE') ? (
             <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-              + 계약·자산 등록
+              {t('asset.createBtn')}
             </Button>
           ) : undefined
         }
         exportable
-        exportFileName="계약자산"
+        exportFileName={t('asset.exportName')}
       />
       {formModal}
     </ListPage>
