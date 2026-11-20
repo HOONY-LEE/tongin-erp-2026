@@ -7,6 +7,7 @@
  * seed-demo.ts(조직도·직원)를 먼저 돌려야 한다. 멱등하다 — 코드·이름으로 upsert 하고,
  * 데모 근태·휴가는 데모 표식(note/reason이 '[데모]'로 시작)을 단 것만 지우고 다시 넣는다.
  */
+import { docNo } from './seed-doc-no';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { addDaysYmd, countWorkdays, isWorkday } from '@tongin/shared';
 
@@ -252,14 +253,6 @@ async function seedDemoLeaveAndAttendance() {
     return true;
   });
 
-  const prefix = `AP-${new Date().getFullYear()}-`;
-  const last = await prisma.approvalDoc.findFirst({
-    where: { docNo: { startsWith: prefix } },
-    orderBy: { docNo: 'desc' },
-    select: { docNo: true },
-  });
-  let seq = last ? Number(last.docNo.slice(prefix.length)) : 0;
-
   /** 휴가 날짜 — 근태 만들 때 그날은 비우거나(종일) 반나절만 */
   const leaveDays = new Map<string, 'FULL' | 'AM' | 'PM'>();
   let made = 0;
@@ -317,7 +310,7 @@ async function seedDemoLeaveAndAttendance() {
     });
     const doc = await prisma.approvalDoc.create({
       data: {
-        docNo: `${prefix}${String(++seq).padStart(4, '0')}`,
+        docNo: await docNo(prisma, 'AP'),
         docType: 'LEAVE',
         title: `${emp.name} ${type.name} (${period}, ${days}일)`,
         content: reason,

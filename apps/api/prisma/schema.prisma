@@ -1354,7 +1354,9 @@ model ApprovalLineTemplate {
 /// 결재 문서 — 휴가·근태 정정·일반 품의. 업무 쪽 데이터는 payload(또는 그 모듈 테이블의 approvalDocId)로 잇는다.
 model ApprovalDoc {
   id             String               @id @default(uuid()) @db.Uuid
-  docNo          String               @unique @map("doc_no") // AP-2026-0001
+  docNo          String               @unique @map("doc_no") // AP+YYMMDD+일련 4자리(next_doc_no)
+  /// 예전 번호(AP-2026-0001 형식)
+  legacyNo       String?              @map("legacy_no")
   docType        String               @map("doc_type")
   title          String
   content        String?
