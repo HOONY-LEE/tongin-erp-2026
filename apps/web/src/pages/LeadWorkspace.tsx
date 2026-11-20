@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
@@ -9,6 +10,7 @@ import EstimateDetail from './EstimateDetail';
  * (접수 정보는 견적의 1. 기본정보에, 진행은 위 진행 줄에 모여 있다)
  */
 export default function LeadWorkspace() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [estimateId, setEstimateId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export default function LeadWorkspace() {
     setError(null);
     api<{ estimateId: string }>(`/estimates/for-lead/${id}`, { method: 'POST' })
       .then((r) => setEstimateId(r.estimateId))
-      .catch((e) => setError(e instanceof ApiError ? e.message : '접수를 열지 못했습니다'));
+      .catch((e) => setError(e instanceof ApiError ? e.message : t('misc.leadOpenFailed')));
   }, [id]);
 
   if (error) {

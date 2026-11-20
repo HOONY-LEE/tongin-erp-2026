@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -21,14 +22,14 @@ import {
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 const SVC_LINE: StatusMap = {
-  LIVING: { label: '리빙', color: 'info' },
-  CARE: { label: '케어', color: 'primary' },
+  LIVING: { label: i18n.t('misc.svc.LIVING'), color: 'info' },
+  CARE: { label: i18n.t('misc.svc.CARE'), color: 'primary' },
 };
 const SVC_STATUS: StatusMap = {
-  REQUESTED: { label: '요청', color: 'warning' },
-  SCHEDULED: { label: '일정확정', color: 'info' },
-  DONE: { label: '완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  REQUESTED: { label: i18n.t('misc.so.REQUESTED'), color: 'warning' },
+  SCHEDULED: { label: i18n.t('misc.so.SCHEDULED'), color: 'info' },
+  DONE: { label: i18n.t('misc.done'), color: 'success' },
+  CANCELED: { label: i18n.t('misc.st.canceled'), color: 'error' },
 };
 
 interface ServiceOrder extends Row {
@@ -189,7 +190,7 @@ export default function ServiceOrders() {
     return (
       <RecordDetail
         loading={!d && loading}
-        title={d ? d.orderNo : '찾을 수 없습니다'}
+        title={d ? d.orderNo : t('misc.notFound')}
         backLabel={t('nav.serviceOrders')}
         onBack={closeDetail}
         actions={d ? actionsOf(d) : undefined}
@@ -197,7 +198,7 @@ export default function ServiceOrders() {
           d
             ? [
                 {
-                  title: '서비스 주문',
+                  title: t('misc.serviceOrder'),
                   items: [
                     { label: t('service.orderNo'), value: d.orderNo },
                     {
@@ -216,7 +217,7 @@ export default function ServiceOrders() {
                     },
                     { label: t('service.scheduled'), value: d.scheduledDate?.slice(0, 10) },
                     { label: t('service.amount'), value: d.amount != null ? won(d.amount) : null },
-                    { label: '등록일', value: d.createdAt?.slice(0, 10) },
+                    { label: t('misc.registeredAt'), value: d.createdAt?.slice(0, 10) },
                     { label: t('service.address'), value: d.address, wide: true },
                     { label: t('service.note'), value: d.note, wide: true },
                   ],

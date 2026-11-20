@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -51,7 +52,8 @@ const fieldValue = (row: Row, f: FormField): DetailItem['value'] => {
   }
   const v = row[f.name];
   if (v === null || v === undefined || v === '') return null;
-  if (f.type === 'boolean') return v === true || v === 'true' ? '예' : '아니오';
+  if (f.type === 'boolean')
+    return v === true || v === 'true' ? i18n.t('misc.yes') : i18n.t('misc.no');
   if (f.options) return f.options.find((o) => o.value === String(v))?.label ?? String(v);
   return String(v);
 };
@@ -116,7 +118,7 @@ export default function CrudTable({
     if (!editing) return;
     try {
       await api(`${path}/${String(editing.id)}`, { method: 'PATCH', body: JSON.stringify(values) });
-      toast({ type: 'success', title: '수정했습니다' });
+      toast({ type: 'success', title: t('misc.updated') });
       await load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
@@ -126,14 +128,14 @@ export default function CrudTable({
 
   const onDelete = async (row: Row) => {
     const label = String(row.name ?? row.code ?? '');
-    if (!window.confirm(`'${label}'을(를) 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t('misc.deleteQ', { v0: label }))) return;
     try {
       await api(`${path}/${String(row.id)}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
+      toast({ type: 'success', title: t('misc.deleted') });
       detail.close();
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('misc.deleteFailed') });
     }
   };
 
@@ -147,7 +149,7 @@ export default function CrudTable({
     <FormModal
       open={!!editing}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={`${title} 수정`}
+      title={t('misc.editOf', { v0: title })}
       fields={fields}
       initialValues={editing ? toInitial(editing, fields) : undefined}
       onSubmit={onEdit}
@@ -185,7 +187,7 @@ export default function CrudTable({
       <>
         <RecordDetail
           loading={!row && (loading || !updatedAt)}
-          title={row ? String(row.name ?? row.code ?? title) : '찾을 수 없습니다'}
+          title={row ? String(row.name ?? row.code ?? title) : t('misc.notFound')}
           backLabel={title}
           onBack={detail.close}
           actions={
@@ -194,12 +196,12 @@ export default function CrudTable({
                 {rowActions?.(row, load)}
                 {deletable && (
                   <Button variant="outline" size="sm" onClick={() => void onDelete(row)}>
-                    삭제
+                    {t('misc.delete')}
                   </Button>
                 )}
                 {editable && (
                   <Button variant="primary" size="sm" onClick={() => setEditing(row)}>
-                    수정
+                    {t('misc.edit')}
                   </Button>
                 )}
               </>

@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -23,10 +24,10 @@ import {
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 const INV_STATUS: StatusMap = {
-  DRAFT: { label: '작성중', color: 'neutral' },
-  ISSUED: { label: '발행', color: 'warning' },
-  COLLECTED: { label: '수금완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  DRAFT: { label: i18n.t('misc.bill.DRAFT'), color: 'neutral' },
+  ISSUED: { label: i18n.t('misc.bill.ISSUED'), color: 'warning' },
+  COLLECTED: { label: i18n.t('misc.bill.PAID'), color: 'success' },
+  CANCELED: { label: i18n.t('misc.st.canceled'), color: 'error' },
 };
 
 interface Receipt {
@@ -216,12 +217,17 @@ export default function Billing() {
     },
     {
       name: 'orgUnitId',
-      label: '담당 지점',
+      label: t('misc.ownerBranch'),
       alwaysShow: true,
       type: 'select',
       options: orgs,
     },
-    { name: 'title', label: t('billing.title'), required: true, placeholder: '6월 기업이전 대금' },
+    {
+      name: 'title',
+      label: t('billing.title'),
+      required: true,
+      placeholder: t('misc.billTitlePh'),
+    },
     {
       name: 'amount',
       label: t('billing.amount'),
@@ -271,19 +277,19 @@ export default function Billing() {
     const d = invoices.find((r) => r.id === detailId);
     const collected = d ? collectedOf(d) : 0;
     const receiptCols: Column[] = [
-      { title: '수납일', render: (r) => String(r.receivedAt ?? '-').slice(0, 10) },
+      { title: t('misc.paidAt'), render: (r) => String(r.receivedAt ?? '-').slice(0, 10) },
       {
         title: t('billing.method'),
         render: (r) => methodLabel[String(r.method)] ?? String(r.method ?? '-'),
       },
       { title: t('billing.amount'), numeric: true, render: (r) => won(r.amount) },
-      { title: '메모', render: (r) => String(r.memo ?? '-') },
+      { title: t('misc.memo'), render: (r) => String(r.memo ?? '-') },
     ];
     return (
       <>
         <RecordDetail
           loading={!d && invLoading}
-          title={d ? `${d.invoiceNo} ${d.title}` : '찾을 수 없습니다'}
+          title={d ? `${d.invoiceNo} ${d.title}` : t('misc.notFound')}
           backLabel={t('nav.billing')}
           onBack={closeDetail}
           actions={
@@ -306,7 +312,7 @@ export default function Billing() {
             d
               ? [
                   {
-                    title: '청구서',
+                    title: t('misc.invoice'),
                     items: [
                       { label: t('billing.invoiceNo'), value: d.invoiceNo },
                       {
@@ -315,18 +321,18 @@ export default function Billing() {
                       },
                       { label: t('billing.partner'), value: d.partner?.name },
                       {
-                        label: '담당 지점',
+                        label: t('misc.ownerBranch'),
                         value: orgs.find((o) => o.value === d.orgUnitId)?.label,
                       },
                       { label: t('billing.title'), value: d.title, wide: true },
-                      { label: '작성일', value: d.createdAt?.slice(0, 10) },
-                      { label: '발행일', value: d.issuedAt?.slice(0, 10) },
+                      { label: t('misc.createdAt'), value: d.createdAt?.slice(0, 10) },
+                      { label: t('misc.issuedAt'), value: d.issuedAt?.slice(0, 10) },
                       { label: t('billing.dueDate'), value: d.dueDate?.slice(0, 10) },
-                      { label: '메모', value: d.memo, wide: true },
+                      { label: t('misc.memo'), value: d.memo, wide: true },
                     ],
                   },
                   {
-                    title: '금액',
+                    title: t('misc.amount'),
                     items: [
                       { label: t('billing.amount'), value: won(d.amount) },
                       { label: t('billing.collected'), value: won(collected) },
@@ -338,7 +344,7 @@ export default function Billing() {
           }
         >
           {d && (
-            <PageCard title="수납 내역" count={d.receipts.length} plain>
+            <PageCard title={t('misc.payments')} count={d.receipts.length} plain>
               <DataTable columns={receiptCols} rows={d.receipts as unknown as Row[]} />
             </PageCard>
           )}

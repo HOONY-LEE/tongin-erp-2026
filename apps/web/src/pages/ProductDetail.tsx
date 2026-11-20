@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
@@ -24,7 +26,8 @@ import {
 import { UnitField } from '../components/estimate/parts';
 import { fs } from '../lib/fontScale';
 
-const won = (v: unknown) => (v != null && v !== '' ? `${Number(v).toLocaleString()}원` : '-');
+const won = (v: unknown) =>
+  v != null && v !== '' ? i18n.t('prod.won', { v0: Number(v).toLocaleString() }) : '-';
 
 interface Addon {
   id: string;
@@ -70,6 +73,7 @@ const toRows = (p: Product): Row[] =>
  * 구성 단가를 비우면 상품의 기본가를 쓴다. 이사물량이면 CBM·톤당 단가다.
  */
 export default function ProductDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
@@ -93,7 +97,7 @@ export default function ProductDetail() {
       setCatalog(addons);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('prod.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -143,9 +147,9 @@ export default function ProductDetail() {
       });
       setProduct(next);
       setRows(toRows(next));
-      toast({ type: 'success', title: '상품 구성을 저장했습니다' });
+      toast({ type: 'success', title: t('prod.bundleSaved') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('prod.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -166,8 +170,8 @@ export default function ProductDetail() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
         title={product.name}
-        subtitle={`상품구성 · 코드 ${product.code}`}
-        breadcrumbs={[{ label: '상품관리', onClick: () => navigate('/product-mgmt') }]}
+        subtitle={t('prod.bundleCode', { v0: product.code })}
+        breadcrumbs={[{ label: t('prod.products'), onClick: () => navigate('/product-mgmt') }]}
         onRefresh={load}
         updatedAt={updatedAt}
         tags={
@@ -180,14 +184,14 @@ export default function ProductDetail() {
                 product.pricingMethod}
             </Badge>
             <Badge variant="subtle" color={product.isActive ? 'success' : 'neutral'}>
-              {product.isActive ? '사용' : '사용 안 함'}
+              {product.isActive ? t('prod.on') : t('prod.off')}
             </Badge>
           </>
         }
       />
 
       <PageCard
-        title="구성 상품"
+        title={t('prod.bundleProducts')}
         count={rows.length}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
@@ -197,10 +201,10 @@ export default function ProductDetail() {
               disabled={!dirty || saving}
               onClick={() => setRows(toRows(product))}
             >
-              되돌리기
+              {t('prod.revert')}
             </Button>
             <Button variant="primary" size="sm" disabled={!dirty} loading={saving} onClick={save}>
-              저장
+              {t('prod.save')}
             </Button>
           </div>
         }
@@ -208,15 +212,22 @@ export default function ProductDetail() {
         <div
           style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)', marginBottom: 10 }}
         >
-          필수는 견적에서 뺄 수 없고, 기본선택은 처음부터 체크되며, 선택은 고르면 들어갑니다. 구성
-          단가를 비우면 상품 기본가를 씁니다. 여기 없는 상품도 견적에서 &apos;추가 상품&apos;으로
-          고를 수 있습니다.
+          {t('prod.bundleHelp1')}
+          {t('prod.bundleHelp2')}
+          {t('prod.bundleHelp3')}
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(13) }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--ark-color-border)' }}>
-                {['순서', '상품', '역할', '기본가', '구성 단가', ''].map((h, i) => (
+                {[
+                  t('prod.col.order'),
+                  t('prod.col.product'),
+                  t('prod.col.role'),
+                  t('prod.col.basePrice'),
+                  t('prod.col.bundlePrice'),
+                  '',
+                ].map((h, i) => (
                   <th
                     key={i}
                     style={{
@@ -245,7 +256,7 @@ export default function ProductDetail() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="위로"
+                        aria-label={t('prod.up')}
                         onClick={() => move(i, -1)}
                       >
                         <ArrowUp size={14} />
@@ -253,24 +264,24 @@ export default function ProductDetail() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="아래로"
+                        aria-label={t('prod.down')}
                         onClick={() => move(i, 1)}
                       >
                         <ArrowDown size={14} />
                       </Button>
                     </td>
                     <td style={{ ...cell, minWidth: 180 }}>
-                      <span style={{ fontWeight: 600 }}>{a?.name ?? '(삭제된 상품)'}</span>
+                      <span style={{ fontWeight: 600 }}>{a?.name ?? t('prod.deletedProduct')}</span>
                       {volume && (
                         <span style={{ marginLeft: 6 }}>
                           <Badge variant="subtle" color="info">
-                            물품정보로 견적
+                            {t('prod.byItems')}
                           </Badge>
                         </span>
                       )}
                       {a && !a.isActive && (
                         <span style={{ marginLeft: 6, color: 'var(--ark-color-text-tertiary)' }}>
-                          (사용 안 함)
+                          {t('prod.offParen')}
                         </span>
                       )}
                     </td>
@@ -289,7 +300,7 @@ export default function ProductDetail() {
                       <UnitField
                         value={r.price}
                         unit={volume ? '원/단위' : '원'}
-                        ariaLabel={`${a?.name ?? ''} 구성 단가`}
+                        ariaLabel={t('prod.bundlePriceOf', { v0: a?.name ?? '' })}
                         placeholder={a?.price != null ? String(Number(a.price)) : '0'}
                         onChange={(v) => patch(i, { price: v })}
                       />
@@ -298,7 +309,7 @@ export default function ProductDetail() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="구성에서 빼기"
+                        aria-label={t('prod.removeFromBundle')}
                         onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))}
                       >
                         <X size={14} />
@@ -312,7 +323,7 @@ export default function ProductDetail() {
         </div>
         {!rows.length && (
           <div style={{ padding: '20px 0', textAlign: 'center', fontSize: fs(13) }}>
-            구성 상품이 없습니다. 아래에서 추가하세요.
+            {t('prod.noBundleProducts')}
           </div>
         )}
         {candidates.length > 0 && (
@@ -321,7 +332,7 @@ export default function ProductDetail() {
               value=""
               onValueChange={add}
               options={candidates.map((a) => ({ value: a.id, label: a.name }))}
-              placeholder="상품 추가…"
+              placeholder={t('prod.addProduct')}
             />
           </div>
         )}

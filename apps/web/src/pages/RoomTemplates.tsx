@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
@@ -14,19 +16,19 @@ interface ItemRow {
 
 const columns: Column[] = [
   {
-    title: '방',
+    title: i18n.t('prod.room'),
     dataIndex: 'name',
     minWidth: 140,
   },
   // 영문명은 이름 옆에 작게 붙이던 것을 자기 칸으로 — 한 칸에 한 정보
   {
-    title: '영문명',
+    title: i18n.t('prod.nameEn'),
     dataIndex: 'nameEng',
     minWidth: 120,
     render: (r: Row) => (r.nameEng ? String(r.nameEng) : '-'),
   },
   {
-    title: '자주 들어가는 물품',
+    title: i18n.t('prod.commonItems'),
     flex: 1,
     minWidth: 220,
     render: (r: Row) => {
@@ -37,21 +39,31 @@ const columns: Column[] = [
     },
   },
   {
-    title: '상태',
+    title: i18n.t('prod.status'),
     render: (r: Row) => (
       <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-        {r.isActive ? '사용' : '사용 안 함'}
+        {r.isActive ? i18n.t('prod.on') : i18n.t('prod.off')}
       </Badge>
     ),
   },
 ];
 
 const fields: FormField[] = [
-  { name: 'name', label: '방 이름', required: true, placeholder: '예: 드레스룸' },
-  { name: 'nameEng', label: '영문명(견적서 병기)', placeholder: 'DRESS ROOM', alwaysShow: true },
-  { name: 'extraSlots', label: "견적표 '기타' 칸 수", type: 'number', placeholder: '2' },
-  { name: 'sortOrder', label: '표시 순서(작을수록 위)', type: 'number' },
-  { name: 'isActive', label: '사용 여부', type: 'boolean' },
+  {
+    name: 'name',
+    label: i18n.t('prod.roomName'),
+    required: true,
+    placeholder: i18n.t('prod.roomNamePh'),
+  },
+  {
+    name: 'nameEng',
+    label: i18n.t('prod.nameEnLabel'),
+    placeholder: 'DRESS ROOM',
+    alwaysShow: true,
+  },
+  { name: 'extraSlots', label: i18n.t('prod.etcRows'), type: 'number', placeholder: '2' },
+  { name: 'sortOrder', label: i18n.t('prod.sortOrder'), type: 'number' },
+  { name: 'isActive', label: i18n.t('prod.activeLabel'), type: 'boolean' },
 ];
 
 /**
@@ -67,6 +79,7 @@ function RoomItemsModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [items, setItems] = useState<ItemRow[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
@@ -105,11 +118,11 @@ function RoomItemsModal({
         method: 'PUT',
         body: JSON.stringify({ itemIds: picked }),
       });
-      toast({ type: 'success', title: '방의 물품 구성을 저장했습니다' });
+      toast({ type: 'success', title: t('prod.roomSaved') });
       onSaved();
       onClose();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('prod.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -119,22 +132,22 @@ function RoomItemsModal({
     <Modal
       open={!!room}
       onOpenChange={(o) => !o && onClose()}
-      title={`${String(room?.name ?? '')} — 물품 구성`}
+      title={t('prod.roomItemsTitle', { v0: String(room?.name ?? '') })}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('prod.cancel')}
           </Button>
           <Button variant="primary" onClick={save} disabled={saving}>
-            저장
+            {t('prod.save')}
           </Button>
         </>
       }
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-          <SearchInput value={q} onChange={setQ} placeholder="물품·분류 검색" />
+          <SearchInput value={q} onChange={setQ} placeholder={t('prod.itemSearch')} />
           <div
             style={{
               maxHeight: 380,
@@ -155,14 +168,15 @@ function RoomItemsModal({
             ))}
             {!filtered.length && (
               <div style={{ fontSize: fs(13), color: 'var(--ark-color-text-secondary)' }}>
-                맞는 물품이 없습니다. 이사물품 탭에서 먼저 등록하세요.
+                {t('prod.noItems')}
               </div>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
           <div style={{ fontSize: fs(13), fontWeight: 600 }}>
-            이 방에 펼쳐 둘 물품 {picked.length}개 (위에서부터 순서대로)
+            {t('prod.roomItems1')} {picked.length}
+            {t('prod.roomItems2')}
           </div>
           <div
             style={{
@@ -187,18 +201,28 @@ function RoomItemsModal({
                 }}
               >
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  {byId.get(id)?.name ?? '(삭제된 물품)'}
+                  {byId.get(id)?.name ?? t('prod.deletedItem')}
                 </span>
-                <Button variant="ghost" size="sm" aria-label="위로" onClick={() => move(idx, -1)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t('prod.up')}
+                  onClick={() => move(idx, -1)}
+                >
                   <ArrowUp size={14} />
                 </Button>
-                <Button variant="ghost" size="sm" aria-label="아래로" onClick={() => move(idx, 1)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t('prod.down')}
+                  onClick={() => move(idx, 1)}
+                >
                   <ArrowDown size={14} />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  aria-label="빼기"
+                  aria-label={t('prod.remove')}
                   onClick={() => toggle(id, false)}
                 >
                   <X size={14} />
@@ -214,11 +238,12 @@ function RoomItemsModal({
 
 /** 방 — 견적 물품정보에 기본으로 펼쳐 둘 방과, 방마다 자주 들어가는 물품 */
 export default function RoomTemplates() {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState<{ row: Row; reload: () => Promise<void> } | null>(null);
   return (
     <>
       <CrudTable
-        title="방"
+        title={t('prod.room')}
         path="/room-templates"
         columns={columns}
         fields={fields}
@@ -227,7 +252,7 @@ export default function RoomTemplates() {
         hideHeader
         rowActions={(row, reload) => (
           <Button variant="ghost" size="sm" onClick={() => setEditing({ row, reload })}>
-            물품 구성
+            {t('prod.items')}
           </Button>
         )}
       />

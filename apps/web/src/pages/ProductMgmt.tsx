@@ -23,11 +23,11 @@ export default function ProductMgmt() {
   const [refreshKey, setRefreshKey] = useState(0);
   const { updatedAt, touch } = useUpdatedAt();
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'product', label: '상품구성' },
-    { key: 'addon', label: '상품' },
-    { key: 'cbm', label: '이사물품' },
-    { key: 'room', label: '방' },
-    { key: 'handling', label: '처리방법' },
+    { key: 'product', label: t('prod.bundle') },
+    { key: 'addon', label: t('prod.col.product') },
+    { key: 'cbm', label: t('prod.movingItems') },
+    { key: 'room', label: t('prod.room') },
+    { key: 'handling', label: t('prod.handling') },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

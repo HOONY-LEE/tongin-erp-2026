@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Phone as PhoneCell } from 'softium-ui/table';
@@ -21,6 +22,7 @@ import {
  * 고치기는 내선 관리 권한(CS_CALL.EXTENSIONS)이 있는 관리자.
  */
 export default function Extensions() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   // 내선 등록·수정은 내선 관리 권한(관리자 — 경영관리 등)
@@ -30,26 +32,26 @@ export default function Extensions() {
   const [del, setDel] = useState<Extension | null>(null);
 
   const columns: Column[] = [
-    { title: '이름', dataIndex: 'label', width: 140 },
+    { title: t('prod.name'), dataIndex: 'label', width: 140 },
     {
-      title: '부서',
+      title: t('prod.dept'),
       dataIndex: 'dept',
       render: (r) => (r.dept as string | null) ?? '-',
       width: 120,
     },
     {
-      title: '내선번호',
+      title: t('prod.ext'),
       dataIndex: 'extNo',
       render: (r) => (r.extNo as string | null) ?? '-',
       width: 100,
     },
     {
-      title: '돌려줄 번호',
+      title: t('prod.transferTo'),
       dataIndex: 'number',
       render: (r) => <PhoneCell value={r.number as string} link={false} />,
       width: 150,
     },
-    { title: '메모', dataIndex: 'memo', flex: 1, minWidth: 140 },
+    { title: t('prod.memo'), dataIndex: 'memo', flex: 1, minWidth: 140 },
     ...(editable
       ? [
           {
@@ -60,7 +62,7 @@ export default function Extensions() {
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label={`${r.label as string} 지우기`}
+                aria-label={t('prod.deleteOf', { v0: r.label as string })}
                 onClick={(e) => {
                   e.stopPropagation();
                   setDel(r as unknown as Extension);
@@ -88,10 +90,10 @@ export default function Extensions() {
         }),
       });
       await reloadExtensions();
-      toast({ type: 'success', title: '내선을 저장했습니다' });
+      toast({ type: 'success', title: t('prod.extSaved') });
       setEditing(null);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('prod.saveFailed') });
       throw e;
     }
   };
@@ -99,21 +101,21 @@ export default function Extensions() {
     try {
       await api(`/cs-transfer-targets/${x.id}`, { method: 'DELETE' });
       await reloadExtensions();
-      toast({ type: 'success', title: '내선을 지웠습니다' });
+      toast({ type: 'success', title: t('prod.extDeleted') });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('prod.deleteFailed') });
     }
   };
 
   return (
     <ListPage
       fit
-      title="내선 관리"
-      subtitle="상담원이 통화를 돌려줄 사무실 직원·부서 번호입니다. 등록하면 상담 콘솔 '내선' 목록에서 한 번에 돌려줄 수 있습니다."
+      title={t('prod.extTitle')}
+      subtitle={t('prod.extSub')}
       actions={
         editable ? (
           <Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setEditing('new')}>
-            내선 등록
+            {t('prod.extCreate')}
           </Button>
         ) : undefined
       }
@@ -125,25 +127,30 @@ export default function Extensions() {
         rows={rows as unknown as Row[]}
         onRowClick={editable ? (r) => setEditing(r as unknown as Extension) : undefined}
         exportable
-        exportFileName="내선목록"
+        exportFileName={t('prod.extExport')}
       />
       <FormModal
         open={editing !== null}
         onOpenChange={(o) => !o && setEditing(null)}
-        title={editing === 'new' ? '내선 등록' : '내선 수정'}
+        title={editing === 'new' ? t('prod.extCreate') : t('prod.extEdit')}
         size="md"
         fields={[
-          { name: 'label', label: '이름', required: true, placeholder: '예: 홍길동 과장' },
-          { name: 'dept', label: '부서', placeholder: '예: 영업팀' },
-          { name: 'extNo', label: '내선번호', placeholder: '예: 3001(화면 표시용)' },
+          {
+            name: 'label',
+            label: t('prod.name'),
+            required: true,
+            placeholder: t('prod.extNamePh'),
+          },
+          { name: 'dept', label: t('prod.dept'), placeholder: t('prod.extDeptPh') },
+          { name: 'extNo', label: t('prod.ext'), placeholder: t('prod.extNoPh') },
           {
             name: 'number',
-            label: '돌려줄 번호',
+            label: t('prod.transferTo'),
             type: 'tel',
             required: true,
-            placeholder: '예: 070-1234-5678(직원 070·지역번호·휴대폰)',
+            placeholder: t('prod.extTransferPh'),
           },
-          { name: 'memo', label: '메모', placeholder: '예: 오전만 근무' },
+          { name: 'memo', label: t('prod.memo'), placeholder: t('prod.extMemoPh') },
         ]}
         initialValues={
           editing && editing !== 'new'
@@ -161,15 +168,15 @@ export default function Extensions() {
       <ConfirmModal
         open={!!del}
         danger
-        title={del ? `'${del.label}' 내선을 지울까요?` : ''}
-        confirmLabel="지우기"
+        title={del ? t('prod.extDeleteQ', { v0: del.label }) : ''}
+        confirmLabel={t('prod.delete')}
         onClose={() => setDel(null)}
         onConfirm={() => {
           if (del) void remove(del);
           setDel(null);
         }}
       >
-        상담 콘솔 내선 목록과 돌려주기에서 빠집니다.
+        {t('prod.extDeleteNote')}
       </ConfirmModal>
     </ListPage>
   );

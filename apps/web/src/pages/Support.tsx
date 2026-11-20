@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { tDyn } from '../i18n';
@@ -20,20 +21,20 @@ import {
 } from '../components/ui';
 
 const KIND: StatusMap = {
-  CS: { label: 'CS상담', color: 'info' },
-  AS: { label: 'AS하자', color: 'primary' },
+  CS: { label: i18n.t('misc.sup.CS'), color: 'info' },
+  AS: { label: i18n.t('misc.sup.AS'), color: 'primary' },
 };
 const STATUS: StatusMap = {
-  RECEIVED: { label: '접수', color: 'warning' },
-  IN_PROGRESS: { label: '처리중', color: 'info' },
-  RESOLVED: { label: '해결', color: 'success' },
-  CLOSED: { label: '종료', color: 'neutral' },
-  CANCELED: { label: '취소', color: 'error' },
+  RECEIVED: { label: i18n.t('misc.st.received'), color: 'warning' },
+  IN_PROGRESS: { label: i18n.t('misc.st.inProgress'), color: 'info' },
+  RESOLVED: { label: i18n.t('misc.st.resolved'), color: 'success' },
+  CLOSED: { label: i18n.t('misc.st.closed'), color: 'neutral' },
+  CANCELED: { label: i18n.t('misc.st.canceled'), color: 'error' },
 };
 const PRIORITY: StatusMap = {
-  LOW: { label: '낮음', color: 'neutral' },
-  NORMAL: { label: '보통', color: 'info' },
-  HIGH: { label: '높음', color: 'error' },
+  LOW: { label: i18n.t('misc.pri.low'), color: 'neutral' },
+  NORMAL: { label: i18n.t('misc.pri.normal'), color: 'info' },
+  HIGH: { label: i18n.t('misc.pri.high'), color: 'error' },
 };
 
 interface Ticket extends Row {
@@ -148,7 +149,7 @@ export default function Support() {
       ],
     },
     { name: 'orgUnitId', label: t('support.org'), required: true, type: 'select', options: orgs },
-    { name: 'subject', label: t('support.subject'), required: true, placeholder: '제목' },
+    { name: 'subject', label: t('support.subject'), required: true, placeholder: t('misc.title') },
     { name: 'customerId', label: t('support.customer'), type: 'select', options: customers },
     {
       name: 'channel',
@@ -156,8 +157,8 @@ export default function Support() {
       type: 'select',
       options: [
         { value: 'PHONE', label: t('support.phone') },
-        { value: 'EMAIL', label: '이메일' },
-        { value: 'KAKAO', label: '카카오' },
+        { value: 'EMAIL', label: t('misc.email') },
+        { value: 'KAKAO', label: t('misc.kakao') },
         { value: 'VISIT', label: t('support.visit') },
       ],
     },
@@ -181,7 +182,7 @@ export default function Support() {
     return (
       <RecordDetail
         loading={!d && loading}
-        title={d ? `${d.ticketNo} ${d.subject}` : '찾을 수 없습니다'}
+        title={d ? `${d.ticketNo} ${d.subject}` : t('misc.notFound')}
         backLabel={t('nav.support')}
         onBack={closeDetail}
         actions={
@@ -210,7 +211,7 @@ export default function Support() {
           d
             ? [
                 {
-                  title: '접수 정보',
+                  title: t('misc.ticketInfo'),
                   items: [
                     { label: t('support.ticketNo'), value: d.ticketNo },
                     { label: t('support.kind'), value: <StatusBadge value={d.kind} map={KIND} /> },
@@ -228,15 +229,15 @@ export default function Support() {
                       label: t('support.channel'),
                       value: channelOpts.find((o) => o.value === d.channel)?.label ?? d.channel,
                     },
-                    { label: '접수일', value: d.createdAt?.slice(0, 10) },
+                    { label: t('misc.receivedAt'), value: d.createdAt?.slice(0, 10) },
                   ],
                 },
                 {
-                  title: '내용',
+                  title: t('misc.content'),
                   items: [
                     { label: t('support.subject'), value: d.subject, wide: true },
                     { label: t('support.content'), value: d.content, wide: true },
-                    { label: '처리 결과', value: d.resolution, wide: true },
+                    { label: t('misc.resolution'), value: d.resolution, wide: true },
                   ],
                 },
               ]

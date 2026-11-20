@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { ORG_UNIT_TYPE_LABEL } from '@tongin/shared';
@@ -62,6 +63,7 @@ export function OrgChart({
   onEmployeeClick,
   onBranchesClick,
 }: Props) {
+  const { t } = useTranslation();
   const roots = useMemo(() => {
     const hq = units.filter(isHqUnit);
     const hqIds = new Set(hq.map((u) => u.id));
@@ -121,7 +123,9 @@ export function OrgChart({
               >
                 <span className={styles.memberName}>{e.name}</span>
                 {e.position?.name && <span className={styles.memberPos}>{e.position.name}</span>}
-                {e.concurrent && <span className={styles.memberConcurrent}>겸직</span>}
+                {e.concurrent && (
+                  <span className={styles.memberConcurrent}>{t('misc.concurrent')}</span>
+                )}
               </button>
             </div>
           ))}
@@ -133,9 +137,11 @@ export function OrgChart({
           className={styles.branches}
           onClick={onBranchesClick}
           disabled={!onBranchesClick}
-          title="지점은 지점관리에서 관리합니다"
+          title={t('misc.branchesHint')}
         >
-          지점 {n.branchCount}곳{onBranchesClick && <ChevronRight size={14} aria-hidden />}
+          {t('misc.branches')} {n.branchCount}
+          {t('misc.placeSuffix')}
+          {onBranchesClick && <ChevronRight size={14} aria-hidden />}
         </button>
       )}
     </div>
@@ -162,7 +168,7 @@ export function OrgChart({
   );
 
   if (roots.length === 0) {
-    return <div className={styles.empty}>표시할 조직이 없습니다</div>;
+    return <div className={styles.empty}>{t('misc.noOrgs')}</div>;
   }
 
   return (
@@ -175,15 +181,21 @@ export function OrgChart({
 }
 
 function CardHead({ n }: { n: Node }) {
+  const { t } = useTranslation();
   const typeLabel = (ORG_UNIT_TYPE_LABEL as Record<string, string>)[n.unit.type] ?? n.unit.type;
   return (
     <>
       <span className={styles.type}>
         {typeLabel}
-        {!n.unit.isActive && ' · 사용 안 함'}
+        {!n.unit.isActive && t('misc.offSuffix')}
       </span>
       <span className={styles.name}>{n.unit.name}</span>
-      {n.headcount !== null && <span className={styles.count}>{n.headcount}명</span>}
+      {n.headcount !== null && (
+        <span className={styles.count}>
+          {n.headcount}
+          {t('misc.peopleSuffix')}
+        </span>
+      )}
     </>
   );
 }

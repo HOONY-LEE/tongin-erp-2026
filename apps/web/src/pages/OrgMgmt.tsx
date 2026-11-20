@@ -46,14 +46,14 @@ export default function OrgMgmt() {
               <SegmentedControl
                 value={view}
                 onChange={(v) => setView(v as View)}
-                aria-label="보기 방식"
+                aria-label={t('misc.viewMode')}
                 options={[
                   {
                     value: 'list',
                     label: (
                       <span className={styles.viewOpt}>
                         <List size={15} aria-hidden />
-                        목록
+                        {t('misc.list')}
                       </span>
                     ),
                   },
@@ -62,7 +62,7 @@ export default function OrgMgmt() {
                     label: (
                       <span className={styles.viewOpt}>
                         <Network size={15} aria-hidden />
-                        조직도
+                        {t('misc.orgChart')}
                       </span>
                     ),
                   },

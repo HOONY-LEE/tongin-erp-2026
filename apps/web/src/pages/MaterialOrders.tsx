@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -21,10 +22,10 @@ import {
 import { fs } from '../lib/fontScale';
 
 const ORDER_STATUS: StatusMap = {
-  REQUESTED: { label: '요청', color: 'warning' },
-  APPROVED: { label: '승인', color: 'info' },
-  SHIPPED: { label: '출고완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  REQUESTED: { label: i18n.t('misc.so.REQUESTED'), color: 'warning' },
+  APPROVED: { label: i18n.t('misc.mo.APPROVED'), color: 'info' },
+  SHIPPED: { label: i18n.t('misc.mo.SHIPPED'), color: 'success' },
+  CANCELED: { label: i18n.t('misc.st.canceled'), color: 'error' },
 };
 
 interface OrderLine {
@@ -156,7 +157,7 @@ export default function MaterialOrders() {
     return (
       <RecordDetail
         loading={!o && loading}
-        title={o ? o.orderNo : '발주를 찾을 수 없습니다'}
+        title={o ? o.orderNo : t('misc.orderNotFound')}
         backLabel={t('nav.materialOrders')}
         onBack={closeDetail}
         actions={
@@ -209,7 +210,7 @@ export default function MaterialOrders() {
           o
             ? [
                 {
-                  title: '발주 정보',
+                  title: t('misc.orderInfo'),
                   items: [
                     { label: t('order.orderNo'), value: o.orderNo },
                     { label: t('order.org'), value: o.orgUnit?.name },
@@ -333,7 +334,7 @@ export default function MaterialOrders() {
             label={t('order.note')}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="비고"
+            placeholder={t('misc.note')}
           />
         </div>
       </Modal>

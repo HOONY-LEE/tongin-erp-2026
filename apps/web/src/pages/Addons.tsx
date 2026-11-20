@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import {
   ESTIMATE_OPTION_GROUPS,
   ESTIMATE_OPTION_GROUP_LABEL,
@@ -7,11 +9,11 @@ import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
-const UNIT: Record<string, string> = { EA: '개당', FLAT: '정액' };
+const UNIT: Record<string, string> = { EA: i18n.t('prod.unit.EA'), FLAT: i18n.t('prod.unit.FLAT') };
 
 const columns: Column[] = [
   {
-    title: '묶음',
+    title: i18n.t('prod.group'),
     minWidth: 130,
     render: (r: Row) => (
       <Badge variant="subtle" color="primary">
@@ -20,7 +22,7 @@ const columns: Column[] = [
     ),
   },
   {
-    title: '상품명',
+    title: i18n.t('prod.productName'),
     dataIndex: 'name',
     flex: 1,
     minWidth: 160,
@@ -29,35 +31,42 @@ const columns: Column[] = [
         {String(r.name)}
         {r.kind === 'VOLUME' && (
           <Badge variant="subtle" color="info">
-            물품정보로 견적
+            {i18n.t('prod.byItems')}
           </Badge>
         )}
       </span>
     ),
   },
-  { title: '종류', render: (r: Row) => String(r.variantText || '-') },
+  { title: i18n.t('prod.kind'), render: (r: Row) => String(r.variantText || '-') },
   {
-    title: '입력',
+    title: i18n.t('prod.input'),
     render: (r: Row) =>
-      [r.hasDate ? '요청일' : '', r.hasNote ? '내용' : ''].filter(Boolean).join(' · ') || '-',
+      [r.hasDate ? i18n.t('prod.reqDate') : '', r.hasNote ? i18n.t('prod.content') : '']
+        .filter(Boolean)
+        .join(' · ') || '-',
   },
-  { title: '단위', render: (r: Row) => UNIT[r.unit as string] ?? String(r.unit) },
-  { title: '기본가', numeric: true, render: (r: Row) => won(r.price) },
+  { title: i18n.t('prod.unitLabel'), render: (r: Row) => UNIT[r.unit as string] ?? String(r.unit) },
+  { title: i18n.t('prod.col.basePrice'), numeric: true, render: (r: Row) => won(r.price) },
   {
-    title: '상태',
+    title: i18n.t('prod.status'),
     render: (r: Row) => (
       <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-        {r.isActive ? '사용' : '사용 안 함'}
+        {r.isActive ? i18n.t('prod.on') : i18n.t('prod.off')}
       </Badge>
     ),
   },
 ];
 
 const fields: FormField[] = [
-  { name: 'name', label: '상품명', required: true, placeholder: '에어컨 분리·설치' },
+  {
+    name: 'name',
+    label: i18n.t('prod.productName'),
+    required: true,
+    placeholder: i18n.t('prod.addonPh'),
+  },
   {
     name: 'groupCode',
-    label: '견적 화면 묶음',
+    label: i18n.t('prod.estimateGroup'),
     required: true,
     type: 'select',
     options: ESTIMATE_OPTION_GROUPS.map((g) => ({
@@ -67,25 +76,30 @@ const fields: FormField[] = [
   },
   {
     name: 'unit',
-    label: '단위',
+    label: i18n.t('prod.unitLabel'),
     required: true,
     type: 'select',
     options: [
-      { value: 'EA', label: '개당' },
-      { value: 'FLAT', label: '정액' },
+      { value: 'EA', label: i18n.t('prod.unit.EA') },
+      { value: 'FLAT', label: i18n.t('prod.unit.FLAT') },
     ],
   },
   {
     name: 'variantText',
-    label: '종류(쉼표로 구분)',
-    placeholder: '예: 일반, 프리미엄 — 없으면 비워 두세요',
+    label: i18n.t('prod.variants'),
+    placeholder: i18n.t('prod.variantsPh'),
     alwaysShow: true,
   },
-  { name: 'price', label: '참고 기본가', type: 'number', placeholder: '견적마다 금액은 따로 입력' },
-  { name: 'hasDate', label: '서비스 요청일 받기', type: 'boolean' },
-  { name: 'hasNote', label: '내용 적기(기타·보관 등)', type: 'boolean' },
-  { name: 'sortOrder', label: '표시 순서(작을수록 위)', type: 'number' },
-  { name: 'isActive', label: '사용 여부', type: 'boolean' },
+  {
+    name: 'price',
+    label: i18n.t('prod.refPrice'),
+    type: 'number',
+    placeholder: i18n.t('prod.refPriceHint'),
+  },
+  { name: 'hasDate', label: i18n.t('prod.askDate'), type: 'boolean' },
+  { name: 'hasNote', label: i18n.t('prod.askNote'), type: 'boolean' },
+  { name: 'sortOrder', label: i18n.t('prod.sortOrder'), type: 'number' },
+  { name: 'isActive', label: i18n.t('prod.activeLabel'), type: 'boolean' },
 ];
 
 /**
@@ -94,9 +108,10 @@ const fields: FormField[] = [
  * 이사물량은 물품정보(방·물품·처리방법)로 물량을 잡는 특별한 상품이다.
  */
 export default function Addons() {
+  const { t } = useTranslation();
   return (
     <CrudTable
-      title="상품"
+      title={t('prod.col.product')}
       path="/addon-services"
       columns={columns}
       fields={fields}

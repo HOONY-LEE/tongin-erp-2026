@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +20,10 @@ import {
 import { WORK_STATUS } from './WorkOrders';
 import { WorkPhotosCard } from '../components/photos/WorkPhotosCard';
 
-const RESOURCE: Record<string, string> = { CREW: '인력', VEHICLE: '차량' };
+const RESOURCE: Record<string, string> = {
+  CREW: i18n.t('misc.res.PEOPLE'),
+  VEHICLE: i18n.t('misc.res.VEHICLE'),
+};
 
 interface Assignment {
   id: string;
@@ -90,8 +94,11 @@ export default function WorkOrderDetail() {
   }
 
   const columns: Column[] = [
-    { title: '유형', render: (r) => RESOURCE[r.resourceType as string] ?? String(r.resourceType) },
-    { title: '내용', render: (r) => String(r.resourceRef ?? '-') },
+    {
+      title: t('misc.type'),
+      render: (r) => RESOURCE[r.resourceType as string] ?? String(r.resourceType),
+    },
+    { title: t('misc.content'), render: (r) => String(r.resourceRef ?? '-') },
   ];
 
   return (
@@ -155,15 +162,15 @@ export default function WorkOrderDetail() {
         fields={[
           {
             name: 'resourceType',
-            label: '유형',
+            label: t('misc.type'),
             required: true,
             type: 'select',
             options: [
-              { value: 'CREW', label: '인력' },
-              { value: 'VEHICLE', label: '차량' },
+              { value: 'CREW', label: t('misc.res.PEOPLE') },
+              { value: 'VEHICLE', label: t('misc.res.VEHICLE') },
             ],
           },
-          { name: 'resourceRef', label: '내용', placeholder: '현장팀 5명 / 5톤 트럭' },
+          { name: 'resourceRef', label: t('misc.content'), placeholder: t('misc.resourcePh') },
         ]}
         onSubmit={addAssignment}
       />

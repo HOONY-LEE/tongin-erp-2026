@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -18,10 +19,10 @@ import {
 } from '../components/ui';
 
 export const WORK_STATUS: StatusMap = {
-  ASSIGNED: { label: '배정', color: 'neutral' },
-  IN_PROGRESS: { label: '작업중', color: 'info' },
-  DONE: { label: '완료', color: 'success' },
-  CANCELED: { label: '취소', color: 'error' },
+  ASSIGNED: { label: i18n.t('misc.wo.ASSIGNED'), color: 'neutral' },
+  IN_PROGRESS: { label: i18n.t('misc.wo.IN_PROGRESS'), color: 'info' },
+  DONE: { label: i18n.t('misc.done'), color: 'success' },
+  CANCELED: { label: i18n.t('misc.st.canceled'), color: 'error' },
 };
 
 export default function WorkOrders() {
@@ -53,7 +54,7 @@ export default function WorkOrders() {
   const fields: FormField[] = [
     {
       name: 'contractId',
-      label: '계약(서명완료)',
+      label: t('misc.contractSigned'),
       required: true,
       type: 'select',
       options: contracts,
@@ -85,8 +86,11 @@ export default function WorkOrders() {
   };
 
   const columns: Column[] = [
-    { title: '작업번호', dataIndex: 'workNo' },
-    { title: '상태', render: (r) => <StatusBadge value={String(r.status)} map={WORK_STATUS} /> },
+    { title: t('misc.workNo'), dataIndex: 'workNo' },
+    {
+      title: t('misc.status'),
+      render: (r) => <StatusBadge value={String(r.status)} map={WORK_STATUS} />,
+    },
     { title: t('work.scheduled'), render: (r) => String(r.scheduledDate ?? '-').slice(0, 10) },
   ];
 

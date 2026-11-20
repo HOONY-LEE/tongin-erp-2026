@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -30,8 +31,8 @@ interface MaterialRow extends Row {
 }
 
 const STOCK_STATUS: StatusMap = {
-  OK: { label: '정상', color: 'success' },
-  LOW: { label: '부족', color: 'error' },
+  OK: { label: i18n.t('misc.stock.ok'), color: 'success' },
+  LOW: { label: i18n.t('misc.stock.low'), color: 'error' },
 };
 
 export default function Materials() {
@@ -88,8 +89,8 @@ export default function Materials() {
   };
 
   const createFields: FormField[] = [
-    { name: 'name', label: t('material.name'), required: true, placeholder: '소형 박스' },
-    { name: 'category', label: t('material.category'), placeholder: '박스/포장지/유니폼' },
+    { name: 'name', label: t('material.name'), required: true, placeholder: t('misc.materialPh') },
+    { name: 'category', label: t('material.category'), placeholder: t('misc.materialCatPh') },
     { name: 'unit', label: t('material.unit'), placeholder: 'EA / SET / ROLL / BOX' },
     { name: 'safetyStock', label: t('material.safetyStock'), type: 'number', placeholder: '0' },
   ];
@@ -135,7 +136,7 @@ export default function Materials() {
           type: 'number',
           placeholder: '1',
         },
-        { name: 'reason', label: t('material.reason'), placeholder: '발주입고 / 작업출고 …' },
+        { name: 'reason', label: t('material.reason'), placeholder: t('misc.movementPh') },
       ]}
       onSubmit={onMove}
     />
@@ -148,7 +149,7 @@ export default function Materials() {
       <>
         <RecordDetail
           loading={!detail && loading}
-          title={detail ? detail.name : '자재를 찾을 수 없습니다'}
+          title={detail ? detail.name : t('misc.materialNotFound')}
           backLabel={t('nav.materials')}
           onBack={closeDetail}
           actions={
@@ -162,16 +163,16 @@ export default function Materials() {
             detail
               ? [
                   {
-                    title: '자재 정보',
+                    title: t('misc.materialInfo'),
                     items: [
                       { label: t('material.name'), value: detail.name },
-                      { label: '코드', value: detail.code },
+                      { label: t('misc.code'), value: detail.code },
                       { label: t('material.category'), value: detail.category },
                       { label: t('material.unit'), value: detail.unit },
                     ],
                   },
                   {
-                    title: '재고',
+                    title: t('misc.stockLabel'),
                     items: [
                       {
                         label: t('material.stock'),
