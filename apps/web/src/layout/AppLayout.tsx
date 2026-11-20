@@ -360,7 +360,7 @@ export default function AppLayout() {
                     // 파비콘과 같은 앱 아이콘 — 통인 주황 바탕 + 흰 호랑이
                     <img
                       src="/apple-touch-icon.png"
-                      alt="통인익스프레스"
+                      alt={t('signin.brand')}
                       width={24}
                       height={24}
                       style={{
