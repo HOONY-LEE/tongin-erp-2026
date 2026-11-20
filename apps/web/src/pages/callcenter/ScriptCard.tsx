@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { NotebookPen, Pencil, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -24,6 +25,7 @@ interface Draft {
  * 고치기·새 메모: 칩 자리에 제목과 개인/공유 선택. 메모장은 보기와 같은 크기·위치·글꼴·배경.
  */
 export function ScriptCard() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [items, setItems] = useState<Script[] | null>(null);
   // 처음엔 목록 — 메모를 고르면 그 메모를 펼친다
@@ -39,7 +41,7 @@ export function ScriptCard() {
       setItems([]);
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '메모를 불러오지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('cc.memosFailed'),
       });
     }
   }, [toast]);
@@ -64,7 +66,7 @@ export function ScriptCard() {
       await load();
       pick(saved.id);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -78,7 +80,7 @@ export function ScriptCard() {
       setDelTarget(null);
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.deleteFailed') });
     } finally {
       setBusy(false);
     }
@@ -87,7 +89,7 @@ export function ScriptCard() {
   return (
     <section className={`${styles.card} ${styles.scriptCard}`}>
       <h3 className={styles.cardTitle}>
-        <NotebookPen size={15} /> 상담 메모
+        <NotebookPen size={15} /> {t('cc.memo')}
         <span className={styles.scriptTools}>
           <Button
             variant="outline"
@@ -98,31 +100,31 @@ export function ScriptCard() {
             size="sm"
             onClick={() => setEdit({ id: null, title: '', body: '', shared: false })}
           >
-            <Plus size={14} /> 새 메모
+            <Plus size={14} /> {t('cc.newMemo')}
           </Button>
         </span>
       </h3>
 
       {items === null ? (
-        <p className={styles.muted}>불러오는 중…</p>
+        <p className={styles.muted}>{t('cc.loading')}</p>
       ) : edit ? (
         <>
           {/* 칩 자리 — 제목과 개인/공유 */}
           <div className={styles.scriptHead}>
             <Input
               value={edit.title}
-              placeholder="메모 제목 — 예: 첫 인사, 견적 안내"
+              placeholder={t('cc.memoTitlePh')}
               maxLength={40}
               onChange={(e) => setEdit({ ...edit, title: e.target.value })}
-              aria-label="메모 제목"
+              aria-label={t('cc.memoTitle')}
             />
             <SegmentedControl
               className={styles.scriptKind}
               value={edit.shared ? 'shared' : 'mine'}
               onChange={(v) => setEdit({ ...edit, shared: v === 'shared' })}
               options={[
-                { value: 'mine', label: '개인' },
-                { value: 'shared', label: '공유' },
+                { value: 'mine', label: t('cc.personal') },
+                { value: 'shared', label: t('cc.shared') },
               ]}
             />
           </div>
@@ -139,7 +141,7 @@ export function ScriptCard() {
                     if (s) setDelTarget(s);
                   }}
                 >
-                  <Trash2 size={13} /> 지우기
+                  <Trash2 size={13} /> {t('cc.delete')}
                 </button>
               )}
               <button
@@ -148,7 +150,7 @@ export function ScriptCard() {
                 disabled={busy}
                 onClick={() => setEdit(null)}
               >
-                취소
+                {t('cc.canceled')}
               </button>
               <button
                 type="button"
@@ -156,15 +158,15 @@ export function ScriptCard() {
                 disabled={busy}
                 onClick={() => void save()}
               >
-                저장
+                {t('cc.save')}
               </button>
             </span>
             <textarea
               className={`${styles.scriptPaper} ${styles.scriptPaperEdit}`}
               value={edit.body}
-              placeholder="상담할 때 읽을 대본이나 확인할 내용을 적어 두세요"
+              placeholder={t('cc.memoBodyPh')}
               onChange={(e) => setEdit({ ...edit, body: e.target.value })}
-              aria-label="메모 내용"
+              aria-label={t('cc.memoBody')}
             />
           </div>
         </>
@@ -178,7 +180,7 @@ export function ScriptCard() {
                   type="button"
                   className={styles.scriptBack}
                   onClick={() => setActive(null)}
-                  aria-label="메모 목록으로"
+                  aria-label={t('cc.toMemos')}
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -195,12 +197,12 @@ export function ScriptCard() {
                     })
                   }
                 >
-                  <Pencil size={13} /> 수정
+                  <Pencil size={13} /> {t('cc.edit')}
                 </button>
               </div>
               <div className={styles.scriptBody}>
                 <div className={`${styles.scriptPaper} ${styles.scriptPaperView}`}>
-                  {current.body || <span className={styles.muted}>내용이 없습니다.</span>}
+                  {current.body || <span className={styles.muted}>{t('cc.noContent')}</span>}
                 </div>
               </div>
             </>
@@ -213,11 +215,11 @@ export function ScriptCard() {
                     <span className={styles.scriptListTitle}>
                       <b>{s.title}</b>
                       <span className={s.shared ? styles.scriptKindShared : styles.scriptKindMine}>
-                        {s.shared ? '공유' : '개인'}
+                        {s.shared ? t('cc.shared') : t('cc.personal')}
                       </span>
                     </span>
                     <span className={styles.scriptListBody}>
-                      {s.body.replace(/\s+/g, ' ').slice(0, 60) || '내용 없음'}
+                      {s.body.replace(/\s+/g, ' ').slice(0, 60) || t('cc.noContentShort')}
                     </span>
                     <ChevronRight size={15} className={styles.scriptListGo} />
                   </button>
@@ -225,24 +227,25 @@ export function ScriptCard() {
               ))}
             </ul>
           ) : (
-            <p className={styles.muted}>메모가 없습니다. [새 메모]를 눌러 대본을 적어 두세요.</p>
+            <p className={styles.muted}>{t('cc.noMemos')}</p>
           )}
         </>
       )}
 
       <ConfirmModal
         open={!!delTarget}
-        title="메모 지우기"
-        confirmLabel="지우기"
+        title={t('cc.deleteMemo')}
+        confirmLabel={t('cc.delete')}
         danger
         busy={busy}
         onClose={() => setDelTarget(null)}
         onConfirm={() => delTarget && void remove(delTarget)}
       >
         <p style={{ margin: 0 }}>
-          &apos;{delTarget?.title}&apos; 메모를 지울까요?
-          {delTarget?.shared ? ' 공유 메모라 모든 상담 직원 화면에서 사라집니다.' : ''} 지운 메모는
-          되돌릴 수 없습니다.
+          &apos;{delTarget?.title}
+          {t('cc.deleteMemoQ')}
+          {delTarget?.shared ? t('cc.sharedMemoNote') : ''} {t('cc.deletedNote1')}
+          {t('cc.deletedNote2')}
         </p>
       </ConfirmModal>
     </section>

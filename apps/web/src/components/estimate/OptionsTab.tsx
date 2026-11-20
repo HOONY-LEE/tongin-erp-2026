@@ -22,7 +22,7 @@ const GROUPS: { key: EstimateOptionGroup; title: string; sub: string }[] = [
   { key: 'LADDER', title: i18n.t('est.grp.LADDER'), sub: '/Ladder Truck' },
   { key: 'LIVING', title: i18n.t('est.grp.LIVING'), sub: '/Living Service' },
   { key: 'ASSEMBLY', title: i18n.t('est.grp.ASSEMBLY'), sub: '/Disassembly & Installation' },
-  { key: 'ETC', title: '기타', sub: '/Etc' },
+  { key: 'ETC', title: i18n.t('est.grp.ETC'), sub: '/Etc' },
 ];
 
 interface OptionState {

@@ -226,7 +226,9 @@ export function EstimatePanel({ estimateId }: { estimateId: string }) {
           <Row2 label={t('est.moveCost')} value={won(data.moveAmount)} />
           <Row2 label={t('est.optTotal')} value={won(addonTotal)} />
           <Row2
-            label={t('est.vatOf', { v0: data.vatMode === 'INCLUDED' ? '포함' : '불포함' })}
+            label={t('est.vatOf', {
+              v0: data.vatMode === 'INCLUDED' ? t('est.vatIn') : t('est.vatEx'),
+            })}
             value={data.vatMode === 'INCLUDED' ? won(data.vatAmount) : t('est.separate')}
           />
           <div style={{ borderTop: '1px solid var(--ark-color-border)', paddingTop: 6 }}>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Plus, Settings2, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -43,6 +44,7 @@ export function MemoPresetPicker({
   current: string;
   onApply: (body: string) => void;
 }) {
+  const { t } = useTranslation();
   const { can } = useAuth();
   const presets = usePresets();
   const [ask, setAsk] = useState<MemoPreset | null>(null);
@@ -62,13 +64,13 @@ export function MemoPresetPicker({
   };
 
   return (
-    <span className={styles.presetChips} role="group" aria-label="상담 메모 프리셋">
+    <span className={styles.presetChips} role="group" aria-label={t('cc.presets')}>
       {presets.map((p) => (
         <button
           key={p.id}
           type="button"
           className={`${styles.presetChip} ${active === p.id ? styles.presetChipOn : ''}`}
-          title={p.body.trim() ? `${p.title} 틀 넣기` : '비우고 직접 적기'}
+          title={p.body.trim() ? t('cc.insertPreset', { v0: p.title }) : t('cc.clearWrite')}
           onClick={() => pick(p)}
         >
           {p.title}
@@ -78,8 +80,8 @@ export function MemoPresetPicker({
         <button
           type="button"
           className={`${styles.presetChip} ${styles.presetChipGear}`}
-          aria-label="프리셋 관리"
-          title="프리셋 관리"
+          aria-label={t('cc.managePresets')}
+          title={t('cc.managePresets')}
           onClick={() => setManage(true)}
         >
           <Settings2 size={12} />
@@ -87,15 +89,15 @@ export function MemoPresetPicker({
       )}
       <ConfirmModal
         open={!!ask}
-        title={ask ? `'${ask.title}' 프리셋으로 바꿀까요?` : ''}
-        confirmLabel="바꾸기"
+        title={ask ? t('cc.replaceQ', { v0: ask.title }) : ''}
+        confirmLabel={t('cc.replace')}
         onClose={() => setAsk(null)}
         onConfirm={() => {
           if (ask) apply(ask);
           setAsk(null);
         }}
       >
-        지금 적어 둔 상담 메모는 지워지고 프리셋 내용으로 바뀝니다.
+        {t('cc.replaceNote')}
       </ConfirmModal>
       {manage && <PresetManager onClose={() => setManage(false)} />}
     </span>
@@ -104,6 +106,7 @@ export function MemoPresetPicker({
 
 /** 프리셋 관리 — 왼쪽 목록(순서·추가·삭제), 오른쪽 이름·내용 고치기 */
 function PresetManager({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const presets = usePresets();
   const [sel, setSel] = useState<string | 'new' | null>(null);
@@ -134,7 +137,7 @@ function PresetManager({ onClose }: { onClose: () => void }) {
       await fn();
       toast({ type: 'success', title: ok });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -151,7 +154,7 @@ function PresetManager({ onClose }: { onClose: () => void }) {
       });
       await loadPresets(true);
       setSel(r.id);
-    }, '프리셋을 저장했습니다');
+    }, t('cc.presetSaved'));
   const move = (id: string, d: -1 | 1) => {
     const ids = presets.map((p) => p.id);
     const i = ids.indexOf(id);
@@ -161,33 +164,33 @@ function PresetManager({ onClose }: { onClose: () => void }) {
     void run(async () => {
       await api('/cs-memo-presets/order', { method: 'POST', body: JSON.stringify({ ids }) });
       await loadPresets(true);
-    }, '순서를 바꿨습니다');
+    }, t('cc.reordered'));
   };
   const remove = (p: MemoPreset) =>
     run(async () => {
       await api(`/cs-memo-presets/${p.id}`, { method: 'DELETE' });
       await loadPresets(true);
       setSel(null);
-    }, '프리셋을 지웠습니다');
+    }, t('cc.presetDeleted'));
 
   return (
     <>
       <Modal
         open
         onOpenChange={(o) => !o && onClose()}
-        title="상담 메모 프리셋 관리"
+        title={t('cc.managePresetsTitle')}
         size="lg"
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>
-              닫기
+              {t('cc.close')}
             </Button>
             <Button
               variant="primary"
               disabled={busy || !title.trim() || sel === null}
               onClick={() => void save()}
             >
-              {sel === 'new' ? '추가' : '저장'}
+              {sel === 'new' ? t('cc.add') : t('cc.save')}
             </Button>
           </>
         }
@@ -202,7 +205,7 @@ function PresetManager({ onClose }: { onClose: () => void }) {
                 <span className={styles.presetTools}>
                   <button
                     type="button"
-                    aria-label={`${p.title} 위로`}
+                    aria-label={t('cc.upOf', { v0: p.title })}
                     disabled={i === 0 || busy}
                     onClick={() => move(p.id, -1)}
                   >
@@ -210,7 +213,7 @@ function PresetManager({ onClose }: { onClose: () => void }) {
                   </button>
                   <button
                     type="button"
-                    aria-label={`${p.title} 아래로`}
+                    aria-label={t('cc.downOf', { v0: p.title })}
                     disabled={i === presets.length - 1 || busy}
                     onClick={() => move(p.id, 1)}
                   >
@@ -218,7 +221,7 @@ function PresetManager({ onClose }: { onClose: () => void }) {
                   </button>
                   <button
                     type="button"
-                    aria-label={`${p.title} 지우기`}
+                    aria-label={t('cc.deleteOf', { v0: p.title })}
                     disabled={busy}
                     onClick={() => setDel(p)}
                   >
@@ -229,26 +232,26 @@ function PresetManager({ onClose }: { onClose: () => void }) {
             ))}
             <li className={sel === 'new' ? styles.presetOn : undefined}>
               <button type="button" className={styles.presetName} onClick={() => setSel('new')}>
-                <Plus size={13} /> 새 프리셋
+                <Plus size={13} /> {t('cc.newPreset')}
               </button>
             </li>
           </ul>
           <div className={styles.presetEdit}>
             <label className={styles.field}>
-              <span>이름</span>
+              <span>{t('cc.name')}</span>
               <Input
                 value={title}
                 maxLength={30}
-                placeholder="예: 클레임"
+                placeholder={t('cc.presetNamePh')}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </label>
             <label className={`${styles.field} ${styles.presetBody}`}>
-              <span>내용 — 비워 두면 상담원이 직접 적습니다</span>
+              <span>{t('cc.presetBody')}</span>
               <Textarea
                 value={body}
                 maxLength={2000}
-                placeholder={'예:\n[클레임]\n- 클레임 내용:\n- 고객 요청:'}
+                placeholder={t('cc.presetBodyPh')}
                 onChange={(e) => setBody(e.target.value)}
               />
             </label>
@@ -258,15 +261,15 @@ function PresetManager({ onClose }: { onClose: () => void }) {
       <ConfirmModal
         open={!!del}
         danger
-        title={del ? `'${del.title}' 프리셋을 지울까요?` : ''}
-        confirmLabel="지우기"
+        title={del ? t('cc.presetDeleteQ', { v0: del.title }) : ''}
+        confirmLabel={t('cc.delete')}
         onClose={() => setDel(null)}
         onConfirm={() => {
           if (del) void remove(del);
           setDel(null);
         }}
       >
-        상담원 화면의 프리셋 목록에서 빠집니다. 이미 적힌 상담 메모는 그대로입니다.
+        {t('cc.presetDeleteNote')}
       </ConfirmModal>
     </>
   );

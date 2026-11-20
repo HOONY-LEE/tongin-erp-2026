@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
@@ -37,19 +39,22 @@ interface FollowupRow {
 }
 const LABEL: Record<FollowupKind, { title: string; when: string; guide: string }> = {
   CONFIRM: {
-    title: '이사 확인콜',
-    when: '이사 2일 전',
+    title: i18n.t('cc.fu.CONFIRM'),
+    when: i18n.t('cc.fu.confirmWhen'),
     guide:
       '안녕하세요, 통인익스프레스입니다. ○○일 이사 예정이셔서 확인차 연락드렸습니다. 이사 시간·주소·짐 변동 사항 있으실까요?',
   },
   HAPPY: {
-    title: '해피콜',
-    when: '이사 다음 날',
+    title: i18n.t('cc.fu.HAPPY'),
+    when: i18n.t('cc.fu.happyWhen'),
     guide:
       '안녕하세요, 통인익스프레스입니다. 어제 이사는 잘 마치셨을까요? 작업 중 불편하셨던 점이나 파손·분실된 물건은 없으신지 여쭤보려고 연락드렸습니다.',
   },
 };
-const RESULT: Record<string, string> = { DONE: '통화 완료', NO_ANSWER: '부재' };
+const RESULT: Record<string, string> = {
+  DONE: i18n.t('cc.fu.done'),
+  NO_ANSWER: i18n.t('cc.fu.absent'),
+};
 
 /**
  * 이사 확인콜(이사 2일 전)·해피콜(이사 다음 날) 목록 — 날짜를 바꿔 볼 수 있다.
@@ -65,6 +70,7 @@ export function FollowupList({
   /** 검색 줄 오른쪽 끝(목록 바꾸는 탭) */
   viewSwitch?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
   const phone = usePhone();
@@ -86,7 +92,7 @@ export function FollowupList({
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '목록을 불러오지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('cc.listFailed'),
       });
     } finally {
       setLoading(false);
@@ -113,12 +119,12 @@ export function FollowupList({
         method: 'POST',
         body: JSON.stringify({ leadId: open.leadId, kind, result, memo: memo || undefined }),
       });
-      toast({ type: 'success', title: `${RESULT[result]}으로 남겼습니다` });
+      toast({ type: 'success', title: t('cc.fu.saved', { v0: RESULT[result] }) });
       setOpen(null);
       await load();
       onChanged?.();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -126,19 +132,19 @@ export function FollowupList({
 
   const columns: Column[] = [
     {
-      title: '고객명',
+      title: t('cc.customerName'),
       dataIndex: 'customerName',
       render: (r) => (r.customerName as string | null) ?? '-',
       width: 100,
     },
     {
-      title: '전화번호',
+      title: t('cc.phone'),
       dataIndex: 'phone',
       render: (r) => (r.phone ? <PhoneCell value={r.phone as string} link={false} /> : '-'),
       width: 140,
     },
     {
-      title: '담당자',
+      title: t('cc.owner'),
       dataIndex: 'ownerName',
       render: (r) =>
         r.ownerName ? (
@@ -152,18 +158,18 @@ export function FollowupList({
       width: 112,
       mask: false,
     },
-    { title: '담당 지점', dataIndex: 'orgName', width: 120 },
-    { title: '제휴·전속', dataIndex: 'partnerName', width: 120 },
-    { title: '메모', dataIndex: 'memo', flex: 1, minWidth: 140 },
+    { title: t('cc.ownerBranch'), dataIndex: 'orgName', width: 120 },
+    { title: t('cc.partner'), dataIndex: 'partnerName', width: 120 },
+    { title: t('cc.memoShort'), dataIndex: 'memo', flex: 1, minWidth: 140 },
     {
-      title: '접수',
+      title: t('cc.lead'),
       dataIndex: 'leadNo',
       // 누르면 그 접수 상세로(행 클릭 = 통화 창과 따로)
       render: (r) => (
         <button
           type="button"
           className={styles.leadLink}
-          title="접수 상세 열기"
+          title={t('cc.openLeadDetail')}
           onClick={(e) => {
             e.stopPropagation();
             navigate(`/leads/${r.leadId as string}`);
@@ -177,15 +183,15 @@ export function FollowupList({
       mask: false,
     },
     {
-      title: '상태',
+      title: t('cc.status'),
       dataIndex: 'result',
       render: (r) => {
         const x = r as unknown as FollowupRow;
         const cls = x.result === 'DONE' ? styles.st_DONE : x.result ? styles.st_OPEN : '';
         return (
           <span className={`${styles.stChip} ${cls}`}>
-            {x.result ? RESULT[x.result] : '대기'}
-            {x.tries > 1 ? ` ${x.tries}회` : ''}
+            {x.result ? RESULT[x.result] : t('cc.waiting')}
+            {x.tries > 1 ? t('cc.triesN', { v0: x.tries }) : ''}
           </span>
         );
       },
@@ -204,12 +210,12 @@ export function FollowupList({
             <b>
               {L.when} · {L.title}
             </b>
-            <span className={styles.muted}>이사일</span>
+            <span className={styles.muted}>{t('cc.moveDate')}</span>
             <Input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              aria-label="이사일"
+              aria-label={t('cc.moveDate')}
             />
           </span>
         }
@@ -228,17 +234,17 @@ export function FollowupList({
       <Modal
         open={!!open}
         onOpenChange={(o) => !o && setOpen(null)}
-        title={open ? `${L.title} — ${open.customerName ?? '고객'}` : ''}
+        title={open ? `${L.title} — ${open.customerName ?? t('cc.customer')}` : ''}
         footer={
           <>
             <Button variant="ghost" onClick={() => setOpen(null)}>
-              닫기
+              {t('cc.close')}
             </Button>
             <Button variant="outline" disabled={busy} onClick={() => void save('NO_ANSWER')}>
-              <PhoneOff size={14} /> 부재
+              <PhoneOff size={14} /> {t('cc.fu.absent')}
             </Button>
             <Button variant="primary" disabled={busy} onClick={() => void save('DONE')}>
-              <Check size={14} /> 통화 완료
+              <Check size={14} /> {t('cc.fu.done')}
             </Button>
           </>
         }
@@ -246,7 +252,7 @@ export function FollowupList({
         {open && (
           <div className={styles.fuModal}>
             <dl className={styles.fuInfo}>
-              <dt>전화번호</dt>
+              <dt>{t('cc.phone')}</dt>
               <dd>
                 <b>{open.phone ? formatPhone(open.phone) : '-'}</b>
                 {open.phone && (
@@ -257,15 +263,15 @@ export function FollowupList({
                     onClick={() => void call(open)}
                   >
                     <Phone size={14} />{' '}
-                    {phone.status === 'ready' ? '전화 걸기' : 'PC 전화 켜고 걸기'}
+                    {phone.status === 'ready' ? t('cc.dialBtn') : t('cc.enableAndDial')}
                   </Button>
                 )}
               </dd>
-              <dt>이사일</dt>
+              <dt>{t('cc.moveDate')}</dt>
               <dd>{open.moveDate}</dd>
-              <dt>담당</dt>
+              <dt>{t('cc.h.owner')}</dt>
               <dd>{[open.orgName, open.ownerName].filter(Boolean).join(' · ') || '-'}</dd>
-              <dt>접수</dt>
+              <dt>{t('cc.lead')}</dt>
               <dd>
                 <button
                   type="button"
@@ -278,25 +284,22 @@ export function FollowupList({
               </dd>
               {open.at && (
                 <>
-                  <dt>지난 통화</dt>
+                  <dt>{t('cc.pastCalls')}</dt>
                   <dd>
                     {open.result ? RESULT[open.result] : ''} · {fmtDateTime(open.at)}
-                    {open.by && ` · ${open.by}`} ({open.tries}번)
+                    {open.by && ` · ${open.by}`} ({open.tries}
+                    {t('cc.timesClose')}
                   </dd>
                 </>
               )}
             </dl>
             <p className={styles.fuGuide}>{L.guide}</p>
             <label className={styles.field}>
-              <span>통화 메모</span>
+              <span>{t('cc.callMemo')}</span>
               <Textarea
                 rows={4}
                 value={memo}
-                placeholder={
-                  kind === 'CONFIRM'
-                    ? '예: 시간 변동 없음, 엘리베이터 사용 예약 완료'
-                    : '예: 만족, 식탁 다리 긁힘 → 지점 전달'
-                }
+                placeholder={kind === 'CONFIRM' ? t('cc.fu.confirmPh') : t('cc.fu.happyPh')}
                 onChange={(e) => setMemo(e.target.value)}
               />
             </label>

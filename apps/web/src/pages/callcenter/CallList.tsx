@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { StatusChip } from '../../components/ui/StatusChip';
@@ -42,11 +44,11 @@ const CALL_STATUS_COLOR: Record<string, string> = {
   CANCELED: APPLE.gray,
 };
 const STATUS_LABEL: Record<string, string> = {
-  ASSIGNED: '상담 중',
-  CALLBACK: '콜백 중',
-  OUTCALL: '아웃콜 대기',
-  DONE: '완료',
-  CANCELED: '취소',
+  ASSIGNED: i18n.t('cc.st.TALKING'),
+  CALLBACK: i18n.t('cc.st.CALLBACK'),
+  OUTCALL: i18n.t('cc.outboundWaiting'),
+  DONE: i18n.t('cc.st.DONE'),
+  CANCELED: i18n.t('cc.canceled'),
 };
 /** 2026-11-20 16:14 */
 const when = (iso: string) => fmtDateTime(iso);
@@ -54,8 +56,8 @@ const dur = (s: number | null) =>
   s == null
     ? '-'
     : s < 60
-      ? `${s}초`
-      : `${Math.floor(s / 60)}분 ${String(s % 60).padStart(2, '0')}초`;
+      ? i18n.t('cc.secN', { v0: s })
+      : i18n.t('cc.msN', { v0: Math.floor(s / 60), v1: String(s % 60).padStart(2, '0') });
 /** 콜 ID — 목록에서 읽기 쉽게 앞 8자리 */
 const shortId = (id: string) => id.slice(0, 8).toUpperCase();
 
@@ -77,6 +79,7 @@ export function CallList({
   /** 검색 줄 오른쪽 끝(목록 바꾸는 탭) */
   head?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
   // '전체 전화'는 상담 콘솔 전체 보기 권한이 있는 사람만(그 밖에는 '내 전화' 하나)
@@ -99,7 +102,7 @@ export function CallList({
       } catch (e) {
         toast({
           type: 'error',
-          title: e instanceof ApiError ? e.message : '콜 목록을 불러오지 못했습니다',
+          title: e instanceof ApiError ? e.message : t('cc.listLoadFailed'),
         });
       } finally {
         setLoading(false);
@@ -113,23 +116,23 @@ export function CallList({
 
   const columns: Column[] = [
     {
-      title: '콜 번호',
+      title: t('cc.col.callNo'),
       dataIndex: 'callNo',
       // 다른 ID(접수번호 등)와 같은 모양 — 고정폭 서체 + 호버 복사
       render: (r) => <CopyText value={(r.callNo as string | null) ?? shortId(r.id as string)} />,
     },
     {
-      title: '고객명',
+      title: t('cc.customerName'),
       dataIndex: 'customerName',
-      render: (r) => (r.customerName as string | null) ?? '새 번호',
+      render: (r) => (r.customerName as string | null) ?? t('cc.newNumber'),
     },
     {
-      title: '전화번호',
+      title: t('cc.phone'),
       dataIndex: 'phone',
       render: (r) => <PhoneCell value={r.phone as string} link={false} />,
     },
     {
-      title: '상담원',
+      title: t('cc.agent'),
       dataIndex: 'agentName',
       // 접수의 담당자 칩과 같은 것 — 누르면 프로필 카드
       render: (r) =>
@@ -141,17 +144,17 @@ export function CallList({
       mask: false,
     },
     {
-      title: '통화시각',
+      title: t('cc.col.at'),
       dataIndex: 'receivedAt',
       render: (r) => when(r.receivedAt as string),
     },
     {
-      title: '통화시간',
+      title: t('cc.col.duration'),
       dataIndex: 'durationSec',
       render: (r) => dur(r.durationSec as number | null),
     },
     {
-      title: '접수',
+      title: t('cc.lead'),
       dataIndex: 'leadNo',
       // 누르면 그 접수 상세로(행 클릭 = 상담 화면과 따로)
       render: (r) =>
@@ -159,14 +162,14 @@ export function CallList({
           <button
             type="button"
             className={styles.leadLink}
-            title="접수 상세 열기"
+            title={t('cc.openLeadDetail')}
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/leads/${r.leadId as string}`);
             }}
           >
             <FileText size={13} />
-            {(r.leadNo as string | null) ?? '접수'}
+            {(r.leadNo as string | null) ?? t('cc.lead')}
           </button>
         ) : (
           <span className={styles.callState}>-</span>
@@ -176,7 +179,7 @@ export function CallList({
       mask: false,
     },
     {
-      title: '상태',
+      title: t('cc.status'),
       dataIndex: 'status',
       render: (r) => {
         const st = r.status as string;
@@ -184,13 +187,15 @@ export function CallList({
         const open = st === 'ASSIGNED' || st === 'CALLBACK';
         return (
           <StatusChip color={CALL_STATUS_COLOR[open ? 'OPEN' : st] ?? APPLE.gray}>
-            {open ? '마무리 전' : (STATUS_LABEL[st] ?? st)}
+            {open ? t('cc.notWrapped') : (STATUS_LABEL[st] ?? st)}
           </StatusChip>
         );
       },
       exportValue: (r) => {
         const st = r.status as string;
-        return st === 'ASSIGNED' || st === 'CALLBACK' ? '마무리 전' : (STATUS_LABEL[st] ?? st);
+        return st === 'ASSIGNED' || st === 'CALLBACK'
+          ? t('cc.notWrapped')
+          : (STATUS_LABEL[st] ?? st);
       },
       mask: false,
     },
@@ -206,8 +211,8 @@ export function CallList({
             value={scope}
             onChange={(x) => setScope(x as 'mine' | 'all')}
             options={[
-              { value: 'mine', label: '내 전화' },
-              ...(canAll ? [{ value: 'all', label: '전체 전화' }] : []),
+              { value: 'mine', label: t('cc.myCalls') },
+              ...(canAll ? [{ value: 'all', label: t('cc.allCalls') }] : []),
             ]}
           />
         }
@@ -219,7 +224,7 @@ export function CallList({
         loading={loading}
         onRowClick={(r) => onOpen(r.id as string)}
         exportable
-        exportFileName="상담콜"
+        exportFileName={t('cc.exportName')}
       />
     </section>
   );

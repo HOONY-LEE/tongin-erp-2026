@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchInput } from './ui/SearchInput';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +17,7 @@ type Target = Pick<Extension, 'id' | 'label' | 'dept' | 'number'> & { extNo?: st
  * 목록은 '내선 관리' 화면에서 고친다(상담 관리자).
  */
 export function TransferButton({ customerPhone }: { customerPhone: string }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const [open, setOpen] = useState(false);
@@ -45,7 +47,7 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
   const digits = q.replace(/\D/g, '');
   const direct: Target | null =
     /^[\d\s-]+$/.test(q.trim()) && digits.length >= 7
-      ? { id: '', label: '입력한 번호', dept: null, number: digits }
+      ? { id: '', label: t('cc.typedNumber'), dept: null, number: digits }
       : null;
   const options: Target[] = direct ? [...found, direct] : found;
   useEffect(() => setSel(0), [q]);
@@ -68,14 +70,14 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        <PhoneForwarded size={16} /> 돌려주기
+        <PhoneForwarded size={16} /> {t('cc.transfer')}
       </button>
       {open && (
-        <div className={styles.xfer} role="dialog" aria-label="돌려주기">
+        <div className={styles.xfer} role="dialog" aria-label={t('cc.transfer')}>
           <SearchInput
             autoFocus
             value={q}
-            placeholder="이름·부서·내선·번호로 찾기"
+            placeholder={t('cc.extSearchPh')}
             onChange={setQ}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return;
@@ -94,29 +96,31 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
           <div className={styles.xferList} role="listbox">
             {options.length === 0 && (
               <p className={styles.xferEmpty}>
-                {targets.length === 0
-                  ? '등록된 내선이 없습니다. 번호를 직접 넣으면 그 번호로 돌려줍니다.'
-                  : '찾는 내선이 없습니다. 번호를 직접 넣어도 됩니다.'}
+                {targets.length === 0 ? t('cc.noExtTyped') : t('cc.noExtMatchTyped')}
               </p>
             )}
-            {options.map((t, i) => (
+            {options.map((opt, i) => (
               <button
-                key={t.id || 'direct'}
+                key={opt.id || 'direct'}
                 type="button"
                 role="option"
-                aria-selected={target === t}
-                className={target === t ? styles.xferOn : undefined}
+                aria-selected={target === opt}
+                className={target === opt ? styles.xferOn : undefined}
                 onMouseEnter={() => setSel(i)}
                 onClick={() => setSel(i)}
                 onDoubleClick={() => void go()}
               >
                 <span className={styles.xferWho}>
-                  <b>{t.label}</b>
-                  {(t.dept || t.extNo) && (
-                    <em>{[t.dept, t.extNo && `내선 ${t.extNo}`].filter(Boolean).join(' · ')}</em>
+                  <b>{opt.label}</b>
+                  {(opt.dept || opt.extNo) && (
+                    <em>
+                      {[opt.dept, opt.extNo && t('cc.extN', { v0: opt.extNo })]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </em>
                   )}
                 </span>
-                <span className={styles.xferNo}>{formatPhone(t.number)}</span>
+                <span className={styles.xferNo}>{formatPhone(opt.number)}</span>
               </button>
             ))}
           </div>
@@ -130,7 +134,7 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
                   navigate('/extensions');
                 }}
               >
-                <Settings2 size={13} /> 내선 관리
+                <Settings2 size={13} /> {t('cc.manageExt')}
               </button>
             )}
             <Button
@@ -139,7 +143,7 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
               disabled={!target || busy}
               onClick={() => void go()}
             >
-              <PhoneForwarded size={15} /> {busy ? '넘기는 중…' : '돌려주기'}
+              <PhoneForwarded size={15} /> {busy ? t('cc.transferring') : t('cc.transfer')}
             </Button>
           </div>
         </div>

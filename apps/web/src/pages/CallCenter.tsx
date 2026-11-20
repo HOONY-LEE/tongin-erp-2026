@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Laptop,
@@ -91,12 +93,16 @@ interface Console {
 const POLL_MS = 3000;
 const since = (iso: string, now: number) => {
   const m = Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
-  return m < 1 ? '방금' : m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간 ${m % 60}분`;
+  return m < 1
+    ? i18n.t('cc.justNow')
+    : m < 60
+      ? i18n.t('cc.minN', { v0: m })
+      : i18n.t('cc.hmN', { v0: Math.floor(m / 60), v1: m % 60 });
 };
 const STATE: Record<Console['agents'][number]['state'], { label: string; cls: string }> = {
-  BUSY: { label: '상담 중', cls: 'busy' },
-  READY: { label: '상담 가능', cls: 'ready' },
-  OFF: { label: '후처리', cls: 'off' },
+  BUSY: { label: i18n.t('cc.st.TALKING'), cls: 'busy' },
+  READY: { label: i18n.t('cc.st.AVAILABLE'), cls: 'ready' },
+  OFF: { label: i18n.t('cc.st.WRAPUP'), cls: 'off' },
 };
 
 /**
@@ -105,6 +111,7 @@ const STATE: Record<Console['agents'][number]['state'], { label: string; cls: st
  * 상담을 마치면 아웃콜을 눌러 콜백 → 그 번호가 들어간 접수 창(접수 화면 그대로)에서 바로 등록한다.
  */
 export default function CallCenter() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { user } = useAuth();
   const isSysAdmin = !!user?.permissions.includes('*');
@@ -124,7 +131,7 @@ export default function CallCenter() {
       setData(pending !== null && r.me ? { ...r, me: { ...r.me, available: pending } } : r);
       setNow(Date.now());
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.loadFailed') });
     }
   }, [toast]);
   // PC로 전화를 받으면 — 서버를 기다리지 않고 상담 화면을 바로 연다(pending),
@@ -188,7 +195,7 @@ export default function CallCenter() {
       if (ok) toast({ type: 'success', title: ok });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '처리하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.processFailed') });
       await load();
     } finally {
       setBusy(false);
@@ -207,7 +214,7 @@ export default function CallCenter() {
       setData((d) => (d?.me ? { ...d, me: { ...d.me, available: !available } } : d));
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '상태를 바꾸지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('cc.statusFailed'),
       });
     } finally {
       pendingAvail.current = null;
@@ -300,7 +307,7 @@ export default function CallCenter() {
   }, [live]);
   if (!data)
     return (
-      <ListPage fit title="상담 콘솔">
+      <ListPage fit title={t('cc.title')}>
         <ConsoleSkeleton />
       </ListPage>
     );
@@ -311,7 +318,7 @@ export default function CallCenter() {
         id: '',
         phone: pending.phone,
         status: 'ASSIGNED',
-        channel: '대표번호',
+        channel: t('cc.mainNumber'),
         attempts: 0,
         memo: null,
         request: null,
@@ -335,19 +342,19 @@ export default function CallCenter() {
   const statsEl = (
     <div className={styles.stats}>
       <div>
-        <span>오늘 들어온 콜</span>
+        <span>{t('cc.todayIn')}</span>
         <b>{data.today.received}</b>
       </div>
       <div>
-        <span>상담 중</span>
+        <span>{t('cc.st.TALKING')}</span>
         <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
       </div>
       <div className={data.outcalls.length ? styles.warnStat : ''}>
-        <span>아웃콜 대기</span>
+        <span>{t('cc.outboundWaiting')}</span>
         <b>{data.outcalls.length}</b>
       </div>
       <div>
-        <span>오늘 끝낸 콜</span>
+        <span>{t('cc.todayDone')}</span>
         <b>{data.today.done}</b>
       </div>
     </div>
@@ -358,12 +365,15 @@ export default function CallCenter() {
       value={view}
       onChange={(v) => setView(v as typeof view)}
       options={[
-        { value: 'calls', label: '상담 콜' },
+        { value: 'calls', label: t('cc.tab.calls') },
         {
           value: 'CONFIRM',
-          label: `이사 확인콜${fuCounts?.confirm ? ` ${fuCounts.confirm}` : ''}`,
+          label: t('cc.tab.confirm', { v0: fuCounts?.confirm ? ` ${fuCounts.confirm}` : '' }),
         },
-        { value: 'HAPPY', label: `해피콜${fuCounts?.happy ? ` ${fuCounts.happy}` : ''}` },
+        {
+          value: 'HAPPY',
+          label: t('cc.tab.happy', { v0: fuCounts?.happy ? ` ${fuCounts.happy}` : '' }),
+        },
       ]}
     />
   );
@@ -374,16 +384,17 @@ export default function CallCenter() {
       // 상담 화면이면 제목이 '< 콜 ID [받은 콜]' — '<'는 콘솔 목록으로
       title={
         listView
-          ? '상담 콘솔'
+          ? t('cc.title')
           : pendingCall
-            ? '새 콜'
-            : `콜 ${
-                (me?.call?.id === viewId ? me.call.callNo : pageNo[viewId ?? '']) ??
-                (viewId ?? '').slice(0, 8).toUpperCase()
-              }`
+            ? t('cc.newCall')
+            : t('cc.callN', {
+                v0:
+                  (me?.call?.id === viewId ? me.call.callNo : pageNo[viewId ?? '']) ??
+                  (viewId ?? '').slice(0, 8).toUpperCase(),
+              })
       }
       breadcrumbs={
-        listView || pendingCall ? undefined : [{ label: '상담 콘솔', onClick: backToList }]
+        listView || pendingCall ? undefined : [{ label: t('cc.title'), onClick: backToList }]
       }
       hideBreadcrumbs={!listView}
       tags={
@@ -396,18 +407,14 @@ export default function CallCenter() {
             ) : (
               <PhoneIncoming size={13} />
             )}
-            {detailStatus === 'CALLBACK' ? '콜백' : '받은 콜'}
+            {detailStatus === 'CALLBACK' ? t('cc.callback') : t('cc.inbound')}
           </span>
         )
       }
-      subtitle={
-        listView
-          ? "대표번호(임시): 070-5236-9711 — 대표번호로 들어온 전화는 '상담 가능'인 상담원 PC가 함께 울리고, 받을 사람이 없으면 아웃콜로 쌓입니다. 전화를 받으면 상담 화면에서 통화하면서 바로 접수하세요."
-          : undefined
-      }
+      subtitle={listView ? t('cc.mainNumberHint') : undefined}
       actions={
         me && !me.isAgent ? (
-          <span className={styles.agentOnly}>PC 전화·상담 가능은 고객관리부 상담원 전용입니다</span>
+          <span className={styles.agentOnly}>{t('cc.agentsOnly')}</span>
         ) : me ? (
           <div className={styles.actions}>
             <PcPhone />
@@ -431,11 +438,11 @@ export default function CallCenter() {
                   label: (
                     <span className={styles.availLabel}>
                       {me.available && <i className={styles.availDot} aria-hidden />}
-                      {turningOn ? '연결 중…' : '상담 가능'}
+                      {turningOn ? t('cc.connecting') : t('cc.st.AVAILABLE')}
                     </span>
                   ),
                 },
-                { value: 'off', label: onCall ? '상담 중' : '후처리' },
+                { value: 'off', label: onCall ? t('cc.st.TALKING') : t('cc.st.WRAPUP') },
               ]}
             />
           </div>
@@ -497,9 +504,9 @@ export default function CallCenter() {
           {listView ? (
             <section className={`${styles.card} ${styles.paneCard} ${styles.agentsCard}`}>
               <h3 className={`${styles.cardTitle} ${styles.paneHead}`}>
-                <UserRound size={15} /> 상담원 현황
+                <UserRound size={15} /> {t('cc.agents')}
                 <span className={styles.count}>
-                  상담 가능 {data.agents.filter((a) => a.state === 'READY').length} /{' '}
+                  {t('cc.st.AVAILABLE')} {data.agents.filter((a) => a.state === 'READY').length} /{' '}
                   {data.agents.length}
                 </span>
               </h3>
@@ -512,14 +519,15 @@ export default function CallCenter() {
                           <b>{a.name}</b>
                           {a.position ? ` ${a.position}` : ''}
                           {a.employeeId === me?.employeeId && (
-                            <span className={styles.muted}> (나)</span>
+                            <span className={styles.muted}> {t('cc.me')}</span>
                           )}
-                          {a.pcPhone && <span className={styles.muted}> · PC 전화</span>}
+                          {a.pcPhone && <span className={styles.muted}> {t('cc.pcPhone')}</span>}
                         </span>
                         <span className={styles.aToday}>
-                          오늘 받음 {a.today.received} · 콜백 {a.today.callbacks} · 접수{' '}
-                          {a.today.leads}
-                          {a.today.talkSec > 0 && ` · 통화 ${Math.round(a.today.talkSec / 60)}분`}
+                          {t('cc.todayAnswered')} {a.today.received} {t('cc.callbackSep')}{' '}
+                          {a.today.callbacks} {t('cc.leadsSep')} {a.today.leads}
+                          {a.today.talkSec > 0 &&
+                            t('cc.talkMin', { v0: Math.round(a.today.talkSec / 60) })}
                         </span>
                       </span>
                       <span className={`${styles.stateChip} ${styles[`st_${a.state}`]}`}>
@@ -550,7 +558,7 @@ export default function CallCenter() {
                     value: 'outcall',
                     label: (
                       <span className={styles.tabLabel}>
-                        <PhoneOutgoing size={13} /> 아웃콜 {data.outcalls.length}
+                        <PhoneOutgoing size={13} /> {t('cc.outbound')} {data.outcalls.length}
                       </span>
                     ),
                   },
@@ -558,7 +566,7 @@ export default function CallCenter() {
                     value: 'ext',
                     label: (
                       <span className={styles.tabLabel}>
-                        <PhoneForwarded size={13} /> 내선
+                        <PhoneForwarded size={13} /> {t('cc.extensions')}
                       </span>
                     ),
                   },
@@ -576,32 +584,29 @@ export default function CallCenter() {
                       <span className={styles.ocMain}>
                         <b className={styles.ocPhone}>{formatPhone(c.phone)}</b>
                         <span className={styles.ocInfo}>
-                          {c.customerName ?? '새 번호'} · {since(c.receivedAt, now)} 대기
-                          {c.attempts > 0 && ` · 콜백 ${c.attempts}번 안 받음`}
-                          {c.channel?.includes('부재중') && ' · 부재중'}
+                          {c.customerName ?? t('cc.newNumber')} · {since(c.receivedAt, now)}{' '}
+                          {t('cc.waiting')}
+                          {c.attempts > 0 && t('cc.notAnsweredN', { v0: c.attempts })}
+                          {c.channel?.includes(t('cc.missed')) && t('cc.missedSep')}
                         </span>
                       </span>
                       <Button
                         variant="primary"
                         size="sm"
                         disabled={busy || !me || onCall}
-                        title={
-                          onCall
-                            ? '지금 통화를 먼저 끝내 주세요'
-                            : '이 번호로 전화하고 상담 화면을 엽니다'
-                        }
+                        title={onCall ? t('cc.finishFirst') : t('cc.callAndOpen')}
                         onClick={() => void callback(c)}
                       >
-                        <PhoneOutgoing size={14} /> 콜백
+                        <PhoneOutgoing size={14} /> {t('cc.callback')}
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         disabled={busy}
-                        title="콜백하지 않고 목록에서 뺍니다(잘못 들어온 콜·시험 콜)"
+                        title={t('cc.dismissTip')}
                         onClick={() => setCancelTarget(c)}
                       >
-                        <Trash2 size={14} /> 정리
+                        <Trash2 size={14} /> {t('cc.dismiss')}
                       </Button>
                     </li>
                   ))}
@@ -609,7 +614,7 @@ export default function CallCenter() {
               ) : (
                 <div className={styles.emptyBox}>
                   <PhoneOff size={22} />
-                  <span>대기 중인 아웃콜이 없습니다</span>
+                  <span>{t('cc.noOutbound')}</span>
                 </div>
               )}
             </div>
@@ -619,8 +624,8 @@ export default function CallCenter() {
 
       <ConfirmModal
         open={!!cancelTarget}
-        title="아웃콜 정리"
-        confirmLabel="정리"
+        title={t('cc.dismissTitle')}
+        confirmLabel={t('cc.dismiss')}
         danger
         busy={busy}
         onClose={() => setCancelTarget(null)}
@@ -629,19 +634,19 @@ export default function CallCenter() {
           if (!c) return;
           void act(
             () => api(`/cs-calls/${c.id}/cancel`, { method: 'POST' }),
-            '아웃콜을 정리했습니다',
+            t('cc.dismissed'),
           ).then(() => setCancelTarget(null));
         }}
       >
         {cancelTarget && (
           <p style={{ margin: 0, lineHeight: 1.6 }}>
             <b>{formatPhone(cancelTarget.phone)}</b>
-            {cancelTarget.customerName ? ` (${cancelTarget.customerName})` : ''} 아웃콜을 콜백하지
-            않고 목록에서 정리할까요?
+            {cancelTarget.customerName ? ` (${cancelTarget.customerName})` : ''} {t('cc.dismissQ1')}
+            {t('cc.dismissQ2')}
             <br />
             <span className={styles.muted}>
-              잘못 들어온 전화나 시험 콜일 때 씁니다. 정리한 콜은 콜 목록에 &apos;취소&apos;로
-              남습니다.
+              {t('cc.dismissHint1')}
+              {t('cc.dismissHint2')}
             </span>
           </p>
         )}
@@ -655,6 +660,7 @@ export default function CallCenter() {
  * 키가 들어 있으니 다른 곳에 공유하지 않는다.
  */
 function Integration() {
+  const { t } = useTranslation();
   const [info, setInfo] = useState<{ voiceWebhook: string | null; path: string } | null>(null);
   const [show, setShow] = useState(false);
   useEffect(() => {
@@ -667,19 +673,19 @@ function Integration() {
   return (
     <div className={styles.sim}>
       <span className={styles.muted}>
-        전화 연동 — 한국AI통신 번호 설정의 웹훅 URL(POST)에 이 주소를 넣으면, 그 번호로 온 전화가
-        여기 뜹니다. 키가 들어 있어 관리자만 봅니다.
+        {t('cc.webhookHint1')}
+        {t('cc.webhookHint2')}
       </span>
       {show ? (
         url ? (
           <CopyText value={url} />
         ) : (
-          <span className={styles.muted}>불러오는 중…</span>
+          <span className={styles.muted}>{t('cc.loading')}</span>
         )
       ) : (
         <div className={styles.actions}>
           <Button variant="outline" size="sm" onClick={() => setShow(true)}>
-            웹훅 주소 보기
+            {t('cc.showWebhook')}
           </Button>
         </div>
       )}
@@ -692,6 +698,7 @@ function Integration() {
  * 화면을 옮겨도 켜진 채로 있고, 새로고침해도 다시 켜진다.
  */
 function PcPhone() {
+  const { t } = useTranslation();
   const phone = usePhone();
   const toast = useToast();
   const [soundOpen, setSoundOpen] = useState(false);
@@ -709,16 +716,16 @@ function PcPhone() {
             setDialNo('');
             setDialOpen(true);
           }}
-          aria-label="번호로 전화 걸기"
-          title="번호로 전화 걸기"
+          aria-label={t('cc.dialNumber')}
+          title={t('cc.dialNumber')}
         >
           <Phone size={14} />
         </Button>
       )}
       <ConfirmModal
         open={dialOpen}
-        title="번호로 전화 걸기"
-        confirmLabel="걸기"
+        title={t('cc.dialNumber')}
+        confirmLabel={t('cc.dial')}
         onClose={() => setDialOpen(false)}
         onConfirm={() => {
           if (!dialOk) return;
@@ -730,7 +737,7 @@ function PcPhone() {
           autoFocus
           inputMode="tel"
           value={dialNo}
-          placeholder="걸 번호 — 예: 070-5276-7222"
+          placeholder={t('cc.dialPh')}
           onChange={(e) => setDialNo(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && dialOk) {
@@ -744,8 +751,8 @@ function PcPhone() {
         variant="ghost"
         size="sm"
         onClick={() => setSoundOpen(true)}
-        aria-label="PC 전화 소리 설정"
-        title="소리 설정"
+        aria-label={t('cc.soundSettings')}
+        title={t('cc.sound')}
       >
         <Settings2 size={14} />
       </Button>
@@ -761,7 +768,7 @@ function PcPhone() {
     <span className={styles.pcPhone}>
       {phone.status === 'connecting' && (
         <span className={styles.muted}>
-          <Laptop size={14} /> PC 전화 연결 중…
+          <Laptop size={14} /> {t('cc.pcConnecting')}
         </span>
       )}
       {soundButton}
@@ -789,6 +796,7 @@ function CallPage({
   onBack: () => void;
   onDone: () => Promise<void> | void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [d, setD] = useState<{
     call: CallRow & CallView;
@@ -803,7 +811,7 @@ function CallPage({
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '콜을 불러오지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('cc.callLoadFailed'),
       });
       onBack();
     }
@@ -815,7 +823,7 @@ function CallPage({
   if (!d)
     return (
       <section className={`${styles.card} ${styles.intakeCard}`}>
-        <div role="status" aria-label="불러오는 중" className={styles.skelCol}>
+        <div role="status" aria-label={t('cc.loadingShort')} className={styles.skelCol}>
           <Skeleton width={220} height={22} />
           <div className={styles.skelRow4}>
             {[0, 1, 2, 3].map((i) => (
@@ -872,8 +880,9 @@ function CallColumn({
 
 /** 상담 콘솔 첫 화면을 불러오는 동안 — 실제 배치(왼쪽 숫자·표, 오른쪽 달력·상담원·아웃콜) 그대로 */
 function ConsoleSkeleton() {
+  const { t } = useTranslation();
   return (
-    <div className={styles.grid} role="status" aria-label="불러오는 중">
+    <div className={styles.grid} role="status" aria-label={t('cc.loadingShort')}>
       <section className={`${styles.card} ${styles.listCard}`}>
         <div className={styles.skelRow4}>
           {[0, 1, 2, 3].map((i) => (

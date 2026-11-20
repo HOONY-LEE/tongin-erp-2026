@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useEffect, useState } from 'react';
 import { api } from './api';
 
@@ -50,18 +51,18 @@ export async function transferTo(
   if (TRANSFER_BLOCKED)
     return {
       ok: false,
-      message: '돌려주기는 아직 시험 중이라 막아 두었습니다. 시험이 끝나면 열겠습니다.',
+      message: i18n.t('cc.transferBlocked'),
     };
   const { transferCall } = await import('./softphone');
   const { formatPhone } = await import('./phone');
   const who = `${x.dept ? `${x.label}(${x.dept})` : x.label} ${formatPhone(x.number)}`;
   const r = await transferCall(x.number);
-  if (!r.ok) return { ok: false, message: `돌려주지 못했습니다 — ${r.reason ?? ''}` };
+  if (!r.ok) return { ok: false, message: i18n.t('cc.transferFailedOf', { v0: r.reason ?? '' }) };
   void api('/cs-calls/transferred', {
     method: 'POST',
     body: JSON.stringify({ phone: customerPhone, to: who }),
   }).catch(() => undefined);
-  return { ok: true, message: `${who}에게 돌려줬습니다` };
+  return { ok: true, message: i18n.t('cc.transferred', { v0: who }) };
 }
 
 /** 한글 초성 — '홍길동' → 'ㅎㄱㄷ' */

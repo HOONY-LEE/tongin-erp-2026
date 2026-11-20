@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhoneForwarded, Settings2 } from 'lucide-react';
@@ -18,6 +19,7 @@ import styles from '../callcenter.module.css';
  * 한 번 누르면 [확인]으로 바뀌고(실수 방지), 한 번 더 누르면 넘어간다.
  */
 export function ExtensionList() {
+  const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
   const { can } = useAuth();
@@ -53,26 +55,27 @@ export function ExtensionList() {
   return (
     <div className={styles.extWrap}>
       {list.length > 0 && (
-        <SearchInput value={q} onChange={setQ} placeholder="이름·부서·내선·번호로 찾기" />
+        <SearchInput value={q} onChange={setQ} placeholder={t('cc.extSearchPh')} />
       )}
       {list.length === 0 ? (
         <div className={styles.extEmpty}>
-          <p>등록된 내선이 없습니다.</p>
+          <p>{t('cc.noExt')}</p>
           {can('CS_CALL.EXTENSIONS') && (
             <button type="button" className={styles.link} onClick={() => navigate('/extensions')}>
-              <Settings2 size={13} /> 내선 등록하기
+              <Settings2 size={13} /> {t('cc.addExt')}
             </button>
           )}
         </div>
       ) : (
         <ul className={styles.extList}>
-          {rows.length === 0 && <li className={styles.extNone}>찾는 내선이 없습니다</li>}
+          {rows.length === 0 && <li className={styles.extNone}>{t('cc.noExtMatch')}</li>}
           {rows.map((x) => (
             <li key={x.id}>
               <span className={styles.extMain}>
                 <b>{x.label}</b>
                 <span className={styles.extSub}>
-                  {[x.dept, x.extNo && `내선 ${x.extNo}`].filter(Boolean).join(' · ') || extName(x)}
+                  {[x.dept, x.extNo && t('cc.extN', { v0: x.extNo })].filter(Boolean).join(' · ') ||
+                    extName(x)}
                   {x.memo && ` · ${x.memo}`}
                 </span>
               </span>
@@ -80,11 +83,15 @@ export function ExtensionList() {
                 type="button"
                 className={`${styles.extGo} ${arm === x.id ? styles.extArm : ''}`}
                 disabled={!live || !!busy}
-                title={live ? `${x.label}에게 돌려주기` : '통화 중일 때 돌려줄 수 있습니다'}
+                title={live ? t('cc.transferTo', { v0: x.label }) : t('cc.transferOnlyInCall')}
                 onClick={() => void go(x)}
               >
                 <PhoneForwarded size={13} />
-                {busy === x.id ? '넘기는 중…' : arm === x.id ? '확인' : '돌려주기'}
+                {busy === x.id
+                  ? t('cc.transferring')
+                  : arm === x.id
+                    ? t('cc.confirm')
+                    : t('cc.transfer')}
               </button>
             </li>
           ))}

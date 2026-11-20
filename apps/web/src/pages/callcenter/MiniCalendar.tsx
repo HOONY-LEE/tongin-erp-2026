@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { useEffect, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -14,7 +16,10 @@ import {
 import styles from '../callcenter.module.css';
 
 type Status = 'CLOSED' | 'OPEN';
-const LABEL: Record<Status, string> = { CLOSED: '마감', OPEN: '여유' };
+const LABEL: Record<Status, string> = {
+  CLOSED: i18n.t('cc.cal.CLOSED'),
+  OPEN: i18n.t('cc.cal.OPEN'),
+};
 
 /**
  * 상담 콘솔 오른쪽 위 — 아주 작은 이사일 마감 달력(늘 6주라 높이가 바뀌지 않는다).
@@ -23,13 +28,14 @@ const LABEL: Record<Status, string> = { CLOSED: '마감', OPEN: '여유' };
  * 오른쪽 위 아이콘은 마감 캘린더를 새 창으로.
  */
 export function MiniCalendar() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const { unrestricted, ownOrgId } = useOrgScope();
   const [ym, setYm] = useState(thisMonth);
   const { data, reload } = useClosures(ym);
   const [menu, setMenu] = useState<{ date: string; x: number; y: number } | null>(null);
-  const t = today();
+  const todayKey = today();
   const [y, m] = ym.split('-').map(Number);
   const editable = can('LEAD.UPDATE');
   // 이 달력에서 바꾸는 대상 — 본사(범위 제한 없음)는 전체, 지점은 자기 지점
@@ -61,37 +67,51 @@ export function MiniCalendar() {
       });
       await reload();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('cc.changeFailed') });
     }
   };
 
   return (
     <section className={`${styles.card} ${styles.paneCard} ${styles.miniCal}`}>
       <div className={`${styles.paneHead} ${styles.miniHead}`}>
-        <b>
-          {y}년 {m}월
-        </b>
-        <button type="button" aria-label="지난달" onClick={() => setYm(shiftMonth(ym, -1))}>
+        <b>{t('cc.yearMonth', { v0: y, v1: m })}</b>
+        <button
+          type="button"
+          aria-label={t('cc.prevMonth')}
+          onClick={() => setYm(shiftMonth(ym, -1))}
+        >
           <ChevronLeft size={15} />
         </button>
-        <button type="button" aria-label="다음 달" onClick={() => setYm(shiftMonth(ym, 1))}>
+        <button
+          type="button"
+          aria-label={t('cc.nextMonth')}
+          onClick={() => setYm(shiftMonth(ym, 1))}
+        >
           <ChevronRight size={15} />
         </button>
         <span className={styles.miniKeys}>
-          <i className={styles.keyClosed} /> 마감
+          <i className={styles.keyClosed} /> {t('cc.cal.CLOSED')}
         </span>
         <button
           type="button"
           className={styles.miniMore}
-          aria-label="이사일 마감 캘린더 새 창으로 열기"
-          title="이사일 마감 캘린더(새 창)"
+          aria-label={t('cc.openClosureAria')}
+          title={t('cc.openClosure')}
           onClick={() => window.open('/calendar?only=closure', '_blank', 'noopener')}
         >
           <ExternalLink size={14} />
         </button>
       </div>
       <div className={styles.miniGrid}>
-        {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+        {[
+          t('cc.dow.0'),
+          t('cc.dow.1'),
+          t('cc.dow.2'),
+          t('cc.dow.3'),
+          t('cc.dow.4'),
+          t('cc.dow.5'),
+          t('cc.dow.6'),
+        ].map((d, i) => (
           <span
             key={d}
             className={`${styles.miniDow} ${i === 0 ? styles.sun : i === 6 ? styles.sat : ''}`}
@@ -106,11 +126,14 @@ export function MiniCalendar() {
           );
           const leads = data?.counts.find((x) => x.date === c.date)?.leads ?? 0;
           const tip = [
-            `${Number(c.date.slice(5, 7))}월 ${Number(c.date.slice(8))}일${
-              c.date === t ? ' (오늘)' : ''
-            }${status !== 'OPEN' ? ` · ${LABEL[status]}` : ''}`,
-            `이사 ${leads}건`,
-            ...others.map((x) => `${x.orgName ?? '전체'} 마감`),
+            t('cc.dayTip', {
+              v0: Number(c.date.slice(5, 7)),
+              v1: Number(c.date.slice(8)),
+              v2: c.date === todayKey ? t('cc.todaySuffix') : '',
+              v3: status !== 'OPEN' ? ` · ${LABEL[status]}` : '',
+            }),
+            t('cc.movesN', { v0: leads }),
+            ...others.map((x) => t('cc.closedOf', { v0: x.orgName ?? t('cc.all') })),
           ].join('\n');
           return (
             <button
@@ -139,7 +162,7 @@ export function MiniCalendar() {
                 });
               }}
             >
-              <span className={c.date === t ? styles.miniTodayNum : undefined}>
+              <span className={c.date === todayKey ? styles.miniTodayNum : undefined}>
                 {Number(c.date.slice(8))}
               </span>
               {others.length > 0 && <i className={styles.miniDot} />}
@@ -155,8 +178,10 @@ export function MiniCalendar() {
           onClick={(e) => e.stopPropagation()}
         >
           <div className={styles.miniMenuHead}>
-            {Number(menu.date.slice(5, 7))}월 {Number(menu.date.slice(8))}일
-            {target === null ? ' · 전체' : ''}
+            {Number(menu.date.slice(5, 7))}
+            {t('cc.dow.1')} {Number(menu.date.slice(8))}
+            {t('cc.dow.0')}
+            {target === null ? t('cc.allSep') : ''}
           </div>
           {(['CLOSED', 'OPEN'] as Status[]).map((s) => (
             <button
