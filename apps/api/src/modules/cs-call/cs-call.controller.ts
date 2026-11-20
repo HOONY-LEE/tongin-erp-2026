@@ -94,7 +94,13 @@ const MSG_BUSY =
 const HANGUP = '<Hangup/>';
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const say = (text: string) => `<Say language="ko">${esc(text)}</Say>`;
+/**
+ * 안내 멘트 목소리 — KAT_TTS_VOICE(예: typecast:tc_…·google:ko-KR-Chirp3-HD-…·cartesia)면 고품질 유료 음성,
+ * 비우면 무료 기본 음성. 같은 문장은 한국AI통신이 저장해 두고 다시 쓰므로 고정 멘트는 처음 한 번만 과금된다.
+ */
+const TTS_VOICE = (process.env.KAT_TTS_VOICE ?? '').trim();
+const say = (text: string) =>
+  `<Say language="ko"${TTS_VOICE ? ` voice="${esc(TTS_VOICE)}"` : ''}>${esc(text)}</Say>`;
 const vxml = (...verbs: string[]) =>
   `<?xml version="1.0" encoding="UTF-8"?><Response>${verbs.join('')}</Response>`;
 /** 통화 한 건 최대 길이(초) — 요금 안전망 */
