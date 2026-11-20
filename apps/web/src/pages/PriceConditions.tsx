@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
@@ -5,32 +7,32 @@ import { useOptions } from '../lib/useOptions';
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 const DISCOUNT: Record<string, string> = {
-  RATE: '할인율(%)',
-  AMOUNT: '정액할인',
-  FIXED_PRICE: '고정가',
+  RATE: i18n.t('prod.disc.RATE'),
+  AMOUNT: i18n.t('prod.disc.AMOUNT'),
+  FIXED_PRICE: i18n.t('prod.disc.FIXED'),
 };
 
 const columns: Column[] = [
-  { title: '조건명', dataIndex: 'name' },
+  { title: i18n.t('prod.condName'), dataIndex: 'name' },
   {
-    title: '할인유형',
+    title: i18n.t('prod.discType'),
     render: (r: Row) => (
       <Badge variant="subtle">{DISCOUNT[r.discountType as string] ?? String(r.discountType)}</Badge>
     ),
   },
   {
-    title: '할인값',
+    title: i18n.t('prod.discValue'),
     numeric: true,
     render: (r: Row) =>
       r.discountType === 'RATE' ? `${String(r.discountValue)}%` : won(r.discountValue),
   },
-  { title: '유효 시작', render: (r: Row) => String(r.validFrom ?? '-') },
-  { title: '유효 종료', render: (r: Row) => String(r.validTo ?? '-') },
+  { title: i18n.t('prod.validFrom'), render: (r: Row) => String(r.validFrom ?? '-') },
+  { title: i18n.t('prod.validTo'), render: (r: Row) => String(r.validTo ?? '-') },
   {
-    title: '상태',
+    title: i18n.t('prod.status'),
     render: (r: Row) => (
       <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-        {r.isActive ? '활성' : '비활성'}
+        {r.isActive ? i18n.t('prod.activeOn') : i18n.t('prod.activeOff')}
       </Badge>
     ),
   },
@@ -38,30 +40,37 @@ const columns: Column[] = [
 
 /** 가격조건(할인·특가) CRUD. */
 export default function PriceConditions() {
+  const { t } = useTranslation();
   const partners = useOptions('/partners', 'name');
 
   const fields: FormField[] = [
-    { name: 'partnerId', label: '거래처', type: 'select', options: partners },
-    { name: 'name', label: '조건명', required: true, placeholder: '예: VIP 10% 할인' },
+    { name: 'partnerId', label: t('prod.partner'), type: 'select', options: partners },
+    { name: 'name', label: t('prod.condName'), required: true, placeholder: t('prod.condPh') },
     {
       name: 'discountType',
-      label: '할인유형',
+      label: t('prod.discType'),
       required: true,
       type: 'select',
       options: [
-        { value: 'RATE', label: '할인율(%)' },
-        { value: 'AMOUNT', label: '정액할인' },
-        { value: 'FIXED_PRICE', label: '고정가' },
+        { value: 'RATE', label: t('prod.disc.RATE') },
+        { value: 'AMOUNT', label: t('prod.disc.AMOUNT') },
+        { value: 'FIXED_PRICE', label: t('prod.disc.FIXED') },
       ],
     },
-    { name: 'discountValue', label: '할인값', required: true, type: 'number', placeholder: '10' },
-    { name: 'validFrom', label: '유효 시작일', type: 'date' },
-    { name: 'validTo', label: '유효 종료일', type: 'date' },
+    {
+      name: 'discountValue',
+      label: t('prod.discValue'),
+      required: true,
+      type: 'number',
+      placeholder: '10',
+    },
+    { name: 'validFrom', label: t('prod.validFromDate'), type: 'date' },
+    { name: 'validTo', label: t('prod.validToDate'), type: 'date' },
   ];
 
   return (
     <CrudTable
-      title="가격 조건"
+      title={t('prod.priceTitle')}
       path="/price-conditions"
       columns={columns}
       fields={fields}

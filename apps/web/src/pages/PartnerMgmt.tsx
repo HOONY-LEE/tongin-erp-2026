@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { PageHeader, SegmentedControl } from '../components/ui';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -9,18 +10,19 @@ type Tab = 'partner' | 'price';
 
 /** 거래처 관리 — 거래처 목록 + 가격조건 탭. */
 export default function PartnerMgmt() {
+  const { t } = useTranslation();
   const { tab, setTab, inDetail } = useTabParam<Tab>('partner');
   const [refreshKey, setRefreshKey] = useState(0);
   const { updatedAt, touch } = useUpdatedAt();
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'partner', label: '거래처' },
-    { key: 'price', label: '가격 조건' },
+    { key: 'partner', label: t('misc.partners') },
+    { key: 'price', label: t('misc.priceConditions') },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {!inDetail && (
         <PageHeader
-          title="거래처 관리"
+          title={t('misc.partnerMgmt')}
           onRefresh={() => {
             setRefreshKey((k) => k + 1);
             touch();

@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { PARTNER_TYPES, PARTNER_TYPE_LABEL } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import { formatPhone } from '../lib/phone';
@@ -12,10 +14,10 @@ const TYPE_COLOR: Record<string, 'primary' | 'info' | 'warning' | 'success'> = {
 };
 
 const columns: Column[] = [
-  { title: '거래처명', dataIndex: 'name', flex: 1, minWidth: 160 },
-  { title: '연락처', render: (r) => formatPhone(String(r.phone ?? '')) || '-' },
+  { title: i18n.t('misc.partnerName'), dataIndex: 'name', flex: 1, minWidth: 160 },
+  { title: i18n.t('misc.phone'), render: (r) => formatPhone(String(r.phone ?? '')) || '-' },
   {
-    title: '유형',
+    title: i18n.t('misc.type'),
     render: (r: Row) => (
       <Badge variant="subtle" color={TYPE_COLOR[r.type as string] ?? 'neutral'}>
         {TYPE[r.type as string] ?? String(r.type)}
@@ -23,10 +25,10 @@ const columns: Column[] = [
     ),
   },
   {
-    title: '상태',
+    title: i18n.t('misc.status'),
     render: (r: Row) => (
       <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-        {r.isActive ? '사용' : '사용 안 함'}
+        {r.isActive ? i18n.t('misc.on') : i18n.t('misc.off')}
       </Badge>
     ),
   },
@@ -35,22 +37,28 @@ const columns: Column[] = [
 const fields: FormField[] = [
   {
     name: 'type',
-    label: '유형',
+    label: i18n.t('misc.type'),
     required: true,
     type: 'select',
     options: PARTNER_TYPES.map((v) => ({ value: v, label: PARTNER_TYPE_LABEL[v] })),
   },
-  { name: 'name', label: '거래처명', required: true, placeholder: '예: 홈케어파트너스' },
+  {
+    name: 'name',
+    label: i18n.t('misc.partnerName'),
+    required: true,
+    placeholder: i18n.t('misc.partnerPh'),
+  },
   // 외주 작업 배정 알림톡 수신처
-  { name: 'phone', label: '담당자 연락처', alwaysShow: true, type: 'tel' },
-  { name: 'isActive', label: '사용 여부', type: 'boolean' },
+  { name: 'phone', label: i18n.t('misc.contactPhone'), alwaysShow: true, type: 'tel' },
+  { name: 'isActive', label: i18n.t('misc.activeLabel'), type: 'boolean' },
 ];
 
 /** 거래처 — 코드는 서버 발급(PTN-0001), 같은 유형 안에서 이름 중복 불가. 제휴·전속 내용은 제휴·전속 메뉴에서 */
 export default function Partners() {
+  const { t } = useTranslation();
   return (
     <CrudTable
-      title="거래처"
+      title={t('misc.partners')}
       path="/partners"
       columns={columns}
       fields={fields}

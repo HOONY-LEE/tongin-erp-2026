@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -27,8 +28,8 @@ import { thisMonth } from '../lib/workMenus';
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 const CALC: StatusMap = {
-  RATE: { label: '정률', color: 'info' },
-  FIXED: { label: '정액', color: 'primary' },
+  RATE: { label: i18n.t('misc.rule.RATE'), color: 'info' },
+  FIXED: { label: i18n.t('misc.rule.FIXED'), color: 'primary' },
 };
 
 interface Receivable extends Row {
@@ -143,7 +144,7 @@ export default function Settlement() {
   };
 
   const removeRule = async (id: string) => {
-    if (!window.confirm('이 수수료 규칙을 삭제할까요? 되돌릴 수 없습니다.')) return;
+    if (!window.confirm(t('misc.ruleDeleteQ'))) return;
     try {
       await api(`/settlements/commission-rules/${id}`, { method: 'DELETE' });
       toast({ type: 'success', title: t('common.deleted') });
@@ -195,7 +196,9 @@ export default function Settlement() {
     {
       title: t('settlement.value'),
       render: (r) =>
-        r.calcType === 'RATE' ? `${(Number(r.rate) * 100).toFixed(2)}%` : `${won(r.fixedAmount)}원`,
+        r.calcType === 'RATE'
+          ? `${(Number(r.rate) * 100).toFixed(2)}%`
+          : t('misc.won', { v0: won(r.fixedAmount) }),
     },
   ];
   const branchCols: Column[] = [
@@ -211,7 +214,7 @@ export default function Settlement() {
       name: 'name',
       label: t('settlement.ruleName'),
       required: true,
-      placeholder: '직영점 기본 5%',
+      placeholder: t('misc.ruleNamePh'),
     },
     {
       name: 'calcType',
@@ -226,7 +229,7 @@ export default function Settlement() {
     { name: 'rate', label: `${t('settlement.rate')} (0~1)`, type: 'number', placeholder: '0.05' },
     {
       name: 'fixedAmount',
-      label: `${t('settlement.fixed')} (원)`,
+      label: t('misc.wonParen', { v0: t('settlement.fixed') }),
       type: 'number',
       placeholder: '50000',
     },
@@ -240,7 +243,7 @@ export default function Settlement() {
     return (
       <RecordDetail
         loading={!d && rulesLoading}
-        title={d ? d.name : '찾을 수 없습니다'}
+        title={d ? d.name : t('misc.notFound')}
         backLabel={t('settlement.commissionRules')}
         onBack={closeDetail}
         actions={
@@ -266,29 +269,29 @@ export default function Settlement() {
                       value:
                         d.calcType === 'RATE'
                           ? `${(Number(d.rate) * 100).toFixed(2)}%`
-                          : `${won(d.fixedAmount)}원`,
+                          : t('misc.won', { v0: won(d.fixedAmount) }),
                     },
                     { label: t('settlement.priority'), value: d.priority ?? null },
                     {
                       label: t('settlement.org'),
                       value: d.orgUnitId
                         ? (orgs.find((o) => o.value === d.orgUnitId)?.label ?? d.orgUnitId)
-                        : '전체',
+                        : t('misc.all'),
                     },
-                    { label: '서비스라인', value: d.serviceLine ?? '전체' },
-                    { label: '출처', value: d.source ?? '전체' },
+                    { label: t('misc.serviceLine'), value: d.serviceLine ?? t('misc.all') },
+                    { label: t('misc.source'), value: d.source ?? t('misc.all') },
                     {
-                      label: '사용',
+                      label: t('misc.on'),
                       value: (
                         <Badge
                           variant="subtle"
                           color={d.isActive === false ? 'neutral' : 'success'}
                         >
-                          {d.isActive === false ? '미사용' : '사용'}
+                          {d.isActive === false ? t('misc.unused') : t('misc.on')}
                         </Badge>
                       ),
                     },
-                    { label: '등록일', value: d.createdAt?.slice(0, 10) },
+                    { label: t('misc.registeredAt'), value: d.createdAt?.slice(0, 10) },
                   ],
                 },
               ]
@@ -312,7 +315,7 @@ export default function Settlement() {
             onChange={(v) => setOnlyOut(v === 'out')}
             options={[
               { value: 'out', label: t('settlement.onlyOutstanding') },
-              { value: 'all', label: t('settlement.showAll').replace(' 보기', '') },
+              { value: 'all', label: t('settlement.showAll').replace(t('misc.viewSuffix'), '') },
             ]}
           />
         }
