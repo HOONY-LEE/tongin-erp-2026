@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SearchInput } from './ui/SearchInput';
 import { useNavigate } from 'react-router-dom';
 import { PhoneForwarded, Settings2 } from 'lucide-react';
 import { formatPhone } from '../lib/phone';
 import { searchExtensions, transferTo, useExtensions, type Extension } from '../lib/extensions';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, useToast } from './ui';
+import { Button, useToast } from './ui';
 import styles from './SoftphoneBar.module.css';
 
 type Target = Pick<Extension, 'id' | 'label' | 'dept' | 'number'> & { extNo?: string | null };
@@ -71,11 +72,11 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
       </button>
       {open && (
         <div className={styles.xfer} role="dialog" aria-label="돌려주기">
-          <Input
+          <SearchInput
             autoFocus
             value={q}
             placeholder="이름·부서·내선·번호로 찾기"
-            onChange={(e) => setQ(e.target.value)}
+            onChange={setQ}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return;
               if (e.key === 'ArrowDown') {

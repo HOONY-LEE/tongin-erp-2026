@@ -160,6 +160,29 @@ input[placeholder*='검색']:focus {
   box-shadow: 0 0 0 3px rgba(29, 29, 31, 0.08) !important;
 }
 
+/* ── 검색칸(공통) — 누르면(포커스) 돋보기와 안내 글자가 사라지고 글자는 왼쪽 끝부터 ──
+   공용 SearchInput·표 위 검색(.sft-toolbar__search)과, 따로 만든 검색칸(type=search,
+   안내 글자에 '검색'·'찾기')에 모두 걸린다. */
+.sft-toolbar__search-wrap:focus-within .sft-toolbar__search-icon {
+  display: none;
+}
+.sft-toolbar__search-wrap .sft-toolbar__search:focus {
+  padding-left: 12px !important;
+}
+:is(
+    input[type='search'],
+    input[placeholder*='검색'],
+    input[placeholder*='찾기']
+  ):focus::placeholder {
+  color: transparent;
+}
+:is(label, div):has(
+    > :is(input[type='search'], input[placeholder*='검색'], input[placeholder*='찾기']):focus
+  )
+  > svg {
+  display: none;
+}
+
 /* ── 표 아래 쪽 번호 — 작은 네모 버튼 ── */
 .sft-pager__btn {
   min-width: 32px;

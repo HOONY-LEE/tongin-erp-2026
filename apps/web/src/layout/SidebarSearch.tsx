@@ -102,7 +102,6 @@ export function SidebarSearch({
       </button>
     );
 
-  const mac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   return (
     <div className={styles.sideSearch}>
       <div className={styles.sideSearchBox}>
@@ -133,12 +132,10 @@ export function SidebarSearch({
             }
           }}
         />
-        {q ? (
+        {q && (
           <button type="button" aria-label="검색어 지우기" onClick={() => setQ('')}>
             <X size={13} />
           </button>
-        ) : (
-          <kbd>{mac ? '⌘K' : 'Ctrl K'}</kbd>
         )}
       </div>
       {q.trim() && (

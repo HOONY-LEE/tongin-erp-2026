@@ -586,13 +586,18 @@
 /* 사이드바 검색 — 머리 안, 로고 줄 아래. 칸 왼쪽은 메뉴 칸(12px), 돋보기는 메뉴 아이콘 줄(24px) */
 .sideSearch {
   position: relative;
-  padding: 0 12px 10px 12px;
+  /* 로고 줄과 사이 선 — 오른쪽 탭 머리 아래 선과 같은 색 */
+  padding: 10px 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+:global([data-theme='dark']) .sideSearch {
+  border-top-color: rgba(255, 255, 255, 0.06);
 }
 .sideSearchBox {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
+  height: 36px;
   padding: 0 8px 0 11px;
   border: 1px solid var(--ark-color-border);
   border-radius: 8px;
@@ -649,7 +654,7 @@
 .sideSearchList {
   /* 결과는 메뉴 위로 떠서 — 머리 높이는 그대로 */
   position: absolute;
-  top: 38px;
+  top: 50px;
   left: 12px;
   right: 12px;
   max-height: min(420px, 60vh);

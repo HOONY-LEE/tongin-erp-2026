@@ -1,9 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowUpRight, CalendarOff, FileText, Search } from 'lucide-react';
+import { SearchInput } from '../../components/ui/SearchInput';
+import { ArrowUpRight, CalendarOff, FileText } from 'lucide-react';
 import { useApprovalForms, type ApprovalFormDef } from '../../lib/approvals';
 import { api, ApiError } from '../../lib/api';
 import { toLinePayload, type ApprovalDocView, type LineEntry } from '../../lib/approvals';
-import { Button, Input, Modal, useToast } from '../ui';
+import { Button, Modal, useToast } from '../ui';
 import { ApprovalLineEditor } from './ApprovalLineEditor';
 import { FormFieldInputs, formReady, type FormDraft } from './FormFields';
 import { formIcon } from '../../lib/formIcons';
@@ -41,10 +42,7 @@ export function NewDocPicker({
 
   return (
     <Modal open onOpenChange={(o) => !o && onClose()} size="lg" title="새 결재">
-      <div className={styles.search}>
-        <Search size={15} aria-hidden />
-        <Input value={q} placeholder="양식 찾기" onChange={(e) => setQ(e.target.value)} autoFocus />
-      </div>
+      <SearchInput value={q} onChange={setQ} placeholder="양식 찾기" autoFocus />
       <div className={styles.group}>
         <div className={styles.groupLabel}>기본</div>
         <div className={styles.grid}>

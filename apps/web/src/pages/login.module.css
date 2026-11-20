@@ -368,6 +368,14 @@
 .demoOpen .demoChevron {
   transform: rotate(180deg);
 }
+.demoSearch {
+  position: sticky;
+  top: -6px;
+  z-index: 1;
+  margin: -6px -6px 4px;
+  padding: 8px;
+  background: var(--menu-bg);
+}
 .demoMenu {
   position: absolute;
   z-index: 20;

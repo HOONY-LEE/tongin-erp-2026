@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Globe2, Lock, Search, Users, X } from 'lucide-react';
+import { SearchInput } from '../../components/ui/SearchInput';
+import { Globe2, Lock, Users, X } from 'lucide-react';
 import {
   AGENT_VISIBILITY_HINT,
   AGENT_VISIBILITY_LABEL,
@@ -123,13 +124,12 @@ export function SharePicker({
           {!disabled && (
             <>
               <div className={styles.searchRow}>
-                <Search size={14} aria-hidden />
-                <input
-                  className={styles.search}
+                <SearchInput
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  onChange={setQ}
                   placeholder="이름·지점·직책으로 찾기"
-                  aria-label="공유할 직원 찾기"
+                  ariaLabel="공유할 직원 찾기"
+                  style={{ flex: 1 }}
                 />
                 <button
                   type="button"

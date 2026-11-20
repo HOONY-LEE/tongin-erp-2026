@@ -363,26 +363,17 @@ export default function AppLayout() {
                       }}
                     />
                   )}
-                  {/* 한국AI통신 'KAT | 한국AI통신'처럼 — 굵은 이름 | 작은 부제 */}
                   {!collapsed && (
                     <span
                       aria-label={PRODUCT_NAME}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}
+                      style={{
+                        fontSize: fs(15),
+                        fontWeight: 700,
+                        letterSpacing: -0.1,
+                        whiteSpace: 'nowrap',
+                      }}
                     >
-                      <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
-                        통인
-                      </span>
-                      <span
-                        aria-hidden
-                        style={{
-                          width: 1,
-                          height: 14,
-                          background: 'var(--ark-color-border-strong, #c7c7cc)',
-                        }}
-                      />
-                      <span style={{ fontSize: fs(15.5), fontWeight: 600, letterSpacing: -0.2 }}>
-                        Works AI
-                      </span>
+                      TONGIN WORKS
                     </span>
                   )}
                   {/* 사이드바 접기 — 머리 오른쪽 끝 '<' (접힌 상태에서는 로고를 누르면 편다) */}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SearchInput } from '../components/ui/SearchInput';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   CAMPAIGN_CHANNEL_LABEL,
   LEAD_STATUS,
@@ -895,16 +896,12 @@ export default function CampaignEditor() {
                   <>
                     {/* 이름·전화번호 검색 + 작은 드롭다운 필터들 — 고르는 즉시 목록이 바뀐다 */}
                     <div className={styles.filterBar}>
-                      <label className={styles.searchBox}>
-                        <Search size={16} aria-hidden />
-                        <input
-                          className={styles.searchInput}
-                          value={filter.keyword ?? ''}
-                          onChange={(e) => setF('keyword', e.target.value)}
-                          placeholder="이름·전화번호 검색"
-                          aria-label="이름·전화번호 검색"
-                        />
-                      </label>
+                      <SearchInput
+                        value={filter.keyword ?? ''}
+                        onChange={(v) => setF('keyword', v)}
+                        placeholder="이름·전화번호 검색"
+                        width={260}
+                      />
                       <FilterMenu
                         label="지역"
                         columns={3}
