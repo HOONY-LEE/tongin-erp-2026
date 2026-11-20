@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +45,7 @@ const bytes = (s: string) => [...s].reduce((n, c) => n + (c.charCodeAt(0) < 128 
  * 상담 콘솔 전체 보기 권한이 있으면 '전체 문자'(모든 상담원)도 본다. 행을 누르면 보낸 내용.
  */
 export default function SmsHistory() {
+  const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
@@ -65,7 +67,7 @@ export default function SmsHistory() {
     } catch (e) {
       toast({
         type: 'error',
-        title: e instanceof ApiError ? e.message : '문자 내역을 불러오지 못했습니다',
+        title: e instanceof ApiError ? e.message : t('camp.smsLoadFailed'),
       });
     } finally {
       setLoading(false);
@@ -76,15 +78,20 @@ export default function SmsHistory() {
   }, [load]);
 
   const columns: Column[] = [
-    { title: '보낸 시각', dataIndex: 'at', render: (r) => when(r.at as string), width: 116 },
     {
-      title: '고객명',
+      title: t('camp.col.sentAt'),
+      dataIndex: 'at',
+      render: (r) => when(r.at as string),
+      width: 116,
+    },
+    {
+      title: t('camp.col.customer'),
       dataIndex: 'customerName',
       render: (r) => (r.customerName as string | null) ?? '-',
       width: 100,
     },
     {
-      title: '받는 번호',
+      title: t('camp.col.to'),
       dataIndex: 'phone',
       render: (r) => <PhoneCell value={r.phone as string} link={false} />,
       width: 140,
@@ -92,7 +99,7 @@ export default function SmsHistory() {
     ...(scope === 'all'
       ? [
           {
-            title: '보낸 사람',
+            title: t('camp.col.sender'),
             dataIndex: 'employeeName',
             render: (r: Row) =>
               r.employeeName ? (
@@ -109,20 +116,20 @@ export default function SmsHistory() {
         ]
       : []),
     {
-      title: '종류',
-      render: (r) => (bytes(r.body as string) > 90 ? '장문' : '단문'),
+      title: t('camp.col.type'),
+      render: (r) => (bytes(r.body as string) > 90 ? t('camp.long') : t('camp.short')),
       width: 64,
     },
-    { title: '내용', dataIndex: 'body', flex: 1, minWidth: 200 },
+    { title: t('camp.col.content'), dataIndex: 'body', flex: 1, minWidth: 200 },
     {
-      title: '결과',
+      title: t('camp.col.result'),
       dataIndex: 'ok',
       render: (r) => (
         <span
           className={`${styles.stChip} ${r.ok ? styles.st_DONE : styles.st_OPEN}`}
           title={(r.reason as string | null) ?? undefined}
         >
-          {r.ok ? '보냄' : '실패'}
+          {r.ok ? t('camp.sent') : t('camp.st.FAILED')}
         </span>
       ),
       width: 80,
@@ -131,11 +138,7 @@ export default function SmsHistory() {
   ];
 
   return (
-    <ListPage
-      fit
-      title="문자 발송 내역"
-      subtitle="상담 콘솔에서 보낸 문자입니다. 행을 누르면 보낸 내용을 봅니다."
-    >
+    <ListPage fit title={t('camp.smsHistory')} subtitle={t('camp.smsHistorySub')}>
       <DataTable
         tabs={
           canAll ? (
@@ -143,8 +146,8 @@ export default function SmsHistory() {
               value={scope}
               onChange={(x) => setScope(x as 'mine' | 'all')}
               options={[
-                { value: 'mine', label: '내 문자' },
-                { value: 'all', label: '전체 문자' },
+                { value: 'mine', label: t('camp.mySms') },
+                { value: 'all', label: t('camp.allSms') },
               ]}
             />
           ) : undefined
@@ -157,12 +160,12 @@ export default function SmsHistory() {
         loading={loading}
         onRowClick={(r) => setOpen(r as unknown as SmsRow)}
         exportable
-        exportFileName="문자발송내역"
+        exportFileName={t('camp.smsExport')}
       />
       <Modal
         open={!!open}
         onOpenChange={(o) => !o && setOpen(null)}
-        title={open ? `${formatPhone(open.phone)}에 보낸 문자` : ''}
+        title={open ? t('camp.smsTo', { v0: formatPhone(open.phone) }) : ''}
       >
         {open && (
           <div className={styles.smsDetail}>
@@ -176,11 +179,11 @@ export default function SmsHistory() {
               width={250}
             />
             <dl className={styles.fuInfo}>
-              <dt>보낸 시각</dt>
+              <dt>{t('camp.col.sentAt')}</dt>
               <dd>{new Date(open.at).toLocaleString('ko-KR')}</dd>
-              <dt>보낸 사람</dt>
+              <dt>{t('camp.col.sender')}</dt>
               <dd>{open.employeeName ?? '-'}</dd>
-              <dt>고객</dt>
+              <dt>{t('camp.kind.CUSTOMER')}</dt>
               <dd>
                 {open.customerId ? (
                   <button
@@ -188,35 +191,35 @@ export default function SmsHistory() {
                     className={styles.link}
                     onClick={() => navigate(`/customers?detail=${open.customerId}`)}
                   >
-                    {open.customerName ?? '고객'}
+                    {open.customerName ?? t('camp.kind.CUSTOMER')}
                   </button>
                 ) : (
                   (open.customerName ?? '-')
                 )}
               </dd>
-              <dt>결과</dt>
+              <dt>{t('camp.col.result')}</dt>
               <dd className={styles.smsResult}>
                 {open.ok ? (
                   <>
-                    <CheckCircle2 size={14} color="#16a34a" /> 보냄
+                    <CheckCircle2 size={14} color="#16a34a" /> {t('camp.sent')}
                   </>
                 ) : (
                   <>
-                    <XCircle size={14} color="#dc2626" /> 실패
+                    <XCircle size={14} color="#dc2626" /> {t('camp.st.FAILED')}
                   </>
                 )}
                 {open.reason && ` — ${open.reason}`}
               </dd>
               {open.callId && (
                 <>
-                  <dt>상담</dt>
+                  <dt>{t('camp.consult')}</dt>
                   <dd>
                     <button
                       type="button"
                       className={styles.link}
                       onClick={() => navigate(`/callcenter/${open.callId}`)}
                     >
-                      콜 {open.callNo ?? open.callId.slice(0, 8).toUpperCase()}
+                      {t('camp.call')} {open.callNo ?? open.callId.slice(0, 8).toUpperCase()}
                     </button>
                   </dd>
                 </>
