@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 /**
  * 데스크톱 앱 설치 파일 — GitHub Releases(공개 저장소)의 최신 릴리스에서 받는다.
  * 파일 이름은 desktop/package.json build.*.artifactName, 올리는 일은 .github/workflows/desktop-release.yml.
@@ -11,20 +12,20 @@ export const DESKTOP_TARGETS: Record<
   { label: string; hint: string; file: string; os: 'mac' | 'win' }
 > = {
   'mac-arm64': {
-    label: 'macOS (Apple 실리콘)',
-    hint: 'M1·M2·M3·M4 칩 맥',
+    label: i18n.t('misc2.dl.macArm'),
+    hint: i18n.t('misc2.dl.macArmDesc'),
     file: 'TonginAIWorks-mac-arm64.dmg',
     os: 'mac',
   },
   'mac-x64': {
-    label: 'macOS (인텔)',
-    hint: '2020년 이전 인텔 칩 맥',
+    label: i18n.t('misc2.dl.macIntel'),
+    hint: i18n.t('misc2.dl.macIntelDesc'),
     file: 'TonginAIWorks-mac-x64.dmg',
     os: 'mac',
   },
   'win-x64': {
     label: 'Windows',
-    hint: 'Windows 10·11 (64비트)',
+    hint: i18n.t('misc2.dl.win'),
     file: 'TonginAIWorks-win-x64.exe',
     os: 'win',
   },

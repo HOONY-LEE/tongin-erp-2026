@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 // 카카오(다음) 우편번호 서비스 — 무료·키 불필요. 스크립트를 지연 로드해 팝업 검색.
 const SRC = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
 
@@ -25,7 +26,7 @@ function loadScript(): Promise<void> {
     const s = document.createElement('script');
     s.src = SRC;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('우편번호 서비스를 불러오지 못했습니다.'));
+    s.onerror = () => reject(new Error(i18n.t('misc2.postcodeFailed')));
     document.head.appendChild(s);
   });
   return loading;

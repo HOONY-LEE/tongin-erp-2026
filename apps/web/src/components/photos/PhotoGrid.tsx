@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { ChevronLeft, ChevronRight, ImageOff, Trash2, X } from 'lucide-react';
@@ -16,13 +17,17 @@ export interface PendingPhoto {
 const when = (iso: string) => fmtDateTime(iso);
 
 function Thumb({ photo, onOpen }: { photo: WorkPhotoMeta; onOpen: () => void }) {
+  const { t } = useTranslation();
   const { url, failed } = usePhotoUrl(photo.id);
   return (
     <button
       type="button"
       className={styles.tile}
       onClick={onOpen}
-      aria-label={`${WORK_PHOTO_KIND_LABEL[photo.kind]} 사진 크게 보기${photo.caption ? ` — ${photo.caption}` : ''}`}
+      aria-label={t('misc2.viewLargeOf', {
+        v0: WORK_PHOTO_KIND_LABEL[photo.kind],
+        v1: photo.caption ? ` — ${photo.caption}` : '',
+      })}
     >
       {url ? (
         <img src={url} alt="" className={styles.img} />
@@ -44,13 +49,14 @@ export function PhotoGrid({
   photos,
   pending = [],
   onDelete,
-  emptyText = '사진이 없습니다',
+  emptyText,
 }: {
   photos: WorkPhotoMeta[];
   pending?: PendingPhoto[];
   onDelete?: (photo: WorkPhotoMeta) => Promise<boolean>;
   emptyText?: string;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState<number | null>(null);
 
   // 지워서 목록이 줄면 크게 보기 위치를 맞춘다
@@ -59,7 +65,7 @@ export function PhotoGrid({
   }, [open, photos.length]);
 
   if (!photos.length && !pending.length) {
-    return <div className={styles.empty}>{emptyText}</div>;
+    return <div className={styles.empty}>{emptyText ?? t('misc2.noPhotos')}</div>;
   }
 
   return (
@@ -72,7 +78,11 @@ export function PhotoGrid({
           <div key={p.key} className={styles.tile} aria-busy={!p.error}>
             <img src={p.localUrl} alt="" className={styles.img} style={{ opacity: 0.55 }} />
             <span className={styles.overlay}>
-              {p.error ? <span className={styles.failText}>실패</span> : <Spinner size="sm" />}
+              {p.error ? (
+                <span className={styles.failText}>{t('misc2.failed')}</span>
+              ) : (
+                <Spinner size="sm" />
+              )}
             </span>
           </div>
         ))}
@@ -103,6 +113,7 @@ function Lightbox({
   onClose: () => void;
   onDelete?: (photo: WorkPhotoMeta) => Promise<boolean>;
 }) {
+  const { t } = useTranslation();
   const photo = photos[index];
   const { url, failed } = usePhotoUrl(photo.id);
   const [busy, setBusy] = useState(false);
@@ -132,7 +143,7 @@ function Lightbox({
 
   const remove = async () => {
     if (!onDelete || busy) return;
-    if (!window.confirm('이 사진을 지울까요? 지우면 되돌릴 수 없습니다.')) return;
+    if (!window.confirm(t('misc2.photoDeleteQ'))) return;
     setBusy(true);
     try {
       if ((await onDelete(photo)) && photos.length <= 1) onClose();
@@ -146,7 +157,7 @@ function Lightbox({
       className={styles.lightbox}
       role="dialog"
       aria-modal="true"
-      aria-label="사진 크게 보기"
+      aria-label={t('misc2.viewLarge')}
       onClick={onClose}
       onTouchStart={(e) => setTouchX(e.touches[0]?.clientX ?? null)}
       onTouchEnd={(e) => {
@@ -169,12 +180,17 @@ function Lightbox({
               className={styles.lbBtn}
               onClick={() => void remove()}
               disabled={busy}
-              aria-label="사진 지우기"
+              aria-label={t('misc2.photoDelete')}
             >
               {busy ? <Spinner size="sm" /> : <Trash2 size={20} />}
             </button>
           )}
-          <button type="button" className={styles.lbBtn} onClick={onClose} aria-label="닫기">
+          <button
+            type="button"
+            className={styles.lbBtn}
+            onClick={onClose}
+            aria-label={t('misc2.close')}
+          >
             <X size={22} />
           </button>
         </span>
@@ -188,7 +204,7 @@ function Lightbox({
             onClick={(e) => e.stopPropagation()}
           />
         ) : failed ? (
-          <span className={styles.lbInfo}>사진을 불러오지 못했습니다</span>
+          <span className={styles.lbInfo}>{t('misc2.photoLoadFailed')}</span>
         ) : (
           <Spinner />
         )}
@@ -200,7 +216,7 @@ function Lightbox({
               e.stopPropagation();
               prev();
             }}
-            aria-label="이전 사진"
+            aria-label={t('misc2.prevPhoto')}
           >
             <ChevronLeft size={28} />
           </button>
@@ -213,7 +229,7 @@ function Lightbox({
               e.stopPropagation();
               next();
             }}
-            aria-label="다음 사진"
+            aria-label={t('misc2.nextPhoto')}
           >
             <ChevronRight size={28} />
           </button>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, MapPin, RefreshCw, Users } from 'lucide-react';
@@ -11,6 +12,7 @@ type Filter = 'TODAY' | 'UPCOMING' | 'ALL';
 
 /** 현장 첫 화면 — 오늘 할 일이 맨 위에 오도록. */
 export default function FieldWorkOrders() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const toast = useToast();
   const [rows, setRows] = useState<FieldWorkOrder[]>([]);
@@ -22,7 +24,7 @@ export default function FieldWorkOrders() {
     try {
       setRows(await api<FieldWorkOrder[]>('/field/work-orders'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '조회에 실패했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('misc2.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -62,11 +64,13 @@ export default function FieldWorkOrders() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <h1 style={{ margin: 0, fontSize: fs(22), fontWeight: 700, flex: 1 }}>내 작업</h1>
+        <h1 style={{ margin: 0, fontSize: fs(22), fontWeight: 700, flex: 1 }}>
+          {t('misc2.myWork')}
+        </h1>
         <button
           type="button"
           onClick={() => void load()}
-          aria-label="새로고침"
+          aria-label={t('misc2.refresh')}
           style={{
             display: 'grid',
             placeItems: 'center',
@@ -86,9 +90,9 @@ export default function FieldWorkOrders() {
         value={filter}
         onChange={(v) => setFilter(v as Filter)}
         options={[
-          { value: 'TODAY', label: `오늘 (${counts.TODAY})` },
-          { value: 'UPCOMING', label: `예정 (${counts.UPCOMING})` },
-          { value: 'ALL', label: `전체 (${counts.ALL})` },
+          { value: 'TODAY', label: t('misc2.todayN', { v0: counts.TODAY }) },
+          { value: 'UPCOMING', label: t('misc2.upcomingN', { v0: counts.UPCOMING }) },
+          { value: 'ALL', label: t('misc2.allN', { v0: counts.ALL }) },
         ]}
       />
 
@@ -104,7 +108,7 @@ export default function FieldWorkOrders() {
             color: 'var(--ark-color-text-tertiary)',
           }}
         >
-          {filter === 'TODAY' ? '오늘 배정된 작업이 없습니다' : '작업이 없습니다'}
+          {filter === 'TODAY' ? t('misc2.noToday') : t('misc2.noWork')}
         </div>
       ) : (
         groups.map(([day, list]) => (

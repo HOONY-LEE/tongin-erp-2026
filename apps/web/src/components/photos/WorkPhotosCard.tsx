@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { WORK_PHOTO_KINDS, WORK_PHOTO_KIND_LABEL, type WorkPhotoMeta } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
@@ -7,6 +8,7 @@ import { fs } from '../../lib/fontScale';
 
 /** 관리자 작업 상세 — 현장에서 올린 사진(조회만). 종류별로 묶어 보여 준다 */
 export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {
+  const { t } = useTranslation();
   const [photos, setPhotos] = useState<WorkPhotoMeta[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,7 +17,7 @@ export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {
     try {
       setPhotos(await api<WorkPhotoMeta[]>(`/work-orders/${workOrderId}/photos`));
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '사진을 불러오지 못했습니다');
+      setError(e instanceof ApiError ? e.message : t('misc2.photoLoadFailed'));
     }
   }, [workOrderId]);
 
@@ -25,11 +27,11 @@ export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {
 
   return (
     <PageCard
-      title="현장 사진"
+      title={t('misc2.sitePhotos')}
       count={photos?.length}
       actions={
         <Button variant="outline" size="sm" onClick={() => void load()}>
-          새로고침
+          {t('misc2.refresh')}
         </Button>
       }
     >
@@ -41,7 +43,7 @@ export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {
         </div>
       ) : !photos.length ? (
         <div style={{ color: 'var(--ark-color-text-tertiary)', fontSize: fs(14) }}>
-          현장에서 올린 사진이 없습니다
+          {t('misc2.noSitePhotos')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

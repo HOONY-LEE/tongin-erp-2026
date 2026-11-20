@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { PRODUCT_NAME } from '@tongin/shared';
@@ -15,6 +16,7 @@ import styles from './desktopDownload.module.css';
  * 웹 사이드바 아래 다운로드 아이콘에서 연다(데스크톱 앱 안에서는 버튼이 없다).
  */
 export function DesktopDownloadModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const [found, setFound] = useState<{ target: DesktopTarget | null; sure: boolean } | null>(null);
   useEffect(() => {
     void detectDesktopTarget().then(setFound);
@@ -24,15 +26,19 @@ export function DesktopDownloadModal({ onClose }: { onClose: () => void }) {
   const Icon = (t: DesktopTarget) => (DESKTOP_TARGETS[t].os === 'mac' ? AppleLogo : WindowsLogo);
 
   return (
-    <Modal open onOpenChange={(o) => !o && onClose()} title={`${PRODUCT_NAME} 데스크톱 앱`}>
+    <Modal
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={t('misc2.desktopApp', { v0: PRODUCT_NAME })}
+    >
       <div className={styles.body}>
         <p className={styles.lead}>
-          브라우저 없이 바로 열리는 앱입니다. 화면은 웹과 같고, 웹이 바뀌면 앱도 자동으로 새 화면이
-          됩니다.
+          {t('misc2.desktopDesc1')}
+          {t('misc2.desktopDesc2')}
         </p>
 
         {!found ? (
-          <div className={styles.main}>이 컴퓨터를 확인하는 중…</div>
+          <div className={styles.main}>{t('misc2.detecting')}</div>
         ) : main ? (
           <div className={styles.main}>
             <span className={styles.mainIcon}>
@@ -44,10 +50,8 @@ export function DesktopDownloadModal({ onClose }: { onClose: () => void }) {
             <div className={styles.mainText}>
               <b>{DESKTOP_TARGETS[main].label}</b>
               <span>
-                {found.sure
-                  ? '이 컴퓨터에 맞는 설치 파일'
-                  : '맥 칩을 알 수 없어 Apple 실리콘으로 골랐습니다'}{' '}
-                · {DESKTOP_TARGETS[main].hint}
+                {found.sure ? t('misc2.forThis') : t('misc2.chipUnknown')} ·{' '}
+                {DESKTOP_TARGETS[main].hint}
               </span>
             </div>
             <Button
@@ -55,22 +59,20 @@ export function DesktopDownloadModal({ onClose }: { onClose: () => void }) {
               leftIcon={<Download size={16} />}
               onClick={() => startDownload(main)}
             >
-              다운로드
+              {t('misc2.download')}
             </Button>
           </div>
         ) : (
           <div className={styles.main}>
             <div className={styles.mainText}>
-              <b>이 기기에는 데스크톱 앱이 없습니다</b>
-              <span>
-                맥이나 윈도우 컴퓨터에서 설치해 주세요. 휴대폰·태블릿은 웹으로 쓰면 됩니다.
-              </span>
+              <b>{t('misc2.noDesktop')}</b>
+              <span>{t('misc2.installOnPc')}</span>
             </div>
           </div>
         )}
 
         <div className={styles.others}>
-          <span className={styles.othersTitle}>다른 컴퓨터용</span>
+          <span className={styles.othersTitle}>{t('misc2.otherPc')}</span>
           {others.map((t) => {
             const I = Icon(t);
             return (
@@ -90,15 +92,15 @@ export function DesktopDownloadModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className={styles.note}>
-          <b>처음 설치할 때</b>
+          <b>{t('misc2.firstInstall')}</b>
           <span>
-            맥: dmg를 열어 앱을 응용 프로그램 폴더로 끈 뒤 엽니다. &lsquo;확인되지 않은
-            개발자&rsquo; 창이 뜨면 <b>시스템 설정 → 개인정보 보호 및 보안</b> 아래쪽의{' '}
-            <b>그래도 열기</b>를 한 번 누릅니다.
+            {t('misc2.mac1')}
+            {t('misc2.mac2')} <b>{t('misc2.mac3')}</b> {t('misc2.mac4')} <b>{t('misc2.mac5')}</b>
+            {t('misc2.mac6')}
           </span>
           <span>
-            윈도우: 설치 파일 실행 후 &lsquo;Windows의 PC 보호&rsquo; 창이 뜨면{' '}
-            <b>추가 정보 → 실행</b>을 누릅니다.
+            {t('misc2.win1')} <b>{t('misc2.win2')}</b>
+            {t('misc2.win3')}
           </span>
         </div>
       </div>

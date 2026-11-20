@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useMemo } from 'react';
 import { fmtDate } from '../lib/dateFormat';
 import { useDirectory } from './approvals';
@@ -20,7 +21,9 @@ export const ymd = (v: unknown) => (v ? String(v).slice(0, 10) : '');
 /** 작성 시각 — 2026. 10. 29. */
 export const shortDate = (v: unknown) => fmtDate(v);
 export const won = (v: unknown) =>
-  v === null || v === undefined || v === '' ? '' : `${Number(v).toLocaleString('ko-KR')}원`;
+  v === null || v === undefined || v === ''
+    ? ''
+    : i18n.t('misc2.won', { v0: Number(v).toLocaleString('ko-KR') });
 
 /** 오늘(한국 날짜)부터 그 날까지 남은 일수. 지났으면 음수 */
 export function daysLeft(date: unknown): number | null {
@@ -38,7 +41,7 @@ export function ddayInfo(
 ): { label: string; color: BadgeColor; level: 'over' | 'soon' | 'ok' } | null {
   const d = daysLeft(date);
   if (d === null) return null;
-  if (d < 0) return { label: `${-d}일 지남`, color: 'error', level: 'over' };
+  if (d < 0) return { label: i18n.t('misc2.daysOver', { v0: -d }), color: 'error', level: 'over' };
   if (d === 0) return { label: 'D-day', color: 'warning', level: 'soon' };
   return d <= warnDays
     ? { label: `D-${d}`, color: 'warning', level: 'soon' }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -12,6 +13,7 @@ import { fs } from '../lib/fontScale';
  * 여기는 한 손 조작·큰 터치영역·세로 스크롤만 전제로 한다.
  */
 export default function FieldLayout() {
+  const { t } = useTranslation();
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
   // 관리자도 현장 화면을 열어볼 수 있어야 하므로 ERP로 돌아가는 문을 남긴다
@@ -70,7 +72,7 @@ export default function FieldLayout() {
           >
             통
           </span>
-          <span style={{ fontWeight: 700, fontSize: fs(16) }}>현장</span>
+          <span style={{ fontWeight: 700, fontSize: fs(16) }}>{t('misc2.field')}</span>
         </button>
 
         <span
@@ -92,12 +94,12 @@ export default function FieldLayout() {
             variant="ghost"
             size="sm"
             onClick={() => navigate('/dashboard')}
-            aria-label="관리자 화면"
+            aria-label={t('misc2.adminScreen')}
           >
             <ShieldCheck size={18} />
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={logout} aria-label="로그아웃">
+        <Button variant="ghost" size="sm" onClick={logout} aria-label={t('misc2.logout')}>
           <LogOut size={18} />
         </Button>
       </header>

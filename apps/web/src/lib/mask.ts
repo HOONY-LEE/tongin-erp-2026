@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 /**
  * 개인정보 가리기 — 표에서 고른 칸(전화·주소·이름)을 화면이나 내려받기 파일에서 가린다.
  * 기본은 다 보인다. 가린 값은 화면 글자만 바꾼다(서버 데이터는 그대로).
@@ -5,17 +6,27 @@
 export type MaskKind = 'phone' | 'address' | 'name';
 
 export const MASK_KIND_LABEL: Record<MaskKind, string> = {
-  phone: '전화번호',
-  address: '주소',
-  name: '이름',
+  phone: i18n.t('ui.mask.phone'),
+  address: i18n.t('ui.mask.address'),
+  name: i18n.t('ui.mask.name'),
 };
 
 /** 칸 제목으로 어떤 정보인지 짐작한다 — 맞지 않으면 Column.mask로 지정하거나 false로 끈다 */
 export function guessMaskKind(title: string): MaskKind | null {
   const t = title.replace(/\s/g, '');
-  if (/전화|연락처|휴대폰|핸드폰|phone/i.test(t)) return 'phone';
-  if (/주소|출발지|도착지|^출발$|^도착$|address/i.test(t)) return 'address';
-  if (/고객명|^고객$|이름|성명|신청자|받는사람/.test(t)) return 'name';
+  if (/전화|연락처|휴대폰|핸드폰|phone|电话|手机/i.test(t)) return 'phone';
+  if (
+    /주소|출발지|도착지|^출발$|^도착$|address|^(from|to|origin|destination)$|地址|出发|到达|目的地/i.test(
+      t,
+    )
+  )
+    return 'address';
+  if (
+    /고객명|^고객$|이름|성명|신청자|받는사람|^(customer|name|recipient|employeename)s?$|姓名|^客户名?$|收件人/i.test(
+      t,
+    )
+  )
+    return 'name';
   return null;
 }
 
