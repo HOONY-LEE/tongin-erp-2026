@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Lock, Smartphone } from 'lucide-react';
 import {
@@ -66,6 +67,7 @@ const sameSet = (a: Set<string>, b: Set<string>) =>
  * 슈퍼관리자가 아닌 관리자는 자기에게 없는 권한 칸을 건드릴 수 없다(서버도 같은 규칙).
  */
 export default function PermissionGroups() {
+  const { t } = useTranslation();
   const { can, user } = useAuth();
   const toast = useToast();
   const [roles, setRoles] = useState<RoleView[] | null>(null);
@@ -88,7 +90,7 @@ export default function PermissionGroups() {
       const rows = await api<RoleView[]>('/roles');
       setRoles(rows);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.loadFailed') });
       setRoles([]);
     }
   }, [toast]);
@@ -184,17 +186,17 @@ export default function PermissionGroups() {
         method: 'PUT',
         body: JSON.stringify({ permissions: [...draft] }),
       });
-      toast({ type: 'success', title: `'${selected.name}' 권한을 저장했습니다` });
+      toast({ type: 'success', title: t('acc.permsSaved', { v0: selected.name }) });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.saveFailed') });
     } finally {
       setSaving(false);
     }
   };
 
   const back = () => {
-    if (dirty && !window.confirm('저장하지 않은 변경이 있습니다. 버리고 목록으로 갈까요?')) return;
+    if (dirty && !window.confirm(t('acc.discardQ'))) return;
     closeDetail();
   };
 
@@ -211,11 +213,11 @@ export default function PermissionGroups() {
           permissions: (from?.permissions ?? []).filter((c) => c !== '*'),
         }),
       });
-      toast({ type: 'success', title: `'${created.name}' 그룹을 만들었습니다` });
+      toast({ type: 'success', title: t('acc.groupCreated', { v0: created.name }) });
       await load();
       openDetail(created.id);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '만들지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.createFailed') });
       throw e;
     }
   };
@@ -231,34 +233,39 @@ export default function PermissionGroups() {
           fieldApp: values.fieldApp === true,
         }),
       });
-      toast({ type: 'success', title: '저장했습니다' });
+      toast({ type: 'success', title: t('acc.saved') });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.saveFailed') });
       throw e;
     }
   };
 
   const onDelete = async () => {
     if (!selected) return;
-    if (!window.confirm(`'${selected.name}' 그룹을 지울까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t('acc.groupDeleteQ', { v0: selected.name }))) return;
     try {
       await api(`/roles/${selected.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('acc.deleted') });
       closeDetail();
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.deleteFailed') });
     }
   };
 
   const createFields: FormField[] = useMemo(
     () => [
-      { name: 'name', label: '그룹 이름', required: true, placeholder: '예: 정산 담당' },
-      { name: 'description', label: '설명', alwaysShow: true, placeholder: '이 그룹이 하는 일' },
+      {
+        name: 'name',
+        label: t('acc.groupName'),
+        required: true,
+        placeholder: t('acc.groupNamePh'),
+      },
+      { name: 'description', label: t('acc.desc'), alwaysShow: true, placeholder: t('acc.descPh') },
       {
         name: 'copyFrom',
-        label: '권한 복사해 오기',
+        label: t('acc.copyFrom'),
         type: 'select',
         alwaysShow: true,
         options: (roles ?? [])
@@ -267,7 +274,7 @@ export default function PermissionGroups() {
       },
       {
         name: 'fieldApp',
-        label: '로그인하면 현장앱으로 들어가기',
+        label: t('acc.fieldApp'),
         type: 'boolean',
         alwaysShow: true,
       },
@@ -275,11 +282,11 @@ export default function PermissionGroups() {
     [roles],
   );
   const editFields: FormField[] = [
-    { name: 'name', label: '그룹 이름', required: true },
-    { name: 'description', label: '설명', alwaysShow: true },
+    { name: 'name', label: t('acc.groupName'), required: true },
+    { name: 'description', label: t('acc.desc'), alwaysShow: true },
     {
       name: 'fieldApp',
-      label: '로그인하면 현장앱으로 들어가기',
+      label: t('acc.fieldApp'),
       type: 'boolean',
       alwaysShow: true,
     },
@@ -296,38 +303,39 @@ export default function PermissionGroups() {
   if (!selectedId) {
     const columns: Column[] = [
       {
-        title: '그룹 이름',
+        title: t('acc.groupName'),
         dataIndex: 'name',
         minWidth: 160,
         render: (r) => (
           <span className={styles.groupName}>
-            {r.isSuperAdmin ? <Lock size={13} aria-label="고정" /> : null}
+            {r.isSuperAdmin ? <Lock size={13} aria-label={t('acc.locked')} /> : null}
             {String(r.name)}
           </span>
         ),
       },
-      { title: '설명', dataIndex: 'description', minWidth: 200, flex: 1 },
-      { title: '계정', dataIndex: 'userCount', width: 80, numeric: true },
+      { title: t('acc.desc'), dataIndex: 'description', minWidth: 200, flex: 1 },
+      { title: t('acc.accounts'), dataIndex: 'userCount', width: 80, numeric: true },
       {
-        title: '권한',
+        title: t('acc.perms'),
         dataIndex: 'permCount',
         width: 100,
-        render: (r) => (r.isSuperAdmin ? '전체 권한' : `${String(r.permCount)}개`),
+        render: (r) =>
+          r.isSuperAdmin ? t('acc.allPerms') : t('acc.countN', { v0: String(r.permCount) }),
       },
-      { title: '추천 직책', dataIndex: 'positionNames', minWidth: 120 },
+      { title: t('acc.recPositions'), dataIndex: 'positionNames', minWidth: 120 },
       {
-        title: '구분',
+        title: t('acc.kind'),
         width: 150,
         render: (r) => (
           <span className={styles.badges}>
             {r.isSystem ? (
               <Badge variant="subtle" color="neutral" size="sm">
-                기본 그룹
+                {t('acc.builtIn')}
               </Badge>
             ) : null}
             {r.fieldApp ? (
               <Badge variant="subtle" color="info" size="sm">
-                현장앱
+                {t('acc.fieldAppShort')}
               </Badge>
             ) : null}
           </span>
@@ -348,7 +356,7 @@ export default function PermissionGroups() {
           toolbarActions={
             canCreate ? (
               <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-                + 새 그룹
+                {t('acc.newGroupBtn')}
               </Button>
             ) : undefined
           }
@@ -356,7 +364,7 @@ export default function PermissionGroups() {
         <FormModal
           open={createOpen}
           onOpenChange={setCreateOpen}
-          title="새 권한 그룹"
+          title={t('acc.newGroup')}
           size="md"
           fields={createFields}
           onSubmit={onCreate}
@@ -369,8 +377,8 @@ export default function PermissionGroups() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
-        title={selected?.name ?? '권한 그룹을 찾을 수 없습니다'}
-        breadcrumbs={[{ label: '권한 그룹', onClick: back }]}
+        title={selected?.name ?? t('acc.groupNotFound')}
+        breadcrumbs={[{ label: t('acc.groups'), onClick: back }]}
         actions={
           selected && !selected.isSuperAdmin ? (
             <>
@@ -382,18 +390,18 @@ export default function PermissionGroups() {
                   disabled={selected.isSystem || selected.userCount > 0}
                   title={
                     selected.isSystem
-                      ? '기본 그룹은 지울 수 없습니다'
+                      ? t('acc.builtInNoDelete')
                       : selected.userCount > 0
-                        ? '이 그룹을 쓰는 계정이 있어 지울 수 없습니다'
+                        ? t('acc.inUse')
                         : undefined
                   }
                 >
-                  그룹 삭제
+                  {t('acc.deleteGroup')}
                 </Button>
               )}
               {canUpdate && (
                 <Button variant="primary" size="sm" onClick={() => setEditOpen(true)}>
-                  이름·설명 고치기
+                  {t('acc.editNameDesc')}
                 </Button>
               )}
             </>
@@ -404,24 +412,25 @@ export default function PermissionGroups() {
         <div className={styles.panel}>
           <div className={styles.detailHead}>
             <div className={styles.detailTitle}>
-              <span className={styles.sub}>{selected.description || '설명 없음'}</span>
+              <span className={styles.sub}>{selected.description || t('acc.noDesc')}</span>
               <span className={styles.badges}>
                 {selected.isSystem && (
                   <Badge variant="subtle" color="neutral" size="sm">
-                    기본 그룹
+                    {t('acc.builtIn')}
                   </Badge>
                 )}
                 {selected.fieldApp && (
                   <Badge variant="subtle" color="info" size="sm">
-                    <Smartphone size={11} /> 현장앱으로 로그인
+                    <Smartphone size={11} /> {t('acc.fieldLogin')}
                   </Badge>
                 )}
                 <Badge variant="subtle" color="primary" size="sm">
-                  계정 {selected.userCount}개
+                  {t('acc.accounts')} {selected.userCount}
+                  {t('acc.countSuffix')}
                 </Badge>
                 {selected.positions.length > 0 && (
                   <Badge variant="subtle" color="neutral" size="sm">
-                    추천 직책: {selected.positions.join(', ')}
+                    {t('acc.recPositionsColon')} {selected.positions.join(', ')}
                   </Badge>
                 )}
               </span>
@@ -430,24 +439,21 @@ export default function PermissionGroups() {
 
           {selected.isSuperAdmin ? (
             <div className={styles.notice}>
-              슈퍼관리자는 <b>전체 권한</b>으로 고정되어 있습니다. 새 메뉴가 생겨도 자동으로
-              포함되며, 이 그룹의 권한은 고칠 수 없습니다.
+              {t('acc.superHelp1')} <b>{t('acc.allPerms')}</b>
+              {t('acc.superHelp2')}
+              {t('acc.superHelp3')}
             </div>
           ) : !canUpdate ? (
-            <div className={styles.notice}>
-              권한을 볼 수만 있습니다(권한 그룹 · 수정 권한 필요).
-            </div>
+            <div className={styles.notice}>{t('acc.viewOnly')}</div>
           ) : !isWildcard ? (
-            <div className={styles.notice}>
-              내게 있는 권한까지만 넣고 뺄 수 있습니다. 흐린 칸은 내게 없는 권한입니다.
-            </div>
+            <div className={styles.notice}>{t('acc.ownOnly')}</div>
           ) : null}
 
           {editable && (
             <div className={styles.toolbar}>
-              <span className={styles.sub}>한 번에:</span>
+              <span className={styles.sub}>{t('acc.bulk')}</span>
               <Button variant="outline" size="sm" onClick={() => setMany(ALL_CODES, true)}>
-                모두 켜기
+                {t('acc.allOn')}
               </Button>
               <Button
                 variant="outline"
@@ -457,10 +463,10 @@ export default function PermissionGroups() {
                   setMany(READ_CODES, true);
                 }}
               >
-                조회만
+                {t('acc.readOnly')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => setMany(ALL_CODES, false)}>
-                모두 끄기
+                {t('acc.allOff')}
               </Button>
             </div>
           )}
@@ -469,14 +475,14 @@ export default function PermissionGroups() {
             <table className={styles.matrix}>
               <thead>
                 <tr>
-                  <th style={{ width: '28%' }}>메뉴</th>
+                  <th style={{ width: '28%' }}>{t('acc.menu')}</th>
                   {CRUD_ACTIONS.map((a) => (
                     <th key={a} style={{ width: '9%' }}>
                       {CRUD_ACTION_LABEL[a]}
                     </th>
                   ))}
-                  <th>특수 권한</th>
-                  <th style={{ width: '8%' }}>전체</th>
+                  <th>{t('acc.special')}</th>
+                  <th style={{ width: '8%' }}>{t('acc.scope.ALL')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -566,26 +572,31 @@ export default function PermissionGroups() {
 
           {editable && dirty && (
             <div className={styles.saveBar}>
-              <span className={styles.sub}>저장하지 않은 변경 {changedCount}개</span>
+              <span className={styles.sub}>
+                {t('acc.unsaved')} {changedCount}
+                {t('acc.countSuffix')}
+              </span>
               <span className={styles.spacer} />
               <Button variant="ghost" size="sm" onClick={() => setDraft(new Set(saved))}>
-                되돌리기
+                {t('acc.revert')}
               </Button>
               <Button variant="primary" size="sm" loading={saving} onClick={() => void save()}>
-                저장
+                {t('acc.save')}
               </Button>
             </div>
           )}
 
           {history.length > 0 && (
             <div className={styles.history}>
-              <span className={styles.panelTitle}>변경 이력</span>
+              <span className={styles.panelTitle}>{t('acc.history')}</span>
               {history.slice(0, 10).map((h, i) => {
                 const prev = history[i + 1]?.after?.permissions;
                 const cur = h.after?.permissions;
                 const added = cur && prev ? cur.filter((c) => !prev.includes(c)) : [];
                 const removed = cur && prev ? prev.filter((c) => !cur.includes(c)) : [];
-                const who = h.actorUserId ? (actors.get(h.actorUserId) ?? '알 수 없음') : '시스템';
+                const who = h.actorUserId
+                  ? (actors.get(h.actorUserId) ?? t('acc.unknown'))
+                  : t('acc.system');
                 return (
                   <div key={h.id} className={styles.historyItem}>
                     <span>
@@ -596,17 +607,19 @@ export default function PermissionGroups() {
                     </span>
                     <span className={styles.sub}>
                       {h.action === 'CREATE'
-                        ? '그룹을 만들었습니다'
+                        ? t('acc.h.created')
                         : h.path.endsWith('/permissions')
                           ? [
-                              added.length ? `켬: ${added.map(permissionLabel).join(', ')}` : '',
+                              added.length
+                                ? t('acc.h.on', { v0: added.map(permissionLabel).join(', ') })
+                                : '',
                               removed.length
-                                ? `끔: ${removed.map(permissionLabel).join(', ')}`
+                                ? t('acc.h.off', { v0: removed.map(permissionLabel).join(', ') })
                                 : '',
                             ]
                               .filter(Boolean)
-                              .join(' / ') || '권한을 저장했습니다'
-                          : '이름·설명을 고쳤습니다'}
+                              .join(' / ') || t('acc.h.saved')
+                          : t('acc.h.renamed')}
                     </span>
                   </div>
                 );
@@ -616,16 +629,14 @@ export default function PermissionGroups() {
         </div>
       ) : (
         <div className={styles.panel}>
-          <div className={styles.notice}>
-            이 그룹을 찾을 수 없습니다. 목록에서 다시 골라 주세요.
-          </div>
+          <div className={styles.notice}>{t('acc.groupGone')}</div>
         </div>
       )}
       {selected && (
         <FormModal
           open={editOpen}
           onOpenChange={setEditOpen}
-          title="권한 그룹 고치기"
+          title={t('acc.editGroup')}
           size="md"
           fields={editFields}
           initialValues={{

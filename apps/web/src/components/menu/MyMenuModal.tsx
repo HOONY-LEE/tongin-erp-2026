@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { normalizeLayout, type MenuGroup } from '@tongin/shared';
@@ -17,6 +18,7 @@ interface Props {
 
 /** 내 사이드바 메뉴 편집 — 받은 메뉴 안에서 순서·묶음·숨김 */
 export function MyMenuModal({ open, onOpenChange, menu, visible }: Props) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [groups, setGroups] = useState<MenuGroup[]>([]);
   const [hidden, setHidden] = useState<string[]>([]);
@@ -38,24 +40,24 @@ export function MyMenuModal({ open, onOpenChange, menu, visible }: Props) {
     setSaving(true);
     try {
       await saveMyMenu({ groups, hidden });
-      toast({ type: 'success', title: '내 메뉴를 저장했습니다' });
+      toast({ type: 'success', title: t('menu.mySaved') });
       onOpenChange(false);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('menu.saveFailed') });
     } finally {
       setSaving(false);
     }
   };
 
   const reset = async () => {
-    if (!window.confirm('팀 기본 메뉴로 되돌릴까요? 내가 바꾼 순서·숨김이 사라집니다.')) return;
+    if (!window.confirm(t('menu.resetQ'))) return;
     setSaving(true);
     try {
       await resetMyMenu();
-      toast({ type: 'success', title: '팀 기본 메뉴로 되돌렸습니다' });
+      toast({ type: 'success', title: t('menu.resetDone') });
       onOpenChange(false);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '되돌리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('menu.resetFailed') });
     } finally {
       setSaving(false);
     }
@@ -67,7 +69,7 @@ export function MyMenuModal({ open, onOpenChange, menu, visible }: Props) {
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title="내 메뉴 편집"
+      title={t('menu.myEdit')}
       size="lg"
       footer={
         <>
@@ -78,13 +80,14 @@ export function MyMenuModal({ open, onOpenChange, menu, visible }: Props) {
             onClick={() => void reset()}
             style={{ marginRight: 'auto' }}
           >
-            팀 기본으로 되돌리기{from && ` (${from})`}
+            {t('menu.resetBtn')}
+            {from && ` (${from})`}
           </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            취소
+            {t('menu.cancel')}
           </Button>
           <Button variant="primary" loading={saving} onClick={() => void save()}>
-            저장
+            {t('menu.save')}
           </Button>
         </>
       }

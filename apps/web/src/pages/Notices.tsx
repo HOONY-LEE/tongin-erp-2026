@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pin } from 'lucide-react';
@@ -37,15 +38,15 @@ interface Notice {
 }
 
 const AUDIENCE: StatusMap = {
-  ALL: { label: '전사', color: 'primary' },
-  ORG: { label: '팀', color: 'info' },
+  ALL: { label: i18n.t('notice.scope.ALL'), color: 'primary' },
+  ORG: { label: i18n.t('notice.scope.ORG'), color: 'info' },
 };
-const NEW_MAP: StatusMap = { NEW: { label: '새 글', color: 'warning' } };
+const NEW_MAP: StatusMap = { NEW: { label: i18n.t('notice.new'), color: 'warning' } };
 /** 며칠 안에 올라온 공지를 '새 글'로 */
 const NEW_DAYS = 3;
 const isNew = (n: Notice) => Date.now() - Date.parse(n.createdAt) < NEW_DAYS * 86_400_000;
 const target = (n: Notice) =>
-  n.audience === 'ALL' ? '전사' : n.orgUnits.map((o) => o.name).join(', ');
+  n.audience === 'ALL' ? i18n.t('notice.scope.ALL') : n.orgUnits.map((o) => o.name).join(', ');
 
 type Filter = 'all' | 'ALL' | 'ORG';
 
@@ -81,14 +82,14 @@ export default function Notices() {
   }, [load]);
 
   const remove = async (n: Notice) => {
-    if (!window.confirm(`'${n.title}' 공지를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(t('notice.deleteQ', { v0: n.title }))) return;
     try {
       await api(`/notices/${n.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '삭제했습니다' });
+      toast({ type: 'success', title: t('notice.deleted') });
       detail.close();
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '삭제하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('notice.deleteFailed') });
     }
   };
 
@@ -110,7 +111,7 @@ export default function Notices() {
       <>
         <RecordDetail
           loading={!d && loading}
-          title={d ? d.title : '찾을 수 없습니다'}
+          title={d ? d.title : t('notice.notFound')}
           backLabel={t('nav.notices')}
           onBack={detail.close}
           actions={
@@ -118,12 +119,12 @@ export default function Notices() {
               <>
                 {can('NOTICE.DELETE') && (
                   <Button variant="ghost" size="sm" onClick={() => void remove(d)}>
-                    삭제
+                    {t('notice.delete')}
                   </Button>
                 )}
                 {can('NOTICE.UPDATE') && (
                   <Button variant="primary" size="sm" onClick={() => setEditing(d)}>
-                    수정
+                    {t('notice.edit')}
                   </Button>
                 )}
               </>
@@ -135,25 +136,25 @@ export default function Notices() {
                   {
                     items: [
                       {
-                        label: '구분',
+                        label: t('notice.kind'),
                         value: <StatusBadge value={d.audience} map={AUDIENCE} />,
                       },
-                      { label: '대상', value: target(d) },
+                      { label: t('notice.target'), value: target(d) },
                       {
-                        label: '작성자',
+                        label: t('notice.author'),
                         value: d.author
                           ? [d.author.name, d.author.orgUnitName].filter(Boolean).join(' · ')
                           : null,
                       },
-                      { label: '작성일', value: shortDate(d.createdAt) },
-                      { label: '상단 고정', value: d.pinned ? '고정' : null },
+                      { label: t('notice.createdAt'), value: shortDate(d.createdAt) },
+                      { label: t('notice.pinned'), value: d.pinned ? t('notice.pin') : null },
                     ],
                   },
                   {
-                    title: '내용',
+                    title: t('notice.content'),
                     items: [
                       {
-                        label: '본문',
+                        label: t('notice.body'),
                         value: <p className={styles.body}>{d.body}</p>,
                         wide: true,
                       },
@@ -174,12 +175,12 @@ export default function Notices() {
 
   const columns: Column[] = [
     {
-      title: '구분',
+      title: t('notice.kind'),
       width: 80,
       render: (r) => <StatusBadge value={String(r.audience)} map={AUDIENCE} />,
     },
     {
-      title: '제목',
+      title: t('notice.title'),
       dataIndex: 'title',
       flex: 1,
       minWidth: 260,
@@ -187,7 +188,7 @@ export default function Notices() {
         const n = r as unknown as Notice;
         return (
           <span className={styles.titleCell}>
-            {n.pinned && <Pin size={14} className={styles.pin} aria-label="상단 고정" />}
+            {n.pinned && <Pin size={14} className={styles.pin} aria-label={t('notice.pinned')} />}
             <span>{n.title}</span>
             {isNew(n) && <StatusBadge value="NEW" map={NEW_MAP} />}
           </span>
@@ -195,13 +196,13 @@ export default function Notices() {
       },
       exportValue: (r) => String(r.title),
     },
-    { title: '대상', minWidth: 160, render: (r) => target(r as unknown as Notice) },
+    { title: t('notice.target'), minWidth: 160, render: (r) => target(r as unknown as Notice) },
     {
-      title: '작성자',
+      title: t('notice.author'),
       width: 110,
       render: (r) => (r as unknown as Notice).author?.name ?? '-',
     },
-    { title: '작성일', width: 130, render: (r) => shortDate(r.createdAt) },
+    { title: t('notice.createdAt'), width: 130, render: (r) => shortDate(r.createdAt) },
   ];
 
   return (
@@ -216,16 +217,16 @@ export default function Notices() {
             value={filter}
             onChange={(v) => setFilter(v as Filter)}
             options={[
-              { value: 'all', label: `전체 ${count('all')}` },
-              { value: 'ALL', label: `전사 ${count('ALL')}` },
-              { value: 'ORG', label: `팀 공지 ${count('ORG')}` },
+              { value: 'all', label: t('notice.allN', { v0: count('all') }) },
+              { value: 'ALL', label: t('notice.companyN', { v0: count('ALL') }) },
+              { value: 'ORG', label: t('notice.teamN', { v0: count('ORG') }) },
             ]}
           />
         }
         toolbarActions={
           can('NOTICE.CREATE') ? (
             <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-              + 공지 작성
+              {t('notice.writeBtn')}
             </Button>
           ) : undefined
         }
@@ -245,6 +246,7 @@ function NoticeEditor({
   onClose: () => void;
   onSaved: (n: Notice) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const { audienceOrgs } = useWorkDirectory();
   const [title, setTitle] = useState(notice?.title ?? '');
@@ -283,10 +285,10 @@ function NoticeEditor({
         method: notice ? 'PATCH' : 'POST',
         body: JSON.stringify(payload),
       });
-      toast({ type: 'success', title: notice ? '수정했습니다' : '공지를 올렸습니다' });
+      toast({ type: 'success', title: notice ? t('notice.updated') : t('notice.posted') });
       onSaved(saved);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('notice.saveFailed') });
     } finally {
       setBusy(false);
     }
@@ -297,14 +299,14 @@ function NoticeEditor({
       open
       onOpenChange={(o) => !o && onClose()}
       size="lg"
-      title={notice ? '공지 수정' : '공지 작성'}
+      title={notice ? t('notice.editTitle') : t('notice.writeTitle')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('notice.cancel')}
           </Button>
           <Button variant="primary" loading={busy} disabled={!ready} onClick={() => void save()}>
-            {notice ? '저장' : '올리기'}
+            {notice ? t('notice.save') : t('notice.post')}
           </Button>
         </>
       }
@@ -312,20 +314,20 @@ function NoticeEditor({
       <div className={styles.form}>
         <label className={styles.label}>
           <span>
-            제목 <span className={styles.req}>*</span>
+            {t('notice.title')} <span className={styles.req}>*</span>
           </span>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
         </label>
         <div className={styles.label}>
           <span>
-            대상 <span className={styles.req}>*</span>
+            {t('notice.target')} <span className={styles.req}>*</span>
           </span>
           <SegmentedControl
             value={audience}
             onChange={(v) => setAudience(v as 'ALL' | 'ORG')}
             options={[
-              { value: 'ALL', label: '전사' },
-              { value: 'ORG', label: '조직 지정' },
+              { value: 'ALL', label: t('notice.scope.ALL') },
+              { value: 'ORG', label: t('notice.pickOrg') },
             ]}
           />
           {audience === 'ORG' && (
@@ -340,20 +342,18 @@ function NoticeEditor({
                   />
                 ))}
               </div>
-              <span className={styles.hint}>
-                고른 조직과 그 아래 조직 사람이 봅니다(회사를 고르면 소속 지점까지).
-              </span>
+              <span className={styles.hint}>{t('notice.orgHint')}</span>
             </>
           )}
         </div>
         <label className={styles.label}>
           <span>
-            본문 <span className={styles.req}>*</span>
+            {t('notice.body')} <span className={styles.req}>*</span>
           </span>
           <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={10} />
         </label>
         <Checkbox
-          label="목록 맨 위에 고정"
+          label={t('notice.pinTop')}
           checked={pinned}
           onCheckedChange={(c) => setPinned(c === true)}
         />

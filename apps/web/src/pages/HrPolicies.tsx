@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -25,16 +26,19 @@ import { thisMonth } from '../lib/workMenus';
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
 const KIND: StatusMap = {
-  INCENTIVE: { label: '수당(+)', color: 'success' },
-  PENALTY: { label: '패널티(−)', color: 'error' },
+  INCENTIVE: { label: i18n.t('hrp.kind.INCENTIVE'), color: 'success' },
+  PENALTY: { label: i18n.t('hrp.kind.PENALTY'), color: 'error' },
 };
-const TARGET: Record<string, string> = { EMPLOYEE: '견적사원', BRANCH: '지점' };
+const TARGET: Record<string, string> = {
+  EMPLOYEE: i18n.t('hrp.target.EMPLOYEE'),
+  BRANCH: i18n.t('hrp.target.BRANCH'),
+};
 const METRIC: Record<string, string> = {
-  CONTRACT_REVENUE: '계약매출',
-  CONTRACT_COUNT: '계약건수',
-  PAID_REVENUE: '입금매출',
-  DONE_COUNT: '완료작업수',
-  AS_COUNT: 'AS접수수',
+  CONTRACT_REVENUE: i18n.t('hrp.metric.CONTRACT_REVENUE'),
+  CONTRACT_COUNT: i18n.t('hrp.metric.CONTRACT_COUNT'),
+  PAID_REVENUE: i18n.t('hrp.metric.PAID_REVENUE'),
+  DONE_COUNT: i18n.t('hrp.metric.DONE_COUNT'),
+  AS_COUNT: i18n.t('hrp.metric.AS_COUNT'),
 };
 const AMOUNT_METRIC = ['CONTRACT_REVENUE', 'PAID_REVENUE'];
 
@@ -76,7 +80,7 @@ export default function HrPolicies() {
       setRows(await api<Row[]>('/hr/policies'));
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '조회 실패' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('hrp.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -89,10 +93,10 @@ export default function HrPolicies() {
   const onCreate = async (values: Record<string, unknown>) => {
     try {
       await api('/hr/policies', { method: 'POST', body: JSON.stringify(values) });
-      toast({ type: 'success', title: '등록되었습니다' });
+      toast({ type: 'success', title: t('hrp.created') });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장 실패' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('hrp.saveFailed') });
       throw e;
     }
   };
@@ -104,87 +108,92 @@ export default function HrPolicies() {
       );
       setResult(r.targets);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '계산 실패' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('hrp.calcFailed') });
     }
   };
 
   const fields: FormField[] = [
-    { name: 'name', label: '정책명', required: true, placeholder: '견적사원 입금매출 수당' },
+    { name: 'name', label: t('hrp.name'), required: true, placeholder: t('hrp.namePh') },
     {
       name: 'kind',
-      label: '구분',
+      label: t('hrp.kindLabel'),
       type: 'select',
       options: [
-        { value: 'INCENTIVE', label: '수당(+)' },
-        { value: 'PENALTY', label: '패널티(−)' },
+        { value: 'INCENTIVE', label: t('hrp.kind.INCENTIVE') },
+        { value: 'PENALTY', label: t('hrp.kind.PENALTY') },
       ],
     },
     {
       name: 'targetType',
-      label: '대상',
+      label: t('hrp.targetLabel'),
       required: true,
       type: 'select',
       options: [
-        { value: 'EMPLOYEE', label: '견적사원' },
-        { value: 'BRANCH', label: '지점' },
+        { value: 'EMPLOYEE', label: t('hrp.target.EMPLOYEE') },
+        { value: 'BRANCH', label: t('hrp.target.BRANCH') },
       ],
     },
     {
       name: 'metric',
-      label: '실적 지표',
+      label: t('hrp.metricLabel'),
       required: true,
       type: 'select',
       options: Object.entries(METRIC).map(([value, label]) => ({ value, label })),
     },
     {
       name: 'calcType',
-      label: '계산방식',
+      label: t('hrp.calcLabel'),
       required: true,
       type: 'select',
       options: [
-        { value: 'RATE', label: '정률(매출×비율)' },
-        { value: 'FIXED_PER_UNIT', label: '단위당 정액(건수×금액)' },
+        { value: 'RATE', label: t('hrp.calc.RATE') },
+        { value: 'FIXED_PER_UNIT', label: t('hrp.calc.FIXED') },
       ],
     },
-    { name: 'value', label: '값 (정률=0.015 / 정액=30000)', required: true, type: 'number' },
-    { name: 'orgScopeId', label: '적용 지점(선택)', type: 'select', options: orgs },
-    { name: 'priority', label: '우선순위', type: 'number', placeholder: '100' },
+    { name: 'value', label: t('hrp.value'), required: true, type: 'number' },
+    { name: 'orgScopeId', label: t('hrp.scope'), type: 'select', options: orgs },
+    { name: 'priority', label: t('hrp.priority'), type: 'number', placeholder: '100' },
   ];
 
   const policyCols: Column[] = [
-    { title: '정책명', dataIndex: 'name' },
-    { title: '구분', render: (r) => <StatusBadge value={String(r.kind)} map={KIND} /> },
-    { title: '대상', render: (r) => TARGET[r.targetType as string] ?? String(r.targetType) },
-    { title: '지표', render: (r) => METRIC[r.metric as string] ?? String(r.metric) },
+    { title: t('hrp.name'), dataIndex: 'name' },
+    { title: t('hrp.kindLabel'), render: (r) => <StatusBadge value={String(r.kind)} map={KIND} /> },
     {
-      title: '값',
-      render: (r) =>
-        r.calcType === 'RATE' ? `${(Number(r.value) * 100).toFixed(2)}%` : `${won(r.value)}원/건`,
+      title: t('hrp.targetLabel'),
+      render: (r) => TARGET[r.targetType as string] ?? String(r.targetType),
     },
-    { title: '사용', render: (r) => (r.isActive ? '✓' : '–') },
+    { title: t('hrp.metricCol'), render: (r) => METRIC[r.metric as string] ?? String(r.metric) },
+    {
+      title: t('hrp.valueCol'),
+      render: (r) =>
+        r.calcType === 'RATE'
+          ? `${(Number(r.value) * 100).toFixed(2)}%`
+          : t('hrp.wonPer', { v0: won(r.value) }),
+    },
+    { title: t('hrp.active'), render: (r) => (r.isActive ? '✓' : '–') },
   ];
 
   const resultCols: Column[] = [
-    { title: '대상', dataIndex: 'targetName' },
+    { title: t('hrp.targetLabel'), dataIndex: 'targetName' },
     {
-      title: '산출 내역',
+      title: t('hrp.breakdown'),
       // 정책 수만큼 줄이 쌓인다 — 행이 늘어나게(잘리지 않게). 줄 쌓기·줄마다 말줄임은 DataTable이 맡는다
       multiline: true,
       render: (r) =>
         (r.lines as PayoutLine[]).map((l, i) => (
           <span key={i} style={{ fontSize: fs(12), color: 'var(--ark-color-text-secondary)' }}>
             {l.policyName}: {METRIC[l.metric]}{' '}
-            {AMOUNT_METRIC.includes(l.metric) ? won(l.base) : `${l.base}건`} →{' '}
+            {AMOUNT_METRIC.includes(l.metric) ? won(l.base) : t('hrp.countN', { v0: l.base })} →{' '}
             <b style={{ color: l.amount < 0 ? 'var(--ark-color-error-600)' : 'inherit' }}>
               {won(l.amount)}
             </b>
           </span>
         )),
     },
-    { title: '수당', numeric: true, render: (r) => won(r.incentive) },
-    { title: '패널티', numeric: true, render: (r) => won(r.penalty) },
+    { title: t('hrp.incentive'), numeric: true, render: (r) => won(r.incentive) },
+    { title: t('hrp.penalty'), numeric: true, render: (r) => won(r.penalty) },
     {
-      title: '순지급',
+      title: t('hrp.net'),
       numeric: true,
       render: (r) => <b>{won(r.net)}</b>,
     },
@@ -194,11 +203,11 @@ export default function HrPolicies() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.hr')} onRefresh={load} updatedAt={updatedAt} />
       <PageCard
-        title="인센티브/패널티 정책"
+        title={t('hrp.title')}
         count={rows.length}
         actions={
           <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-            + 정책 등록
+            {t('hrp.addBtn')}
           </Button>
         }
         plain
@@ -207,47 +216,47 @@ export default function HrPolicies() {
         <FormModal
           open={open}
           onOpenChange={setOpen}
-          title="정책 등록"
+          title={t('hrp.addTitle')}
           size="md"
           fields={fields}
           onSubmit={onCreate}
         />
       </PageCard>
 
-      <PageCard title="정산 계산 (월별 실적 적용)">
+      <PageCard title={t('hrp.calcTitle')}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ width: 160 }}>
             <Select
-              label="대상유형"
+              label={t('hrp.targetType')}
               value={targetType}
               onValueChange={setTargetType}
               options={[
-                { value: 'EMPLOYEE', label: '견적사원' },
-                { value: 'BRANCH', label: '지점' },
+                { value: 'EMPLOYEE', label: t('hrp.target.EMPLOYEE') },
+                { value: 'BRANCH', label: t('hrp.target.BRANCH') },
               ]}
             />
           </div>
           <Input
-            label="연도"
+            label={t('hrp.year')}
             type="number"
             value={year}
             onChange={(e) => setYear(e.target.value)}
           />
           <Input
-            label="월"
+            label={t('hrp.month')}
             type="number"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
           />
           <Button variant="primary" onClick={run}>
-            계산
+            {t('hrp.calcBtn')}
           </Button>
         </div>
         {result && (
           <div style={{ marginTop: 16 }}>
             {result.length === 0 ? (
               <Badge variant="subtle" color="neutral">
-                해당 기간 적용 실적이 없습니다
+                {t('hrp.empty')}
               </Badge>
             ) : (
               <DataTable columns={resultCols} rows={result as unknown as Row[]} />
