@@ -342,6 +342,17 @@ html[data-font-size='lg'] {
 .sft-table__scroll::-webkit-scrollbar-track:vertical {
   margin-top: var(--sft-table-header-height, 44px);
 }
+/* 가로 스크롤바 — 평소엔 숨기고 좌우로 움직일 때만 보인다(DataTable이 .dt-scrolling-x를 잠깐 붙인다).
+   세로 스크롤바는 늘 보인다 */
+.sft-table__scroll::-webkit-scrollbar-thumb:horizontal {
+  background: transparent;
+}
+.sft-table__scroll.dt-scrolling-x::-webkit-scrollbar-thumb:horizontal {
+  background: var(--ark-color-border, #e5e5ea);
+}
+.sft-table__scroll.dt-scrolling-x::-webkit-scrollbar-thumb:horizontal:hover {
+  background: color-mix(in srgb, var(--ark-color-text-secondary, #6e6e73) 50%, transparent);
+}
 
 /* 툴바 세그먼트 탭 높이(38px)는 공용 SegmentedControl이 맞춘다 */
 .dt-wrap .sft-toolbar__search,
