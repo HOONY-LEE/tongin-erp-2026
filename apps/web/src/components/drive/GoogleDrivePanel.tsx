@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronRight, Download, ExternalLink, Link2, LogOut } from 'lucide-react';
 import { formatBytes, type GoogleDriveFile } from '@tongin/shared';
@@ -53,6 +55,7 @@ export function GoogleDrivePanel({
   /** 가져오기·링크 뒤 왼쪽 용량 등을 새로 읽게 */
   onChanged: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [status, setStatus] = useState<Status | null>(null);
   const [view, setView] = useState<'mine' | 'shared'>('mine');
@@ -88,7 +91,7 @@ export function GoogleDrivePanel({
         setFiles((cur) => (pageToken ? [...cur, ...r.files] : r.files));
         setNext(r.nextPageToken);
       } catch (e) {
-        setError(errText(e, '구글 드라이브를 읽지 못했습니다'));
+        setError(errText(e, t('drive.gReadFailed')));
         setFiles([]);
       } finally {
         setLoading(false);
@@ -105,42 +108,42 @@ export function GoogleDrivePanel({
       const { url } = await api<{ url: string }>('/drive/google/auth-url');
       window.location.href = url;
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '연결을 시작하지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('drive.gStartFailed')) });
     }
   };
   const disconnect = async () => {
     try {
       await api('/drive/google', { method: 'DELETE' });
-      toast({ type: 'success', title: '구글 드라이브 연결을 끊었습니다' });
+      toast({ type: 'success', title: t('drive.gDisconnected') });
       setStack([]);
       loadStatus();
     } catch (e) {
-      toast({ type: 'error', title: errText(e, '끊지 못했습니다') });
+      toast({ type: 'error', title: errText(e, t('drive.gDisconnectFailed')) });
     }
   };
 
-  if (!status) return <div className={styles.empty}>불러오는 중…</div>;
+  if (!status) return <div className={styles.empty}>{t('drive.loading')}</div>;
   if (!status.configured)
     return (
       <div className={styles.googleCard}>
         <GoogleMark className={styles.gIcon} />
-        <span className={styles.emptyTitle}>구글 연동이 아직 설정되지 않았습니다</span>
-        <span>관리자에게 구글 연동(GOOGLE_CLIENT_ID/SECRET) 설정을 요청하세요.</span>
+        <span className={styles.emptyTitle}>{t('drive.gNotSet')}</span>
+        <span>{t('drive.gAskAdmin')}</span>
       </div>
     );
   if (!status.connected)
     return (
       <div className={styles.googleCard}>
         <GoogleMark className={styles.gIcon} />
-        <span className={styles.emptyTitle}>구글 드라이브 연결</span>
+        <span className={styles.emptyTitle}>{t('drive.gConnectTitle')}</span>
         <span>
-          내 구글 계정을 연결하면 구글 드라이브 파일을 여기서 보고, 드라이브로 가져오거나 링크로
-          넣을 수 있습니다. 드라이브 파일을 구글 드라이브로 보낼 수도 있습니다.
+          {t('drive.gHelp1')}
+          {t('drive.gHelp2')}
         </span>
         <Button variant="primary" onClick={() => void connect()}>
-          구글 계정 연결
+          {t('drive.gConnectBtn')}
         </Button>
-        <span className={styles.muted}>연결은 나에게만 적용됩니다. 언제든 끊을 수 있습니다.</span>
+        <span className={styles.muted}>{t('drive.gOnlyMe')}</span>
       </div>
     );
 
@@ -165,10 +168,10 @@ export function GoogleDrivePanel({
             }}
           >
             {query.trim()
-              ? '구글 드라이브 검색'
+              ? t('drive.gSearch')
               : view === 'shared'
-                ? '구글 공유 문서함'
-                : '구글 드라이브'}
+                ? t('drive.gShared')
+                : t('drive.google')}
           </button>
           {stack.map((f, i) => (
             <span key={f.id} style={{ display: 'contents' }}>
@@ -189,8 +192,8 @@ export function GoogleDrivePanel({
           <button
             type="button"
             className={styles.iconBtn}
-            title="연결 끊기"
-            aria-label="구글 드라이브 연결 끊기"
+            title={t('drive.disconnect')}
+            aria-label={t('drive.gDisconnectBtn')}
             onClick={() => void disconnect()}
           >
             <LogOut size={16} />
@@ -203,8 +206,8 @@ export function GoogleDrivePanel({
             value={view}
             onChange={(v) => setView(v as 'mine' | 'shared')}
             options={[
-              { value: 'mine', label: '내 드라이브' },
-              { value: 'shared', label: '공유 문서함' },
+              { value: 'mine', label: t('drive.myDrive') },
+              { value: 'shared', label: t('drive.view.shared') },
             ]}
           />
         </div>
@@ -213,10 +216,10 @@ export function GoogleDrivePanel({
         <div className={styles.selBar}>
           <span className={styles.selCount}>{selected.name}</span>
           <Button variant="ghost" size="sm" onClick={() => setPicking('import')}>
-            <Download size={16} /> 드라이브로 가져오기
+            <Download size={16} /> {t('drive.importToDrive')}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setPicking('link')}>
-            <Link2 size={16} /> 링크로 넣기
+            <Link2 size={16} /> {t('drive.addAsLink')}
           </Button>
           {selected.webViewLink && (
             <Button
@@ -224,32 +227,32 @@ export function GoogleDrivePanel({
               size="sm"
               onClick={() => window.open(selected.webViewLink!, '_blank', 'noopener,noreferrer')}
             >
-              <ExternalLink size={16} /> 구글에서 열기
+              <ExternalLink size={16} /> {t('drive.openInGoogle')}
             </Button>
           )}
         </div>
       )}
       {error ? (
         <div className={styles.empty}>
-          <span className={styles.emptyTitle}>구글 드라이브를 읽지 못했습니다</span>
+          <span className={styles.emptyTitle}>{t('drive.gReadFailed')}</span>
           <span>{error}</span>
           <Button variant="outline" onClick={() => void connect()}>
-            다시 연결
+            {t('drive.reconnect')}
           </Button>
         </div>
       ) : !loading && !files.length ? (
         <div className={styles.empty}>
           <span className={styles.emptyTitle}>
-            {query.trim() ? '찾은 파일이 없습니다' : '비어 있습니다'}
+            {query.trim() ? t('drive.empty.searchTitle') : t('drive.emptyShort')}
           </span>
         </div>
       ) : (
-        <div className={styles.list} role="listbox" aria-label="구글 드라이브 파일">
+        <div className={styles.list} role="listbox" aria-label={t('drive.gFiles')}>
           <div className={`${styles.row} ${styles.rowHead}`}>
-            <span>이름</span>
-            <span>종류</span>
-            <span>수정한 날짜</span>
-            <span>크기</span>
+            <span>{t('drive.col.name')}</span>
+            <span>{t('drive.col.type')}</span>
+            <span>{t('drive.col.modifiedAt')}</span>
+            <span>{t('drive.col.size')}</span>
           </div>
           {files.map((f) => {
             const { Icon, color } = fileIcon({
@@ -276,7 +279,9 @@ export function GoogleDrivePanel({
                   )}
                   <span className={styles.nameText}>{f.name}</span>
                 </span>
-                <span className={styles.cell}>{f.isFolder ? '폴더' : googleKind(f.mimeType)}</span>
+                <span className={styles.cell}>
+                  {f.isFolder ? t('drive.folder') : googleKind(f.mimeType)}
+                </span>
                 <span className={styles.cell}>
                   {f.modifiedTime ? driveDate(f.modifiedTime) : '—'}
                 </span>
@@ -286,13 +291,13 @@ export function GoogleDrivePanel({
           })}
           {loading && (
             <div className={styles.empty} style={{ minHeight: 80 }}>
-              불러오는 중…
+              {t('drive.loading')}
             </div>
           )}
           {next && !loading && (
             <div style={{ padding: 12, textAlign: 'center' }}>
               <Button variant="outline" size="sm" onClick={() => void load(next)}>
-                더 보기
+                {t('drive.more')}
               </Button>
             </div>
           )}
@@ -302,10 +307,10 @@ export function GoogleDrivePanel({
         <FolderPickerModal
           title={
             picking === 'import'
-              ? `'${selected.name}' 가져올 곳`
-              : `'${selected.name}' 링크를 넣을 곳`
+              ? t('drive.importWhere', { v0: selected.name })
+              : t('drive.linkWhere', { v0: selected.name })
           }
-          confirmLabel={picking === 'import' ? '여기로 가져오기' : '여기에 넣기'}
+          confirmLabel={picking === 'import' ? t('drive.importHere') : t('drive.addHere')}
           onClose={() => setPicking(null)}
           onConfirm={async (target) => {
             try {
@@ -319,12 +324,12 @@ export function GoogleDrivePanel({
               });
               toast({
                 type: 'success',
-                title: picking === 'import' ? '드라이브로 가져왔습니다' : '링크를 넣었습니다',
+                title: picking === 'import' ? t('drive.imported') : t('drive.linkAdded'),
               });
               setPicking(null);
               onChanged();
             } catch (e) {
-              toast({ type: 'error', title: errText(e, '처리하지 못했습니다') });
+              toast({ type: 'error', title: errText(e, t('drive.processFailed')) });
             }
           }}
         />
@@ -334,11 +339,11 @@ export function GoogleDrivePanel({
 }
 
 function googleKind(mime: string): string {
-  if (mime.includes('google-apps.document')) return '구글 문서';
-  if (mime.includes('google-apps.spreadsheet')) return '구글 스프레드시트';
-  if (mime.includes('google-apps.presentation')) return '구글 프레젠테이션';
+  if (mime.includes('google-apps.document')) return i18n.t('drive.type.doc');
+  if (mime.includes('google-apps.spreadsheet')) return i18n.t('drive.type.sheet');
+  if (mime.includes('google-apps.presentation')) return i18n.t('drive.type.slides');
   if (mime === 'application/pdf') return 'PDF';
-  if (mime.startsWith('image/')) return '이미지';
-  if (mime.startsWith('video/')) return '동영상';
-  return mime.split('/').pop()?.slice(0, 20) ?? '파일';
+  if (mime.startsWith('image/')) return i18n.t('drive.type.image');
+  if (mime.startsWith('video/')) return i18n.t('drive.type.video');
+  return mime.split('/').pop()?.slice(0, 20) ?? i18n.t('drive.file');
 }

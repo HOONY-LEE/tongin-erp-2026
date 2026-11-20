@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 import {
   File,
   FileArchive,
@@ -118,17 +119,17 @@ export function uploadDriveFile(
         resolve(JSON.parse(xhr.responseText) as { id: string });
         return;
       }
-      let message = '올리지 못했습니다';
+      let message: string = i18n.t('drive.uploadFailed');
       try {
         message = (JSON.parse(xhr.responseText) as { message?: string }).message ?? message;
       } catch {
-        if (xhr.status === 413) message = '파일이 너무 큽니다';
+        if (xhr.status === 413) message = i18n.t('drive.fileTooBig');
       }
       reject(new ApiError(xhr.status, message));
     };
-    xhr.onerror = () => reject(new ApiError(0, '서버에 연결하지 못했습니다'));
+    xhr.onerror = () => reject(new ApiError(0, i18n.t('drive.serverFailed')));
     signal?.addEventListener('abort', () => xhr.abort());
-    xhr.onabort = () => reject(new ApiError(0, '올리기를 취소했습니다'));
+    xhr.onabort = () => reject(new ApiError(0, i18n.t('drive.uploadCanceled')));
     xhr.send(file);
   });
 }
