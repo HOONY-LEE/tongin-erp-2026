@@ -151,3 +151,30 @@ export class EmployeePhotoDto {
   @MaxLength(3_000_000)
   data!: string;
 }
+
+/** 내 프로필 — 본인이 고칠 수 있는 칸(연락처·이메일·주소) */
+export class MyProfileDto {
+  @IsOptional()
+  @PhoneDigits()
+  phone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  email?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  zipcode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  addr?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  addrDetail?: string | null;
+}

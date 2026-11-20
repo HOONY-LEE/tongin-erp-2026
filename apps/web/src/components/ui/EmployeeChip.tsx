@@ -126,7 +126,7 @@ export function EmployeeChip({ emp }: { emp: EmployeeBrief }) {
               className={styles.more}
               onClick={() => {
                 setOpen(false);
-                navigate(`/org-mgmt?tab=emp&detail=${encodeURIComponent(emp.id)}`);
+                navigate(`/profile/${encodeURIComponent(emp.id)}`);
               }}
             >
               자세히

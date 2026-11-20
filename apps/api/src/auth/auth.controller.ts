@@ -3,7 +3,7 @@ import type { AuthPrincipal, LoginResponse } from '@tongin/shared';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
-import { ChangePasswordDto, LoginDto } from './dto/login.dto';
+import { ChangePasswordDto, VerifyPasswordDto, LoginDto } from './dto/login.dto';
 import { LoginThrottlerGuard } from './login-throttler.guard';
 
 @Controller('auth')
@@ -25,7 +25,15 @@ export class AuthController {
     return user;
   }
 
-  /** 내 비밀번호 바꾸기(내 계정) */
+  /** 비밀번호 바꾸기 1단계 — 지금 비밀번호가 맞는지만 확인한다(맞아야 새 비밀번호 단계로) */
+  @Post('password/verify')
+  @HttpCode(200)
+  @UseGuards(LoginThrottlerGuard)
+  verifyPassword(@CurrentUser() user: AuthPrincipal, @Body() dto: VerifyPasswordDto) {
+    return this.authService.verifyPassword(user.userId, dto.password);
+  }
+
+  /** 내 비밀번호 바꾸기(프로필) */
   @Post('password')
   @HttpCode(200)
   @UseGuards(LoginThrottlerGuard)

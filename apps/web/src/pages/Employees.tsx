@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { EmployeeChip, type EmployeeBrief } from '../components/ui/EmployeeChip';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
@@ -151,7 +152,13 @@ export default function Employees({ view = 'list', branch }: Props) {
   ];
 
   const columns: Column[] = [
-    { title: '직원명', dataIndex: 'name' },
+    {
+      title: '직원명',
+      dataIndex: 'name',
+      // 다른 표의 담당자와 같은 직원 칩 — 누르면 프로필 카드
+      render: (r) => <EmployeeChip emp={r as unknown as EmployeeBrief} />,
+      exportValue: (r) => String(r.name ?? ''),
+    },
     {
       title: '직책',
       render: (r) => (r.position as { name: string } | null)?.name ?? '-',

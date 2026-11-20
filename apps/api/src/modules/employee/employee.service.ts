@@ -54,6 +54,83 @@ export class EmployeeService {
     return { photoAt: null };
   }
 
+  // ── 프로필(누구나 보는 직원 정보 페이지) ──
+
+  /**
+   * 프로필 — 로그인한 직원이면 누구나 본다(사내 연락처처럼).
+   * 주소·메모는 본인이거나 인사 열람 권한(EMPLOYEE.READ)이 있을 때만.
+   */
+  async profile(id: string, p: AuthPrincipal) {
+    const e = await this.prisma.employee.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        empNo: true,
+        hireDate: true,
+        employmentType: true,
+        phone: true,
+        email: true,
+        zipcode: true,
+        addr: true,
+        addrDetail: true,
+        memo: true,
+        isActive: true,
+        resignDate: true,
+        photoAt: true,
+        position: { select: { name: true } },
+        orgUnit: { select: { name: true } },
+        appUsers: {
+          select: {
+            loginId: true,
+            isActive: true,
+            userRoles: { select: { role: { select: { name: true } } } },
+          },
+        },
+      },
+    });
+    if (!e) throw new NotFoundException('직원을 찾을 수 없습니다.');
+    const self = p.employeeId === id;
+    const hr =
+      p.permissions.includes(PERMISSION_WILDCARD) || p.permissions.includes('EMPLOYEE.READ');
+    const { appUsers, zipcode, addr, addrDetail, memo, ...rest } = e;
+    return {
+      ...rest,
+      self,
+      loginIds: appUsers.map((u) => ({ loginId: u.loginId, isActive: u.isActive })),
+      roles: [...new Set(appUsers.flatMap((u) => u.userRoles.map((r) => r.role.name)))],
+      ...(self || hr ? { zipcode, addr, addrDetail, memo } : {}),
+    };
+  }
+
+  /** 내 프로필 고치기 — 본인은 연락처·이메일·주소만(직책·소속·사번은 인사 담당이) */
+  async updateMyProfile(
+    id: string,
+    p: AuthPrincipal,
+    dto: {
+      phone?: string | null;
+      email?: string | null;
+      zipcode?: string | null;
+      addr?: string | null;
+      addrDetail?: string | null;
+    },
+  ) {
+    if (p.employeeId !== id) throw new ForbiddenException('내 프로필만 고칠 수 있습니다.');
+    const clean = (v: string | null | undefined) =>
+      v === undefined ? undefined : v?.trim() || null;
+    await this.prisma.employee.update({
+      where: { id },
+      data: {
+        phone: clean(dto.phone),
+        email: clean(dto.email),
+        zipcode: clean(dto.zipcode),
+        addr: clean(dto.addr),
+        addrDetail: clean(dto.addrDetail),
+      },
+    });
+    return this.profile(id, p);
+  }
+
   /** 사진 있는 직원 — { id: photoAt } */
   async photoIndex(): Promise<Record<string, string>> {
     const rows = await this.prisma.employee.findMany({
@@ -88,6 +165,7 @@ export class EmployeeService {
       where: orgUnitId ? { orgUnitId } : undefined,
       include: {
         position: { select: { name: true, sortOrder: true } },
+        orgUnit: { select: { name: true } },
         concurrentOrgs: {
           select: { orgUnitId: true, position: { select: { name: true, sortOrder: true } } },
         },

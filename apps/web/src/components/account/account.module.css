@@ -1,0 +1,93 @@
+/* 비밀번호 변경 — 단계 표시 · 입력 · 세기 막대 · 규칙 */
+.steps {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.steps span {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-muted, #f5f5f7);
+  color: var(--ark-color-text-tertiary, #aeaeb2);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.steps .stepOn {
+  background: color-mix(in srgb, #007aff 12%, transparent);
+  color: #0063cc;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ark-color-text-secondary, #6e6e73);
+}
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: -2px;
+}
+.bars {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.bars span {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ark-color-border, #e5e5ea);
+  transition: background 0.15s;
+}
+.meter b {
+  width: 32px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: right;
+}
+.rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+  color: var(--ark-color-text-tertiary, #aeaeb2);
+  font-size: 12.5px;
+}
+.rules li {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.rules .ruleOk {
+  color: #248a3d;
+}
+.matchOk,
+.matchNo,
+.error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 12.5px;
+}
+.matchOk {
+  color: #248a3d;
+}
+.matchNo,
+.error {
+  color: #d70015;
+}
+.error {
+  margin-top: 10px;
+}

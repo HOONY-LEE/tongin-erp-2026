@@ -22,6 +22,7 @@ import {
   ChecklistToggleDto,
   CreateEmployeeDto,
   EmployeePhotoDto,
+  MyProfileDto,
   ResignEmployeeDto,
 } from './dto/create-employee.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -38,6 +39,22 @@ export class EmployeeController {
   @RequirePermissions('EMPLOYEE.READ')
   findAll(@Query('orgUnitId') orgUnitId?: string) {
     return this.employeeService.findAll(orgUnitId);
+  }
+
+  /** 프로필 — 로그인한 직원이면 누구나(주소·메모는 본인·인사 열람 권한만) */
+  @Get(':id/profile')
+  profile(@CurrentUser() p: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.employeeService.profile(id, p);
+  }
+
+  /** 내 프로필 고치기 — 본인만(연락처·이메일·주소) */
+  @Patch(':id/profile')
+  updateMyProfile(
+    @CurrentUser() p: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: MyProfileDto,
+  ) {
+    return this.employeeService.updateMyProfile(id, p, dto);
   }
 
   /** 사진 있는 직원 목록(id → 바뀐 시각) — 화면의 공통 동그라미가 이걸로 사진을 찾는다(로그인만 하면 됨) */

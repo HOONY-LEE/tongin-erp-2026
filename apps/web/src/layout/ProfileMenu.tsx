@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EmployeeAvatar } from '../components/employee/EmployeeAvatar';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +20,6 @@ import { useAuth } from '../auth/AuthContext';
 import { FONT_SIZES, useTheme, type ThemeMode } from '../theme/ThemeProvider';
 import { SUPPORTED_LANGS, setLang } from '../i18n';
 import { useClock } from '../components/attendance/ClockButton';
-import { MyAccountModal } from './MyAccountModal';
 import styles from './profileMenu.module.css';
 
 const THEMES: { value: ThemeMode; icon: LucideIcon }[] = [
@@ -63,11 +63,11 @@ function ClockRow() {
 export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { mode, setMode, fontSize, setFontSize } = useTheme();
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ right: number; top: number } | null>(null);
-  const [account, setAccount] = useState(false);
 
   useEffect(() => {
     if (!pos) return;
@@ -138,9 +138,10 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
               type="button"
               role="menuitem"
               className={styles.item}
-              onClick={run(() => setAccount(true))}
+              onClick={run(() => navigate('/profile'))}
             >
-              <UserRound size={15} aria-hidden />내 계정
+              <UserRound size={15} aria-hidden />
+              프로필
             </button>
             <button type="button" role="menuitem" className={styles.item} onClick={run(onEditMenu)}>
               <SlidersHorizontal size={15} aria-hidden />내 메뉴 편집
@@ -217,7 +218,6 @@ export function ProfileMenu({ onEditMenu }: { onEditMenu: () => void }) {
           </div>,
           document.body,
         )}
-      <MyAccountModal open={account} onClose={() => setAccount(false)} />
     </>
   );
 }
