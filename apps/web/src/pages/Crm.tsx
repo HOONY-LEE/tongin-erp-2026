@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDate, fmtDateTime } from '../lib/dateFormat';
 import { CalendarClock, Mail, MessageSquare, Phone, Search, StickyNote, Users } from 'lucide-react';
@@ -44,14 +46,14 @@ import {
 import styles from './franchise.module.css';
 
 type View = 'board' | 'list';
-const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
+const won = (n: number) => i18n.t('crm.won', { v0: n.toLocaleString('ko-KR') });
 /** 목록·카드용 짧은 금액 — 7.5억 · 3,000만 */
 const wonShort = (n: number) =>
   n >= 1e8
-    ? `${(n / 1e8).toFixed(n % 1e8 ? 1 : 0).replace(/\.0$/, '')}억`
+    ? i18n.t('crm.eok', { v0: (n / 1e8).toFixed(n % 1e8 ? 1 : 0).replace(/\.0$/, '') })
     : n >= 1e4
-      ? `${Math.round(n / 1e4).toLocaleString('ko-KR')}만`
-      : `${n.toLocaleString('ko-KR')}원`;
+      ? i18n.t('crm.man', { v0: Math.round(n / 1e4).toLocaleString('ko-KR') })
+      : i18n.t('crm.won', { v0: n.toLocaleString('ko-KR') });
 const stageLabel = (def: CrmPipelineDef, k: string | null) =>
   (k && def.stages.find((s) => s.key === k)?.label) ?? k ?? '';
 const sourceLabel = (def: CrmPipelineDef, k: string) =>
@@ -79,13 +81,14 @@ function StageBadge({ def, stage }: { def: CrmPipelineDef; stage: string }) {
 }
 
 function NextAction({ l }: { l: CrmLeadView }) {
+  const { t } = useTranslation();
   if (!l.nextActionAt) return <span className={styles.muted}>—</span>;
-  const t = kstToday();
-  const cls = l.nextActionAt < t ? styles.over : l.nextActionAt === t ? styles.soon : '';
+  const today = kstToday();
+  const cls = l.nextActionAt < today ? styles.over : l.nextActionAt === today ? styles.soon : '';
   return (
     <span className={cls} title={l.nextAction ?? undefined}>
       {l.nextActionAt}
-      {l.nextActionAt < t ? ' (지남)' : l.nextActionAt === t ? ' (오늘)' : ''}
+      {l.nextActionAt < today ? t('crm.overdue') : l.nextActionAt === today ? t('crm.today') : ''}
     </span>
   );
 }
@@ -96,6 +99,7 @@ function NextAction({ l }: { l: CrmLeadView }) {
  * 칸반·목록, 상담 기록(통화·문자·메일·미팅·메모), 다음 연락일
  */
 export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
+  const { t } = useTranslation();
   const def = CRM_PIPELINES[pipeline];
   const base = `/crm/${pipeline}/leads`;
   const OPEN = def.stages.filter((s) => s.open).map((s) => s.key);
@@ -121,7 +125,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       setRows(await api<CrmLeadView[]>(base));
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -153,8 +157,8 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       ),
     [rows, mineOnly, term, user?.employeeId],
   );
-  const t = kstToday();
-  const weekLater = new Date(Date.parse(`${t}T00:00:00Z`) + 7 * 86_400_000)
+  const today = kstToday();
+  const weekLater = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000)
     .toISOString()
     .slice(0, 10);
   const open = rows.filter((r) => OPEN.includes(r.stage));
@@ -163,10 +167,10 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const changeStage = async (l: CrmLeadView, stage: string) => {
     try {
       await api(`${base}/${l.id}`, { method: 'PATCH', body: JSON.stringify({ stage }) });
-      toast({ type: 'success', title: `${stageLabel(def, stage)}(으)로 옮겼습니다` });
+      toast({ type: 'success', title: t('crm.moved', { v0: stageLabel(def, stage) }) });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.changeFailed') });
     }
   };
 
@@ -185,44 +189,44 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       ? [
           {
             name: 'contactTitle',
-            label: '직함·부서',
-            placeholder: '예: 총무팀 과장',
+            label: t('crm.f.title'),
+            placeholder: t('crm.f.titlePh'),
             alwaysShow: true,
           },
         ]
       : []),
     {
       name: 'phone',
-      label: '연락처',
+      label: t('crm.f.phone'),
       type: 'tel',
       alwaysShow: true,
       pairWithNext: pipeline === 'B2B',
     },
-    ...(pipeline === 'B2B' ? [{ name: 'email', label: '메일', alwaysShow: true }] : []),
+    ...(pipeline === 'B2B' ? [{ name: 'email', label: t('crm.f.email'), alwaysShow: true }] : []),
     {
       name: 'region',
       label: def.regionLabel,
-      placeholder: '예: 경기 성남 분당',
+      placeholder: t('crm.f.regionPh'),
       alwaysShow: true,
       pairWithNext: true,
     },
     {
       name: 'source',
-      label: '유입 경로',
+      label: t('crm.f.source'),
       type: 'select',
       options: def.sources.map((v) => ({ value: v.key, label: v.label })),
       alwaysShow: true,
     },
     {
       name: 'stage',
-      label: '단계',
+      label: t('crm.f.stage'),
       type: 'chips',
       options: def.stages.map((v) => ({ value: v.key, label: v.label })),
       alwaysShow: true,
     },
     {
       name: 'interest',
-      label: '관심도',
+      label: t('crm.f.interest'),
       type: 'chips',
       options: CRM_INTERESTS.map((v) => ({ value: v, label: CRM_INTEREST_LABEL[v] })),
       alwaysShow: true,
@@ -230,7 +234,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     },
     {
       name: 'ownerEmpId',
-      label: '영업 담당',
+      label: t('crm.f.owner'),
       type: 'select',
       options: personOptions,
       searchable: true,
@@ -240,7 +244,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       ? [
           {
             name: 'amount',
-            label: `${def.amountLabel}(원)`,
+            label: t('crm.f.amount', { v0: def.amountLabel }),
             type: 'number',
             alwaysShow: true,
             pairWithNext: !!def.expectedLabel,
@@ -252,15 +256,15 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       : []),
     {
       name: 'nextActionAt',
-      label: '다음 연락일',
+      label: t('crm.f.nextAt'),
       type: 'date',
       alwaysShow: true,
       pairWithNext: true,
     },
     {
       name: 'nextAction',
-      label: '다음에 할 일',
-      placeholder: '예: 설명 자료 보내기',
+      label: t('crm.f.nextAction'),
+      placeholder: t('crm.f.nextActionPh'),
       alwaysShow: true,
     },
     ...def.fields.map((f, i) => ({
@@ -271,8 +275,8 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       options: f.options?.map((o) => ({ value: o, label: o })),
       pairWithNext: f.type !== 'textarea' && i % 2 === 0 && i < def.fields.length - 1,
     })),
-    { name: 'memo', label: '메모', type: 'textarea' },
-    { name: 'lostReason', label: '실패·보류 이유' },
+    { name: 'memo', label: t('crm.f.memo'), type: 'textarea' },
+    { name: 'lostReason', label: t('crm.f.lostReason') },
     ...(def.link
       ? [{ name: 'linkId', label: def.linkLabel, type: 'select', options: links, searchable: true }]
       : []),
@@ -305,12 +309,12 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
         isNew ? base : `${base}/${(editing as CrmLeadView).id}`,
         { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) },
       );
-      toast({ type: 'success', title: isNew ? '영업 대상을 등록했습니다' : '저장했습니다' });
+      toast({ type: 'success', title: isNew ? t('crm.created') : t('crm.saved') });
       setEditing(null);
       await load();
       if (isNew && res.id) detail.open(res.id);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.saveFailed') });
       throw e;
     }
   };
@@ -334,7 +338,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? `${def.label} 대상 등록` : '영업 대상 수정'}
+      title={editing === 'new' ? t('crm.createTitle', { v0: def.label }) : t('crm.editTitle')}
       size="md"
       fields={fields}
       initialValues={editing ? initialOf(editing) : undefined}
@@ -344,10 +348,10 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const addButton = can(`${def.perm}.CREATE`) ? (
     <>
       <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
-        가져오기
+        {t('crm.import')}
       </Button>
       <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-        + 영업 대상 등록
+        {t('crm.createBtn')}
       </Button>
     </>
   ) : undefined;
@@ -374,8 +378,8 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       value={view}
       onChange={(v) => setView(v as View)}
       options={[
-        { value: 'list', label: '리스트' },
-        { value: 'board', label: '칸반' },
+        { value: 'list', label: t('crm.view.list') },
+        { value: 'board', label: t('crm.view.board') },
       ]}
     />
   );
@@ -384,8 +388,8 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       value={mineOnly ? 'mine' : 'all'}
       onChange={(v) => setMineOnly(v === 'mine')}
       options={[
-        { value: 'all', label: '전체' },
-        { value: 'mine', label: '내 담당' },
+        { value: 'all', label: t('crm.scope.all') },
+        { value: 'mine', label: t('crm.scope.mine') },
       ]}
     />
   );
@@ -398,8 +402,8 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
         className="sft-toolbar__search"
         type="search"
         value={q}
-        placeholder="상호·이름·지역·연락처"
-        aria-label="영업 대상 찾기"
+        placeholder={t('crm.searchPh')}
+        aria-label={t('crm.search')}
         onChange={(e) => setQ(e.target.value)}
       />
     </div>
@@ -411,56 +415,56 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const wonN = rows.filter((r) => crmPhaseOf(def, r.stage) === 'won').length;
   const lostN = rows.filter((r) => def.stages.find((s) => s.key === r.stage)?.lost).length;
   const holdN = rows.filter((r) => crmPhaseOf(def, r.stage) === 'closed').length - lostN;
-  const amountName = def.amountLabel?.replace(/\(.*\)/, '') ?? '금액';
+  const amountName = def.amountLabel?.replace(/\(.*\)/, '') ?? t('crm.amount');
   const kpis: { label: string; value: string; sub?: string }[] =
     phase === 'lead' || phase === 'all'
       ? [
           {
-            label: `${def.phaseLabels.lead} 수`,
+            label: t('crm.countOf', { v0: def.phaseLabels.lead }),
             value: `${inPhase.length}`,
-            sub: `일주일 안 연락할 곳 ${dueSoon}`,
+            sub: t('crm.dueSoon', { v0: dueSoon }),
           },
           ...(def.amountLabel
             ? [{ label: `${def.phaseLabels.lead} ${amountName}`, value: won(sum(inPhase)) }]
             : []),
           {
-            label: '관심도 높음',
+            label: t('crm.hotInterest'),
             value: inPhase.length
               ? `${Math.round((inPhase.filter((r) => r.interest === 'A').length / inPhase.length) * 100)}%`
               : '—',
-            sub: `${inPhase.filter((r) => r.interest === 'A').length}곳`,
+            sub: t('crm.placesN', { v0: inPhase.filter((r) => r.interest === 'A').length }),
           },
         ]
       : phase === 'deal'
         ? [
             {
-              label: `${def.phaseLabels.deal} 건수`,
+              label: t('crm.dealsOf', { v0: def.phaseLabels.deal }),
               value: `${inPhase.length}`,
-              sub: `일주일 안 연락할 곳 ${dueSoon}`,
+              sub: t('crm.dueSoon', { v0: dueSoon }),
             },
-            ...(def.amountLabel ? [{ label: '파이프라인 가치', value: won(sum(inPhase)) }] : []),
+            ...(def.amountLabel ? [{ label: t('crm.pipeline'), value: won(sum(inPhase)) }] : []),
             {
-              label: '전환율',
+              label: t('crm.conversion'),
               value: wonN + lostN ? `${Math.round((wonN / (wonN + lostN)) * 100)}%` : '—',
-              sub: `${def.phaseLabels.won} ${wonN} · 실패 ${lostN}`,
+              sub: t('crm.wonLost', { v0: def.phaseLabels.won, v1: wonN, v2: lostN }),
             },
           ]
         : phase === 'won'
           ? [
-              { label: `${def.phaseLabels.won} 건수`, value: `${inPhase.length}` },
+              { label: t('crm.dealsOf', { v0: def.phaseLabels.won }), value: `${inPhase.length}` },
               ...(def.amountLabel
                 ? [
-                    { label: `총 ${amountName}`, value: won(sum(inPhase)) },
+                    { label: t('crm.totalOf', { v0: amountName }), value: won(sum(inPhase)) },
                     {
-                      label: `평균 ${amountName}`,
+                      label: t('crm.avgOf', { v0: amountName }),
                       value: inPhase.length ? won(Math.round(sum(inPhase) / inPhase.length)) : '—',
                     },
                   ]
                 : []),
             ]
           : [
-              { label: '보류', value: `${holdN}` },
-              { label: '실패', value: `${lostN}` },
+              { label: t('crm.onHold'), value: `${holdN}` },
+              { label: t('crm.lost'), value: `${lostN}` },
             ];
 
   const columns: Column[] = [
@@ -471,30 +475,36 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       exportValue: (r) => (r as unknown as CrmLeadView).code,
     },
     {
-      title: '고객명',
+      title: t('crm.col.customer'),
       width: 80,
       render: (r) => (r.contactName as string) ?? '—',
       exportValue: (r) => (r.contactName as string) ?? '',
     },
     {
-      title: pipeline === 'B2B' ? '회사명' : '상호',
+      title: pipeline === 'B2B' ? t('crm.col.company') : t('crm.col.business'),
       dataIndex: 'companyName',
       flex: 1,
       minWidth: 140,
     },
     {
-      title: '연락처',
+      title: t('crm.f.phone'),
       render: (r) => (r.phone ? formatPhone(String(r.phone)) : '—'),
       exportValue: (r) => (r.phone ? formatPhone(String(r.phone)) : ''),
     },
     // 유입 경로는 리드 단계에서 주로 본다 — 진행·계약 탭은 금액·다음 연락을 보이려고 뺀다
     ...(phase === 'lead' || phase === 'all'
-      ? [{ title: '유입경로', width: 96, render: (r: Row) => sourceLabel(def, String(r.source)) }]
+      ? [
+          {
+            title: t('crm.col.source'),
+            width: 96,
+            render: (r: Row) => sourceLabel(def, String(r.source)),
+          },
+        ]
       : []),
     ...(phase === 'lead' || phase === 'all'
       ? [
           {
-            title: '지역',
+            title: t('crm.col.region'),
             width: 100,
             render: (r: Row) => (r.region as string) ?? '—',
             exportValue: (r: Row) => (r.region as string) ?? '',
@@ -502,20 +512,20 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
         ]
       : []),
     {
-      title: '단계',
+      title: t('crm.f.stage'),
       width: 100,
       render: (r) => <StageBadge def={def} stage={String(r.stage)} />,
       exportValue: (r) => stageLabel(def, String(r.stage)),
     },
     {
-      title: '영업 담당',
+      title: t('crm.f.owner'),
       width: 80,
       render: (r) =>
         r.ownerName ? <span className={styles.personChip}>{r.ownerName as string}</span> : '—',
       exportValue: (r) => (r.ownerName as string) ?? '',
     },
     {
-      title: '마지막 접촉',
+      title: t('crm.col.lastContact'),
       width: 96,
       render: (r) => (r.lastActivityAt ? shortYmd(String(r.lastActivityAt)) : '—'),
       exportValue: (r) => (r.lastActivityAt ? String(r.lastActivityAt).slice(0, 10) : ''),
@@ -533,7 +543,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     ...(phase === 'won' && def.link
       ? [
           {
-            title: def.link === 'BRANCH' ? '가맹점' : '거래처',
+            title: def.link === 'BRANCH' ? t('crm.col.branch') : t('crm.col.partner'),
             width: 100,
             render: (r: Row) => (r.linkName as string) ?? '—',
             exportValue: (r: Row) => (r.linkName as string) ?? '',
@@ -541,14 +551,14 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
         ]
       : [
           {
-            title: '다음 연락',
+            title: t('crm.col.next'),
             width: 110,
             render: (r: Row) => <NextAction l={r as unknown as CrmLeadView} />,
             exportValue: (r: Row) => (r.nextActionAt as string) ?? '',
           },
         ]),
     {
-      title: '관심도',
+      title: t('crm.f.interest'),
       width: 72,
       render: (r) => (
         <span className={`${styles.interest} ${styles[`interest${r.interest as CrmInterest}`]}`}>
@@ -565,7 +575,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       onChange={(v) => setPhase(v as CrmPhase | 'all')}
       options={[
         ...CRM_PHASES.map((p) => ({ value: p, label: def.phaseLabels[p] })),
-        { value: 'all', label: '전체' },
+        { value: 'all', label: t('crm.scope.all') },
       ]}
     />
   );
@@ -574,7 +584,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     <ListPage
       fit
       title={def.label}
-      subtitle={`${def.description} 상세에서 통화·문자·미팅 기록을 남기고, 칸반에서는 카드를 끌어 단계를 옮깁니다.`}
+      subtitle={t('crm.subtitle', { v0: def.description })}
       onRefresh={load}
       updatedAt={updatedAt}
       actions={view === 'list' ? phaseTabs : undefined}
@@ -596,7 +606,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
             rows={phaseRows as unknown as Row[]}
             loading={loading}
             exportable
-            exportFileName={`${def.label.replace(/\s/g, '')}_${phase === 'all' ? '전체' : def.phaseLabels[phase]}`}
+            exportFileName={`${def.label.replace(/\s/g, '')}_${phase === 'all' ? t('crm.scope.all') : def.phaseLabels[phase]}`}
             filters={filters}
             viewSwitch={viewSwitch}
             toolbarActions={addButton}
@@ -653,8 +663,9 @@ function Board({
   onMove: (l: CrmLeadView, s: string) => void;
   onOpen: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
-  const t = kstToday();
+  const today = kstToday();
   const make = (list: CrmLeadView[]): KanbanColumn[] =>
     def.stages
       .filter((s) => s.open || s.won)
@@ -677,18 +688,18 @@ function Board({
                   <div className={styles.kRow}>
                     <span
                       className={
-                        r.nextActionAt && r.nextActionAt < t
+                        r.nextActionAt && r.nextActionAt < today
                           ? styles.over
-                          : r.nextActionAt === t
+                          : r.nextActionAt === today
                             ? styles.soon
                             : styles.muted
                       }
                     >
-                      <CalendarClock size={11} aria-hidden /> 다음 연락{' '}
+                      <CalendarClock size={11} aria-hidden /> {t('crm.col.next')}{' '}
                       {r.nextActionAt ? md(r.nextActionAt) : '—'}
                     </span>
                     {r.amount != null && <span className={styles.muted}>{won(r.amount)}</span>}
-                    <span className={styles.muted}>{r.ownerName ?? '담당 없음'}</span>
+                    <span className={styles.muted}>{r.ownerName ?? t('crm.unassigned')}</span>
                   </div>
                 </div>
               ),
@@ -706,7 +717,7 @@ function Board({
         const l = rows.find((r) => r.id === card.id);
         if (!l || l.stage === col.id) continue;
         if (!canMove) {
-          toast({ type: 'error', title: '단계를 바꿀 권한이 없습니다' });
+          toast({ type: 'error', title: t('crm.noStagePerm') });
           setCols(make(rows));
           return;
         }
@@ -718,7 +729,7 @@ function Board({
     <>
       <div className="dt-wrap">{toolbar}</div>
       {loading && !rows.length ? (
-        <div className={styles.empty}>불러오는 중…</div>
+        <div className={styles.empty}>{t('crm.loading')}</div>
       ) : (
         <div className={`task-kanban ${styles.kanbanWrap}`}>
           <KanbanBoard
@@ -754,6 +765,7 @@ function LeadDetail({
   onEdit: (l: CrmLeadView) => void;
   onChanged: () => Promise<void> | void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const base = `/crm/${def.key}/leads`;
   const [d, setD] = useState<{
@@ -769,7 +781,7 @@ function LeadDetail({
     try {
       setD(await api(`${base}/${id}`));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.loadFailed') });
     }
   }, [base, id, toast]);
   useEffect(() => {
@@ -794,7 +806,7 @@ function LeadDetail({
       await load();
       await onChanged();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '남기지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.logFailed') });
     } finally {
       setBusy(false);
     }
@@ -805,21 +817,17 @@ function LeadDetail({
       await load();
       await onChanged();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.changeFailed') });
     }
   };
   const remove = async () => {
-    if (
-      !d ||
-      !window.confirm(`'${d.lead.companyName}'을(를) 지울까요? 상담 기록도 함께 지워집니다.`)
-    )
-      return;
+    if (!d || !window.confirm(t('crm.deleteQ', { v0: d.lead.companyName }))) return;
     try {
       await api(`${base}/${id}`, { method: 'DELETE' });
       await onChanged();
       onBack();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.deleteFailed') });
     }
   };
 
@@ -835,12 +843,12 @@ function LeadDetail({
           <>
             {canDelete && (
               <Button variant="ghost" size="sm" onClick={() => void remove()}>
-                삭제
+                {t('crm.delete')}
               </Button>
             )}
             {canEdit && (
               <Button variant="secondary" size="sm" onClick={() => onEdit(l)}>
-                수정
+                {t('crm.edit')}
               </Button>
             )}
           </>
@@ -850,14 +858,17 @@ function LeadDetail({
         l
           ? [
               {
-                title: '기본 정보',
+                title: t('crm.basic'),
                 items: [
                   { label: 'ID', value: l.code },
-                  { label: '등록일', value: l.createdAt.slice(0, 10) },
-                  { label: def.key === 'B2B' ? '회사명' : '상호', value: l.companyName },
-                  { label: '단계', value: <StageBadge def={def} stage={l.stage} /> },
+                  { label: t('crm.createdAt'), value: l.createdAt.slice(0, 10) },
+                  {
+                    label: def.key === 'B2B' ? t('crm.col.company') : t('crm.col.business'),
+                    value: l.companyName,
+                  },
+                  { label: t('crm.f.stage'), value: <StageBadge def={def} stage={l.stage} /> },
                   { label: def.regionLabel, value: l.region },
-                  { label: '유입 경로', value: sourceLabel(def, l.source) },
+                  { label: t('crm.f.source'), value: sourceLabel(def, l.source) },
                   ...def.fields.map((f) => ({
                     label: f.label,
                     value: fieldText(f, l.fields?.[f.key]),
@@ -866,34 +877,34 @@ function LeadDetail({
                 ],
               },
               {
-                title: '연락처 정보',
+                title: t('crm.contactInfo'),
                 items: [
                   {
                     label: def.contactLabel,
                     value: [l.contactName, l.contactTitle].filter(Boolean).join(' · ') || null,
                   },
-                  { label: '연락처', value: l.phone ? formatPhone(l.phone) : null },
-                  ...(def.key === 'B2B' ? [{ label: '메일', value: l.email }] : []),
+                  { label: t('crm.f.phone'), value: l.phone ? formatPhone(l.phone) : null },
+                  ...(def.key === 'B2B' ? [{ label: t('crm.f.email'), value: l.email }] : []),
                 ],
               },
               {
-                title: '영업 정보',
+                title: t('crm.salesInfo'),
                 items: [
-                  { label: '영업 담당', value: l.ownerName },
-                  { label: '관심도', value: CRM_INTEREST_LABEL[l.interest] },
+                  { label: t('crm.f.owner'), value: l.ownerName },
+                  { label: t('crm.f.interest'), value: CRM_INTEREST_LABEL[l.interest] },
                   ...(def.amountLabel
                     ? [{ label: def.amountLabel, value: l.amount == null ? null : won(l.amount) }]
                     : []),
                   ...(def.expectedLabel ? [{ label: def.expectedLabel, value: l.expectedAt }] : []),
                   {
-                    label: '마지막 접촉',
+                    label: t('crm.col.lastContact'),
                     value: l.lastActivityAt ? l.lastActivityAt.slice(0, 10) : null,
                   },
-                  { label: '다음 연락', value: <NextAction l={l} /> },
-                  { label: '다음에 할 일', value: l.nextAction },
+                  { label: t('crm.col.next'), value: <NextAction l={l} /> },
+                  { label: t('crm.f.nextAction'), value: l.nextAction },
                   ...(def.link ? [{ label: def.linkLabel, value: l.linkName }] : []),
-                  { label: '실패·보류 이유', value: l.lostReason },
-                  { label: '메모', value: l.memo, wide: true },
+                  { label: t('crm.f.lostReason'), value: l.lostReason },
+                  { label: t('crm.f.memo'), value: l.memo, wide: true },
                 ],
               },
             ]
@@ -904,7 +915,7 @@ function LeadDetail({
         <>
           {canEdit && (
             <section className={styles.block}>
-              <h3 className={styles.blockTitle}>단계</h3>
+              <h3 className={styles.blockTitle}>{t('crm.f.stage')}</h3>
               <SegmentedControl
                 value={l.stage}
                 onChange={(v) => v !== l.stage && void stage(v)}
@@ -913,10 +924,10 @@ function LeadDetail({
             </section>
           )}
           <section className={styles.block}>
-            <h3 className={styles.blockTitle}>상담 기록</h3>
+            <h3 className={styles.blockTitle}>{t('crm.activities')}</h3>
             {canEdit && (
               <div className={styles.actForm}>
-                <div className="form-chips" role="radiogroup" aria-label="기록 종류">
+                <div className="form-chips" role="radiogroup" aria-label={t('crm.activityKind')}>
                   {ACT_KINDS.map((k) => (
                     <button
                       key={k}
@@ -934,15 +945,15 @@ function LeadDetail({
                   rows={3}
                   value={content}
                   maxLength={3000}
-                  placeholder="상담 내용 — 예: 조건 문의, 다음 주 방문 희망"
+                  placeholder={t('crm.activityPh')}
                   onChange={(e) => setContent(e.target.value)}
                 />
                 <div className={styles.actNext}>
-                  <span className={styles.muted}>다음 연락</span>
+                  <span className={styles.muted}>{t('crm.col.next')}</span>
                   <Input type="date" value={nextAt} onChange={(e) => setNextAt(e.target.value)} />
                   <Input
                     value={nextWhat}
-                    placeholder="다음에 할 일(선택)"
+                    placeholder={t('crm.nextActionOpt')}
                     maxLength={200}
                     onChange={(e) => setNextWhat(e.target.value)}
                   />
@@ -953,7 +964,7 @@ function LeadDetail({
                     disabled={!content.trim()}
                     onClick={() => void addActivity()}
                   >
-                    기록 남기기
+                    {t('crm.logBtn')}
                   </Button>
                 </div>
               </div>
@@ -967,10 +978,11 @@ function LeadDetail({
                       <span className={styles.tlIcon}>{Icon ? <Icon size={12} /> : '•'}</span>
                       <div className={styles.tlBody}>
                         <span>
-                          <b>{a.actorName ?? '알 수 없음'}</b> ·{' '}
+                          <b>{a.actorName ?? t('crm.unknown')}</b> ·{' '}
                           {a.kind === 'STAGE' ? (
                             <>
-                              단계 {a.fromStage ? `${stageLabel(def, a.fromStage)} → ` : ''}
+                              {t('crm.f.stage')}{' '}
+                              {a.fromStage ? `${stageLabel(def, a.fromStage)} → ` : ''}
                               <b>{stageLabel(def, a.toStage)}</b>
                             </>
                           ) : (
@@ -987,7 +999,7 @@ function LeadDetail({
                 })}
               </ol>
             ) : (
-              <p className={styles.muted}>아직 상담 기록이 없습니다.</p>
+              <p className={styles.muted}>{t('crm.noActivities')}</p>
             )}
           </section>
         </>
@@ -1000,14 +1012,14 @@ const readBase64 = (f: File) =>
   new Promise<string>((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-    r.onerror = () => reject(new Error('파일을 읽지 못했습니다'));
+    r.onerror = () => reject(new Error(i18n.t('crm.fileFailed')));
     r.readAsDataURL(f);
   });
 
 const IMPORT_STATUS: Record<CrmImportPreview['rows'][number]['status'], string> = {
-  create: '새로 넣음',
-  duplicate: '이미 있음',
-  invalid: '업체명 없음',
+  create: i18n.t('crm.imp.create'),
+  duplicate: i18n.t('crm.imp.duplicate'),
+  invalid: i18n.t('crm.imp.invalid'),
 };
 
 /**
@@ -1023,6 +1035,7 @@ function ImportModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -1042,11 +1055,11 @@ function ImportModal({
       });
       if (dryRun) setPreview(r);
       else {
-        toast({ type: 'success', title: `${r.imported ?? 0}건을 가져왔습니다` });
+        toast({ type: 'success', title: t('crm.imported', { v0: r.imported ?? 0 }) });
         onDone();
       }
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '가져오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.importFailed') });
     } finally {
       setBusy(false);
     }
@@ -1056,17 +1069,17 @@ function ImportModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`${def.label} 가져오기`}
+      title={t('crm.importTitle', { v0: def.label })}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('crm.cancel')}
           </Button>
           {preview ? (
             <>
               <Button variant="outline" onClick={() => setPreview(null)}>
-                다시 고르기
+                {t('crm.repick')}
               </Button>
               <Button
                 variant="primary"
@@ -1074,7 +1087,8 @@ function ImportModal({
                 disabled={!preview.create}
                 onClick={() => void send(false)}
               >
-                {preview.create}건 가져오기
+                {preview.create}
+                {t('crm.importN')}
               </Button>
             </>
           ) : (
@@ -1084,7 +1098,7 @@ function ImportModal({
               disabled={!file && !text.trim()}
               onClick={() => void send(true)}
             >
-              미리보기
+              {t('crm.preview')}
             </Button>
           )}
         </>
@@ -1093,9 +1107,9 @@ function ImportModal({
       {!preview ? (
         <div className={styles.importForm}>
           <p className={styles.muted}>
-            엑셀·구글 시트에서 머리글 줄까지 표를 복사해 붙여넣거나, CSV·엑셀(.xlsx) 파일을
-            고르세요. 머리글(업체명·대표자·연락처·지역·진행상태·관심도·담당자·등록일 …)을 보고 칸을
-            맞춥니다. 같은 업체(업체명·연락처)가 이미 있으면 건너뜁니다.
+            {t('crm.importHelp1')}
+            {t('crm.importHelp2')}
+            {t('crm.importHelp3')}
           </p>
           <Textarea
             rows={10}
@@ -1108,13 +1122,13 @@ function ImportModal({
           />
           <div className={styles.importFile}>
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-              파일 고르기
+              {t('crm.pickFile')}
             </Button>
             {file ? (
               <span>
                 {file.name}{' '}
                 <button type="button" className={styles.linkBtn} onClick={() => setFile(null)}>
-                  빼기
+                  {t('crm.remove')}
                 </button>
               </span>
             ) : (
@@ -1133,17 +1147,17 @@ function ImportModal({
         <div className={styles.importForm}>
           <div className={styles.importCounts}>
             <span>
-              전체 <b>{preview.total}</b>
+              {t('crm.scope.all')} <b>{preview.total}</b>
             </span>
             <span className={styles.ok}>
-              새로 넣음 <b>{preview.create}</b>
+              {t('crm.imp.create')} <b>{preview.create}</b>
             </span>
             <span>
-              이미 있음 <b>{preview.duplicate}</b>
+              {t('crm.imp.duplicate')} <b>{preview.duplicate}</b>
             </span>
             {preview.invalid > 0 && (
               <span className={styles.over}>
-                업체명 없음 <b>{preview.invalid}</b>
+                {t('crm.imp.invalid')} <b>{preview.invalid}</b>
               </span>
             )}
           </div>
@@ -1164,15 +1178,15 @@ function ImportModal({
             <table>
               <thead>
                 <tr>
-                  <th>결과</th>
+                  <th>{t('crm.result')}</th>
                   <th>{def.companyLabel.replace(/\(.*\)/, '')}</th>
                   <th>{def.contactLabel.replace(/\(.*\)/, '')}</th>
-                  <th>연락처</th>
-                  <th>지역</th>
-                  <th>단계</th>
-                  <th>관심도</th>
-                  <th>영업 담당</th>
-                  <th>등록일</th>
+                  <th>{t('crm.f.phone')}</th>
+                  <th>{t('crm.col.region')}</th>
+                  <th>{t('crm.f.stage')}</th>
+                  <th>{t('crm.f.interest')}</th>
+                  <th>{t('crm.f.owner')}</th>
+                  <th>{t('crm.createdAt')}</th>
                 </tr>
               </thead>
               <tbody>

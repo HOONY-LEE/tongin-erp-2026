@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -59,16 +61,16 @@ interface PartnerDetail extends Partner {
 
 const KIND: Record<Kind, { label: string; move: string; scope: string; desc: string }> = {
   AFFILIATE: {
-    label: '제휴',
-    move: '제휴이사',
-    scope: '본사·가맹점 배정',
-    desc: '공제회·복지몰·기업 회원 등 제휴사 회원의 이사. 본사와 가맹점 모두 배정합니다.',
+    label: i18n.t('ally.kind.AFFILIATE'),
+    move: i18n.t('ally.move.AFFILIATE'),
+    scope: i18n.t('ally.assign.AFFILIATE'),
+    desc: i18n.t('ally.desc.AFFILIATE'),
   },
   EXCLUSIVE: {
-    label: '전속',
-    move: '전속이사',
-    scope: '본사에서만 배정',
-    desc: '전속 계약을 맺은 회사 임직원의 이사. 본사에서만 배정합니다(지점에는 배정 불가).',
+    label: i18n.t('ally.kind.EXCLUSIVE'),
+    move: i18n.t('ally.move.EXCLUSIVE'),
+    scope: i18n.t('ally.assign.EXCLUSIVE'),
+    desc: i18n.t('ally.desc.EXCLUSIVE'),
   },
 };
 const STATUS_COLOR: Record<PartnerContractStatus, 'success' | 'info' | 'primary' | 'neutral'> = {
@@ -94,6 +96,7 @@ function StatusBadge({ s }: { s: PartnerContractStatus | null }) {
  * 작업을 맡기는 외주 용역업체(거래처관리의 '외주(작업)')와는 다르다.
  */
 export default function Alliances() {
+  const { t } = useTranslation();
   const toast = useToast();
   const { can } = useAuth();
   const { tab: kind, setTab: setKind } = useTabParam<Kind>('AFFILIATE', 'kind');
@@ -110,7 +113,7 @@ export default function Alliances() {
       setRows(await api<Partner[]>(`/partners?type=${kind}`));
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ally.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -121,10 +124,10 @@ export default function Alliances() {
 
   const k = KIND[kind];
   const fields: FormField[] = [
-    { name: 'name', label: '업체명', required: true, placeholder: '예: 경찰공제회' },
+    { name: 'name', label: t('ally.f.name'), required: true, placeholder: t('ally.f.namePh') },
     {
       name: 'contractStatus',
-      label: '계약 상태',
+      label: t('ally.f.status'),
       type: 'chips',
       alwaysShow: true,
       options: PARTNER_CONTRACT_STATUSES.map((v) => ({
@@ -134,7 +137,7 @@ export default function Alliances() {
     },
     {
       name: 'benefit',
-      label: kind === 'AFFILIATE' ? '제휴 내용(대상·혜택·할인·할증)' : '전속 계약 내용',
+      label: kind === 'AFFILIATE' ? t('ally.f.benefitAff') : t('ally.f.benefitExc'),
       type: 'textarea',
       alwaysShow: true,
     },
@@ -142,15 +145,15 @@ export default function Alliances() {
       ? [
           {
             name: 'intake',
-            label: '접수 방식',
-            placeholder: '예: 어플(CS 연동), 온라인/전화접수',
+            label: t('ally.f.intake'),
+            placeholder: t('ally.f.intakePh'),
             alwaysShow: true,
           } as FormField,
         ]
       : []),
-    { name: 'phone', label: '담당자 연락처', type: 'tel', alwaysShow: true },
-    { name: 'memo', label: '메모', type: 'textarea' },
-    { name: 'isActive', label: '사용(접수에서 고를 수 있음)', type: 'boolean' },
+    { name: 'phone', label: t('ally.f.contact'), type: 'tel', alwaysShow: true },
+    { name: 'memo', label: t('ally.f.memo'), type: 'textarea' },
+    { name: 'isActive', label: t('ally.f.active'), type: 'boolean' },
   ];
   const save = async (v: Record<string, unknown>) => {
     const isNew = editing === 'new';
@@ -170,12 +173,15 @@ export default function Alliances() {
         isNew ? '/partners' : `/partners/${(editing as Partner).id}`,
         { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) },
       );
-      toast({ type: 'success', title: isNew ? `${k.label} 업체를 등록했습니다` : '저장했습니다' });
+      toast({
+        type: 'success',
+        title: isNew ? t('ally.created', { v0: k.label }) : t('ally.saved'),
+      });
       setEditing(null);
       await load();
       if (isNew && r.id) detail.open(r.id);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ally.saveFailed') });
       throw e;
     }
   };
@@ -195,7 +201,11 @@ export default function Alliances() {
     <FormModal
       open={editing !== null}
       onOpenChange={(o) => !o && setEditing(null)}
-      title={editing === 'new' ? `${k.label} 업체 등록` : `${k.label} 업체 수정`}
+      title={
+        editing === 'new'
+          ? t('ally.createTitle', { v0: k.label })
+          : t('ally.editTitle', { v0: k.label })
+      }
       size="md"
       fields={fields}
       initialValues={editing ? initialOf(editing) : undefined}
@@ -220,19 +230,19 @@ export default function Alliances() {
   const year = rows.reduce((n, r) => n + r.leadCountYear, 0);
   const columns: Column[] = [
     {
-      title: '번호',
+      title: t('ally.col.no'),
       width: 104,
       render: (r) => <span className={styles.code}>{String(r.code)}</span>,
       exportValue: (r) => String(r.code),
     },
-    { title: '업체명', dataIndex: 'name', width: 200 },
+    { title: t('ally.f.name'), dataIndex: 'name', width: 200 },
     {
-      title: '상태',
+      title: t('ally.col.status'),
       width: 92,
       render: (r) => (
         <>
           <StatusBadge s={r.contractStatus as PartnerContractStatus | null} />
-          {!r.isActive && <span className={styles.muted}> · 사용 안 함</span>}
+          {!r.isActive && <span className={styles.muted}> {t('ally.offSuffix')}</span>}
         </>
       ),
       exportValue: (r) =>
@@ -241,7 +251,7 @@ export default function Alliances() {
           : '',
     },
     {
-      title: kind === 'AFFILIATE' ? '제휴 내용' : '계약 내용',
+      title: kind === 'AFFILIATE' ? t('ally.col.benefitAff') : t('ally.col.benefitExc'),
       flex: 1,
       minWidth: 260,
       render: (r) => (
@@ -252,7 +262,7 @@ export default function Alliances() {
     ...(kind === 'AFFILIATE'
       ? [
           {
-            title: '접수 방식',
+            title: t('ally.f.intake'),
             width: 150,
             render: (r: Row) => (
               <span className={styles.clip2}>{(r.intake as string | null)?.trim() || '—'}</span>
@@ -261,17 +271,25 @@ export default function Alliances() {
           },
         ]
       : []),
-    { title: '올해 접수', width: 84, render: (r) => `${r.leadCountYear as number}건` },
-    { title: '전체 접수', width: 84, render: (r) => `${r.leadCount as number}건` },
+    {
+      title: t('ally.col.yearLeads'),
+      width: 84,
+      render: (r) => t('ally.countN', { v0: r.leadCountYear as number }),
+    },
+    {
+      title: t('ally.col.allLeads'),
+      width: 84,
+      render: (r) => t('ally.countN', { v0: r.leadCount as number }),
+    },
   ];
 
   const actions = can('PARTNER.CREATE') ? (
     <>
       <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
-        가져오기
+        {t('ally.import')}
       </Button>
       <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-        + {k.label} 업체 등록
+        + {k.label} {t('ally.createBtn')}
       </Button>
     </>
   ) : undefined;
@@ -279,8 +297,8 @@ export default function Alliances() {
   return (
     <ListPage
       fit
-      title="제휴·전속"
-      subtitle={`${KIND.AFFILIATE.desc} ${KIND.EXCLUSIVE.desc} 작업을 맡기는 외주 업체는 거래처관리에서 관리합니다.`}
+      title={t('ally.title')}
+      subtitle={t('ally.subtitle', { v0: KIND.AFFILIATE.desc, v1: KIND.EXCLUSIVE.desc })}
       onRefresh={load}
       updatedAt={updatedAt}
       actions={
@@ -288,31 +306,37 @@ export default function Alliances() {
           value={kind}
           onChange={(v) => setKind(v as Kind)}
           options={[
-            { value: 'AFFILIATE', label: '제휴' },
-            { value: 'EXCLUSIVE', label: '전속' },
+            { value: 'AFFILIATE', label: t('ally.kind.AFFILIATE') },
+            { value: 'EXCLUSIVE', label: t('ally.kind.EXCLUSIVE') },
           ]}
         />
       }
     >
       <div className={styles.kpis}>
         <div className={styles.kpi}>
-          <span>{k.label} 업체</span>
+          <span>
+            {k.label} {t('ally.partners')}
+          </span>
           <b>{rows.length}</b>
           <small>
-            진행·자동연장·신규 {active.length} · 종료·사용 안 함 {rows.length - active.length}
+            {t('ally.activeLabel')} {active.length} {t('ally.inactiveLabel')}{' '}
+            {rows.length - active.length}
           </small>
         </div>
         <div className={styles.kpi}>
-          <span>올해 {k.move} 접수</span>
-          <b>{year}건</b>
-          <small>업체를 건 접수 기준</small>
+          <span>
+            {t('ally.thisYear')} {k.move} {t('ally.leads')}
+          </span>
+          <b>
+            {year}
+            {t('ally.countSuffix')}
+          </b>
+          <small>{t('ally.basis')}</small>
         </div>
         <div className={styles.kpi}>
-          <span>배정</span>
+          <span>{t('ally.assignLabel')}</span>
           <b>{k.scope}</b>
-          <small>
-            {kind === 'EXCLUSIVE' ? '지점으로 배정하면 저장되지 않습니다' : '가맹점도 접수·배정'}
-          </small>
+          <small>{kind === 'EXCLUSIVE' ? t('ally.branchBlocked') : t('ally.franchiseToo')}</small>
         </div>
       </div>
       <DataTable
@@ -321,7 +345,7 @@ export default function Alliances() {
         rows={rows as unknown as Row[]}
         loading={loading}
         exportable
-        exportFileName={`${k.label}업체`}
+        exportFileName={t('ally.exportName', { v0: k.label })}
         toolbarActions={actions}
         onRowClick={(r) => detail.open(String(r.id))}
       />
@@ -351,6 +375,7 @@ function PartnerDetailView({
   onEdit: (p: Partner) => void;
   onChanged: () => Promise<void> | void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
   const { can } = useAuth();
@@ -359,18 +384,18 @@ function PartnerDetailView({
     void api<PartnerDetail>(`/partners/${id}/detail`)
       .then(setD)
       .catch((e) =>
-        toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' }),
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ally.loadFailed') }),
       );
   }, [id, toast]);
   const remove = async () => {
-    if (!d || !window.confirm(`'${d.name}'을(를) 지울까요?`)) return;
+    if (!d || !window.confirm(t('ally.deleteQ', { v0: d.name }))) return;
     try {
       await api(`/partners/${id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('ally.deleted') });
       await onChanged();
       onBack();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ally.deleteFailed') });
     }
   };
   const k = d ? KIND[d.type] : null;
@@ -378,19 +403,19 @@ function PartnerDetailView({
     <RecordDetail
       loading={!d}
       title={d?.name ?? ''}
-      backLabel="제휴·전속"
+      backLabel={t('ally.title')}
       onBack={onBack}
       actions={
         d ? (
           <>
             {can('PARTNER.DELETE') && (
               <Button variant="ghost" size="sm" onClick={() => void remove()}>
-                삭제
+                {t('ally.delete')}
               </Button>
             )}
             {can('PARTNER.UPDATE') && (
               <Button variant="secondary" size="sm" onClick={() => onEdit(d)}>
-                수정
+                {t('ally.edit')}
               </Button>
             )}
           </>
@@ -400,30 +425,32 @@ function PartnerDetailView({
         d && k
           ? [
               {
-                title: '기본 정보',
+                title: t('ally.basic'),
                 items: [
-                  { label: '번호', value: d.code },
-                  { label: '구분', value: `${k.label} · ${k.move}` },
-                  { label: '계약 상태', value: <StatusBadge s={d.contractStatus} /> },
-                  { label: '배정', value: k.scope },
-                  ...(d.type === 'AFFILIATE' ? [{ label: '접수 방식', value: d.intake }] : []),
-                  { label: '담당자 연락처', value: d.phone ? formatPhone(d.phone) : null },
+                  { label: t('ally.col.no'), value: d.code },
+                  { label: t('ally.kindLabel'), value: `${k.label} · ${k.move}` },
+                  { label: t('ally.f.status'), value: <StatusBadge s={d.contractStatus} /> },
+                  { label: t('ally.assignLabel'), value: k.scope },
+                  ...(d.type === 'AFFILIATE'
+                    ? [{ label: t('ally.f.intake'), value: d.intake }]
+                    : []),
+                  { label: t('ally.f.contact'), value: d.phone ? formatPhone(d.phone) : null },
                   {
-                    label: '사용',
-                    value: d.isActive ? '사용(접수에서 고를 수 있음)' : '사용 안 함',
+                    label: t('ally.on'),
+                    value: d.isActive ? t('ally.f.active') : t('ally.off'),
                   },
-                  { label: '접수', value: `전체 ${d.leadCount}건` },
+                  { label: t('ally.leads'), value: t('ally.allN', { v0: d.leadCount }) },
                 ],
               },
               {
-                title: d.type === 'AFFILIATE' ? '제휴 내용' : '계약 내용',
+                title: d.type === 'AFFILIATE' ? t('ally.col.benefitAff') : t('ally.col.benefitExc'),
                 items: [
                   {
-                    label: '내용',
+                    label: t('ally.content'),
                     value: d.benefit ? <p className={styles.pre}>{d.benefit}</p> : null,
                     wide: true,
                   },
-                  { label: '메모', value: d.memo, wide: true },
+                  { label: t('ally.f.memo'), value: d.memo, wide: true },
                 ],
               },
             ]
@@ -432,17 +459,17 @@ function PartnerDetailView({
     >
       {d && (
         <section className={styles.block}>
-          <h3 className={styles.blockTitle}>최근 접수</h3>
+          <h3 className={styles.blockTitle}>{t('ally.recentLeads')}</h3>
           {d.recentLeads.length ? (
             <table className={styles.miniTable}>
               <thead>
                 <tr>
-                  <th>접수번호</th>
-                  <th>고객</th>
-                  <th>담당</th>
-                  <th>상태</th>
-                  <th>접수일</th>
-                  <th>이사일</th>
+                  <th>{t('ally.col.leadNo')}</th>
+                  <th>{t('ally.col.customer')}</th>
+                  <th>{t('ally.col.owner')}</th>
+                  <th>{t('ally.col.status')}</th>
+                  <th>{t('ally.col.receivedAt')}</th>
+                  <th>{t('ally.col.moveDate')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -460,8 +487,8 @@ function PartnerDetailView({
             </table>
           ) : (
             <p className={styles.muted}>
-              아직 이 업체로 들어온 접수가 없습니다. 접수 등록에서 &lsquo;제휴·전속 업체&rsquo;를
-              고르면 여기에 쌓입니다.
+              {t('ally.noLeads1')}
+              {t('ally.noLeads2')}
             </p>
           )}
         </section>
@@ -480,6 +507,7 @@ function ImportModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -493,11 +521,14 @@ function ImportModal({
       });
       toast({
         type: 'success',
-        title: `${r.created}곳을 넣었습니다${r.skipped ? ` · 이미 있어 건너뜀 ${r.skipped}` : ''}`,
+        title: t('ally.importedN', {
+          v0: r.created,
+          v1: r.skipped ? t('ally.skippedN', { v0: r.skipped }) : '',
+        }),
       });
       onDone();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '넣지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ally.importFailed') });
     } finally {
       setBusy(false);
     }
@@ -506,12 +537,12 @@ function ImportModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`${KIND[kind].label} 업체 가져오기`}
+      title={t('ally.importTitle', { v0: KIND[kind].label })}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('ally.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -519,16 +550,17 @@ function ImportModal({
             disabled={!parsed.rows.length}
             onClick={() => void run()}
           >
-            {parsed.rows.length}곳 넣기
+            {parsed.rows.length}
+            {t('ally.importN')}
           </Button>
         </>
       }
     >
       <div className={styles.importForm}>
         <p className={styles.muted}>
-          엑셀에서 머리글 줄까지 표를 복사해 붙여넣으세요. 머리글 &lsquo;업체명&rsquo;(필수) ·
-          &lsquo;상태&rsquo;(진행중·자동연장·신규·종료) · &lsquo;제휴내용&rsquo; ·
-          &lsquo;접수방식&rsquo;을 봅니다. 같은 이름이 이미 있으면 건너뜁니다.
+          {t('ally.importHelp1')}
+          {t('ally.importHelp2')}
+          {t('ally.importHelp3')}
         </p>
         <Textarea
           rows={10}
@@ -544,10 +576,10 @@ function ImportModal({
               <table>
                 <thead>
                   <tr>
-                    <th>업체명</th>
-                    <th>상태</th>
-                    <th>내용</th>
-                    <th>접수 방식</th>
+                    <th>{t('ally.f.name')}</th>
+                    <th>{t('ally.col.status')}</th>
+                    <th>{t('ally.content')}</th>
+                    <th>{t('ally.f.intake')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -605,7 +637,7 @@ function parseTable(text: string): {
   }
   const norm = (s: string) => s.replace(/\s/g, '');
   const headerAt = cells.findIndex((r) => r.some((c) => /업체명|회사명|제휴사/.test(norm(c))));
-  if (headerAt < 0) return { rows: [], error: "머리글 줄에 '업체명' 칸이 있어야 합니다." };
+  if (headerAt < 0) return { rows: [], error: i18n.t('ally.headerMissing') };
   const h = cells[headerAt].map(norm);
   const col = (...names: string[]) => h.findIndex((x) => names.some((n) => x.includes(n)));
   const ni = col('업체명', '회사명', '제휴사');
