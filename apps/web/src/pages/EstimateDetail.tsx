@@ -20,7 +20,7 @@ import { LEAD_STATUS } from '../lib/leadCodes';
 import { formatPhone } from '../lib/phone';
 import { fs } from '../lib/fontScale';
 
-/** 지점 반려 형태·접수 취소 형태 — 서버(dto/reject-lead.dto.ts)와 같은 목록 */
+/** 지점 반려 사유·접수 취소 형태 — 서버(dto/reject-lead.dto.ts)와 같은 목록 */
 const REJECT_KINDS = ['지점 마감', '지점 견적 거부', '서비스 지역 아님', '일정 불가', '기타'];
 const CANCEL_KINDS = ['중복 접수', '고객 취소', '이사일 마감', '타사 계약', '연락 불가', '기타'];
 import { MOVE_KIND_LABEL, moveKindOf } from '@tongin/shared';
@@ -453,7 +453,7 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         fields={[
           {
             name: 'kind',
-            label: '반려 형태',
+            label: '반려 사유',
             type: 'select',
             required: true,
             alwaysShow: true,
@@ -461,9 +461,8 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           },
           {
             name: 'reason',
-            label: '반려 사유(본사에서 다시 배정할 때 봅니다)',
+            label: '메모(선택 · 본사에서 다시 배정할 때 봅니다)',
             type: 'textarea',
-            required: true,
             alwaysShow: true,
           },
         ]}

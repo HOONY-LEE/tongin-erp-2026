@@ -18,14 +18,14 @@ import {
 } from '../components/ui';
 import {
   LEAD_STATUS,
-  LEAD_STATUS_DOT,
+  LEAD_STATUS_COLOR,
   RECEIPT_SOURCES,
   SERVICE_LINES,
   codeLabel,
 } from '../lib/leadCodes';
 import { EmployeeChip, type EmployeeBrief } from '../components/ui/EmployeeChip';
 import { Phone } from 'softium-ui/table';
-import { StatusDot } from '../components/ui/StatusDot';
+import { StatusChip } from '../components/ui/StatusChip';
 import { DocumentViewer } from '../components/ui/DocumentViewer';
 import { FileText } from 'lucide-react';
 
@@ -135,19 +135,20 @@ export default function Leads() {
     {
       title: '접수번호',
       dataIndex: 'leadNoSearch',
-      // 접수번호 + 호버 복사 버튼이 잘리지 않을 만큼은 확보한다.
-      minWidth: 110,
+      // 칸 폭 고정 — 탭(상태)마다 데이터가 달라도 표 모양이 그대로(접수번호 12자 + 복사 아이콘)
+      width: 172,
       render: (r) => <CopyText value={String(r.leadNo)} />,
       exportValue: (r) => String(r.leadNo),
     },
     {
       title: '고객명',
       // 이름이 긴 고객(법인명 등)이 많다
-      minWidth: 140,
+      width: 150,
       render: (r) => (r.customer as { name?: string } | null)?.name ?? '-',
     },
     {
       title: '전화번호',
+      width: 148,
       render: (r) => {
         const phone = (r.customer as { phonePrimary?: string } | null)?.phonePrimary;
         return phone ? <Phone value={phone} link={false} /> : '-';
@@ -156,12 +157,13 @@ export default function Leads() {
     {
       title: '상태',
       dataIndex: 'status',
+      width: 112,
       render: (r) => {
         const key = statusKey(r);
         return (
-          <StatusDot color={LEAD_STATUS_DOT[key] ?? LEAD_STATUS_DOT.CANCELED}>
+          <StatusChip color={LEAD_STATUS_COLOR[key] ?? LEAD_STATUS_COLOR.CANCELED}>
             {key === 'REJECTED' ? '반려' : (STATUS[key]?.label ?? key)}
-          </StatusDot>
+          </StatusChip>
         );
       },
       exportValue: (r) => {
@@ -169,16 +171,21 @@ export default function Leads() {
         return key === 'REJECTED' ? '반려' : (STATUS[key]?.label ?? key);
       },
     },
-    { title: '접수경로', render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string) },
+    {
+      title: '접수경로',
+      width: 112,
+      render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string),
+    },
     {
       title: '상품',
       // 상품 이름이 긴 경우가 많다
-      minWidth: 160,
+      width: 170,
       render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string),
     },
     {
       title: '담당자',
       dataIndex: 'ownerName',
+      width: 128,
       mask: false,
       render: (r) => {
         const emp = r.ownerEmp as EmployeeBrief | null;
@@ -192,6 +199,7 @@ export default function Leads() {
     },
     {
       title: '계약서',
+      width: 172,
       mask: false,
       render: (r) => {
         const c = (r.contracts as LeadContract[] | undefined)?.[0];
@@ -199,13 +207,14 @@ export default function Leads() {
           <button
             type="button"
             className="dt-doc-btn"
+            title="계약서 보기"
             onClick={(e) => {
               e.stopPropagation(); // 행 클릭(접수 상세)과 겹치지 않게
               setDoc(c);
             }}
           >
             <FileText size={14} aria-hidden />
-            보기
+            <span className="id-mono">{c.contractNo}</span>
           </button>
         ) : (
           <span style={{ color: 'var(--ark-color-text-tertiary)' }}>-</span>

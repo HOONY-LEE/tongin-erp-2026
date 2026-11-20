@@ -96,10 +96,10 @@ function cellMeasure(c: Column, r: Row) {
             .replace(/\s+/g, ' ')
             .trim()
         : cellText(c, r);
-  // 상태 점(6px + 8px) · 복사 아이콘(15px + 4px) · 직원 칩(동그라미·여백 40px)
+  // 상태 칩(좌우 여백 18px) · 복사 아이콘(15px + 4px) · 직원 칩(동그라미·여백 40px)
   const copy = html.includes('복사"');
   const extra =
-    (html.includes('sft-chip') ? 14 : 0) + (copy ? 20 : 0) + (html.includes('emp-chip') ? 40 : 0);
+    (html.includes('sft-chip') ? 20 : 0) + (copy ? 20 : 0) + (html.includes('emp-chip') ? 40 : 0);
   return { text, extra, mono: copy };
 }
 /** 숫자로만 된 값(전화번호·금액·날짜·시간 등) — 이런 칸만 숫자 서체(Geist Mono) */

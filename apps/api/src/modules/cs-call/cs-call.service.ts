@@ -12,6 +12,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Prisma, type CsCall } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EMPLOYEE_BRIEF_SELECT } from '../../common/employee-brief';
 import { CtiRoutingService } from './cti-routing.service';
 import { CS_ORG } from './cs-org';
 
@@ -655,7 +656,7 @@ export class CsCallService {
       empIds.length
         ? this.prisma.employee.findMany({
             where: { id: { in: empIds } },
-            select: { id: true, name: true },
+            select: EMPLOYEE_BRIEF_SELECT,
           })
         : [],
       leadIds.length
@@ -677,6 +678,8 @@ export class CsCallService {
       customerName: nameOf(customers, c.customerId, 'name'),
       agentEmpId: c.agentEmpId,
       agentName: nameOf(emps, c.agentEmpId, 'name'),
+      // 상담원 칩(접수의 담당자 칩과 같은 모양)
+      agent: emps.find((e) => e.id === c.agentEmpId) ?? null,
       leadId: c.leadId,
       leadNo: nameOf(leads, c.leadId, 'leadNo'),
       receivedAt: c.receivedAt.toISOString(),

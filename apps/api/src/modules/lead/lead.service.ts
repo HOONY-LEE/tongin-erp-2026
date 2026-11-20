@@ -15,6 +15,7 @@ import {
 } from '@tongin/shared';
 import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EMPLOYEE_BRIEF_SELECT } from '../../common/employee-brief';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -53,19 +54,7 @@ export class LeadService {
           take: 1,
         },
         // 담당자 칩 — 누르면 프로필 요약(이름·직책·소속·연락처)
-        ownerEmp: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-            photoAt: true,
-            isActive: true,
-            resignDate: true,
-            position: { select: { name: true } },
-            orgUnit: { select: { name: true } },
-          },
-        },
+        ownerEmp: { select: EMPLOYEE_BRIEF_SELECT },
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
@@ -453,7 +442,7 @@ export class LeadService {
    * 담당 지점은 본사(CO-MOVING), 담당자는 비우고 상태는 '접수'로. 형태·사유·반려한 지점을 남긴다.
    * 계약 이후(계약·작업)에는 반려할 수 없다.
    */
-  async reject(id: string, input: { kind: string; reason: string }, principal?: AuthPrincipal) {
+  async reject(id: string, input: { kind: string; reason?: string }, principal?: AuthPrincipal) {
     const lead = await this.findOne(id, principal);
     const hq = await this.prisma.orgUnit.findFirst({
       where: { code: 'CO-MOVING' },
@@ -471,7 +460,7 @@ export class LeadService {
       throw new BadRequestException(
         `${LEAD_STATUS_LABEL[from]} 단계의 접수는 반려할 수 없습니다(계약 이후).`,
       );
-    const reason = input.reason.trim();
+    const reason = input.reason?.trim() || null; // 메모(선택)
     const updated = await this.prisma.lead.update({
       where: { id },
       data: {

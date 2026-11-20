@@ -58,7 +58,7 @@ h1 {
 
 /* ── 표 — 한국AI통신 콘솔 통화 기록 표 그대로 ──
    머리 44px·12px 굵게 회색(자간 0.6px), 행 47px·14px, 칸 좌우 16px, 가로 선만(#e5e5ea).
-   숫자로만 된 칸은 Geist Mono(고정폭이라 자리가 위아래로 맞는다). 상태 칩은 점 + 글자. */
+   숫자로만 된 칸은 Geist Mono(고정폭이라 자리가 위아래로 맞는다). 상태 칩은 옅은 바탕 알약. */
 .sft-table {
   --sft-table-row-height: calc(47px * var(--font-scale)) !important;
   --sft-table-header-height: calc(44px * var(--font-scale)) !important;
@@ -85,6 +85,10 @@ h1 {
   color: var(--sft-color-text);
   font-variant-numeric: tabular-nums;
 }
+/* ID·번호(계약번호 등) — 글자까지 고정폭 */
+.id-mono {
+  font-family: 'Geist Mono', var(--ark-font-family);
+}
 /* 숫자로만 된 칸 */
 .sft-td .dt-num {
   font-family: 'Geist Mono', var(--ark-font-family);
@@ -98,43 +102,43 @@ h1 {
 .sft-td[style*='flex: 0 1'] {
   flex-shrink: 0 !important;
 }
-/* 상태 칩 — 표 안에서는 바탕 없이 색 점(6px) + 글자 */
-.sft-td .sft-chip {
-  --dot: #c7c7cc;
-  height: auto;
-  gap: 8px;
-  padding: 0;
-  border-radius: 0;
-  background: transparent !important;
-  color: var(--sft-color-text) !important;
-  font-size: inherit;
-  font-weight: 400;
+/* 상태 칩(공통) — 애플 시스템 색의 옅은 바탕 + 진한 글자 알약.
+   softium Chip(tone)과 StatusChip(--chip 색 직접) 모두 이 모양. 색: 회색 기본 */
+.sft-chip {
+  --chip: #8e8e93;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chip) 14%, transparent) !important;
+  color: color-mix(in srgb, var(--chip) 78%, #000) !important;
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
 }
-.sft-td .sft-chip::before {
-  content: '';
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--dot);
+:root[data-theme='dark'] .sft-chip {
+  background: color-mix(in srgb, var(--chip) 24%, transparent) !important;
+  color: color-mix(in srgb, var(--chip) 75%, #fff) !important;
 }
-.sft-td .sft-chip__dot {
+.sft-chip__dot {
   display: none;
 }
-.sft-td .sft-chip[data-tone='success'] {
-  --dot: var(--sft-color-success);
+.sft-chip[data-tone='success'] {
+  --chip: #34c759;
 }
-.sft-td .sft-chip[data-tone='warning'] {
-  --dot: var(--sft-color-warning);
+.sft-chip[data-tone='warning'] {
+  --chip: #ff9500;
 }
-.sft-td .sft-chip[data-tone='danger'] {
-  --dot: var(--sft-color-danger);
+.sft-chip[data-tone='danger'] {
+  --chip: #ff3b30;
 }
-.sft-td .sft-chip[data-tone='accent'] {
-  --dot: var(--sft-color-accent);
+.sft-chip[data-tone='accent'] {
+  --chip: #007aff;
 }
-.sft-td .sft-chip[data-tone='info'] {
-  --dot: #8e8e93;
+.sft-chip[data-tone='info'] {
+  --chip: #5856d6;
 }
 
 /* ── 검색·입력칸 — 36px, 14px, 둥글기 10px ── */
