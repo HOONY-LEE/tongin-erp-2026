@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
@@ -64,11 +66,15 @@ interface Assign {
   orgScopeId: string | null;
 }
 
-const SCOPE_LABEL: Record<string, string> = { OWN: '본인 담당', ORG: '소속 조직', ALL: '전체' };
+const SCOPE_LABEL: Record<string, string> = {
+  OWN: i18n.t('acc.scope.OWN'),
+  ORG: i18n.t('acc.scope.ORG'),
+  ALL: i18n.t('acc.scope.ALL'),
+};
 const SCOPE_OPTIONS = [
-  { value: 'ALL', label: '전체' },
-  { value: 'ORG', label: '소속 조직(+하위)' },
-  { value: 'OWN', label: '본인 담당만' },
+  { value: 'ALL', label: i18n.t('acc.scope.ALL') },
+  { value: 'ORG', label: i18n.t('acc.scopeOpt.ORG') },
+  { value: 'OWN', label: i18n.t('acc.scopeOpt.OWN') },
 ];
 const NONE = '__none__';
 const LOGIN_ID_PATTERN = /^[A-Za-z0-9._-]{3,50}$/;
@@ -79,6 +85,7 @@ const LOGIN_ID_PATTERN = /^[A-Za-z0-9._-]{3,50}$/;
  * 예) 강남점장: '지점장' 그룹 · 소속 조직(강남점)
  */
 export default function AccountList() {
+  const { t } = useTranslation();
   const { user, can } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<Account[]>([]);
@@ -96,7 +103,7 @@ export default function AccountList() {
     try {
       setRows(await api<Account[]>('/accounts'));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -124,14 +131,15 @@ export default function AccountList() {
         method: 'PATCH',
         body: JSON.stringify({ isActive: !r.isActive }),
       });
-      toast({ type: 'success', title: r.isActive ? '비활성화했습니다' : '활성화했습니다' });
+      toast({ type: 'success', title: r.isActive ? t('acc.deactivated') : t('acc.activated') });
       await load();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.saveFailed') });
     }
   };
 
-  const roleText = (r: Account) => r.roles.map((role) => role.roleName).join(', ') || '권한 없음';
+  const roleText = (r: Account) =>
+    r.roles.map((role) => role.roleName).join(', ') || t('acc.noRoles');
   const scopeText = (r: Account) =>
     r.roles
       .map(
@@ -141,44 +149,44 @@ export default function AccountList() {
       .join(', ') || '-';
   const statusText = (r: Account) =>
     r.partnerName
-      ? '외부 업체'
+      ? t('acc.partner')
       : r.employeeActive === false
-        ? '퇴직'
+        ? t('acc.retired')
         : r.employeeName
-          ? '재직'
+          ? t('acc.active')
           : '-';
 
   // 정렬·검색이 되도록 화면에 보이는 값을 행에 펼쳐 둔다
   const tableRows = rows.map((r) => ({
     ...r,
     name: r.employeeName ?? r.partnerName ?? '',
-    org: r.partnerName ? '외부 업체' : (r.orgUnitName ?? ''),
+    org: r.partnerName ? t('acc.partner') : (r.orgUnitName ?? ''),
     position: r.positionName ?? '',
     roleNames: roleText(r),
     scopes: scopeText(r),
     status: statusText(r),
-    active: r.isActive ? '활성' : '비활성',
+    active: r.isActive ? t('acc.on') : t('acc.off'),
   }));
 
   const columns: Column[] = [
     { title: 'ID', dataIndex: 'loginId', width: 150 },
-    { title: '이름', dataIndex: 'name', width: 110 },
-    { title: '소속', dataIndex: 'org', minWidth: 120, flex: 1 },
-    { title: '직책', dataIndex: 'position', width: 90 },
-    { title: '권한 그룹', dataIndex: 'roleNames', minWidth: 120, flex: 1 },
-    { title: '데이터 범위', dataIndex: 'scopes', minWidth: 120, flex: 1 },
+    { title: t('acc.col.name'), dataIndex: 'name', width: 110 },
+    { title: t('acc.col.org'), dataIndex: 'org', minWidth: 120, flex: 1 },
+    { title: t('acc.position'), dataIndex: 'position', width: 90 },
+    { title: t('acc.groups'), dataIndex: 'roleNames', minWidth: 120, flex: 1 },
+    { title: t('acc.col.scope'), dataIndex: 'scopes', minWidth: 120, flex: 1 },
     {
-      title: '상태',
+      title: t('acc.col.status'),
       dataIndex: 'status',
       width: 90,
       render: (r) => (
-        <Badge variant="subtle" color={r.status === '퇴직' ? 'neutral' : 'info'}>
+        <Badge variant="subtle" color={r.status === t('acc.retired') ? 'neutral' : 'info'}>
           {String(r.status)}
         </Badge>
       ),
     },
     {
-      title: '활성화 여부',
+      title: t('acc.col.active'),
       dataIndex: 'active',
       width: 100,
       render: (r) => (
@@ -214,9 +222,9 @@ export default function AccountList() {
           title={
             detail
               ? `${detail.employeeName ?? detail.partnerName ?? detail.loginId}`
-              : '계정을 찾을 수 없습니다'
+              : t('acc.notFound')
           }
-          backLabel="계정"
+          backLabel={t('acc.accounts')}
           onBack={closeDetail}
           actions={
             detail && can('USER.UPDATE') ? (
@@ -224,15 +232,15 @@ export default function AccountList() {
                 {detail.id !== user?.userId && (
                   <>
                     <Button variant="outline" size="sm" onClick={() => setResetting(detail)}>
-                      비밀번호 재설정
+                      {t('acc.resetPw')}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => void toggleActive(detail)}>
-                      {detail.isActive ? '비활성화' : '활성화'}
+                      {detail.isActive ? t('acc.deactivate') : t('acc.activate')}
                     </Button>
                   </>
                 )}
                 <Button variant="primary" size="sm" onClick={() => setEditing(detail)}>
-                  편집
+                  {t('acc.edit')}
                 </Button>
               </>
             ) : undefined
@@ -241,44 +249,44 @@ export default function AccountList() {
             detail
               ? [
                   {
-                    title: detail.partnerName ? '외부 업체' : '직원 정보',
+                    title: detail.partnerName ? t('acc.partner') : t('acc.employeeInfo'),
                     items: detail.partnerName
-                      ? [{ label: '업체', value: detail.partnerName }]
+                      ? [{ label: t('acc.vendor'), value: detail.partnerName }]
                       : [
-                          { label: '이름', value: detail.employeeName },
-                          { label: '사번', value: detail.empNo },
-                          { label: '소속', value: detail.orgUnitName },
-                          { label: '직책', value: detail.positionName },
+                          { label: t('acc.col.name'), value: detail.employeeName },
+                          { label: t('acc.empNo'), value: detail.empNo },
+                          { label: t('acc.col.org'), value: detail.orgUnitName },
+                          { label: t('acc.position'), value: detail.positionName },
                           {
-                            label: '연락처',
+                            label: t('acc.phone'),
                             value: detail.phone ? formatPhone(detail.phone) : null,
                           },
-                          { label: '입사일', value: detail.hireDate },
-                          { label: '상태', value: statusText(detail) },
+                          { label: t('acc.hireDate'), value: detail.hireDate },
+                          { label: t('acc.col.status'), value: statusText(detail) },
                         ],
                   },
                   {
-                    title: '로그인',
+                    title: t('acc.login'),
                     items: [
                       { label: 'ID', value: detail.loginId },
                       {
-                        label: '활성화 여부',
+                        label: t('acc.col.active'),
                         value: (
                           <Badge variant="subtle" color={detail.isActive ? 'success' : 'neutral'}>
-                            {detail.isActive ? '활성' : '비활성'}
+                            {detail.isActive ? t('acc.on') : t('acc.off')}
                           </Badge>
                         ),
                       },
                     ],
                   },
                   {
-                    title: '권한',
+                    title: t('acc.perms'),
                     items: detail.roles.length
                       ? detail.roles.map((role, i) => ({
                           label: `${role.roleName}${detail.roles.length > 1 ? ` (${i + 1})` : ''}`,
                           value: `${SCOPE_LABEL[role.dataScope] ?? role.dataScope}${role.orgScope ? ` · ${role.orgScope}` : ''}`,
                         }))
-                      : [{ label: '권한 그룹', value: '권한 없음' }],
+                      : [{ label: t('acc.groups'), value: t('acc.noRoles') }],
                   },
                 ]
               : []
@@ -300,7 +308,7 @@ export default function AccountList() {
         toolbarActions={
           can('USER.CREATE') ? (
             <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-              + 계정 생성
+              {t('acc.createBtn')}
             </Button>
           ) : undefined
         }
@@ -315,6 +323,7 @@ export default function AccountList() {
  * 새 비밀번호는 화면에서 본인에게 따로 알려 주고, 받은 사람은 '내 비밀번호 바꾸기'로 다시 바꾼다.
  */
 function ResetPasswordModal({ account, onClose }: { account: Account; onClose: () => void }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -332,11 +341,11 @@ function ResetPasswordModal({ account, onClose }: { account: Account; onClose: (
       });
       toast({
         type: 'success',
-        title: '비밀번호를 다시 정했습니다 — 새 비밀번호를 본인에게 따로 알려 주세요',
+        title: t('acc.pwReset'),
       });
       onClose();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.saveFailed') });
       setSaving(false);
     }
   };
@@ -345,11 +354,13 @@ function ResetPasswordModal({ account, onClose }: { account: Account; onClose: (
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`비밀번호 재설정 — ${account.employeeName ?? account.partnerName ?? account.loginId}`}
+      title={t('acc.resetTitle', {
+        v0: account.employeeName ?? account.partnerName ?? account.loginId,
+      })}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('acc.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -357,33 +368,33 @@ function ResetPasswordModal({ account, onClose }: { account: Account; onClose: (
             disabled={!canSubmit || saving}
             onClick={() => void save()}
           >
-            재설정
+            {t('acc.resetBtn')}
           </Button>
         </>
       }
     >
       <div className={styles.section}>
         <span className={styles.hint}>
-          {account.loginId} 계정의 비밀번호를 새로 정합니다. 지금 비밀번호는 몰라도 됩니다.
+          {account.loginId} {t('acc.resetHelp')}
         </span>
         <PasswordInput
-          label="새 비밀번호 *"
+          label={t('acc.newPw')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="6자 이상"
+          placeholder={t('acc.min6')}
           autoComplete="new-password"
           showToggle
           fullWidth
-          error={short ? '6자 이상 입력해 주세요' : undefined}
+          error={short ? t('acc.min6Err') : undefined}
         />
         <PasswordInput
-          label="새 비밀번호 확인 *"
+          label={t('acc.newPw2')}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
           showToggle
           fullWidth
-          error={mismatch ? '위와 같은 비밀번호를 넣어 주세요' : undefined}
+          error={mismatch ? t('acc.sameAsAbove') : undefined}
         />
       </div>
     </Modal>
@@ -419,6 +430,7 @@ function AccountModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const isNew = !account;
   const [name, setName] = useState(account?.employeeName ?? '');
@@ -452,12 +464,12 @@ function AccountModal({
       return;
     }
     if (!LOGIN_ID_PATTERN.test(id)) {
-      setIdCheck({ state: 'bad', reason: '영문·숫자·. _ - 로 3~50자로 입력해 주세요' });
+      setIdCheck({ state: 'bad', reason: t('acc.idRule') });
       return;
     }
     setIdCheck({ state: 'checking' });
     let alive = true;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api<{ available: boolean; reason: string | null }>(
         `/accounts/check-login-id?loginId=${encodeURIComponent(id)}`,
       )
@@ -469,7 +481,7 @@ function AccountModal({
     }, 350);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [loginId, isNew]);
 
@@ -488,7 +500,7 @@ function AccountModal({
   );
   const positionOptions = useMemo(
     () => [
-      { value: NONE, label: '없음' },
+      { value: NONE, label: t('acc.none') },
       ...positions
         .filter((p) => p.isActive !== false || p.id === account?.positionId)
         .map((p) => ({ value: p.id, label: p.name })),
@@ -535,7 +547,7 @@ function AccountModal({
 
   const save = async () => {
     if (wantsProfile && (!name.trim() || !orgUnitId)) {
-      toast({ type: 'warning', title: '직원 이름과 소속을 입력해 주세요' });
+      toast({ type: 'warning', title: t('acc.nameOrgReq') });
       return;
     }
     if (isNew) {
@@ -546,30 +558,30 @@ function AccountModal({
             idCheck.state === 'bad'
               ? idCheck.reason
               : idCheck.state === 'checking'
-                ? '아이디를 확인하는 중입니다'
-                : '아이디를 입력해 주세요',
+                ? t('acc.idChecking')
+                : t('acc.idReq'),
         });
         return;
       }
       if (password.length < 6) {
-        toast({ type: 'warning', title: '비밀번호를 6자 이상 입력해 주세요' });
+        toast({ type: 'warning', title: t('acc.pwMin') });
         return;
       }
       if (password !== password2) {
-        toast({ type: 'warning', title: '비밀번호 확인이 일치하지 않습니다' });
+        toast({ type: 'warning', title: t('acc.pwMismatch') });
         return;
       }
     }
     if (assigns.some((a) => !a.roleId)) {
-      toast({ type: 'warning', title: '권한 그룹을 골라 주세요' });
+      toast({ type: 'warning', title: t('acc.groupReq') });
       return;
     }
     if (assigns.some((a) => a.dataScope === 'ORG' && !a.orgScopeId)) {
-      toast({ type: 'warning', title: '범위가 "소속 조직"이면 대상 조직을 골라 주세요' });
+      toast({ type: 'warning', title: t('acc.orgReq') });
       return;
     }
     if (isNew && !assigns.length) {
-      toast({ type: 'warning', title: '권한 그룹을 하나 이상 넣어 주세요' });
+      toast({ type: 'warning', title: t('acc.groupMin') });
       return;
     }
     const roleBody = assigns.map((a) => ({
@@ -590,7 +602,7 @@ function AccountModal({
           method: 'POST',
           body: JSON.stringify({ loginId: loginId.trim(), password, employee, roles: roleBody }),
         });
-        toast({ type: 'success', title: `${employee.name} 님 계정을 만들었습니다` });
+        toast({ type: 'success', title: t('acc.created', { v0: employee.name }) });
       } else {
         if (wantsProfile) {
           await api(`/accounts/${account.id}/profile`, {
@@ -602,11 +614,11 @@ function AccountModal({
           method: 'PUT',
           body: JSON.stringify({ roles: roleBody }),
         });
-        toast({ type: 'success', title: '저장했습니다 — 권한은 다음 요청부터 바로 적용됩니다' });
+        toast({ type: 'success', title: t('acc.savedApplied') });
       }
       await onSaved();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('acc.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -616,12 +628,12 @@ function AccountModal({
     <Modal
       open
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? '계정 생성(직원 등록)' : `계정 편집 — ${account.loginId}`}
+      title={isNew ? t('acc.createTitle') : t('acc.editTitle', { v0: account.loginId })}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('acc.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -629,7 +641,7 @@ function AccountModal({
             disabled={!canSubmit || saving}
             onClick={() => void save()}
           >
-            {isNew ? '계정 만들기' : '저장'}
+            {isNew ? t('acc.createSubmit') : t('acc.save')}
           </Button>
         </>
       }
@@ -637,28 +649,24 @@ function AccountModal({
       <div className={styles.section} style={{ gap: 22 }}>
         {isPartner ? (
           <div className={styles.notice} style={{ margin: 0 }}>
-            {account?.partnerName} 소속 외부 업체 계정입니다(직원 아님). 자기 업체에 배정된 작업만
-            봅니다.
+            {account?.partnerName} {t('acc.partnerHelp1')}
+            {t('acc.partnerHelp2')}
           </div>
         ) : (
           <div className={styles.section}>
-            <span className={styles.panelTitle}>직원 정보</span>
-            {!isNew && !hadEmployee && (
-              <span className={styles.hint}>
-                직원 정보가 없는 계정입니다. 이름과 소속을 넣고 저장하면 직원으로도 등록됩니다.
-              </span>
-            )}
+            <span className={styles.panelTitle}>{t('acc.employeeInfo')}</span>
+            {!isNew && !hadEmployee && <span className={styles.hint}>{t('acc.noEmployee')}</span>}
             <div className={styles.formGrid}>
               <Input
-                label="이름 *"
+                label={t('acc.nameReq')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="홍길동"
+                placeholder={t('acc.namePh')}
               />
               <Select
-                label="소속 *"
+                label={t('acc.orgReqLabel')}
                 value={orgUnitId || undefined}
-                placeholder="소속 고르기"
+                placeholder={t('acc.pickOrg')}
                 onValueChange={(v) => {
                   setOrgUnitId(v);
                   suggest(positionId, v);
@@ -666,7 +674,7 @@ function AccountModal({
                 options={orgs}
               />
               <Select
-                label="직책"
+                label={t('acc.position')}
                 value={positionId}
                 onValueChange={(v) => {
                   setPositionId(v);
@@ -675,22 +683,22 @@ function AccountModal({
                 options={positionOptions}
               />
               <label className={styles.phoneField}>
-                연락처
+                {t('acc.phone')}
                 <PhoneInput value={phone} onChange={setPhone} />
               </label>
               <Input
-                label="입사일"
+                label={t('acc.hireDate')}
                 type="date"
                 value={hireDate}
                 onChange={(e) => setHireDate(e.target.value)}
               />
               <Input
-                label="사번"
+                label={t('acc.empNo')}
                 value={account?.empNo ?? ''}
                 readOnly
                 disabled
-                placeholder={`자동 생성(예: ${(hireDate || today()).slice(0, 4)}0001)`}
-                helperText={isNew || !account?.empNo ? '입사연도 + 그 해 일련번호' : undefined}
+                placeholder={t('acc.empNoAuto', { v0: (hireDate || today()).slice(0, 4) })}
+                helperText={isNew || !account?.empNo ? t('acc.empNoHelp') : undefined}
               />
             </div>
           </div>
@@ -698,45 +706,45 @@ function AccountModal({
 
         {isNew && (
           <div className={styles.section}>
-            <span className={styles.panelTitle}>로그인 정보</span>
+            <span className={styles.panelTitle}>{t('acc.loginInfo')}</span>
             <div className={styles.formGrid}>
               <Input
-                label="아이디 *"
+                label={t('acc.idLabel')}
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                placeholder="영문·숫자 3자 이상"
+                placeholder={t('acc.idPh')}
                 autoComplete="off"
                 errorMessage={idCheck.state === 'bad' ? idCheck.reason : undefined}
                 helperText={
                   idCheck.state === 'ok'
-                    ? '✓ 사용할 수 있는 아이디입니다'
+                    ? t('acc.idOk')
                     : idCheck.state === 'checking'
-                      ? '확인하는 중…'
+                      ? t('acc.checking')
                       : undefined
                 }
                 className={idCheck.state === 'ok' ? styles.okField : undefined}
               />
               <span />
               <PasswordInput
-                label="비밀번호 *"
+                label={t('acc.pwLabel')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="6자 이상"
+                placeholder={t('acc.min6')}
                 autoComplete="new-password"
                 showToggle
                 fullWidth
-                error={pwShort ? '6자 이상 입력해 주세요' : undefined}
+                error={pwShort ? t('acc.min6Err') : undefined}
               />
               <PasswordInput
-                label="비밀번호 확인 *"
+                label={t('acc.pw2Label')}
                 value={password2}
                 onChange={(e) => setPassword2(e.target.value)}
-                placeholder="한 번 더 입력"
+                placeholder={t('acc.pw2Ph')}
                 autoComplete="new-password"
                 showToggle
                 fullWidth
-                error={pwMismatch ? '비밀번호가 일치하지 않습니다' : undefined}
-                hint={password2.length > 0 && !pwMismatch ? '✓ 비밀번호가 일치합니다' : undefined}
+                error={pwMismatch ? t('acc.pwMismatch2') : undefined}
+                hint={password2.length > 0 && !pwMismatch ? t('acc.pwMatch') : undefined}
               />
             </div>
           </div>
@@ -744,7 +752,7 @@ function AccountModal({
 
         <div className={styles.section}>
           <div className={styles.sectionHead}>
-            <span className={styles.panelTitle}>권한 그룹</span>
+            <span className={styles.panelTitle}>{t('acc.groups')}</span>
             <Button
               variant="outline"
               size="sm"
@@ -755,17 +763,17 @@ function AccountModal({
                 ])
               }
             >
-              <Plus size={14} /> 그룹 추가
+              <Plus size={14} /> {t('acc.addGroup')}
             </Button>
           </div>
           <span className={styles.hint}>
-            {isNew ? '직책을 고르면 그 직책의 추천 권한 그룹이 소속 범위로 들어갑니다. ' : ''}
-            그룹을 여러 개 주면 권한이 합쳐집니다. 데이터 범위는 그 그룹으로 볼 수 있는 데이터의
-            범위입니다 — 전체 / 소속 조직(+하위 지점) / 본인 담당 건만.
+            {isNew ? t('acc.groupHelp0') : ''}
+            {t('acc.groupHelp1')}
+            {t('acc.groupHelp2')}
           </span>
           {assigns.length === 0 ? (
             <div className={styles.notice} style={{ margin: 0 }}>
-              권한 그룹이 없습니다. 이 계정은 로그인해도 아무 메뉴도 보이지 않습니다.
+              {t('acc.noGroups')}
             </div>
           ) : (
             <div className={styles.assignList}>
@@ -774,24 +782,24 @@ function AccountModal({
                 return (
                   <div key={i} className={styles.assignRow}>
                     <Select
-                      label={i === 0 ? '권한 그룹 *' : undefined}
+                      label={i === 0 ? t('acc.groupLabel') : undefined}
                       value={a.roleId || undefined}
-                      placeholder="그룹 고르기"
+                      placeholder={t('acc.pickGroup')}
                       onValueChange={(v) => setRow(i, { roleId: v })}
                       options={roleOptions}
                       disabled={locked}
                     />
                     <Select
-                      label={i === 0 ? '데이터 범위' : undefined}
+                      label={i === 0 ? t('acc.col.scope') : undefined}
                       value={a.dataScope}
                       onValueChange={(v) => setRow(i, { dataScope: v as Assign['dataScope'] })}
                       options={SCOPE_OPTIONS}
                       disabled={locked}
                     />
                     <Select
-                      label={i === 0 ? '대상 조직' : undefined}
+                      label={i === 0 ? t('acc.targetOrg') : undefined}
                       value={a.dataScope === 'ORG' ? (a.orgScopeId ?? undefined) : undefined}
-                      placeholder={a.dataScope === 'ORG' ? '조직 고르기' : '해당 없음'}
+                      placeholder={a.dataScope === 'ORG' ? t('acc.pickOrg2') : t('acc.na')}
                       onValueChange={(v) => setRow(i, { orgScopeId: v })}
                       options={orgs}
                       disabled={locked || a.dataScope !== 'ORG'}
@@ -799,9 +807,9 @@ function AccountModal({
                     <Button
                       variant="ghost"
                       size="sm"
-                      aria-label="이 그룹 빼기"
+                      aria-label={t('acc.removeGroup')}
                       disabled={locked}
-                      title={locked ? '내게 없는 권한이 든 그룹이라 뺄 수 없습니다' : '빼기'}
+                      title={locked ? t('acc.lockedGroup') : t('acc.remove')}
                       onClick={() => setAssigns((p) => p.filter((_, k) => k !== i))}
                     >
                       <X size={14} />
