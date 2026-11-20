@@ -14,6 +14,7 @@ import {
   type ApprovalLineRule,
   type AuthPrincipal,
 } from '@tongin/shared';
+import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -74,6 +75,7 @@ export class ApprovalService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly docNo: DocNoService,
     private readonly events: EventBusService,
     private readonly scope: ScopeService,
   ) {}
@@ -216,17 +218,6 @@ export class ApprovalService {
     return principal.employeeId;
   }
 
-  private async nextDocNo(db: Db): Promise<string> {
-    const prefix = `AP-${new Date().getFullYear()}-`;
-    const last = await db.approvalDoc.findFirst({
-      where: { docNo: { startsWith: prefix } },
-      orderBy: { docNo: 'desc' },
-      select: { docNo: true },
-    });
-    const n = last ? Number(last.docNo.slice(prefix.length)) + 1 : 1;
-    return `${prefix}${String(n).padStart(4, '0')}`;
-  }
-
   /**
    * 상신. 업무 쪽(휴가 등)이 자기 데이터와 한 트랜잭션으로 묶을 수 있게 tx를 받는다.
    * line을 주면 그대로(신청자가 고친 결재선), 없으면 기본 결재선.
@@ -288,7 +279,7 @@ export class ApprovalService {
       try {
         const doc = await tx.approvalDoc.create({
           data: {
-            docNo: await this.nextDocNo(tx),
+            docNo: await this.docNo.next('AP'),
             docType: input.docType,
             title: input.title,
             content: input.content ?? null,
