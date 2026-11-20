@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Phone, RotateCcw, MessageSquare, PhoneForwarded } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
@@ -137,7 +138,9 @@ export function IntakePanel({
   const [busy, setBusy] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   /** 끝난 상담에서 다시 걸기 — 확인 창 */
+  const { t } = useTranslation();
   const [recallOpen, setRecallOpen] = useState(false);
+  const [dialOpen, setDialOpen] = useState(false);
   /** 문자 보내기 창 */
   const [smsOpen, setSmsOpen] = useState(false);
   const recall = async () => {
@@ -330,7 +333,7 @@ export function IntakePanel({
       );
       toast({
         type: 'success',
-        title: `접수를 등록했습니다${lead.leadNo ? ` (${lead.leadNo})` : ''} — 상담을 마치면 [상담 종료]를 눌러 주세요`,
+        title: `접수를 등록했습니다${lead.leadNo ? ` (${lead.leadNo})` : ''} — 상담을 마치면 [상담 완료]를 눌러 주세요`,
       });
       setConfirmOpen(false);
       await onSaved?.();
@@ -406,7 +409,7 @@ export function IntakePanel({
             {pending && <span className={styles.muted}>연결 중…</span>}
             {/* 전화가 끊겨 있으면 — 다시 걸기(통화 중 표시·음소거·끊기는 화면 아래 통화 막대에) */}
             {!pending && !phone.call && phone.status === 'ready' && (
-              <Button variant="outline" size="sm" onClick={() => dial(call.phone, call.id)}>
+              <Button variant="outline" size="sm" onClick={() => setDialOpen(true)}>
                 <Phone size={14} /> 전화하기
               </Button>
             )}
@@ -416,12 +419,13 @@ export function IntakePanel({
               </Button>
             )}
             <Button
-              variant="danger"
+              variant="primary"
               size="sm"
+              className={styles.completeBtn}
               disabled={busy || pending}
               onClick={() => setEndOpen(true)}
             >
-              상담 종료
+              {t('call.complete')}
             </Button>
             {call.leadId ? (
               <button
@@ -584,6 +588,23 @@ export function IntakePanel({
         moveDate={v.moveDate || readOnly?.lead?.moveDate}
         callId={call.id || undefined}
       />
+      {/* 통화 중 화면의 [전화하기] — 바로 걸지 않고 한 번 묻는다 */}
+      <ConfirmModal
+        open={dialOpen}
+        title={t('call.dialTitle')}
+        confirmLabel={t('call.dialConfirm')}
+        onClose={() => setDialOpen(false)}
+        onConfirm={() => {
+          setDialOpen(false);
+          dial(call.phone, call.id);
+        }}
+      >
+        <p style={{ margin: 0, lineHeight: 1.6 }}>
+          {t('call.dialBody', {
+            who: `${formatPhone(call.phone)}${call.customerName ? ` (${call.customerName})` : ''}`,
+          })}
+        </p>
+      </ConfirmModal>
       <ConfirmModal
         open={recallOpen}
         title="고객에게 전화하기"
@@ -604,8 +625,8 @@ export function IntakePanel({
       </ConfirmModal>
       <ConfirmModal
         open={endOpen}
-        title="상담 종료"
-        confirmLabel="상담 종료"
+        title={t('call.complete')}
+        confirmLabel={t('call.complete')}
         busy={busy}
         onClose={() => setEndOpen(false)}
         onConfirm={() => void endConsult()}

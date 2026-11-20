@@ -13,14 +13,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import {
-  dial,
-  disablePhone,
-  enablePhone,
-  getPhoneState,
-  setRingable,
-  usePhone,
-} from '../lib/softphone';
+import { dial, enablePhone, getPhoneState, setRingable, usePhone } from '../lib/softphone';
 import {
   Button,
   ConfirmModal,
@@ -227,15 +220,13 @@ export default function CallCenter() {
       await api<CallView>(`/cs-calls/${c.id}/callback`, { method: 'POST' });
       if (pcReady) dial(c.phone, c.id);
     });
-  /** 상담 가능을 눌렀는데 PC 전화가 꺼져 있을 때 — 켜면서 바로 상담 가능으로 */
-  const [needPhone, setNeedPhone] = useState(false);
+  /** 상담 가능을 눌렀는데 PC 전화가 꺼져 있을 때 — 켜면서 바로 상담 가능으로(처음엔 마이크 허용을 묻는다) */
   const [turningOn, setTurningOn] = useState(false);
   const turnOnAndAvailable = async () => {
     setTurningOn(true);
     try {
       await enablePhone();
       if (getPhoneState().status === 'error') return; // 이유는 PC 전화 버튼이 알림으로 띄운다
-      setNeedPhone(false);
       await setAvailable(true);
     } finally {
       setTurningOn(false);
@@ -427,9 +418,9 @@ export default function CallCenter() {
             <SegmentedControl
               value={me.available ? 'on' : 'off'}
               onChange={(v) => {
-                // PC 전화가 꺼져 있으면 전화를 받을 수 없다 — 먼저 켜도록 묻는다
+                // PC 전화가 꺼져 있으면 상담 가능을 누를 때 함께 켠다(켜짐·꺼짐 버튼은 따로 두지 않는다)
                 if (v === 'on' && (phone.status === 'off' || phone.status === 'error')) {
-                  setNeedPhone(true);
+                  void turnOnAndAvailable();
                   return;
                 }
                 void setAvailable(v === 'on');
@@ -440,7 +431,7 @@ export default function CallCenter() {
                   label: (
                     <span className={styles.availLabel}>
                       {me.available && <i className={styles.availDot} aria-hidden />}
-                      상담 가능
+                      {turningOn ? '연결 중…' : '상담 가능'}
                     </span>
                   ),
                 },
@@ -627,24 +618,6 @@ export default function CallCenter() {
       </div>
 
       <ConfirmModal
-        open={needPhone}
-        title="PC 전화를 먼저 켜 주세요"
-        confirmLabel="PC 전화 켜기"
-        busy={turningOn}
-        onClose={() => setNeedPhone(false)}
-        onConfirm={() => void turnOnAndAvailable()}
-      >
-        <p style={{ margin: 0, lineHeight: 1.6 }}>
-          대표번호로 온 전화는 PC 전화로 받습니다. PC 전화가 꺼져 있으면 상담 가능으로 바꿀 수
-          없습니다.
-          <br />
-          <span className={styles.muted}>
-            [PC 전화 켜기]를 누르면 PC 전화를 켜고 바로 상담 가능으로 바뀝니다. 마이크 사용을 물으면
-            허용해 주세요.
-          </span>
-        </p>
-      </ConfirmModal>
-      <ConfirmModal
         open={!!cancelTarget}
         title="아웃콜 정리"
         confirmLabel="정리"
@@ -721,7 +694,6 @@ function Integration() {
 function PcPhone() {
   const phone = usePhone();
   const toast = useToast();
-  const [working, setWorking] = useState(false);
   const [soundOpen, setSoundOpen] = useState(false);
   // 번호로 직접 걸기(대표번호로 발신 — 발신번호 인증 ARS 등)
   const [dialOpen, setDialOpen] = useState(false);
@@ -784,43 +756,14 @@ function PcPhone() {
   useEffect(() => {
     if (phone.status === 'error' && phone.error) toast({ type: 'error', title: phone.error });
   }, [phone.status, phone.error, toast]);
-  const run = async (fn: () => Promise<void>) => {
-    setWorking(true);
-    try {
-      await fn();
-    } finally {
-      setWorking(false);
-    }
-  };
-  // 켜짐/꺼짐 버튼 하나 — 누르면 바뀐다(통화 중에는 끌 수 없음)
-  const on = phone.status === 'ready';
+  // 켜짐·꺼짐 버튼은 없다 — [상담 가능]을 누르면 켜지고, 켜진 채로 둔다(후처리 중엔 배분이 안 와 울리지 않는다)
   return (
     <span className={styles.pcPhone}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        className={`${styles.pcToggle} ${on ? styles.pcToggleOn : ''}`}
-        disabled={working || phone.status === 'connecting' || (on && !!phone.call)}
-        onClick={() => void run(on ? disablePhone : enablePhone)}
-        title={
-          on
-            ? phone.call
-              ? '통화 중에는 끌 수 없습니다'
-              : '누르면 PC 전화를 끕니다'
-            : '전화기 없이 이 PC(헤드셋)로 전화를 받고 겁니다'
-        }
-      >
-        <span className={styles.pcKnob} aria-hidden />
-        <Laptop size={14} />
-        {phone.status === 'connecting'
-          ? 'PC 전화 연결 중…'
-          : on
-            ? 'PC 전화 켜짐'
-            : phone.status === 'error'
-              ? 'PC 전화 꺼짐 · 다시 켜기'
-              : 'PC 전화 꺼짐'}
-      </button>
+      {phone.status === 'connecting' && (
+        <span className={styles.muted}>
+          <Laptop size={14} /> PC 전화 연결 중…
+        </span>
+      )}
       {soundButton}
     </span>
   );

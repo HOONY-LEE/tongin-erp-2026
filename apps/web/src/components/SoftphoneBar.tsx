@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Grid3x3, Mic, MicOff, Phone, PhoneIncoming, PhoneOff, PhoneOutgoing } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../lib/api';
@@ -98,13 +99,43 @@ export function SoftphoneBar() {
     };
   }, [ringing]);
 
+  // 통화가 끝나면 막대를 바로 없애지 않고 '통화가 종료되었습니다'를 잠깐 보여 준다(울리기만 하고 끊긴 전화는 빼고)
+  const { t } = useTranslation();
+  const [ended, setEnded] = useState<{ who: string } | null>(null);
+  const prevCall = useRef(call);
+  useEffect(() => {
+    const prev = prevCall.current;
+    prevCall.current = call;
+    if (call || !prev || (prev.state === 'ringing' && prev.direction === 'in')) return;
+    setEnded({ who: prev.number ? formatPhone(prev.number) : '' });
+    const tm = setTimeout(() => setEnded(null), 2500);
+    return () => clearTimeout(tm);
+  }, [call]);
+
   /** 받기 → 통화 연결 + 상담 콘솔(접수 패널)로 */
   const take = () => {
     answer(caller ? { existing: caller.existing, name: caller.name } : null);
     if (!pathname.startsWith('/callcenter')) navigate('/callcenter');
   };
 
-  if (!call) return null;
+  if (!call)
+    return ended ? (
+      <div className={`${styles.bar} ${styles.ended}`} role="status" aria-live="polite">
+        <span className={styles.icon}>
+          <PhoneOff size={20} />
+        </span>
+        <span className={styles.text}>
+          <span className={styles.line1}>
+            <b>{t('call.ended')}</b>
+          </span>
+          {ended.who && (
+            <span className={styles.line2}>
+              <span className={styles.num}>{ended.who}</span>
+            </span>
+          )}
+        </span>
+      </div>
+    ) : null;
   const who = call.number ? formatPhone(call.number) : '알 수 없는 번호';
 
   if (ringing)

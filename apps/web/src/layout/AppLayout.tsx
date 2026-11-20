@@ -106,7 +106,8 @@ export default function AppLayout() {
     0;
   const visibleGroups: NavGroup[] = filterLayout(myMenu.layout, can, !!user?.employeeId).groups.map(
     (g) => ({
-      label: g.label,
+      // 기본·시드 묶음 이름은 번역, 직접 만든 이름은 그대로
+      label: t(`menuGroup.${g.label}`, { defaultValue: g.label }),
       defaultOpen: !g.collapsed,
       items: g.items.map((key) => {
         const m = menuDef(key)!;
@@ -129,7 +130,7 @@ export default function AppLayout() {
       owns: m.owns,
     })),
     // 메뉴에 없는 화면 — 헤더 프로필·직원 칩에서 들어간다(탭 이름만, 사이드바엔 안 보임)
-    { to: '/profile', label: '프로필', icon: UserRound },
+    { to: '/profile', label: t('shell.profile'), icon: UserRound },
   ];
 
   // 메뉴 검색 — 권한 있는 전체 메뉴(사이드바에서 숨긴 것도). 설명·묶음 이름으로도 찾는다
@@ -168,9 +169,9 @@ export default function AppLayout() {
       return it
         ? {
             id: href,
-            label: busyAi ? `${it.label} · 진행 중` : it.label,
+            label: busyAi ? `${it.label} · ${t('shell.inProgress')}` : it.label,
             icon: busyAi ? (
-              <Loader2 size={14} className={styles.spin} aria-label="진행 중" />
+              <Loader2 size={14} className={styles.spin} aria-label={t('shell.inProgress')} />
             ) : (
               <it.icon size={14} />
             ),
@@ -288,10 +289,10 @@ export default function AppLayout() {
               type="button"
               className={styles.aiChip}
               onClick={() => navigate('/ai')}
-              title="AI 에이전트가 일하는 중입니다 — 눌러서 보기"
+              title={t('shell.aiBusyTitle')}
             >
               <Loader2 size={13} className={styles.spin} aria-hidden />
-              AI 진행 중
+              {t('shell.aiBusy')}
             </button>
           )}
           <NotificationBell
@@ -318,20 +319,20 @@ export default function AppLayout() {
                 <button
                   type="button"
                   className={settingsStyles.gear}
-                  title="앱 설정"
-                  aria-label="앱 설정"
+                  title={t('shell.appSettings')}
+                  aria-label={t('shell.appSettings')}
                   onClick={() => setSettingsOpen(true)}
                 >
                   <Settings size={16} />
-                  {!collapsed && <span>앱 설정</span>}
+                  {!collapsed && <span>{t('shell.appSettings')}</span>}
                 </button>
                 {/* 웹에서만 — 데스크톱 앱 설치(이 컴퓨터 OS에 맞는 설치 파일) */}
                 {!isDesktop && (
                   <button
                     type="button"
                     className={settingsStyles.footIcon}
-                    title="데스크톱 앱 설치"
-                    aria-label="데스크톱 앱 설치"
+                    title={t('shell.installApp')}
+                    aria-label={t('shell.installApp')}
                     onClick={() => setDownloadOpen(true)}
                   >
                     <Download size={16} />
@@ -349,8 +350,8 @@ export default function AppLayout() {
                     <button
                       type="button"
                       className={styles.sideToggle}
-                      title="사이드바 펴기"
-                      aria-label="사이드바 펴기"
+                      title={t('shell.expandSidebar')}
+                      aria-label={t('shell.expandSidebar')}
                       onClick={() => setCol(false)}
                     >
                       <ChevronRight size={16} />
@@ -379,7 +380,7 @@ export default function AppLayout() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      통인웍스
+                      {t('shell.brand')}
                     </span>
                   )}
                   {/* 사이드바 접기 — 머리 오른쪽 끝 '<' (접힌 상태에서는 로고를 누르면 편다) */}
@@ -387,8 +388,8 @@ export default function AppLayout() {
                     <button
                       type="button"
                       className={styles.sideToggle}
-                      title="사이드바 접기"
-                      aria-label="사이드바 접기"
+                      title={t('shell.collapseSidebar')}
+                      aria-label={t('shell.collapseSidebar')}
                       onClick={() => setCol(true)}
                     >
                       <ChevronLeft size={16} />
@@ -430,14 +431,16 @@ export default function AppLayout() {
                     tooltip={
                       collapsed
                         ? it.to === '/ai' && aiBusy
-                          ? `${it.label} · 진행 중`
+                          ? `${it.label} · ${t('shell.inProgress')}`
                           : it.label
                         : undefined
                     }
                     onClick={() => navigate(it.to)}
                   >
                     {it.label}
-                    {it.to === '/ai' && aiBusy && <span className={styles.aiBadge}>진행 중</span>}
+                    {it.to === '/ai' && aiBusy && (
+                      <span className={styles.aiBadge}>{t('shell.inProgress')}</span>
+                    )}
                     {!!it.badge && <span className={styles.countBadge}>{it.badge}</span>}
                   </SidebarItem>
                 ))}

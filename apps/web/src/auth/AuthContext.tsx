@@ -139,9 +139,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadMe();
   };
 
+  /** 로그아웃 — PC 전화도 끈다(켜짐 기억을 지우고 서버에 알림 — 같은 PC를 다음 사람이 쓸 때 앞사람 전화가 켜지지 않게) */
   const logout = () => {
-    clearSession();
-    setUser(null);
+    void import('../lib/softphone')
+      .then((m) => m.disablePhone())
+      .catch(() => undefined)
+      .finally(() => {
+        clearSession();
+        setUser(null);
+      });
   };
 
   const can = (permission: string) =>

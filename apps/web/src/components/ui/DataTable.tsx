@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
@@ -143,6 +144,7 @@ export function DataTable({
   tabs,
   viewSwitch,
 }: Props) {
+  const { t, i18n } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   // 한 쪽뿐이라도 페이지 표시를 늘 보인다 — softium은 1쪽이면 가운데를 비워 둔다(그 자리에 같은 모양으로 그림)
   // 셋째 줄은 세그먼트 탭이 있을 때만 — 탭이 없으면 내보내기·생성 버튼은 검색 줄 오른쪽 끝으로
@@ -382,8 +384,8 @@ export function DataTable({
     >
       <Table
         table={table}
-        locale="ko"
-        emptyText={loading ? '불러오는 중…' : '데이터가 없습니다'}
+        locale={i18n.language === 'ko' ? 'ko' : 'en'}
+        emptyText={loading ? t('table.loading') : t('table.empty')}
         toolbarActions={
           // softium Table 툴바 = [검색(왼쪽)][toolbarActions(오른쪽)] 뿐이라, 오른쪽 컨테이너를
           // display:contents로 풀고 CSS grid 영역으로 목록 화면 공통 배치를 만든다(base.css .dt-wrap .sft-toolbar).
@@ -417,7 +419,7 @@ export function DataTable({
           <nav className="sft-pager dt-pager-single" aria-label="pagination">
             <button type="button" className="sft-pager__btn sft-pager__btn--nav" disabled>
               <ChevronLeft size={14} aria-hidden />
-              <span className="sft-pager__navlabel">이전</span>
+              <span className="sft-pager__navlabel">{t('table.prev')}</span>
             </button>
             <button
               type="button"
@@ -428,7 +430,7 @@ export function DataTable({
               1
             </button>
             <button type="button" className="sft-pager__btn sft-pager__btn--nav" disabled>
-              <span className="sft-pager__navlabel">다음</span>
+              <span className="sft-pager__navlabel">{t('table.next')}</span>
               <ChevronRight size={14} aria-hidden />
             </button>
           </nav>,
