@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMemo, useState, type ReactNode } from 'react';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { ArrowUpRight, CalendarOff, FileText } from 'lucide-react';
@@ -27,6 +28,7 @@ export function NewDocPicker({
   onLeave: () => void;
   onPickForm: (form: ApprovalFormDef) => void;
 }) {
+  const { t } = useTranslation();
   const { forms, loading } = useApprovalForms();
   const [q, setQ] = useState('');
   const groups = useMemo(() => {
@@ -36,34 +38,32 @@ export function NewDocPicker({
     );
     const map = new Map<string, ApprovalFormDef[]>();
     for (const f of shown)
-      map.set(f.category || '기타', [...(map.get(f.category || '기타') ?? []), f]);
+      map.set(f.category || t('appr.etc'), [...(map.get(f.category || t('appr.etc')) ?? []), f]);
     return [...map];
   }, [forms, q]);
 
   return (
-    <Modal open onOpenChange={(o) => !o && onClose()} size="lg" title="새 결재">
-      <SearchInput value={q} onChange={setQ} placeholder="양식 찾기" autoFocus />
+    <Modal open onOpenChange={(o) => !o && onClose()} size="lg" title={t('appr.newDoc')}>
+      <SearchInput value={q} onChange={setQ} placeholder={t('appr.findForm')} autoFocus />
       <div className={styles.group}>
-        <div className={styles.groupLabel}>기본</div>
+        <div className={styles.groupLabel}>{t('appr.basicGroup')}</div>
         <div className={styles.grid}>
           <button type="button" className={styles.card} onClick={onGeneral}>
             <FileText size={18} aria-hidden />
-            <b>일반 품의</b>
-            <span>제목과 내용을 자유롭게 써서 올립니다</span>
+            <b>{t('appr.general')}</b>
+            <span>{t('appr.generalDesc')}</span>
           </button>
           <button type="button" className={styles.card} onClick={onLeave}>
             <CalendarOff size={18} aria-hidden />
-            <b>휴가 신청</b>
-            <span>연차·반차·반반차 — 휴가 화면에서 남은 연차를 보며 신청</span>
+            <b>{t('appr.leaveRequest')}</b>
+            <span>{t('appr.leaveDesc')}</span>
           </button>
         </div>
       </div>
       {loading ? (
-        <p className={styles.empty}>양식을 불러오는 중…</p>
+        <p className={styles.empty}>{t('appr.formsLoading')}</p>
       ) : groups.length === 0 ? (
-        <p className={styles.empty}>
-          {q ? '맞는 양식이 없습니다.' : '관리자가 만든 결재 양식이 아직 없습니다.'}
-        </p>
+        <p className={styles.empty}>{q ? t('appr.noFormMatch') : t('appr.noForms')}</p>
       ) : (
         groups.map(([cat, list]) => (
           <div key={cat} className={styles.group}>
@@ -78,7 +78,7 @@ export function NewDocPicker({
                 >
                   <FormIconView name={f.icon} />
                   <b>{f.name}</b>
-                  <span>{f.description || `항목 ${f.fields.length}개`}</span>
+                  <span>{f.description || t('appr.fieldsN', { v0: f.fields.length })}</span>
                 </button>
               ))}
             </div>
@@ -106,20 +106,21 @@ export function QuickApply({
   onLeave: () => void;
   onPickForm: (form: ApprovalFormDef) => void;
 }) {
+  const { t } = useTranslation();
   const { forms } = useApprovalForms();
   const cards: { key: string; name: string; desc: string; icon: ReactNode; onClick: () => void }[] =
     [
       {
         key: 'general',
-        name: '일반 품의',
-        desc: '제목·내용을 자유롭게',
+        name: t('appr.general'),
+        desc: t('appr.generalShort'),
         icon: <FileText size={20} aria-hidden />,
         onClick: onGeneral,
       },
       {
         key: 'leave',
-        name: '휴가 신청',
-        desc: '연차·반차·반반차',
+        name: t('appr.leaveRequest'),
+        desc: t('appr.leaveShort'),
         icon: <CalendarOff size={20} aria-hidden />,
         onClick: onLeave,
       },
@@ -128,7 +129,9 @@ export function QuickApply({
         return {
           key: f.id,
           name: f.name,
-          desc: f.description || `${f.category || '결재 양식'} · 항목 ${f.fields.length}개`,
+          desc:
+            f.description ||
+            t('appr.catFieldsN', { v0: f.category || t('appr.forms'), v1: f.fields.length }),
           icon: <Icon size={20} aria-hidden />,
           onClick: () => onPickForm(f),
         };
@@ -137,7 +140,7 @@ export function QuickApply({
   return (
     <div
       className={styles.quick}
-      aria-label="바로 신청하기"
+      aria-label={t('appr.quickRequest')}
       // 한 줄에 다 놓는다(8개까지) — 더 많으면 두 줄로 고르게
       style={{ ['--n' as string]: cards.length <= 8 ? cards.length : Math.ceil(cards.length / 2) }}
     >
@@ -189,6 +192,7 @@ export function FormDraftModal({
   /** 결재 양식 목록에서 열었을 때 — 왼쪽 아래 「결재 양식 편집하기」 */
   onEdit?: () => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [values, setValues] = useState<FormDraft>({});
   const [line, setLine] = useState<LineEntry[] | null>(null);
@@ -196,9 +200,9 @@ export function FormDraftModal({
   const ready = formReady(form.fields, values);
   // 올릴 수 없는 이유(관리 화면에서 미리 볼 때) — 버튼을 막고 이유를 보인다
   const blocked = !myEmployeeId
-    ? '직원과 연결된 계정만 결재를 올릴 수 있습니다'
+    ? t('appr.needEmployee')
     : !form.isActive
-      ? '사용 중지된 양식입니다'
+      ? t('appr.formOff')
       : null;
 
   const submit = async () => {
@@ -211,10 +215,10 @@ export function FormDraftModal({
           line: line ? toLinePayload(line) : undefined,
         }),
       });
-      toast({ type: 'success', title: '상신했습니다' });
+      toast({ type: 'success', title: t('appr.submittedOk') });
       onSubmitted(doc);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.uploadFailed') });
     } finally {
       setBusy(false);
     }
@@ -231,12 +235,12 @@ export function FormDraftModal({
         <>
           {onEdit && (
             <Button variant="outline" onClick={onEdit} style={{ marginRight: 'auto' }}>
-              결재 양식 편집하기
+              {t('appr.editForm')}
             </Button>
           )}
           {blocked && <span className={astyles.muted}>{blocked}</span>}
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('appr.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -244,7 +248,7 @@ export function FormDraftModal({
             disabled={!ready || !!blocked}
             onClick={() => void submit()}
           >
-            {onEdit ? '결재 올리기' : '상신'}
+            {onEdit ? t('appr.submitBtn') : t('appr.submitted')}
           </Button>
         </>
       }

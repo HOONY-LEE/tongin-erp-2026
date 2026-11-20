@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { api, ApiError } from '../../lib/api';
@@ -33,9 +35,9 @@ function defaultBody(doc: ApprovalDocView): ReactNode {
     return (
       <>
         <p className={styles.content}>
-          계약 {String(p.contractNo ?? '')}
-          {p.customerName ? ` · ${String(p.customerName)}` : ''} — 승인하면 계약서에 바로
-          반영됩니다.
+          {i18n.t('appr.contract')} {String(p.contractNo ?? '')}
+          {p.customerName ? ` · ${String(p.customerName)}` : ''} {i18n.t('appr.contractApply1')}
+          {i18n.t('appr.contractApply2')}
         </p>
         <dl className="rd-grid">
           {changes.map((c) => (
@@ -54,21 +56,27 @@ function defaultBody(doc: ApprovalDocView): ReactNode {
   }
   const rows: [string, ReactNode][] = [];
   if (doc.docType === 'LEAVE') {
-    rows.push(['휴가 종류', String(p.leaveType ?? '-')]);
+    rows.push([i18n.t('appr.leaveType'), String(p.leaveType ?? '-')]);
     rows.push([
-      '기간',
+      i18n.t('appr.period'),
       (p.startDate === p.endDate
         ? String(p.startDate)
         : `${String(p.startDate)} ~ ${String(p.endDate)}`) +
         (p.slotLabel ? ` · ${String(p.slotLabel)}` : ''),
     ]);
-    rows.push(['일수', `${String(p.days)}일${p.deducts === false ? ' (연차 차감 없음)' : ''}`]);
-    if (p.substituteName) rows.push(['업무 대리인', String(p.substituteName)]);
-    if (p.handover) rows.push(['인수인계', String(p.handover)]);
+    rows.push([
+      i18n.t('appr.days'),
+      i18n.t('appr.daysN', {
+        v0: String(p.days),
+        v1: p.deducts === false ? i18n.t('appr.noDeduct') : '',
+      }),
+    ]);
+    if (p.substituteName) rows.push([i18n.t('appr.delegate'), String(p.substituteName)]);
+    if (p.handover) rows.push([i18n.t('appr.handover'), String(p.handover)]);
   } else if (doc.docType === 'ATTENDANCE_FIX') {
-    rows.push(['날짜', String(p.workDate ?? '-')]);
-    rows.push(['출근', String(p.clockIn ?? '-')]);
-    rows.push(['퇴근', String(p.clockOut ?? '-')]);
+    rows.push([i18n.t('appr.date'), String(p.workDate ?? '-')]);
+    rows.push([i18n.t('appr.in'), String(p.clockIn ?? '-')]);
+    rows.push([i18n.t('appr.out'), String(p.clockOut ?? '-')]);
   }
   if (!rows.length) return doc.content ? <p className={styles.content}>{doc.content}</p> : null;
   return (
@@ -81,7 +89,11 @@ function defaultBody(doc: ApprovalDocView): ReactNode {
           </div>
         ))}
       </dl>
-      {doc.content && <p className={styles.content}>사유: {doc.content}</p>}
+      {doc.content && (
+        <p className={styles.content}>
+          {i18n.t('appr.reasonColon')} {doc.content}
+        </p>
+      )}
       {/* 휴가 신청서에 관리자가 더한 항목 */}
       {doc.docType === 'LEAVE' && Array.isArray(p.fields) && p.fields.length > 0 && (
         <FormValuesView
@@ -112,6 +124,7 @@ export function ApprovalDetail({
   /** 문서 종류별 본문(휴가 기간·근태 정정 시각 등). 없으면 내용(content)만 */
   renderBody?: (doc: ApprovalDocView) => ReactNode;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [doc, setDoc] = useState<ApprovalDocView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,7 +137,7 @@ export function ApprovalDetail({
     try {
       setDoc(await api<ApprovalDocView>(`/approvals/${id}`));
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '불러오지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.loadFailed') });
     } finally {
       setLoading(false);
     }
@@ -144,7 +157,7 @@ export function ApprovalDetail({
   const act = async () => {
     if (!acting) return;
     if (acting === 'REJECT' && !comment.trim()) {
-      toast({ type: 'warning', title: '반려 사유를 적어 주세요.' });
+      toast({ type: 'warning', title: t('appr.rejectReasonReq') });
       return;
     }
     setBusy(true);
@@ -153,25 +166,25 @@ export function ApprovalDetail({
         method: 'POST',
         body: JSON.stringify({ action: acting, comment: comment.trim() || undefined }),
       });
-      after(next, acting === 'APPROVE' ? '승인했습니다' : '반려했습니다');
+      after(next, acting === 'APPROVE' ? t('appr.approvedOk') : t('appr.rejectedOk'));
       setActing(null);
       setComment('');
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '처리하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.processFailed') });
     } finally {
       setBusy(false);
     }
   };
 
   const cancel = async () => {
-    if (!window.confirm('이 문서를 회수할까요? 결재선에서 빠지고 진행이 멈춥니다.')) return;
+    if (!window.confirm(t('appr.withdrawQ'))) return;
     try {
       after(
         await api<ApprovalDocView>(`/approvals/${id}/cancel`, { method: 'POST' }),
-        '회수했습니다',
+        t('appr.withdrawn'),
       );
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '회수하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.withdrawFailed') });
     }
   };
 
@@ -179,7 +192,7 @@ export function ApprovalDetail({
     <>
       <RecordDetail
         loading={loading && !doc}
-        title={doc ? doc.title : '문서를 찾을 수 없습니다'}
+        title={doc ? doc.title : t('appr.notFound')}
         backLabel={backLabel}
         onBack={onBack}
         actions={
@@ -187,16 +200,16 @@ export function ApprovalDetail({
             <>
               {doc.canCancel && (
                 <Button variant="outline" size="sm" onClick={() => void cancel()}>
-                  회수
+                  {t('appr.st.CANCELED')}
                 </Button>
               )}
               {doc.canAct && (
                 <>
                   <Button variant="outline" size="sm" onClick={() => setActing('REJECT')}>
-                    반려
+                    {t('appr.reject')}
                   </Button>
                   <Button variant="primary" size="sm" onClick={() => setActing('APPROVE')}>
-                    승인
+                    {t('appr.approve')}
                   </Button>
                 </>
               )}
@@ -207,18 +220,18 @@ export function ApprovalDetail({
           doc
             ? [
                 {
-                  title: '문서 정보',
+                  title: t('appr.docInfo'),
                   items: [
-                    { label: '문서 번호', value: doc.docNo },
-                    { label: '종류', value: doc.docTypeLabel },
+                    { label: t('appr.docNo'), value: doc.docNo },
+                    { label: t('appr.type'), value: doc.docTypeLabel },
                     {
-                      label: '상태',
+                      label: t('appr.status'),
                       value: <StatusBadge value={doc.status} map={APPROVAL_STATUS_MAP} />,
                     },
-                    { label: '기안자', value: personLabel(doc.requester) },
-                    { label: '상신', value: dt(doc.submittedAt) },
+                    { label: t('appr.requester'), value: personLabel(doc.requester) },
+                    { label: t('appr.submitted'), value: dt(doc.submittedAt) },
                     {
-                      label: doc.status === 'PENDING' ? '지금 결재할 사람' : '완료',
+                      label: doc.status === 'PENDING' ? t('appr.currentApprover') : t('appr.done'),
                       value:
                         doc.status === 'PENDING'
                           ? doc.currentApprover && personLabel(doc.currentApprover)
@@ -236,20 +249,23 @@ export function ApprovalDetail({
               const body = renderBody?.(doc) ?? defaultBody(doc);
               return body ? (
                 <section className="rd-card">
-                  <h3 className="rd-title">내용</h3>
+                  <h3 className="rd-title">{t('appr.content')}</h3>
                   {body}
                 </section>
               ) : null;
             })()}
             <section className="rd-card">
-              <h3 className="rd-title">결재 진행</h3>
+              <h3 className="rd-title">{t('appr.progress')}</h3>
               <ol className={styles.timeline}>
                 {doc.steps.map((s) => (
                   <li key={s.seq} className={styles.timelineItem}>
                     <span className={styles.timelineMeta}>
                       {s.kind === 'CC'
-                        ? '참조'
-                        : `결재 ${doc.steps.filter((x) => x.kind === 'APPROVER' && x.seq <= s.seq).length}`}
+                        ? t('appr.cc')
+                        : t('appr.stepN', {
+                            v0: doc.steps.filter((x) => x.kind === 'APPROVER' && x.seq <= s.seq)
+                              .length,
+                          })}
                     </span>
                     <span>
                       <span className={styles.timelineWho}>{personLabel(s.approver)}</span>
@@ -272,25 +288,25 @@ export function ApprovalDetail({
       <Modal
         open={acting !== null}
         onOpenChange={(o) => !o && setActing(null)}
-        title={acting === 'REJECT' ? '반려할까요?' : '승인할까요?'}
+        title={acting === 'REJECT' ? t('appr.rejectQ') : t('appr.approveQ')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setActing(null)}>
-              취소
+              {t('appr.cancel')}
             </Button>
             <Button variant="primary" loading={busy} onClick={() => void act()}>
-              {acting === 'REJECT' ? '반려' : '승인'}
+              {acting === 'REJECT' ? t('appr.reject') : t('appr.approve')}
             </Button>
           </>
         }
       >
         <label className={styles.fieldLabel}>
-          {acting === 'REJECT' ? '반려 사유 (필수)' : '의견 (선택)'}
+          {acting === 'REJECT' ? t('appr.rejectReason') : t('appr.comment')}
           <Textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={3}
-            placeholder={acting === 'REJECT' ? '기안자에게 보일 사유' : '남길 말이 있으면'}
+            placeholder={acting === 'REJECT' ? t('appr.rejectPh') : t('appr.commentPh')}
           />
         </label>
       </Modal>

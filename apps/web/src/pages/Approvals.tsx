@@ -97,10 +97,10 @@ export default function Approvals() {
   }
 
   const columns: Column[] = [
-    { title: '문서 번호', dataIndex: 'docNo', width: 140 },
-    { title: '종류', dataIndex: 'docTypeLabel', width: 100 },
+    { title: t('appr.docNo'), dataIndex: 'docNo', width: 140 },
+    { title: t('appr.type'), dataIndex: 'docTypeLabel', width: 100 },
     {
-      title: '제목',
+      title: t('appr.title'),
       dataIndex: 'title',
       flex: 1,
       minWidth: 200,
@@ -110,28 +110,28 @@ export default function Approvals() {
           <span className="ap-turn">
             <span className="ap-turn-dot" aria-hidden />
             {String(r.title)}
-            <span className="ap-turn-tag">결재 차례</span>
+            <span className="ap-turn-tag">{t('appr.myTurn')}</span>
           </span>
         ) : (
           String(r.title)
         ),
     },
     {
-      title: '기안자',
+      title: t('appr.requester'),
       minWidth: 160,
       render: (r) => personLabel((r as unknown as ApprovalDocView).requester),
     },
     {
-      title: '상태',
+      title: t('appr.status'),
       width: 90,
       render: (r) => <StatusBadge value={String(r.status)} map={APPROVAL_STATUS_MAP} />,
     },
     {
-      title: '결재할 사람',
+      title: t('appr.approverCol'),
       minWidth: 120,
       render: (r) => (r as unknown as ApprovalDocView).currentApprover?.name ?? '-',
     },
-    { title: '상신', width: 130, render: (r) => dt(r.submittedAt) },
+    { title: t('appr.submitted'), width: 130, render: (r) => dt(r.submittedAt) },
   ];
 
   const submitted = (doc: ApprovalDocView) => {
@@ -142,14 +142,14 @@ export default function Approvals() {
   };
 
   const options = [
-    { value: 'all', label: '전체' },
-    { value: 'todo', label: `결재할 문서${todoCount ? ` ${todoCount}` : ''}` },
-    { value: 'mine', label: '내가 올린 문서' },
-    { value: 'cc', label: '참조·처리한 문서' },
+    { value: 'all', label: t('appr.all') },
+    { value: 'todo', label: t('appr.todoN', { v0: todoCount ? ` ${todoCount}` : '' }) },
+    { value: 'mine', label: t('appr.mine') },
+    { value: 'cc', label: t('appr.ccDone') },
     ...(can('APPROVAL.MANAGE')
       ? [
-          { value: 'forms', label: '결재 양식' },
-          { value: 'lines', label: '결재선 설정' },
+          { value: 'forms', label: t('appr.forms') },
+          { value: 'lines', label: t('appr.lineSettings') },
         ]
       : []),
   ];
@@ -188,7 +188,7 @@ export default function Approvals() {
           toolbarActions={
             user?.employeeId ? (
               <Button variant="primary" size="sm" onClick={() => setWriting('pick')}>
-                + 새 결재
+                {t('appr.newDocBtn')}
               </Button>
             ) : undefined
           }
@@ -242,6 +242,7 @@ function GeneralDraft({
   onClose: () => void;
   onSubmitted: (doc: ApprovalDocView) => void;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -250,7 +251,7 @@ function GeneralDraft({
 
   const submit = async () => {
     if (!title.trim()) {
-      toast({ type: 'warning', title: '제목을 입력하세요.' });
+      toast({ type: 'warning', title: t('appr.titleReq') });
       return;
     }
     setBusy(true);
@@ -263,10 +264,10 @@ function GeneralDraft({
           line: line ? toLinePayload(line) : undefined,
         }),
       });
-      toast({ type: 'success', title: '상신했습니다' });
+      toast({ type: 'success', title: t('appr.submittedOk') });
       onSubmitted(doc);
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.uploadFailed') });
     } finally {
       setBusy(false);
     }
@@ -277,11 +278,11 @@ function GeneralDraft({
       open
       onOpenChange={(o) => !o && onClose()}
       size="lg"
-      title="품의 작성"
+      title={t('appr.writeRequest')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            취소
+            {t('appr.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -289,18 +290,18 @@ function GeneralDraft({
             disabled={!title.trim()}
             onClick={() => void submit()}
           >
-            상신
+            {t('appr.submitted')}
           </Button>
         </>
       }
     >
       <div className={styles.formCol}>
         <label className={styles.fieldLabel}>
-          제목
+          {t('appr.title')}
           <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
         </label>
         <label className={styles.fieldLabel}>
-          내용
+          {t('appr.content')}
           <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={6} />
         </label>
         <ApprovalLineEditor

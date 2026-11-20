@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
@@ -56,6 +57,7 @@ export function FormsAdmin({
   /** 표 툴바 셋째 줄 왼쪽 탭(결재함의 상자 탭) */
   tabs?: ReactNode;
 } = {}) {
+  const { t } = useTranslation();
   const { forms, loading, reload } = useApprovalForms(true);
   const { orgs, people } = useDirectory();
   // 결재함에서는 편집 중인 양식을 주소(?form=<id>|new)에 둔다 — 결재함 머리글을 숨기고 뒤로가기도 된다.
@@ -100,7 +102,7 @@ export function FormsAdmin({
 
   const audienceText = (a: FormAudience) =>
     a.mode === 'ALL'
-      ? '전 직원'
+      ? t('appr.allEmployees')
       : [
           ...a.orgIds.map((id) => orgName.get(id) ?? '?'),
           ...a.employeeIds.map((id) => personName.get(id) ?? '?'),
@@ -108,7 +110,7 @@ export function FormsAdmin({
 
   const columns: Column[] = [
     {
-      title: '양식',
+      title: t('appr.form'),
       minWidth: 200,
       render: (r) => {
         const Icon = formIcon(r.icon as string | null);
@@ -120,28 +122,28 @@ export function FormsAdmin({
         );
       },
     },
-    { title: '분류', dataIndex: 'category', width: 110 },
-    { title: '설명', dataIndex: 'description', flex: 1, minWidth: 200 },
+    { title: t('appr.category'), dataIndex: 'category', width: 110 },
+    { title: t('appr.description'), dataIndex: 'description', flex: 1, minWidth: 200 },
     {
-      title: '공개 대상',
+      title: t('appr.audience'),
       minWidth: 140,
       render: (r) =>
         r.kind === 'LEAVE'
-          ? '전 직원'
+          ? t('appr.allEmployees')
           : audienceText((r.audience as FormAudience) ?? DEFAULT_FORM_AUDIENCE),
     },
     {
-      title: '항목',
+      title: t('appr.fields'),
       width: 80,
       numeric: true,
-      render: (r) => `${(r.fields as unknown[]).length}개`,
+      render: (r) => t('appr.countN', { v0: (r.fields as unknown[]).length }),
     },
     {
-      title: '상태',
+      title: t('appr.status'),
       width: 100,
       render: (r) => (
         <Badge variant="subtle" color={r.isActive ? 'success' : 'neutral'}>
-          {r.isActive ? '사용' : '사용 안 함'}
+          {r.isActive ? t('appr.on') : t('appr.off')}
         </Badge>
       ),
     },
@@ -158,7 +160,7 @@ export function FormsAdmin({
         onRowClick={(r) => setPreviewing(r as unknown as ApprovalFormDef)}
         toolbarActions={
           <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-            + 새 양식
+            {t('appr.newFormBtn')}
           </Button>
         }
       />
@@ -201,13 +203,14 @@ export function FormEditor({
   initial,
   onBack,
   onSaved,
-  backLabel = '결재 양식',
+  backLabel,
 }: {
   initial: ApprovalFormDef | null;
   onBack?: () => void;
   onSaved: () => void;
   backLabel?: string;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const leave = initial?.kind === 'LEAVE';
   const [name, setName] = useState(initial?.name ?? '');
@@ -280,27 +283,23 @@ export function FormEditor({
         method: initial ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
-      toast({ type: 'success', title: '저장했습니다' });
+      toast({ type: 'success', title: t('appr.saved') });
       onSaved();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.saveFailed') });
     } finally {
       setBusy(false);
     }
   };
 
   const remove = async () => {
-    if (
-      !initial ||
-      !window.confirm(`'${initial.name}' 양식을 지울까요? 이미 올린 문서는 그대로 남습니다.`)
-    )
-      return;
+    if (!initial || !window.confirm(t('appr.formDeleteQ', { v0: initial.name }))) return;
     try {
       await api(`/approval-forms/${initial.id}`, { method: 'DELETE' });
-      toast({ type: 'success', title: '지웠습니다' });
+      toast({ type: 'success', title: t('appr.deleted') });
       onSaved();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '지우지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.deleteFailed') });
     }
   };
 
@@ -315,10 +314,10 @@ export function FormEditor({
       setActive(!isActive);
       toast({
         type: 'success',
-        title: isActive ? '사용을 멈췄습니다 — 직원 목록에서 빠집니다' : '다시 사용합니다',
+        title: isActive ? t('appr.stopped') : t('appr.resumed'),
       });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '바꾸지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.changeFailed') });
     }
   };
 
@@ -330,7 +329,7 @@ export function FormEditor({
       disabled={!ready}
       onClick={() => void save()}
     >
-      저장
+      {t('appr.save')}
     </Button>
   );
 
@@ -338,22 +337,22 @@ export function FormEditor({
     <PageHeader
       title={
         leave
-          ? '휴가 신청서'
+          ? t('appr.leaveForm')
           : initial
-            ? `${initial.name}${isActive ? '' : ' (사용 안 함)'}`
-            : '새 결재 양식'
+            ? `${initial.name}${isActive ? '' : t('appr.offSuffix')}`
+            : t('appr.newForm')
       }
-      breadcrumbs={[{ label: backLabel, onClick: onBack }]}
+      breadcrumbs={[{ label: backLabel ?? t('appr.forms'), onClick: onBack }]}
       hideBreadcrumbs
       actions={
         <>
           {initial && !leave && (
             <>
               <Button variant="ghost" size="sm" onClick={() => void remove()}>
-                삭제
+                {t('appr.delete')}
               </Button>
               <Button variant="outline" size="sm" onClick={() => void toggleActive()}>
-                {isActive ? '사용 중지' : '다시 사용'}
+                {isActive ? t('appr.stop') : t('appr.resume')}
               </Button>
             </>
           )}
@@ -368,8 +367,8 @@ export function FormEditor({
   // 휴가 신청서도 같은 단계 — 이름·분류는 고정, 공개 대상은 전 직원
   const step1Ready = (leave || !!name.trim()) && labelsOk;
   const STEPS = leave
-    ? (['신청서 만들기', '결재선'] as const)
-    : (['양식 만들기', '공개 대상 · 결재선'] as const);
+    ? ([t('appr.stepBuild'), t('appr.line')] as const)
+    : ([t('appr.stepBuildForm'), t('appr.stepAudience')] as const);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -397,27 +396,28 @@ export function FormEditor({
           {step === 1 ? (
             <>
               <div className={styles.builderBlock}>
-                <h3 className={cstyles.panelTitle}>기본 정보</h3>
+                <h3 className={cstyles.panelTitle}>{t('appr.basic')}</h3>
                 {leave ? (
                   <p className={styles.muted} style={{ margin: 0 }}>
-                    휴가 신청서 — 이름은 고정입니다. 휴가 종류·날짜(반차·반반차는 시간대)·사유는
-                    기본으로 들어가고, 아래 「추가 항목」이 그 뒤에 붙습니다.
+                    {t('appr.leaveFormHelp1')}
+                    {t('appr.leaveFormHelp2')}
                   </p>
                 ) : (
                   <label className={styles.fieldLabel}>
                     <span>
-                      양식 이름 <span style={{ color: 'var(--ark-color-error-500)' }}>*</span>
+                      {t('appr.formName')}{' '}
+                      <span style={{ color: 'var(--ark-color-error-500)' }}>*</span>
                     </span>
                     <Input
                       value={name}
                       maxLength={60}
-                      placeholder="예: 지출 결의서"
+                      placeholder={t('appr.formNamePh')}
                       onChange={(e) => setName(e.target.value)}
                     />
                   </label>
                 )}
                 <div className={styles.fieldLabel}>
-                  아이콘 <span className={styles.muted}>결재함 신청 카드·목록에 보입니다</span>
+                  {t('appr.icon')} <span className={styles.muted}>{t('appr.iconHint')}</span>
                   <IconPicker
                     value={icon ?? (leave ? 'CalendarOff' : 'FileText')}
                     onChange={setIcon}
@@ -425,8 +425,8 @@ export function FormEditor({
                 </div>
                 {!leave && (
                   <div className={styles.fieldLabel}>
-                    분류{' '}
-                    <span className={styles.muted}>「+ 새 결재」에서 이 분류로 묶여 보입니다</span>
+                    {t('appr.category')}{' '}
+                    <span className={styles.muted}>{t('appr.categoryHint')}</span>
                     <CategoryPicker
                       value={category}
                       onChange={setCategory}
@@ -438,12 +438,12 @@ export function FormEditor({
                 )}
                 {!leave && (
                   <label className={styles.fieldLabel}>
-                    설명
+                    {t('appr.description')}
                     <Textarea
                       rows={2}
                       value={description}
                       maxLength={300}
-                      placeholder="언제 쓰는 양식인지 — 새 결재 고르기 화면에 보입니다"
+                      placeholder={t('appr.descPh')}
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </label>
@@ -451,9 +451,9 @@ export function FormEditor({
               </div>
               {leave && (
                 <div className={styles.builderBlock}>
-                  <h3 className={cstyles.panelTitle}>신청 설정</h3>
+                  <h3 className={cstyles.panelTitle}>{t('appr.requestSettings')}</h3>
                   <div className={styles.fieldLabel}>
-                    업무 대리인
+                    {t('appr.delegate')}
                     <ChoiceChips
                       value={substitute}
                       onChange={(v) => setSubstitute(v as SubstituteMode)}
@@ -463,23 +463,25 @@ export function FormEditor({
                       }))}
                     />
                     <span className={styles.muted} style={{ fontWeight: 400 }}>
-                      필수면 대리인을 골라야 신청할 수 있고, 승인되면 대리인에게 알림이 갑니다.
+                      {t('appr.delegateHint')}
                     </span>
                   </div>
                   <Checkbox
                     checked={reasonRequired}
                     onCheckedChange={(c) => setReasonRequired(c === true)}
-                    label="휴가 사유 필수"
+                    label={t('appr.reasonRequired')}
                   />
                 </div>
               )}
               <div className={styles.builderBlock}>
-                <h3 className={cstyles.panelTitle}>{leave ? '추가 항목' : '항목'}</h3>
+                <h3 className={cstyles.panelTitle}>
+                  {leave ? t('appr.extraFields') : t('appr.fields')}
+                </h3>
                 <FormBuilder fields={fields} onChange={setFields} hidePreview />
               </div>
               <div className={cstyles.stepNav}>
                 <Button variant="primary" disabled={!step1Ready} onClick={() => setStep(2)}>
-                  {leave ? '다음: 결재선 →' : '다음: 공개 대상·결재선 →'}
+                  {leave ? t('appr.nextLine') : t('appr.nextAudience')}
                 </Button>
               </div>
             </>
@@ -487,26 +489,26 @@ export function FormEditor({
             <>
               {!leave && (
                 <div className={styles.builderBlock}>
-                  <h3 className={cstyles.panelTitle}>공개 대상</h3>
+                  <h3 className={cstyles.panelTitle}>{t('appr.audience')}</h3>
                   <ChoiceChips
                     value={audience.mode}
                     onChange={(v) => setAudience({ ...audience, mode: v as FormAudience['mode'] })}
                     options={[
-                      { value: 'ALL', label: '전 직원' },
-                      { value: 'SOME', label: '고른 조직·직원만' },
+                      { value: 'ALL', label: t('appr.allEmployees') },
+                      { value: 'SOME', label: t('appr.someOnly') },
                     ]}
                   />
                   {audience.mode === 'SOME' && (
                     <>
                       <div className={styles.fieldLabel}>
-                        조직 <span className={styles.muted}>하위 조직까지 함께 봅니다</span>
+                        {t('appr.org')} <span className={styles.muted}>{t('appr.orgHint')}</span>
                         <OrgPicker
                           value={audience.orgIds}
                           onChange={(orgIds) => setAudience({ ...audience, orgIds })}
                         />
                       </div>
                       <div className={styles.fieldLabel}>
-                        직원
+                        {t('appr.employees')}
                         <PersonPicker
                           value={audience.employeeIds}
                           onChange={(employeeIds) => setAudience({ ...audience, employeeIds })}
@@ -517,51 +519,47 @@ export function FormEditor({
                           className={styles.muted}
                           style={{ color: 'var(--ark-color-error-500)' }}
                         >
-                          조직이나 직원을 하나 이상 고르세요.
+                          {t('appr.pickOne')}
                         </span>
                       )}
                     </>
                   )}
-                  <span className={styles.muted}>
-                    고른 사람만 「+ 새 결재」에서 이 양식을 봅니다. 결재 양식 관리자는 늘 봅니다.
-                  </span>
+                  <span className={styles.muted}>{t('appr.audienceHint')}</span>
                 </div>
               )}
               <div className={styles.builderBlock}>
-                <h3 className={cstyles.panelTitle}>결재선</h3>
+                <h3 className={cstyles.panelTitle}>{t('appr.line')}</h3>
                 <ChoiceChips
                   value={lineMode}
                   onChange={(v) => setLineMode(v as LineMode)}
                   options={[
                     {
                       value: 'GENERAL',
-                      label: leave ? '부서장 결재(기본) 따르기' : '일반 품의 결재선 따르기',
+                      label: leave ? t('appr.followHead') : t('appr.followGeneral'),
                     },
                     {
                       value: 'CUSTOM',
-                      label: leave ? '휴가 결재선 정하기' : '이 양식 결재선 정하기',
+                      label: leave ? t('appr.setLeaveLine') : t('appr.setFormLine'),
                     },
                   ]}
                 />
                 {lineMode === 'CUSTOM' ? (
                   <>
                     <span className={styles.muted}>
-                      결재는 위에서부터 차례로, 참조는 순서와 무관합니다. 상신하는 사람에 따라
-                      부서장이 정해지고, 상신할 때 고칠 수 있습니다.
+                      {t('appr.lineHelp1')}
+                      {t('appr.lineHelp2')}
                     </span>
                     <LineStepsEditor steps={steps} onChange={setSteps} />
                   </>
                 ) : (
                   <span className={styles.muted}>
-                    {leave
-                      ? '신청자 부서의 부서장이 결재합니다(「결재선 설정」에 조직별 휴가 결재선이 있으면 그것을 씁니다).'
-                      : '「결재선 설정」의 일반 품의 결재선(없으면 부서장 결재 한 단계)을 씁니다.'}
+                    {leave ? t('appr.headHint') : t('appr.generalHint')}
                   </span>
                 )}
               </div>
               <div className={cstyles.stepNav}>
                 <Button variant="ghost" onClick={() => setStep(1)}>
-                  ← 양식 수정
+                  {t('appr.backToForm')}
                 </Button>
                 <Button
                   variant="primary"
@@ -569,7 +567,7 @@ export function FormEditor({
                   disabled={!ready}
                   onClick={() => void save()}
                 >
-                  저장
+                  {t('appr.save')}
                 </Button>
               </div>
             </>
@@ -577,11 +575,14 @@ export function FormEditor({
         </section>
 
         {/* 오른쪽 — 미리보기 상자 안에 실제 상신 창(모달) */}
-        <section className={`${cstyles.panel} ${styles.formEditorSide}`} aria-label="미리보기">
-          <h3 className={cstyles.panelTitle}>미리보기</h3>
+        <section
+          className={`${cstyles.panel} ${styles.formEditorSide}`}
+          aria-label={t('appr.preview')}
+        >
+          <h3 className={cstyles.panelTitle}>{t('appr.preview')}</h3>
           <div className={styles.previewStage}>
             <SubmitPreview
-              name={leave ? '휴가 신청' : name}
+              name={leave ? t('appr.leaveRequest') : name}
               description={leave ? '' : description}
               fields={fields}
               steps={lineMode === 'CUSTOM' ? steps : null}
@@ -612,6 +613,7 @@ function SubmitPreview({
   /** 휴가 신청서 — 휴가 종류·날짜·사유·업무 대리인(기본 칸)을 추가 항목 앞에 보인다 */
   leave?: { substitute: SubstituteMode; reasonRequired: boolean };
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const ruleText = useRuleText();
   const [values, setValues] = useState<Record<string, unknown>>({});
@@ -619,18 +621,18 @@ function SubmitPreview({
   const approvers = (steps ?? [EMPTY_RULE]).filter((s) => s.kind === 'APPROVER');
   const ccs = (steps ?? []).filter((s) => s.kind === 'CC');
   const ready = formReady(shown, values);
-  const tryIt = () => toast({ type: 'info', title: '미리보기입니다 — 실제로 올라가지 않습니다' });
+  const tryIt = () => toast({ type: 'info', title: t('appr.previewOnly') });
   return (
     <div className={styles.mockModal} role="presentation">
       <div className={styles.mockHead}>
         <div>
-          <h2>{name.trim() || '양식 이름'}</h2>
+          <h2>{name.trim() || t('appr.formName')}</h2>
           {description.trim() && <p>{description.trim()}</p>}
         </div>
         <button
           type="button"
           className={styles.mockClose}
-          aria-label="닫기(미리보기)"
+          aria-label={t('appr.closePreview')}
           onClick={tryIt}
         >
           <X size={16} />
@@ -640,38 +642,42 @@ function SubmitPreview({
         <div className={styles.formCol}>
           {leave && <LeavePreviewFields {...leave} />}
           <FormFieldInputs fields={shown} values={values} onChange={setValues} preview />
-          {!shown.length && <p className={fstyles.hint}>항목을 넣으면 여기에 보입니다.</p>}
+          {!shown.length && <p className={fstyles.hint}>{t('appr.previewEmpty2')}</p>}
           <div className={styles.lineEditor}>
             <div className={styles.lineHead}>
-              <span>결재선</span>
+              <span>{t('appr.line')}</span>
               <span className={styles.muted}>
                 {steps
-                  ? `기본: ${name.trim() || '이 양식'} 기본 — 바꿔서 올릴 수 있습니다`
+                  ? t('appr.defaultForm', { v0: name.trim() || t('appr.thisForm') })
                   : leave
-                    ? '기본 결재선(부서장) — 바꿔서 올릴 수 있습니다'
-                    : '기본 결재선(일반 품의) — 바꿔서 올릴 수 있습니다'}
+                    ? t('appr.defaultHead')
+                    : t('appr.defaultGeneral')}
               </span>
             </div>
             <ol className={styles.lineList}>
               {approvers.map((s, i) => (
                 <li key={`a${i}`} className={styles.lineRow}>
                   <Badge variant="subtle" color="info">
-                    결재 {i + 1}
+                    {t('appr.approver')} {i + 1}
                   </Badge>
                   <span className={styles.lineName}>
                     {ruleText(s)}
                     {s.resolver === 'DEPT_HEAD' && (
-                      <span className={styles.muted}> · 상신하는 사람에 따라 정해짐</span>
+                      <span className={styles.muted}> {t('appr.dependsOnRequester')}</span>
                     )}
                   </span>
                   <span className={styles.lineActions}>
-                    <button type="button" aria-label="앞으로" disabled={i === 0}>
+                    <button type="button" aria-label={t('appr.moveUp')} disabled={i === 0}>
                       <ArrowUp size={14} />
                     </button>
-                    <button type="button" aria-label="뒤로" disabled={i === approvers.length - 1}>
+                    <button
+                      type="button"
+                      aria-label={t('appr.moveDown')}
+                      disabled={i === approvers.length - 1}
+                    >
                       <ArrowDown size={14} />
                     </button>
-                    <button type="button" aria-label="빼기">
+                    <button type="button" aria-label={t('appr.remove')}>
                       <X size={14} />
                     </button>
                   </span>
@@ -680,11 +686,11 @@ function SubmitPreview({
               {ccs.map((s, i) => (
                 <li key={`c${i}`} className={styles.lineRow}>
                   <Badge variant="subtle" color="neutral">
-                    참조
+                    {t('appr.cc')}
                   </Badge>
                   <span className={styles.lineName}>{ruleText(s)}</span>
                   <span className={styles.lineActions}>
-                    <button type="button" aria-label="빼기">
+                    <button type="button" aria-label={t('appr.remove')}>
                       <X size={14} />
                     </button>
                   </span>
@@ -697,15 +703,15 @@ function SubmitPreview({
                   options={[]}
                   value={null}
                   onChange={() => undefined}
-                  placeholder="직원 찾기(이름)"
+                  placeholder={t('appr.findEmpName')}
                   size="sm"
                 />
               </div>
               <Button size="sm" variant="outline" disabled>
-                결재자로 추가
+                {t('appr.addApprover')}
               </Button>
               <Button size="sm" variant="ghost" disabled>
-                참조로 추가
+                {t('appr.addCc')}
               </Button>
             </div>
           </div>
@@ -714,10 +720,10 @@ function SubmitPreview({
       <div className={styles.mockDivider} />
       <div className={styles.mockFoot}>
         <Button variant="ghost" onClick={tryIt}>
-          취소
+          {t('appr.cancel')}
         </Button>
         <Button variant="primary" disabled={!ready} onClick={tryIt}>
-          {leave ? '신청(결재 상신)' : '상신'}
+          {leave ? t('appr.submitLeave') : t('appr.submitted')}
         </Button>
       </div>
     </div>
@@ -732,6 +738,7 @@ function LeavePreviewFields({
   substitute: SubstituteMode;
   reasonRequired: boolean;
 }) {
+  const { t } = useTranslation();
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
   const [typeId, setTypeId] = useState('');
   const [people, setPeople] = useState<string[]>([]);
@@ -747,7 +754,7 @@ function LeavePreviewFields({
   return (
     <>
       <label className={styles.fieldLabel}>
-        휴가 종류
+        {t('appr.leaveType')}
         <Select
           value={typeId}
           onValueChange={setTypeId}
@@ -756,21 +763,27 @@ function LeavePreviewFields({
       </label>
       <div className={styles.lineAdd}>
         <label className={styles.fieldLabel} style={{ flex: 1 }}>
-          시작일
+          {t('appr.start')}
           <Input type="date" />
         </label>
         <label className={styles.fieldLabel} style={{ flex: 1 }}>
-          끝일
+          {t('appr.end')}
           <Input type="date" />
         </label>
       </div>
       <label className={styles.fieldLabel}>
-        <span>사유{reasonRequired && req}</span>
+        <span>
+          {t('appr.reason')}
+          {reasonRequired && req}
+        </span>
         <Textarea rows={2} />
       </label>
       {substitute !== 'NONE' && (
         <div className={styles.fieldLabel}>
-          <span>업무 대리인{substitute === 'REQUIRED' && req}</span>
+          <span>
+            {t('appr.delegate')}
+            {substitute === 'REQUIRED' && req}
+          </span>
           <PersonPicker value={people} onChange={(v) => setPeople(v.slice(-1))} />
         </div>
       )}
@@ -780,8 +793,9 @@ function LeavePreviewFields({
 
 /** 아이콘 고르기 — 고를 수 있는 아이콘만(FORM_ICONS) */
 function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
   return (
-    <div className={styles.iconGrid} role="radiogroup" aria-label="아이콘">
+    <div className={styles.iconGrid} role="radiogroup" aria-label={t('appr.icon')}>
       {FORM_ICONS.map((name) => {
         const Icon = formIcon(name);
         return (
@@ -804,6 +818,7 @@ function IconPicker({ value, onChange }: { value: string; onChange: (v: string) 
 
 /** 조직 여러 개 고르기 — 칩 + 검색 */
 function OrgPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const { t } = useTranslation();
   const { orgs } = useDirectory();
   const byId = useMemo(() => new Map(orgs.map((o) => [o.id, o])), [orgs]);
   const options = useMemo(
@@ -813,7 +828,7 @@ function OrgPicker({ value, onChange }: { value: string[]; onChange: (v: string[
         .map((o) => ({
           value: o.id,
           label: o.name,
-          description: o.type === 'BRANCH' ? '지점' : undefined,
+          description: o.type === 'BRANCH' ? t('appr.branch') : undefined,
         })),
     [orgs, value],
   );
@@ -824,7 +839,7 @@ function OrgPicker({ value, onChange }: { value: string[]; onChange: (v: string[
           {byId.get(id)?.name ?? '…'}
           <button
             type="button"
-            aria-label="빼기"
+            aria-label={t('appr.remove')}
             onClick={() => onChange(value.filter((x) => x !== id))}
           >
             <X size={12} />
@@ -834,8 +849,8 @@ function OrgPicker({ value, onChange }: { value: string[]; onChange: (v: string[
       <Combobox
         options={options}
         value={null}
-        placeholder="조직 찾기"
-        searchPlaceholder="조직 이름으로 찾기"
+        placeholder={t('appr.findOrg')}
+        searchPlaceholder={t('appr.findOrgName')}
         onChange={(v) => v && onChange([...value, v])}
       />
     </div>
@@ -883,6 +898,7 @@ function CategoryPicker({
   onChange: (v: string) => void;
   existing: string[];
 }) {
+  const { t } = useTranslation();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
   const list = [...new Set([...existing, ...(value ? [value] : [])])].sort((a, b) =>
@@ -901,7 +917,7 @@ function CategoryPicker({
         className={`${styles.choiceChip} ${!value ? styles.choiceChipOn : ''}`}
         onClick={() => onChange('')}
       >
-        기타
+        {t('appr.etc')}
       </button>
       {list.map((c) => (
         <button
@@ -918,7 +934,7 @@ function CategoryPicker({
           autoFocus
           value={draft}
           maxLength={30}
-          placeholder="새 분류 이름"
+          placeholder={t('appr.newCategoryPh')}
           style={{ width: 150, height: 32 }}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
@@ -932,7 +948,7 @@ function CategoryPicker({
         />
       ) : (
         <button type="button" className={styles.choiceChipAdd} onClick={() => setAdding(true)}>
-          + 새 분류
+          {t('appr.newCategory')}
         </button>
       )}
     </div>

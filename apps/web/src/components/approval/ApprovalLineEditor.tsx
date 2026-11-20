@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
@@ -25,6 +26,7 @@ export function ApprovalLineEditor({
   /** 본인은 결재자로 고를 수 없다 */
   myEmployeeId?: string | null;
 }) {
+  const { t } = useTranslation();
   const { people } = useDirectory();
   const [templateName, setTemplateName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -97,13 +99,13 @@ export function ApprovalLineEditor({
   return (
     <div className={styles.lineEditor}>
       <div className={styles.lineHead}>
-        <span>결재선</span>
+        <span>{t('appr.line')}</span>
         <span className={styles.muted}>
           {loading
-            ? '불러오는 중…'
+            ? t('appr.loading')
             : templateName
-              ? `기본: ${templateName} — 바꿔서 올릴 수 있습니다`
-              : '기본 결재선(부서장) — 바꿔서 올릴 수 있습니다'}
+              ? t('appr.defaultOf', { v0: templateName })
+              : t('appr.defaultHead')}
         </span>
       </div>
 
@@ -111,13 +113,13 @@ export function ApprovalLineEditor({
         {approvers.map((a, i) => (
           <li key={`a-${a.person.id}`} className={styles.lineRow}>
             <Badge variant="subtle" color="info">
-              결재 {i + 1}
+              {t('appr.approver')} {i + 1}
             </Badge>
             <span className={styles.lineName}>{personLabel(a.person)}</span>
             <span className={styles.lineActions}>
               <button
                 type="button"
-                aria-label="앞으로"
+                aria-label={t('appr.moveUp')}
                 disabled={i === 0}
                 onClick={() => move(i, -1)}
               >
@@ -125,7 +127,7 @@ export function ApprovalLineEditor({
               </button>
               <button
                 type="button"
-                aria-label="뒤로"
+                aria-label={t('appr.moveDown')}
                 disabled={i === approvers.length - 1}
                 onClick={() => move(i, 1)}
               >
@@ -133,7 +135,7 @@ export function ApprovalLineEditor({
               </button>
               <button
                 type="button"
-                aria-label={`${a.person.name} 빼기`}
+                aria-label={t('appr.removeOf', { v0: a.person.name })}
                 onClick={() =>
                   set(
                     approvers.filter((_, k) => k !== i),
@@ -149,13 +151,13 @@ export function ApprovalLineEditor({
         {ccs.map((c, i) => (
           <li key={`c-${c.person.id}`} className={styles.lineRow}>
             <Badge variant="subtle" color="neutral">
-              참조
+              {t('appr.cc')}
             </Badge>
             <span className={styles.lineName}>{personLabel(c.person)}</span>
             <span className={styles.lineActions}>
               <button
                 type="button"
-                aria-label={`${c.person.name} 빼기`}
+                aria-label={t('appr.removeOf', { v0: c.person.name })}
                 onClick={() =>
                   set(
                     approvers,
@@ -168,11 +170,7 @@ export function ApprovalLineEditor({
             </span>
           </li>
         ))}
-        {!loading && line.length === 0 && (
-          <li className={styles.muted}>
-            결재자가 없습니다 — 그대로 올리면 바로 승인됩니다. 아래에서 결재자를 더하세요.
-          </li>
-        )}
+        {!loading && line.length === 0 && <li className={styles.muted}>{t('appr.noApprover')}</li>}
       </ol>
 
       <div className={styles.lineAdd}>
@@ -181,16 +179,16 @@ export function ApprovalLineEditor({
             options={options}
             value={pick}
             onChange={setPick}
-            placeholder="직원 찾기(이름)"
-            searchPlaceholder="이름으로 찾기"
+            placeholder={t('appr.findEmpName')}
+            searchPlaceholder={t('appr.findByName')}
             size="sm"
           />
         </div>
         <Button size="sm" variant="outline" disabled={!pick} onClick={() => add('APPROVER')}>
-          결재자로 추가
+          {t('appr.addApprover')}
         </Button>
         <Button size="sm" variant="ghost" disabled={!pick} onClick={() => add('CC')}>
-          참조로 추가
+          {t('appr.addCc')}
         </Button>
       </div>
     </div>
