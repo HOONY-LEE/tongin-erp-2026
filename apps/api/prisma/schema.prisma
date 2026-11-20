@@ -2244,6 +2244,9 @@ model CsCall {
   /// 돌려주기 — 상담원이 다른 직원에게 넘긴 곳(이름 · 번호)과 시각
   transferTo    String?   @map("transfer_to")
   transferredAt DateTime? @map("transferred_at") @db.Timestamptz(6)
+  /// 통화 받아쓰기 — 한국AI통신 transcript.completed의 구간 [{speaker,start,end,text}]
+  transcript    Json?
+  transcriptAt  DateTime? @map("transcript_at") @db.Timestamptz(6)
 
   @@index([status, receivedAt])
   @@index([agentEmpId, status])

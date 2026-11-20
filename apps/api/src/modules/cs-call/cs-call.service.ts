@@ -592,6 +592,72 @@ export class CsCallService {
   }
 
   /**
+   * 통화 받아쓰기 알림(한국AI통신 webhooks: transcript.completed).
+   * 받아쓰기 파일(서명 URL, 7일 뒤 만료)을 바로 받아 콜에 저장한다 — 상담 기록에서 본다.
+   * 콜은 통화 ID(CallId)로, 못 찾으면 같은 번호의 최근 콜(3시간 안, 받아쓰기 없는 것)로 잇는다.
+   */
+  async transcriptEvent(body: Record<string, string>) {
+    const sid = (body.CallId || body.CallSid)?.slice(0, 100);
+    const url = body.TranscriptUrl;
+    if (!sid || body.Event !== 'transcript.completed' || !url?.startsWith('https://'))
+      return { ok: true };
+    let call = await this.prisma.csCall.findUnique({ where: { katCallSid: sid } });
+    const from = digits(body.From ?? '');
+    if (!call && from.length >= 8)
+      call = await this.prisma.csCall.findFirst({
+        where: {
+          phone: from,
+          transcriptAt: null,
+          receivedAt: { gte: new Date(Date.now() - 3 * 3600_000) },
+        },
+        orderBy: { receivedAt: 'desc' },
+      });
+    if (!call) {
+      this.log.warn(`받아쓰기 알림 — 콜을 찾지 못함 (CallId=${sid})`);
+      return { ok: true };
+    }
+    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) throw new Error(`받아쓰기 파일 ${res.status}`);
+    const raw = (await res.json()) as unknown;
+    const segments = (Array.isArray(raw) ? raw : [])
+      .map((x: Record<string, unknown>) => ({
+        speaker: String(x.speaker ?? '').slice(0, 30),
+        start: Number(x.start) || 0,
+        end: Number(x.end) || 0,
+        text: String(x.text ?? '').slice(0, 2000),
+      }))
+      .filter((x) => x.text.trim())
+      .slice(0, 3000);
+    await this.prisma.csCall.update({
+      where: { id: call.id },
+      data: {
+        transcript: segments,
+        transcriptAt: new Date(),
+        ...(!call.katCallSid && { katCallSid: sid }),
+      },
+    });
+    return { ok: true };
+  }
+
+  /** 콜의 받아쓰기 원문 */
+  async transcript(id: string) {
+    const row = await this.prisma.csCall.findUnique({
+      where: { id },
+      select: { transcript: true, transcriptAt: true },
+    });
+    if (!row) throw new NotFoundException('콜을 찾을 수 없습니다.');
+    return {
+      segments: (row.transcript ?? []) as {
+        speaker: string;
+        start: number;
+        end: number;
+        text: string;
+      }[],
+      at: row.transcriptAt?.toISOString() ?? null,
+    };
+  }
+
+  /**
    * AI 상담원 통화 요약 알림(한국AI통신 webhooks: summary.completed).
    * 같은 통화(CallId)의 콜 메모에 'AI 요약'을 남긴다 — 상담원이 다음 날 콜백하며 본다.
    * 콜이 아직 없으면(상태 알림보다 먼저 오면) 아웃콜 대기로 만든다. 같은 알림이 두 번 와도 한 번만 붙인다.
@@ -739,6 +805,7 @@ export class CsCallService {
       endedAt: c.endedAt?.toISOString() ?? null,
       durationSec: c.durationSec,
       hasRecording: !!c.katCallSid && (c.durationSec ?? 0) > 0,
+      hasTranscript: !!c.transcriptAt,
       memo: c.memo,
       request: c.request,
       transferTo: c.transferTo,

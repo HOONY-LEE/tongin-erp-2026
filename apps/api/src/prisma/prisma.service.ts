@@ -14,6 +14,8 @@ export const PRISMA_OMIT = {
   contract: { signToken: true, signatureImage: true },
   employee: { photoBytes: true },
   contractRevision: { docBytes: true },
+  // 통화 받아쓰기 원문은 콜 상세에서 따로 읽는다(목록이 무거워지지 않게)
+  csCall: { transcript: true },
 } as const;
 
 @Injectable()
