@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+import { useTranslation } from 'react-i18next';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, Paperclip, Plus, Trash2, X } from 'lucide-react';
 import { AutoSizeTextarea, Combobox } from '@sunghoon_lee/akron-ui';
@@ -20,7 +22,7 @@ import styles from './formFields.module.css';
 /** 화면에서 채우는 값 — person은 고른 직원 id 목록(서버가 이름을 붙인다) */
 export type FormDraft = Record<string, unknown>;
 
-const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
+const won = (n: number) => i18n.t('appr.won', { v0: n.toLocaleString('ko-KR') });
 
 /** 필수 항목이 다 찼는지 — 확인 버튼을 막는 데 쓴다(자세한 확인은 서버) */
 export function formReady(fields: FormField[], values: FormDraft) {
@@ -46,6 +48,7 @@ export function PersonPicker({
   value: string[];
   onChange: (v: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const { people } = useDirectory();
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const options = useMemo(
@@ -66,7 +69,7 @@ export function PersonPicker({
           {byId.get(id)?.name ?? '…'}
           <button
             type="button"
-            aria-label="빼기"
+            aria-label={t('appr.remove')}
             onClick={() => onChange(value.filter((x) => x !== id))}
           >
             <X size={12} />
@@ -76,8 +79,8 @@ export function PersonPicker({
       <Combobox
         options={options}
         value={null}
-        placeholder="직원 찾기"
-        searchPlaceholder="이름으로 찾기"
+        placeholder={t('appr.findEmp')}
+        searchPlaceholder={t('appr.findByName')}
         onChange={(v) => v && onChange([...value, v])}
       />
     </div>
@@ -108,6 +111,7 @@ export function FileField({
   onChange: (v: FormFile[]) => void;
   preview?: boolean;
 }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -116,14 +120,14 @@ export function FileField({
     if (!list?.length) return;
     const files = [...list];
     if (value.length + files.length > APPROVAL_FILE_MAX_COUNT) {
-      toast({ type: 'error', title: `파일은 ${APPROVAL_FILE_MAX_COUNT}개까지 붙일 수 있습니다` });
+      toast({ type: 'error', title: t('appr.fileMax', { v0: APPROVAL_FILE_MAX_COUNT }) });
       return;
     }
     const big = files.find((f) => f.size > APPROVAL_FILE_MAX_BYTES);
     if (big) {
       toast({
         type: 'error',
-        title: `${big.name} — ${APPROVAL_FILE_MAX_BYTES / 1048576}MB까지 붙일 수 있습니다`,
+        title: t('appr.fileSize', { v0: big.name, v1: APPROVAL_FILE_MAX_BYTES / 1048576 }),
       });
       return;
     }
@@ -157,7 +161,7 @@ export function FileField({
         onChange(next);
       }
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : '올리지 못했습니다' });
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('appr.uploadFailed') });
     } finally {
       setBusy(false);
       if (input.current) input.current.value = '';
@@ -176,7 +180,11 @@ export function FileField({
           <Paperclip size={12} aria-hidden />
           <span className={styles.fileName}>{f.name}</span>
           <span className={styles.fileSize}>{fileSize(f.size)}</span>
-          <button type="button" aria-label={`${f.name} 빼기`} onClick={() => remove(f)}>
+          <button
+            type="button"
+            aria-label={t('appr.removeOf', { v0: f.name })}
+            onClick={() => remove(f)}
+          >
             <X size={12} />
           </button>
         </span>
@@ -189,10 +197,11 @@ export function FileField({
         loading={busy}
         onClick={() => input.current?.click()}
       >
-        파일 첨부
+        {t('appr.attach')}
       </Button>
       <span className={styles.hint}>
-        한 개 {APPROVAL_FILE_MAX_BYTES / 1048576}MB · {APPROVAL_FILE_MAX_COUNT}개까지
+        {t('appr.fileEach')} {APPROVAL_FILE_MAX_BYTES / 1048576}MB · {APPROVAL_FILE_MAX_COUNT}
+        {t('appr.fileUpTo')}
       </span>
     </div>
   );
@@ -210,6 +219,7 @@ export function FormFieldInputs({
   onChange: (next: FormDraft) => void;
   preview?: boolean;
 }) {
+  const { t } = useTranslation();
   const set = (id: string, v: unknown) => onChange({ ...values, [id]: v });
   return (
     <>
@@ -289,7 +299,7 @@ export function FormFieldInputs({
             input = (
               <Select
                 value={String(v ?? '')}
-                placeholder="고르세요"
+                placeholder={t('appr.choose')}
                 onValueChange={(x) => set(f.id, x)}
                 options={(f.options ?? []).map((o) => ({ value: o, label: o }))}
               />
@@ -378,6 +388,7 @@ export function FormValuesView({
   fields: FormField[];
   values: Record<string, FormValue>;
 }) {
+  const { t } = useTranslation();
   const show = (f: FormField): ReactNode => {
     const v = values[f.id];
     if (f.type === 'file' && Array.isArray(v) && v.length)
@@ -388,7 +399,7 @@ export function FormValuesView({
               key={x.id}
               type="button"
               className={styles.fileChip}
-              title="내려받기"
+              title={t('appr.download')}
               onClick={() => void downloadFile(`/approval-attachments/${x.id}`, x.name)}
             >
               <Paperclip size={12} aria-hidden />
@@ -405,7 +416,7 @@ export function FormValuesView({
       case 'number':
         return Number(v).toLocaleString('ko-KR');
       case 'checkbox':
-        return v ? '예' : '아니오';
+        return v ? t('appr.yes') : t('appr.no');
       case 'daterange': {
         const r = v as { from: string; to: string };
         return r.from === r.to ? r.from : `${r.from} ~ ${r.to}`;
@@ -457,6 +468,7 @@ export function FormBuilder({
   /** 미리보기를 바깥(상신 창 미리보기)에서 그리면 */
   hidePreview?: boolean;
 }) {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState<FormDraft>({});
   const set = (i: number, patch: Partial<FormField>) =>
     onChange(fields.map((f, j) => (j === i ? { ...f, ...patch } : f)));
@@ -473,11 +485,7 @@ export function FormBuilder({
   return (
     <div className={`${styles.builder} ${hidePreview ? styles.builderSolo : ''}`}>
       <div className={styles.builderList}>
-        {fields.length === 0 && (
-          <p className={styles.hint}>
-            아직 항목이 없습니다. 「항목 추가」로 신청서에 받을 내용을 정하세요.
-          </p>
-        )}
+        {fields.length === 0 && <p className={styles.hint}>{t('appr.noFields')}</p>}
         {fields.map((f, i) => (
           <div key={f.id} className={styles.builderItem}>
             <div className={styles.builderRow}>
@@ -485,8 +493,8 @@ export function FormBuilder({
               <Input
                 value={f.label}
                 maxLength={50}
-                placeholder="항목 이름(예: 금액)"
-                aria-label={`${i + 1}번째 항목 이름`}
+                placeholder={t('appr.fieldNamePh')}
+                aria-label={t('appr.fieldNameN', { v0: i + 1 })}
                 onChange={(e) => set(i, { label: e.target.value })}
               />
               <Select
@@ -510,12 +518,12 @@ export function FormBuilder({
               <Checkbox
                 checked={f.required}
                 onCheckedChange={(c) => set(i, { required: c === true })}
-                label="필수"
+                label={t('appr.required')}
               />
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="위로"
+                title={t('appr.up')}
                 disabled={i === 0}
                 onClick={() => move(i, -1)}
               >
@@ -524,7 +532,7 @@ export function FormBuilder({
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="아래로"
+                title={t('appr.down')}
                 disabled={i === fields.length - 1}
                 onClick={() => move(i, 1)}
               >
@@ -533,7 +541,7 @@ export function FormBuilder({
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="항목 지우기"
+                title={t('appr.fieldDelete')}
                 onClick={() => onChange(fields.filter((_, j) => j !== i))}
               >
                 <Trash2 size={14} />
@@ -542,8 +550,8 @@ export function FormBuilder({
             {(f.type === 'select' || f.type === 'multiselect') && (
               <Input
                 value={(f.options ?? []).join(', ')}
-                placeholder="고를 값을 쉼표로 나눠 적으세요(예: 교통비, 식대, 소모품)"
-                aria-label="선택지"
+                placeholder={t('appr.optionsPh')}
+                aria-label={t('appr.options')}
                 onChange={(e) =>
                   set(i, { options: e.target.value.split(',').map((x) => x.trimStart()) })
                 }
@@ -552,8 +560,8 @@ export function FormBuilder({
             <Input
               value={f.help ?? ''}
               maxLength={200}
-              placeholder="도움말(선택) — 입력칸 아래 작은 글씨로 보입니다"
-              aria-label="도움말"
+              placeholder={t('appr.helpPh')}
+              aria-label={t('appr.help')}
               onChange={(e) => set(i, { help: e.target.value || undefined })}
             />
           </div>
@@ -565,15 +573,18 @@ export function FormBuilder({
           disabled={fields.length >= FORM_MAX_FIELDS}
           onClick={add}
         >
-          항목 추가
+          {t('appr.fieldAdd')}
         </Button>
         {fields.length >= FORM_MAX_FIELDS && (
-          <span className={styles.hint}>항목은 {FORM_MAX_FIELDS}개까지 둘 수 있습니다.</span>
+          <span className={styles.hint}>
+            {t('appr.fieldMax1')} {FORM_MAX_FIELDS}
+            {t('appr.fieldMax2')}
+          </span>
         )}
       </div>
       {!hidePreview && (
-        <aside className={styles.preview} aria-label="신청 화면 미리보기">
-          <div className={styles.previewHead}>미리보기</div>
+        <aside className={styles.preview} aria-label={t('appr.previewAria')}>
+          <div className={styles.previewHead}>{t('appr.preview')}</div>
           <div className={styles.previewBody}>
             <FormFieldInputs
               fields={fields
@@ -584,7 +595,7 @@ export function FormBuilder({
               preview
             />
             {!fields.some((f) => f.label.trim()) && (
-              <p className={styles.hint}>항목을 넣으면 여기서 보입니다.</p>
+              <p className={styles.hint}>{t('appr.previewEmpty')}</p>
             )}
           </div>
         </aside>
