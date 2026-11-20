@@ -730,6 +730,8 @@ model Contract {
 
   workOrder WorkOrder?
 
+  revisions ContractRevision[]
+
   @@map("contract")
 }
 
@@ -2389,4 +2391,27 @@ model DocSequence {
   last Int
 
   @@map("doc_sequence")
+}
+
+/// 계약서 수정 이력 — 누가·언제·무엇을(이전 → 새 값) 고쳤는지 + 그때 계약서 문서(HTML) 통째.
+/// kind: BASE(첫 수정 직전 원본) | EDIT(바로 고침) | PRICE_REQUEST(금액 변경 승인 요청) | PRICE_APPROVED | PRICE_REJECTED | PRICE_CANCELED
+model ContractRevision {
+  id            String   @id @default(uuid()) @db.Uuid
+  contractId    String   @map("contract_id") @db.Uuid
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  seq           Int
+  kind          String
+  summary       String?
+  /// [{ label, from, to, price }]
+  changes       Json     @default("[]")
+  /// 그때 계약서 문서(HTML) — S3면 docKey, 아니면 docBytes
+  docBytes      Bytes?   @map("doc_bytes")
+  docKey        String?  @map("doc_key")
+  byEmpId       String?  @map("by_emp_id") @db.Uuid
+  byName        String?  @map("by_name")
+  approvalDocId String?  @map("approval_doc_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([contractId, seq])
+  @@map("contract_revision")
 }

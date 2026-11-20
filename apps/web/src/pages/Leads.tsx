@@ -32,7 +32,14 @@ import { FileText } from 'lucide-react';
 const STATUS = LEAD_STATUS;
 
 /** 지점에서 반려돼 본사로 돌아온 접수 — 다시 배정할 때까지 상태는 '반려' */
-type LeadContract = { id: string; contractNo: string; status: string; estimateId: string };
+type LeadContract = {
+  id: string;
+  contractNo: string;
+  status: string;
+  estimateId: string;
+  /** 보기 창에서 붙인다(파일 이름) */
+  customerName?: string;
+};
 
 const isRejected = (r: Row) => !!r.rejectedAt && r.status === 'RECEIVED';
 const statusKey = (r: Row) => (isRejected(r) ? 'REJECTED' : String(r.status));
@@ -210,7 +217,7 @@ export default function Leads() {
             title="계약서 보기"
             onClick={(e) => {
               e.stopPropagation(); // 행 클릭(접수 상세)과 겹치지 않게
-              setDoc(c);
+              setDoc({ ...c, customerName: (r.customer as { name?: string } | null)?.name });
             }}
           >
             <FileText size={14} aria-hidden />
@@ -285,7 +292,9 @@ export default function Leads() {
       {doc && (
         <DocumentViewer
           path={`/estimates/${doc.estimateId}/document`}
-          title={`계약서 ${doc.contractNo}`}
+          estimatePath={`/estimates/${doc.estimateId}`}
+          title={`계약서 ${doc.contractNo}${doc.customerName ? ` · ${doc.customerName}` : ''}`}
+          fileName={`계약서_${doc.customerName || '고객'}_${doc.contractNo}`}
           onClose={() => setDoc(null)}
         />
       )}

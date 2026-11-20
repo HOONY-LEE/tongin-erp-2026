@@ -5,11 +5,13 @@ import { EstimateB2bService } from './estimate-b2b.service';
 import { LeadModule } from '../lead/lead.module';
 import { MoveCatalogModule } from '../move-catalog/move-catalog.module';
 import { GeoModule } from '../geo/geo.module';
+import { ApprovalModule } from '../approval/approval.module';
+import { ContractRevisionService } from './contract-revision.service';
 
 @Module({
-  imports: [LeadModule, MoveCatalogModule, GeoModule], // 견적 확정 시 리드 상태 전이 · 이사물량 카탈로그
+  imports: [LeadModule, MoveCatalogModule, GeoModule, ApprovalModule], // 견적 확정 시 리드 상태 전이 · 이사물량 카탈로그
   controllers: [EstimateController],
-  providers: [EstimateService, EstimateB2bService],
+  providers: [EstimateService, EstimateB2bService, ContractRevisionService],
   exports: [EstimateService], // 계약 모듈이 참조
 })
 export class EstimateModule {}

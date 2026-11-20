@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { priceRequested } from './priceRequest';
 import { X } from 'lucide-react';
 import {
   ACCESS_LABEL,
@@ -174,9 +175,16 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
           }),
         }),
       });
-      accept(next);
-      onSaved(next);
-      toast({ type: 'success', title: '옵션을 저장했습니다' });
+      // 계약이 있는 견적의 옵션 금액 변경(담당자) — 바로 고치지 않고 결재를 올렸다
+      const requested = priceRequested(next);
+      const fresh = requested ? await api<EstimateDetailData>(`/estimates/${data.id}`) : next;
+      accept(fresh);
+      onSaved(fresh);
+      toast(
+        requested
+          ? { type: 'info', title: requested }
+          : { type: 'success', title: '옵션을 저장했습니다' },
+      );
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : '저장하지 못했습니다' });
     } finally {

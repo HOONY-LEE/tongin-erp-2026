@@ -245,6 +245,27 @@ export class EstimateController {
     return this.estimateService.forLead(leadId, user);
   }
 
+  /** 계약서 수정 이력(누가·언제·무엇을, 결재 번호·상태) — 최근 것부터 */
+  @Get(':id/revisions')
+  @RequirePermissions('ESTIMATE.READ')
+  revisions(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.estimateService.revisionList(id, user);
+  }
+
+  /** 그 이력 때의 계약서(그때 저장해 둔 문서 그대로) */
+  @AccessLog('estimate', 'VIEW')
+  @Get(':id/revisions/:revisionId/document')
+  @RequirePermissions('ESTIMATE.READ')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  @Header('Content-Security-Policy', HTML_DOC_CSP)
+  revisionDocument(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('revisionId', ParseUUIDPipe) revisionId: string,
+  ) {
+    return this.estimateService.revisionDocument(id, revisionId, user);
+  }
+
   @AccessLog('estimate', 'VIEW')
   @Get(':id/document')
   @RequirePermissions('ESTIMATE.READ')
