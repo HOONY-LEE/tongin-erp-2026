@@ -10,6 +10,7 @@ import { Button, Checkbox, PageHeader, PageSkeleton, useToast } from '../compone
 import { LayoutThumb } from '../components/dashboard/builder/LayoutThumb';
 import type { TemplateRow } from './DashboardAdmin';
 import styles from '../components/dashboard/builder/builder.module.css';
+import { colorLabel as colorName } from '../i18n/dashWidgets';
 
 interface Template {
   id: string;
@@ -129,7 +130,10 @@ export default function DashboardTemplateSettings() {
   };
 
   if (!tpl || !targets) return <PageSkeleton cards={2} />;
-  const colorLabel = DASH_COLORS.find((c) => c.key === tpl.color)?.label ?? '통인';
+  const colorLabel = (() => {
+    const c = DASH_COLORS.find((x) => x.key === tpl.color) ?? DASH_COLORS[0];
+    return colorName(c);
+  })();
   const seriesPreview = Object.entries(dashColorVars(tpl.color, dark))
     .filter(([k]) => k.startsWith('--dash-series-'))
     .map(([, v]) => v);
@@ -214,8 +218,8 @@ export default function DashboardTemplateSettings() {
                   type="button"
                   role="radio"
                   aria-checked={tpl.color === c.key}
-                  aria-label={c.label}
-                  title={c.label}
+                  aria-label={colorName(c)}
+                  title={colorName(c)}
                   className={`${styles.swatch} ${tpl.color === c.key ? styles.swatchOn : ''}`}
                   style={{ background: dark ? c.dark : c.light }}
                   onClick={() => patch({ color: c.key })}

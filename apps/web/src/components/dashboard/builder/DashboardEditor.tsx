@@ -58,6 +58,7 @@ import { useDashData } from './useDashData';
 import { WidgetFrame } from './WidgetFrame';
 import styles from './builder.module.css';
 import { DASH_METRIC_LABEL, DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../../../i18n/codes';
+import { groupLabel, widgetDesc, widgetTitle } from '../../../i18n/dashWidgets';
 
 const GAP = 12;
 const DND_MIME = 'application/x-tongin-widget';
@@ -358,7 +359,12 @@ export function DashboardEditor({
   );
   const shown = usable.filter((w) => {
     const k = q.trim();
-    return !k || w.title.includes(k) || w.description.includes(k) || w.group.includes(k);
+    return (
+      !k ||
+      widgetTitle(w).includes(k) ||
+      widgetDesc(w).includes(k) ||
+      groupLabel(w.group).includes(k)
+    );
   });
   const hidden = DASH_WIDGETS.length - usable.length;
 
@@ -393,7 +399,7 @@ export function DashboardEditor({
             if (!list.length) return null;
             return (
               <div key={g} className={styles.paletteGroup}>
-                <div className={styles.paletteGroupTitle}>{g}</div>
+                <div className={styles.paletteGroupTitle}>{groupLabel(g)}</div>
                 {list.map((w) => (
                   <div
                     key={w.key}
@@ -408,11 +414,11 @@ export function DashboardEditor({
                       setGhost(null);
                       dragKey.current = null;
                     }}
-                    title={t('dash.widgetTip', { v0: w.description })}
+                    title={t('dash.widgetTip', { v0: widgetDesc(w) })}
                   >
                     <GripVertical size={14} className={styles.grip} aria-hidden />
                     <span className={styles.paletteText}>
-                      <span className={styles.paletteName}>{w.title}</span>
+                      <span className={styles.paletteName}>{widgetTitle(w)}</span>
                       <span className={styles.vizIcons}>
                         {w.viz.map((v) => {
                           const I = VIZ_ICON[v];
@@ -423,7 +429,7 @@ export function DashboardEditor({
                     <button
                       type="button"
                       className={styles.addBtn}
-                      aria-label={t('dash.addOf', { v0: w.title })}
+                      aria-label={t('dash.addOf', { v0: widgetTitle(w) })}
                       onClick={() => addToBottom(w.key)}
                     >
                       <Plus size={14} />
@@ -698,15 +704,15 @@ function WidgetMenu({
       </div>
       <div className={styles.inspectorBody}>
         <div>
-          <div className={styles.inspectorTitle}>{def.title}</div>
-          <div className={styles.meta}>{def.description}</div>
+          <div className={styles.inspectorTitle}>{widgetTitle(def)}</div>
+          <div className={styles.meta}>{widgetDesc(def)}</div>
         </div>
         <label className={styles.field}>
           {t('dash.title')}
           <input
             className={styles.input}
             value={item.title ?? ''}
-            placeholder={def.title}
+            placeholder={widgetTitle(def)}
             maxLength={60}
             onChange={(e) => onChange({ title: e.target.value || undefined })}
           />

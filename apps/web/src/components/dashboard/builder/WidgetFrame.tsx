@@ -13,6 +13,7 @@ import { UnitPerformance } from '../UnitPerformance';
 import { BranchAnomalyCard } from '../BranchAnomalyCard';
 import styles from './builder.module.css';
 import { DASH_METRIC_LABEL, DASH_PERIOD_LABEL } from '../../../i18n/codes';
+import { itemTitle, widgetDesc } from '../../../i18n/dashWidgets';
 
 /** 기존 대시보드 부품(스스로 데이터를 부른다) */
 function Embed({ widget }: { widget: string }) {
@@ -53,7 +54,7 @@ export function WidgetFrame({
       <div className={`${styles.embed} ${selected ? styles.selected : ''}`}>
         {(actions || dragHandleProps) && (
           <div className={styles.embedBar} {...dragHandleProps}>
-            <span className={styles.title}>{item.title || def.title}</span>
+            <span className={styles.title}>{itemTitle(item.title, def)}</span>
             {actions}
           </div>
         )}
@@ -72,11 +73,11 @@ export function WidgetFrame({
   return (
     <section
       className={`${styles.frame} ${selected ? styles.selected : ''}`}
-      aria-label={item.title || def.title}
+      aria-label={itemTitle(item.title, def)}
     >
       <div className={styles.head} {...dragHandleProps}>
-        <span className={styles.title} title={def.description}>
-          {item.title || def.title}
+        <span className={styles.title} title={widgetDesc(def)}>
+          {itemTitle(item.title, def)}
         </span>
         {meta && <span className={styles.meta}>{meta}</span>}
         <span className={styles.spacer} />
