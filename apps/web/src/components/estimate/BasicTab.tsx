@@ -11,6 +11,7 @@ import { useTabForm } from './useTabForm';
 import type { EstimateDetailData, TabProps } from './types';
 import styles from './estimate.module.css';
 import { LEAD_STATUS_LABEL } from '../../i18n/codes';
+import { DatePicker } from '../ui';
 
 interface ProductRow {
   id: string;
@@ -225,10 +226,9 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         </label>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>{t('est.consultDate')}</span>
-          <Input
-            type="date"
+          <DatePicker
             value={form.visitDate}
-            onChange={(e) => set('visitDate', e.target.value)}
+            onChange={(v) => set('visitDate', v)}
             disabled={!canEdit}
           />
         </label>
@@ -238,10 +238,9 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         </label>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>{t('est.moveDate')}</span>
-          <Input
-            type="date"
+          <DatePicker
             value={form.moveDate}
-            onChange={(e) => set('moveDate', e.target.value)}
+            onChange={(v) => set('moveDate', v)}
             disabled={!canEdit}
           />
         </label>

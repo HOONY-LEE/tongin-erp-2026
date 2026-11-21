@@ -7,7 +7,6 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   DataTable,
-  Input,
   PageHeader,
   Select,
   useToast,
@@ -15,6 +14,7 @@ import {
   type Row,
 } from '../components/ui';
 import styles from './aiAdmin.module.css';
+import { DatePicker } from '../components/ui';
 
 type Action = 'VIEW' | 'LIST' | 'EXPORT';
 interface AccessRow {
@@ -170,22 +170,20 @@ export default function AccessLogs() {
         exportFileName={t('logs.accessExport', { v0: from, v1: to })}
         filters={
           <>
-            <Input
-              type="date"
+            <DatePicker
               className={styles.dateInput}
               value={from}
               max={to}
               aria-label={t('logs.from')}
-              onChange={(e) => e.target.value && setFrom(e.target.value)}
+              onChange={(v) => v && setFrom(v)}
             />
             <span className={styles.muted}>~</span>
-            <Input
-              type="date"
+            <DatePicker
               className={styles.dateInput}
               value={to}
               min={from}
               aria-label={t('logs.to')}
-              onChange={(e) => e.target.value && setTo(e.target.value)}
+              onChange={(v) => v && setTo(v)}
             />
             <Select
               value={action}

@@ -26,6 +26,7 @@ import { ApprovalLineEditor } from '../components/approval/ApprovalLineEditor';
 import astyles from '../components/approval/approval.module.css';
 import styles from './attendance.module.css';
 import { ATTENDANCE_STATUS_LABEL } from '../i18n/codes';
+import { DatePicker } from '../components/ui';
 
 type Tab = 'my' | 'daily' | 'monthly' | 'import' | 'settings';
 
@@ -203,10 +204,10 @@ export function MonthDays({ employeeId, mine }: { employeeId?: string; mine?: bo
   return (
     <>
       <div className={styles.monthBar}>
-        <Input
-          type="month"
+        <DatePicker
+          mode="month"
           value={month}
-          onChange={(e) => e.target.value && setMonth(e.target.value)}
+          onChange={(v) => v && setMonth(v)}
           aria-label={t('att.month')}
           style={{ width: 170 }}
         />
@@ -438,10 +439,9 @@ function Daily() {
   return (
     <>
       <div className={styles.monthBar}>
-        <Input
-          type="date"
+        <DatePicker
           value={date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
+          onChange={(v) => v && setDate(v)}
           aria-label={t('att.col.date')}
           style={{ width: 170 }}
         />
@@ -615,10 +615,10 @@ function Monthly() {
   return (
     <>
       <div className={styles.monthBar}>
-        <Input
-          type="month"
+        <DatePicker
+          mode="month"
           value={month}
-          onChange={(e) => e.target.value && setMonth(e.target.value)}
+          onChange={(v) => v && setMonth(v)}
           aria-label={t('att.month')}
           style={{ width: 170 }}
         />
@@ -853,11 +853,7 @@ export function SettingsTab() {
         </label>
         <label className={astyles.fieldLabel}>
           {t('att.std.start')}
-          <Input
-            type="date"
-            value={s.trackFrom}
-            onChange={(e) => set('trackFrom', e.target.value)}
-          />
+          <DatePicker value={s.trackFrom} onChange={(v) => set('trackFrom', v)} />
           <span className={styles.hint}>{t('att.std.startHint')}</span>
         </label>
       </div>

@@ -2,8 +2,9 @@ import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { ListFilter } from 'lucide-react';
 import { Popover } from '@sunghoon_lee/akron-ui';
-import { Button, Input } from '../../components/ui';
+import { Button } from '../../components/ui';
 import styles from '../callcenter.module.css';
+import { DatePicker } from '../../components/ui';
 
 export interface DateRange {
   from: string;
@@ -77,19 +78,17 @@ export function DateFilter({
           })}
         </div>
         <div className={styles.filterDates}>
-          <Input
-            type="date"
+          <DatePicker
             value={value.from}
             max={value.to || undefined}
-            onChange={(e) => onChange({ ...value, from: e.target.value })}
+            onChange={(v) => onChange({ ...value, from: v })}
             aria-label={t('cc.from')}
           />
           <span>~</span>
-          <Input
-            type="date"
+          <DatePicker
             value={value.to}
             min={value.from || undefined}
-            onChange={(e) => onChange({ ...value, to: e.target.value })}
+            onChange={(v) => onChange({ ...value, to: v })}
             aria-label={t('cc.toDate')}
           />
         </div>

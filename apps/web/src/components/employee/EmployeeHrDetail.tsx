@@ -32,6 +32,7 @@ import {
   EMPLOYMENT_TYPE_LABEL,
   ORG_UNIT_TYPE_LABEL,
 } from '../../i18n/codes';
+import { DatePicker } from '../ui';
 
 export interface HrRecord {
   id: string;
@@ -664,7 +665,7 @@ function ResignModal({
         </p>
         <label className={astyles.fieldLabel}>
           {t('employees.resignDate')}
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DatePicker value={date} onChange={(v) => setDate(v)} />
         </label>
         <label className={astyles.fieldLabel}>
           {t('employees.reason')}

@@ -44,6 +44,7 @@ import { FormEditor } from '../components/approval/FormsAdmin';
 import astyles from '../components/approval/approval.module.css';
 import styles from './leave.module.css';
 import { LEAVE_SLOT_LABEL, LEAVE_STATUS_LABEL } from '../i18n/codes';
+import { DatePicker } from '../components/ui';
 
 type Tab = 'my' | 'all' | 'types' | 'grant' | 'form';
 
@@ -434,17 +435,12 @@ function RequestModal({
         <div className={styles.dates}>
           <label className={astyles.fieldLabel}>
             {half ? t('leave.date') : t('leave.start')}
-            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            <DatePicker value={start} onChange={(v) => setStart(v)} />
           </label>
           {!half && (
             <label className={astyles.fieldLabel}>
               {t('leave.end')}
-              <Input
-                type="date"
-                value={end}
-                min={start || undefined}
-                onChange={(e) => setEnd(e.target.value)}
-              />
+              <DatePicker value={end} min={start || undefined} onChange={(v) => setEnd(v)} />
             </label>
           )}
           <div className={styles.daysBox}>
@@ -973,7 +969,7 @@ export function LeaveGrant() {
             </label>
             <label className={astyles.fieldLabel}>
               {t('leave.applyDate')}
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <DatePicker value={date} onChange={(v) => setDate(v)} />
               <span className={styles.cardLabel}>{t('leave.applyDateHint')}</span>
             </label>
           </div>

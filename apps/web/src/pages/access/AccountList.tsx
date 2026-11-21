@@ -22,6 +22,7 @@ import {
 } from '../../components/ui';
 import styles from './access.module.css';
 import { formatPhone } from '../../lib/phone';
+import { DatePicker } from '../../components/ui';
 
 interface AccountRole {
   roleId: string;
@@ -686,11 +687,10 @@ function AccountModal({
                 {t('acc.phone')}
                 <PhoneInput value={phone} onChange={setPhone} />
               </label>
-              <Input
+              <DatePicker
                 label={t('acc.hireDate')}
-                type="date"
                 value={hireDate}
-                onChange={(e) => setHireDate(e.target.value)}
+                onChange={(v) => setHireDate(v)}
               />
               <Input
                 label={t('acc.empNo')}

@@ -24,6 +24,7 @@ import {
 } from '../components/ui';
 import { ChoiceChips } from '../components/approval/FormsAdmin';
 import styles from './aiAdmin.module.css';
+import { DatePicker } from '../components/ui';
 
 type Tab = 'overview' | 'users' | 'usage' | 'settings';
 
@@ -1006,22 +1007,20 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
         exportFileName={t('aiadm.exportLogs', { v0: from, v1: to })}
         filters={
           <>
-            <Input
-              type="date"
+            <DatePicker
               className={styles.dateInput}
               value={from}
               max={to}
               aria-label={t('aiadm.from')}
-              onChange={(e) => e.target.value && setFrom(e.target.value)}
+              onChange={(v) => v && setFrom(v)}
             />
             <span className={styles.muted}>~</span>
-            <Input
-              type="date"
+            <DatePicker
               className={styles.dateInput}
               value={to}
               min={from}
               aria-label={t('aiadm.to')}
-              onChange={(e) => e.target.value && setTo(e.target.value)}
+              onChange={(v) => v && setTo(v)}
             />
             <Select
               value={feature}

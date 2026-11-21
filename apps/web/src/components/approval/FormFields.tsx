@@ -18,6 +18,7 @@ import { api, ApiError, downloadFile } from '../../lib/api';
 import { Button, Checkbox, Input, Select, useToast } from '../ui';
 import styles from './formFields.module.css';
 import { FORM_FIELD_TYPE_LABEL } from '../../i18n/codes';
+import { DatePicker } from '../ui';
 
 /** 화면에서 채우는 값 — person은 고른 직원 id 목록(서버가 이름을 붙인다) */
 export type FormDraft = Record<string, unknown>;
@@ -267,29 +268,18 @@ export function FormFieldInputs({
             );
             break;
           case 'date':
-            input = (
-              <Input
-                type="date"
-                value={String(v ?? '')}
-                onChange={(e) => set(f.id, e.target.value)}
-              />
-            );
+            input = <DatePicker value={String(v ?? '')} onChange={(v) => set(f.id, v)} />;
             break;
           case 'daterange': {
             const r = (v as { from?: string; to?: string } | undefined) ?? {};
             input = (
               <div className={styles.range}>
-                <Input
-                  type="date"
-                  value={r.from ?? ''}
-                  onChange={(e) => set(f.id, { ...r, from: e.target.value })}
-                />
+                <DatePicker value={r.from ?? ''} onChange={(v) => set(f.id, { ...r, from: v })} />
                 <span>~</span>
-                <Input
-                  type="date"
+                <DatePicker
                   value={r.to ?? ''}
                   min={r.from || undefined}
-                  onChange={(e) => set(f.id, { ...r, to: e.target.value })}
+                  onChange={(v) => set(f.id, { ...r, to: v })}
                 />
               </div>
             );
