@@ -1,5 +1,5 @@
 import i18n from '../../i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -208,14 +208,64 @@ export function IntakePanel({
     // 콜이 바뀔 때만 새로 채운다(입력 중에 3초마다 새로 읽어도, 받기 직후 임시 콜 → 실제 콜로 바뀌어도 지우지 않게)
     [call.phone, call.receivedAt.slice(0, 16)],
   );
+  /** 적던 내용이 바뀌었는지 — 바뀐 것만 서버에 초안으로 남긴다(빈 화면이 앞 콜 초안을 덮지 않게) */
+  const dirty = useRef(false);
   const [v, setV] = useState<Record<string, string>>(initial);
-  useEffect(() => setV(initial), [initial]);
+  useEffect(() => {
+    dirty.current = false;
+    setV(initial);
+  }, [initial]);
   // 기존 고객 이름이 나중에 붙으면(첫 응답엔 없을 수 있음) 비어 있을 때만 채운다
   useEffect(() => {
     if (call.customerName)
       setV((x) => (x.customerName ? x : { ...x, customerName: call.customerName! }));
   }, [call.customerName]);
-  const setField = (name: string, value: string) => setV((x) => ({ ...x, [name]: value }));
+  const setField = (name: string, value: string) => {
+    dirty.current = true;
+    setV((x) => ({ ...x, [name]: value }));
+  };
+
+  // 같은 고객의 앞 콜에 적던 내용(고객명·상품·주소·메모 등)을 이어받는다 — 콜 번호는 새것이어도
+  // 끝난 콜(읽기)은 이 콜에 적던 것만, 접수로 채운 끝난 콜은 접수 내용 그대로
+  const draftCallId = pending || readOnly?.lead ? null : call.id;
+  useEffect(() => {
+    if (!draftCallId) return;
+    let alive = true;
+    void api<{ draft: Record<string, string> | null; fromCallNo: string | null }>(
+      `/cs-calls/${draftCallId}/draft${readOnly ? '?own=1' : ''}`,
+    )
+      .then((r) => {
+        if (!alive || !r.draft) return;
+        const d = r.draft;
+        // 그사이 직접 고친 칸은 두고, 아직 처음 그대로인 칸만 채운다
+        setV((x) => {
+          const out = { ...x };
+          for (const [k, val] of Object.entries(d))
+            if (val && (x[k] ?? '') === ((initial as Record<string, string>)[k] ?? ''))
+              out[k] = val;
+          return out;
+        });
+        if (r.fromCallNo) {
+          dirty.current = true;
+          toast({ type: 'info', title: t('cc.draftLoaded', { v0: r.fromCallNo }) });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // 콜이 바뀔 때만(받기 직후 임시 콜 → 실제 콜로 바뀔 때 포함)
+  }, [draftCallId]);
+  // 적는 대로 잠깐 모아 서버에 초안으로(새로고침·다음 콜에도 남게)
+  useEffect(() => {
+    if (!draftCallId || readOnly || !dirty.current) return;
+    const timer = setTimeout(() => {
+      void api(`/cs-calls/${draftCallId}/draft`, { method: 'PUT', body: JSON.stringify(v) }).catch(
+        () => undefined,
+      );
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [v, draftCallId, readOnly]);
 
   // 담당 지점 기본값 — 본사(고를 수 있으면), 아니면 내 조직
   useEffect(() => {
@@ -497,9 +547,10 @@ export function IntakePanel({
           <div className={styles.kindRow}>
             <SegmentedControl
               value={v.moveKind}
-              onChange={(x) =>
-                setV((cur) => ({ ...cur, moveKind: x, partnerId: '', serviceLine: 'MOVING' }))
-              }
+              onChange={(x) => {
+                dirty.current = true;
+                setV((cur) => ({ ...cur, moveKind: x, partnerId: '', serviceLine: 'MOVING' }));
+              }}
               options={[
                 { value: 'GENERAL', label: t('cc.kind.GENERAL') },
                 { value: 'AFFILIATE', label: t('cc.kind.AFFILIATE') },

@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -295,6 +296,19 @@ export class CsCallController {
     if (r.length) res.setHeader('Content-Length', r.length);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     Readable.fromWeb(r.body as unknown as WebReadableStream).pipe(res);
+  }
+
+  /** 상담 화면 초안 — 새 콜이면 같은 번호의 최근 콜 내용을 이어받는다 */
+  @Get(':id/draft')
+  @RequirePermissions('LEAD.CREATE')
+  draft(@Param('id', ParseUUIDPipe) id: string, @Query('own') own?: string) {
+    return this.calls.draft(id, own === '1');
+  }
+
+  @Put(':id/draft')
+  @RequirePermissions('LEAD.CREATE')
+  saveDraft(@Param('id', ParseUUIDPipe) id: string, @Body() body: Record<string, unknown>) {
+    return this.calls.saveDraft(id, body ?? {});
   }
 
   /** 통화 받아쓰기 원문 — 상담 기록에서 본다 */

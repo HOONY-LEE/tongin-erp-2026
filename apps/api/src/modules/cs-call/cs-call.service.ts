@@ -65,6 +65,21 @@ const startOfToday = () =>
  *   그 번호가 들어간 새 접수 창이 뜨고, 접수를 등록하면 콜이 끝난다.
  * - 실제 전화 시스템(CTI)은 POST /cs-calls/inbound 웹훅으로 붙인다. 붙기 전에는 시험 전화로 확인한다.
  */
+/** 상담 화면 초안으로 남기는 칸 */
+const DRAFT_KEYS = [
+  'customerName',
+  'serviceLine',
+  'orgUnitId',
+  'moveKind',
+  'partnerId',
+  'moveDate',
+  'request',
+  'memo',
+  ...(['from', 'to'] as const).flatMap((p) =>
+    ['Zipcode', 'Addr', 'AddrDetail', 'Sido', 'Sigungu', 'Lat', 'Lng'].map((f) => `${p}${f}`),
+  ),
+];
+
 @Injectable()
 export class CsCallService {
   private readonly log = new Logger('CsCall');
@@ -640,6 +655,43 @@ export class CsCallService {
   }
 
   /** 콜의 받아쓰기 원문 */
+  /** 상담 화면에 적던 내용 저장(입력할 때마다 잠깐 모아서) */
+  async saveDraft(id: string, raw: Record<string, unknown>) {
+    const draft: Record<string, string> = {};
+    for (const k of DRAFT_KEYS) {
+      const v = raw[k];
+      if (typeof v === 'string') draft[k] = v.slice(0, 2000);
+    }
+    await this.prisma.csCall.updateMany({
+      where: { id },
+      data: { draft, draftAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * 상담 화면 초안 — 이 콜에 적던 게 있으면 그것, 없으면(새 콜) 같은 번호로 24시간 안에 적던
+   * 가장 최근 콜의 내용을 이어받는다. own=true면 이 콜 것만(끝난 콜 읽기 화면).
+   */
+  async draft(id: string, own = false) {
+    const row = await this.prisma.csCall.findUnique({
+      where: { id },
+      select: { phone: true, draft: true },
+    });
+    if (!row) throw new NotFoundException('콜을 찾을 수 없습니다.');
+    if (row.draft || own) return { draft: row.draft ?? null, fromCallNo: null };
+    const prev = await this.prisma.csCall.findFirst({
+      where: {
+        phone: row.phone,
+        id: { not: id },
+        draftAt: { gte: new Date(Date.now() - 24 * 3600_000) },
+      },
+      orderBy: { draftAt: 'desc' },
+      select: { callNo: true, draft: true },
+    });
+    return { draft: prev?.draft ?? null, fromCallNo: prev?.callNo ?? null };
+  }
+
   async transcript(id: string) {
     const row = await this.prisma.csCall.findUnique({
       where: { id },

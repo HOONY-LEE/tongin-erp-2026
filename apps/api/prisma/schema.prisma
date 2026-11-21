@@ -2248,10 +2248,14 @@ model CsCall {
   /// 통화 받아쓰기 — 한국AI통신 transcript.completed의 구간 [{speaker,start,end,text}]
   transcript    Json?
   transcriptAt  DateTime? @map("transcript_at") @db.Timestamptz(6)
+  /// 상담 화면에 적던 내용(고객명·상품·주소·메모 등) — 같은 고객의 다음 콜이 이어받는다
+  draft         Json?
+  draftAt       DateTime? @map("draft_at") @db.Timestamptz(6)
 
   @@index([status, receivedAt])
   @@index([agentEmpId, status])
   @@index([agentEmpId, receivedAt])
+  @@index([phone, draftAt])
   @@map("cs_call")
 }
 
