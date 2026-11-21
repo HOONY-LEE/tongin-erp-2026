@@ -20,6 +20,13 @@ export interface HistoryItem {
   title: string;
   detail?: string | null;
   actor?: string | null;
+  /** 담당자(직원) — 화면에서 직원 칩으로 */
+  actorEmp?: {
+    id: string;
+    name: string;
+    photoAt: Date | null;
+    position: { name: string } | null;
+  } | null;
   link?: string | null;
 }
 
@@ -147,7 +154,7 @@ export class CustomerHistoryService {
       empIds.size
         ? this.prisma.employee.findMany({
             where: { id: { in: [...empIds] } },
-            select: { id: true, name: true },
+            select: { id: true, name: true, photoAt: true, position: { select: { name: true } } },
           })
         : [],
       orgIds.size
@@ -167,8 +174,12 @@ export class CustomerHistoryService {
         select: { code: true, name: true },
       }),
     ]);
-    const emp = (id: unknown) =>
-      typeof id === 'string' ? (emps.find((x) => x.id === id)?.name ?? null) : null;
+    /** 담당자 — 이름(글자)과 직원 칩용 정보 */
+    const actorOf = (id: unknown) => {
+      const e = typeof id === 'string' ? emps.find((x) => x.id === id) : undefined;
+      return { actor: e?.name ?? null, actorEmp: e ?? null };
+    };
+    const emp = (id: unknown) => actorOf(id).actor;
     const org = (id: unknown) =>
       typeof id === 'string' ? (orgs.find((x) => x.id === id)?.name ?? null) : null;
     const partner = (id: unknown) =>
@@ -213,7 +224,7 @@ export class CustomerHistoryService {
         ]
           .filter(Boolean)
           .join(' · '),
-        actor: emp(c.agentEmpId),
+        ...actorOf(c.agentEmpId),
         link: `/callcenter/${c.id}`,
       });
     }
@@ -225,7 +236,7 @@ export class CustomerHistoryService {
         detail: [m.title, m.body.replace(/\s+/g, ' ').slice(0, 80), m.ok ? null : m.reason]
           .filter(Boolean)
           .join(' · '),
-        actor: emp(m.employeeId),
+        ...actorOf(m.employeeId),
       });
 
     for (const l of leads) {
@@ -240,7 +251,7 @@ export class CustomerHistoryService {
         ]
           .filter(Boolean)
           .join(' · '),
-        actor: emp(
+        ...actorOf(
           (
             events.find((e) => e.aggregateId === l.id && e.eventType === 'lead.created')
               ?.payload as { by?: string } | null
@@ -252,7 +263,7 @@ export class CustomerHistoryService {
 
     for (const e of events) {
       const p = (e.payload ?? {}) as Record<string, unknown>;
-      const by = emp(p.by);
+      const by = actorOf(p.by);
       const at = e.occurredAt;
       switch (e.eventType) {
         case 'lead.assigned':
@@ -262,7 +273,7 @@ export class CustomerHistoryService {
               ? `담당자 변경 ${emp(p.fromOwnerEmpId) ?? '-'} → ${emp(p.ownerEmpId) ?? '-'}`
               : `담당자 배정 ${emp(p.ownerEmpId) ?? '-'}`,
             detail: [leadNo.get(e.aggregateId), org(p.orgUnitId)].filter(Boolean).join(' · '),
-            actor: by,
+            ...by,
             link: `/leads/${e.aggregateId}`,
           });
           break;
@@ -271,7 +282,7 @@ export class CustomerHistoryService {
             kind: 'owner',
             title: `담당 지점 변경 ${org(p.fromOrgUnitId) ?? '-'} → ${org(p.orgUnitId) ?? '-'}`,
             detail: leadNo.get(e.aggregateId),
-            actor: by,
+            ...by,
             link: `/leads/${e.aggregateId}`,
           });
           break;
@@ -280,7 +291,7 @@ export class CustomerHistoryService {
             kind: 'owner',
             title: `지점 반려 ${org(p.fromOrgUnitId) ?? '-'} → 본사`,
             detail: [leadNo.get(e.aggregateId), p.kind, p.reason].filter(Boolean).join(' · '),
-            actor: by,
+            ...by,
             link: `/leads/${e.aggregateId}`,
           });
           break;
@@ -289,7 +300,7 @@ export class CustomerHistoryService {
             kind: 'lead',
             title: `접수 취소 (${String(p.kind ?? '')})`,
             detail: [leadNo.get(e.aggregateId), p.reason].filter(Boolean).join(' · '),
-            actor: by,
+            ...by,
             link: `/leads/${e.aggregateId}`,
           });
           break;
@@ -298,7 +309,7 @@ export class CustomerHistoryService {
             kind: 'lead',
             title: `진행 ${statusLabel(p.from)} → ${statusLabel(p.to)}`,
             detail: leadNo.get(e.aggregateId),
-            actor: by,
+            ...by,
             link: `/leads/${e.aggregateId}`,
           });
           break;
@@ -306,7 +317,7 @@ export class CustomerHistoryService {
           push(at, {
             kind: 'estimate',
             title: `견적 작성 ${estNo.get(e.aggregateId) ?? ''}`.trim(),
-            actor: by,
+            ...by,
             link: `/estimates/${e.aggregateId}`,
           });
           break;
@@ -315,7 +326,7 @@ export class CustomerHistoryService {
             kind: 'estimate',
             title: `견적 완료 ${estNo.get(e.aggregateId) ?? ''}`.trim(),
             detail: won(estimates.find((x) => x.id === e.aggregateId)?.totalAmount),
-            actor: by,
+            ...by,
             link: `/estimates/${e.aggregateId}`,
           });
           break;
@@ -326,7 +337,7 @@ export class CustomerHistoryService {
             detail: [estNo.get(e.aggregateId), p.ok === false ? '발송 실패' : null]
               .filter(Boolean)
               .join(' · '),
-            actor: by,
+            ...by,
             link: `/estimates/${e.aggregateId}`,
           });
           break;
@@ -335,7 +346,7 @@ export class CustomerHistoryService {
             kind: 'contract',
             title: `계약 생성 ${conNo.get(e.aggregateId) ?? ''}`.trim(),
             detail: won(p.total),
-            actor: by,
+            ...by,
             link: conLead.get(e.aggregateId) ? `/leads/${conLead.get(e.aggregateId)}` : null,
           });
           break;
@@ -357,7 +368,7 @@ export class CustomerHistoryService {
                 .filter(Boolean)
                 .join(' · ');
             })(),
-            actor: by,
+            ...by,
           });
           break;
         case 'work_order.assigned':
@@ -365,7 +376,7 @@ export class CustomerHistoryService {
             kind: 'work',
             title: `작업 배정 ${emp(p.employeeId) ?? partner(p.partnerId) ?? ''}`.trim(),
             detail: [p.workNo, p.scheduledDate].filter(Boolean).join(' · '),
-            actor: by,
+            ...by,
           });
           break;
       }
@@ -390,14 +401,14 @@ export class CustomerHistoryService {
         kind: 'service',
         title: `부가 서비스 ${s.orderNo}`,
         detail: [s.note, won(s.amount)].filter(Boolean).join(' · '),
-        actor: emp(s.assignedEmpId),
+        ...actorOf(s.assignedEmpId),
       });
     for (const t of tickets)
       push(t.createdAt, {
         kind: 'support',
         title: `${t.kind === 'AS' ? 'AS' : '문의'} ${t.ticketNo}`,
         detail: t.content,
-        actor: emp(t.assigneeEmpId),
+        ...actorOf(t.assigneeEmpId),
       });
 
     items.sort((a, b) => b.at.localeCompare(a.at));

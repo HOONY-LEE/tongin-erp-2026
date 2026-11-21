@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
-import { History } from 'lucide-react';
 import { api } from '../../lib/api';
+import { DataTable, type Column, type Row } from '../../components/ui';
+import { EmployeeChip, type EmployeeBrief } from '../../components/ui/EmployeeChip';
 import styles from '../callcenter.module.css';
 
 interface Item {
@@ -13,6 +14,7 @@ interface Item {
   title: string;
   detail?: string | null;
   actor?: string | null;
+  actorEmp?: EmployeeBrief | null;
   link?: string | null;
 }
 const KIND_LABEL: Record<string, string> = {
@@ -48,12 +50,48 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
     };
   }, [customerId, callId]);
 
+  const columns: Column[] = [
+    {
+      title: t('cc.col.time'),
+      dataIndex: 'at',
+      width: 170,
+      render: (r) => when(String(r.at)),
+    },
+    {
+      title: t('cc.col.kind'),
+      dataIndex: 'kind',
+      width: 90,
+      render: (r) => (
+        <span className={`${styles.hKind} ${styles[`k_${String(r.kind)}`] ?? ''}`}>
+          {KIND_LABEL[String(r.kind)] ?? String(r.kind)}
+        </span>
+      ),
+    },
+    {
+      title: t('cc.content'),
+      dataIndex: 'title',
+      flex: 1,
+      minWidth: 200,
+      render: (r) => (
+        <>
+          {String(r.title)}
+          {r.detail ? <span className={styles.muted}> · {String(r.detail)}</span> : null}
+        </>
+      ),
+    },
+    {
+      title: t('cc.col.assignee'),
+      dataIndex: 'actor',
+      width: 130,
+      render: (r) =>
+        r.actorEmp ? <EmployeeChip emp={r.actorEmp as EmployeeBrief} /> : String(r.actor ?? ''),
+    },
+  ];
+
   return (
     <section className={`${styles.card} ${styles.paneCard} ${styles.historyCard}`}>
       <div className={`${styles.paneHead} ${styles.historyHead}`}>
-        <b>
-          <History size={15} /> {t('cc.history')}
-        </b>
+        <b>{t('cc.history')}</b>
         {items && <span className={styles.count}>{items.length}</span>}
         <button
           type="button"
@@ -69,37 +107,18 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
         ) : items.length === 0 ? (
           <p className={styles.muted}>{t('cc.noHistory')}</p>
         ) : (
-          <table className={styles.hTable}>
-            <thead>
-              <tr>
-                <th style={{ width: 148 }}>{t('cc.col.time')}</th>
-                <th style={{ width: 76 }}>{t('cc.col.kind')}</th>
-                <th>{t('cc.content')}</th>
-                <th style={{ width: 90 }}>{t('cc.h.owner')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.slice(0, 50).map((it, i) => (
-                <tr
-                  key={`${it.at}-${i}`}
-                  className={it.link ? styles.hClickable : undefined}
-                  onClick={() => it.link && navigate(it.link)}
-                >
-                  <td className={styles.hWhen}>{when(it.at)}</td>
-                  <td>
-                    <span className={`${styles.hKind} ${styles[`k_${it.kind}`] ?? ''}`}>
-                      {KIND_LABEL[it.kind] ?? it.kind}
-                    </span>
-                  </td>
-                  <td className={styles.hText}>
-                    {it.title}
-                    {it.detail && <span className={styles.muted}> · {it.detail}</span>}
-                  </td>
-                  <td className={styles.hActor}>{it.actor ?? ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            bare
+            fit
+            pageSize={50}
+            columns={columns}
+            rows={
+              items
+                .slice(0, 50)
+                .map((it, i) => ({ ...it, id: `${it.at}-${i}` })) as unknown as Row[]
+            }
+            onRowClick={(r) => r.link && navigate(String(r.link))}
+          />
         )}
       </div>
     </section>

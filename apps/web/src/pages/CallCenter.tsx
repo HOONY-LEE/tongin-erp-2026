@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Laptop,
   Phone,
-  PhoneForwarded,
   Trash2,
   PhoneIncoming,
   PhoneOutgoing,
@@ -36,7 +35,6 @@ import { FollowupList } from './callcenter/FollowupList';
 import { MiniCalendar } from './callcenter/MiniCalendar';
 import { PhoneSettingsModal } from './callcenter/PhoneSettingsModal';
 import { ScriptCard } from './callcenter/ScriptCard';
-import { ExtensionList } from './callcenter/ExtensionList';
 
 interface CallView {
   /** 콜 번호 CL+YYMMDD+일련 */
@@ -299,12 +297,16 @@ export default function CallCenter() {
   // 다른 콜 상세의 종류(받은 콜/콜백) — 제목 옆 표시용
   const [pageStatus, setPageStatus] = useState<Record<string, string>>({});
   const [pageNo, setPageNo] = useState<Record<string, string | null>>({});
-  // 오른쪽 아래 카드 — 통화가 이어지면 내선(돌려주기), 끝나면 아웃콜로
-  const live = !!phone.call && phone.call.state !== 'ringing';
-  const [sideTab, setSideTab] = useState<'outcall' | 'ext'>('outcall');
-  useEffect(() => {
-    setSideTab(live ? 'ext' : 'outcall');
-  }, [live]);
+  /** 아웃콜 — 같은 번호는 한 줄로(먼저 남은 콜 기준), ids = 그 번호의 아웃콜 전부 */
+  const outcallGroups = (() => {
+    const m = new Map<string, { call: CallView; ids: string[] }>();
+    for (const c of data?.outcalls ?? []) {
+      const g = m.get(c.phone);
+      if (g) g.ids.push(c.id);
+      else m.set(c.phone, { call: c, ids: [c.id] });
+    }
+    return [...m.values()];
+  })();
   if (!data)
     return (
       <ListPage fit title={t('cc.title')}>
@@ -546,43 +548,30 @@ export default function CallCenter() {
           ) : (
             <ScriptCard />
           )}
-          {/* 아웃콜 대기 · 내선(통화 중이면 자동으로 내선 — 이름 옆 [돌려주기]) */}
+          {/* 아웃콜 대기 — 같은 번호로 여러 번 남았으면 한 줄 + 횟수 */}
           <section className={`${styles.card} ${styles.paneCard}`}>
-            <h3 className={`${styles.cardTitle} ${styles.paneHead} ${styles.paneTabs}`}>
-              <SegmentedControl
-                size="sm"
-                value={sideTab}
-                onChange={(v) => setSideTab(v as 'outcall' | 'ext')}
-                options={[
-                  {
-                    value: 'outcall',
-                    label: (
-                      <span className={styles.tabLabel}>
-                        <PhoneOutgoing size={13} /> {t('cc.outbound')} {data.outcalls.length}
-                      </span>
-                    ),
-                  },
-                  {
-                    value: 'ext',
-                    label: (
-                      <span className={styles.tabLabel}>
-                        <PhoneForwarded size={13} /> {t('cc.extensions')}
-                      </span>
-                    ),
-                  },
-                ]}
-              />
-            </h3>
+            <div className={`${styles.paneHead} ${styles.sideHead}`}>
+              <b>{t('cc.outbound')}</b>
+              <span className={styles.count}>{outcallGroups.length}</span>
+            </div>
             <div className={styles.paneBody}>
-              {sideTab === 'ext' ? (
-                <ExtensionList />
-              ) : data.outcalls.length ? (
+              {outcallGroups.length ? (
                 <ol className={styles.ocList}>
-                  {data.outcalls.map((c, i) => (
+                  {outcallGroups.map(({ call: c, ids }, i) => (
                     <li key={c.id} className={styles.ocItem}>
                       <span className={styles.ocNo}>{i + 1}</span>
                       <span className={styles.ocMain}>
-                        <b className={styles.ocPhone}>{formatPhone(c.phone)}</b>
+                        <b className={styles.ocPhone}>
+                          <span>{formatPhone(c.phone)}</span>
+                          {ids.length > 1 && (
+                            <span
+                              className={styles.ocTimes}
+                              title={t('cc.timesTip', { v0: ids.length })}
+                            >
+                              {ids.length}
+                            </span>
+                          )}
+                        </b>
                         <span className={styles.ocInfo}>
                           {c.customerName ?? t('cc.newNumber')} · {since(c.receivedAt, now)}{' '}
                           {t('cc.waiting')}
@@ -604,9 +593,10 @@ export default function CallCenter() {
                         size="sm"
                         disabled={busy}
                         title={t('cc.dismissTip')}
+                        aria-label={t('cc.dismiss')}
                         onClick={() => setCancelTarget(c)}
                       >
-                        <Trash2 size={14} /> {t('cc.dismiss')}
+                        <Trash2 size={14} />
                       </Button>
                     </li>
                   ))}
@@ -632,8 +622,10 @@ export default function CallCenter() {
         onConfirm={() => {
           const c = cancelTarget;
           if (!c) return;
+          // 같은 번호의 아웃콜을 모두 정리
+          const ids = outcallGroups.find((g) => g.call.id === c.id)?.ids ?? [c.id];
           void act(
-            () => api(`/cs-calls/${c.id}/cancel`, { method: 'POST' }),
+            () => Promise.all(ids.map((id) => api(`/cs-calls/${id}/cancel`, { method: 'POST' }))),
             t('cc.dismissed'),
           ).then(() => setCancelTarget(null));
         }}

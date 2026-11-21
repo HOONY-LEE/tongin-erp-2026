@@ -47,6 +47,8 @@ interface Props {
    * 화면 높이에 맞춘다(ListPage fit과 함께) — 기본 행 수(10)면 페이지 스크롤 없이 풋터까지 보이고,
    * 행 수를 늘려 넘치면 표 본문만 스크롤된다(머리글·풋터는 그대로).
    */
+  /** 검색·도구 줄 없이 표만(카드 안 작은 목록) */
+  bare?: boolean;
   fit?: boolean;
   /** 세그먼트 탭(상태·범위) — 셋째 줄 왼쪽. 오른쪽 끝에는 내보내기·toolbarActions(생성 버튼) */
   tabs?: ReactNode;
@@ -132,6 +134,7 @@ export function DataTable({
   rowKey = 'id',
   onRowClick,
   toolbarActions,
+  bare = false,
   filters,
   exportable,
   exportFileName,
@@ -372,6 +375,7 @@ export function DataTable({
         showSkeleton ? 'dt-loading' : '',
         multiline ? 'dt-multiline' : '',
         fit ? 'dt-fit' : '',
+        bare ? 'dt-bare' : '',
         // 셋째 줄(탭)이 없으면 그 줄을 비우지 않고 접는다
         row3 ? '' : 'dt-no-row3',
       ]

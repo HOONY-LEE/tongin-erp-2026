@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
-import { NotebookPen, Pencil, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { Button, ConfirmModal, Input, SegmentedControl, useToast } from '../../components/ui';
 import styles from '../callcenter.module.css';
@@ -87,9 +87,9 @@ export function ScriptCard() {
   };
 
   return (
-    <section className={`${styles.card} ${styles.scriptCard}`}>
-      <h3 className={styles.cardTitle}>
-        <NotebookPen size={15} /> {t('cc.memo')}
+    <section className={`${styles.card} ${styles.paneCard} ${styles.scriptCard}`}>
+      <div className={`${styles.paneHead} ${styles.sideHead}`}>
+        <b>{t('cc.memo')}</b>
         <span className={styles.scriptTools}>
           <Button
             variant="outline"
@@ -103,134 +103,138 @@ export function ScriptCard() {
             <Plus size={14} /> {t('cc.newMemo')}
           </Button>
         </span>
-      </h3>
+      </div>
 
-      {items === null ? (
-        <p className={styles.muted}>{t('cc.loading')}</p>
-      ) : edit ? (
-        <>
-          {/* 칩 자리 — 제목과 개인/공유 */}
-          <div className={styles.scriptHead}>
-            <Input
-              value={edit.title}
-              placeholder={t('cc.memoTitlePh')}
-              maxLength={40}
-              onChange={(e) => setEdit({ ...edit, title: e.target.value })}
-              aria-label={t('cc.memoTitle')}
-            />
-            <SegmentedControl
-              className={styles.scriptKind}
-              value={edit.shared ? 'shared' : 'mine'}
-              onChange={(v) => setEdit({ ...edit, shared: v === 'shared' })}
-              options={[
-                { value: 'mine', label: t('cc.personal') },
-                { value: 'shared', label: t('cc.shared') },
-              ]}
-            />
-          </div>
-          {/* 메모장 — 보기와 같은 크기·위치·글꼴·배경 */}
-          <div className={styles.scriptBody}>
-            <span className={styles.scriptBtns}>
-              {edit.id && (
+      <div className={styles.scriptPaneBody}>
+        {items === null ? (
+          <p className={styles.muted}>{t('cc.loading')}</p>
+        ) : edit ? (
+          <>
+            {/* 칩 자리 — 제목과 개인/공유 */}
+            <div className={styles.scriptHead}>
+              <Input
+                value={edit.title}
+                placeholder={t('cc.memoTitlePh')}
+                maxLength={40}
+                onChange={(e) => setEdit({ ...edit, title: e.target.value })}
+                aria-label={t('cc.memoTitle')}
+              />
+              <SegmentedControl
+                className={styles.scriptKind}
+                value={edit.shared ? 'shared' : 'mine'}
+                onChange={(v) => setEdit({ ...edit, shared: v === 'shared' })}
+                options={[
+                  { value: 'mine', label: t('cc.personal') },
+                  { value: 'shared', label: t('cc.shared') },
+                ]}
+              />
+            </div>
+            {/* 메모장 — 보기와 같은 크기·위치·글꼴·배경 */}
+            <div className={styles.scriptBody}>
+              <span className={styles.scriptBtns}>
+                {edit.id && (
+                  <button
+                    type="button"
+                    className={styles.scriptEditBtn}
+                    disabled={busy}
+                    onClick={() => {
+                      const s = items.find((x) => x.id === edit.id);
+                      if (s) setDelTarget(s);
+                    }}
+                  >
+                    <Trash2 size={13} /> {t('cc.delete')}
+                  </button>
+                )}
                 <button
                   type="button"
                   className={styles.scriptEditBtn}
                   disabled={busy}
-                  onClick={() => {
-                    const s = items.find((x) => x.id === edit.id);
-                    if (s) setDelTarget(s);
-                  }}
+                  onClick={() => setEdit(null)}
                 >
-                  <Trash2 size={13} /> {t('cc.delete')}
+                  {t('cc.canceled')}
                 </button>
-              )}
-              <button
-                type="button"
-                className={styles.scriptEditBtn}
-                disabled={busy}
-                onClick={() => setEdit(null)}
-              >
-                {t('cc.canceled')}
-              </button>
-              <button
-                type="button"
-                className={`${styles.scriptEditBtn} ${styles.scriptSaveBtn}`}
-                disabled={busy}
-                onClick={() => void save()}
-              >
-                {t('cc.save')}
-              </button>
-            </span>
-            <textarea
-              className={`${styles.scriptPaper} ${styles.scriptPaperEdit}`}
-              value={edit.body}
-              placeholder={t('cc.memoBodyPh')}
-              onChange={(e) => setEdit({ ...edit, body: e.target.value })}
-              aria-label={t('cc.memoBody')}
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          {current ? (
-            <>
-              {/* 고른 메모 — < 제목 ……… 수정 / 아래 내용 */}
-              <div className={styles.scriptViewHead}>
                 <button
                   type="button"
-                  className={styles.scriptBack}
-                  onClick={() => setActive(null)}
-                  aria-label={t('cc.toMemos')}
+                  className={`${styles.scriptEditBtn} ${styles.scriptSaveBtn}`}
+                  disabled={busy}
+                  onClick={() => void save()}
                 >
-                  <ChevronLeft size={16} />
+                  {t('cc.save')}
                 </button>
-                <b className={styles.scriptTitle}>{current.title}</b>
-                <button
-                  type="button"
-                  className={styles.scriptEditBtn}
-                  onClick={() =>
-                    setEdit({
-                      id: current.id,
-                      title: current.title,
-                      body: current.body,
-                      shared: current.shared,
-                    })
-                  }
-                >
-                  <Pencil size={13} /> {t('cc.edit')}
-                </button>
-              </div>
-              <div className={styles.scriptBody}>
-                <div className={`${styles.scriptPaper} ${styles.scriptPaperView}`}>
-                  {current.body || <span className={styles.muted}>{t('cc.noContent')}</span>}
-                </div>
-              </div>
-            </>
-          ) : items.length ? (
-            /* 메모 목록 — 눌러서 펼친다 */
-            <ul className={styles.scriptList}>
-              {items.map((s) => (
-                <li key={s.id}>
-                  <button type="button" onClick={() => pick(s.id)}>
-                    <span className={styles.scriptListTitle}>
-                      <b>{s.title}</b>
-                      <span className={s.shared ? styles.scriptKindShared : styles.scriptKindMine}>
-                        {s.shared ? t('cc.shared') : t('cc.personal')}
-                      </span>
-                    </span>
-                    <span className={styles.scriptListBody}>
-                      {s.body.replace(/\s+/g, ' ').slice(0, 60) || t('cc.noContentShort')}
-                    </span>
-                    <ChevronRight size={15} className={styles.scriptListGo} />
+              </span>
+              <textarea
+                className={`${styles.scriptPaper} ${styles.scriptPaperEdit}`}
+                value={edit.body}
+                placeholder={t('cc.memoBodyPh')}
+                onChange={(e) => setEdit({ ...edit, body: e.target.value })}
+                aria-label={t('cc.memoBody')}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            {current ? (
+              <>
+                {/* 고른 메모 — < 제목 ……… 수정 / 아래 내용 */}
+                <div className={styles.scriptViewHead}>
+                  <button
+                    type="button"
+                    className={styles.scriptBack}
+                    onClick={() => setActive(null)}
+                    aria-label={t('cc.toMemos')}
+                  >
+                    <ChevronLeft size={16} />
                   </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={styles.muted}>{t('cc.noMemos')}</p>
-          )}
-        </>
-      )}
+                  <b className={styles.scriptTitle}>{current.title}</b>
+                  <button
+                    type="button"
+                    className={styles.scriptEditBtn}
+                    onClick={() =>
+                      setEdit({
+                        id: current.id,
+                        title: current.title,
+                        body: current.body,
+                        shared: current.shared,
+                      })
+                    }
+                  >
+                    <Pencil size={13} /> {t('cc.edit')}
+                  </button>
+                </div>
+                <div className={styles.scriptBody}>
+                  <div className={`${styles.scriptPaper} ${styles.scriptPaperView}`}>
+                    {current.body || <span className={styles.muted}>{t('cc.noContent')}</span>}
+                  </div>
+                </div>
+              </>
+            ) : items.length ? (
+              /* 메모 목록 — 눌러서 펼친다 */
+              <ul className={styles.scriptList}>
+                {items.map((s) => (
+                  <li key={s.id}>
+                    <button type="button" onClick={() => pick(s.id)}>
+                      <span className={styles.scriptListTitle}>
+                        <b>{s.title}</b>
+                        <span
+                          className={s.shared ? styles.scriptKindShared : styles.scriptKindMine}
+                        >
+                          {s.shared ? t('cc.shared') : t('cc.personal')}
+                        </span>
+                      </span>
+                      <span className={styles.scriptListBody}>
+                        {s.body.replace(/\s+/g, ' ').slice(0, 60) || t('cc.noContentShort')}
+                      </span>
+                      <ChevronRight size={15} className={styles.scriptListGo} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.muted}>{t('cc.noMemos')}</p>
+            )}
+          </>
+        )}
+      </div>
 
       <ConfirmModal
         open={!!delTarget}
