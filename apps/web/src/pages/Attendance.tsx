@@ -27,6 +27,7 @@ import astyles from '../components/approval/approval.module.css';
 import styles from './attendance.module.css';
 import { ATTENDANCE_STATUS_LABEL } from '../i18n/codes';
 import { DatePicker } from '../components/ui';
+import { TimePicker } from '../components/ui';
 
 type Tab = 'my' | 'daily' | 'monthly' | 'import' | 'settings';
 
@@ -320,11 +321,11 @@ function FixRequestModal({
         <div className={styles.row2}>
           <label className={astyles.fieldLabel}>
             {t('att.in')}
-            <Input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} />
+            <TimePicker value={clockIn} onChange={(v) => setClockIn(v)} />
           </label>
           <label className={astyles.fieldLabel}>
             {t('att.out')}
-            <Input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} />
+            <TimePicker value={clockOut} onChange={(v) => setClockOut(v)} />
           </label>
         </div>
         <label className={astyles.fieldLabel}>
@@ -539,11 +540,11 @@ function EditRecordModal({
         <div className={styles.row2}>
           <label className={astyles.fieldLabel}>
             {t('att.in')}
-            <Input type="time" value={clockIn} onChange={(e) => setClockIn(e.target.value)} />
+            <TimePicker value={clockIn} onChange={(v) => setClockIn(v)} />
           </label>
           <label className={astyles.fieldLabel}>
             {t('att.out')}
-            <Input type="time" value={clockOut} onChange={(e) => setClockOut(e.target.value)} />
+            <TimePicker value={clockOut} onChange={(v) => setClockOut(v)} />
           </label>
         </div>
         <label className={astyles.fieldLabel}>
@@ -822,23 +823,15 @@ export function SettingsTab() {
       <div className={styles.row2}>
         <label className={astyles.fieldLabel}>
           {t('att.std.in')}
-          <Input
-            type="time"
-            value={s.workStart}
-            onChange={(e) => set('workStart', e.target.value)}
-          />
+          <TimePicker value={s.workStart} onChange={(v) => set('workStart', v)} />
         </label>
         <label className={astyles.fieldLabel}>
           {t('att.std.out')}
-          <Input type="time" value={s.workEnd} onChange={(e) => set('workEnd', e.target.value)} />
+          <TimePicker value={s.workEnd} onChange={(v) => set('workEnd', v)} />
         </label>
         <label className={astyles.fieldLabel}>
           {t('att.std.half')}
-          <Input
-            type="time"
-            value={s.halfSplit}
-            onChange={(e) => set('halfSplit', e.target.value)}
-          />
+          <TimePicker value={s.halfSplit} onChange={(v) => set('halfSplit', v)} />
           <span className={styles.hint}>{t('att.std.halfHint')}</span>
         </label>
         <label className={astyles.fieldLabel}>
