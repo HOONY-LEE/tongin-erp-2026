@@ -5,7 +5,6 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { useSearchParams } from 'react-router-dom';
 import { Settings2, Users } from 'lucide-react';
 import {
-  DUTY_CYCLE_LABEL,
   KPI_CATALOG,
   kpiPeriodOf,
   kpiPeriodOptions,
@@ -35,6 +34,7 @@ import {
 import { RadarChart, type RadarDatum } from '../components/performance/RadarChart';
 import { KpiConfigModal } from '../components/performance/KpiConfigModal';
 import styles from './performance.module.css';
+import { DUTY_CYCLE_LABEL } from '../i18n/codes';
 
 interface Overview {
   period: string;

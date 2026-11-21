@@ -1,15 +1,11 @@
 import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
-import {
-  ANOMALY_LEVEL_LABEL,
-  type AnomalyLevel,
-  type BranchAnomaly,
-  type BranchAnomalyReport,
-} from '@tongin/shared';
+import { type AnomalyLevel, type BranchAnomaly, type BranchAnomalyReport } from '@tongin/shared';
 import { Badge, DataTable, PageCard, type BadgeColor, type Column, type Row } from '../ui';
 import { api } from '../../lib/api';
 import { fs } from '../../lib/fontScale';
+import { ANOMALY_LEVEL_LABEL } from '../../i18n/codes';
 
 const LEVEL_COLOR: Record<AnomalyLevel, BadgeColor> = {
   NORMAL: 'neutral',

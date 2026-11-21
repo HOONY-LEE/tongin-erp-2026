@@ -3,13 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Combobox } from '@sunghoon_lee/akron-ui';
-import {
-  LEAVE_SLOT_LABEL,
-  LEAVE_STATUS_LABEL,
-  countWorkdays,
-  leaveSlotsFor,
-  type LeaveSlot,
-} from '@tongin/shared';
+import { countWorkdays, leaveSlotsFor, type LeaveSlot } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { useTabParam } from '../lib/useDetailParam';
@@ -49,6 +43,7 @@ import {
 import { FormEditor } from '../components/approval/FormsAdmin';
 import astyles from '../components/approval/approval.module.css';
 import styles from './leave.module.css';
+import { LEAVE_SLOT_LABEL, LEAVE_STATUS_LABEL } from '../i18n/codes';
 
 type Tab = 'my' | 'all' | 'types' | 'grant' | 'form';
 

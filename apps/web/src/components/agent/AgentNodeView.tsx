@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { memo, useEffect } from 'react';
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from '@xyflow/react';
-import { AGENT_NODE_LABEL, hasInputPort, outputPorts, type AgentNode } from '@tongin/shared';
+import { hasInputPort, outputPorts, type AgentNode } from '@tongin/shared';
 import { NODE_COLOR, NODE_ICON, nodeSummary } from './meta';
 import styles from '../../pages/agentBuilder.module.css';
+import { AGENT_NODE_LABEL } from '../../i18n/codes';
 
 export type RunMark = 'ok' | 'dry' | 'error' | 'pending' | 'blocked' | 'skipped';
 

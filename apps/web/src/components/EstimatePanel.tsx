@@ -1,7 +1,7 @@
 import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
-import { ACCESS_LABEL, HANDLING_LABEL, summarizeVolume, VOLUME_UNIT_LABEL } from '@tongin/shared';
+import { summarizeVolume } from '@tongin/shared';
 
 /** 서버에서 오는 handling은 문자열이라 넓은 타입으로 받는다 */
 const HANDLING_TEXT: Record<string, string> = HANDLING_LABEL;
@@ -9,6 +9,7 @@ const ACCESS_TEXT: Record<string, string> = ACCESS_LABEL;
 import { api } from '../lib/api';
 import { Badge, DataTable, type Column, type Row, SkeletonText } from './ui';
 import { fs } from '../lib/fontScale';
+import { ACCESS_LABEL, HANDLING_LABEL, VOLUME_UNIT_LABEL } from '../i18n/codes';
 
 interface Line {
   id: string;

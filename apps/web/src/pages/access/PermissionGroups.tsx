@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Lock, Smartphone } from 'lucide-react';
 import {
   CRUD_ACTIONS,
-  CRUD_ACTION_LABEL,
   PERMISSION_CATALOG,
   permissionLabel,
   type PermissionResource,
@@ -23,6 +22,7 @@ import {
 import type { Column, FormField, Row } from '../../components/ui';
 import { useDetailParam } from '../../lib/useDetailParam';
 import styles from './access.module.css';
+import { CRUD_ACTION_LABEL } from '../../i18n/codes';
 
 export interface RoleView {
   id: string;

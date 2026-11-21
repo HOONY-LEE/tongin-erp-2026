@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { ACCESS_LABEL } from '@tongin/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Phone } from 'lucide-react';
@@ -15,6 +14,7 @@ import {
 } from './fieldTypes';
 import { FieldPhotos, type PhotoCounts } from './FieldPhotos';
 import { fs } from '../lib/fontScale';
+import { ACCESS_LABEL } from '../i18n/codes';
 
 /** 작업지시서 — 현장에서 이 화면 하나로 일이 되게. */
 export default function FieldWorkOrderDetail() {

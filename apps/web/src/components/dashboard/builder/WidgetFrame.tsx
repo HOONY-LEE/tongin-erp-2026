@@ -1,8 +1,6 @@
 import { useEffect, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { Lock } from 'lucide-react';
 import {
-  DASH_PERIOD_LABEL,
-  DASH_METRIC_LABEL,
   DASH_WIDGET_MAP,
   type DashDataResult,
   type DashItem,
@@ -14,6 +12,7 @@ import { VizBody } from '../viz/Charts';
 import { UnitPerformance } from '../UnitPerformance';
 import { BranchAnomalyCard } from '../BranchAnomalyCard';
 import styles from './builder.module.css';
+import { DASH_METRIC_LABEL, DASH_PERIOD_LABEL } from '../../../i18n/codes';
 
 /** 기존 대시보드 부품(스스로 데이터를 부른다) */
 function Embed({ widget }: { widget: string }) {

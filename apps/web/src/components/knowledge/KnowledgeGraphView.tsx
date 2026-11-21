@@ -2,15 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
 import {
   KNOWLEDGE_CATEGORY_COLOR,
-  KNOWLEDGE_CATEGORY_LABEL,
   KNOWLEDGE_CONCEPT_COLOR,
-  KNOWLEDGE_CONCEPT_KIND_LABEL,
   type KnowledgeCategory,
   type KnowledgeConceptKind,
   type KnowledgeGraph,
 } from '@tongin/shared';
 import { useTheme } from '../../theme/ThemeProvider';
 import styles from '../../pages/knowledge.module.css';
+import { KNOWLEDGE_CATEGORY_LABEL, KNOWLEDGE_CONCEPT_KIND_LABEL } from '../../i18n/codes';
 
 type GNode = KnowledgeGraph['nodes'][number] & { x?: number; y?: number };
 type GLink = { source: string | GNode; target: string | GNode; label?: string };

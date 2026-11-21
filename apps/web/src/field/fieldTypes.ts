@@ -1,5 +1,5 @@
 import i18n from '../i18n';
-import { HANDLING_LABEL as SHARED_HANDLING_LABEL } from '@tongin/shared';
+import { HANDLING_LABEL as SHARED_HANDLING_LABEL } from '../i18n/codes';
 // 현장 API 응답 타입 — apps/api/src/modules/field/field.service.ts 와 1:1.
 
 export interface FieldWorkOrder {

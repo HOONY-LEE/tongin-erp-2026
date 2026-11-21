@@ -3,15 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   PRICING_METHODS,
-  PRICING_METHOD_LABEL,
   SERVICE_LINES,
-  SERVICE_LINE_LABEL,
   type PricingMethod,
   type ServiceLine,
 } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
+import { PRICING_METHOD_LABEL, SERVICE_LINE_LABEL } from '../i18n/codes';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 

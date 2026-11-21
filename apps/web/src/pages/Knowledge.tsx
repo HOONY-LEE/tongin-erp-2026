@@ -6,10 +6,8 @@ import { FileText, FileUp, RefreshCw, Search, Sparkles } from 'lucide-react';
 import {
   KNOWLEDGE_CATEGORIES,
   KNOWLEDGE_CATEGORY_COLOR,
-  KNOWLEDGE_CATEGORY_LABEL,
   KNOWLEDGE_CONCEPT_COLOR,
   KNOWLEDGE_CONCEPT_KINDS,
-  KNOWLEDGE_CONCEPT_KIND_LABEL,
   type KnowledgeCategory,
   type KnowledgeConceptKind,
   type KnowledgeDocRow,
@@ -39,6 +37,7 @@ import {
 import { Markdown } from '../components/ai/Markdown';
 import { KnowledgeGraphView } from '../components/knowledge/KnowledgeGraphView';
 import styles from './knowledge.module.css';
+import { KNOWLEDGE_CATEGORY_LABEL, KNOWLEDGE_CONCEPT_KIND_LABEL } from '../i18n/codes';
 
 type View = 'graph' | 'list';
 interface ConceptView {

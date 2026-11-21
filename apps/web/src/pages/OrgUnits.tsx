@@ -1,7 +1,6 @@
 import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ORG_UNIT_TYPE_LABEL } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { OrgChart } from '../components/OrgChart';
@@ -9,6 +8,7 @@ import { OrgGoalsPanel } from '../components/performance/OrgGoalsPanel';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
 import { isHqUnit, useOrgUnits } from '../lib/orgUnits';
+import { ORG_UNIT_TYPE_LABEL } from '../i18n/codes';
 
 // 지점(BRANCH)은 지점관리에서 등록하므로 여기 유형 선택지에서 뺀다
 const HQ_TYPES = Object.entries(ORG_UNIT_TYPE_LABEL as Record<string, string>).filter(

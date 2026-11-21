@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, Bot, CheckCircle2, CircleAlert, Cpu, Play, Wrench } from 'lucide-react';
 import {
-  AGENT_NODE_LABEL,
   type AgentGraph,
   type AgentIssue,
   type AgentNode,
@@ -16,6 +15,7 @@ import { NODE_ICON, NODE_COLOR, nodeSummary } from './meta';
 import { RunPanel, type AgentRunView } from './RunPanel';
 import styles from '../../pages/agentBuilder.module.css';
 import ai from '../../pages/aiAgent.module.css';
+import { AGENT_NODE_LABEL } from '../../i18n/codes';
 
 export interface NlTurn {
   role: 'user' | 'assistant';

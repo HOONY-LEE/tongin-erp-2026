@@ -5,9 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import {
   BUNDLE_ROLES,
-  BUNDLE_ROLE_LABEL,
-  PRICING_METHOD_LABEL,
-  SERVICE_LINE_LABEL,
   type BundleRole,
   type PricingMethod,
   type ServiceLine,
@@ -25,6 +22,7 @@ import {
 } from '../components/ui';
 import { UnitField } from '../components/estimate/parts';
 import { fs } from '../lib/fontScale';
+import { BUNDLE_ROLE_LABEL, PRICING_METHOD_LABEL, SERVICE_LINE_LABEL } from '../i18n/codes';
 
 const won = (v: unknown) =>
   v != null && v !== '' ? i18n.t('prod.won', { v0: Number(v).toLocaleString() }) : '-';

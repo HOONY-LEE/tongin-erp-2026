@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CAMPAIGN_CHANNEL_LABEL, type CampaignChannel } from '@tongin/shared';
+import { type CampaignChannel } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -16,6 +16,7 @@ import {
   type Row,
   type StatusMap,
 } from '../components/ui';
+import { CAMPAIGN_CHANNEL_LABEL } from '../i18n/codes';
 
 export const CAMPAIGN_STATUS_MAP: StatusMap = {
   DRAFT: { label: i18n.t('camp.cst.DRAFT'), color: 'neutral' },

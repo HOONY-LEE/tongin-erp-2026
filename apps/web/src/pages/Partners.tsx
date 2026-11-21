@@ -1,9 +1,10 @@
 import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
-import { PARTNER_TYPES, PARTNER_TYPE_LABEL } from '@tongin/shared';
+import { PARTNER_TYPES } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import { formatPhone } from '../lib/phone';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
+import { PARTNER_TYPE_LABEL } from '../i18n/codes';
 
 const TYPE: Record<string, string> = PARTNER_TYPE_LABEL;
 const TYPE_COLOR: Record<string, 'primary' | 'info' | 'warning' | 'success'> = {

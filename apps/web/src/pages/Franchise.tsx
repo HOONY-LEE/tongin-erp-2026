@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import {
   FRANCHISE_RENEWAL_DAYS,
   FRANCHISE_STATUSES,
-  FRANCHISE_STATUS_LABEL,
   type FranchiseBranchRow,
   type FranchiseStatus,
 } from '@tongin/shared';
@@ -28,6 +27,7 @@ import {
   type Row,
 } from '../components/ui';
 import styles from './franchise.module.css';
+import { FRANCHISE_STATUS_LABEL } from '../i18n/codes';
 
 type Tab = 'all' | 'renewal' | 'unpaid' | 'empty' | 'ended';
 interface Res {

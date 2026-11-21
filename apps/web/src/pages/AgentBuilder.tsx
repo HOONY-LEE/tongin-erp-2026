@@ -34,9 +34,7 @@ import {
 import { SegmentedControl } from '../components/ui';
 import {
   AGENT_NODE_DESC,
-  AGENT_NODE_LABEL,
   AGENT_NODE_TYPES,
-  AGENT_VISIBILITY_LABEL,
   autoLayout,
   defaultConfig,
   newAgentId,
@@ -71,6 +69,7 @@ import { SharePicker, VISIBILITY_ICON, type ShareCandidate } from '../components
 import { NODE_COLOR, NODE_HEX, NODE_ICON, nodeSummary } from '../components/agent/meta';
 import styles from './agentBuilder.module.css';
 import { fs } from '../lib/fontScale';
+import { AGENT_NODE_LABEL, AGENT_VISIBILITY_LABEL } from '../i18n/codes';
 
 interface Blueprint {
   id: string;

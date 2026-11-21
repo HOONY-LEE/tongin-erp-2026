@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Eye, Trash2, X } from 'lucide-react';
 import {
-  MENU_TARGET_LABEL,
   filterLayout,
   menuDef,
   normalizeLayout,
@@ -29,6 +28,7 @@ import { useDetailParam } from '../lib/useDetailParam';
 import { menuIcon, notifyMenuChanged, useMenuLabel } from '../lib/menu';
 import { MenuLayoutEditor } from '../components/menu/MenuLayoutEditor';
 import styles from './menuMgmt.module.css';
+import { MENU_TARGET_LABEL } from '../i18n/codes';
 
 interface Target {
   kind: MenuTargetKind;

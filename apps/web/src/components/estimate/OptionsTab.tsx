@@ -3,19 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useMemo, useState } from 'react';
 import { priceRequested } from './priceRequest';
 import { X } from 'lucide-react';
-import {
-  ACCESS_LABEL,
-  ACCESS_METHODS,
-  BUNDLE_ROLE_LABEL,
-  type EstimateOptionDef,
-  type EstimateOptionGroup,
-} from '@tongin/shared';
+import { ACCESS_METHODS, type EstimateOptionDef, type EstimateOptionGroup } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { Badge, Checkbox, Input, Select, useToast } from '../ui';
 import { SaveBar, UnitField } from './parts';
 import { useTabForm } from './useTabForm';
 import { toNum, won, type EstimateDetailData, type TabProps } from './types';
 import styles from './estimate.module.css';
+import { ACCESS_LABEL, BUNDLE_ROLE_LABEL } from '../../i18n/codes';
 
 const ACCESS_OPTIONS = ACCESS_METHODS.map((a) => ({ value: a, label: ACCESS_LABEL[a] }));
 const GROUPS: { key: EstimateOptionGroup; title: string; sub: string }[] = [

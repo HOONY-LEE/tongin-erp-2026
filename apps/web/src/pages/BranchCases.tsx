@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BRANCH_CASE_KIND,
-  BRANCH_CASE_KIND_LABEL,
   BRANCH_CASE_STATUS,
-  BRANCH_CASE_STATUS_LABEL,
   type BranchCaseKind,
   type BranchCaseStatus,
 } from '@tongin/shared';
@@ -38,6 +36,7 @@ import {
   type StatusMap,
 } from '../components/ui';
 import styles from './work.module.css';
+import { BRANCH_CASE_KIND_LABEL, BRANCH_CASE_STATUS_LABEL } from '../i18n/codes';
 
 interface BranchCase {
   id: string;

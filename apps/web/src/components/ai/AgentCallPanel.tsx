@@ -2,12 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { AlertTriangle, Check, CircleDot, Play, ShieldCheck, X } from 'lucide-react';
-import {
-  AGENT_RUN_STATUS_LABEL,
-  AGENT_VISIBILITY_LABEL,
-  type AgentVisibility,
-  type InputField,
-} from '@tongin/shared';
+import { type AgentVisibility, type InputField } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { Badge, Button, useToast } from '../ui';
 import { VISIBILITY_ICON } from '../agent/SharePicker';
@@ -15,6 +10,7 @@ import type { AgentRunView, TraceStep } from '../agent/RunPanel';
 import { Markdown } from './Markdown';
 import { FileCard } from './ChatParts';
 import styles from './agentCall.module.css';
+import { AGENT_RUN_STATUS_LABEL, AGENT_VISIBILITY_LABEL } from '../../i18n/codes';
 
 /** AI 에이전트 화면에서 부를 수 있는 에이전트(서버 /agents) */
 export interface CallableAgent {

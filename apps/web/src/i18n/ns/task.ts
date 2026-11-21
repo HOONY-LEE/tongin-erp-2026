@@ -3,6 +3,8 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    /** 칸반 칸 아래 '+ 업무 추가'(라이브러리 글자를 CSS로 덮는다 — base.css) */
+    addCard: '업무 추가',
     f: {
       title: '업무',
       team: '팀',
@@ -101,6 +103,8 @@ export default defineNs({
     priorityOf: '우선순위 {{v0}}',
   },
   en: {
+    /** 칸반 칸 아래 '+ 업무 추가'(라이브러리 글자를 CSS로 덮는다 — base.css) */
+    addCard: 'Add task',
     f: {
       title: 'Task',
       team: 'Team',
@@ -200,6 +204,8 @@ export default defineNs({
     priorityOf: 'Priority {{v0}}',
   },
   zh: {
+    /** 칸반 칸 아래 '+ 업무 추가'(라이브러리 글자를 CSS로 덮는다 — base.css) */
+    addCard: '添加任务',
     f: {
       title: '任务',
       team: '团队',

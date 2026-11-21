@@ -1,12 +1,9 @@
 import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
-import {
-  ESTIMATE_OPTION_GROUPS,
-  ESTIMATE_OPTION_GROUP_LABEL,
-  type EstimateOptionGroup,
-} from '@tongin/shared';
+import { ESTIMATE_OPTION_GROUPS, type EstimateOptionGroup } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
+import { ESTIMATE_OPTION_GROUP_LABEL } from '../i18n/codes';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 const UNIT: Record<string, string> = { EA: i18n.t('prod.unit.EA'), FLAT: i18n.t('prod.unit.FLAT') };

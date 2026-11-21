@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Camera, KeyRound, Pencil } from 'lucide-react';
-import { EMPLOYMENT_TYPE_LABEL, type EmploymentType } from '@tongin/shared';
+import { type EmploymentType } from '@tongin/shared';
 import { codeLabel } from '../i18n';
 import { Badge, Button, FormModal, PageHeader, Spinner, useToast } from '../components/ui';
 import type { FormField } from '../components/ui/types';
@@ -14,6 +14,7 @@ import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
 import { primeEmployeePhoto } from '../lib/employeePhoto';
 import styles from '../components/employee/employee.module.css';
+import { EMPLOYMENT_TYPE_LABEL } from '../i18n/codes';
 
 interface ProfileData {
   id: string;

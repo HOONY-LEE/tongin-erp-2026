@@ -26,7 +26,7 @@ import { fs } from '../lib/fontScale';
 /** 지점 반려 사유·접수 취소 형태 — 서버(dto/reject-lead.dto.ts)와 같은 목록 */
 const REJECT_KINDS = ['지점 마감', '지점 견적 거부', '서비스 지역 아님', '일정 불가', '기타'];
 const CANCEL_KINDS = ['중복 접수', '고객 취소', '이사일 마감', '타사 계약', '연락 불가', '기타'];
-import { MOVE_KIND_LABEL, moveKindOf } from '@tongin/shared';
+import { moveKindOf } from '@tongin/shared';
 import estStyles from '../components/estimate/estimate.module.css';
 import { StepTabs, type StepDef } from '../components/estimate/parts';
 import { BasicTab } from '../components/estimate/BasicTab';
@@ -34,6 +34,7 @@ import { ItemsTab } from '../components/estimate/ItemsTab';
 import { OptionsTab } from '../components/estimate/OptionsTab';
 import { SummaryTab } from '../components/estimate/SummaryTab';
 import type { EstimateDetailData } from '../components/estimate/types';
+import { MOVE_KIND_LABEL } from '../i18n/codes';
 
 /** 견적서 작성 순서 — 현장 견적사원이 실제로 채워 가는 순서 그대로 */
 const STEPS: StepDef[] = [
