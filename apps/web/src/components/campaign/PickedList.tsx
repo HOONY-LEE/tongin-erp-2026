@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
-import { Badge, Button, SearchInput } from '../ui';
+import { Badge, Button, DataTable, SearchInput, type Row as TableRow } from '../ui';
 import styles from '../../pages/campaign.module.css';
 
 interface Row {
@@ -131,81 +131,90 @@ export function PickedList({
       </div>
       {totalCount === 0 ? (
         <div className={styles.pickedEmpty}>
-          {t('camp.emptyList1')} t('camp.addAllShort'){t('camp.emptyList2')}
+          {t('camp.emptyList1')} '{t('camp.addAllShort')}'{t('camp.emptyList2')}
         </div>
       ) : (
         <>
           <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th style={{ width: 56 }}>{t('camp.col.kind')}</th>
-                  <th>{t('camp.col.name')}</th>
-                  <th>{t('camp.col.phone')}</th>
-                  <th>{t('camp.col.address')}</th>
-                  <th>{t('camp.col.branch')}</th>
-                  {!readOnly && <th style={{ width: 60 }} />}
-                </tr>
-              </thead>
-              <tbody>
-                {page === 1 &&
-                  shownOthers.map((o) => (
-                    <tr key={`${o.kind}:${o.key}`}>
-                      <td>
-                        <KindBadge kind={o.kind} />
-                      </td>
-                      <td>{o.name}</td>
-                      <td>{formatPhone(o.phone)}</td>
-                      <td className={styles.cellAddr}>-</td>
-                      <td>{o.orgUnit ?? '-'}</td>
-                      {!readOnly && (
-                        <td>
+            <DataTable
+              bare
+              pageSize={0}
+              rowKey="key"
+              columns={[
+                {
+                  title: t('camp.col.kind'),
+                  dataIndex: 'kind',
+                  width: 80,
+                  render: (r) => <KindBadge kind={r.kind as keyof typeof KIND_BADGE} />,
+                },
+                { title: t('camp.col.name'), dataIndex: 'name' },
+                {
+                  title: t('camp.col.phone'),
+                  dataIndex: 'phone',
+                  render: (r) => (r.phone ? formatPhone(String(r.phone)) : '-'),
+                },
+                {
+                  title: t('camp.col.address'),
+                  dataIndex: 'addr',
+                  flex: 1,
+                  minWidth: 160,
+                  render: (r) => String(r.addr ?? '-'),
+                },
+                {
+                  title: t('camp.col.branch'),
+                  dataIndex: 'orgUnit',
+                  render: (r) => String(r.orgUnit ?? '-'),
+                },
+                ...(readOnly
+                  ? []
+                  : [
+                      {
+                        title: '',
+                        width: 60,
+                        mask: false as const,
+                        render: (r: TableRow) => (
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={t('camp.removeOf', { v0: o.name })}
+                            aria-label={t('camp.removeOf', { v0: String(r.name) })}
                             title={t('camp.removeFromList')}
-                            onClick={() => onRemoveOther?.(o)}
+                            onClick={() =>
+                              r.kind === 'CUSTOMER' && r.customerId
+                                ? onRemove?.(String(r.customerId))
+                                : onRemoveOther?.(r.other as OtherRecipient)
+                            }
                           >
                             <X size={14} />
                           </Button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                {(ids.length ? (data?.rows ?? []) : []).map((r) => (
-                  <tr key={r.id}>
-                    <td>
-                      <KindBadge kind="CUSTOMER" />
-                    </td>
-                    <td>{r.name}</td>
-                    <td>{r.phone ? formatPhone(r.phone) : '-'}</td>
-                    <td className={styles.cellAddr}>{r.addr ?? '-'}</td>
-                    <td>{r.orgUnit ?? '-'}</td>
-                    {!readOnly && (
-                      <td>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={t('camp.removeOf', { v0: r.name })}
-                          title={t('camp.removeFromList')}
-                          onClick={() => onRemove?.(r.id)}
-                        >
-                          <X size={14} />
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-                {data && data.rows.length === 0 && shownOthers.length === 0 && (
-                  <tr>
-                    <td colSpan={readOnly ? 5 : 6} className={styles.sub}>
-                      {t('camp.noMatchIn1')} '{q}'{t('camp.noMatchIn2')}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                        ),
+                      },
+                    ]),
+              ]}
+              rows={
+                [
+                  ...(page === 1
+                    ? shownOthers.map((o) => ({
+                        key: `${o.kind}:${o.key}`,
+                        kind: o.kind,
+                        name: o.name,
+                        phone: o.phone,
+                        addr: null,
+                        orgUnit: o.orgUnit ?? null,
+                        other: o,
+                      }))
+                    : []),
+                  ...(ids.length ? (data?.rows ?? []) : []).map((r) => ({
+                    key: `CUSTOMER:${r.id}`,
+                    kind: 'CUSTOMER',
+                    customerId: r.id,
+                    name: r.name,
+                    phone: r.phone,
+                    addr: r.addr ?? null,
+                    orgUnit: r.orgUnit ?? null,
+                  })),
+                ] as unknown as TableRow[]
+              }
+            />
           </div>
           {data && data.total > SIZE && (
             <div className={styles.pager}>

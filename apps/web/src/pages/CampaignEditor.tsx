@@ -20,6 +20,7 @@ import {
   Badge,
   Button,
   Checkbox,
+  DataTable,
   Input,
   Modal,
   PageHeader,
@@ -29,6 +30,7 @@ import {
   StatusBadge,
   useToast,
   PageSkeleton,
+  type Row,
 } from '../components/ui';
 import { CAMPAIGN_STATUS_MAP } from './Campaigns';
 import { PickedList, type OtherRecipient } from '../components/campaign/PickedList';
@@ -595,43 +597,58 @@ export default function CampaignEditor() {
                 </span>
               </h3>
               <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: 56 }}>{t('camp.col.kind')}</th>
-                      <th>{t('camp.col.name')}</th>
-                      <th>{t('camp.col.phone')}</th>
-                      <th>{t('camp.col.result')}</th>
-                      <th>{t('camp.col.sentAt')}</th>
-                      <th>{t('camp.col.reason')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loaded.recipients.map((r) => (
-                      <tr key={r.id}>
-                        <td>
-                          <Badge variant="subtle" color={KIND_LABEL[r.kind]?.color ?? 'neutral'}>
-                            {KIND_LABEL[r.kind]?.label ?? t('camp.kind.CUSTOMER')}
-                          </Badge>
-                        </td>
-                        <td>{r.name}</td>
-                        <td>{formatPhone(r.phone)}</td>
-                        <td>
-                          <StatusBadge
-                            value={r.status}
-                            map={{
-                              PENDING: { label: t('camp.st.PENDING'), color: 'neutral' },
-                              SENT: { label: t('camp.st.SENT'), color: 'success' },
-                              FAILED: { label: t('camp.st.FAILED'), color: 'error' },
-                            }}
-                          />
-                        </td>
-                        <td>{dt(r.sentAt)}</td>
-                        <td>{r.reason ?? '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <DataTable
+                  bare
+                  pageSize={20}
+                  columns={[
+                    {
+                      title: t('camp.col.kind'),
+                      dataIndex: 'kind',
+                      width: 80,
+                      render: (r) => (
+                        <Badge
+                          variant="subtle"
+                          color={KIND_LABEL[r.kind as RecipientKind]?.color ?? 'neutral'}
+                        >
+                          {KIND_LABEL[r.kind as RecipientKind]?.label ?? t('camp.kind.CUSTOMER')}
+                        </Badge>
+                      ),
+                    },
+                    { title: t('camp.col.name'), dataIndex: 'name' },
+                    {
+                      title: t('camp.col.phone'),
+                      dataIndex: 'phone',
+                      render: (r) => formatPhone(String(r.phone ?? '')),
+                    },
+                    {
+                      title: t('camp.col.result'),
+                      dataIndex: 'status',
+                      render: (r) => (
+                        <StatusBadge
+                          value={String(r.status)}
+                          map={{
+                            PENDING: { label: t('camp.st.PENDING'), color: 'neutral' },
+                            SENT: { label: t('camp.st.SENT'), color: 'success' },
+                            FAILED: { label: t('camp.st.FAILED'), color: 'error' },
+                          }}
+                        />
+                      ),
+                    },
+                    {
+                      title: t('camp.col.sentAt'),
+                      dataIndex: 'sentAt',
+                      width: 170,
+                      render: (r) => dt((r.sentAt as string | null) ?? null),
+                    },
+                    {
+                      title: t('camp.col.reason'),
+                      dataIndex: 'reason',
+                      flex: 1,
+                      render: (r) => String(r.reason ?? '-'),
+                    },
+                  ]}
+                  rows={loaded.recipients as unknown as Row[]}
+                />
               </div>
             </div>
           </div>
@@ -1007,6 +1024,16 @@ export default function CampaignEditor() {
                     </div>
 
                     <div className={styles.inline}>
+                      {pageRows.length > 0 && (
+                        <label className={styles.inline}>
+                          <Checkbox
+                            checked={pageAllOn}
+                            onCheckedChange={(v) => togglePage(v === true)}
+                            aria-label={t('camp.selectPage')}
+                          />
+                          <span className={styles.sub}>{t('camp.selectPage')}</span>
+                        </label>
+                      )}
                       <span className={styles.sub}>
                         {searching
                           ? t('camp.searching')
@@ -1030,60 +1057,66 @@ export default function CampaignEditor() {
                     </div>
 
                     <div className={styles.tableWrap}>
-                      <table className={styles.table}>
-                        <thead>
-                          <tr>
-                            <th style={{ width: 36 }}>
-                              <Checkbox
-                                checked={pageAllOn}
-                                onCheckedChange={(v) => togglePage(v === true)}
-                                aria-label={t('camp.selectPage')}
-                              />
-                            </th>
-                            <th>{t('camp.col.name')}</th>
-                            <th>{t('camp.col.phone')}</th>
-                            <th>{t('camp.col.address')}</th>
-                            <th>{t('camp.col.recentLead')}</th>
-                            <th>{t('camp.moveDate')}</th>
-                            <th>{t('camp.col.branch')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pageRows.map((r) => {
-                            const on = picked.has(r.id);
-                            return (
-                              <tr key={r.id} className={on ? styles.rowOn : ''}>
-                                <td>
-                                  <Checkbox
-                                    checked={on}
-                                    onCheckedChange={(v) => togglePick(r, v === true)}
-                                    aria-label={t('camp.selectOf', { v0: r.name })}
-                                  />
-                                </td>
-                                <td>{r.name}</td>
-                                <td>{formatPhone(r.phone)}</td>
-                                <td className={styles.addr} title={r.addr ?? ''}>
-                                  {r.addr ?? '-'}
-                                </td>
-                                <td>
-                                  {r.lead
-                                    ? `${LEAD_STATUS_LABEL[r.lead.status as LeadStatus] ?? r.lead.status} · ${r.lead.receivedAt}`
-                                    : '-'}
-                                </td>
-                                <td>{r.lead?.moveDate ?? '-'}</td>
-                                <td>{r.orgUnit ?? '-'}</td>
-                              </tr>
-                            );
-                          })}
-                          {!pageRows.length && (
-                            <tr>
-                              <td colSpan={7} style={{ textAlign: 'center', padding: 24 }}>
-                                {searching ? t('camp.searching') : t('camp.noMatch')}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+                      <DataTable
+                        bare
+                        pageSize={0}
+                        loading={searching && !pageRows.length}
+                        columns={[
+                          {
+                            title: '',
+                            width: 48,
+                            mask: false,
+                            render: (r) => {
+                              const row = r as unknown as (typeof pageRows)[number];
+                              return (
+                                <Checkbox
+                                  checked={picked.has(row.id)}
+                                  onCheckedChange={(v) => togglePick(row, v === true)}
+                                  aria-label={t('camp.selectOf', { v0: row.name })}
+                                />
+                              );
+                            },
+                          },
+                          { title: t('camp.col.name'), dataIndex: 'name' },
+                          {
+                            title: t('camp.col.phone'),
+                            dataIndex: 'phone',
+                            render: (r) => formatPhone(String(r.phone ?? '')),
+                          },
+                          {
+                            title: t('camp.col.address'),
+                            dataIndex: 'addr',
+                            flex: 1,
+                            minWidth: 160,
+                            render: (r) => String(r.addr ?? '-'),
+                          },
+                          {
+                            title: t('camp.col.recentLead'),
+                            dataIndex: 'lead',
+                            render: (r) => {
+                              const l = r.lead as {
+                                status: string;
+                                receivedAt: string;
+                              } | null;
+                              return l
+                                ? `${LEAD_STATUS_LABEL[l.status as LeadStatus] ?? l.status} · ${l.receivedAt}`
+                                : '-';
+                            },
+                          },
+                          {
+                            title: t('camp.moveDate'),
+                            dataIndex: 'moveDate',
+                            render: (r) =>
+                              (r.lead as { moveDate?: string | null } | null)?.moveDate ?? '-',
+                          },
+                          {
+                            title: t('camp.col.branch'),
+                            dataIndex: 'orgUnit',
+                            render: (r) => String(r.orgUnit ?? '-'),
+                          },
+                        ]}
+                        rows={pageRows as unknown as Row[]}
+                      />
                     </div>
                     {result && result.total > PAGE_SIZE && (
                       <div className={styles.pager}>

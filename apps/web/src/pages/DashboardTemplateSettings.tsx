@@ -1,12 +1,20 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Trash2 } from 'lucide-react';
 import { DASH_COLORS, dashColorVars } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useTheme } from '../theme/ThemeProvider';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Checkbox, PageHeader, PageSkeleton, useToast } from '../components/ui';
+import {
+  Button,
+  Checkbox,
+  Input,
+  PageHeader,
+  PageSkeleton,
+  SearchInput,
+  useToast,
+} from '../components/ui';
 import { LayoutThumb } from '../components/dashboard/builder/LayoutThumb';
 import type { TemplateRow } from './DashboardAdmin';
 import styles from '../components/dashboard/builder/builder.module.css';
@@ -191,8 +199,7 @@ export default function DashboardTemplateSettings() {
           </div>
           <label className={styles.field}>
             {t('dash.name')}
-            <input
-              className={styles.input}
+            <Input
               value={tpl.name}
               maxLength={60}
               onChange={(e) => patch({ name: e.target.value })}
@@ -200,8 +207,7 @@ export default function DashboardTemplateSettings() {
           </label>
           <label className={styles.field}>
             {t('dash.desc')}
-            <input
-              className={styles.input}
+            <Input
               value={tpl.description}
               maxLength={300}
               onChange={(e) => patch({ description: e.target.value })}
@@ -274,15 +280,12 @@ export default function DashboardTemplateSettings() {
             {t('dash.assignUsersHint')} {tpl.userIds.length}
             {t('dash.selectedPeople')}
           </span>
-          <label className={styles.searchBox} style={{ margin: 0 }}>
-            <Search size={14} aria-hidden />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={t('dash.userSearchPh')}
-              aria-label={t('dash.userSearch')}
-            />
-          </label>
+          <SearchInput
+            value={q}
+            onChange={setQ}
+            placeholder={t('dash.userSearchPh')}
+            ariaLabel={t('dash.userSearch')}
+          />
           <div className={styles.checkList} style={{ maxHeight: 380 }}>
             {users.map((u) => (
               <label key={u.id} className={styles.checkRow}>

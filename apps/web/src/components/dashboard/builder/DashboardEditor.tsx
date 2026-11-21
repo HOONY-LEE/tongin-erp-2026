@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { SearchInput } from '../../../components/ui/SearchInput';
+import { Input, Select, Textarea } from '../../ui';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
@@ -709,8 +710,7 @@ function WidgetMenu({
         </div>
         <label className={styles.field}>
           {t('dash.title')}
-          <input
-            className={styles.input}
+          <Input
             value={item.title ?? ''}
             placeholder={widgetTitle(def)}
             maxLength={60}
@@ -742,40 +742,27 @@ function WidgetMenu({
         {def.period && (
           <label className={styles.field}>
             {t('dash.period')}
-            <select
-              className={styles.input}
+            <Select
               value={item.period ?? def.period}
-              onChange={(e) => onChange({ period: e.target.value as DashPeriod })}
-            >
-              {DASH_PERIODS.map((p) => (
-                <option key={p} value={p}>
-                  {DASH_PERIOD_LABEL[p]}
-                </option>
-              ))}
-            </select>
+              options={DASH_PERIODS.map((p) => ({ value: p, label: DASH_PERIOD_LABEL[p] }))}
+              onValueChange={(v) => onChange({ period: v as DashPeriod })}
+            />
           </label>
         )}
         {def.metric && (
           <label className={styles.field}>
             {t('dash.metric')}
-            <select
-              className={styles.input}
+            <Select
               value={item.metric ?? def.metric}
-              onChange={(e) => onChange({ metric: e.target.value as DashMetric })}
-            >
-              {DASH_METRICS.map((m) => (
-                <option key={m} value={m}>
-                  {DASH_METRIC_LABEL[m]}
-                </option>
-              ))}
-            </select>
+              options={DASH_METRICS.map((m) => ({ value: m, label: DASH_METRIC_LABEL[m] }))}
+              onValueChange={(v) => onChange({ metric: v as DashMetric })}
+            />
           </label>
         )}
         {def.shape === 'text' && (
           <label className={styles.field}>
             {t('dash.content')}
-            <textarea
-              className={styles.input}
+            <Textarea
               rows={6}
               maxLength={2000}
               value={item.text ?? ''}
@@ -789,8 +776,7 @@ function WidgetMenu({
           <div className={styles.sizeRow}>
             <label>
               {t('dash.width')}
-              <input
-                className={styles.input}
+              <Input
                 type="number"
                 min={2}
                 max={DASH_COLS}
@@ -802,8 +788,7 @@ function WidgetMenu({
             </label>
             <label>
               {t('dash.height')}
-              <input
-                className={styles.input}
+              <Input
                 type="number"
                 min={2}
                 max={12}

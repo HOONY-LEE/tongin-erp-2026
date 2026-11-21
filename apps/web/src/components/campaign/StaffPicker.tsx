@@ -4,7 +4,17 @@ import { Plus, Trash2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import { useAuth } from '../../auth/AuthContext';
-import { Badge, Button, Checkbox, Input, PhoneInput, useToast } from '../ui';
+import {
+  Badge,
+  Button,
+  Checkbox,
+  DataTable,
+  Input,
+  PhoneInput,
+  useToast,
+  type Column,
+  type Row,
+} from '../ui';
 import styles from '../../pages/campaign.module.css';
 
 /** 받는 직원(이름·번호는 담을 때 화면에 보여 줄 값 — 서버는 직원 원장에서 다시 읽는다) */
@@ -190,41 +200,57 @@ export function StaffPicker({
       </div>
 
       <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th style={{ width: 36 }} />
-              <th>{t('camp.col.name')}</th>
-              <th>{t('camp.col.phone')}</th>
-              <th>{t('camp.col.branch')}</th>
-              <th>{t('camp.col.position')}</th>
-              {data?.restricted && <th>{t('camp.col.sms')}</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const on = pickedStaff.has(r.id);
-              return (
-                <tr key={r.id} className={on ? styles.rowOn : ''}>
-                  <td>
-                    <Checkbox
-                      checked={on}
-                      onCheckedChange={(v) =>
-                        onToggleStaff(
-                          r.id,
-                          v === true ? { name: r.name, phone: r.phone, orgUnit: r.orgUnit } : null,
-                        )
-                      }
-                      aria-label={t('camp.selectOf', { v0: r.name })}
-                    />
-                  </td>
-                  <td>{r.name}</td>
-                  <td>{formatPhone(r.phone)}</td>
-                  <td>{r.orgUnit ?? '-'}</td>
-                  <td>{r.role ?? '-'}</td>
-                  {data?.restricted && (
-                    <td>
-                      {r.allowed ? (
+        <DataTable
+          bare
+          pageSize={0}
+          loading={loading && !rows.length}
+          columns={[
+            {
+              title: '',
+              width: 48,
+              mask: false,
+              render: (r) => (
+                <Checkbox
+                  checked={pickedStaff.has(String(r.id))}
+                  onCheckedChange={(v) =>
+                    onToggleStaff(
+                      String(r.id),
+                      v === true
+                        ? {
+                            name: String(r.name),
+                            phone: String(r.phone),
+                            orgUnit: (r.orgUnit as string | null) ?? null,
+                          }
+                        : null,
+                    )
+                  }
+                  aria-label={t('camp.selectOf', { v0: String(r.name) })}
+                />
+              ),
+            },
+            { title: t('camp.col.name'), dataIndex: 'name' },
+            {
+              title: t('camp.col.phone'),
+              dataIndex: 'phone',
+              render: (r) => formatPhone(String(r.phone ?? '')),
+            },
+            {
+              title: t('camp.col.branch'),
+              dataIndex: 'orgUnit',
+              render: (r) => String(r.orgUnit ?? '-'),
+            },
+            {
+              title: t('camp.col.position'),
+              dataIndex: 'role',
+              render: (r) => String(r.role ?? '-'),
+            },
+            ...(data?.restricted
+              ? [
+                  {
+                    title: t('camp.col.sms'),
+                    dataIndex: 'allowed',
+                    render: (r: Row) =>
+                      r.allowed ? (
                         <Badge variant="subtle" color="success">
                           {t('camp.allow')}
                         </Badge>
@@ -238,27 +264,19 @@ export function StaffPicker({
                               variant="ghost"
                               size="sm"
                               title={t('camp.allowTip')}
-                              onClick={() => void allowStaff(r)}
+                              onClick={() => void allowStaff(r as unknown as (typeof rows)[number])}
                             >
                               {t('camp.allowBtn')}
                             </Button>
                           )}
                         </span>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-            {!rows.length && (
-              <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
-                  {loading ? t('camp.searching') : t('camp.noStaff')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                      ),
+                  } as Column,
+                ]
+              : []),
+          ]}
+          rows={rows as unknown as Row[]}
+        />
       </div>
       {data && data.total > SIZE && (
         <div className={styles.pager}>
@@ -291,41 +309,52 @@ export function StaffPicker({
         <span className={styles.label}>{t('camp.demoNumbers')}</span>
         {demo.length > 0 && (
           <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <tbody>
-                {demo.map((d) => {
-                  const on = extras.has(d.code);
-                  return (
-                    <tr key={d.code} className={on ? styles.rowOn : ''}>
-                      <td style={{ width: 36 }}>
-                        <Checkbox
-                          checked={on}
-                          onCheckedChange={(v) =>
-                            onToggleExtra({ name: d.name, phone: d.phone }, v === true)
-                          }
-                          aria-label={t('camp.selectOf', { v0: d.name })}
-                        />
-                      </td>
-                      <td>{d.name}</td>
-                      <td>{formatPhone(d.phone)}</td>
-                      <td style={{ width: 60 }}>
-                        {canWrite && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={t('camp.demoDeleteOf', { v0: d.name })}
-                            title={t('camp.demoDelete')}
-                            onClick={() => void removeDemo(d)}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DataTable
+              bare
+              pageSize={0}
+              rowKey="code"
+              columns={[
+                {
+                  title: '',
+                  width: 48,
+                  mask: false,
+                  render: (r) => (
+                    <Checkbox
+                      checked={extras.has(String(r.code))}
+                      onCheckedChange={(v) =>
+                        onToggleExtra({ name: String(r.name), phone: String(r.phone) }, v === true)
+                      }
+                      aria-label={t('camp.selectOf', { v0: String(r.name) })}
+                    />
+                  ),
+                },
+                { title: t('camp.col.name'), dataIndex: 'name' },
+                {
+                  title: t('camp.col.phone'),
+                  dataIndex: 'phone',
+                  flex: 1,
+                  render: (r) => formatPhone(String(r.phone ?? '')),
+                },
+                {
+                  title: '',
+                  width: 60,
+                  mask: false,
+                  render: (r) =>
+                    canWrite && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={t('camp.demoDeleteOf', { v0: String(r.name) })}
+                        title={t('camp.demoDelete')}
+                        onClick={() => void removeDemo(r as unknown as (typeof demo)[number])}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    ),
+                },
+              ]}
+              rows={demo as unknown as Row[]}
+            />
           </div>
         )}
         {canWrite && (

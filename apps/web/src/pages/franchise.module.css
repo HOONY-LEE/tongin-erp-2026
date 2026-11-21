@@ -316,31 +316,7 @@
   font-size: calc(12px * var(--font-scale, 1));
 }
 .importTable {
-  max-height: 360px;
-  overflow: auto;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 8px;
-}
-.importTable table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: calc(12px * var(--font-scale, 1));
-}
-.importTable th,
-.importTable td {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--ark-color-border);
-  text-align: left;
-  white-space: nowrap;
-}
-.importTable th {
-  position: sticky;
-  top: 0;
-  background: var(--ark-color-bg-muted);
-  font-weight: 600;
-}
-.rowDim {
-  color: var(--ark-color-text-tertiary);
+  min-width: 0;
 }
 
 /* ── 제휴·전속 ── */
@@ -358,26 +334,4 @@
   margin: 0;
   white-space: pre-wrap;
   line-height: 1.6;
-}
-.miniTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: calc(13px * var(--font-scale, 1));
-}
-.miniTable th,
-.miniTable td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--ark-color-border);
-  text-align: left;
-  white-space: nowrap;
-}
-.miniTable th {
-  color: var(--ark-color-text-secondary);
-  font-weight: 500;
-}
-.miniTable tbody tr {
-  cursor: pointer;
-}
-.miniTable tbody tr:hover {
-  background: var(--ark-color-bg-muted);
 }

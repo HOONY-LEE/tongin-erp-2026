@@ -271,27 +271,6 @@
   padding: 12px 14px;
   border-bottom: 1px solid var(--ark-color-border);
 }
-.searchBox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 12px 4px;
-  padding: 0 10px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: var(--search-radius);
-  color: var(--ark-color-text-tertiary);
-}
-.searchBox input {
-  flex: 1;
-  min-width: 0;
-  height: 34px;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--ark-color-text);
-  font: inherit;
-  font-size: calc(13px * var(--font-scale, 1));
-}
 .paletteList {
   flex: 1;
   overflow-y: auto;
@@ -490,22 +469,6 @@
   gap: 6px;
   font-size: calc(13px * var(--font-scale, 1));
   color: var(--ark-color-text-secondary);
-}
-.input {
-  padding: 7px 10px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 8px;
-  background: var(--ark-color-bg);
-  color: var(--ark-color-text);
-  font: inherit;
-  font-size: calc(13.5px * var(--font-scale, 1));
-}
-.input:focus {
-  outline: 2px solid color-mix(in srgb, var(--ark-color-primary-500) 40%, transparent);
-  border-color: var(--ark-color-primary-500);
-}
-textarea.input {
-  resize: vertical;
 }
 .vizGrid {
   display: grid;
