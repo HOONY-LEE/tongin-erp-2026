@@ -13,6 +13,7 @@ import {
   matchDemo,
 } from '../lib/demoAccounts';
 import { SearchInput } from '../components/ui/SearchInput';
+import { Checkbox } from '../components/ui';
 import styles from './desktopLogin.module.css';
 
 const REMEMBER_NAME_KEY = 'tongin.rememberName';
@@ -286,14 +287,14 @@ export default function DesktopLogin() {
           >
             {loading ? t('signin.loggingInDots') : t('signin.login')}
           </button>
-          <label className={styles.remember}>
-            <input
-              type="checkbox"
+          <span className={styles.remember}>
+            <Checkbox
+              size="sm"
               checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
+              onCheckedChange={(c) => setRemember(c === true)}
+              label={t('signin.remember')}
             />
-            {t('signin.remember')}
-          </label>
+          </span>
         </form>
 
         {showDemo && (

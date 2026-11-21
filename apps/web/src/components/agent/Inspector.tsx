@@ -2,7 +2,7 @@ import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
-import { Select, SegmentedControl } from '../ui';
+import { CheckChips, Checkbox, Select, SegmentedControl } from '../ui';
 import {
   AGENT_NODE_DESC,
   FIELD_TYPES,
@@ -318,14 +318,14 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
                 onChange={(e) => setField(i, { description: e.target.value })}
                 placeholder={t('agent.desc')}
               />
-              <label className={styles.check} style={{ whiteSpace: 'nowrap' }}>
-                <input
-                  type="checkbox"
+              <span style={{ whiteSpace: 'nowrap' }}>
+                <Checkbox
+                  size="sm"
                   checked={f.required}
-                  onChange={(e) => setField(i, { required: e.target.checked })}
+                  onCheckedChange={(c) => setField(i, { required: c === true })}
+                  label={t('agent.required')}
                 />
-                {t('agent.required')}
-              </label>
+              </span>
               <button
                 type="button"
                 className={`${styles.smallBtn} ${styles.dangerBtn}`}
@@ -1018,24 +1018,12 @@ function GuardrailFields({
                 />
                 <span>{t('agent.hour')}</span>
               </div>
-              <div className={styles.weekdays}>
-                {WEEKDAYS.map((d, k) => (
-                  <label key={k}>
-                    <input
-                      type="checkbox"
-                      checked={(r.weekdays ?? []).includes(k)}
-                      onChange={(e) =>
-                        setRule(i, {
-                          weekdays: e.target.checked
-                            ? [...(r.weekdays ?? []), k].sort()
-                            : (r.weekdays ?? []).filter((x) => x !== k),
-                        })
-                      }
-                    />
-                    {d}
-                  </label>
-                ))}
-              </div>
+              <CheckChips
+                size="sm"
+                value={(r.weekdays ?? []).map(String)}
+                onChange={(v) => setRule(i, { weekdays: v.map(Number) })}
+                options={WEEKDAYS.map((d, k) => ({ value: String(k), label: d }))}
+              />
             </>
           )}
           {r.kind === 'requireApproval' && (

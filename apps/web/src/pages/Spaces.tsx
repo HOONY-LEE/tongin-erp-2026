@@ -22,7 +22,7 @@ import {
   type Row,
   PhoneInput,
 } from '../components/ui';
-import { ChoiceChips } from '../components/approval/FormsAdmin';
+import { ChoiceChips } from '../components/ui';
 import { PersonPicker } from '../components/approval/FormFields';
 import styles from './spaces.module.css';
 import { formatPhone } from '../lib/phone';

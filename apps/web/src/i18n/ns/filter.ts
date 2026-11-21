@@ -1,0 +1,47 @@
+import { defineNs } from './define';
+
+/** 검색 옆 필터(FilterButton) */
+export default defineNs({
+  ko: {
+    button: '필터',
+    title: '필터',
+    reset: '초기화',
+    all: '전체',
+    from: '시작일',
+    to: '종료일',
+    today: '오늘',
+    last7: '최근 7일',
+    last30: '최근 30일',
+    thisMonth: '이번 달',
+    lastMonth: '지난달',
+    result: '{{v0}}건',
+  },
+  en: {
+    button: 'Filter',
+    title: 'Filters',
+    reset: 'Reset',
+    all: 'All',
+    from: 'From',
+    to: 'To',
+    today: 'Today',
+    last7: 'Last 7 days',
+    last30: 'Last 30 days',
+    thisMonth: 'This month',
+    lastMonth: 'Last month',
+    result: '{{v0}} results',
+  },
+  zh: {
+    button: '筛选',
+    title: '筛选',
+    reset: '重置',
+    all: '全部',
+    from: '开始日期',
+    to: '结束日期',
+    today: '今天',
+    last7: '最近7天',
+    last30: '最近30天',
+    thisMonth: '本月',
+    lastMonth: '上月',
+    result: '{{v0}}条',
+  },
+});

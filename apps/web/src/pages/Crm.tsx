@@ -44,7 +44,7 @@ import {
 } from '../components/ui';
 import styles from './franchise.module.css';
 import { CRM_ACTIVITY_LABEL, CRM_INTEREST_LABEL } from '../i18n/codes';
-import { DatePicker } from '../components/ui';
+import { ChoiceChips, DatePicker } from '../components/ui';
 
 type View = 'board' | 'list';
 const won = (n: number) => i18n.t('crm.won', { v0: n.toLocaleString('ko-KR') });
@@ -921,20 +921,12 @@ function LeadDetail({
             <h3 className={styles.blockTitle}>{t('crm.activities')}</h3>
             {canEdit && (
               <div className={styles.actForm}>
-                <div className="form-chips" role="radiogroup" aria-label={t('crm.activityKind')}>
-                  {ACT_KINDS.map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      role="radio"
-                      aria-checked={kind === k}
-                      className={`form-chip${kind === k ? ' form-chip-on' : ''}`}
-                      onClick={() => setKind(k)}
-                    >
-                      {CRM_ACTIVITY_LABEL[k]}
-                    </button>
-                  ))}
-                </div>
+                <ChoiceChips
+                  aria-label={t('crm.activityKind')}
+                  value={kind}
+                  onChange={setKind}
+                  options={ACT_KINDS.map((k) => ({ value: k, label: CRM_ACTIVITY_LABEL[k] }))}
+                />
                 <Textarea
                   rows={3}
                   value={content}

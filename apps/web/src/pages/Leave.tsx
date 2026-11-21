@@ -44,7 +44,7 @@ import { FormEditor } from '../components/approval/FormsAdmin';
 import astyles from '../components/approval/approval.module.css';
 import styles from './leave.module.css';
 import { LEAVE_SLOT_LABEL, LEAVE_STATUS_LABEL } from '../i18n/codes';
-import { DatePicker } from '../components/ui';
+import { ChoiceChips, DatePicker } from '../components/ui';
 
 type Tab = 'my' | 'all' | 'types' | 'grant' | 'form';
 
@@ -458,20 +458,12 @@ function RequestModal({
             <span>
               {t('leave.slot')} <span className={styles.over}>*</span>
             </span>
-            <div className={astyles.choiceChips} role="radiogroup" aria-label={t('leave.slot')}>
-              {slots.map((x) => (
-                <button
-                  key={x}
-                  type="button"
-                  role="radio"
-                  aria-checked={slot === x}
-                  className={`${astyles.choiceChip} ${slot === x ? astyles.choiceChipOn : ''}`}
-                  onClick={() => setSlot(x)}
-                >
-                  {LEAVE_SLOT_LABEL[x]}
-                </button>
-              ))}
-            </div>
+            <ChoiceChips
+              aria-label={t('leave.slot')}
+              value={slot}
+              onChange={setSlot}
+              options={slots.map((x) => ({ value: x, label: LEAVE_SLOT_LABEL[x] }))}
+            />
           </div>
         )}
         <label className={astyles.fieldLabel}>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ChevronDown, Download } from 'lucide-react';
 import { buildExportTable, downloadTableExport, type TableInstance } from 'softium-ui/table';
+import { Checkbox } from '@sunghoon_lee/akron-ui';
 import { api } from '../../lib/api';
 
 /** 가릴 수 있는 칸 — 표 내보내기·가리기 메뉴가 같이 쓴다 */
@@ -98,12 +99,12 @@ function MaskChecks({
     <>
       {columns.map((c) => (
         <label key={c.key} className="dt-mask-row">
-          <input
-            type="checkbox"
+          <Checkbox
+            size="sm"
             checked={checked.has(c.key)}
-            onChange={(e) => {
+            onCheckedChange={(on) => {
               const next = new Set(checked);
-              if (e.target.checked) next.add(c.key);
+              if (on === true) next.add(c.key);
               else next.delete(c.key);
               onChange(next);
             }}
