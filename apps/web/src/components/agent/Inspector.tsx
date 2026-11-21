@@ -5,15 +5,11 @@ import { Copy, Trash2 } from 'lucide-react';
 import { SegmentedControl } from '../ui';
 import {
   AGENT_NODE_DESC,
-  AGENT_NODE_LABEL,
   FIELD_TYPES,
   GUARDRAIL_KINDS,
-  GUARDRAIL_LABEL,
   TRIGGER_EVENTS,
   TRIGGER_EVENT_FIELDS,
-  TRIGGER_EVENT_LABEL,
   TRIGGER_KINDS,
-  TRIGGER_KIND_LABEL,
   type AgentIssue,
   type AgentNode,
   type AgentToolInfo,
@@ -37,6 +33,12 @@ import { NODE_COLOR } from './meta';
 import { useAiModels } from '../../lib/aiModels';
 import styles from '../../pages/agentBuilder.module.css';
 import { fs } from '../../lib/fontScale';
+import {
+  AGENT_NODE_LABEL,
+  GUARDRAIL_LABEL,
+  TRIGGER_EVENT_LABEL,
+  TRIGGER_KIND_LABEL,
+} from '../../i18n/codes';
 
 interface Props {
   node: AgentNode;

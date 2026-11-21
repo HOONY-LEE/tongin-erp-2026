@@ -6,9 +6,7 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import {
-  CAMPAIGN_CHANNEL_LABEL,
   LEAD_STATUS,
-  LEAD_STATUS_LABEL,
   SMS_MAX_BYTES,
   smsBytes,
   type CampaignAudienceFilter,
@@ -45,6 +43,7 @@ import { FilterMenu, FilterPopover } from '../components/campaign/FilterMenu';
 import fstyles from '../components/campaign/filterMenu.module.css';
 import styles from './campaign.module.css';
 import { formatPhone } from '../lib/phone';
+import { CAMPAIGN_CHANNEL_LABEL, LEAD_STATUS_LABEL } from '../i18n/codes';
 
 const SIDO = [
   '서울',

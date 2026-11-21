@@ -1,8 +1,9 @@
 import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
-import { HANDLING_BUCKETS, HANDLING_BUCKET_LABEL, type HandlingBucket } from '@tongin/shared';
+import { HANDLING_BUCKETS, type HandlingBucket } from '@tongin/shared';
 import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
+import { HANDLING_BUCKET_LABEL } from '../i18n/codes';
 
 const BUCKET_COLOR: Record<HandlingBucket, 'primary' | 'info' | 'warning' | 'neutral'> = {
   MOVING: 'primary',

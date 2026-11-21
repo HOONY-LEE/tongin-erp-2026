@@ -2,11 +2,12 @@ import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Play, X } from 'lucide-react';
-import { AGENT_RUN_STATUS_LABEL, type TriggerConfig } from '@tongin/shared';
+import { type TriggerConfig } from '@tongin/shared';
 import { Badge, Button } from '../ui';
 import { FileCard } from '../ai/ChatParts';
 import styles from '../../pages/agentBuilder.module.css';
 import { fs } from '../../lib/fontScale';
+import { AGENT_RUN_STATUS_LABEL } from '../../i18n/codes';
 
 export interface TraceStep {
   seq: number;

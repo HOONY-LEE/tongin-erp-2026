@@ -9,7 +9,7 @@ import { useDetailParam } from '../lib/useDetailParam';
 import { isHqUnit, useOrgUnits } from '../lib/orgUnits';
 import { OrgChart, type OrgChartEmployee } from '../components/OrgChart';
 import { EmployeeHrDetail, type HrRecord } from '../components/employee/EmployeeHrDetail';
-import { EMPLOYMENT_TYPES, EMPLOYMENT_TYPE_LABEL } from '@tongin/shared';
+import { EMPLOYMENT_TYPES } from '@tongin/shared';
 import {
   Button,
   DataTable,
@@ -21,6 +21,7 @@ import {
   type Row,
 } from '../components/ui';
 import { formatPhone } from '../lib/phone';
+import { EMPLOYMENT_TYPE_LABEL } from '../i18n/codes';
 
 const ACTIVE_FIELD: FormField = {
   name: 'isActive',

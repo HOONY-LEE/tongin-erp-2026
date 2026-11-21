@@ -1,12 +1,13 @@
 import i18n from '../../i18n';
 import { useEffect, useState } from 'react';
-import { PARTNER_TYPE_LABEL, type PartnerType } from '@tongin/shared';
+import { type PartnerType } from '@tongin/shared';
 import { api } from '../../lib/api';
 import { useOptions } from '../../lib/useOptions';
 import { useOrgScope } from '../../lib/useOrgScope';
 import { RECEIPT_SOURCES, SERVICE_LINES } from '../../lib/leadCodes';
 import { useAuth } from '../../auth/AuthContext';
 import type { FormField } from '../ui';
+import { PARTNER_TYPE_LABEL } from '../../i18n/codes';
 
 /**
  * 간편접수(접수 등록) 창의 항목과 기본값 — 접수 화면과 상담 콘솔이 같은 창을 쓴다.

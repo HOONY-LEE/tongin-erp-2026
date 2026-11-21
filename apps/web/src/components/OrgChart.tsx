@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { ORG_UNIT_TYPE_LABEL } from '@tongin/shared';
 import { isHqUnit, type OrgUnitRow } from '../lib/orgUnits';
 import styles from './OrgChart.module.css';
+import { ORG_UNIT_TYPE_LABEL } from '../i18n/codes';
 
 export interface OrgChartEmployee {
   id: string;

@@ -2,14 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { Globe2, Lock, Users, X } from 'lucide-react';
-import {
-  AGENT_VISIBILITY_HINT,
-  AGENT_VISIBILITY_LABEL,
-  type AgentVisibility,
-} from '@tongin/shared';
+import { AGENT_VISIBILITY_HINT, type AgentVisibility } from '@tongin/shared';
 import { api } from '../../lib/api';
 import { Checkbox, SegmentedControl } from '../ui';
 import styles from './share.module.css';
+import { AGENT_VISIBILITY_LABEL } from '../../i18n/codes';
 
 export interface ShareCandidate {
   id: string;

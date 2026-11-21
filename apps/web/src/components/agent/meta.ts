@@ -12,9 +12,6 @@ import {
   Zap,
 } from 'lucide-react';
 import {
-  GUARDRAIL_LABEL,
-  TRIGGER_EVENT_LABEL,
-  TRIGGER_KIND_LABEL,
   type AgentNode,
   type AgentNodeType,
   type AgentToolInfo,
@@ -27,6 +24,7 @@ import {
   type ToolConfig,
   type TriggerConfig,
 } from '@tongin/shared';
+import { GUARDRAIL_LABEL, TRIGGER_EVENT_LABEL, TRIGGER_KIND_LABEL } from '../../i18n/codes';
 
 export const NODE_ICON: Record<AgentNodeType, LucideIcon> = {
   trigger: Zap,

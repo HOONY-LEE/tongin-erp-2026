@@ -1,16 +1,12 @@
 import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  STATS_METRICS,
-  STATS_METRIC_LABEL,
-  type StatsByUnit,
-  type StatsMetric,
-} from '@tongin/shared';
+import { STATS_METRICS, type StatsByUnit, type StatsMetric } from '@tongin/shared';
 import { PageCard, SegmentedControl, Select } from '../ui';
 import { KOREA_MAP, loadMuniMap, normalizeSido, projectLatLng, type MuniMap } from './koreaMap';
 import { ColumnChart } from './ColumnChart';
 import styles from './dashboard.module.css';
+import { STATS_METRIC_LABEL } from '../../i18n/codes';
 
 /** 막대는 상위 몇 지점까지 */
 const TOP_N = 5;

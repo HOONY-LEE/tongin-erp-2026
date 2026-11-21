@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useMemo, useState, type ReactNode } from 'react';
 import { priceRequested } from './priceRequest';
-import { summarizeVolume, VOLUME_UNIT_LABEL } from '@tongin/shared';
+import { summarizeVolume } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { Button, SegmentedControl, useToast } from '../ui';
 import { SaveBar, UnitField } from './parts';
@@ -10,6 +10,7 @@ import { useTabForm } from './useTabForm';
 import { toNum, won, type EstimateDetailData, type TabProps } from './types';
 import styles from './estimate.module.css';
 import { fs } from '../../lib/fontScale';
+import { VOLUME_UNIT_LABEL } from '../../i18n/codes';
 
 interface AmountForm {
   moveAmount: string;

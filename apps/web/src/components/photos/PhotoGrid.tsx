@@ -2,10 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { ChevronLeft, ChevronRight, ImageOff, Trash2, X } from 'lucide-react';
-import { WORK_PHOTO_KIND_LABEL, type WorkPhotoMeta } from '@tongin/shared';
+import { type WorkPhotoMeta } from '@tongin/shared';
 import { Spinner } from '../ui';
 import { usePhotoUrl } from './workPhotos';
 import styles from './photos.module.css';
+import { WORK_PHOTO_KIND_LABEL } from '../../i18n/codes';
 
 /** 올리는 중인 사진 — 줄인 로컬 이미지를 바로 보여 주고 위에 진행 표시 */
 export interface PendingPhoto {

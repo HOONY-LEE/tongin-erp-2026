@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
-import { LEAD_STATUS_LABEL } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
 import { Input, PhoneInput, Select, useToast } from '../ui';
@@ -11,6 +10,7 @@ import { DistanceCard } from './DistanceCard';
 import { useTabForm } from './useTabForm';
 import type { EstimateDetailData, TabProps } from './types';
 import styles from './estimate.module.css';
+import { LEAD_STATUS_LABEL } from '../../i18n/codes';
 
 interface ProductRow {
   id: string;

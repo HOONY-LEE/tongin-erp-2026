@@ -1,7 +1,8 @@
 import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
-import { TASK_STATUS_LABEL, type TaskStatus } from '@tongin/shared';
+import { type TaskStatus } from '@tongin/shared';
+import { TASK_STATUS_LABEL } from '../../i18n/codes';
 
 /**
  * 작업관리 상태·우선순위 표시 — 리니어(Linear)처럼 모양과 색으로.

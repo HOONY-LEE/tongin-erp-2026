@@ -4,12 +4,7 @@ import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { LayoutGrid, List } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import {
-  AGENT_VISIBILITY_LABEL,
-  TRIGGER_KIND_LABEL,
-  type AgentVisibility,
-  type TriggerConfig,
-} from '@tongin/shared';
+import { type AgentVisibility, type TriggerConfig } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -29,6 +24,7 @@ import {
 import { VISIBILITY_ICON } from '../components/agent/SharePicker';
 import { HabitSuggestions } from '../components/agent/HabitSuggestions';
 import styles from './agentBuilder.module.css';
+import { AGENT_VISIBILITY_LABEL, TRIGGER_KIND_LABEL } from '../i18n/codes';
 
 type Filter = 'all' | 'mine' | 'shared';
 type View = 'cards' | 'table';

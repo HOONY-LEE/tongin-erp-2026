@@ -2,11 +2,12 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { DUTY_CYCLE_LABEL, type DutyView, type KpiResult } from '@tongin/shared';
+import { type DutyView, type KpiResult } from '@tongin/shared';
 import { api } from '../../lib/api';
 import { Badge } from '../ui';
 import { fmtKpi } from '../../lib/kpiFormat';
 import styles from '../../pages/performance.module.css';
+import { DUTY_CYCLE_LABEL } from '../../i18n/codes';
 
 /**
  * 조직관리 > 조직 상세 아래 — 그 조직의 역할·이번 분기 목표(성과 지표)·업무분장.

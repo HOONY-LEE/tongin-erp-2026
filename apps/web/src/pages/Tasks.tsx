@@ -12,7 +12,7 @@ import { EmployeeAvatar } from '../components/employee/EmployeeAvatar';
 import { ArrowRight, CalendarClock } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
-import { TASK_STATUS, TASK_STATUS_LABEL, type DutyView, type TaskStatus } from '@tongin/shared';
+import { TASK_STATUS, type DutyView, type TaskStatus } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
@@ -51,6 +51,7 @@ import {
   TaskStatusLabel,
 } from '../components/work/TaskIcons';
 import styles from './work.module.css';
+import { TASK_STATUS_LABEL } from '../i18n/codes';
 
 interface Task {
   id: string;

@@ -6,7 +6,6 @@ import {
   DEFAULT_FORM_AUDIENCE,
   FORM_ICONS,
   SUBSTITUTE_MODES,
-  SUBSTITUTE_MODE_LABEL,
   type ApprovalLineRule,
   type FormAudience,
   type FormField,
@@ -44,6 +43,7 @@ import { EMPTY_RULE, LineStepsEditor, useRuleText } from './LineTemplates';
 import styles from './approval.module.css';
 import cstyles from '../../pages/campaign.module.css';
 import fstyles from './formFields.module.css';
+import { SUBSTITUTE_MODE_LABEL } from '../../i18n/codes';
 
 /**
  * 결재 양식 관리(APPROVAL.MANAGE) — 지출 결의·구매 품의처럼 회사마다 다른 신청서를 항목으로 정의한다.

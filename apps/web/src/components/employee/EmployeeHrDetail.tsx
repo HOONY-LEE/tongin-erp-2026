@@ -1,13 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ORG_UNIT_TYPE_LABEL,
-  CHECKLIST_KIND_LABEL,
-  EMPLOYEE_HISTORY_LABEL,
-  EMPLOYMENT_TYPE_LABEL,
-  type ChecklistKind,
-  type EmploymentType,
-} from '@tongin/shared';
+import { type ChecklistKind, type EmploymentType } from '@tongin/shared';
 import { useAuth } from '../../auth/AuthContext';
 import { api, ApiError } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
@@ -33,6 +26,12 @@ import { EmployeeAvatar } from './EmployeeAvatar';
 import { PhotoCropModal } from './PhotoCropModal';
 import { primeEmployeePhoto } from '../../lib/employeePhoto';
 import { Camera } from 'lucide-react';
+import {
+  CHECKLIST_KIND_LABEL,
+  EMPLOYEE_HISTORY_LABEL,
+  EMPLOYMENT_TYPE_LABEL,
+  ORG_UNIT_TYPE_LABEL,
+} from '../../i18n/codes';
 
 export interface HrRecord {
   id: string;

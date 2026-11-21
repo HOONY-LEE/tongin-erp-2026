@@ -38,11 +38,8 @@ import {
   DASH_COLS,
   DASH_GROUPS,
   DASH_METRICS,
-  DASH_METRIC_LABEL,
   DASH_PERIODS,
-  DASH_PERIOD_LABEL,
   DASH_ROW_HEIGHT,
-  DASH_VIZ_LABEL,
   DASH_WIDGETS,
   DASH_WIDGET_MAP,
   canUseWidget,
@@ -60,6 +57,7 @@ import {
 import { useDashData } from './useDashData';
 import { WidgetFrame } from './WidgetFrame';
 import styles from './builder.module.css';
+import { DASH_METRIC_LABEL, DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../../../i18n/codes';
 
 const GAP = 12;
 const DND_MIME = 'application/x-tongin-widget';

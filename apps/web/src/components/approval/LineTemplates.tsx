@@ -6,8 +6,6 @@ import { Combobox } from '@sunghoon_lee/akron-ui';
 import {
   APPROVAL_DOC_TYPES,
   APPROVAL_LINE_MAX_STEPS,
-  APPROVAL_DOC_TYPE_LABEL,
-  APPROVAL_RESOLVER_LABEL,
   type ApprovalLineRule,
   type ApprovalResolver,
   type ApprovalStepKind,
@@ -26,6 +24,7 @@ import {
   type Row,
 } from '../ui';
 import styles from './approval.module.css';
+import { APPROVAL_DOC_TYPE_LABEL, APPROVAL_RESOLVER_LABEL } from '../../i18n/codes';
 
 interface Template {
   id: string;

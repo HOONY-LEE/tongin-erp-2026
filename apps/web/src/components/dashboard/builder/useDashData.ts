@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DashDataResult, DashItem } from '@tongin/shared';
 import { DASH_WIDGET_MAP } from '@tongin/shared';
 import { api } from '../../../lib/api';
+import { localizeServerLabels } from '../../../i18n/codes';
 
 /**
  * 위젯 데이터 한꺼번에 불러오기 — 위젯·기간·지표가 바뀐 것만 다시 부른다(위치·크기만 바뀌면 그대로).
@@ -62,7 +63,7 @@ export function useDashData(items: DashItem[], refreshKey = 0) {
         }),
       })
         .then((res) => {
-          for (const [s, r] of Object.entries(res)) cache.current.set(s, r);
+          for (const [s, r] of Object.entries(localizeServerLabels(res))) cache.current.set(s, r);
           if (alive) setResults(fromCache());
         })
         .catch((e) => {

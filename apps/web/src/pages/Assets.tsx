@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ASSET_AMOUNT_UNIT,
-  ASSET_AMOUNT_UNIT_LABEL,
   ASSET_KIND,
-  ASSET_KIND_LABEL,
   type AssetAmountUnit,
   type AssetKind,
 } from '@tongin/shared';
@@ -28,6 +26,7 @@ import {
   type StatusMap,
 } from '../components/ui';
 import styles from './work.module.css';
+import { ASSET_AMOUNT_UNIT_LABEL, ASSET_KIND_LABEL } from '../i18n/codes';
 
 interface Asset {
   id: string;

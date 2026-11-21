@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LEAD_STATUS_LABEL,
   PARTNER_CONTRACT_STATUSES,
-  PARTNER_CONTRACT_STATUS_LABEL,
   type LeadStatus,
   type PartnerContractStatus,
 } from '@tongin/shared';
@@ -30,6 +28,7 @@ import {
   type Row,
 } from '../components/ui';
 import styles from './franchise.module.css';
+import { LEAD_STATUS_LABEL, PARTNER_CONTRACT_STATUS_LABEL } from '../i18n/codes';
 
 type Kind = 'AFFILIATE' | 'EXCLUSIVE';
 interface Partner {

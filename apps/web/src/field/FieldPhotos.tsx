@@ -1,12 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, Images } from 'lucide-react';
-import {
-  WORK_PHOTO_KINDS,
-  WORK_PHOTO_KIND_LABEL,
-  type WorkPhotoKind,
-  type WorkPhotoMeta,
-} from '@tongin/shared';
+import { WORK_PHOTO_KINDS, type WorkPhotoKind, type WorkPhotoMeta } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { Button, Input, SegmentedControl, Spinner, useToast } from '../components/ui';
 import { PhotoGrid, type PendingPhoto } from '../components/photos/PhotoGrid';
@@ -18,6 +13,7 @@ import {
 } from '../components/photos/workPhotos';
 import styles from '../components/photos/photos.module.css';
 import { fs } from '../lib/fontScale';
+import { WORK_PHOTO_KIND_LABEL } from '../i18n/codes';
 
 export type PhotoCounts = Record<WorkPhotoKind, number>;
 

@@ -1,7 +1,6 @@
 import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  APPROVAL_DOC_TYPE_LABEL,
   type ApprovalDocType,
   type ApprovalLineRule,
   type ApprovalStepKind,
@@ -11,6 +10,7 @@ import {
 } from '@tongin/shared';
 import { api, cachedApi } from './api';
 import type { StatusMap } from '../components/ui';
+import { APPROVAL_DOC_TYPE_LABEL } from '../i18n/codes';
 
 /** 화면에 보일 사람 — 이름·직책·소속 */
 export interface Person {

@@ -5,9 +5,7 @@ import { fmtDate, fmtDateTime } from '../lib/dateFormat';
 import { CalendarClock, Mail, MessageSquare, Phone, Search, StickyNote, Users } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import {
-  CRM_ACTIVITY_LABEL,
   CRM_INTERESTS,
-  CRM_INTEREST_LABEL,
   CRM_PHASES,
   CRM_PIPELINES,
   crmPhaseOf,
@@ -44,6 +42,7 @@ import {
   type Row,
 } from '../components/ui';
 import styles from './franchise.module.css';
+import { CRM_ACTIVITY_LABEL, CRM_INTEREST_LABEL } from '../i18n/codes';
 
 type View = 'board' | 'list';
 const won = (n: number) => i18n.t('crm.won', { v0: n.toLocaleString('ko-KR') });

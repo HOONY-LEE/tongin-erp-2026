@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
-import { WORK_PHOTO_KINDS, WORK_PHOTO_KIND_LABEL, type WorkPhotoMeta } from '@tongin/shared';
+import { WORK_PHOTO_KINDS, type WorkPhotoMeta } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { Button, PageCard, Spinner } from '../ui';
 import { PhotoGrid } from './PhotoGrid';
 import { fs } from '../../lib/fontScale';
+import { WORK_PHOTO_KIND_LABEL } from '../../i18n/codes';
 
 /** 관리자 작업 상세 — 현장에서 올린 사진(조회만). 종류별로 묶어 보여 준다 */
 export function WorkPhotosCard({ workOrderId }: { workOrderId: string }) {

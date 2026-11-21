@@ -3,13 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SearchInput } from '../components/ui/SearchInput';
 import { useSearchParams } from 'react-router-dom';
 import { ExternalLink, Pencil, Trash2 } from 'lucide-react';
-import {
-  DUTY_CYCLES,
-  DUTY_CYCLE_LABEL,
-  TASK_STATUS_LABEL,
-  type DutyCycle,
-  type DutyView,
-} from '@tongin/shared';
+import { DUTY_CYCLES, type DutyCycle, type DutyView } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { useDirectory } from '../lib/approvals';
@@ -30,6 +24,7 @@ import {
   type Row,
 } from '../components/ui';
 import styles from './duties.module.css';
+import { DUTY_CYCLE_LABEL, TASK_STATUS_LABEL } from '../i18n/codes';
 
 interface DutyOrg {
   id: string;

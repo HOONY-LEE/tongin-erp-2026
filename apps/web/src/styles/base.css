@@ -632,7 +632,7 @@ input[placeholder*='찾기'] {
   font-size: 0;
 }
 .task-kanban [class*='_addButton_sj7t4'] > span::after {
-  content: '업무 추가';
+  content: var(--kanban-add-label, '업무 추가');
   font-size: var(--ark-font-size-sm);
 }
 

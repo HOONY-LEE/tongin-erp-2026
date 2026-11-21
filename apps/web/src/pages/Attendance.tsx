@@ -1,7 +1,7 @@
 import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ATTENDANCE_STATUS_LABEL, type AttendanceStatus, type WorkSettings } from '@tongin/shared';
+import { type AttendanceStatus, type WorkSettings } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { useTabParam } from '../lib/useDetailParam';
@@ -25,6 +25,7 @@ import {
 import { ApprovalLineEditor } from '../components/approval/ApprovalLineEditor';
 import astyles from '../components/approval/approval.module.css';
 import styles from './attendance.module.css';
+import { ATTENDANCE_STATUS_LABEL } from '../i18n/codes';
 
 type Tab = 'my' | 'daily' | 'monthly' | 'import' | 'settings';
 
