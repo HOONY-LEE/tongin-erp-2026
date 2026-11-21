@@ -580,17 +580,10 @@
 .mobileBar {
   display: none;
 }
+/* 모바일 대화 고르기 — 공통 Select를 감싼 칸 */
 .mobileSelect {
   flex: 1;
   min-width: 0;
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 10px;
-  background: var(--ark-color-bg);
-  font: inherit;
-  font-size: calc(15px * var(--font-scale, 1));
-  color: var(--ark-color-text);
 }
 
 /* 좁은 화면 — 대화 목록을 숨기고(새 채팅은 위에) 대화만 */
@@ -630,20 +623,11 @@
   align-items: center;
   gap: 4px;
 }
+/* 모델 고르기 — 공통 Select(sm)를 감싼 칸 */
 .modelSelect {
-  height: 34px;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ark-color-text-secondary);
-  font: inherit;
-  font-size: calc(14px * var(--font-scale, 1));
-  cursor: pointer;
-}
-.modelSelect:hover:not(:disabled) {
-  background: var(--ark-color-bg-muted);
-  color: var(--ark-color-text);
+  display: inline-flex;
+  width: 190px;
+  max-width: 45vw;
 }
 
 /* 대화처럼 — AI 쪽(답·도구 실행 줄·파일·이어서 할 일)은 오른쪽에 여백을 둔다 */
