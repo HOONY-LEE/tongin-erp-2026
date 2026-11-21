@@ -215,7 +215,11 @@ export function SoftphoneBar() {
           {custTag}
           {caller?.name && <span>{caller.name}</span>}
         </span>
-        {call.audioIssue === 'no-media' && <small className={styles.warn}>{t('cc.noAudio')}</small>}
+        {call.reconnecting ? (
+          <small className={styles.warn}>{t('cc.callReconnecting')}</small>
+        ) : (
+          call.audioIssue === 'no-media' && <small className={styles.warn}>{t('cc.noAudio')}</small>
+        )}
       </span>
       {call.audioIssue === 'blocked' && (
         <button type="button" className={styles.answer} onClick={resumeAudio}>
