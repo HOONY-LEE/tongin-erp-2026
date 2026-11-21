@@ -351,7 +351,7 @@ export default function CallCenter() {
         <span>{t('cc.st.TALKING')}</span>
         <b>{data.agents.filter((a) => a.state === 'BUSY').length}</b>
       </div>
-      <div className={data.outcalls.length ? styles.warnStat : ''}>
+      <div>
         <span>{t('cc.outboundWaiting')}</span>
         <b>{data.outcalls.length}</b>
       </div>

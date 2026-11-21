@@ -346,7 +346,7 @@ export default {
   },
   /** 헤더·사이드바·프로필 메뉴·탭 */
   shell: {
-    brand: 'Tongin Works',
+    brand: 'Tongin WORKS',
     profile: 'Profile',
     myProfile: 'My profile',
     editMenu: 'Edit my menu',

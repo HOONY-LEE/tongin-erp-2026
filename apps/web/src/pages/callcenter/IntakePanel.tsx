@@ -25,8 +25,7 @@ import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import styles from '../callcenter.module.css';
 import { MemoPresetPicker } from './MemoPresets';
-import { Recording } from './Recording';
-import { Transcript } from './Transcript';
+import { CallRecordButton } from './CallRecordModal';
 import { SmsModal } from './SmsModal';
 
 export interface IntakeCall {
@@ -442,6 +441,14 @@ export function IntakePanel({
                 <Phone size={14} /> {t('cc.call')}
               </Button>
             )}
+            {call.id && (
+              <CallRecordButton
+                callId={call.id}
+                callNo={call.callNo}
+                hasRecording={readOnly.hasRecording}
+                hasTranscript={!!readOnly.hasTranscript}
+              />
+            )}
             {can('LEAD.CREATE') && (
               <Button variant="outline" size="sm" onClick={() => setSmsOpen(true)}>
                 <MessageSquare size={14} /> {t('cc.sms')}
@@ -518,10 +525,6 @@ export function IntakePanel({
         </div>
       )}
 
-      {readOnly && call.id && (
-        <Recording callId={call.id} callNo={call.callNo} available={readOnly.hasRecording} />
-      )}
-      {readOnly && call.id && readOnly.hasTranscript && <Transcript callId={call.id} />}
       {/* 접수 입력 — 읽기 모드면 통째로 잠근다 */}
       <fieldset className={`${styles.form} ${styles.formSet}`} disabled={!!readOnly}>
         <label className={styles.field}>

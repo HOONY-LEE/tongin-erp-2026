@@ -357,25 +357,22 @@ export default function AppLayout() {
                       <ChevronRight size={16} />
                     </button>
                   ) : (
-                    // 파비콘과 같은 앱 아이콘 — 통인 주황 바탕 + 흰 호랑이
-                    <img
-                      src="/apple-touch-icon.png"
-                      alt={t('signin.brand')}
-                      width={24}
-                      height={24}
-                      style={{
-                        display: 'block',
-                        flexShrink: 0,
-                        borderRadius: 6,
-                      }}
-                    />
+                    // 파비콘과 같은 앱 아이콘 — 주황 상자(24px)는 그대로, 안의 호랑이만 조금 작게
+                    <span className={styles.brandIcon}>
+                      <img
+                        src="/apple-touch-icon.png"
+                        alt={t('signin.brand')}
+                        width={19}
+                        height={19}
+                      />
+                    </span>
                   )}
                   {!collapsed && (
                     <span
                       aria-label={PRODUCT_NAME}
                       style={{
                         fontSize: fs(15),
-                        fontWeight: 700,
+                        fontWeight: 500,
                         letterSpacing: -0.1,
                         whiteSpace: 'nowrap',
                       }}
