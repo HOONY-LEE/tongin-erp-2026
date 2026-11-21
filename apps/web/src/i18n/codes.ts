@@ -1,5 +1,5 @@
 import * as S from '@tongin/shared';
-import i18n, { codeLabel } from './index';
+import i18n, { codeLabel, tDyn } from './index';
 
 /**
  * 서버 이름표(@tongin/shared의 *_LABEL)를 지금 언어로 — 같은 이름·같은 모양의 표.
@@ -103,17 +103,24 @@ export function trServerLabel(text: string): string {
       for (const [k, v] of Object.entries(ko))
         if (!reverse.has(v)) reverse.set(v, codeLabel(group, k, ko));
   }
-  return reverse.get(text) ?? text;
+  const hit = reverse.get(text);
+  if (hit) return hit;
+  // 월 이름('12월')
+  const m = /^(\d{1,2})월$/.exec(text);
+  if (m)
+    return new Date(2000, Number(m[1]) - 1, 1).toLocaleString(i18n.language, { month: 'short' });
+  // 대시보드 표 칼럼 이름 등 서버 글자(dashw.s)
+  return tDyn(`dashw.s.${text}`, text);
 }
 
-/** 응답 안의 label·status 글자를 지금 언어로(깊이 따라가며 새 객체로) */
+/** 응답 안의 label·status·kind 글자를 지금 언어로(깊이 따라가며 새 객체로) */
 export function localizeServerLabels<T>(v: T): T {
   if (Array.isArray(v)) return v.map(localizeServerLabels) as T;
   if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, x] of Object.entries(v as Record<string, unknown>))
       out[k] =
-        (k === 'label' || k === 'status') && typeof x === 'string'
+        (k === 'label' || k === 'status' || k === 'kind') && typeof x === 'string'
           ? trServerLabel(x)
           : localizeServerLabels(x);
     return out as T;
