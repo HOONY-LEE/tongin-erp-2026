@@ -595,52 +595,65 @@ function PerformanceDetail({
           </div>
         </section>
         <section className={styles.tableCard}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t('perf.col.metrics')}</th>
-                <th>{t('perf.kind')}</th>
-                <th className={styles.num}>{t('perf.actual')}</th>
-                <th className={styles.num}>{t('perf.goal')}</th>
-                <th className={styles.num}>{t('perf.weight')}</th>
-                <th>{t('perf.achievement')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.metrics.map((m) => (
-                <tr key={m.key}>
-                  <td title={m.source}>
-                    <b>{m.label}</b>
-                  </td>
-                  <td>
-                    <Badge variant="subtle" color={m.auto ? 'info' : 'warning'} size="sm">
-                      {m.auto ? t('perf.auto') : t('perf.manual')}
-                    </Badge>
-                  </td>
-                  <td className={styles.num}>{fmtKpi(m.actual, m.unit)}</td>
-                  <td className={styles.num}>{fmtKpi(m.target, m.unit)}</td>
-                  <td className={styles.num}>{m.weight}</td>
-                  <td>
-                    {m.achievement === null ? (
-                      <span className={styles.muted}>
-                        {m.auto ? t('perf.noData') : t('perf.noActual')}
+          <DataTable
+            bare
+            pageSize={0}
+            rowKey="key"
+            columns={[
+              {
+                title: t('perf.col.metrics'),
+                dataIndex: 'label',
+                render: (r) => <b title={String(r.source ?? '')}>{String(r.label)}</b>,
+              },
+              {
+                title: t('perf.kind'),
+                dataIndex: 'auto',
+                render: (r) => (
+                  <Badge variant="subtle" color={r.auto ? 'info' : 'warning'} size="sm">
+                    {r.auto ? t('perf.auto') : t('perf.manual')}
+                  </Badge>
+                ),
+              },
+              {
+                title: t('perf.actual'),
+                dataIndex: 'actual',
+                numeric: true,
+                render: (r) => fmtKpi(r.actual as number | null, String(r.unit)),
+              },
+              {
+                title: t('perf.goal'),
+                dataIndex: 'target',
+                numeric: true,
+                render: (r) => fmtKpi(r.target as number | null, String(r.unit)),
+              },
+              { title: t('perf.weight'), dataIndex: 'weight', numeric: true },
+              {
+                title: t('perf.achievement'),
+                dataIndex: 'achievement',
+                flex: 1,
+                minWidth: 160,
+                render: (r) => {
+                  const a = r.achievement as number | null;
+                  return a === null ? (
+                    <span className={styles.muted}>
+                      {r.auto ? t('perf.noData') : t('perf.noActual')}
+                    </span>
+                  ) : (
+                    <span className={styles.barRow}>
+                      <span className={styles.bar}>
+                        <span
+                          className={`${styles.barFill} ${a >= 100 ? styles.barOk : a < 60 ? styles.barLow : ''}`}
+                          style={{ width: `${Math.min(100, a)}%` }}
+                        />
                       </span>
-                    ) : (
-                      <span className={styles.barRow}>
-                        <span className={styles.bar}>
-                          <span
-                            className={`${styles.barFill} ${m.achievement >= 100 ? styles.barOk : m.achievement < 60 ? styles.barLow : ''}`}
-                            style={{ width: `${Math.min(100, m.achievement)}%` }}
-                          />
-                        </span>
-                        <b>{Math.round(m.achievement)}%</b>
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <b>{Math.round(a)}%</b>
+                    </span>
+                  );
+                },
+              },
+            ]}
+            rows={r.metrics as unknown as Row[]}
+          />
           {insight && <p className={styles.insight}>{insight}</p>}
           {missing > 0 && (
             <p className={styles.hint}>

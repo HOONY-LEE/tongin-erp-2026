@@ -2,7 +2,7 @@ import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
-import { FileText, FileUp, RefreshCw, Search, Sparkles } from 'lucide-react';
+import { FileText, FileUp, RefreshCw, Sparkles } from 'lucide-react';
 import {
   KNOWLEDGE_CATEGORIES,
   KNOWLEDGE_CATEGORY_COLOR,
@@ -15,6 +15,7 @@ import {
   type KnowledgeGraph,
 } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
+import { SearchInput } from '../components/ui/SearchInput';
 import { api, ApiError } from '../lib/api';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -188,19 +189,12 @@ export default function Knowledge() {
     />
   );
   const search = (
-    <div className="sft-toolbar__search-wrap">
-      <span className="sft-toolbar__search-icon" aria-hidden="true">
-        <Search size={15} />
-      </span>
-      <input
-        className="sft-toolbar__search"
-        type="search"
-        value={q}
-        placeholder={view === 'graph' ? t('know.searchGraph') : t('know.searchList')}
-        aria-label={t('know.search')}
-        onChange={(e) => setQ(e.target.value)}
-      />
-    </div>
+    <SearchInput
+      value={q}
+      onChange={setQ}
+      placeholder={view === 'graph' ? t('know.searchGraph') : t('know.searchList')}
+      ariaLabel={t('know.search')}
+    />
   );
   const columns: Column[] = [
     { title: t('know.col.title'), dataIndex: 'title', flex: 1, minWidth: 180 },

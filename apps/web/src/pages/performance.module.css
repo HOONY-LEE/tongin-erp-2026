@@ -162,31 +162,6 @@
   border-radius: 2px;
   background: color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
 }
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: calc(13px * var(--font-scale, 1));
-}
-.table th {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--ark-color-border);
-  color: var(--ark-color-text-secondary);
-  font-weight: 600;
-  text-align: left;
-  white-space: nowrap;
-}
-.table td {
-  padding: 10px;
-  border-bottom: 1px solid var(--ark-color-border);
-  white-space: nowrap;
-}
-.table tr:last-child td {
-  border-bottom: 0;
-}
-.num {
-  text-align: right !important;
-  font-variant-numeric: tabular-nums;
-}
 .barRow {
   display: flex;
   align-items: center;

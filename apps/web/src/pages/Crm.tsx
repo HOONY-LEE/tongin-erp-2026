@@ -2,7 +2,7 @@ import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDate, fmtDateTime } from '../lib/dateFormat';
-import { CalendarClock, Mail, MessageSquare, Phone, Search, StickyNote, Users } from 'lucide-react';
+import { CalendarClock, Mail, MessageSquare, Phone, StickyNote, Users } from 'lucide-react';
 import { KanbanBoard, type KanbanCard, type KanbanColumn } from '@sunghoon_lee/akron-ui';
 import {
   CRM_INTERESTS,
@@ -19,6 +19,7 @@ import {
   type CrmPipelineKey,
 } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
+import { SearchInput } from '../components/ui/SearchInput';
 import { api, ApiError } from '../lib/api';
 import { useDirectory } from '../lib/approvals';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
@@ -393,19 +394,12 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     />
   );
   const search = (
-    <div className="sft-toolbar__search-wrap">
-      <span className="sft-toolbar__search-icon" aria-hidden="true">
-        <Search size={15} />
-      </span>
-      <input
-        className="sft-toolbar__search"
-        type="search"
-        value={q}
-        placeholder={t('crm.searchPh')}
-        aria-label={t('crm.search')}
-        onChange={(e) => setQ(e.target.value)}
-      />
-    </div>
+    <SearchInput
+      value={q}
+      onChange={setQ}
+      placeholder={t('crm.searchPh')}
+      ariaLabel={t('crm.search')}
+    />
   );
 
   const phaseRows = filtered.filter((r) => phase === 'all' || crmPhaseOf(def, r.stage) === phase);
@@ -1174,36 +1168,51 @@ function ImportModal({
             </p>
           ))}
           <div className={styles.importTable}>
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('crm.result')}</th>
-                  <th>{def.companyLabel.replace(/\(.*\)/, '')}</th>
-                  <th>{def.contactLabel.replace(/\(.*\)/, '')}</th>
-                  <th>{t('crm.f.phone')}</th>
-                  <th>{t('crm.col.region')}</th>
-                  <th>{t('crm.f.stage')}</th>
-                  <th>{t('crm.f.interest')}</th>
-                  <th>{t('crm.f.owner')}</th>
-                  <th>{t('crm.createdAt')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.rows.map((r, i) => (
-                  <tr key={i} className={r.status === 'create' ? '' : styles.rowDim}>
-                    <td>{IMPORT_STATUS[r.status]}</td>
-                    <td>{r.companyName}</td>
-                    <td>{r.contactName ?? '—'}</td>
-                    <td>{r.phone ? formatPhone(r.phone) : '—'}</td>
-                    <td>{r.region ?? '—'}</td>
-                    <td>{r.stage}</td>
-                    <td>{CRM_INTEREST_LABEL[r.interest as CrmInterest]}</td>
-                    <td>{r.ownerName ?? '—'}</td>
-                    <td>{r.createdAt ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+              bare
+              pageSize={20}
+              columns={[
+                {
+                  title: t('crm.result'),
+                  dataIndex: 'status',
+                  render: (r) =>
+                    IMPORT_STATUS[r.status as CrmImportPreview['rows'][number]['status']],
+                },
+                { title: def.companyLabel.replace(/\(.*\)/, ''), dataIndex: 'companyName' },
+                {
+                  title: def.contactLabel.replace(/\(.*\)/, ''),
+                  dataIndex: 'contactName',
+                  render: (r) => String(r.contactName ?? '—'),
+                },
+                {
+                  title: t('crm.f.phone'),
+                  dataIndex: 'phone',
+                  render: (r) => (r.phone ? formatPhone(String(r.phone)) : '—'),
+                },
+                {
+                  title: t('crm.col.region'),
+                  dataIndex: 'region',
+                  render: (r) => String(r.region ?? '—'),
+                },
+                { title: t('crm.f.stage'), dataIndex: 'stage' },
+                {
+                  title: t('crm.f.interest'),
+                  dataIndex: 'interest',
+                  render: (r) => CRM_INTEREST_LABEL[r.interest as CrmInterest],
+                },
+                {
+                  title: t('crm.f.owner'),
+                  dataIndex: 'ownerName',
+                  render: (r) => String(r.ownerName ?? '—'),
+                },
+                {
+                  title: t('crm.createdAt'),
+                  dataIndex: 'createdAt',
+                  render: (r) => String(r.createdAt ?? '—'),
+                },
+              ]}
+              rows={preview.rows.map((r, i) => ({ ...r, id: String(i) })) as unknown as Row[]}
+            />
           </div>
         </div>
       )}

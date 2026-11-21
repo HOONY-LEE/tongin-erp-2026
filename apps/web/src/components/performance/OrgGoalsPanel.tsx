@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { type DutyView, type KpiResult } from '@tongin/shared';
 import { api } from '../../lib/api';
-import { Badge } from '../ui';
+import { Badge, DataTable, type Row } from '../ui';
 import { fmtKpi } from '../../lib/kpiFormat';
 import styles from '../../pages/performance.module.css';
 import { DUTY_CYCLE_LABEL } from '../../i18n/codes';
@@ -64,35 +64,43 @@ export function OrgGoalsPanel({ orgId }: { orgId: string }) {
             </Link>
           </div>
           {kpi ? (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t('perf.col.metrics')}</th>
-                  <th className={styles.num}>{t('perf.goal')}</th>
-                  <th className={styles.num}>{t('perf.actual')}</th>
-                  <th className={styles.num}>{t('perf.achievement')}</th>
-                  <th className={styles.num}>{t('perf.weightShort')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {kpi.metrics.map((m) => {
-                  const w = kpi.metrics.reduce((t, x) => t + x.weight, 0);
-                  return (
-                    <tr key={m.key}>
-                      <td>{m.label}</td>
-                      <td className={styles.num}>{fmtKpi(m.target, m.unit)}</td>
-                      <td className={styles.num}>{fmtKpi(m.actual, m.unit)}</td>
-                      <td className={styles.num}>
-                        {m.achievement === null ? '—' : `${Math.round(m.achievement)}%`}
-                      </td>
-                      <td className={styles.num}>
-                        {w ? `${Math.round((m.weight / w) * 100)}%` : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DataTable
+              bare
+              pageSize={0}
+              rowKey="key"
+              columns={[
+                { title: t('perf.col.metrics'), dataIndex: 'label', flex: 1 },
+                {
+                  title: t('perf.goal'),
+                  dataIndex: 'target',
+                  numeric: true,
+                  render: (r) => fmtKpi(r.target as number | null, String(r.unit)),
+                },
+                {
+                  title: t('perf.actual'),
+                  dataIndex: 'actual',
+                  numeric: true,
+                  render: (r) => fmtKpi(r.actual as number | null, String(r.unit)),
+                },
+                {
+                  title: t('perf.achievement'),
+                  dataIndex: 'achievement',
+                  numeric: true,
+                  render: (r) =>
+                    r.achievement === null ? '—' : `${Math.round(r.achievement as number)}%`,
+                },
+                {
+                  title: t('perf.weightShort'),
+                  dataIndex: 'weight',
+                  numeric: true,
+                  render: (r) => {
+                    const w = kpi.metrics.reduce((t, x) => t + x.weight, 0);
+                    return w ? `${Math.round(((r.weight as number) / w) * 100)}%` : '—';
+                  },
+                },
+              ]}
+              rows={kpi.metrics as unknown as Row[]}
+            />
           ) : (
             <p className={styles.muted}>{t('perf.loading')}</p>
           )}

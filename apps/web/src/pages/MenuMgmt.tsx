@@ -18,9 +18,11 @@ import {
   Checkbox,
   DataTable,
   FormModal,
+  Input,
   ListPage,
   PageHeader,
   PageSkeleton,
+  Select,
   useToast,
 } from '../components/ui';
 import type { Column, FormField, Row } from '../components/ui';
@@ -383,8 +385,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 <span>
                   {t('menu.name')} <b className={styles.req}>*</b>
                 </span>
-                <input
-                  className={styles.input}
+                <Input
                   value={p.name}
                   maxLength={40}
                   disabled={!editable}
@@ -393,8 +394,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
               </label>
               <label className={styles.field}>
                 <span>{t('menu.priority')}</span>
-                <input
-                  className={styles.input}
+                <Input
                   type="number"
                   min={0}
                   max={9999}
@@ -405,8 +405,7 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
               </label>
               <label className={`${styles.field} ${styles.wide}`}>
                 <span>{t('menu.desc')}</span>
-                <input
-                  className={styles.input}
+                <Input
                   value={p.description ?? ''}
                   maxLength={200}
                   disabled={!editable}
@@ -479,24 +478,23 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
                         </span>
                       ))}
                       {editable && (
-                        <select
-                          className={styles.addSelect}
-                          value=""
-                          aria-label={t('menu.addOf', { v0: MENU_TARGET_LABEL[kind] })}
-                          onChange={(e) => {
-                            const o = opts[kind].find((x) => x.id === e.target.value);
-                            if (!o) return;
-                            setTargets((ts) => [...ts, { kind, targetId: o.id, name: o.name }]);
-                            setDirty(true);
-                          }}
-                        >
-                          <option value="">{t('menu.addOpt')}</option>
-                          {left.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.sub ? `${o.name} (${o.sub})` : o.name}
-                            </option>
-                          ))}
-                        </select>
+                        <span className={styles.addSelect}>
+                          <Select
+                            size="sm"
+                            value=""
+                            placeholder={t('menu.addOpt')}
+                            options={left.map((o) => ({
+                              value: o.id,
+                              label: o.sub ? `${o.name} (${o.sub})` : o.name,
+                            }))}
+                            onValueChange={(v) => {
+                              const o = opts[kind].find((x) => x.id === v);
+                              if (!o) return;
+                              setTargets((ts) => [...ts, { kind, targetId: o.id, name: o.name }]);
+                              setDirty(true);
+                            }}
+                          />
+                        </span>
                       )}
                     </div>
                   </div>
@@ -530,19 +528,12 @@ function ProfileDetail({ id, onBack }: { id: string; onBack: () => void }) {
             <h3 className={styles.cardTitle}>
               <Eye size={15} /> {t('menu.forPerson')}
             </h3>
-            <select
-              className={styles.input}
+            <Select
               value={previewUser}
-              onChange={(e) => void loadPreview(e.target.value)}
-              aria-label={t('menu.previewAccount')}
-            >
-              <option value="">{t('menu.pickAccount')}</option>
-              {opts.USER.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name} ({o.sub})
-                </option>
-              ))}
-            </select>
+              placeholder={t('menu.pickAccount')}
+              options={opts.USER.map((o) => ({ value: o.id, label: `${o.name} (${o.sub})` }))}
+              onValueChange={(v) => void loadPreview(v)}
+            />
             {previewLayout ? (
               <>
                 <p className={styles.meta}>

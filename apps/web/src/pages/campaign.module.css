@@ -127,34 +127,9 @@
   outline-offset: 2px;
 }
 
-/* 고객 목록 */
+/* 고객 목록 — 공통 표(DataTable)를 감싸는 자리 */
 .tableWrap {
-  overflow-x: auto;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 10px;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: calc(13px * var(--font-scale, 1));
-}
-.table th,
-.table td {
-  padding: 8px 10px;
-  text-align: left;
-  border-bottom: 1px solid var(--ark-color-border);
-  white-space: nowrap;
-}
-.table th {
-  background: var(--ark-color-bg-muted);
-  font-weight: 600;
-  color: var(--ark-color-text-secondary);
-}
-.table tr:last-child td {
-  border-bottom: none;
-}
-.rowOn td {
-  background: color-mix(in srgb, var(--ark-color-primary-500) 5%, transparent);
+  min-width: 0;
 }
 .addr {
   max-width: 260px;

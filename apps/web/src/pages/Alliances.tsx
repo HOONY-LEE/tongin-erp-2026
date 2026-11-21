@@ -12,6 +12,7 @@ import { api, ApiError } from '../lib/api';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { formatPhone } from '../lib/phone';
+import { fmtDateTime } from '../lib/dateFormat';
 import {
   Badge,
   Button,
@@ -460,30 +461,42 @@ function PartnerDetailView({
         <section className={styles.block}>
           <h3 className={styles.blockTitle}>{t('ally.recentLeads')}</h3>
           {d.recentLeads.length ? (
-            <table className={styles.miniTable}>
-              <thead>
-                <tr>
-                  <th>{t('ally.col.leadNo')}</th>
-                  <th>{t('ally.col.customer')}</th>
-                  <th>{t('ally.col.owner')}</th>
-                  <th>{t('ally.col.status')}</th>
-                  <th>{t('ally.col.receivedAt')}</th>
-                  <th>{t('ally.col.moveDate')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.recentLeads.map((l) => (
-                  <tr key={l.id} onClick={() => navigate(`/leads/${l.id}`)}>
-                    <td>{l.leadNo}</td>
-                    <td>{l.customer?.name ?? '—'}</td>
-                    <td>{l.orgUnit?.name ?? '—'}</td>
-                    <td>{LEAD_STATUS_LABEL[l.status as LeadStatus] ?? l.status}</td>
-                    <td>{ymd(l.createdAt)}</td>
-                    <td>{ymd(l.moveDate)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+              bare
+              pageSize={0}
+              columns={[
+                { title: t('ally.col.leadNo'), dataIndex: 'leadNo', width: 150 },
+                {
+                  title: t('ally.col.customer'),
+                  dataIndex: 'customer',
+                  render: (r) => (r.customer as { name: string } | null)?.name ?? '—',
+                },
+                {
+                  title: t('ally.col.owner'),
+                  dataIndex: 'orgUnit',
+                  render: (r) => (r.orgUnit as { name: string } | null)?.name ?? '—',
+                },
+                {
+                  title: t('ally.col.status'),
+                  dataIndex: 'status',
+                  render: (r) =>
+                    LEAD_STATUS_LABEL[r.status as LeadStatus] ?? String(r.status ?? ''),
+                },
+                {
+                  title: t('ally.col.receivedAt'),
+                  dataIndex: 'createdAt',
+                  width: 170,
+                  render: (r) => fmtDateTime(String(r.createdAt)),
+                },
+                {
+                  title: t('ally.col.moveDate'),
+                  dataIndex: 'moveDate',
+                  render: (r) => ymd(r.moveDate as string | null) || '—',
+                },
+              ]}
+              rows={d.recentLeads as unknown as Row[]}
+              onRowClick={(r) => navigate(`/leads/${String(r.id)}`)}
+            />
           ) : (
             <p className={styles.muted}>
               {t('ally.noLeads1')}
@@ -572,26 +585,30 @@ function ImportModal({
         ) : (
           parsed.rows.length > 0 && (
             <div className={styles.importTable}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t('ally.f.name')}</th>
-                    <th>{t('ally.col.status')}</th>
-                    <th>{t('ally.content')}</th>
-                    <th>{t('ally.f.intake')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsed.rows.slice(0, 200).map((r, i) => (
-                    <tr key={i}>
-                      <td>{r.name}</td>
-                      <td>{r.status || '—'}</td>
-                      <td>{(r.benefit ?? '').slice(0, 60) || '—'}</td>
-                      <td>{r.intake || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                bare
+                pageSize={20}
+                columns={[
+                  { title: t('ally.f.name'), dataIndex: 'name' },
+                  {
+                    title: t('ally.col.status'),
+                    dataIndex: 'status',
+                    render: (r) => String(r.status || '—'),
+                  },
+                  {
+                    title: t('ally.content'),
+                    dataIndex: 'benefit',
+                    flex: 1,
+                    render: (r) => String(r.benefit ?? '').slice(0, 60) || '—',
+                  },
+                  {
+                    title: t('ally.f.intake'),
+                    dataIndex: 'intake',
+                    render: (r) => String(r.intake || '—'),
+                  },
+                ]}
+                rows={parsed.rows.slice(0, 200).map((r, i) => ({ ...r, id: String(i) })) as Row[]}
+              />
             </div>
           )
         )}
