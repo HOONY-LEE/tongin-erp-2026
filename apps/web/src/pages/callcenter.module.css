@@ -749,7 +749,7 @@
 .ocItem {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 10px;
   border: 1px solid var(--ark-color-border);
   border-radius: 10px;
@@ -778,9 +778,19 @@
   line-height: 1.3;
 }
 .ocPhone {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-size: calc(14px * var(--font-scale, 1));
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.ocPhone > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ocPhone .ocTimes {
+  flex: none;
 }
 .ocInfo {
   overflow: hidden;
@@ -1271,10 +1281,6 @@ textarea.memoBox {
 .historyList button:disabled {
   cursor: default;
 }
-.hWhen {
-  color: var(--ark-color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
 .hKind {
   justify-self: start;
   padding: 2px 8px;
@@ -1300,15 +1306,6 @@ textarea.memoBox {
 .k_payment {
   background: #ffedd5;
   color: #c2410c;
-}
-.hText {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.hActor {
-  color: var(--ark-color-text-secondary);
-  font-size: 12px;
 }
 
 /* ── 오른쪽 카드 — 머리(구분선) + 그 아래만 스크롤 ── */
@@ -1807,7 +1804,8 @@ textarea.memoBox {
 }
 /* 상담 화면 — 아래 줄(고객 이력 · 아웃콜 목록)은 같은 높이, 위 줄(상담 카드 · 달력+메모)도 같은 높이 */
 .grid {
-  --bottom-h: 25%;
+  /* 아래 카드(고객 이력 · 아웃콜) 높이 — 키우면 위(접수 정보 · 상담 메모)가 함께 줄어든다 */
+  --bottom-h: 34%;
 }
 .leftCol > .historyCard {
   flex: 0 0 var(--bottom-h);
@@ -1861,45 +1859,15 @@ textarea.memoBox {
   font-weight: 600;
 }
 
-/* 고객 이력 — 다른 표와 같은 모양(흰 머리·작은 회색 글자, 가로 선만) */
+/* 고객 이력 — 공통 표(DataTable bare)를 카드 높이에 꽉 */
 .historyCard .paneBody {
+  display: flex;
+  flex-direction: column;
   padding: 0 !important;
 }
-.hTable {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: calc(14px * var(--font-scale, 1));
-}
-.hTable thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  height: 38px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--ark-color-border);
-  background: var(--ark-color-bg);
-  color: var(--ark-color-text-secondary);
-  font-size: calc(12.5px * var(--font-scale, 1));
-  font-weight: 600;
-  text-align: left;
-}
-.hTable td {
-  height: 42px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--ark-color-border);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.hTable tbody tr:last-child td {
-  border-bottom: 0;
-}
-.hClickable {
-  cursor: pointer;
-}
-.hClickable:hover td {
-  background: var(--ark-color-bg-muted);
+.historyCard .paneBody > :global(.dt-wrap) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .historyCard .muted {
   padding: 12px 16px;
@@ -2430,4 +2398,44 @@ textarea.memoBox {
   margin: 8px 0 0;
   color: var(--ark-color-text-tertiary, #aeaeb2);
   font-size: 12px;
+}
+
+/* 오른쪽 카드 머리 — 마감 달력과 같은 얇은 머리(아이콘 없이 제목 · 개수 · 오른쪽 버튼) + 아래 구분선 */
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sideHead b {
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.sideHead .scriptTools button {
+  height: 26px;
+}
+/* 상담 메모 본문 — 머리 아래 여백 */
+.scriptPaneBody {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  overflow-y: auto;
+}
+/* 같은 번호로 여러 번 남은 아웃콜 — 부재중 전화처럼 횟수 */
+.ocTimes {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: 2px;
+  box-sizing: border-box;
 }

@@ -78,6 +78,7 @@ export default defineNs({
     msN: '{{v0}}분 {{v1}}초',
     dialFailed: '전화를 걸지 못했습니다',
     ended: '상담을 종료했습니다',
+    timesTip: '이 번호로 {{v0}}번 남은 전화',
     draftLoaded: '같은 고객의 앞 상담({{v0}})에 적던 내용을 불러왔습니다',
     pickProduct: '{{v0}} 상품을 골라 주세요.',
     kind: {
@@ -233,6 +234,7 @@ export default defineNs({
       duration: '통화시간',
       time: '일시',
       kind: '구분',
+      assignee: '담당자',
     },
     notWrapped: '마무리 전',
     myCalls: '내 전화',
@@ -440,6 +442,7 @@ export default defineNs({
     msN: '{{v0}}m {{v1}}s',
     dialFailed: 'Could not place the call',
     ended: 'Consultation ended',
+    timesTip: '{{v0}} calls left from this number',
     draftLoaded: "Loaded what was written in this customer's previous consult ({{v0}})",
     pickProduct: 'Please choose a {{v0}} product.',
     kind: {
@@ -601,6 +604,7 @@ export default defineNs({
       duration: 'Duration',
       time: 'Time',
       kind: 'Type',
+      assignee: 'Assignee',
     },
     notWrapped: 'Not wrapped up',
     myCalls: 'My calls',
@@ -810,6 +814,7 @@ export default defineNs({
     msN: '{{v0}} 分 {{v1}} 秒',
     dialFailed: '拨号失败',
     ended: '已结束咨询',
+    timesTip: '该号码留下 {{v0}} 次来电',
     draftLoaded: '已载入同一客户上次咨询（{{v0}}）中填写的内容',
     pickProduct: '请选择{{v0}}产品。',
     kind: {
@@ -965,6 +970,7 @@ export default defineNs({
       duration: '通话时长',
       time: '时间',
       kind: '类别',
+      assignee: '负责人',
     },
     notWrapped: '未收尾',
     myCalls: '我的电话',

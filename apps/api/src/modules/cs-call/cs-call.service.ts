@@ -445,7 +445,13 @@ export class CsCallService {
     });
     if (!r.count) throw new ConflictException('다른 상담원이 이미 콜백했거나 끝난 콜입니다.');
     await this.holdAgent(this.prisma, me);
-    return this.prisma.csCall.findUniqueOrThrow({ where: { id } });
+    const call = await this.prisma.csCall.findUniqueOrThrow({ where: { id } });
+    // 같은 번호로 여러 번 남은 아웃콜 — 한 번 콜백하면 나머지도 함께 정리(목록에서는 한 줄 + 횟수)
+    await this.prisma.csCall.updateMany({
+      where: { phone: call.phone, status: 'OUTCALL', id: { not: id } },
+      data: { status: 'CANCELED', doneAt: new Date(), memo: '같은 번호 콜백으로 함께 정리' },
+    });
+    return call;
   }
 
   /**
