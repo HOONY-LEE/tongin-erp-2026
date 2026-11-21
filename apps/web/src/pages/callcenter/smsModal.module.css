@@ -85,10 +85,12 @@
   color: var(--ark-color-text-primary);
 }
 .chipShared {
-  border-color: #bfdbfe;
-  color: #1d4ed8;
+  border-color: var(--ark-color-text-primary);
+  color: var(--ark-color-text-primary);
 }
-.chipOn {
+/* 고른 칩 — 마우스를 올린 채여도 글자가 배경색에 묻히지 않게 hover보다 강하게 */
+.chipOn,
+.chipOn:hover {
   border-color: var(--ark-color-text-primary);
   background: var(--ark-color-text-primary);
   color: var(--ark-color-bg);

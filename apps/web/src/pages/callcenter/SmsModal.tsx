@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
-import { Save, Send, Trash2, Users } from 'lucide-react';
+import { Save, Send, Trash2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { formatPhone } from '../../lib/phone';
 import { useAuth } from '../../auth/AuthContext';
@@ -196,7 +196,6 @@ export function SmsModal({
                       title={tpl.shared ? t('cc.sharedTemplates') : t('cc.myTemplates')}
                       onClick={() => pick(tpl)}
                     >
-                      {tpl.shared && <Users size={11} />}
                       {tpl.title}
                     </button>
                     {(!tpl.shared || tpl.employeeId === user?.employeeId) && (
