@@ -4,7 +4,7 @@ import { fmtDateTime } from '../../lib/dateFormat';
 import { AlertTriangle, Check, CircleDot, Play, ShieldCheck, X } from 'lucide-react';
 import { type AgentVisibility, type InputField } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
-import { Badge, Button, useToast } from '../ui';
+import { Badge, Button, Select, useToast } from '../ui';
 import { VISIBILITY_ICON } from '../agent/SharePicker';
 import type { AgentRunView, TraceStep } from '../agent/RunPanel';
 import { Markdown } from './Markdown';
@@ -31,6 +31,9 @@ interface RunSummary {
   error: string | null;
   createdAt: string;
 }
+
+/** 고르기에서 '선택 안 함'(빈 값은 고르기 항목이 될 수 없어 대신 쓰는 값) */
+const NONE = '__none';
 
 const STATUS_COLOR: Record<string, 'success' | 'error' | 'warning' | 'info' | 'neutral'> = {
   DONE: 'success',
@@ -181,15 +184,18 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
                   {f.required && <span className={styles.req}> *</span>}
                 </span>
                 {f.type === 'boolean' ? (
-                  <select
-                    className={styles.input}
-                    value={values[f.name] ?? ''}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                  >
-                    <option value="">{t('ai.none')}</option>
-                    <option value="true">{t('ai.yes')}</option>
-                    <option value="false">{t('ai.no')}</option>
-                  </select>
+                  <Select
+                    size="sm"
+                    value={values[f.name] || NONE}
+                    onValueChange={(x) =>
+                      setValues((v) => ({ ...v, [f.name]: x === NONE ? '' : x }))
+                    }
+                    options={[
+                      { value: NONE, label: t('ai.none') },
+                      { value: 'true', label: t('ai.yes') },
+                      { value: 'false', label: t('ai.no') },
+                    ]}
+                  />
                 ) : (
                   <input
                     className={styles.input}

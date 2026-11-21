@@ -728,11 +728,30 @@ select:focus {
 button[class*='_trigger_15c7g_'] {
   border-radius: var(--control-radius) !important;
 }
+/* 검색 드롭다운(Combobox)도 일반 드롭다운(Select)과 같은 모양 — 테두리 색·높이·글자·여백·포커스 */
+button[class*='_trigger_15c7g_'] {
+  box-sizing: border-box;
+  height: var(--ark-input-height-md, 36px);
+  min-height: var(--ark-input-height-md, 36px);
+  padding: 0 var(--ark-input-padding-x, 12px) !important;
+  border-color: var(--ark-input-border-color) !important;
+  font-size: var(--ark-input-font-size-md, 14px) !important;
+}
+button[class*='_trigger_15c7g_'][class*='_sm_'] {
+  height: var(--ark-input-height-sm, 32px);
+  min-height: var(--ark-input-height-sm, 32px);
+  font-size: var(--ark-input-font-size-sm, 13px) !important;
+}
+button[class*='_trigger_15c7g_']:focus-visible,
+button[class*='_trigger_15c7g_'][class*='_open_'] {
+  border-color: var(--focus-ring) !important;
+  box-shadow: 0 0 0 1px var(--focus-ring) !important;
+}
 /* 입력 창(모달) 안에서는 일반 드롭다운(36px)과 같은 높이 */
 [role='dialog'] button[class*='_trigger_15c7g_'] {
-  box-sizing: border-box;
   height: 36px;
   min-height: 36px;
+  font-size: var(--ark-input-font-size-md, 14px) !important;
 }
 /* 세그먼트 탭 — 바깥 트랙은 10px, 안쪽 칸·움직이는 표시는 트랙 안쪽 여백(4px)만큼 작게 */
 [class*='_track_b4708_'] {

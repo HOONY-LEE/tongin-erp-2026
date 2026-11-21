@@ -2,7 +2,7 @@ import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Trash2 } from 'lucide-react';
-import { SegmentedControl } from '../ui';
+import { Select, SegmentedControl } from '../ui';
 import {
   AGENT_NODE_DESC,
   FIELD_TYPES,
@@ -219,17 +219,12 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
   return (
     <>
       <Label title={t('agent.triggerKind')}>
-        <select
-          className={styles.select}
+        <Select
+          size="sm"
           value={c.kind}
-          onChange={(e) => patch({ kind: e.target.value })}
-        >
-          {TRIGGER_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {TRIGGER_KIND_LABEL[k]}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => patch({ kind: v })}
+          options={TRIGGER_KINDS.map((k) => ({ value: k, label: TRIGGER_KIND_LABEL[k] }))}
+        />
       </Label>
       {c.kind === 'schedule' && (
         <Label title={t('agent.cronExpr')} hint={t('agent.cronHint')}>
@@ -258,17 +253,15 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
       )}
       {c.kind === 'event' && (
         <Label title={t('agent.event')}>
-          <select
-            className={styles.select}
+          <Select
+            size="sm"
             value={c.event}
-            onChange={(e) => patch({ event: e.target.value })}
-          >
-            {TRIGGER_EVENTS.map((e) => (
-              <option key={e} value={e}>
-                {TRIGGER_EVENT_LABEL[e]} ({e})
-              </option>
-            ))}
-          </select>
+            onValueChange={(v) => patch({ event: v })}
+            options={TRIGGER_EVENTS.map((e) => ({
+              value: e,
+              label: `${TRIGGER_EVENT_LABEL[e]} (${e})`,
+            }))}
+          />
           <small>
             t('agent.st.ACTIVE'){t('agent.eventHint')} {'{{input.event.…}}'} —{' '}
             {TRIGGER_EVENT_FIELDS[c.event as keyof typeof TRIGGER_EVENT_FIELDS] ?? 'id, type'}
@@ -309,16 +302,14 @@ function TriggerFields({ c, patch }: { c: TriggerConfig; patch: Patch }) {
                 onChange={(e) => setField(i, { name: e.target.value })}
                 placeholder={t('agent.nameEn')}
               />
-              <select
-                className={styles.select}
-                style={{ width: 90 }}
-                value={f.type}
-                onChange={(e) => setField(i, { type: e.target.value as never })}
-              >
-                {FIELD_TYPES.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
-              </select>
+              <span style={{ width: 96, flex: 'none' }}>
+                <Select
+                  size="sm"
+                  value={f.type}
+                  onValueChange={(v) => setField(i, { type: v as never })}
+                  options={FIELD_TYPES.map((x) => ({ value: x, label: x }))}
+                />
+              </span>
             </div>
             <div className={styles.row}>
               <input
@@ -358,14 +349,19 @@ function ModelSelect({ value, onChange }: { value: string; onChange: (v: string)
   const fallback = models.find((m) => m.enabled && m.chat) ?? models.find((m) => m.enabled);
   return (
     <>
-      <select className={styles.select} value={value} onChange={(e) => onChange(e.target.value)}>
-        {!cur && value && <option value={value}>{value}</option>}
-        {models.map((m) => (
-          <option key={m.id} value={m.id} disabled={!m.enabled}>
-            {m.label} — {m.hint}
-          </option>
-        ))}
-      </select>
+      <Select
+        size="sm"
+        value={value}
+        onValueChange={onChange}
+        options={[
+          ...(!cur && value ? [{ value, label: value }] : []),
+          ...models.map((m) => ({
+            value: m.id,
+            label: `${m.label} — ${m.hint}`,
+            disabled: !m.enabled,
+          })),
+        ]}
+      />
       {(!cur || !cur.enabled) && fallback && (
         <span className={styles.hint}>
           {cur?.label ?? value}
@@ -462,22 +458,18 @@ function LlmFields({ c, patch, vars }: { c: LlmConfig; patch: Patch; vars: Agent
                   })
                 }
               />
-              <select
-                className={styles.select}
-                style={{ width: 84 }}
-                value={f.type}
-                onChange={(e) =>
-                  patch({
-                    jsonFields: c.jsonFields.map((x, k) =>
-                      k === i ? { ...x, type: e.target.value } : x,
-                    ),
-                  })
-                }
-              >
-                <option>string</option>
-                <option>number</option>
-                <option>boolean</option>
-              </select>
+              <span style={{ width: 96, flex: 'none' }}>
+                <Select
+                  size="sm"
+                  value={f.type}
+                  onValueChange={(v) =>
+                    patch({
+                      jsonFields: c.jsonFields.map((x, k) => (k === i ? { ...x, type: v } : x)),
+                    })
+                  }
+                  options={['string', 'number', 'boolean'].map((x) => ({ value: x, label: x }))}
+                />
+              </span>
               <input
                 className={styles.input}
                 placeholder={t('agent.desc')}
@@ -608,22 +600,20 @@ function ToolFields({
             >
               {c.tool === 'create_file_from_template' && k === 'templateId' ? (
                 <div className={styles.row}>
-                  <select
-                    className={styles.select}
-                    style={{ flex: 1, minWidth: 0 }}
-                    value={c.args[k] ?? ''}
-                    onChange={(e) => setArg(k, e.target.value)}
-                  >
-                    <option value="">{t('agent.pickTemplate')}</option>
-                    {references.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                    {c.args[k] && !references.some((r) => r.id === c.args[k]) && (
-                      <option value={c.args[k]}>{t('agent.unknownTemplate')}</option>
-                    )}
-                  </select>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <Select
+                      size="sm"
+                      value={c.args[k] ?? ''}
+                      placeholder={t('agent.pickTemplate')}
+                      onValueChange={(v) => setArg(k, v)}
+                      options={[
+                        ...references.map((r) => ({ value: r.id, label: r.name })),
+                        ...(c.args[k] && !references.some((r) => r.id === c.args[k])
+                          ? [{ value: c.args[k], label: t('agent.unknownTemplate') }]
+                          : []),
+                      ]}
+                    />
+                  </span>
                   {onUploadReference && (
                     <>
                       <button
@@ -1055,17 +1045,14 @@ function GuardrailFields({
         </div>
       ))}
       <div className={styles.row}>
-        <select
-          className={styles.select}
-          value={adding}
-          onChange={(e) => setAdding(e.target.value as GuardrailKind)}
-        >
-          {GUARDRAIL_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {GUARDRAIL_LABEL[k]}
-            </option>
-          ))}
-        </select>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <Select
+            size="sm"
+            value={adding}
+            onValueChange={(v) => setAdding(v as GuardrailKind)}
+            options={GUARDRAIL_KINDS.map((k) => ({ value: k, label: GUARDRAIL_LABEL[k] }))}
+          />
+        </span>
         <button
           type="button"
           className={styles.smallBtn}

@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { pokeAiActivity, reportAiRows } from '../lib/aiActivity';
-import { Button, PopoutButton, useToast } from '../components/ui';
+import { Button, PopoutButton, Select, useToast } from '../components/ui';
 import { Markdown } from '../components/ai/Markdown';
 import { ApprovalCard, CodeRow, FileCard, ToolRow } from '../components/ai/ChatParts';
 import { AgentCallPanel, type CallableAgent } from '../components/ai/AgentCallPanel';
@@ -42,6 +42,9 @@ import type {
 } from '../components/ai/types';
 import styles from './aiAgent.module.css';
 import { AI_ATTACHMENT_MAX_BYTES, AI_ATTACHMENT_MAX_COUNT, AI_TITLE_MAX } from '@tongin/shared';
+
+/** 모바일 대화 고르기의 '새 채팅'(빈 값은 고르기 항목이 될 수 없어 대신 쓰는 값) */
+const NEW_CHAT = '__new';
 
 const SUGGESTIONS = [
   i18n.t('ai.sug.1'),
@@ -535,21 +538,19 @@ export default function AiAssistant() {
               onChange={(e) => void pickFiles(e)}
             />
             {chatModels.length > 0 && (
-              <select
-                className={styles.modelSelect}
-                value={chatModel}
-                onChange={(e) => pickModel(e.target.value)}
-                aria-label={t('ai.model')}
-                title={t('ai.model')}
-                disabled={notReady}
-              >
-                {chatModels.map((m) => (
-                  <option key={m.id} value={m.id} disabled={!m.enabled}>
-                    {m.label}
-                    {m.enabled ? '' : t('ai.comingSoon')}
-                  </option>
-                ))}
-              </select>
+              <span className={styles.modelSelect} title={t('ai.model')}>
+                <Select
+                  size="sm"
+                  value={chatModel}
+                  onValueChange={pickModel}
+                  disabled={notReady}
+                  options={chatModels.map((m) => ({
+                    value: m.id,
+                    label: `${m.label}${m.enabled ? '' : t('ai.comingSoon')}`,
+                    disabled: !m.enabled,
+                  }))}
+                />
+              </span>
             )}
           </span>
           <button
@@ -681,34 +682,30 @@ export default function AiAssistant() {
         <PopoutButton floating />
         {/* 좁은 화면 — 왼쪽 목록 대신 위에 새 채팅·최근 대화 고르기 */}
         <div className={styles.mobileBar}>
-          <select
-            className={styles.mobileSelect}
-            value={agentId ? `agent:${agentId}` : (activeId ?? '')}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v.startsWith('agent:')) openAgent(v.slice(6));
-              else select(v || null);
-            }}
-            aria-label={t('ai.recentAll')}
-          >
-            <option value="">{t('ai.newChat')}</option>
-            {!!agents?.length && (
-              <optgroup label={t('ai.agents')}>
-                {agents.map((a) => (
-                  <option key={a.id} value={`agent:${a.id}`}>
-                    {a.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <optgroup label={t('ai.recentChats')}>
-              {rows.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.title}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+          <span className={styles.mobileSelect}>
+            <Select
+              value={agentId ? `agent:${agentId}` : (activeId ?? NEW_CHAT)}
+              onValueChange={(v) => {
+                if (v.startsWith('agent:')) openAgent(v.slice(6));
+                else select(v === NEW_CHAT ? null : v);
+              }}
+              options={[
+                { label: t('ai.newChat'), options: [{ value: NEW_CHAT, label: t('ai.newChat') }] },
+                ...(agents?.length
+                  ? [
+                      {
+                        label: t('ai.agents'),
+                        options: agents.map((a) => ({ value: `agent:${a.id}`, label: a.name })),
+                      },
+                    ]
+                  : []),
+                {
+                  label: t('ai.recentChats'),
+                  options: rows.map((r) => ({ value: r.id, label: r.title })),
+                },
+              ]}
+            />
+          </span>
           <button
             type="button"
             className={styles.iconBtn}
