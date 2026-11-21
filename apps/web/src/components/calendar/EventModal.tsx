@@ -10,6 +10,7 @@ import {
 } from '../../lib/calendarUtils';
 import { fs } from '../../lib/fontScale';
 import { DatePicker } from '../ui';
+import { TimePicker } from '../ui';
 
 export interface EventFormValues {
   title: string;
@@ -184,20 +185,14 @@ export default function EventModal({
 
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Input
+            <TimePicker
               label={t('cal.f.start')}
-              type="time"
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(v) => setStartTime(v)}
             />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Input
-              label={t('cal.f.end')}
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
+            <TimePicker label={t('cal.f.end')} value={endTime} onChange={(v) => setEndTime(v)} />
           </div>
         </div>
         <div style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)', marginTop: -10 }}>

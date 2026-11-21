@@ -47,6 +47,7 @@ import styles from './campaign.module.css';
 import { formatPhone } from '../lib/phone';
 import { CAMPAIGN_CHANNEL_LABEL, LEAD_STATUS_LABEL } from '../i18n/codes';
 import { DatePicker } from '../components/ui';
+import { TimePicker } from '../components/ui';
 
 const SIDO = [
   '서울',
@@ -1176,13 +1177,13 @@ export default function CampaignEditor() {
                           setScheduledAt(d ? `${d}T${scheduledAt.slice(11, 16) || '09:00'}` : '')
                         }
                       />
-                      <input
-                        type="time"
-                        className={styles.dateInput}
+                      <TimePicker
+                        size="sm"
+                        style={{ width: 110 }}
                         value={scheduledAt.slice(11, 16)}
-                        onChange={(e) =>
+                        onChange={(v) =>
                           setScheduledAt(
-                            `${scheduledAt.slice(0, 10) || toLocalInput(new Date().toISOString()).slice(0, 10)}T${e.target.value}`,
+                            `${scheduledAt.slice(0, 10) || toLocalInput(new Date().toISOString()).slice(0, 10)}T${v}`,
                           )
                         }
                         aria-label={t('camp.scheduledAt')}

@@ -1,0 +1,46 @@
+/* 시각 고르기 — 시·분 두 줄 목록(달력과 같은 창 모양) */
+.pop {
+  width: 168px;
+  padding: 8px;
+}
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 224px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.col::-webkit-scrollbar {
+  display: none;
+}
+.col + .col {
+  padding-left: 6px;
+  border-left: 1px solid var(--ark-color-border);
+}
+.item {
+  flex: none;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(14px * var(--font-scale, 1));
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.item:hover:not(.on) {
+  background: var(--ark-color-bg-muted, #f2f2f7);
+}
+.on {
+  background: var(--ark-color-text-primary, #1d1d1f);
+  color: var(--ark-color-bg);
+  font-weight: 600;
+}
