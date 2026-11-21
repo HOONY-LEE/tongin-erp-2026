@@ -1,0 +1,256 @@
+.labeled {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bare {
+  display: contents;
+}
+.label {
+  margin-bottom: var(--ark-spacing-1, 4px);
+  color: var(--ark-color-text);
+  font-size: var(--ark-font-size-sm, 14px);
+  font-weight: var(--ark-font-weight-medium, 500);
+  line-height: var(--ark-line-height-normal, 1.5);
+}
+/* 날짜 고르기 — 입력칸은 공통 Input(md 36px·둥근 10px)과 같은 모양, 달력은 애플 느낌(가벼운 그림자·둥근 칸) */
+.field {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+}
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ark-input-border-color);
+  border-radius: var(--ark-input-radius, 10px);
+  background: var(--ark-input-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(14px * var(--font-scale, 1));
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+.sm .trigger {
+  height: 32px;
+  padding: 0 10px;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.trigger:hover:not(:disabled) {
+  border-color: var(--ark-color-text-tertiary, #9aa0aa);
+}
+.trigger:focus-visible,
+.triggerOpen {
+  outline: none;
+  border-color: var(--focus-ring, #111827) !important;
+  box-shadow: 0 0 0 1px var(--focus-ring, #111827);
+}
+.trigger:disabled {
+  background: var(--ark-color-gray-50);
+  color: var(--ark-color-text-disabled);
+  cursor: not-allowed;
+}
+.value,
+.placeholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.placeholder {
+  color: var(--ark-color-text-tertiary, #9aa0aa);
+}
+.icon {
+  flex: none;
+  color: var(--ark-color-text-secondary);
+}
+/* 값이 있으면 달력 아이콘 자리에 지우기(×)가 겹쳐 뜬다(마우스를 올렸을 때) */
+.clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ark-color-bg-muted, #f2f2f7);
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.field:hover .clear {
+  display: grid;
+}
+.field:hover:has(.clear) .icon {
+  visibility: hidden;
+}
+
+/* ── 펼친 달력 ── */
+.pop {
+  position: fixed;
+  z-index: 10000;
+  /* 창(모달)이 바깥 누르기를 막아도(body pointer-events:none) 달력은 눌리게 */
+  pointer-events: auto;
+  width: 280px;
+  padding: 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 14px;
+  background: var(--ark-color-bg);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+  outline: none;
+  animation: popIn 0.12s ease-out;
+  box-sizing: border-box;
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 10px 6px;
+}
+.head b {
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.nav {
+  display: inline-flex;
+  gap: 2px;
+}
+.nav button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ark-color-text);
+  cursor: pointer;
+}
+.nav button:hover {
+  background: var(--ark-color-bg-muted, #f2f2f7);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 2px;
+}
+.dow {
+  padding-bottom: 6px;
+  color: var(--ark-color-text-tertiary, #9aa0aa);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: center;
+}
+.day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  justify-self: center;
+  background: none;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(14px * var(--font-scale, 1));
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.day.sun {
+  color: #ff3b30;
+}
+.day.sat {
+  color: #007aff;
+}
+.day.out {
+  opacity: 0.35;
+}
+.day.focused:not(.selected),
+.day:hover:not(.selected):not(:disabled) {
+  background: var(--ark-color-bg-muted, #f2f2f7);
+}
+/* 오늘 — 글자만 주황(애플 캘린더처럼), 고르면 채운 원 */
+.today {
+  color: var(--ark-color-primary-500, #fc753c) !important;
+  font-weight: 700;
+}
+.selected {
+  background: var(--ark-color-text-primary, #1d1d1f) !important;
+  color: var(--ark-color-bg) !important;
+  font-weight: 600;
+  opacity: 1;
+}
+.today.selected {
+  background: var(--ark-color-primary-500, #fc753c) !important;
+  color: #fff !important;
+}
+.day:disabled,
+.month:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+.months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.month {
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(14px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.month:hover:not(.selected):not(:disabled) {
+  background: var(--ark-color-bg-muted, #f2f2f7);
+}
+.foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ark-color-border);
+}
+.footBtn {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ark-color-primary-600, #e2622a);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+}
+.footBtn:hover {
+  background: var(--ark-color-bg-muted, #f2f2f7);
+}
+.footMuted {
+  color: var(--ark-color-text-secondary);
+  font-weight: 500;
+}

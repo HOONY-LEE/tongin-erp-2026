@@ -11,7 +11,6 @@ import { dial, enablePhone, getPhoneState, usePhone } from '../../lib/softphone'
 import {
   Button,
   DataTable,
-  Input,
   Modal,
   Textarea,
   useToast,
@@ -19,6 +18,7 @@ import {
   type Row,
 } from '../../components/ui';
 import styles from '../callcenter.module.css';
+import { DatePicker } from '../../components/ui';
 
 export type FollowupKind = 'CONFIRM' | 'HAPPY';
 interface FollowupRow {
@@ -211,12 +211,7 @@ export function FollowupList({
               {L.when} · {L.title}
             </b>
             <span className={styles.muted}>{t('cc.moveDate')}</span>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              aria-label={t('cc.moveDate')}
-            />
+            <DatePicker value={date} onChange={(v) => setDate(v)} aria-label={t('cc.moveDate')} />
           </span>
         }
         fit

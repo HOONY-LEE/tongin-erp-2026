@@ -44,6 +44,7 @@ import styles from './approval.module.css';
 import cstyles from '../../pages/campaign.module.css';
 import fstyles from './formFields.module.css';
 import { SUBSTITUTE_MODE_LABEL } from '../../i18n/codes';
+import { DatePicker } from '../ui';
 
 /**
  * 결재 양식 관리(APPROVAL.MANAGE) — 지출 결의·구매 품의처럼 회사마다 다른 신청서를 항목으로 정의한다.
@@ -764,11 +765,11 @@ function LeavePreviewFields({
       <div className={styles.lineAdd}>
         <label className={styles.fieldLabel} style={{ flex: 1 }}>
           {t('appr.start')}
-          <Input type="date" />
+          <DatePicker value="" onChange={() => undefined} />
         </label>
         <label className={styles.fieldLabel} style={{ flex: 1 }}>
           {t('appr.end')}
-          <Input type="date" />
+          <DatePicker value="" onChange={() => undefined} />
         </label>
       </div>
       <label className={styles.fieldLabel}>

@@ -43,6 +43,7 @@ import {
 } from '../components/ui';
 import styles from './franchise.module.css';
 import { CRM_ACTIVITY_LABEL, CRM_INTEREST_LABEL } from '../i18n/codes';
+import { DatePicker } from '../components/ui';
 
 type View = 'board' | 'list';
 const won = (n: number) => i18n.t('crm.won', { v0: n.toLocaleString('ko-KR') });
@@ -949,7 +950,7 @@ function LeadDetail({
                 />
                 <div className={styles.actNext}>
                   <span className={styles.muted}>{t('crm.col.next')}</span>
-                  <Input type="date" value={nextAt} onChange={(e) => setNextAt(e.target.value)} />
+                  <DatePicker value={nextAt} onChange={(v) => setNextAt(v)} />
                   <Input
                     value={nextWhat}
                     placeholder={t('crm.nextActionOpt')}

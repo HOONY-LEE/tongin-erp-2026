@@ -26,6 +26,7 @@ import { ChoiceChips } from '../components/approval/FormsAdmin';
 import { PersonPicker } from '../components/approval/FormFields';
 import styles from './spaces.module.css';
 import { formatPhone } from '../lib/phone';
+import { DatePicker } from '../components/ui';
 
 interface Space {
   id: string;
@@ -255,12 +256,11 @@ export default function Spaces() {
           {t('space.today')}
         </Button>
       )}
-      <Input
-        type="date"
+      <DatePicker
         className={styles.dateInput}
         value={date}
         aria-label={t('space.pickDate')}
-        onChange={(e) => e.target.value && setDate(e.target.value)}
+        onChange={(v) => v && setDate(v)}
       />
     </div>
   );
@@ -809,11 +809,7 @@ function EditModal({
         <div className={styles.row3}>
           <label className={styles.field}>
             {t('space.col.date')}
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => e.target.value && setDate(e.target.value)}
-            />
+            <DatePicker value={date} onChange={(v) => v && setDate(v)} />
           </label>
           <div className={styles.field}>
             {t('space.start')}

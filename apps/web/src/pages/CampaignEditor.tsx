@@ -44,6 +44,7 @@ import fstyles from '../components/campaign/filterMenu.module.css';
 import styles from './campaign.module.css';
 import { formatPhone } from '../lib/phone';
 import { CAMPAIGN_CHANNEL_LABEL, LEAD_STATUS_LABEL } from '../i18n/codes';
+import { DatePicker } from '../components/ui';
 
 const SIDO = [
   '서울',
@@ -737,20 +738,18 @@ export default function CampaignEditor() {
                 <div className={styles.field}>
                   <span className={styles.label}>{t('camp.period')}</span>
                   <div className={styles.period}>
-                    <input
-                      type="date"
+                    <DatePicker
                       className={styles.dateInput}
                       value={periodStart}
-                      onChange={(e) => setPeriodStart(e.target.value)}
+                      onChange={(v) => setPeriodStart(v)}
                       aria-label={t('camp.periodStart')}
                     />
                     <span className={styles.sub}>~</span>
-                    <input
-                      type="date"
+                    <DatePicker
                       className={styles.dateInput}
                       value={periodEnd}
                       min={periodStart || undefined}
-                      onChange={(e) => setPeriodEnd(e.target.value)}
+                      onChange={(v) => setPeriodEnd(v)}
                       aria-label={t('camp.periodEnd')}
                     />
                   </div>
@@ -945,19 +944,17 @@ export default function CampaignEditor() {
                         <div className={fstyles.dateRow}>
                           {t('camp.moveDate')}
                           <div>
-                            <input
-                              type="date"
+                            <DatePicker
                               className={fstyles.date}
                               value={filter.moveDateFrom ?? ''}
-                              onChange={(e) => applyF('moveDateFrom', e.target.value || undefined)}
+                              onChange={(v) => applyF('moveDateFrom', v || undefined)}
                               aria-label={t('camp.moveFrom')}
                             />
                             ~
-                            <input
-                              type="date"
+                            <DatePicker
                               className={fstyles.date}
                               value={filter.moveDateTo ?? ''}
-                              onChange={(e) => applyF('moveDateTo', e.target.value || undefined)}
+                              onChange={(v) => applyF('moveDateTo', v || undefined)}
                               aria-label={t('camp.moveTo')}
                             />
                           </div>
@@ -965,19 +962,17 @@ export default function CampaignEditor() {
                         <div className={fstyles.dateRow}>
                           {t('camp.receivedDate')}
                           <div>
-                            <input
-                              type="date"
+                            <DatePicker
                               className={fstyles.date}
                               value={filter.receivedFrom ?? ''}
-                              onChange={(e) => applyF('receivedFrom', e.target.value || undefined)}
+                              onChange={(v) => applyF('receivedFrom', v || undefined)}
                               aria-label={t('camp.receivedFrom')}
                             />
                             ~
-                            <input
-                              type="date"
+                            <DatePicker
                               className={fstyles.date}
                               value={filter.receivedTo ?? ''}
-                              onChange={(e) => applyF('receivedTo', e.target.value || undefined)}
+                              onChange={(v) => applyF('receivedTo', v || undefined)}
                               aria-label={t('camp.receivedTo')}
                             />
                           </div>
@@ -1136,13 +1131,30 @@ export default function CampaignEditor() {
                     ]}
                   />
                   {when === 'LATER' && (
-                    <input
-                      type="datetime-local"
-                      className={styles.dateInput}
-                      value={scheduledAt}
-                      onChange={(e) => setScheduledAt(e.target.value)}
-                      aria-label={t('camp.scheduledAt')}
-                    />
+                    <>
+                      {/* 예약 시각 — 날짜(공통 달력) + 시각 */}
+                      <DatePicker
+                        size="sm"
+                        clearable={false}
+                        style={{ width: 150 }}
+                        aria-label={t('camp.scheduledAt')}
+                        value={scheduledAt.slice(0, 10)}
+                        onChange={(d) =>
+                          setScheduledAt(d ? `${d}T${scheduledAt.slice(11, 16) || '09:00'}` : '')
+                        }
+                      />
+                      <input
+                        type="time"
+                        className={styles.dateInput}
+                        value={scheduledAt.slice(11, 16)}
+                        onChange={(e) =>
+                          setScheduledAt(
+                            `${scheduledAt.slice(0, 10) || toLocalInput(new Date().toISOString()).slice(0, 10)}T${e.target.value}`,
+                          )
+                        }
+                        aria-label={t('camp.scheduledAt')}
+                      />
+                    </>
                   )}
                   <span className={styles.sendSummary}>
                     {t('camp.recipients')}{' '}

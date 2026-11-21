@@ -9,6 +9,7 @@ import {
   type CalendarItem,
 } from '../../lib/calendarUtils';
 import { fs } from '../../lib/fontScale';
+import { DatePicker } from '../ui';
 
 export interface EventFormValues {
   title: string;
@@ -174,12 +175,11 @@ export default function EventModal({
           }}
         />
 
-        <Input
+        <DatePicker
           label={t('cal.f.endDate')}
-          type="date"
           value={endDate}
           min={selectedDate ? dateKey(selectedDate) : undefined}
-          onChange={(e) => setEndDate(e.target.value)}
+          onChange={(v) => setEndDate(v)}
         />
 
         <div style={{ display: 'flex', gap: 12 }}>

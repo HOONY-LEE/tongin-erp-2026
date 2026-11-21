@@ -6,6 +6,7 @@ import i18n from '../../i18n';
 import type { FormField } from './types';
 import { AddressField } from './AddressField';
 import { PhoneInput } from './PhoneInput';
+import { DatePicker } from './DatePicker';
 import { ADDRESS_PARTS, addrKey } from './address';
 import { fs } from '../../lib/fontScale';
 import { SegmentedControl } from './SegmentedControl';
@@ -320,9 +321,16 @@ function renderControl(
           onChange={(v) => setField(f.name, v)}
           disabled={f.disabled}
         />
+      ) : f.type === 'date' ? (
+        <DatePicker
+          value={values[f.name] ?? ''}
+          placeholder={f.placeholder}
+          onChange={(v) => setField(f.name, v)}
+          disabled={f.disabled}
+        />
       ) : (
         <Input
-          type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+          type={f.type === 'number' ? 'number' : 'text'}
           value={values[f.name] ?? ''}
           placeholder={f.placeholder}
           onChange={(e) => setField(f.name, e.target.value)}
