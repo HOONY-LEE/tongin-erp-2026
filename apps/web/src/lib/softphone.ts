@@ -25,6 +25,8 @@ export interface PhoneCall {
   muted: boolean;
   /** 고객 소리 문제 — null이면 정상. 'blocked'(브라우저가 재생을 막음) | 'no-media'(고객 음성이 들어오지 않음) */
   audioIssue: 'blocked' | 'no-media' | null;
+  /** 인터넷이 잠깐 끊겨 통화 연결을 다시 잡는 중 */
+  reconnecting?: boolean;
 }
 export interface PhoneState {
   status: PhoneStatus;
@@ -316,6 +318,7 @@ function attachSession(s: RTCSession, direction: 'in' | 'out', number: string) {
   };
   s.on('peerconnection', (e: { peerconnection: RTCPeerConnection }) => {
     e.peerconnection.addEventListener('track', (ev) => playRemote(ev));
+    watchNetwork(s, e.peerconnection);
   });
   s.on('confirmed', () => {
     stopRingtone();
@@ -338,6 +341,71 @@ function attachSession(s: RTCSession, direction: 'in' | 'out', number: string) {
   s.on('ended', end);
   s.on('failed', end);
 }
+
+/**
+ * 통화 중 인터넷이 잠깐 끊기면 — 음성 연결(ICE)이 끊김/실패로 바뀐다.
+ * 잠깐(몇 초)이면 브라우저가 스스로 되살리고, 실패로 가거나 인터넷이 돌아오면(online)
+ * 경로를 새로 잡는다(ICE restart 재협상). 서버 연결(웹소켓)이 끊겼으면 다시 붙은 뒤에 한다.
+ */
+function watchNetwork(s: RTCSession, pc: RTCPeerConnection) {
+  let restartTimer: ReturnType<typeof setTimeout> | null = null;
+  const restart = () => {
+    if (session !== s || !s.isEstablished()) return;
+    const ok = ['connected', 'completed'].includes(pc.iceConnectionState);
+    if (ok) return;
+    if (!ua?.isConnected()) {
+      ua?.once('connected', () => setTimeout(restart, 500));
+      return;
+    }
+    try {
+      s.renegotiate({ rtcOfferConstraints: { iceRestart: true } });
+    } catch {
+      /* 재협상 중이면 다음 기회에 */
+    }
+  };
+  const onState = () => {
+    if (session !== s) return;
+    const st = pc.iceConnectionState;
+    if (st === 'connected' || st === 'completed') {
+      if (restartTimer) clearTimeout(restartTimer);
+      restartTimer = null;
+      if (state.call?.reconnecting) setCall({ reconnecting: false });
+      return;
+    }
+    if (st === 'disconnected' || st === 'failed') {
+      if (!state.call?.reconnecting) setCall({ reconnecting: true });
+      // 끊김은 3초 기다려 보고(스스로 돌아오는 경우가 많다), 실패는 바로 다시 잡는다
+      if (restartTimer) clearTimeout(restartTimer);
+      restartTimer = setTimeout(restart, st === 'failed' ? 0 : 3000);
+    }
+  };
+  pc.addEventListener('iceconnectionstatechange', onState);
+  const onOnline = () => setTimeout(restart, 1000);
+  window.addEventListener('online', onOnline);
+  const cleanup = () => {
+    if (restartTimer) clearTimeout(restartTimer);
+    window.removeEventListener('online', onOnline);
+  };
+  s.on('ended', cleanup);
+  s.on('failed', cleanup);
+}
+
+/** 통화 중 새로고침·창 닫기 — 브라우저가 '나가시겠습니까?'를 묻게 한다(나가면 통화가 끊긴다) */
+if (typeof window !== 'undefined')
+  window.addEventListener('beforeunload', (e) => {
+    if (!session) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+/** 그래도 나가면 — 고객이 무음 속에 기다리지 않게 끊는 신호(BYE)를 보내 본다(이어 받을 수는 없다) */
+if (typeof window !== 'undefined')
+  window.addEventListener('pagehide', () => {
+    try {
+      session?.terminate();
+    } catch {
+      /* 무시 */
+    }
+  });
 
 /** 받은 음성 바이트 — 0이면 고객 소리가 PC까지 오지 않는 것(네트워크), 오는데 안 들리면 재생 문제 */
 async function checkInbound(s: RTCSession) {
