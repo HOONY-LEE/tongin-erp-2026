@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Phone as PhoneCell } from 'softium-ui/table';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/AuthContext';
+import { useWorkDirectory } from '../lib/workMenus';
 import { reloadExtensions, useExtensions, type Extension } from '../lib/extensions';
 import {
   Button,
@@ -17,7 +18,8 @@ import {
 } from '../components/ui';
 
 /**
- * 내선 관리 — 상담원이 통화를 돌려줄 사무실 직원·부서 번호.
+ * 내선 관리 — 상담원이 통화를 돌려줄 사무실 직원 번호. 내선이 있는 직원만 등록하고,
+ * 이름·직책·부서는 직원 계정 정보를 따른다(직원이 바뀌면 같이 바뀜).
  * 여기 등록하면 상담 콘솔 '내선' 목록과 통화 막대 [돌려주기]에 바로 나온다.
  * 고치기는 내선 관리 권한(CS_CALL.EXTENSIONS)이 있는 관리자.
  */
@@ -30,6 +32,20 @@ export default function Extensions() {
   const rows = useExtensions();
   const [editing, setEditing] = useState<Extension | 'new' | null>(null);
   const [del, setDel] = useState<Extension | null>(null);
+  const dir = useWorkDirectory();
+  // 직원 선택지 — 이미 내선이 있는 직원은 흐리게(지금 고치는 내선의 주인은 고를 수 있게)
+  const employeeGroups = useMemo(() => {
+    const mine = editing && editing !== 'new' ? editing.employeeId : null;
+    const taken = new Set(rows.map((r) => r.employeeId).filter((x) => x && x !== mine));
+    return dir.peopleGroups.map((g) => ({
+      ...g,
+      options: g.options.map((o) =>
+        taken.has(o.value)
+          ? { ...o, label: `${o.label} · ${t('prod.extTaken')}`, disabled: true }
+          : o,
+      ),
+    }));
+  }, [dir, rows, editing, t]);
 
   const columns: Column[] = [
     { title: t('prod.name'), dataIndex: 'label', width: 140 },
@@ -82,8 +98,7 @@ export default function Extensions() {
         method: 'POST',
         body: JSON.stringify({
           ...(editing && editing !== 'new' ? { id: editing.id } : {}),
-          label: String(v.label ?? ''),
-          dept: String(v.dept ?? ''),
+          employeeId: String(v.employeeId ?? '') || undefined,
           extNo: String(v.extNo ?? ''),
           number: String(v.number ?? ''),
           memo: String(v.memo ?? ''),
@@ -108,18 +123,7 @@ export default function Extensions() {
   };
 
   return (
-    <ListPage
-      fit
-      title={t('prod.extTitle')}
-      subtitle={t('prod.extSub')}
-      actions={
-        editable ? (
-          <Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setEditing('new')}>
-            {t('prod.extCreate')}
-          </Button>
-        ) : undefined
-      }
-    >
+    <ListPage fit title={t('prod.extTitle')} subtitle={t('prod.extSub')}>
       <DataTable
         fit
         pageSize={20}
@@ -128,6 +132,18 @@ export default function Extensions() {
         onRowClick={editable ? (r) => setEditing(r as unknown as Extension) : undefined}
         exportable
         exportFileName={t('prod.extExport')}
+        toolbarActions={
+          editable ? (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
+              onClick={() => setEditing('new')}
+            >
+              {t('prod.extCreate')}
+            </Button>
+          ) : undefined
+        }
       />
       <FormModal
         open={editing !== null}
@@ -136,12 +152,14 @@ export default function Extensions() {
         size="md"
         fields={[
           {
-            name: 'label',
-            label: t('prod.name'),
+            name: 'employeeId',
+            label: t('prod.extEmployee'),
+            type: 'select',
+            searchable: true,
             required: true,
-            placeholder: t('prod.extNamePh'),
+            optionGroups: employeeGroups,
+            placeholder: t('prod.extEmployeePh'),
           },
-          { name: 'dept', label: t('prod.dept'), placeholder: t('prod.extDeptPh') },
           { name: 'extNo', label: t('prod.ext'), placeholder: t('prod.extNoPh') },
           {
             name: 'number',
@@ -155,13 +173,12 @@ export default function Extensions() {
         initialValues={
           editing && editing !== 'new'
             ? {
-                label: editing.label,
-                dept: editing.dept ?? '',
+                employeeId: editing.employeeId ?? '',
                 extNo: editing.extNo ?? '',
                 number: editing.number,
                 memo: editing.memo ?? '',
               }
-            : { label: '', dept: '', extNo: '', number: '', memo: '' }
+            : { employeeId: '', extNo: '', number: '', memo: '' }
         }
         onSubmit={save}
       />

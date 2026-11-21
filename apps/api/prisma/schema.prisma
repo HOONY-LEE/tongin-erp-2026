@@ -68,34 +68,35 @@ model CommonCode {
 }
 
 model Employee {
-  id                String    @id @default(uuid()) @db.Uuid
-  orgUnitId         String    @map("org_unit_id") @db.Uuid
-  orgUnit           OrgUnit   @relation(fields: [orgUnitId], references: [id])
-  empNo             String?   @unique @map("emp_no") // 사번 — 비우면 입사연도 4자리+일련번호 4자리로 자동(20260001)
+  id                String            @id @default(uuid()) @db.Uuid
+  orgUnitId         String            @map("org_unit_id") @db.Uuid
+  orgUnit           OrgUnit           @relation(fields: [orgUnitId], references: [id])
+  empNo             String?           @unique @map("emp_no") // 사번 — 비우면 입사연도 4자리+일련번호 4자리로 자동(20260001)
   name              String
-  positionId        String?   @map("position_id") @db.Uuid // 직책·직급(표시·인사용, 권한을 주지 않는다)
-  position          Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  csTransferTarget  CsTransferTarget? // 내선(있는 직원만)
+  positionId        String?           @map("position_id") @db.Uuid // 직책·직급(표시·인사용, 권한을 주지 않는다)
+  position          Position?         @relation(fields: [positionId], references: [id], onDelete: SetNull)
   phone             String?
-  hireDate          DateTime? @map("hire_date") @db.Date // 입사일 — 사번(입사연도+일련번호)의 기준
-  isActive          Boolean   @default(true) @map("is_active")
+  hireDate          DateTime?         @map("hire_date") @db.Date // 입사일 — 사번(입사연도+일련번호)의 기준
+  isActive          Boolean           @default(true) @map("is_active")
   // ── 인사기록 ──
-  birthDate         DateTime? @map("birth_date") @db.Date
+  birthDate         DateTime?         @map("birth_date") @db.Date
   email             String?
   zipcode           String?
   addr              String?
-  addrDetail        String?   @map("addr_detail")
-  employmentType    String    @default("REGULAR") @map("employment_type") // REGULAR | CONTRACT | PART_TIME | INTERN
-  resignDate        DateTime? @map("resign_date") @db.Date
-  resignReason      String?   @map("resign_reason")
-  emergencyName     String?   @map("emergency_name")
-  emergencyPhone    String?   @map("emergency_phone")
-  emergencyRelation String?   @map("emergency_relation")
+  addrDetail        String?           @map("addr_detail")
+  employmentType    String            @default("REGULAR") @map("employment_type") // REGULAR | CONTRACT | PART_TIME | INTERN
+  resignDate        DateTime?         @map("resign_date") @db.Date
+  resignReason      String?           @map("resign_reason")
+  emergencyName     String?           @map("emergency_name")
+  emergencyPhone    String?           @map("emergency_phone")
+  emergencyRelation String?           @map("emergency_relation")
   memo              String?
   /// 프로필 사진(정사각형 JPEG) — S3면 photoKey, 아니면 photoBytes. photoAt은 바뀐 시각(화면 캐시 구분)
-  photoBytes        Bytes?    @map("photo_bytes")
-  photoKey          String?   @map("photo_key")
-  photoAt           DateTime? @map("photo_at") @db.Timestamptz(6)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  photoBytes        Bytes?            @map("photo_bytes")
+  photoKey          String?           @map("photo_key")
+  photoAt           DateTime?         @map("photo_at") @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   appUsers          AppUser[]
   ownedLeads        Lead[]
 
@@ -2343,14 +2344,17 @@ model CsSmsTemplate {
 
 /// 돌려주기 연락처 — 상담원이 통화를 넘길 사무실 직원·부서 번호(상담 관리자가 관리)
 model CsTransferTarget {
-  id        String   @id @default(uuid()) @db.Uuid
-  label     String // 이름 — 예: 홍길동 과장
-  dept      String? // 부서 — 예: 영업팀
-  extNo     String?  @map("ext_no") // 내선번호(표시용) — 예: 3001
-  number    String // 돌려줄 실제 번호(숫자만 — 070·지역번호·휴대폰)
-  memo      String? // 예: 오전만 근무
-  sortOrder Int      @default(0) @map("sort_order")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id         String    @id @default(uuid()) @db.Uuid
+  /// 내선 주인(직원 계정) — 이름·직책·부서는 직원 정보를 따른다. 한 직원에 내선 하나
+  employeeId String?   @unique @map("employee_id") @db.Uuid
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  label      String // 이름 — 직원과 이으면 저장 당시 이름(직원이 지워졌을 때만 보인다)
+  dept       String? // 부서 — 직원과 이으면 쓰지 않는다
+  extNo      String?   @map("ext_no") // 내선번호(표시용) — 예: 3001
+  number     String // 돌려줄 실제 번호(숫자만 — 070·지역번호·휴대폰)
+  memo       String? // 예: 오전만 근무
+  sortOrder  Int       @default(0) @map("sort_order")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([sortOrder])
   @@map("cs_transfer_target")

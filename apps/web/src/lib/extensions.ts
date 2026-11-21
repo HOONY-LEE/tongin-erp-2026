@@ -5,6 +5,8 @@ import { api } from './api';
 /** 내선(돌려주기 연락처) — 사무실 직원·부서. number = 돌려줄 실제 번호(숫자만) */
 export interface Extension {
   id: string;
+  /** 내선 주인(직원) — 이으면 label·dept는 직원 정보 */
+  employeeId: string | null;
   label: string;
   dept: string | null;
   extNo: string | null;

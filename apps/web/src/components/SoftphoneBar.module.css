@@ -453,18 +453,6 @@
   height: 42px;
   font-size: calc(14.5px * var(--font-scale, 1));
 }
-.xferManage {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 4px;
-  border: 0;
-  background: none;
-  color: var(--ark-color-text-secondary);
-  font: inherit;
-  font-size: 12.5px;
-  cursor: pointer;
-}
 
 /* 통화가 끝난 뒤 잠깐 — '통화가 종료되었습니다' */
 .ended {
