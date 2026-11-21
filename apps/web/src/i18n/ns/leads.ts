@@ -3,6 +3,21 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '기간',
+      createdAt: '접수일',
+      moveDate: '이사일',
+      visitDate: '방문일',
+      source: '접수경로',
+      product: '상품',
+      region: '출발지 지역',
+      owner: '담당자',
+      assigned: '배정됨',
+      unassigned: '미배정',
+      contract: '계약서',
+      has: '있음',
+      none: '없음',
+    },
     st: {
       RECEIVED: '접수',
       CONSULT_TOSS: '상담토스',
@@ -52,6 +67,21 @@ export default defineNs({
     customerFallback: '고객',
   },
   en: {
+    flt: {
+      period: 'Period',
+      createdAt: 'Received',
+      moveDate: 'Move date',
+      visitDate: 'Visit date',
+      source: 'Source',
+      product: 'Product',
+      region: 'Origin region',
+      owner: 'Owner',
+      assigned: 'Assigned',
+      unassigned: 'Unassigned',
+      contract: 'Contract',
+      has: 'Yes',
+      none: 'No',
+    },
     st: {
       RECEIVED: 'Received',
       CONSULT_TOSS: 'Consult handoff',
@@ -102,6 +132,21 @@ export default defineNs({
     customerFallback: 'Customer',
   },
   zh: {
+    flt: {
+      period: '期间',
+      createdAt: '受理日',
+      moveDate: '搬家日',
+      visitDate: '上门日',
+      source: '受理渠道',
+      product: '产品',
+      region: '出发地区',
+      owner: '负责人',
+      assigned: '已分配',
+      unassigned: '未分配',
+      contract: '合同',
+      has: '有',
+      none: '无',
+    },
     st: {
       RECEIVED: '已受理',
       CONSULT_TOSS: '转咨询',

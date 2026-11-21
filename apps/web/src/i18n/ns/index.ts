@@ -2,6 +2,7 @@ import transcript from './transcript';
 import account from './account';
 import code from './code';
 import picker from './picker';
+import filter from './filter';
 import dashw from './dashw';
 import employee from './employee';
 import profile from './profile';
@@ -87,6 +88,7 @@ export const NAMESPACES = {
   account,
   code,
   picker,
+  filter,
   dashw,
   employee,
   profile,

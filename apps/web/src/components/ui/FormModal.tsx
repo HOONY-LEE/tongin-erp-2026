@@ -7,6 +7,7 @@ import type { FormField } from './types';
 import { AddressField } from './AddressField';
 import { PhoneInput } from './PhoneInput';
 import { DatePicker } from './DatePicker';
+import { ChoiceChips } from './ChoiceChips';
 import { ADDRESS_PARTS, addrKey } from './address';
 import { fs } from '../../lib/fontScale';
 import { SegmentedControl } from './SegmentedControl';
@@ -258,21 +259,17 @@ function renderControl(
           options={(f.options ?? []).map((o) => ({ value: o.value, label: o.label }))}
         />
       ) : f.type === 'chips' ? (
-        <div className="form-chips" role="radiogroup" aria-label={f.label}>
-          {(f.options ?? []).map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={values[f.name] === o.value}
-              disabled={f.disabled || o.disabled}
-              className={`form-chip${values[f.name] === o.value ? ' form-chip-on' : ''}`}
-              onClick={() => setField(f.name, o.value)}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
+        <ChoiceChips
+          aria-label={f.label}
+          value={values[f.name] ?? ''}
+          onChange={(v) => setField(f.name, v)}
+          disabled={f.disabled}
+          options={(f.options ?? []).map((o) => ({
+            value: o.value,
+            label: o.label,
+            disabled: o.disabled,
+          }))}
+        />
       ) : f.type === 'select' && f.searchable ? (
         <Combobox
           key={field.optionsBy ? (values[field.optionsBy.field] ?? '') : f.name}

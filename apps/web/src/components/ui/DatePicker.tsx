@@ -258,6 +258,7 @@ export function DatePicker({
           <div
             ref={pop}
             className={styles.pop}
+            data-floating=""
             role="dialog"
             aria-label={mode === 'month' ? t('picker.pickMonth') : t('picker.pickDate')}
             tabIndex={-1}

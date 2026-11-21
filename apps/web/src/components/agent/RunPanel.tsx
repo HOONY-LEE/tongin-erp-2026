@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Play, X } from 'lucide-react';
 import { type TriggerConfig } from '@tongin/shared';
-import { Badge, Button } from '../ui';
+import { Badge, Button, Checkbox } from '../ui';
 import { FileCard } from '../ai/ChatParts';
 import styles from '../../pages/agentBuilder.module.css';
 import { fs } from '../../lib/fontScale';
@@ -155,19 +155,19 @@ export function RunPanel({
           </label>
         ))}
         {!trigger?.inputFields.length && <div className={styles.note}>{t('ai.noInputsAgent')}</div>}
-        <label className={styles.check}>
-          <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-          {t('ai.dryRunOpt')}
-        </label>
-        <label className={styles.check}>
-          <input
-            type="checkbox"
-            checked={mockLlm}
-            disabled={!aiConfigured}
-            onChange={(e) => setMockLlm(e.target.checked)}
-          />
-          {t('ai.skipAi')}
-        </label>
+        <Checkbox
+          size="sm"
+          checked={dryRun}
+          onCheckedChange={(c) => setDryRun(c === true)}
+          label={t('ai.dryRunOpt')}
+        />
+        <Checkbox
+          size="sm"
+          checked={mockLlm}
+          disabled={!aiConfigured}
+          onCheckedChange={(c) => setMockLlm(c === true)}
+          label={t('ai.skipAi')}
+        />
         {!aiConfigured && <div className={styles.warnNote}>{t('ai.noKeyMock')}</div>}
         {!dryRun && (
           <div className={styles.warnNote}>

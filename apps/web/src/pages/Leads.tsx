@@ -11,11 +11,15 @@ import {
   Button,
   CopyText,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   ListPage,
   SegmentedControl,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import {
@@ -79,6 +83,8 @@ export default function Leads() {
     if (fromCall) setCreateOpen(true);
   }, [fromCall]);
   const [stage, setStage] = useState('ALL');
+  /** 검색 옆 필터 — 날짜·경로·상품·지역·담당·계약서 */
+  const [flt, setFlt] = useState<FilterValues>({});
   /** 계약서 보기 창 */
   const [doc, setDoc] = useState<LeadContract | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
@@ -258,8 +264,65 @@ export default function Leads() {
     },
   ];
 
-  const filtered = rows.filter((r) => inStage(r, stage));
-  const countFor = (key: string) => rows.filter((r) => inStage(r, key)).length;
+  const regions = [...new Set(rows.map((r) => r.fromSido as string).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'ko'),
+  );
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('leads.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'createdAt', label: t('leads.flt.createdAt') },
+        { value: 'moveDate', label: t('leads.flt.moveDate') },
+        { value: 'visitDate', label: t('leads.flt.visitDate') },
+      ],
+    },
+    { key: 'source', label: t('leads.flt.source'), type: 'multi', options: RECEIPT_SOURCES },
+    { key: 'serviceLine', label: t('leads.flt.product'), type: 'multi', options: SERVICE_LINES },
+    ...(regions.length
+      ? [
+          {
+            key: 'fromSido',
+            label: t('leads.flt.region'),
+            type: 'multi',
+            options: regions.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+    {
+      key: 'owner',
+      label: t('leads.flt.owner'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('leads.flt.assigned') },
+        { value: 'no', label: t('leads.flt.unassigned') },
+      ],
+    },
+    {
+      key: 'contract',
+      label: t('leads.flt.contract'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('leads.flt.has') },
+        { value: 'no', label: t('leads.flt.none') },
+      ],
+    },
+  ];
+  // 필터를 먼저 걸고, 상태 탭 숫자도 걸린 목록 기준으로
+  const picked = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'owner'
+      ? r.ownerEmpId || r.ownerEmp
+        ? 'yes'
+        : 'no'
+      : key === 'contract'
+        ? (r.contracts as LeadContract[] | undefined)?.length
+          ? 'yes'
+          : 'no'
+        : r[key],
+  );
+  const filtered = picked.filter((r) => inStage(r, stage));
+  const countFor = (key: string) => picked.filter((r) => inStage(r, key)).length;
 
   return (
     // 화면 높이에 맞춘다 — 기본 20개씩 보기, 화면에 다 안 들어가는 행은 표 안에서 스크롤(풋터는 늘 보임)
@@ -275,6 +338,7 @@ export default function Leads() {
             }))}
           />
         }
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         fit
         pageSize={20}
         columns={columns}

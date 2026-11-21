@@ -4,7 +4,7 @@ import { fmtDateTime } from '../../lib/dateFormat';
 import { AlertTriangle, Check, CircleDot, Play, ShieldCheck, X } from 'lucide-react';
 import { type AgentVisibility, type InputField } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
-import { Badge, Button, Select, useToast } from '../ui';
+import { Badge, Button, Checkbox, Select, useToast } from '../ui';
 import { VISIBILITY_ICON } from '../agent/SharePicker';
 import type { AgentRunView, TraceStep } from '../agent/RunPanel';
 import { Markdown } from './Markdown';
@@ -210,10 +210,12 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
               </label>
             ))
           )}
-          <label className={styles.check}>
-            <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-            {t('ai.dryRunNote')}
-          </label>
+          <Checkbox
+            size="sm"
+            checked={dryRun}
+            onCheckedChange={(c) => setDryRun(c === true)}
+            label={t('ai.dryRunNote')}
+          />
           <div className={styles.actions}>
             <Button
               variant="primary"

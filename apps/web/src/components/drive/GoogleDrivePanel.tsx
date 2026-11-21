@@ -6,7 +6,7 @@ import { formatBytes, type GoogleDriveFile } from '@tongin/shared';
 import { api, ApiError } from '../../lib/api';
 import { driveDate, fileIcon } from '../../lib/drive';
 import { Button, useToast } from '../ui';
-import { ChoiceChips } from '../approval/FormsAdmin';
+import { ChoiceChips } from '../ui';
 import { FolderPickerModal } from './DriveModals';
 import styles from './drive.module.css';
 

@@ -22,7 +22,7 @@ import {
   type Column,
   type Row,
 } from '../components/ui';
-import { ChoiceChips } from '../components/approval/FormsAdmin';
+import { ChoiceChips } from '../components/ui';
 import styles from './aiAdmin.module.css';
 import { DatePicker } from '../components/ui';
 

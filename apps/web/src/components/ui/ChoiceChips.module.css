@@ -1,0 +1,49 @@
+/* 고르기 칩 — 라디오(하나)·체크(여러 개) 공통. 내용 폭만큼, 고른 칩은 검정 채움 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  white-space: nowrap;
+  cursor: pointer;
+  /* 글자색은 바로 바뀌게(고를 때 흰 글자·흰 바탕이 잠깐 겹치지 않게) */
+  transition: border-color 0.12s;
+}
+.sm .chip {
+  height: 28px;
+  padding: 0 11px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.chip:hover:not(:disabled) {
+  border-color: var(--ark-color-border-strong);
+  color: var(--ark-color-text);
+}
+.chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring, #111827);
+}
+.on,
+.on:hover:not(:disabled) {
+  border-color: var(--chip-on-bg);
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
+  font-weight: 600;
+}
+.chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -187,6 +187,7 @@ export function TimePicker({
           <div
             ref={pop}
             className={`${dp.pop} ${styles.pop}`}
+            data-floating=""
             role="dialog"
             aria-label={t('picker.pickTime')}
             tabIndex={-1}

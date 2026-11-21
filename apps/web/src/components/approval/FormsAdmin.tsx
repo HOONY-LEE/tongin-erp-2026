@@ -44,7 +44,7 @@ import styles from './approval.module.css';
 import cstyles from '../../pages/campaign.module.css';
 import fstyles from './formFields.module.css';
 import { SUBSTITUTE_MODE_LABEL } from '../../i18n/codes';
-import { DatePicker } from '../ui';
+import { ChoiceChips, DatePicker } from '../ui';
 
 /**
  * 결재 양식 관리(APPROVAL.MANAGE) — 지출 결의·구매 품의처럼 회사마다 다른 신청서를 항목으로 정의한다.
@@ -854,34 +854,6 @@ function OrgPicker({ value, onChange }: { value: string[]; onChange: (v: string[
         searchPlaceholder={t('appr.findOrgName')}
         onChange={(v) => v && onChange([...value, v])}
       />
-    </div>
-  );
-}
-
-/** 하나 고르기 — 내용 폭만큼의 칩(세그먼트처럼 줄 전체를 차지하지 않는다) */
-export function ChoiceChips({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className={styles.choiceChips} role="radiogroup">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          className={`${styles.choiceChip} ${value === o.value ? styles.choiceChipOn : ''}`}
-          onClick={() => onChange(o.value)}
-        >
-          {o.label}
-        </button>
-      ))}
     </div>
   );
 }
