@@ -17,6 +17,7 @@ import {
   type CrmPipelineKey,
   type CrmStats,
 } from '@tongin/shared';
+import { listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface CrmLeadInput {
@@ -43,6 +44,8 @@ export interface CrmLeadInput {
 export interface CrmListQuery {
   stage?: string;
   ownerEmpId?: string;
+  /** 화면 필터(FilterButton) 값 JSON */
+  f?: string;
   source?: string;
   q?: string;
   from?: string;
@@ -56,6 +59,43 @@ const text = (v: string | null | undefined) =>
   v === undefined ? undefined : v === null ? null : v.trim() || null;
 const kstStart = (s: string) => new Date(`${s}T00:00:00+09:00`);
 const kstEnd = (s: string) => new Date(Date.parse(`${s}T00:00:00+09:00`) + 86_400_000);
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const dayStr = (v?: string) => (v && DAY.test(v) ? v : undefined);
+
+/** 영업 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  period: {
+    custom: (v) => {
+      const r = v as { from?: string; to?: string; on?: string };
+      const f = dayStr(r.from);
+      const t = dayStr(r.to);
+      if (!f && !t) return null;
+      const ts = { ...(f && { gte: kstStart(f) }), ...(t && { lt: kstEnd(t) }) };
+      const dt = {
+        ...(f && { gte: new Date(`${f}T00:00:00Z`) }),
+        ...(t && { lte: new Date(`${t}T00:00:00Z`) }),
+      };
+      if (r.on === 'nextActionAt') return { nextActionAt: dt };
+      if (r.on === 'expectedAt') return { expectedAt: dt };
+      // 최근 상담일 = 마지막 기록이 기간 안(시작 뒤에 하나 있고, 끝 뒤에는 없다)
+      if (r.on === 'lastActivityAt')
+        return {
+          activities: {
+            ...(f && { some: { at: { gte: kstStart(f) } } }),
+            ...(t && { none: { at: { gte: kstEnd(t) } } }),
+            ...(!f && t && { some: {} }),
+          },
+        };
+      return { createdAt: ts };
+    },
+  },
+  stage: { in: 'stage' },
+  interest: { in: 'interest' },
+  source: { in: 'source' },
+  region: { in: 'region' },
+  ownerName: { in: 'owner.name' },
+};
 
 const include = {
   owner: { select: { name: true } },
@@ -130,6 +170,7 @@ export class CrmService {
     const digits = term?.replace(/\D/g, '') ?? '';
     return {
       pipeline,
+      AND: listWhere(LIST_RULES, q.f) as Prisma.CrmLeadWhereInput[],
       ...(q.stage && { stage: q.stage }),
       ...(q.ownerEmpId && { ownerEmpId: q.ownerEmpId }),
       ...(q.source && { source: q.source }),
@@ -142,6 +183,8 @@ export class CrmService {
           { contactName: { contains: term, mode: 'insensitive' } },
           { region: { contains: term, mode: 'insensitive' } },
           { memo: { contains: term, mode: 'insensitive' } },
+          { email: { contains: term, mode: 'insensitive' } },
+          { owner: { name: { contains: term, mode: 'insensitive' } } },
           ...(digits.length >= 3 ? [{ phone: { contains: digits } }] : []),
         ],
       }),

@@ -242,6 +242,7 @@ export default function Customers() {
       <CrudTable
         title={t('customers.title')}
         path="/customers"
+        serverFilter
         columns={columns}
         fields={fields}
         editable

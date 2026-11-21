@@ -1,7 +1,8 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useOptions } from '../lib/useOptions';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useDetailParam } from '../lib/useDetailParam';
@@ -9,7 +10,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   Input,
   Modal,
   PageHeader,
@@ -42,7 +42,8 @@ interface Order extends Row {
   orderNo: string;
   status: string;
   note?: string | null;
-  orgUnit?: { name: string } | null;
+  orgUnitId?: string | null;
+  orgUnit?: { id?: string; name: string } | null;
   lines: OrderLine[];
 }
 interface LineDraft {
@@ -59,6 +60,11 @@ export default function MaterialOrders() {
   const [rows, setRows] = useState<Order[]>([]);
   /** 검색 옆 필터 — 요청일·상태·지점 */
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(발주번호·메모·지점) */
+  const [q, setQ] = useState('');
+  /** 지점 고르기 목록 — 거른 결과로 줄어들지 않게 본 적 있는 지점을 모아 둔다 */
+  const [orgSeen, setOrgSeen] = useState<Map<string, string>>(new Map());
+  const query = filterQuery(flt, q);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -74,20 +80,31 @@ export default function MaterialOrders() {
     [toast, t],
   );
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<Order[]>('/material-orders'));
+      const data = await api<Order[]>(`/material-orders${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
+      setOrgSeen((prev) => {
+        const next = new Map(prev);
+        for (const o of data) if (o.orgUnitId && o.orgUnit) next.set(o.orgUnitId, o.orgUnit.name);
+        return next.size === prev.size ? prev : next;
+      });
       touch();
     } catch (e) {
-      fail(e);
+      if (my === seq.current) fail(e);
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [fail]);
+  }, [fail, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const resetForm = () => {
@@ -243,9 +260,9 @@ export default function MaterialOrders() {
     );
   }
 
-  const orderOrgs = [
-    ...new Set(rows.map((o) => o.orgUnit?.name).filter((x): x is string => !!x)),
-  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  const orderOrgs = [...orgSeen]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+    .map(([value, label]) => ({ value, label }));
   const filterFields: FilterField[] = [
     { key: 'createdAt', label: t('order.flt.period'), type: 'date' },
     {
@@ -257,23 +274,30 @@ export default function MaterialOrders() {
     ...(orderOrgs.length > 1
       ? [
           {
-            key: 'org',
+            key: 'orgUnitId',
             label: t('order.flt.org'),
             type: 'multi',
-            options: orderOrgs.map((x) => ({ value: x, label: x })),
+            options: orderOrgs,
           } as FilterField,
         ]
       : []),
   ];
-  const shown = filterRows(rows, filterFields, flt, (o, key) =>
-    key === 'org' ? (o.orgUnit?.name ?? '') : o[key],
-  );
+  // 필터·검색은 서버가 걸어 보낸다
+  const shown = rows;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.materialOrders')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+        filters={
+          <FilterButton
+            fields={filterFields}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
+        }
+        onSearch={setQ}
         columns={columns}
         rows={shown}
         loading={loading}

@@ -28,10 +28,15 @@ export class ApprovalController {
   constructor(private readonly approvals: ApprovalService) {}
 
   @Get()
-  list(@CurrentUser() p: AuthPrincipal, @Query('box') box = 'todo') {
+  list(
+    @CurrentUser() p: AuthPrincipal,
+    @Query('box') box = 'todo',
+    @Query('f') f?: string,
+    @Query('q') q?: string,
+  ) {
     if (!BOXES.includes(box as ApprovalBox))
       throw new BadRequestException(`box는 ${BOXES.join(' | ')} 중 하나여야 합니다.`);
-    return this.approvals.list(p, box as ApprovalBox);
+    return this.approvals.list(p, box as ApprovalBox, f, q);
   }
 
   @Get('pending-count')

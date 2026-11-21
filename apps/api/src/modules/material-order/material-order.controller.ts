@@ -15,8 +15,10 @@ export class MaterialOrderController {
     @CurrentUser() user: AuthPrincipal,
     @Query('orgUnitId') orgUnitId?: string,
     @Query('status') status?: string,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
   ) {
-    return this.service.findAll(orgUnitId, status, user);
+    return this.service.findAll(orgUnitId, status, user, f, q);
   }
 
   @Get(':id')

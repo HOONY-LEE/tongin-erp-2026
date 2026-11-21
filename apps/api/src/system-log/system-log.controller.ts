@@ -6,9 +6,21 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { logSystem } from './system-log.sink';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../common/list-filter';
 
 /** 한 번에 보내는 최대 줄 수 */
-const ROWS_MAX = 500;
+const ROWS_MAX = LIST_LIMIT;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** 화면 필터(FilterButton) — 종류·출처는 원래 주소 조건, 사용자(who = 사용자 id)만 여기 */
+const LOG_RULES: ListFilterRules = {
+  who: {
+    custom: (v) => {
+      const ids = (Array.isArray(v) ? v : []).filter((x) => UUID_RE.test(x));
+      return ids.length ? { userId: { in: ids } } : null;
+    },
+  },
+};
 /** 화면 오류 보고 — 한 사람이 1분에 이만큼까지(같은 오류가 되풀이돼도 DB가 차지 않게) */
 const CLIENT_PER_MINUTE = 10;
 
@@ -26,6 +38,12 @@ class LogQuery {
   @IsString()
   @MaxLength(200)
   q?: string;
+
+  /** 화면 필터(FilterButton) JSON */
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  f?: string;
 
   @IsOptional()
   @IsString()
@@ -67,7 +85,7 @@ export class SystemLogController {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** 시스템 로그 — 기간(기본 최근 7일)·종류·출처·검색어. 최신 500줄 */
+  /** 시스템 로그 — 기간(기본 최근 7일)·종류·출처·검색어·사용자. 최신 1,000줄 */
   @Get()
   @RequirePermissions('SYSTEM_LOG.READ')
   async list(@Query() q: LogQuery) {
@@ -89,6 +107,7 @@ export class SystemLogController {
             ],
           }
         : {}),
+      AND: listWhere(LOG_RULES, q.f) as Prisma.SystemLogWhereInput[],
     };
     const rows = await this.prisma.systemLog.findMany({
       where,

@@ -13,8 +13,13 @@ export class WorkOrderController {
   @AccessLog('work-order', 'LIST')
   @Get()
   @RequirePermissions('WORK_ORDER.READ')
-  findAll(@CurrentUser() user: AuthPrincipal, @Query('status') status?: string) {
-    return this.workOrderService.findAll(status, user);
+  findAll(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('status') status?: string,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.workOrderService.findAll(status, user, f, q);
   }
 
   @AccessLog('work-order', 'VIEW')

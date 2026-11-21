@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ASSET_AMOUNT_UNIT,
@@ -8,6 +8,7 @@ import {
 } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { ddayInfo, toInitial, useWorkDirectory, won, ymd, type PersonRef } from '../lib/workMenus';
@@ -15,7 +16,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   FormModal,
   ListPage,
   RecordDetail,
@@ -96,22 +96,39 @@ export default function Assets() {
   const [due, setDue] = useState<DueFilter>('ALL');
   /** 검색 옆 필터 — 기간(시작·만료)·담당자 */
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(이름·상대방·번호) */
+  const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Asset | 'new' | null>(null);
+  /** 담당자 고르기 목록 — 거른 결과로 줄어들지 않게 본 적 있는 담당자를 모아 둔다 */
+  const [managerSeen, setManagerSeen] = useState<Map<string, string>>(new Map());
+  const query = filterQuery(flt, q);
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<Asset[]>('/assets'));
+      const data = await api<Asset[]>(`/assets${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
+      setManagerSeen((prev) => {
+        const next = new Map(prev);
+        for (const a of data) if (a.manager) next.set(a.manager.id, a.manager.name);
+        return next.size === prev.size ? prev : next;
+      });
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const fields: FormField[] = useMemo(
@@ -275,9 +292,7 @@ export default function Assets() {
     );
   }
 
-  const managers = [
-    ...new Set(rows.map((a) => a.manager?.name).filter((x): x is string => !!x)),
-  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  const managers = [...managerSeen].sort((a, b) => a[1].localeCompare(b[1], 'ko'));
   const filterFields: FilterField[] = [
     {
       key: 'period',
@@ -291,21 +306,19 @@ export default function Assets() {
     ...(managers.length
       ? [
           {
-            key: 'manager',
+            key: 'managerEmpId',
             label: t('asset.flt.manager'),
             type: 'multi',
             options: [
-              ...managers.map((x) => ({ value: x, label: x })),
+              ...managers.map(([value, label]) => ({ value, label })),
               { value: '', label: t('asset.flt.noManager') },
             ],
           } as FilterField,
         ]
       : []),
   ];
-  // 필터를 먼저 걸고, 종류 탭·기한 숫자도 걸린 목록 기준으로
-  const picked = filterRows(rows, filterFields, flt, (a, key) =>
-    key === 'manager' ? (a.manager?.name ?? '') : a[key as keyof Asset],
-  );
+  // 필터·검색은 서버가 걸어 보낸다 — 종류 탭·기한 숫자도 걸린 목록 기준
+  const picked = rows;
   // 종류(머리글 아래 세그먼트) × 기한(검색창 옆 세그먼트)
   const byKind = kind === 'ALL' ? picked : picked.filter((r) => r.kind === kind);
   const dueMatch = (a: Asset, f: DueFilter) => {
@@ -374,11 +387,17 @@ export default function Assets() {
         fit
         columns={columns}
         rows={byKind.filter((r) => dueMatch(r, due)) as unknown as Row[]}
+        onSearch={setQ}
         loading={loading}
         onRowClick={(r) => detail.open(String(r.id))}
         filters={
           <>
-            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <FilterButton
+              fields={filterFields}
+              value={flt}
+              onChange={setFlt}
+              limited={rows.length >= LIST_LIMIT}
+            />
             <SegmentedControl
               value={due}
               onChange={(v) => setDue(v as DueFilter)}

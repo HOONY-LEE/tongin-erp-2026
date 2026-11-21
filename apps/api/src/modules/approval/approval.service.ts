@@ -14,6 +14,7 @@ import {
   type ApprovalLineRule,
   type AuthPrincipal,
 } from '@tongin/shared';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
@@ -530,7 +531,7 @@ export class ApprovalService {
    * - cc: 내가 참조로 들어간 문서 + 이미 내가 결재한 문서(결재 이력)
    * - all: 범위 안 전체(APPROVAL.READ)
    */
-  async list(principal: AuthPrincipal, box: ApprovalBox) {
+  async list(principal: AuthPrincipal, box: ApprovalBox, f?: string, q?: string) {
     const me = principal.employeeId;
     let where: Prisma.ApprovalDocWhereInput;
     if (box === 'all') {
@@ -560,11 +561,54 @@ export class ApprovalService {
           },
         };
     }
+    // 내 결재 차례 = 진행 중이고 내 결재 단계가 대기 중(결재함 todo·배지와 같은 기준)
+    const myTurn: Prisma.ApprovalDocWhereInput = me
+      ? {
+          status: 'PENDING',
+          steps: { some: { approverEmpId: me, status: 'PENDING', kind: 'APPROVER' } },
+        }
+      : { id: { in: [] } };
+    // 화면 필터(FilterButton key·값과 같다)
+    const rules: ListFilterRules = {
+      period: {
+        date: { submittedAt: ['submittedAt', 'ts'], completedAt: ['completedAt', 'ts'] },
+      },
+      status: { in: 'status' },
+      // 종류 = 결재 양식은 양식 이름, 그 밖은 문서 종류 이름(view의 docTypeLabel과 같은 기준)
+      docTypeLabel: {
+        custom: (v) => {
+          const labels = Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+          if (!labels.length) return null;
+          const types = Object.entries(APPROVAL_DOC_TYPE_LABEL)
+            .filter(([, l]) => labels.includes(l))
+            .map(([k]) => k);
+          return {
+            OR: [
+              ...(types.length ? [{ docType: { in: types } }] : []),
+              ...labels.map((l) => ({
+                docType: 'FORM',
+                payload: { path: ['formName'], equals: l },
+              })),
+            ],
+          };
+        },
+      },
+      canAct: { one: { true: myTurn, false: { NOT: myTurn } } },
+    };
     const rows = await this.prisma.approvalDoc.findMany({
-      where,
+      where: {
+        AND: [
+          where,
+          ...(listWhere(rules, f, q, [
+            'docNo',
+            'title',
+            'requester.name',
+          ]) as Prisma.ApprovalDocWhereInput[]),
+        ],
+      },
       include: docInclude,
       orderBy: { submittedAt: 'desc' },
-      take: 500,
+      take: LIST_LIMIT,
     });
     // 내 결재 차례인 문서를 맨 위로(그 안에서는 최근 상신 순)
     const views = rows.map((d) => this.view(d, principal));

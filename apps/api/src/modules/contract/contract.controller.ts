@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
 import { ContractService } from './contract.service';
 import { CreateContractDto, CreatePaymentDto } from './dto/contract.dto';
@@ -13,8 +13,8 @@ export class ContractController {
   @AccessLog('contract', 'LIST')
   @Get()
   @RequirePermissions('CONTRACT.READ')
-  findAll(@CurrentUser() user: AuthPrincipal) {
-    return this.contractService.findAll(user);
+  findAll(@CurrentUser() user: AuthPrincipal, @Query('f') f?: string, @Query('q') q?: string) {
+    return this.contractService.findAll(user, f, q);
   }
 
   @AccessLog('contract', 'VIEW')

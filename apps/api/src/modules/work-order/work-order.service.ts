@@ -6,11 +6,20 @@ import {
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
 import { DocNoService } from '../../prisma/doc-no.service';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
 import { LeadService } from '../lead/lead.service';
 import { CreateAssignmentDto, CreateWorkOrderDto } from './dto/work-order.dto';
+
+/** 작업오더 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  period: {
+    date: { scheduledDate: ['scheduledDate', 'date'], createdAt: ['createdAt', 'ts'] },
+  },
+  status: { in: 'status' },
+};
 
 @Injectable()
 export class WorkOrderService {
@@ -32,16 +41,22 @@ export class WorkOrderService {
   }
 
   /** 전속업체 사용자(principal.partnerId)는 본인 소속 작업오더만 + 원가(billedCost) 마스킹 (OPS-04). */
-  async findAll(status?: string, principal?: AuthPrincipal) {
+  async findAll(status?: string, principal?: AuthPrincipal, f?: string, q?: string) {
     const ids = await this.orgIds(principal);
     const rows = await this.prisma.workOrder.findMany({
       where: {
         ...(status ? { status } : {}),
         ...(principal?.partnerId ? { partnerId: principal.partnerId } : {}),
         ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+        AND: listWhere(LIST_RULES, f, q, [
+          'workNo',
+          'legacyNo',
+          'contract.contractNo',
+          'contract.customer.name',
+        ]),
       },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
     if (principal?.partnerId) rows.forEach((r) => this.maskCost(r));
     return rows;

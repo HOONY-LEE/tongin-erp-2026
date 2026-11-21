@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { AuthPrincipal, SupportTicketStatus } from '@tongin/shared';
 import { DocNoService } from '../../prisma/doc-no.service';
+import { LIST_LIMIT, listWhere, searchWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -20,6 +21,16 @@ const TRANSITIONS: Record<SupportTicketStatus, SupportTicketStatus[]> = {
   CANCELED: [],
 };
 
+/** 고객A/S 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  createdAt: { date: { createdAt: ['createdAt', 'ts'] } },
+  kind: { in: 'kind' },
+  status: { in: 'status' },
+  priority: { in: 'priority' },
+  channel: { in: 'channel' },
+  orgUnitId: { in: 'orgUnitId' },
+};
+
 @Injectable()
 export class SupportService {
   constructor(
@@ -29,16 +40,30 @@ export class SupportService {
     private readonly scope: ScopeService,
   ) {}
 
-  async findAll(kind?: string, status?: string, principal?: AuthPrincipal) {
+  async findAll(kind?: string, status?: string, principal?: AuthPrincipal, f?: string, q?: string) {
     const ids = await this.scope.orgScopeIds(principal);
+    // 고객은 관계가 없어(customerId만) 이름·전화로 찾은 고객 id로 잇는다
+    const text = searchWhere(q, ['ticketNo', 'legacyNo', 'subject', 'content']);
+    const cust = searchWhere(q, ['name', 'phonePrimary'], ['phonePrimary']);
+    const custIds = cust
+      ? (await this.prisma.customer.findMany({ where: cust, select: { id: true }, take: 500 })).map(
+          (c) => c.id,
+        )
+      : [];
     return this.prisma.supportTicket.findMany({
       where: {
         ...(kind ? { kind } : {}),
         ...(status ? { status } : {}),
         ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+        AND: [
+          ...listWhere(LIST_RULES, f),
+          ...(text
+            ? [{ OR: [...text.OR, ...(custIds.length ? [{ customerId: { in: custIds } }] : [])] }]
+            : []),
+        ],
       },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 

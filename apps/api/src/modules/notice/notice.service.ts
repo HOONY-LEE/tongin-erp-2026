@@ -10,12 +10,26 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { InboxService } from '../../inbox/inbox.service';
 import { hasPerm } from '../../common/util/perm';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { CreateNoticeDto, UpdateNoticeDto } from './dto/notice.dto';
 
 const include = {
   author: { select: { id: true, name: true, orgUnit: { select: { name: true } } } },
   orgUnits: { select: { orgUnit: { select: { id: true, name: true } } } },
 } satisfies Prisma.NoticeInclude;
+
+/** 공지 목록 필터(화면 FilterButton key → 칸). 대상 조직은 고른 것 중 하나라도 대상이면 */
+const LIST_RULES: ListFilterRules = {
+  createdAt: { date: { createdAt: ['createdAt', 'ts'] } },
+  authorEmpId: { in: 'authorEmpId' },
+  orgUnitId: {
+    custom: (v) => {
+      const list = Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+      return list.length ? { orgUnits: { some: { orgUnitId: { in: list } } } } : null;
+    },
+  },
+  pinned: { one: { true: { pinned: true }, false: { pinned: false } } },
+};
 
 type NoticeRow = Prisma.NoticeGetPayload<{ include: typeof include }>;
 
@@ -62,7 +76,7 @@ export class NoticeService {
     };
   }
 
-  async findAll(p: AuthPrincipal, q?: string) {
+  async findAll(p: AuthPrincipal, q?: string, f?: string) {
     const visible = await this.visibleWhere(p);
     const search: Prisma.NoticeWhereInput = q?.trim()
       ? {
@@ -73,10 +87,10 @@ export class NoticeService {
         }
       : {};
     const rows = await this.prisma.notice.findMany({
-      where: { AND: [visible, search] },
+      where: { AND: [visible, search, ...listWhere(LIST_RULES, f)] },
       include,
       orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
-      take: 300,
+      take: LIST_LIMIT,
     });
     return rows.map(view);
   }

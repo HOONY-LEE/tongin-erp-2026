@@ -18,6 +18,7 @@ import {
   type LeaveFormSettings,
   type LeaveSlot,
 } from '@tongin/shared';
+import { LIST_LIMIT } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { ApprovalService } from '../approval/approval.service';
@@ -225,7 +226,8 @@ export class LeaveService implements OnModuleInit {
       where: { employeeId },
       include: { leaveType: { select: { name: true, code: true, deducts: true } } },
       orderBy: { startDate: 'desc' },
-      take: 200,
+      // 한 사람의 신청 전부(화면 필터는 받아 온 전부에서 거른다)
+      take: LIST_LIMIT,
     });
   }
 

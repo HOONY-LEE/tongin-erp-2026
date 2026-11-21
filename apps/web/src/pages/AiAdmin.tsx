@@ -1,9 +1,10 @@
 import i18n from '../i18n';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AI_ACCESS, AI_FEATURES, type AiAccess, type AiPrices } from '@tongin/shared';
+import { filterQuery } from '../lib/serverFilter';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
@@ -907,6 +908,19 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [models, setModels] = useState<ModelDef[]>([]);
   const { id: detailId, open, close } = useDetailParam('log');
+  /** 검색칸 — 서버에서 찾는다(모델·오류·실행 id·사용자) */
+  const [q, setQ] = useState('');
+  /** 모델·사용자 고르기 목록 — 거른 결과에 없는 것도 남게 본 것을 모은다 */
+  const [seenModels, setSeenModels] = useState<Set<string>>(new Set());
+  const [seenUsers, setSeenUsers] = useState<Map<string, string>>(new Map());
+  // 기능은 원래 주소 조건(feature), 모델·사용자·결과·검색은 f·q로 — 모두 서버에서
+  const usageQuery = filterQuery({ ...flt, feature: undefined }, q, {
+    from,
+    to,
+    userId,
+    feature: feature !== 'ALL' ? feature : undefined,
+  });
+  const usageSeq = useRef(0);
 
   useEffect(() => {
     api<SettingsRes>('/ai-admin/settings')
@@ -915,18 +929,31 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    const qs = new URLSearchParams({ from, to });
-    if (userId) qs.set('userId', userId);
-    if (feature !== 'ALL') qs.set('feature', feature);
-    api<{ rows: UsageRow[]; truncated: boolean }>(`/ai-admin/usage?${qs.toString()}`)
-      .then((r) => {
-        setRows(r.rows);
-        setTruncated(r.truncated);
-      })
-      .catch((e) => toast({ type: 'error', title: errText(e, t('aiadm.loadFailed')) }))
-      .finally(() => setLoading(false));
-  }, [from, to, feature, userId, toast]);
+    const my = ++usageSeq.current;
+    const id = window.setTimeout(() => {
+      setLoading(true);
+      api<{ rows: UsageRow[]; truncated: boolean }>(`/ai-admin/usage${usageQuery}`)
+        .then((r) => {
+          if (my !== usageSeq.current) return;
+          setRows(r.rows);
+          setTruncated(r.truncated);
+          setSeenModels((prev) => new Set([...prev, ...r.rows.map((x) => x.model)]));
+          setSeenUsers((prev) => {
+            const m = new Map(prev);
+            for (const x of r.rows) m.set(x.userId ?? 'AUTO', x.userName);
+            return m;
+          });
+        })
+        .catch((e) => {
+          if (my === usageSeq.current)
+            toast({ type: 'error', title: errText(e, t('aiadm.loadFailed')) });
+        })
+        .finally(() => {
+          if (my === usageSeq.current) setLoading(false);
+        });
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [usageQuery, toast]);
 
   const tableRows = useMemo(
     () =>
@@ -949,21 +976,21 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
       options: Object.entries(AI_FEATURES).map(([value, label]) => ({ value, label })),
     },
     {
-      key: 'modelName',
+      key: 'model',
       label: t('aiadm.flt.model'),
       type: 'multi',
-      options: [...new Set(tableRows.map((r) => r.modelName))].map((v) => ({ value: v, label: v })),
+      options: [...seenModels].map((v) => ({ value: v, label: modelName(models, v) })),
     },
     ...(userId
       ? []
       : [
           {
-            key: 'userName',
+            key: 'user',
             label: t('aiadm.flt.user'),
             type: 'multi',
-            options: [...new Set(tableRows.map((r) => r.userName).filter(Boolean))]
-              .sort((a, b) => a.localeCompare(b, 'ko'))
-              .map((v) => ({ value: v, label: v })),
+            options: [...seenUsers.entries()]
+              .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+              .map(([value, label]) => ({ value, label })),
           } as FilterField,
         ]),
     {
@@ -1089,18 +1116,13 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
       {truncated && <p className={styles.notice}>{t('aiadm.tooMany')}</p>}
       <DataTable
         columns={columns}
-        rows={
-          filterRows(
-            tableRows,
-            logFilter.filter((f) => f.key !== 'feature'),
-            flt,
-            (r, key) => (key === 'ok' ? String(r.ok) : r[key as keyof typeof r]),
-          ) as unknown as Row[]
-        }
+        // 기능·모델·사용자·결과·검색은 서버가 이미 걸렀다
+        rows={tableRows as unknown as Row[]}
         loading={loading}
         onRowClick={compact ? undefined : (r) => open(String(r.id))}
         exportable
         exportFileName={t('aiadm.exportLogs', { v0: from, v1: to })}
+        onSearch={setQ}
         filters={
           <>
             <FilterButton fields={logFilter} value={flt} onChange={setFlt} />

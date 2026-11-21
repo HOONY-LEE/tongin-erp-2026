@@ -142,14 +142,64 @@ function DateField({
   );
 }
 
+/** 선택지가 많으면(지점·거래처 수백 곳) 찾기 칸으로 좁히고, 고른 것은 늘 보이게 */
+const MANY = 16;
+function MultiField({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: ChoiceOption[];
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const [find, setFind] = useState('');
+  const many = options.length > MANY;
+  const k = find.trim().toLowerCase();
+  const shown = !many
+    ? options
+    : options.filter(
+        (o) => value.includes(o.value) || (k && String(o.label).toLowerCase().includes(k)),
+      );
+  return (
+    <>
+      {many && (
+        <input
+          className={styles.find}
+          type="search"
+          value={find}
+          placeholder={t('filter.find', { v0: options.length })}
+          aria-label={label}
+          onChange={(e) => setFind(e.target.value)}
+        />
+      )}
+      {shown.length > 0 && (
+        <CheckChips
+          size="sm"
+          aria-label={label}
+          value={value}
+          onChange={onChange}
+          options={shown.slice(0, 60)}
+        />
+      )}
+    </>
+  );
+}
+
 export function FilterButton({
   fields,
   value,
   onChange,
+  limited,
 }: {
   fields: FilterField[];
   value: FilterValues;
   onChange: (v: FilterValues) => void;
+  /** 서버가 한도(1,000건)까지 보냈다 — 버튼 옆에 '조건을 좁혀 주세요' */
+  limited?: boolean;
 }) {
   const { t } = useTranslation();
   const btn = useRef<HTMLButtonElement>(null);
@@ -213,6 +263,7 @@ export function FilterButton({
         {t('filter.button')}
         {count > 0 && <span className={styles.count}>{count}</span>}
       </button>
+      {limited && <span className={styles.limited}>{t('filter.limited')}</span>}
       {open &&
         createPortal(
           <div
@@ -252,9 +303,8 @@ export function FilterButton({
                       onChange={(v) => set(f.key, v)}
                     />
                   ) : f.type === 'multi' ? (
-                    <CheckChips
-                      size="sm"
-                      aria-label={f.label}
+                    <MultiField
+                      label={f.label}
                       value={(value[f.key] as string[] | undefined) ?? []}
                       onChange={(v) => set(f.key, v.length ? v : undefined)}
                       options={f.options}

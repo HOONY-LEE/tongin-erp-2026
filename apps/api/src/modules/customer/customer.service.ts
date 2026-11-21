@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -14,6 +15,13 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 const GRADE_GROUP = 'CUSTOMER_GRADE';
+
+/** 고객 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  createdAt: { date: { createdAt: ['createdAt', 'ts'] } },
+  grade: { in: 'grade' },
+  ownerOrgId: { in: 'ownerOrgId' },
+};
 
 @Injectable()
 export class CustomerService {
@@ -41,15 +49,22 @@ export class CustomerService {
     }
   }
 
-  async findAll(phone?: string, principal?: AuthPrincipal) {
+  async findAll(phone?: string, principal?: AuthPrincipal, f?: string, q?: string) {
     const scoped = await this.scopeWhere(principal);
     return this.prisma.customer.findMany({
       where: {
         ...(phone ? { phonePrimary: phone.replace(/\D/g, '') } : {}),
         ...(scoped ?? {}),
+        AND: listWhere(
+          LIST_RULES,
+          f,
+          q,
+          ['customerNo', 'legacyNo', 'name', 'addr', 'phonePrimary'],
+          ['phonePrimary'],
+        ),
       },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 

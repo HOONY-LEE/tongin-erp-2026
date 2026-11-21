@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -18,7 +19,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   Input,
   ListPage,
   Modal,
@@ -61,31 +61,45 @@ export default function Approvals() {
   const [todoCount, setTodoCount] = useState(0);
   /** 검색 옆 필터 — 기간·종류·상태·내 결재 차례 */
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(문서번호·제목·기안자) */
+  const [q, setQ] = useState('');
+  /** 종류 고르기 목록 — 거른 결과에 없는 종류도 남게 본 것을 모은다 */
+  const [typeLabels, setTypeLabels] = useState<string[]>([]);
+  const query = filterQuery(flt, q, { box });
   // 새 결재 — 고르기 → 일반 품의 / 결재 양식 작성
   const [writing, setWriting] = useState<'pick' | 'general' | 'leave' | ApprovalFormDef | null>(
     null,
   );
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
     if (box === 'lines' || box === 'forms') return;
+    const my = ++seq.current;
     setLoading(true);
     try {
       const [list, pc] = await Promise.all([
-        api<ApprovalDocView[]>(`/approvals?box=${box}`),
+        api<ApprovalDocView[]>(`/approvals${query}`),
         api<{ count: number }>('/approvals/pending-count'),
       ]);
+      if (my !== seq.current) return;
       setRows(list);
+      setTypeLabels((prev) => [
+        ...new Set([...prev, ...list.map((r) => r.docTypeLabel).filter(Boolean)]),
+      ]);
       setTodoCount(pc.count);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [box, toast, t]);
+  }, [box, toast, t, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   // 결재 양식 만들기·고치기는 결재함 머리글·탭 없이 '< 양식 이름'부터
@@ -154,7 +168,7 @@ export default function Approvals() {
       key: 'docTypeLabel',
       label: t('appr.flt.type'),
       type: 'multi',
-      options: [...new Set(rows.map((r) => r.docTypeLabel).filter(Boolean))].map((v) => ({
+      options: typeLabels.map((v) => ({
         value: v,
         label: v,
       })),
@@ -178,9 +192,8 @@ export default function Approvals() {
       ],
     },
   ];
-  const listed = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'canAct' ? String(r.canAct) : r[key as keyof ApprovalDocView],
-  );
+  // 필터·검색은 서버가 이미 걸었다
+  const listed = rows;
 
   const submitted = (doc: ApprovalDocView) => {
     setWriting(null);
@@ -229,7 +242,15 @@ export default function Approvals() {
       ) : (
         <DataTable
           tabs={boxTabs}
-          filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+          filters={
+            <FilterButton
+              fields={filterFields}
+              value={flt}
+              onChange={setFlt}
+              limited={rows.length >= LIST_LIMIT}
+            />
+          }
+          onSearch={setQ}
           columns={columns}
           rows={listed as unknown as Row[]}
           loading={loading}

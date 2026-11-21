@@ -2,21 +2,41 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { dateOrNull } from '../../common/util/perm';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { CreateCorpAssetDto, UpdateCorpAssetDto } from './dto/corp-asset.dto';
 
 const include = {
   manager: { select: { id: true, name: true, orgUnit: { select: { name: true } } } },
 } satisfies Prisma.CorpAssetInclude;
 
+/** 계약·자산 목록 필터(화면 FilterButton key → 칸). 담당자 ''는 미지정 */
+const LIST_RULES: ListFilterRules = {
+  period: { date: { endDate: ['endDate', 'date'], startDate: ['startDate', 'date'] } },
+  managerEmpId: {
+    custom: (v) => {
+      const list = Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+      if (!list.length) return null;
+      const ids = list.filter(Boolean);
+      return {
+        OR: [
+          ...(ids.length ? [{ managerEmpId: { in: ids } }] : []),
+          ...(list.includes('') ? [{ managerEmpId: null }] : []),
+        ],
+      };
+    },
+  },
+};
+
 /** 계약·자산(총무) — 특허·상표권·임대차·보험·리스. 본사 관리 메뉴라 조직 범위를 두지 않는다 */
 @Injectable()
 export class CorpAssetService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(kind?: string, q?: string) {
+  findAll(kind?: string, q?: string, f?: string) {
     const term = q?.trim();
     return this.prisma.corpAsset.findMany({
       where: {
+        AND: listWhere(LIST_RULES, f),
         ...(kind ? { kind } : {}),
         ...(term
           ? {
@@ -31,7 +51,7 @@ export class CorpAssetService {
       include,
       // 만료가 가까운 것부터, 기한 없는 것은 뒤로
       orderBy: [{ endDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
-      take: 500,
+      take: LIST_LIMIT,
     });
   }
 

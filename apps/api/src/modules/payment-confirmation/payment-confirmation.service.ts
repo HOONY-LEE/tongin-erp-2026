@@ -4,7 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { ContractService } from '../contract/contract.service';
@@ -41,6 +43,77 @@ interface PayConfirmRow {
  * 견적(QUOTED)이 생기면 목록에 '입금전'으로 나타나고, 계약금 입금 시 계약 성립(계약금완료), 잔금 입금 시 완료.
  * 토스페이먼츠 실연동 시 결제 웹훅이 confirmDeposit/confirmBalance 를 자동 호출하게 된다(현재는 수동/스텁).
  */
+/** 'YYYY-MM-DD' 범위 → 한국 날짜 기준 시각 조건 */
+const kstRange = (from?: string, to?: string) => {
+  const day = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+  const f = day(from);
+  const t = day(to);
+  if (!f && !t) return null;
+  return {
+    ...(f ? { gte: new Date(`${f}T00:00:00+09:00`) } : {}),
+    ...(t ? { lt: new Date(new Date(`${t}T00:00:00+09:00`).getTime() + 86_400_000) } : {}),
+  };
+};
+const PAID_DEPOSIT = { kind: 'DEPOSIT', status: 'PAID' };
+const PAID_BALANCE = { kind: 'BALANCE', status: 'PAID' };
+
+/** 입금확인 목록 필터(화면 FilterButton key → 견적 조건) — 상태·방식은 계약의 결제로 가른다 */
+const LIST_RULES: ListFilterRules = {
+  period: {
+    custom: (v) => {
+      const r = v as { from?: string; to?: string; on?: string };
+      const range = kstRange(r.from, r.to);
+      if (!range) return null;
+      return r.on === 'depositPaidAt'
+        ? { contract: { payments: { some: { ...PAID_DEPOSIT, paidAt: range } } } }
+        : { contract: { sentAt: range } };
+    },
+  },
+  status: {
+    custom: (v) => {
+      const list = Array.isArray(v) ? v : [];
+      const or: Prisma.EstimateWhereInput[] = [];
+      if (list.includes('AWAITING'))
+        or.push({
+          OR: [{ contract: null }, { contract: { payments: { none: PAID_DEPOSIT } } }],
+        });
+      if (list.includes('DEPOSIT_PAID'))
+        or.push({
+          contract: { payments: { some: PAID_DEPOSIT, none: PAID_BALANCE } },
+        });
+      if (list.includes('COMPLETED')) or.push({ contract: { payments: { some: PAID_BALANCE } } });
+      return or.length ? { OR: or } : null;
+    },
+  },
+  signed: {
+    one: {
+      yes: { contract: { status: 'SIGNED' } },
+      no: { OR: [{ contract: null }, { contract: { status: { not: 'SIGNED' } } }] },
+    },
+  },
+  // 계약금 결제(입금됐으면 그것, 아니면 대기 중인 것)가 토스면 자동
+  method: {
+    one: {
+      auto: {
+        contract: {
+          payments: {
+            some: { kind: 'DEPOSIT', status: { in: ['PAID', 'PENDING'] }, pgProvider: 'TOSS' },
+          },
+        },
+      },
+      manual: {
+        NOT: {
+          contract: {
+            payments: {
+              some: { kind: 'DEPOSIT', status: { in: ['PAID', 'PENDING'] }, pgProvider: 'TOSS' },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
 @Injectable()
 export class PaymentConfirmationService {
   constructor(
@@ -58,10 +131,20 @@ export class PaymentConfirmationService {
   }
 
   /** 견적서가 전달된(QUOTED) 건들의 입금 현황 목록. */
-  async list(principal?: AuthPrincipal): Promise<PayConfirmRow[]> {
+  async list(principal?: AuthPrincipal, f?: string, q?: string): Promise<PayConfirmRow[]> {
     const ids = await this.scope.orgScopeIds(principal);
     const estimates = await this.prisma.estimate.findMany({
-      where: { status: 'QUOTED', ...(ids === null ? {} : { orgUnitId: { in: ids } }) },
+      where: {
+        status: 'QUOTED',
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+        AND: listWhere(
+          LIST_RULES,
+          f,
+          q,
+          ['estimateNo', 'contract.contractNo', 'customer.name', 'customer.phonePrimary'],
+          ['customer.phonePrimary'],
+        ),
+      },
       select: {
         id: true,
         estimateNo: true,
@@ -70,7 +153,7 @@ export class PaymentConfirmationService {
         customer: { select: { name: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
     const contracts = await this.prisma.contract.findMany({
       where: { estimateId: { in: estimates.map((e) => e.id) } },

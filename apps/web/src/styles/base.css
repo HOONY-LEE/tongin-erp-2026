@@ -846,13 +846,6 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   padding-right: 4px;
   scrollbar-gutter: stable;
 }
-/* 서버 검색이 한도까지 왔을 때 필터 옆 안내 */
-.dt-limit-note {
-  color: var(--ark-color-text-tertiary);
-  font-size: calc(12px * var(--font-scale, 1));
-  white-space: nowrap;
-}
-
 /* 표 개인정보 가리기 — 툴바 '가리기' 메뉴·내보내기 '가려서 받기' 체크 목록 */
 .dt-wrap .dt-mask-on {
   color: var(--ark-color-info-600, #2563eb);

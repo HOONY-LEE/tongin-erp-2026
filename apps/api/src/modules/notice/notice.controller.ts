@@ -21,8 +21,8 @@ export class NoticeController {
   constructor(private readonly notices: NoticeService) {}
 
   @Get()
-  findAll(@CurrentUser() p: AuthPrincipal, @Query('q') q?: string) {
-    return this.notices.findAll(p, q);
+  findAll(@CurrentUser() p: AuthPrincipal, @Query('q') q?: string, @Query('f') f?: string) {
+    return this.notices.findAll(p, q, f);
   }
 
   @Get(':id')

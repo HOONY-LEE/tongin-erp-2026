@@ -146,12 +146,14 @@ export class CrmController {
     @Query('q') q?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('f') f?: string,
   ) {
     return this.crm.list(u, pipeline, {
       stage,
       ownerEmpId,
       source,
       q,
+      f,
       from: dateOr(from),
       to: dateOr(to),
     });

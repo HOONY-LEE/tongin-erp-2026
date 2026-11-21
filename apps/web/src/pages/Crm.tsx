@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { SearchInput } from '../components/ui/SearchInput';
 import { api, ApiError } from '../lib/api';
+import { filterQuery } from '../lib/serverFilter';
 import { useDirectory } from '../lib/approvals';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -30,7 +31,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   FormModal,
   ListPage,
   ListToolbar,
@@ -125,19 +125,29 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const detail = useDetailParam();
   const { updatedAt, touch } = useUpdatedAt();
 
+  // 필터·검색은 서버에서(최대 2,000건) — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const query = filterQuery(flt, q);
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<CrmLeadView[]>(base));
+      const data = await api<CrmLeadView[]>(`${base}${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('crm.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [base, toast, touch]);
+  }, [base, toast, touch, query]);
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
+  }, [load]);
+  useEffect(() => {
     if (def.link === 'BRANCH')
       void api<{ rows: { orgUnitId: string; name: string }[] }>('/franchise/branches')
         .then((r) => setLinks(r.rows.map((b) => ({ value: b.orgUnitId, label: b.name }))))
@@ -146,13 +156,27 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
       void api<{ id: string; name: string }[]>('/partners')
         .then((r) => setLinks(r.map((b) => ({ value: b.id, label: b.name }))))
         .catch(() => undefined);
-  }, [load, def.link]);
+  }, [def.link]);
 
-  const term = q.trim();
+  // 지역·담당자 고르기 목록 — 거른 결과로 줄지 않게 한 번 본 값은 계속 둔다
+  const [seen, setSeen] = useState<{ region: string[]; ownerName: string[] }>({
+    region: [],
+    ownerName: [],
+  });
+  useEffect(() => {
+    setSeen((prev) => {
+      const merge = (k: 'region' | 'ownerName') => {
+        const next = new Set(prev[k]);
+        for (const r of rows) if (r[k]) next.add(r[k] as string);
+        return next.size === prev[k].length ? prev[k] : [...next];
+      };
+      const region = merge('region');
+      const ownerName = merge('ownerName');
+      return region === prev.region && ownerName === prev.ownerName ? prev : { region, ownerName };
+    });
+  }, [rows]);
   const distinct = (k: 'region' | 'ownerName') =>
-    [...new Set(rows.map((r) => r[k]).filter((x): x is string => !!x))]
-      .sort((a, b) => a.localeCompare(b, 'ko'))
-      .map((x) => ({ value: x, label: x }));
+    [...seen[k]].sort((a, b) => a.localeCompare(b, 'ko')).map((x) => ({ value: x, label: x }));
   const regions = distinct('region');
   const owners = distinct('ownerName');
   const filterFields: FilterField[] = [
@@ -199,20 +223,10 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
         ]
       : []),
   ];
+  // 필터·검색은 서버가 거른 결과 — 여기서는 '내 것'만
   const filtered = useMemo(
-    () =>
-      filterRows(rows, filterFields, flt, (r, key) => r[key as keyof CrmLeadView]).filter(
-        (r) =>
-          (!mineOnly || r.ownerEmpId === user?.employeeId) &&
-          (!term ||
-            [r.companyName, r.contactName, r.region, r.ownerName, r.memo, r.email].some((x) =>
-              x?.includes(term),
-            ) ||
-            (term.replace(/\D/g, '').length >= 3 &&
-              (r.phone ?? '').includes(term.replace(/\D/g, '')))),
-      ),
-    // filterFields는 rows·def에서 만들어진다
-    [rows, mineOnly, term, user?.employeeId, flt],
+    () => rows.filter((r) => !mineOnly || r.ownerEmpId === user?.employeeId),
+    [rows, mineOnly, user?.employeeId],
   );
   const today = kstToday();
   const weekLater = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000)
@@ -442,7 +456,12 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   );
   const filters = (
     <>
-      <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+      <FilterButton
+        fields={filterFields}
+        value={flt}
+        onChange={setFlt}
+        limited={rows.length >= 2000}
+      />
       <SegmentedControl
         value={mineOnly ? 'mine' : 'all'}
         onChange={(v) => setMineOnly(v === 'mine')}

@@ -19,8 +19,10 @@ export class ServiceOrderController {
     @CurrentUser() user: AuthPrincipal,
     @Query('serviceLine') serviceLine?: string,
     @Query('status') status?: string,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
   ) {
-    return this.service.findAll(serviceLine, status, user);
+    return this.service.findAll(serviceLine, status, user, f, q);
   }
 
   @AccessLog('service-order', 'VIEW')

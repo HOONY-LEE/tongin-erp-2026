@@ -11,6 +11,7 @@ import {
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { Prisma, type CsCall } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EMPLOYEE_BRIEF_SELECT } from '../../common/employee-brief';
 import { afterHoursAgentId, CtiRoutingService } from './cti-routing.service';
@@ -79,6 +80,25 @@ const DRAFT_KEYS = [
     ['Zipcode', 'Addr', 'AddrDetail', 'Sido', 'Sigungu', 'Lat', 'Lng'].map((f) => `${p}${f}`),
   ),
 ];
+
+/** 통화 목록 필터(화면 FilterButton key → 칸) — 날짜는 따로(from·to) */
+const LIST_RULES: ListFilterRules = {
+  status: {
+    custom: (v) => {
+      const list = Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+      // 마무리 전 = 상담 중(ASSIGNED)·콜백 중(CALLBACK)
+      const st = list.flatMap((x) => (x === 'OPEN' ? ['ASSIGNED', 'CALLBACK'] : [x]));
+      return st.length ? { status: { in: st } } : null;
+    },
+  },
+  lead: { one: { yes: { leadId: { not: null } }, no: { leadId: null } } },
+  recording: {
+    one: {
+      yes: { katCallSid: { not: null }, durationSec: { gt: 0 } },
+      no: { OR: [{ katCallSid: null }, { durationSec: null }, { durationSec: { lte: 0 } }] },
+    },
+  },
+};
 
 @Injectable()
 export class CsCallService {
@@ -776,6 +796,8 @@ export class CsCallService {
       limit?: number;
       from?: string;
       to?: string;
+      /** 화면 필터(FilterButton) 값 JSON */
+      f?: string;
     },
   ) {
     const me = p.employeeId ?? null;
@@ -783,6 +805,7 @@ export class CsCallService {
     const d = digits(q);
     const where: Prisma.CsCallWhereInput = {
       ...(opts.scope === 'mine' && { agentEmpId: me ?? '00000000-0000-0000-0000-000000000000' }),
+      AND: listWhere(LIST_RULES, opts.f) as Prisma.CsCallWhereInput[],
       // 날짜 범위(한국 시간 하루 단위)
       ...((opts.from || opts.to) && {
         receivedAt: {
@@ -798,8 +821,8 @@ export class CsCallService {
       }),
     };
     if (q && Array.isArray(where.OR) && where.OR.length === 0) return { total: 0, rows: [] };
-    // 콘솔 표는 최근 콜을 한 번에 받아 표 안에서 찾고 넘긴다(최대 500)
-    const PAGE = Math.min(500, Math.max(1, opts.limit ?? 50));
+    // 콘솔 표는 조건에 맞는 최근 콜을 한 번에 받는다(최대 LIST_LIMIT)
+    const PAGE = Math.min(LIST_LIMIT, Math.max(1, opts.limit ?? 50));
     const page = Math.max(0, opts.page ?? 0);
     const [total, calls] = await Promise.all([
       this.prisma.csCall.count({ where }),

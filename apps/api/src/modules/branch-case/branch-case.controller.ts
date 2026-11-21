@@ -27,8 +27,9 @@ export class BranchCaseController {
     @Query('kind') kind?: string,
     @Query('status') status?: string,
     @Query('q') q?: string,
+    @Query('f') f?: string,
   ) {
-    return this.cases.findAll(p, { branchId, kind, status, q });
+    return this.cases.findAll(p, { branchId, kind, status, q, f });
   }
 
   @Get(':id')

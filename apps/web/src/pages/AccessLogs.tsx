@@ -1,14 +1,14 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { filterQuery } from '../lib/serverFilter';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   DataTable,
   FilterButton,
-  filterRows,
   PageHeader,
   useToast,
   type Column,
@@ -35,6 +35,7 @@ interface AccessRow {
     columns?: string[];
     masked?: string[];
   } | null;
+  userId: string | null;
   loginId: string | null;
   userName: string | null;
 }
@@ -106,21 +107,47 @@ export default function AccessLogs() {
   const action = (flt.action as string | undefined) ?? 'ALL';
   const [rows, setRows] = useState<AccessRow[]>([]);
   const [loading, setLoading] = useState(false);
+  /** 검색칸 — 서버에서 찾는다(경로·대상·사용자 이름/아이디) */
+  const [q, setQ] = useState('');
+  /** 대상·사용자 고르기 목록 — 거른 결과에 없는 것도 남게 본 것을 모은다 */
+  const [seenTargets, setSeenTargets] = useState<Map<string, string>>(new Map());
+  const [seenUsers, setSeenUsers] = useState<Map<string, string>>(new Map());
+  // 종류는 원래 주소 조건(action)으로, 대상·사용자·검색은 f·q로 — 모두 서버에서
+  const query = filterQuery({ ...flt, action: undefined }, q, {
+    from,
+    to,
+    action: action !== 'ALL' ? action : undefined,
+  });
 
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
-    const qs = new URLSearchParams({ from, to });
-    if (action !== 'ALL') qs.set('action', action);
     try {
-      setRows(await api<AccessRow[]>(`/access-logs?${qs.toString()}`));
+      const list = await api<AccessRow[]>(`/access-logs${query}`);
+      if (my !== seq.current) return;
+      setRows(list);
+      setSeenTargets((prev) => {
+        const m = new Map(prev);
+        for (const r of list)
+          m.set(r.resource.startsWith('table:') ? 'table' : r.resource, resourceText(r));
+        return m;
+      });
+      setSeenUsers((prev) => {
+        const m = new Map(prev);
+        for (const r of list) if (r.userId) m.set(r.userId, r.userName ?? r.loginId ?? r.userId);
+        return m;
+      });
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('logs.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('logs.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [from, to, action, toast]);
+  }, [query, toast]);
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const tableRows = useMemo(
@@ -136,10 +163,10 @@ export default function AccessLogs() {
     [rows],
   );
 
-  const distinct = (vs: string[]) =>
-    [...new Set(vs.filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, 'ko'))
-      .map((v) => ({ value: v, label: v }));
+  const choices = (m: Map<string, string>) =>
+    [...m.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+      .map(([value, label]) => ({ value, label }));
   const filterFields: FilterField[] = [
     {
       key: 'action',
@@ -154,22 +181,17 @@ export default function AccessLogs() {
       key: 'target',
       label: t('logs.flt.target'),
       type: 'multi',
-      options: distinct(tableRows.map((r) => r.target)),
+      options: choices(seenTargets),
     },
     {
       key: 'who',
       label: t('logs.flt.who'),
       type: 'multi',
-      options: distinct(tableRows.map((r) => r.who)),
+      options: choices(seenUsers),
     },
   ];
-  // 종류는 이미 서버가 걸렀다
-  const listed = filterRows(
-    tableRows,
-    filterFields.filter((f) => f.key !== 'action'),
-    flt,
-    (r, key) => r[key as keyof typeof r],
-  );
+  // 종류·대상·사용자·검색은 서버가 이미 걸렀다
+  const listed = tableRows;
 
   const columns: Column[] = [
     { title: t('logs.col.at'), dataIndex: 'at', width: 170 },
@@ -208,6 +230,7 @@ export default function AccessLogs() {
         loading={loading}
         exportable
         exportFileName={t('logs.accessExport', { v0: from, v1: to })}
+        onSearch={setQ}
         filters={
           <>
             <FilterButton fields={filterFields} value={flt} onChange={setFlt} />

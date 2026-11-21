@@ -78,7 +78,9 @@ class ListQuery {
   @IsOptional() @IsIn(['mine', 'all']) scope?: 'mine' | 'all';
   @IsOptional() @IsString() @MaxLength(50) q?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000) page?: number;
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(500) limit?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1000) limit?: number;
+  /** 화면 필터(FilterButton) 값 JSON */
+  @IsOptional() @IsString() @MaxLength(4000) f?: string;
   /** 통화 날짜 범위(YYYY-MM-DD, 한국 시간) */
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) from?: string;
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) to?: string;
@@ -182,6 +184,7 @@ export class CsCallController {
       limit: q.limit,
       from: q.from,
       to: q.to,
+      f: q.f,
     });
   }
 

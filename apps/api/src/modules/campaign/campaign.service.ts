@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { AuthPrincipal } from '@tongin/shared';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import {
@@ -58,6 +59,39 @@ interface RecipientInput {
  * 받는 사람은 고를 때 원장에서 이름·번호를 꺼내 남기고(campaign_recipient), 건별 결과를 기록한다.
  * 발송은 요청과 따로 돈다(대상이 많아도 화면이 기다리지 않게) — 화면은 상세를 다시 읽어 진행을 본다.
  */
+/** 'YYYY-MM-DD' 범위 → 한국 날짜 기준 시각 조건 */
+const kstRange = (from?: string, to?: string) => {
+  const day = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+  const f = day(from);
+  const t = day(to);
+  if (!f && !t) return null;
+  return {
+    ...(f ? { gte: new Date(`${f}T00:00:00+09:00`) } : {}),
+    ...(t ? { lt: new Date(new Date(`${t}T00:00:00+09:00`).getTime() + 86_400_000) } : {}),
+  };
+};
+
+/** 캠페인 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  // 발송일 — 예약이면 예약 시각, 아니면 보낸 시각(표의 '발송(예약)' 칸과 같은 기준)
+  period: {
+    custom: (v) => {
+      const r = v as { from?: string; to?: string; on?: string };
+      const range = kstRange(r.from, r.to);
+      if (!range) return null;
+      if (r.on !== 'sendAt') return { createdAt: range };
+      return {
+        OR: [
+          { status: 'SCHEDULED', scheduledAt: range },
+          { status: { not: 'SCHEDULED' }, sentAt: range },
+        ],
+      };
+    },
+  },
+  channel: { in: 'channel' },
+  status: { in: 'status' },
+};
+
 @Injectable()
 export class CampaignService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger('Campaign');
@@ -89,12 +123,12 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
     return ids === null ? null : { createdBy: principal.userId };
   }
 
-  async findAll(principal: AuthPrincipal) {
+  async findAll(principal: AuthPrincipal, f?: string, q?: string) {
     const owner = await this.ownerWhere(principal);
     return this.prisma.campaign.findMany({
-      where: owner ?? {},
+      where: { ...(owner ?? {}), AND: listWhere(LIST_RULES, f, q, ['name', 'title', 'message']) },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 

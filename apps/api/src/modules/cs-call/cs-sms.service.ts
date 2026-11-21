@@ -1,5 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
+import {
+  LIST_LIMIT,
+  listWhere,
+  parseFilter,
+  searchWhere,
+  type ListFilterRules,
+} from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StubNotificationProvider } from '../../notifications/notification.provider';
 
@@ -35,6 +42,15 @@ const DEFAULT_TEMPLATES: { title: string; body: string }[] = [
 ];
 
 /** 상담 콘솔 문자 — 템플릿(공유/개인)과 보내기·기록 */
+/**
+ * 문자 내역 필터(화면 FilterButton key → 칸) — 날짜는 따로(from·to).
+ * 단문/장문(type)은 EUC-KR 바이트 수라 DB에서 못 가른다 — 화면에서 거른다.
+ * 보낸 사람(employeeName)은 이름 → 직원 id로 바꿔 history()에서 건다.
+ */
+const LIST_RULES: ListFilterRules = {
+  ok: { one: { yes: { ok: true }, no: { ok: false } } },
+};
+
 @Injectable()
 export class CsSmsService {
   constructor(
@@ -106,11 +122,53 @@ export class CsSmsService {
    * 결과는 성공·실패 모두 기록(고객 이력에 남는다).
    */
   /** 보낸 문자 내역(최근 1,000건) — 보낸 사람·고객 이름을 붙여서 */
-  async history(p: AuthPrincipal, q: { scope?: 'mine' | 'all'; from?: string; to?: string }) {
+  async history(
+    p: AuthPrincipal,
+    q: { scope?: 'mine' | 'all'; from?: string; to?: string; f?: string; q?: string },
+  ) {
     const canAll = p.permissions.includes('*') || p.permissions.includes('CS_CALL.ALL');
     const all = canAll && q.scope === 'all';
+    // 보낸 사람 이름 → 직원 id
+    const senderNames = parseFilter(q.f).employeeName;
+    const senders = Array.isArray(senderNames)
+      ? senderNames.filter((x): x is string => typeof x === 'string').slice(0, 100)
+      : [];
+    const senderIds = senders.length
+      ? (
+          await this.prisma.employee.findMany({
+            where: { name: { in: senders } },
+            select: { id: true },
+          })
+        ).map((e) => e.id)
+      : null;
+    // 검색 — 번호·제목·본문, 고객 이름은 찾은 고객 id로
+    const text = searchWhere(q.q, ['title', 'body'], ['phone']);
+    const custHit = q.q?.trim()
+      ? (
+          await this.prisma.customer.findMany({
+            where: { name: { contains: q.q.trim(), mode: 'insensitive' } },
+            select: { id: true },
+            take: 500,
+          })
+        ).map((c) => c.id)
+      : [];
     const rows = await this.prisma.csSms.findMany({
       where: {
+        AND: [
+          ...listWhere(LIST_RULES, q.f),
+          ...(senderIds ? [{ employeeId: { in: senderIds } }] : []),
+          ...(text
+            ? [
+                {
+                  OR: [
+                    ...text.OR,
+                    { phone: { contains: q.q!.trim().replace(/\D/g, '') || q.q!.trim() } },
+                    ...(custHit.length ? [{ customerId: { in: custHit } }] : []),
+                  ],
+                },
+              ]
+            : []),
+        ],
         ...(!all && { employeeId: p.employeeId ?? '00000000-0000-0000-0000-000000000000' }),
         ...((q.from || q.to) && {
           at: {
@@ -120,7 +178,7 @@ export class CsSmsService {
         }),
       },
       orderBy: { at: 'desc' },
-      take: 1000,
+      take: LIST_LIMIT,
     });
     const empIds = [...new Set(rows.map((r) => r.employeeId).filter((x): x is string => !!x))];
     const custIds = [...new Set(rows.map((r) => r.customerId).filter((x): x is string => !!x))];

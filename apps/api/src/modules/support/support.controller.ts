@@ -31,8 +31,10 @@ export class SupportController {
     @CurrentUser() user: AuthPrincipal,
     @Query('kind') kind?: string,
     @Query('status') status?: string,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
   ) {
-    return this.service.findAll(kind, status, user);
+    return this.service.findAll(kind, status, user, f, q);
   }
 
   @AccessLog('support', 'VIEW')

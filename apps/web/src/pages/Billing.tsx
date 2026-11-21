@@ -1,7 +1,8 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -83,9 +84,14 @@ export default function Billing() {
   // 청구 대상은 기업고객·제휴사만 — 전속업체는 우리가 지급하는 쪽이라 작업오더 전속원가로 관리한다
   const partners = useOptions('/partners', 'name', 'id', (r) => r.type !== 'OUTSOURCE');
   const orgs = useOptions('/org-units', 'name');
+  const orgName = new Map(orgs.map((o) => [o.value, o.label]));
 
   const [margin, setMargin] = useState<MarginResult | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [seen, setSeen] = useState<{ partners: Map<string, string>; orgs: Map<string, string> }>({
+    partners: new Map(),
+    orgs: new Map(),
+  });
   const [precv, setPrecv] = useState<PartnerRecv[]>([]);
   const [invOpen, setInvOpen] = useState(false);
   const [receiptInv, setReceiptInv] = useState<Invoice | null>(null);
@@ -93,6 +99,11 @@ export default function Billing() {
   const [invLoading, setInvLoading] = useState(true);
   /** 청구서 표 검색 옆 필터 */
   const [invFlt, setInvFlt] = useState<FilterValues>({});
+  /** 청구서 표 검색칸 — 서버에서 찾는다(청구번호·제목·거래처) */
+  const [invQ, setInvQ] = useState('');
+  // 미수금 여부는 수금 합계로 화면에서 거른다 — 나머지 조건·검색만 서버로
+  const invQuery = filterQuery({ ...invFlt, outstanding: undefined }, invQ);
+  const invSeq = useRef(0);
   const { updatedAt, touch } = useUpdatedAt();
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
@@ -103,15 +114,31 @@ export default function Billing() {
   );
 
   const loadInvoices = useCallback(async () => {
+    const my = ++invSeq.current;
     try {
-      setInvoices(await api<Invoice[]>('/billing/invoices'));
-      setPrecv(await api<PartnerRecv[]>('/billing/partner-receivables'));
+      const [inv, recv] = await Promise.all([
+        api<Invoice[]>(`/billing/invoices${invQuery}`),
+        api<PartnerRecv[]>('/billing/partner-receivables'),
+      ]);
+      if (my !== invSeq.current) return;
+      setInvoices(inv);
+      setPrecv(recv);
+      // 필터 고르기 목록 — 청구서에 나온 거래처·지점만(전체 거래처 수백 곳을 다 칩으로 깔지 않게), 걸러도 줄지 않게 모은다
+      setSeen((prev) => {
+        const p = new Map(prev.partners);
+        const o = new Map(prev.orgs);
+        for (const x of inv) {
+          if (x.partnerId && x.partner?.name) p.set(String(x.partnerId), x.partner.name);
+          if (x.orgUnitId) o.set(x.orgUnitId, orgName.get(x.orgUnitId) ?? x.orgUnitId);
+        }
+        return { partners: p, orgs: o };
+      });
     } catch (e) {
-      fail(e);
+      if (my === invSeq.current) fail(e);
     } finally {
-      setInvLoading(false);
+      if (my === invSeq.current) setInvLoading(false);
     }
-  }, [fail]);
+  }, [fail, invQuery]);
 
   const loadAll = useCallback(async () => {
     try {
@@ -123,9 +150,17 @@ export default function Billing() {
     }
   }, [loadInvoices, fail]);
 
+  // 처음 한 번 전체를, 이후 청구서 필터·검색이 바뀌면 청구서만 잠깐 기다렸다 다시 받는다
+  const firstLoad = useRef(true);
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    if (firstLoad.current) {
+      firstLoad.current = false;
+      void loadAll();
+      return;
+    }
+    const id = window.setTimeout(() => void loadInvoices(), 250);
+    return () => window.clearTimeout(id);
+  }, [loadInvoices]);
 
   const createInvoice = async (values: Record<string, unknown>) => {
     try {
@@ -165,9 +200,6 @@ export default function Billing() {
   };
 
   const collectedOf = (inv: Invoice) => inv.receipts.reduce((s, r) => s + Number(r.amount), 0);
-  const invPartners = [
-    ...new Set(invoices.map((i) => i.partner?.name).filter((x): x is string => !!x)),
-  ].sort((a, b) => a.localeCompare(b, 'ko'));
   const invFields: FilterField[] = [
     {
       key: 'period',
@@ -185,23 +217,26 @@ export default function Billing() {
       type: 'multi',
       options: Object.entries(INV_STATUS).map(([value, v]) => ({ value, label: v.label })),
     },
-    ...(invPartners.length
+    ...(seen.partners.size
       ? [
           {
-            key: 'partner',
+            key: 'partnerId',
             label: t('billing.flt.partner'),
             type: 'multi',
-            options: invPartners.map((x) => ({ value: x, label: x })),
+            options: [...seen.partners].map(([value, label]) => ({ value, label })),
           } as FilterField,
         ]
       : []),
-    ...(orgs.length > 1
+    ...(seen.orgs.size > 1
       ? [
           {
             key: 'orgUnitId',
             label: t('billing.flt.branch'),
             type: 'multi',
-            options: orgs,
+            options: [...seen.orgs].map(([value, label]) => ({
+              value,
+              label: orgName.get(value) ?? label,
+            })),
           } as FilterField,
         ]
       : []),
@@ -215,14 +250,12 @@ export default function Billing() {
       ],
     },
   ];
-  const shownInvoices = filterRows(invoices, invFields, invFlt, (i, key) =>
-    key === 'partner'
-      ? (i.partner?.name ?? '')
-      : key === 'outstanding'
-        ? i.status !== 'CANCELED' && Number(i.amount) - collectedOf(i) > 0
-          ? 'yes'
-          : 'no'
-        : i[key],
+  // 서버가 나머지 조건을 걸어 보낸다 — 미수금 여부만 여기서
+  const shownInvoices = filterRows(
+    invoices,
+    invFields.filter((f) => f.key === 'outstanding'),
+    invFlt,
+    (i) => (i.status !== 'CANCELED' && Number(i.amount) - collectedOf(i) > 0 ? 'yes' : 'no'),
   );
 
   const marginCols: Column[] = [
@@ -453,7 +486,15 @@ export default function Billing() {
           columns={invCols}
           rows={shownInvoices}
           onRowClick={(r) => openDetail(String(r.id))}
-          filters={<FilterButton fields={invFields} value={invFlt} onChange={setInvFlt} />}
+          filters={
+            <FilterButton
+              fields={invFields}
+              value={invFlt}
+              onChange={setInvFlt}
+              limited={invoices.length >= LIST_LIMIT}
+            />
+          }
+          onSearch={setInvQ}
         />
       </PageCard>
 
