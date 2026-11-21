@@ -10,7 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { LeadService } from './lead.service';
+import { LeadService, type LeadSearch } from './lead.service';
 import { CancelLeadDto, RejectLeadDto } from './dto/reject-lead.dto';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -34,6 +34,33 @@ export class LeadController {
     @Query('orgUnitId') orgUnitId?: string,
   ) {
     return this.leadService.findAll({ status, source, orgUnitId }, user);
+  }
+
+  /** 접수 목록 화면 — 필터·검색·상태 탭을 서버에서(목록 + 탭 숫자 + 지역 목록) */
+  @AccessLog('lead', 'LIST')
+  @Get('search')
+  @RequirePermissions('LEAD.READ')
+  search(@CurrentUser() user: AuthPrincipal, @Query() q: Record<string, string>) {
+    const list = (v?: string) => (v ? v.split(',').filter(Boolean) : undefined);
+    const yn = (v?: string) => (v === 'yes' || v === 'no' ? v : undefined);
+    const period = ['createdAt', 'moveDate', 'visitDate'].includes(q.period)
+      ? (q.period as LeadSearch['period'])
+      : undefined;
+    return this.leadService.search(
+      {
+        q: q.q?.slice(0, 100),
+        stage: q.stage,
+        period,
+        from: q.from,
+        to: q.to,
+        source: list(q.source),
+        serviceLine: list(q.serviceLine),
+        fromSido: list(q.fromSido),
+        owner: yn(q.owner),
+        contract: yn(q.contract),
+      },
+      user,
+    );
   }
 
   @AccessLog('lead', 'VIEW')

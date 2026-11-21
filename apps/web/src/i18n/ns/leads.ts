@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    limited: '최근 1,000건까지 보입니다 — 조건을 더 좁혀 주세요',
     flt: {
       period: '기간',
       createdAt: '접수일',
@@ -67,6 +68,7 @@ export default defineNs({
     customerFallback: '고객',
   },
   en: {
+    limited: 'Showing the latest 1,000 — narrow the filters',
     flt: {
       period: 'Period',
       createdAt: 'Received',
@@ -132,6 +134,7 @@ export default defineNs({
     customerFallback: 'Customer',
   },
   zh: {
+    limited: '仅显示最近1,000条 — 请缩小条件',
     flt: {
       period: '期间',
       createdAt: '受理日',
