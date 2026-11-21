@@ -34,7 +34,7 @@ function usePresets() {
 }
 
 /**
- * 상담 메모 머리의 프리셋 칩 — 누르면 상담 메모를 그 틀로 바꾼다(적어 둔 메모가 있으면 묻고).
+ * 상담 메모 머리의 프리셋 칩 — 누르면 상담 메모를 그 틀로 바로 바꾼다(직접 적거나 고친 게 있을 때만 묻고).
  * 상담 관리자(상담 콘솔 전체 보기 권한)에게는 끝에 [⚙] 프리셋 관리.
  */
 export function MemoPresetPicker({
@@ -58,8 +58,11 @@ export function MemoPresetPicker({
     setApplied(p.id);
     onApply(p.body);
   };
+  // 지금 메모가 골라 둔 프리셋 그대로(또는 비어 있음)면 바로 바꾸고, 직접 적거나 고친 게 있을 때만 묻는다
   const pick = (p: MemoPreset) => {
-    if (current.trim() && current.trim() !== p.body.trim()) setAsk(p);
+    const now = current.trim();
+    const base = presets.find((x) => x.id === active)?.body.trim() ?? '';
+    if (now && now !== base && now !== p.body.trim()) setAsk(p);
     else apply(p);
   };
 
