@@ -346,7 +346,7 @@ export default {
   },
   /** 헤더·사이드바·프로필 메뉴·탭 */
   shell: {
-    brand: '通仁 Works',
+    brand: '通仁 WORKS',
     profile: '个人资料',
     myProfile: '我的资料',
     editMenu: '编辑我的菜单',

@@ -309,6 +309,20 @@
   height: 40px;
   padding: 0 16px 0 24px;
 }
+/* 앱 아이콘 — 아이콘 바탕과 같은 주황 그라데이션 상자에 호랑이를 조금 작게 */
+.brandIcon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ff894b, #f56b2b);
+  overflow: hidden;
+}
+.brandIcon img {
+  display: block;
+}
 .collapsed .sideBrand {
   padding: 0;
 }
