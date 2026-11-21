@@ -29,8 +29,13 @@ export class CustomerController {
   @AccessLog('customer', 'LIST')
   @Get()
   @RequirePermissions('CUSTOMER.READ')
-  findAll(@CurrentUser() user: AuthPrincipal, @Query('phone') phone?: string) {
-    return this.customerService.findAll(phone, user);
+  findAll(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('phone') phone?: string,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.customerService.findAll(phone, user, f, q);
   }
 
   /** 고객 등급 목록(공통코드 CUSTOMER_GRADE, 사용 중인 것만) — 등급 고르기·필터용 */

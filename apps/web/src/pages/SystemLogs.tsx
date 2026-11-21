@@ -10,7 +10,6 @@ import {
   CopyText,
   DataTable,
   FilterButton,
-  filterRows,
   Input,
   PageHeader,
   RecordDetail,
@@ -71,6 +70,10 @@ export default function SystemLogs() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(false);
   const { id: detailId, open, close } = useDetailParam();
+  /** 사용자 고르기 목록 — 거른 결과에 없는 사람도 남게 본 것을 모은다(id → 이름) */
+  const [seenUsers, setSeenUsers] = useState<Map<string, string>>(new Map());
+  const who = flt.who as string[] | undefined;
+  const whoKey = who?.length ? JSON.stringify({ who }) : '';
 
   // 검색어는 치는 동안 바로 부르지 않고 잠깐 멈추면
   useEffect(() => {
@@ -84,12 +87,19 @@ export default function SystemLogs() {
     if (level !== 'ALL') qs.set('level', level);
     if (source !== 'ALL') qs.set('source', source);
     if (query) qs.set('q', query);
+    // 사용자도 서버에서(f = 화면 필터)
+    if (whoKey) qs.set('f', whoKey);
     try {
       const [r, s] = await Promise.all([
         api<{ rows: LogRow[]; truncated: boolean }>(`/system-logs?${qs.toString()}`),
         api<Stats>('/system-logs/stats'),
       ]);
       setRows(r.rows);
+      setSeenUsers((prev) => {
+        const m = new Map(prev);
+        for (const x of r.rows) if (x.userId && x.userName) m.set(x.userId, x.userName);
+        return m;
+      });
       setTruncated(r.truncated);
       setStats(s);
     } catch (e) {
@@ -97,7 +107,7 @@ export default function SystemLogs() {
     } finally {
       setLoading(false);
     }
-  }, [from, to, level, source, query, toast]);
+  }, [from, to, level, source, query, whoKey, toast]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -139,19 +149,13 @@ export default function SystemLogs() {
       key: 'who',
       label: t('logs.flt.who'),
       type: 'multi',
-      options: [...new Set(tableRows.map((r) => r.who).filter(Boolean))].map((v) => ({
-        value: v,
-        label: v,
-      })),
+      options: [...seenUsers.entries()]
+        .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+        .map(([value, label]) => ({ value, label })),
     },
   ];
-  // 종류·출처는 이미 서버가 걸렀다 — 사용자만 여기서
-  const listed = filterRows(
-    tableRows,
-    filterFields.filter((f) => f.key === 'who'),
-    flt,
-    (r, key) => r[key as keyof typeof r],
-  );
+  // 종류·출처·사용자·검색은 서버가 이미 걸렀다
+  const listed = tableRows;
 
   const columns: Column[] = [
     { title: t('logs.col.at'), dataIndex: 'at', width: 170 },

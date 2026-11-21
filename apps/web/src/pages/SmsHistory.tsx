@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, UserRound, XCircle } from 'lucide-react';
 import { Phone as PhoneCell } from 'softium-ui/table';
 import { api, ApiError } from '../lib/api';
+import { LIST_LIMIT } from '../lib/serverFilter';
 import { formatPhone } from '../lib/phone';
 import { PhonePreview } from '../components/PhonePreview';
 import {
@@ -59,27 +60,43 @@ export default function SmsHistory() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<SmsRow | null>(null);
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(번호·제목·본문·고객명) */
+  const [q, setQ] = useState('');
+  // 단문/장문은 바이트 수라 화면에서 거른다 — 서버에는 나머지 조건만
+  const serverFlt = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(flt).filter(([k, v]) => k !== 'type' && (Array.isArray(v) ? v.length : !!v)),
+    ),
+  );
 
+  // 날짜·필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
       const qs = new URLSearchParams({ scope });
       if (range.from) qs.set('from', range.from);
       if (range.to) qs.set('to', range.to);
+      if (serverFlt !== '{}') qs.set('f', serverFlt);
+      if (q.trim()) qs.set('q', q.trim().slice(0, 100));
       const r = await api<{ canAll: boolean; rows: SmsRow[] }>(`/cs-sms/history?${qs}`);
+      if (my !== seq.current) return;
       setRows(r.rows);
       setCanAll(r.canAll);
     } catch (e) {
-      toast({
-        type: 'error',
-        title: e instanceof ApiError ? e.message : t('camp.smsLoadFailed'),
-      });
+      if (my === seq.current)
+        toast({
+          type: 'error',
+          title: e instanceof ApiError ? e.message : t('camp.smsLoadFailed'),
+        });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [scope, range, toast]);
+  }, [scope, range, toast, serverFlt, q]);
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const columns: Column[] = [
@@ -142,9 +159,16 @@ export default function SmsHistory() {
     },
   ];
 
-  const senders = [
-    ...new Set(rows.map((r) => r.employeeName).filter((x): x is string => !!x)),
-  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  // 보낸 사람 고르기 목록 — 거른 결과로 줄지 않게 한 번 본 이름은 계속 둔다
+  const [seenSenders, setSeenSenders] = useState<string[]>([]);
+  useEffect(() => {
+    setSeenSenders((prev) => {
+      const next = new Set(prev);
+      for (const r of rows) if (r.employeeName) next.add(r.employeeName);
+      return next.size === prev.length ? prev : [...next];
+    });
+  }, [rows]);
+  const senders = [...seenSenders].sort((a, b) => a.localeCompare(b, 'ko'));
   const filterFields: FilterField[] = [
     {
       key: 'ok',
@@ -175,17 +199,12 @@ export default function SmsHistory() {
         ]
       : []),
   ];
-  // 날짜는 서버에서(DateFilter), 나머지 조건은 받은 목록에서 거른다
-  const shown = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'ok'
-      ? r.ok
-        ? 'yes'
-        : 'no'
-      : key === 'type'
-        ? bytes(r.body) > 90
-          ? 'long'
-          : 'short'
-        : r.employeeName,
+  // 날짜(DateFilter)·결과·보낸 사람·검색은 서버에서, 단문/장문(바이트 수)만 받은 목록에서 거른다
+  const shown = filterRows(
+    rows,
+    filterFields.filter((f) => f.key === 'type'),
+    flt,
+    (r) => (bytes(r.body) > 90 ? 'long' : 'short'),
   );
 
   return (
@@ -205,13 +224,19 @@ export default function SmsHistory() {
         }
         filters={
           <>
-            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <FilterButton
+              fields={filterFields}
+              value={flt}
+              onChange={setFlt}
+              limited={rows.length >= LIST_LIMIT}
+            />
             <DateFilter value={range} onChange={setRange} />
           </>
         }
         fit
         pageSize={20}
         columns={columns}
+        onSearch={setQ}
         rows={shown as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => setOpen(r as unknown as SmsRow)}

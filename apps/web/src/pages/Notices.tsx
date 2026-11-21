@@ -1,9 +1,10 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pin } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { shortDate, useWorkDirectory, type OrgRef } from '../lib/workMenus';
@@ -12,7 +13,6 @@ import {
   Checkbox,
   DataTable,
   FilterButton,
-  filterRows,
   Input,
   ListPage,
   Modal,
@@ -69,22 +69,47 @@ export default function Notices() {
   const [filter, setFilter] = useState<Filter>('all');
   /** 검색 옆 필터 — 작성일·작성자·대상 조직·고정 */
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(제목·본문) */
+  const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Notice | 'new' | null>(null);
+  /** 작성자·대상 조직 고르기 목록 — 거른 결과로 줄어들지 않게 본 적 있는 것을 모아 둔다 */
+  const [seen, setSeen] = useState<{ author: Map<string, string>; org: Map<string, string> }>(
+    () => ({ author: new Map(), org: new Map() }),
+  );
+  const query = filterQuery(flt, q);
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<Notice[]>('/notices'));
+      const data = await api<Notice[]>(`/notices${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
+      setSeen((prev) => {
+        const author = new Map(prev.author);
+        const org = new Map(prev.org);
+        for (const n of data) {
+          if (n.author) author.set(n.author.id, n.author.name);
+          for (const o of n.orgUnits) org.set(o.id, o.name);
+        }
+        return author.size === prev.author.size && org.size === prev.org.size
+          ? prev
+          : { author, org };
+      });
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const remove = async (n: Notice) => {
@@ -175,23 +200,23 @@ export default function Notices() {
     );
   }
 
-  const distinct = (vs: (string | undefined)[]) =>
-    [...new Set(vs.filter((v): v is string => !!v))]
-      .sort((a, b) => a.localeCompare(b, 'ko'))
-      .map((v) => ({ value: v, label: v }));
+  const sorted = (m: Map<string, string>) =>
+    [...m]
+      .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+      .map(([value, label]) => ({ value, label }));
   const filterFields: FilterField[] = [
     { key: 'createdAt', label: t('notice.flt.createdAt'), type: 'date' },
     {
-      key: 'author',
+      key: 'authorEmpId',
       label: t('notice.flt.author'),
       type: 'multi',
-      options: distinct(rows.map((r) => r.author?.name)),
+      options: sorted(seen.author),
     },
     {
-      key: 'org',
+      key: 'orgUnitId',
       label: t('notice.flt.org'),
       type: 'multi',
-      options: distinct(rows.flatMap((r) => r.orgUnits.map((o) => o.name))),
+      options: sorted(seen.org),
     },
     {
       key: 'pinned',
@@ -203,19 +228,8 @@ export default function Notices() {
       ],
     },
   ];
-  // 대상 조직은 공지 하나에 여럿이라 따로 — 고른 조직 중 하나라도 대상이면
-  const pickedOrgs = (flt.org as string[] | undefined) ?? [];
-  const picked = filterRows(
-    rows.filter((r) => !pickedOrgs.length || r.orgUnits.some((o) => pickedOrgs.includes(o.name))),
-    filterFields.filter((f) => f.key !== 'org'),
-    flt,
-    (r, key) =>
-      key === 'author'
-        ? r.author?.name
-        : key === 'pinned'
-          ? String(r.pinned)
-          : r[key as keyof Notice],
-  );
+  // 필터·검색은 서버가 걸어 보낸다 — 전체/전사/팀 탭 숫자도 걸린 목록 기준
+  const picked = rows;
   const filtered = filter === 'all' ? picked : picked.filter((r) => r.audience === filter);
   const count = (f: Filter) =>
     f === 'all' ? picked.length : picked.filter((r) => r.audience === f).length;
@@ -255,7 +269,15 @@ export default function Notices() {
   return (
     <ListPage title={t('nav.notices')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+        filters={
+          <FilterButton
+            fields={filterFields}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
+        }
+        onSearch={setQ}
         columns={columns}
         rows={filtered as unknown as Row[]}
         loading={loading}

@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
 import { CampaignService } from './campaign.service';
@@ -27,8 +28,8 @@ export class CampaignController {
 
   @Get()
   @RequirePermissions('MARKETING.READ')
-  findAll(@CurrentUser() user: AuthPrincipal) {
-    return this.campaignService.findAll(user);
+  findAll(@CurrentUser() user: AuthPrincipal, @Query('f') f?: string, @Query('q') q?: string) {
+    return this.campaignService.findAll(user, f, q);
   }
 
   /** 받을 고객 찾기(조건 + 페이지) */

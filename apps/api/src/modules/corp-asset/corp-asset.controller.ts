@@ -19,8 +19,8 @@ export class CorpAssetController {
 
   @Get()
   @RequirePermissions('ASSET.READ')
-  findAll(@Query('kind') kind?: string, @Query('q') q?: string) {
-    return this.assets.findAll(kind, q);
+  findAll(@Query('kind') kind?: string, @Query('q') q?: string, @Query('f') f?: string) {
+    return this.assets.findAll(kind, q, f);
   }
 
   @Get(':id')

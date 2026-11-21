@@ -20,6 +20,7 @@ import {
   type VolumeUnit,
 } from '@tongin/shared';
 import { DocNoService } from '../../prisma/doc-no.service';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -61,6 +62,12 @@ interface PricePayload {
   changes: RevisionChange[];
 }
 
+/** 견적 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  createdAt: { date: { createdAt: ['createdAt', 'ts'] } },
+  status: { in: 'status' },
+};
+
 @Injectable()
 export class EstimateService implements OnModuleInit {
   constructor(
@@ -75,15 +82,16 @@ export class EstimateService implements OnModuleInit {
     private readonly approvals: ApprovalService,
   ) {}
 
-  async findAll(leadId?: string, principal?: AuthPrincipal) {
+  async findAll(leadId?: string, principal?: AuthPrincipal, f?: string, q?: string) {
     const ids = await this.scope.orgScopeIds(principal);
     return this.prisma.estimate.findMany({
       where: {
         ...(leadId ? { leadId } : {}),
         ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+        AND: listWhere(LIST_RULES, f, q, ['estimateNo', 'customer.name']),
       },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 

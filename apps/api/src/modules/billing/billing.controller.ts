@@ -42,8 +42,10 @@ export class BillingController {
     @CurrentUser() user: AuthPrincipal,
     @Query('partnerId') partnerId?: string,
     @Query('status') status?: string,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
   ) {
-    return this.service.listInvoices(partnerId, status, user);
+    return this.service.listInvoices(partnerId, status, user, f, q);
   }
 
   @Post('invoices')

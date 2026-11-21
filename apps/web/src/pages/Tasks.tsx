@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { TASK_STATUS, type DutyView, type TaskStatus } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useDetailParam, useTabParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -30,7 +31,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   FormModal,
   ListPage,
   ListToolbar,
@@ -143,6 +143,12 @@ export default function Tasks() {
   /** 목록 보기 검색 옆 필터 — 기간·우선순위·팀·담당자·기한 지남 */
   const [flt, setFlt] = useState<FilterValues>({});
   const [q, setQ] = useState('');
+  /** 목록 보기 검색칸 — 서버에서 찾는다(제목·내용·프로젝트·담당자·T-번호) */
+  const [listQ, setListQ] = useState('');
+  /** 팀·담당자 고르기 목록 — 거른 결과에 없는 것도 남게 본 것을 모은다 */
+  const [seenTeams, setSeenTeams] = useState<Map<string, string>>(new Map());
+  const [seenAssignees, setSeenAssignees] = useState<Map<string, string>>(new Map());
+  const [seenNoTeam, setSeenNoTeam] = useState(false);
   const [editing, setEditing] = useState<Task | 'new' | null>(null);
   // 칸반 칸 아래 '+ 업무 추가'로 열면 그 칸의 상태로 시작한다
   const [newStatus, setNewStatus] = useState<TaskStatus>('TODO');
@@ -153,25 +159,45 @@ export default function Tasks() {
   const canTeam = can('TASK.READ');
   const effScope: Scope = canTeam ? scope : 'mine';
 
+  // 목록 보기의 필터·검색은 서버에서(칸반은 전부 받아 칸반 검색으로)
+  const query =
+    view === 'list' ? filterQuery(flt, listQ, { scope: effScope }) : `?scope=${effScope}`;
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
       // 서버는 기한 순 — 끝난 일은 뒤로 보낸다(같은 묶음 안에서는 순서 유지)
-      const list = await api<Task[]>(`/tasks?scope=${effScope}`);
+      const list = await api<Task[]>(`/tasks${query}`);
+      if (my !== seq.current) return;
       setRows([
         ...list.filter((r) => r.status !== 'DONE'),
         ...list.filter((r) => r.status === 'DONE'),
       ]);
+      setSeenTeams((prev) => {
+        const m = new Map(prev);
+        for (const r of list) if (r.team) m.set(r.team.id, r.team.name);
+        return m;
+      });
+      setSeenAssignees((prev) => {
+        const m = new Map(prev);
+        for (const r of list)
+          if (r.assignee && r.assigneeEmpId) m.set(r.assigneeEmpId, r.assignee.name);
+        return m;
+      });
+      if (list.some((r) => !r.team)) setSeenNoTeam(true);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [effScope, toast, t]);
+  }, [query, toast, t]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   // 알림·링크로 연 업무가 지금 목록(내 업무 등)에 없으면 하나만 따로 읽는다
@@ -438,10 +464,10 @@ export default function Tasks() {
   }
 
   const teamChoices = [
-    ...[...new Map(rows.filter((r) => r.team).map((r) => [r.team!.id, r.team!.name])).entries()]
+    ...[...seenTeams.entries()]
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([value, label]) => ({ value, label })),
-    ...(rows.some((r) => !r.team) ? [{ value: 'NONE', label: t('task.noTeam') }] : []),
+    ...(seenNoTeam ? [{ value: 'NONE', label: t('task.noTeam') }] : []),
   ];
   const filterFields: FilterField[] = [
     {
@@ -477,11 +503,7 @@ export default function Tasks() {
       key: 'assignee',
       label: t('task.flt.assignee'),
       type: 'multi',
-      options: [
-        ...new Map(
-          rows.filter((r) => r.assignee).map((r) => [r.assigneeEmpId!, r.assignee!.name]),
-        ).entries(),
-      ]
+      options: [...seenAssignees.entries()]
         .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
         .map(([value, label]) => ({ value, label })),
     },
@@ -495,33 +517,15 @@ export default function Tasks() {
       ],
     },
   ];
-  // 필터를 먼저 걸고, 상태 요약 숫자도 걸린 목록 기준으로
-  const base = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'team'
-      ? (r.team?.id ?? 'NONE')
-      : key === 'assignee'
-        ? r.assigneeEmpId
-        : key === 'overdue'
-          ? r.status !== 'DONE' && r.dueDate && ddayInfo(r.dueDate, 3)?.level === 'over'
-            ? 'yes'
-            : 'no'
-          : r[key as keyof Task],
-  );
+  // 목록 보기 필터·검색은 서버가 이미 걸었다 — 상태 요약 숫자도 걸린 목록 기준
+  const base = rows;
   const count = (s: 'ALL' | TaskStatus) =>
     s === 'ALL' ? base.length : base.filter((r) => r.status === s).length;
   const statusOptions = [
     { value: 'ALL', label: t('task.allStatus', { v0: count('ALL') }) },
     ...TASK_STATUS.map((s) => ({ value: s, label: `${TASK_STATUS_LABEL[s]} ${count(s)}` })),
   ];
-  const term = q.trim().toLowerCase();
-  const listRows = base.filter(
-    (r) =>
-      (status === 'ALL' || r.status === status) &&
-      (!term ||
-        [r.title, r.project, r.assignee?.name, r.creator?.name, `t-${r.seq}`].some((x) =>
-          x?.toLowerCase().includes(term),
-        )),
-  );
+  const listRows = base.filter((r) => status === 'ALL' || r.status === status);
 
   const columns: Column[] = [
     {
@@ -653,7 +657,15 @@ export default function Tasks() {
             loading={loading}
             onRowClick={(r) => detail.open(String(r.id))}
             viewSwitch={viewSwitch}
-            filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+            filters={
+              <FilterButton
+                fields={filterFields}
+                value={flt}
+                onChange={setFlt}
+                limited={rows.length >= LIST_LIMIT}
+              />
+            }
+            onSearch={setListQ}
             // 범위 탭(내 업무·우리 팀·전체) 오른쪽에 상태 고르기(우선순위·팀은 검색 옆 필터로)
             tabs={
               <>

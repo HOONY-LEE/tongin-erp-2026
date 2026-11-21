@@ -362,10 +362,7 @@ export default function Leads() {
           />
         }
         filters={
-          <>
-            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
-            {limited && <span className="dt-limit-note">{t('leads.limited')}</span>}
-          </>
+          <FilterButton fields={filterFields} value={flt} onChange={setFlt} limited={limited} />
         }
         onSearch={setQ}
         fit

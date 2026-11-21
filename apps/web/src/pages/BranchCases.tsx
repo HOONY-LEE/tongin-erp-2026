@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BRANCH_CASE_KIND,
@@ -8,6 +8,7 @@ import {
 } from '@tongin/shared';
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useDetailParam } from '../lib/useDetailParam';
 import { useOrgScope } from '../lib/useOrgScope';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -25,7 +26,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   FormModal,
   ListPage,
   RecordDetail,
@@ -103,22 +103,47 @@ export default function BranchCases() {
   const [status, setStatus] = useState<'ACTIVE' | 'ALL' | BranchCaseStatus>('ACTIVE');
   /** 검색 옆 필터 — 기간·지점·담당자 */
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(제목·내용·지점명) */
+  const [q, setQ] = useState('');
   const [editing, setEditing] = useState<BranchCase | 'new' | null>(null);
+  /** 지점·담당자 고르기 목록 — 거른 결과로 줄어들지 않게 본 적 있는 것을 모아 둔다 */
+  const [seen, setSeen] = useState<{ branch: Map<string, string>; owner: Map<string, string> }>(
+    () => ({ branch: new Map(), owner: new Map() }),
+  );
+  const query = filterQuery(flt, q);
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<BranchCase[]>('/branch-cases'));
+      const data = await api<BranchCase[]>(`/branch-cases${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
+      setSeen((prev) => {
+        const branch = new Map(prev.branch);
+        const owner = new Map(prev.owner);
+        for (const c of data) {
+          if (c.branch) branch.set(c.branch.id, c.branch.name);
+          if (c.assignee) owner.set(c.assignee.id, c.assignee.name);
+        }
+        return branch.size === prev.branch.size && owner.size === prev.owner.size
+          ? prev
+          : { branch, owner };
+      });
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   // 지점 선택지 — 범위 밖 지점은 흐리게(서버도 막는다). 조직 목록 권한이 없으면 결재 명부의 지점 목록
@@ -311,10 +336,12 @@ export default function BranchCases() {
     );
   }
 
-  const names = (xs: (string | undefined)[]) =>
-    [...new Set(xs.filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, 'ko'));
-  const branchNames = names(rows.map((c) => c.branch?.name));
-  const ownerNames = names(rows.map((c) => c.assignee?.name));
+  const sorted = (m: Map<string, string>) =>
+    [...m]
+      .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+      .map(([value, label]) => ({ value, label }));
+  const branchOpts = sorted(seen.branch);
+  const ownerOpts = sorted(seen.owner);
   const filterFields: FilterField[] = [
     {
       key: 'period',
@@ -326,38 +353,29 @@ export default function BranchCases() {
         { value: 'createdAt', label: t('biz.flt.createdAt') },
       ],
     },
-    ...(branchNames.length > 1
+    ...(branchOpts.length > 1
       ? [
           {
-            key: 'branch',
+            key: 'branchId',
             label: t('biz.flt.branch'),
             type: 'multi',
-            options: branchNames.map((x) => ({ value: x, label: x })),
+            options: branchOpts,
           } as FilterField,
         ]
       : []),
-    ...(ownerNames.length
+    ...(ownerOpts.length
       ? [
           {
-            key: 'owner',
+            key: 'assigneeEmpId',
             label: t('biz.flt.owner'),
             type: 'multi',
-            options: [
-              ...ownerNames.map((x) => ({ value: x, label: x })),
-              { value: '', label: t('biz.flt.noOwner') },
-            ],
+            options: [...ownerOpts, { value: '', label: t('biz.flt.noOwner') }],
           } as FilterField,
         ]
       : []),
   ];
-  // 필터를 먼저 걸고, 종류 탭·상태 숫자도 걸린 목록 기준으로
-  const picked = filterRows(rows, filterFields, flt, (c, key) =>
-    key === 'branch'
-      ? (c.branch?.name ?? '')
-      : key === 'owner'
-        ? (c.assignee?.name ?? '')
-        : c[key as keyof BranchCase],
-  );
+  // 필터·검색은 서버가 걸어 보낸다 — 종류 탭·상태 숫자도 걸린 목록 기준
+  const picked = rows;
   const byKind = kind === 'ALL' ? picked : picked.filter((r) => r.kind === kind);
   const statusMatch = (c: BranchCase, s: typeof status) =>
     s === 'ALL' ? true : s === 'ACTIVE' ? c.status !== 'CLOSED' : c.status === s;
@@ -429,11 +447,17 @@ export default function BranchCases() {
         fit
         columns={columns}
         rows={byKind.filter((r) => statusMatch(r, status)) as unknown as Row[]}
+        onSearch={setQ}
         loading={loading}
         onRowClick={(r) => detail.open(String(r.id))}
         filters={
           <>
-            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <FilterButton
+              fields={filterFields}
+              value={flt}
+              onChange={setFlt}
+              limited={rows.length >= LIST_LIMIT}
+            />
             <SegmentedControl
               value={status}
               onChange={(v) => setStatus(v as typeof status)}

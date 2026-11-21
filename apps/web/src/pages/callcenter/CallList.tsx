@@ -1,6 +1,6 @@
 import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { EmployeeChip, type EmployeeBrief } from '../../components/ui/EmployeeChip';
@@ -10,11 +10,11 @@ import { useNavigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import { DateFilter, type DateRange } from './DateFilter';
 import { api, ApiError } from '../../lib/api';
+import { LIST_LIMIT } from '../../lib/serverFilter';
 import { useAuth } from '../../auth/AuthContext';
 import {
   DataTable,
   FilterButton,
-  filterRows,
   SegmentedControl,
   useToast,
   type Column,
@@ -100,30 +100,43 @@ export function CallList({
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<DateRange>({ from: '', to: '' });
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(전화번호·고객명) */
+  const [q, setQ] = useState('');
 
+  // 날짜·필터·검색 모두 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(
-    async (sc: 'mine' | 'all', rg: DateRange) => {
+    async (sc: 'mine' | 'all', rg: DateRange, f: FilterValues, text: string) => {
+      const my = ++seq.current;
       setLoading(true);
       try {
-        const qs = new URLSearchParams({ scope: sc, limit: '500' });
+        const qs = new URLSearchParams({ scope: sc, limit: String(LIST_LIMIT) });
         if (rg.from) qs.set('from', rg.from);
         if (rg.to) qs.set('to', rg.to);
+        const picked = Object.fromEntries(
+          Object.entries(f).filter(([, v]) => (Array.isArray(v) ? v.length : !!v)),
+        );
+        if (Object.keys(picked).length) qs.set('f', JSON.stringify(picked));
+        if (text.trim()) qs.set('q', text.trim().slice(0, 50));
         const r = await api<{ total: number; rows: CallRow[] }>(`/cs-calls?${qs}`);
+        if (my !== seq.current) return;
         setRows(r.rows);
       } catch (e) {
-        toast({
-          type: 'error',
-          title: e instanceof ApiError ? e.message : t('cc.listLoadFailed'),
-        });
+        if (my === seq.current)
+          toast({
+            type: 'error',
+            title: e instanceof ApiError ? e.message : t('cc.listLoadFailed'),
+          });
       } finally {
-        setLoading(false);
+        if (my === seq.current) setLoading(false);
       }
     },
     [toast],
   );
   useEffect(() => {
-    void load(scope, range);
-  }, [scope, range, refreshKey, load]);
+    const id = window.setTimeout(() => void load(scope, range, flt, q), 250);
+    return () => window.clearTimeout(id);
+  }, [scope, range, flt, q, refreshKey, load]);
 
   const columns: Column[] = [
     {
@@ -232,20 +245,7 @@ export function CallList({
     { key: 'lead', label: t('cc.flt.lead'), type: 'single', options: yesNo },
     { key: 'recording', label: t('cc.flt.recording'), type: 'single', options: yesNo },
   ];
-  // 날짜는 서버에서(DateFilter), 나머지 조건은 받은 목록에서 거른다
-  const shown = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'status'
-      ? r.status === 'ASSIGNED' || r.status === 'CALLBACK'
-        ? 'OPEN'
-        : r.status
-      : key === 'lead'
-        ? r.leadId
-          ? 'yes'
-          : 'no'
-        : r.hasRecording
-          ? 'yes'
-          : 'no',
-  );
+  // 날짜(DateFilter)·필터·검색은 서버에서 거른다
 
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
@@ -264,14 +264,20 @@ export function CallList({
         }
         filters={
           <>
-            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <FilterButton
+              fields={filterFields}
+              value={flt}
+              onChange={setFlt}
+              limited={rows.length >= LIST_LIMIT}
+            />
             <DateFilter value={range} onChange={setRange} />
           </>
         }
         fit
         pageSize={20}
         columns={columns}
-        rows={shown as unknown as Row[]}
+        onSearch={setQ}
+        rows={rows as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => onOpen(r.id as string)}
         exportable

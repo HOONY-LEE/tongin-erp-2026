@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { AuthPrincipal } from '@tongin/shared';
 import { DocNoService } from '../../prisma/doc-no.service';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -14,6 +15,18 @@ import { StubPaymentProvider, type IssueContext } from './payment-provider';
 import { CreateContractDto, CreatePaymentDto } from './dto/contract.dto';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** 계약 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  period: {
+    date: {
+      createdAt: ['createdAt', 'ts'],
+      contractDate: ['contractDate', 'date'],
+      signedAt: ['signedAt', 'ts'],
+    },
+  },
+  status: { in: 'status' },
+};
 
 @Injectable()
 export class ContractService {
@@ -26,12 +39,15 @@ export class ContractService {
     private readonly payments: StubPaymentProvider,
   ) {}
 
-  async findAll(principal?: AuthPrincipal) {
+  async findAll(principal?: AuthPrincipal, f?: string, q?: string) {
     const ids = await this.scope.orgScopeIds(principal);
     return this.prisma.contract.findMany({
-      where: ids === null ? {} : { orgUnitId: { in: ids } },
+      where: {
+        ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+        AND: listWhere(LIST_RULES, f, q, ['contractNo', 'legacyNo', 'customer.name']),
+      },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 

@@ -37,11 +37,12 @@ export class TeamTaskController {
     @Query('scope') scope = 'mine',
     @Query('status') status?: string,
     @Query('q') q?: string,
+    @Query('f') f?: string,
   ) {
     if (!SCOPES.includes(scope as TaskScope)) {
       throw new BadRequestException(`보기는 ${SCOPES.join(' | ')} 중 하나여야 합니다.`);
     }
-    return this.tasks.findAll(p, scope as TaskScope, status, q);
+    return this.tasks.findAll(p, scope as TaskScope, status, q, f);
   }
 
   /** 댓글 — 업무를 볼 수 있으면 누구나 보고 쓴다. 지우기는 쓴 사람만 */

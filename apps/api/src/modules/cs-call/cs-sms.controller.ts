@@ -31,6 +31,10 @@ class HistoryQuery {
   @IsOptional() @IsIn(['mine', 'all']) scope?: 'mine' | 'all';
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) from?: string;
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) to?: string;
+  /** 화면 필터(FilterButton) 값 JSON */
+  @IsOptional() @IsString() @MaxLength(4000) f?: string;
+  /** 검색어(번호·제목·본문·고객명) */
+  @IsOptional() @IsString() @MaxLength(100) q?: string;
 }
 
 /** 상담 콘솔 문자 — 템플릿과 보내기 */

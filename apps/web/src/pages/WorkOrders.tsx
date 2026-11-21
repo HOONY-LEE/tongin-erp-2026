@@ -1,15 +1,15 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, downloadFile } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useOptions } from '../lib/useOptions';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   FormModal,
   PageHeader,
   StatusBadge,
@@ -39,21 +39,31 @@ export default function WorkOrders() {
   const contracts = useOptions('/contracts', 'contractNo');
   const { updatedAt, touch } = useUpdatedAt();
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(작업번호·옛 번호·계약번호·고객명) */
+  const [q, setQ] = useState('');
+  const query = filterQuery(flt, q);
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<Row[]>('/work-orders'));
+      const data = await api<Row[]>(`/work-orders${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const fields: FormField[] = [
@@ -116,15 +126,22 @@ export default function WorkOrders() {
       options: Object.entries(WORK_STATUS).map(([value, s]) => ({ value, label: s.label })),
     },
   ];
-  const shown = filterRows(rows, filterFields, flt, (r, key) => r[key]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.workOrders')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+        filters={
+          <FilterButton
+            fields={filterFields}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
+        }
+        onSearch={setQ}
         columns={columns}
-        rows={shown}
+        rows={rows}
         loading={loading}
         onRowClick={(r) => navigate(`/work-orders/${String(r.id)}`)}
         toolbarActions={

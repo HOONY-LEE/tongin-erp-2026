@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TASK_STATUS_LABEL, type AuthPrincipal, type TaskStatus } from '@tongin/shared';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { InboxService } from '../../inbox/inbox.service';
@@ -72,7 +73,7 @@ export class TeamTaskService {
     return ids === null ? {} : { teamOrgId: { in: ids } };
   }
 
-  async findAll(p: AuthPrincipal, scope: TaskScope, status?: string, q?: string) {
+  async findAll(p: AuthPrincipal, scope: TaskScope, status?: string, q?: string, f?: string) {
     const mine = this.mine(p);
     let where: Prisma.TeamTaskWhereInput;
     if (scope === 'mine') {
@@ -100,6 +101,40 @@ export class TeamTaskService {
       if (mine && Object.keys(where).length > 0) where = { OR: [where, mine] };
     }
     const term = q?.trim();
+    // 'T-12'·'12'처럼 친 업무 번호
+    const seqNo = term ? /^t?-?(\d{1,9})$/i.exec(term)?.[1] : undefined;
+    // 기한 지남 = 끝나지 않았고 기한(날짜)이 오늘(한국 날짜)보다 앞
+    const today = new Date(
+      `${new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)}T00:00:00Z`,
+    );
+    const overdue: Prisma.TeamTaskWhereInput = { status: { not: 'DONE' }, dueDate: { lt: today } };
+    // 목록 보기 필터(화면 FilterButton key·값과 같다)
+    const rules: ListFilterRules = {
+      period: {
+        date: {
+          dueDate: ['dueDate', 'date'],
+          createdAt: ['createdAt', 'ts'],
+          doneAt: ['doneAt', 'ts'],
+        },
+      },
+      priority: { in: 'priority' },
+      // 팀 — 'NONE'은 팀 없는(개인) 업무
+      team: {
+        custom: (v) => {
+          const list = Array.isArray(v) ? v : [];
+          if (!list.length) return null;
+          const ids = list.filter((x) => x !== 'NONE');
+          return {
+            OR: [
+              ...(ids.length ? [{ teamOrgId: { in: ids } }] : []),
+              ...(list.includes('NONE') ? [{ teamOrgId: null }] : []),
+            ],
+          };
+        },
+      },
+      assignee: { in: 'assigneeEmpId' },
+      overdue: { one: { yes: overdue, no: { NOT: overdue } } },
+    };
     const rows = await this.prisma.teamTask.findMany({
       where: {
         AND: [
@@ -111,14 +146,17 @@ export class TeamTaskService {
                   { title: { contains: term, mode: 'insensitive' } },
                   { description: { contains: term, mode: 'insensitive' } },
                   { project: { contains: term, mode: 'insensitive' } },
+                  { assignee: { name: { contains: term, mode: 'insensitive' } } },
+                  ...(seqNo ? [{ seq: Number(seqNo) }] : []),
                 ],
               }
             : {},
+          ...(listWhere(rules, f) as Prisma.TeamTaskWhereInput[]),
         ],
       },
       include,
       orderBy: [{ dueDate: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
-      take: 500,
+      take: LIST_LIMIT,
     });
     return this.withCreator(rows);
   }

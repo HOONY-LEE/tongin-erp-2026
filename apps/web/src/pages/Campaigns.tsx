@@ -1,16 +1,16 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { type CampaignChannel } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   ListPage,
   StatusBadge,
   useToast,
@@ -41,21 +41,31 @@ export default function Campaigns() {
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(이름·제목·본문) */
+  const [q, setQ] = useState('');
+  const query = filterQuery(flt, q);
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<Row[]>('/campaigns'));
+      const data = await api<Row[]>(`/campaigns${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [toast, t, touch]);
+  }, [toast, t, touch, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const columns: Column[] = [
@@ -117,17 +127,21 @@ export default function Campaigns() {
       })),
     },
   ];
-  // 발송일 — 예약이면 예약 시각, 아니면 보낸 시각(표의 '발송(예약)' 칸과 같은 기준)
-  const shown = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'sendAt' ? (r.status === 'SCHEDULED' ? r.scheduledAt : r.sentAt) : r[key],
-  );
 
   return (
     <ListPage title={t('nav.campaigns')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+        filters={
+          <FilterButton
+            fields={filterFields}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
+        }
+        onSearch={setQ}
         columns={columns}
-        rows={shown}
+        rows={rows}
         loading={loading}
         onRowClick={(r) => navigate(`/campaigns/${String(r.id)}`)}
         toolbarActions={

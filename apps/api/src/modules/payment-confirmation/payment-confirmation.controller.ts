@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { IsNumber, IsOptional, Min } from 'class-validator';
 import { PaymentConfirmationService } from './payment-confirmation.service';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
@@ -18,8 +18,8 @@ export class PaymentConfirmationController {
 
   @Get()
   @RequirePermissions('PAYMENT.READ')
-  list(@CurrentUser() user: AuthPrincipal) {
-    return this.svc.list(user);
+  list(@CurrentUser() user: AuthPrincipal, @Query('f') f?: string, @Query('q') q?: string) {
+    return this.svc.list(user, f, q);
   }
 
   @Post(':estimateId/deposit')

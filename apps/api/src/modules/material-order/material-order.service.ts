@@ -9,7 +9,15 @@ import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { CreateMaterialOrderDto } from './dto/create-material-order.dto';
+
+/** 발주 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  createdAt: { date: { createdAt: ['createdAt', 'ts'] } },
+  status: { in: 'status' },
+  orgUnitId: { in: 'orgUnitId' },
+};
 
 /**
  * MM-02: 가맹점 발주. 지점이 본사에 자재(박스·포장지·유니폼)를 발주 →
@@ -24,16 +32,23 @@ export class MaterialOrderService {
     private readonly scope: ScopeService,
   ) {}
 
-  async findAll(orgUnitId?: string, status?: string, principal?: AuthPrincipal) {
+  async findAll(
+    orgUnitId?: string,
+    status?: string,
+    principal?: AuthPrincipal,
+    f?: string,
+    q?: string,
+  ) {
     const ids = await this.scope.orgScopeIds(principal);
     return this.prisma.materialOrder.findMany({
       where: {
         ...(ids === null ? (orgUnitId ? { orgUnitId } : {}) : { orgUnitId: { in: ids } }),
         ...(status ? { status } : {}),
+        AND: listWhere(LIST_RULES, f, q, ['orderNo', 'legacyNo', 'note', 'orgUnit.name']),
       },
       include: { orgUnit: true, lines: { include: { material: true } } },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 

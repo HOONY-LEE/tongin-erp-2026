@@ -12,6 +12,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
+import type { Prisma } from '@prisma/client';
 import {
   ArrayMaxSize,
   IsArray,
@@ -22,6 +23,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
   ValidateNested,
@@ -49,6 +51,7 @@ import {
   modelCatalog,
 } from './ai-models';
 import { AiUsageService, kstMonthStart } from './ai-usage.service';
+import { listWhere, type ListFilterRules } from '../common/list-filter';
 
 /** 모델 id 개수 상한 — 목록은 Claude에서 받아 오므로 값 검사는 처리에서(isKnownModel) */
 const MODELS_MAX = 100;
@@ -56,6 +59,27 @@ const MODELS_MAX = 100;
 const LIMIT_MAX = 2_000_000_000;
 /** 사용 기록 한 번에 보내는 최대 줄 수 */
 const USAGE_ROWS_MAX = 2000;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** 사용 기록 화면 필터(FilterButton) — 기능은 원래 주소 조건(feature), 나머지는 여기 */
+const USAGE_RULES: ListFilterRules = {
+  model: { in: 'model' },
+  // 사용자 id — 'AUTO'는 사람 없이 돈 자동 실행(userId 없음)
+  user: {
+    custom: (v) => {
+      const list = Array.isArray(v) ? v : [];
+      const ids = list.filter((x) => UUID_RE.test(x));
+      if (!ids.length && !list.includes('AUTO')) return null;
+      return {
+        OR: [
+          ...(ids.length ? [{ userId: { in: ids } }] : []),
+          ...(list.includes('AUTO') ? [{ userId: null }] : []),
+        ],
+      };
+    },
+  },
+  ok: { one: { true: { ok: true }, false: { ok: false } } },
+};
 
 class SaveSettingDto {
   @IsArray()
@@ -134,6 +158,18 @@ class UsageQuery {
   @IsOptional()
   @IsIn(Object.keys(AI_FEATURES))
   feature?: string;
+
+  /** 화면 필터(FilterButton) JSON — 모델·사용자·결과 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  f?: string;
+
+  /** 검색 — 모델·오류·실행 id·사용자 이름/아이디 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  q?: string;
 }
 
 const isDate = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -488,12 +524,41 @@ export class AiAdminController {
     const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
     const to = isDate(q.to) ? kstDay(q.to!, 1) : kstDay(today, 1);
     const from = isDate(q.from) ? kstDay(q.from!) : new Date(to.getTime() - 7 * 24 * 3600_000);
+    // 검색어가 사용자 이름·아이디면 그 사용자의 기록도(기록에는 사용자 id만 있다)
+    const term = q.q?.trim();
+    const byUser = term
+      ? await this.prisma.appUser.findMany({
+          where: {
+            OR: [
+              { loginId: { contains: term, mode: 'insensitive' } },
+              { employee: { name: { contains: term, mode: 'insensitive' } } },
+            ],
+          },
+          select: { id: true },
+          take: 200,
+        })
+      : [];
     const [rows, setting] = await Promise.all([
       this.prisma.aiUsageLog.findMany({
         where: {
           createdAt: { gte: from, lt: to },
           ...(q.userId && /^[0-9a-f-]{36}$/i.test(q.userId) ? { userId: q.userId } : {}),
           ...(q.feature ? { feature: q.feature } : {}),
+          AND: [
+            ...(listWhere(USAGE_RULES, q.f) as Prisma.AiUsageLogWhereInput[]),
+            ...(term
+              ? [
+                  {
+                    OR: [
+                      { model: { contains: term, mode: 'insensitive' as const } },
+                      { error: { contains: term, mode: 'insensitive' as const } },
+                      { refId: { contains: term, mode: 'insensitive' as const } },
+                      ...(byUser.length ? [{ userId: { in: byUser.map((u) => u.id) } }] : []),
+                    ],
+                  },
+                ]
+              : []),
+          ],
         },
         orderBy: { createdAt: 'desc' },
         take: USAGE_ROWS_MAX,

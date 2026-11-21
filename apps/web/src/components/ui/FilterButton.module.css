@@ -117,3 +117,25 @@
   gap: 6px;
   color: var(--ark-color-text-tertiary);
 }
+
+.limited {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(12px * var(--font-scale, 1));
+  white-space: nowrap;
+}
+
+.find {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ark-input-border-color, var(--ark-color-border));
+  border-radius: 8px;
+  background: var(--ark-input-bg, var(--ark-color-bg));
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  outline: none;
+}
+.find:focus {
+  border-color: var(--focus-ring, #111827);
+  box-shadow: 0 0 0 1px var(--focus-ring, #111827);
+}

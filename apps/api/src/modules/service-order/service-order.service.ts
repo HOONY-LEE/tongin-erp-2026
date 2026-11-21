@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { AuthPrincipal, ServiceOrderStatus } from '@tongin/shared';
 import { DocNoService } from '../../prisma/doc-no.service';
+import { LIST_LIMIT, listWhere, searchWhere, type ListFilterRules } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
@@ -20,6 +21,16 @@ const TRANSITIONS: Record<ServiceOrderStatus, ServiceOrderStatus[]> = {
   CANCELED: [],
 };
 
+/** 서비스 주문 목록 필터(화면 FilterButton key → 칸) */
+const LIST_RULES: ListFilterRules = {
+  period: {
+    date: { scheduledDate: ['scheduledDate', 'date'], createdAt: ['createdAt', 'ts'] },
+  },
+  serviceLine: { in: 'serviceLine' },
+  status: { in: 'status' },
+  orgUnitId: { in: 'orgUnitId' },
+};
+
 @Injectable()
 export class ServiceOrderService {
   constructor(
@@ -29,16 +40,36 @@ export class ServiceOrderService {
     private readonly scope: ScopeService,
   ) {}
 
-  async findAll(serviceLine?: string, status?: string, principal?: AuthPrincipal) {
+  async findAll(
+    serviceLine?: string,
+    status?: string,
+    principal?: AuthPrincipal,
+    f?: string,
+    q?: string,
+  ) {
     const ids = await this.scope.orgScopeIds(principal);
+    // 고객은 관계가 없어(customerId만) 이름·전화로 찾은 고객 id로 잇는다
+    const text = searchWhere(q, ['orderNo', 'legacyNo', 'address', 'note']);
+    const cust = searchWhere(q, ['name', 'phonePrimary'], ['phonePrimary']);
+    const custIds = cust
+      ? (await this.prisma.customer.findMany({ where: cust, select: { id: true }, take: 500 })).map(
+          (c) => c.id,
+        )
+      : [];
     return this.prisma.serviceOrder.findMany({
       where: {
         ...(serviceLine ? { serviceLine } : {}),
         ...(status ? { status } : {}),
         ...(ids === null ? {} : { orgUnitId: { in: ids } }),
+        AND: [
+          ...listWhere(LIST_RULES, f),
+          ...(text
+            ? [{ OR: [...text.OR, ...(custIds.length ? [{ customerId: { in: custIds } }] : [])] }]
+            : []),
+        ],
       },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 

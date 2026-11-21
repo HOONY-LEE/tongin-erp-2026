@@ -10,7 +10,22 @@ import { DocNoService } from '../../prisma/doc-no.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventBusService } from '../../events/event-bus.service';
 import { ScopeService } from '../../scope/scope.service';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { CreateInvoiceDto, CreateReceiptDto, SetOutsourceCostDto } from './dto/billing.dto';
+
+/** 청구서 목록 필터(화면 FilterButton key → 칸). 미수금 여부는 수금 합계라 화면에서 거른다 */
+const INVOICE_RULES: ListFilterRules = {
+  period: {
+    date: {
+      createdAt: ['createdAt', 'ts'],
+      issuedAt: ['issuedAt', 'ts'],
+      dueDate: ['dueDate', 'date'],
+    },
+  },
+  status: { in: 'status' },
+  partnerId: { in: 'partnerId' },
+  orgUnitId: { in: 'orgUnitId' },
+};
 
 /**
  * SET-03: 전속/B2B 청구·수금 + 마진 (설계노트 D-3).
@@ -135,18 +150,25 @@ export class BillingService {
     return created;
   }
 
-  async listInvoices(partnerId?: string, status?: string, principal?: AuthPrincipal) {
+  async listInvoices(
+    partnerId?: string,
+    status?: string,
+    principal?: AuthPrincipal,
+    f?: string,
+    q?: string,
+  ) {
     const ids = await this.scope.orgScopeIds(principal);
     const where: Prisma.InvoiceWhereInput = {};
     if (partnerId) where.partnerId = partnerId;
     if (status) where.status = status;
     // 지점은 본인이 담당인 청구서만 볼 수 있다(담당 미지정 건은 본사만)
     if (ids !== null) where.orgUnitId = { in: ids };
+    where.AND = listWhere(INVOICE_RULES, f, q, ['invoiceNo', 'title', 'partner.name']);
     return this.prisma.invoice.findMany({
       where,
       include: { partner: true, receipts: true },
       orderBy: { createdAt: 'desc' },
-      take: 500,
+      take: LIST_LIMIT,
     });
   }
 

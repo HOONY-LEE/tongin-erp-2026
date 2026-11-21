@@ -1,9 +1,10 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useDetailParam } from '../lib/useDetailParam';
 import {
@@ -11,7 +12,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   PageHeader,
   RecordDetail,
   StatusBadge,
@@ -61,23 +61,33 @@ export default function PaymentConfirm() {
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(견적번호·계약번호·고객명·전화) */
+  const [q, setQ] = useState('');
+  const query = filterQuery(flt, q);
   // 상세는 견적 단위(?detail=<estimateId>) — 목록 행 키와 같다
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<PayRow[]>('/payment-confirmations'));
+      const data = await api<PayRow[]>(`/payment-confirmations${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   // 시연 — 고객이 계좌이체했다고 치고 자동 입금확인(웹훅과 같은 처리)을 태운다
@@ -225,17 +235,6 @@ export default function PaymentConfirm() {
       ],
     },
   ];
-  const shown = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'signed'
-      ? r.signed
-        ? 'yes'
-        : 'no'
-      : key === 'method'
-        ? r.depositProvider === 'TOSS'
-          ? 'auto'
-          : 'manual'
-        : r[key],
-  );
 
   // 입금 확인 상세 — 행 끝에 두던 입금 확인·시뮬레이션 버튼과 접수 링크를 머리글로 옮겼다
   if (detailId) {
@@ -355,9 +354,17 @@ export default function PaymentConfirm() {
         updatedAt={updatedAt}
       />
       <DataTable
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+        filters={
+          <FilterButton
+            fields={filterFields}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
+        }
+        onSearch={setQ}
         columns={columns}
-        rows={shown}
+        rows={rows}
         rowKey="estimateId"
         loading={loading}
         onRowClick={(r) => openDetail(String(r.estimateId))}

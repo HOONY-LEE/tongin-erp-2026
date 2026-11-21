@@ -1,7 +1,8 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -9,7 +10,6 @@ import {
   Button,
   DataTable,
   FilterButton,
-  filterRows,
   FormModal,
   PageHeader,
   RecordDetail,
@@ -63,6 +63,9 @@ export default function ServiceOrders() {
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(주문번호·옛 번호·고객명·주소·메모) */
+  const [q, setQ] = useState('');
+  const query = filterQuery(flt, q);
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const nameOf = useMemo(() => {
@@ -78,20 +81,26 @@ export default function ServiceOrders() {
     [toast, t],
   );
 
+  // 필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<ServiceOrder[]>('/service-orders'));
+      const data = await api<ServiceOrder[]>(`/service-orders${query}`);
+      if (my !== seq.current) return;
+      setRows(data);
       touch();
     } catch (e) {
-      fail(e);
+      if (my === seq.current) fail(e);
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [fail]);
+  }, [fail, query]);
 
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const onCreate = async (values: Record<string, unknown>) => {
@@ -260,15 +269,22 @@ export default function ServiceOrders() {
       ? [{ key: 'orgUnitId', label: t('service.org'), type: 'multi', options: orgs } as FilterField]
       : []),
   ];
-  const shown = filterRows(rows, filterFields, flt, (r, key) => r[key]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.serviceOrders')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+        filters={
+          <FilterButton
+            fields={filterFields}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
+        }
+        onSearch={setQ}
         columns={columns}
-        rows={shown}
+        rows={rows}
         loading={loading}
         onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={

@@ -1,7 +1,8 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import {
   Button,
   DataTable,
@@ -49,6 +50,11 @@ interface Props {
   filterFields?: FilterField[];
   /** 필터 조건 칸의 값(기본 row[key]) */
   filterGet?: (row: Row, key: string) => unknown;
+  /**
+   * 필터·검색을 서버에서 — 목록 GET(path)에 `?f=&q=`를 붙여 보내고 표 안에서는 다시 거르지 않는다.
+   * 서버(listWhere)가 filterFields의 key·값을 알아야 한다. 서버가 최근 일부만 보내는 목록에 쓴다.
+   */
+  serverFilter?: boolean;
 }
 
 /** 등록 항목에서 필터 조건 만들기 — 선택지가 있는 칸은 여러 개 고르기, 예/아니오 칸은 하나 고르기 */
@@ -115,6 +121,7 @@ export default function CrudTable({
   detailExtra,
   filterFields,
   filterGet,
+  serverFilter,
 }: Props) {
   const { t } = useTranslation();
   const [flt, setFlt] = useState<FilterValues>({});
@@ -127,23 +134,37 @@ export default function CrudTable({
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const detail = useDetailParam();
 
+  /** 서버 거르기일 때 검색칸 글자 */
+  const [q, setQ] = useState('');
+  const query = serverFilter ? filterQuery(flt, q) : '';
+  // 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      const all = await api<Row[]>(path);
+      const all = await api<Row[]>(`${path}${query}`);
+      if (my !== seq.current) return;
       setRows(rowFilter ? all.filter(rowFilter) : all);
       setUpdatedAt(new Date());
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
     // rowFilter는 렌더마다 새 함수일 수 있어 의존성에서 뺀다 — 같은 화면에선 기준이 바뀌지 않는다
-  }, [path, toast, t]);
+  }, [path, toast, t, query]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    // 서버 거르기면 조건을 바꾸는 동안 잠깐 기다렸다 한 번만
+    if (!serverFilter) {
+      void load();
+      return;
+    }
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
+  }, [load, serverFilter]);
 
   const onSubmit = async (values: Record<string, unknown>) => {
     try {
@@ -266,17 +287,27 @@ export default function CrudTable({
       <DataTable
         filters={
           fFields.length ? (
-            <FilterButton fields={fFields} value={flt} onChange={setFlt} />
+            <FilterButton
+              fields={fFields}
+              value={flt}
+              onChange={setFlt}
+              limited={!!serverFilter && rows.length >= LIST_LIMIT}
+            />
           ) : undefined
         }
+        onSearch={serverFilter ? setQ : undefined}
         columns={columns}
-        rows={filterRows(rows, fFields, flt, (r, key) =>
-          filterGet
-            ? filterGet(r, key)
-            : r[key] === null || r[key] === undefined
-              ? ''
-              : String(r[key]),
-        )}
+        rows={
+          serverFilter
+            ? rows
+            : filterRows(rows, fFields, flt, (r, key) =>
+                filterGet
+                  ? filterGet(r, key)
+                  : r[key] === null || r[key] === undefined
+                    ? ''
+                    : String(r[key]),
+              )
+        }
         loading={loading}
         onRowClick={(r) => (onDetail ? onDetail(r) : detail.open(String(r.id)))}
         toolbarActions={addButton}

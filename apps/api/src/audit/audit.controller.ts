@@ -16,6 +16,32 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ACCESS_ACTIONS, writeAccessLog } from './access-log';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../common/list-filter';
+
+/** 접근 기록 화면 필터 — 대상은 표 내려받기('table' = table:*) 또는 기록 대상 종류 */
+const ACCESS_RULES: ListFilterRules = {
+  target: {
+    custom: (v) => {
+      const list = Array.isArray(v) ? v : [];
+      if (!list.length) return null;
+      const kinds = list.filter((x) => x !== 'table');
+      return {
+        OR: [
+          ...(kinds.length ? [{ entityType: { in: kinds } }] : []),
+          ...(list.includes('table') ? [{ entityType: { startsWith: 'table:' } }] : []),
+        ],
+      };
+    },
+  },
+  // 사용자 id(uuid 칸 — 모양이 아닌 값은 버린다)
+  who: {
+    custom: (v) => {
+      const ids = (Array.isArray(v) ? v : []).filter((x) => UUID_RE.test(x));
+      return ids.length ? { actorUserId: { in: ids } } : null;
+    },
+  },
+};
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 화면에서 표를 내려받았다 — 표 내보내기는 브라우저 안에서 만들어지므로 화면이 알려 준다 */
 export class ExportLogDto {
@@ -65,6 +91,18 @@ export class AccessLogQueryDto {
   @IsOptional()
   @Matches(YMD)
   to?: string;
+
+  /** 화면 필터(FilterButton) — target(대상: 'table' 또는 entityType)·who(사용자 id) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  f?: string;
+
+  /** 검색 — 경로·대상·대상 id·사용자 이름/아이디 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  q?: string;
 }
 
 @Controller()
@@ -121,13 +159,42 @@ export class AuditController {
   async accessLogs(@Query() q: AccessLogQueryDto) {
     const gte = q.from ? new Date(`${q.from}T00:00:00+09:00`) : undefined;
     const lt = q.to ? new Date(Date.parse(`${q.to}T00:00:00+09:00`) + 86_400_000) : undefined;
+    // 검색어가 사용자 이름·아이디면 그 사용자의 기록도(기록에는 사용자 id만 있다)
+    const term = q.q?.trim();
+    const byUser = term
+      ? await this.prisma.appUser.findMany({
+          where: {
+            OR: [
+              { loginId: { contains: term, mode: 'insensitive' } },
+              { employee: { name: { contains: term, mode: 'insensitive' } } },
+            ],
+          },
+          select: { id: true },
+          take: 200,
+        })
+      : [];
     const rows = await this.prisma.auditLog.findMany({
       where: {
         action: q.action ? q.action : { in: ACCESS_ACTIONS },
         ...(gte || lt ? { createdAt: { ...(gte && { gte }), ...(lt && { lt }) } } : {}),
+        AND: [
+          ...listWhere(ACCESS_RULES, q.f),
+          ...(term
+            ? [
+                {
+                  OR: [
+                    { path: { contains: term, mode: 'insensitive' as const } },
+                    { entityType: { contains: term, mode: 'insensitive' as const } },
+                    { entityId: { contains: term, mode: 'insensitive' as const } },
+                    ...(byUser.length ? [{ actorUserId: { in: byUser.map((u) => u.id) } }] : []),
+                  ],
+                },
+              ]
+            : []),
+        ],
       },
       orderBy: { createdAt: 'desc' },
-      take: 1000,
+      take: LIST_LIMIT,
     });
     const ids = [...new Set(rows.map((r) => r.actorUserId).filter((x): x is string => !!x))];
     const users = await this.prisma.appUser.findMany({

@@ -9,12 +9,38 @@ import type { AuthPrincipal } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { dateOrNull } from '../../common/util/perm';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import { CreateBranchCaseDto, UpdateBranchCaseDto } from './dto/branch-case.dto';
 
 const include = {
   branch: { select: { id: true, name: true } },
   assignee: { select: { id: true, name: true, orgUnit: { select: { name: true } } } },
 } satisfies Prisma.BranchCaseInclude;
+
+/** 목록 필터(화면 FilterButton key → 칸). 담당자 ''는 미지정 */
+const LIST_RULES: ListFilterRules = {
+  period: {
+    date: {
+      occurredAt: ['occurredAt', 'date'],
+      dueDate: ['dueDate', 'date'],
+      createdAt: ['createdAt', 'ts'],
+    },
+  },
+  branchId: { in: 'branchId' },
+  assigneeEmpId: {
+    custom: (v) => {
+      const list = Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+      if (!list.length) return null;
+      const ids = list.filter(Boolean);
+      return {
+        OR: [
+          ...(ids.length ? [{ assigneeEmpId: { in: ids } }] : []),
+          ...(list.includes('') ? [{ assigneeEmpId: null }] : []),
+        ],
+      };
+    },
+  },
+};
 
 /**
  * 지점 관리 기록(가맹팀) — 지점별 현장점검·불법영업·보험처리·소송·재계약·민원.
@@ -29,7 +55,7 @@ export class BranchCaseService {
 
   async findAll(
     p: AuthPrincipal,
-    f: { branchId?: string; kind?: string; status?: string; q?: string },
+    f: { branchId?: string; kind?: string; status?: string; q?: string; f?: string },
   ) {
     const ids = await this.scope.orgScopeIds(p);
     const term = f.q?.trim();
@@ -40,6 +66,7 @@ export class BranchCaseService {
           f.branchId ? { branchId: f.branchId } : {},
           f.kind ? { kind: f.kind } : {},
           f.status ? { status: f.status } : {},
+          ...listWhere(LIST_RULES, f.f),
           term
             ? {
                 OR: [
@@ -53,7 +80,7 @@ export class BranchCaseService {
       },
       include,
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
-      take: 500,
+      take: LIST_LIMIT,
     });
   }
 

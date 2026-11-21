@@ -54,8 +54,13 @@ export class EstimateController {
   @AccessLog('estimate', 'LIST')
   @Get()
   @RequirePermissions('ESTIMATE.READ')
-  findAll(@CurrentUser() user: AuthPrincipal, @Query('leadId') leadId?: string) {
-    return this.estimateService.findAll(leadId, user);
+  findAll(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('leadId') leadId?: string,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.estimateService.findAll(leadId, user, f, q);
   }
 
   /** 거리 할증 기준(무료 거리·km당 금액) */
