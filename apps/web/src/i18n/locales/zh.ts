@@ -104,6 +104,7 @@ export default {
     cancel: '取消',
   },
   service: {
+    flt: { period: '期间', createdAt: '登记日' },
     register: '新建服务订单',
     orderNo: '订单号',
     line: '服务',
@@ -125,6 +126,7 @@ export default {
     canceledMsg: '已取消',
   },
   order: {
+    flt: { period: '申请日', status: '状态', org: '分店' },
     register: '新建订货',
     orderNo: '订货号',
     org: '订货网点',
@@ -146,6 +148,18 @@ export default {
     canceled: '已取消',
   },
   billing: {
+    flt: {
+      period: '期间',
+      createdAt: '创建日',
+      issuedAt: '开具日',
+      dueDate: '付款期限',
+      status: '状态',
+      partner: '往来单位',
+      branch: '负责分店',
+      outstanding: '应收款',
+      has: '有',
+      none: '无',
+    },
     margins: '合同毛利',
     contractNo: '合同号',
     customer: '客户',
@@ -175,6 +189,7 @@ export default {
     outstanding: '未收款',
   },
   material: {
+    flt: { category: '分类', stock: '库存', low: '不足', ok: '正常' },
     register: '新建物料',
     code: '编码',
     name: '物料名',
@@ -210,6 +225,7 @@ export default {
     geocoded: '已定位',
   },
   settlement: {
+    flt: { calcType: '计算方式', branch: '分店', active: '是否使用', on: '使用', off: '未使用' },
     receivables: '客户应收',
     customer: '客户',
     contracts: '合同数',
@@ -272,6 +288,7 @@ export default {
     back: '列表',
   },
   work: {
+    flt: { period: '期间', createdAt: '登记日' },
     detail: '详情',
     create: '派工',
     start: '开始作业',

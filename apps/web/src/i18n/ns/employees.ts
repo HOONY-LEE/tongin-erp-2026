@@ -3,6 +3,15 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      hireDate: '입사일',
+      org: '소속',
+      position: '직책',
+      type: '고용형태',
+      status: '상태',
+      active: '재직',
+      inactive: '퇴사',
+    },
     active: '재직',
     branch: '소속 지점',
     org: '소속 조직',
@@ -88,6 +97,15 @@ export default defineNs({
     loginBlocked: ' (로그인 막힘)',
   },
   en: {
+    flt: {
+      hireDate: 'Hire date',
+      org: 'Department',
+      position: 'Position',
+      type: 'Employment type',
+      status: 'Status',
+      active: 'Active',
+      inactive: 'Left',
+    },
     active: 'Active',
     branch: 'Branch',
     org: 'Department',
@@ -174,6 +192,15 @@ export default defineNs({
     loginBlocked: ' (login blocked)',
   },
   zh: {
+    flt: {
+      hireDate: '入职日',
+      org: '所属',
+      position: '职位',
+      type: '雇佣类型',
+      status: '状态',
+      active: '在职',
+      inactive: '离职',
+    },
     active: '在职',
     branch: '所属分店',
     org: '所属部门',

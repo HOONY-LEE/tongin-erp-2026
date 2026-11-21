@@ -9,11 +9,15 @@ import { formatPhone } from '../lib/phone';
 import { PhonePreview } from '../components/PhonePreview';
 import {
   DataTable,
+  FilterButton,
+  filterRows,
   ListPage,
   Modal,
   SegmentedControl,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import { DateFilter, type DateRange } from './callcenter/DateFilter';
@@ -54,6 +58,7 @@ export default function SmsHistory() {
   const [canAll, setCanAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<SmsRow | null>(null);
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -137,6 +142,52 @@ export default function SmsHistory() {
     },
   ];
 
+  const senders = [
+    ...new Set(rows.map((r) => r.employeeName).filter((x): x is string => !!x)),
+  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  const filterFields: FilterField[] = [
+    {
+      key: 'ok',
+      label: t('camp.col.result'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('camp.sent') },
+        { value: 'no', label: t('camp.st.FAILED') },
+      ],
+    },
+    {
+      key: 'type',
+      label: t('camp.col.type'),
+      type: 'single',
+      options: [
+        { value: 'short', label: t('camp.short') },
+        { value: 'long', label: t('camp.long') },
+      ],
+    },
+    ...(scope === 'all' && senders.length > 1
+      ? [
+          {
+            key: 'employeeName',
+            label: t('camp.col.sender'),
+            type: 'multi',
+            options: senders.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+  ];
+  // 날짜는 서버에서(DateFilter), 나머지 조건은 받은 목록에서 거른다
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'ok'
+      ? r.ok
+        ? 'yes'
+        : 'no'
+      : key === 'type'
+        ? bytes(r.body) > 90
+          ? 'long'
+          : 'short'
+        : r.employeeName,
+  );
+
   return (
     <ListPage fit title={t('camp.smsHistory')} subtitle={t('camp.smsHistorySub')}>
       <DataTable
@@ -152,11 +203,16 @@ export default function SmsHistory() {
             />
           ) : undefined
         }
-        filters={<DateFilter value={range} onChange={setRange} />}
+        filters={
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <DateFilter value={range} onChange={setRange} />
+          </>
+        }
         fit
         pageSize={20}
         columns={columns}
-        rows={rows as unknown as Row[]}
+        rows={shown as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => setOpen(r as unknown as SmsRow)}
         exportable

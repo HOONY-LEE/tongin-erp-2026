@@ -23,6 +23,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   ListPage,
   ListToolbar,
@@ -33,6 +35,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import { Markdown } from '../components/ai/Markdown';
@@ -103,6 +107,8 @@ export default function Knowledge() {
   const [graph, setGraph] = useState<KnowledgeGraph>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState('');
+  /** 목록 보기 검색 옆 필터 — 수정일·분류·AI 정리·수정한 사람 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<KnowledgeDocView | 'new' | null>(null);
   const { tab: view, setTab: setView } = useTabParam<View>('graph', 'view');
@@ -144,6 +150,40 @@ export default function Knowledge() {
         (d) => !term || [d.title, d.summary ?? '', ...d.keywords].some((x) => x.includes(term)),
       ),
     [docs, term],
+  );
+
+  const filterFields: FilterField[] = [
+    { key: 'updatedAt', label: t('know.flt.updated'), type: 'date' },
+    {
+      key: 'category',
+      label: t('know.flt.category'),
+      type: 'multi',
+      options: KNOWLEDGE_CATEGORIES.map((c) => ({ value: c, label: KNOWLEDGE_CATEGORY_LABEL[c] })),
+    },
+    {
+      key: 'analyzeStatus',
+      label: t('know.flt.ai'),
+      type: 'multi',
+      options: [
+        { value: 'DONE', label: t('know.st.done') },
+        { value: 'PENDING', label: t('know.st.running') },
+        { value: 'ERROR', label: t('know.st.failed') },
+      ],
+    },
+    {
+      key: 'updatedByName',
+      label: t('know.flt.author'),
+      type: 'multi',
+      options: [...new Set(docs.map((d) => d.updatedByName).filter((v): v is string => !!v))].map(
+        (v) => ({ value: v, label: v }),
+      ),
+    },
+  ];
+  const listed = filterRows(
+    filtered,
+    filterFields,
+    flt,
+    (r, key) => r[key as keyof KnowledgeDocRow],
   );
 
   const addButton = canCreate ? (
@@ -241,8 +281,9 @@ export default function Knowledge() {
       {view === 'list' ? (
         <DataTable
           fit
+          filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
           columns={columns}
-          rows={filtered as unknown as Row[]}
+          rows={listed as unknown as Row[]}
           loading={loading}
           exportable
           exportFileName={t('know.title')}

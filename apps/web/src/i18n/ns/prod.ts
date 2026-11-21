@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { validPeriod: '유효 기간' },
     room: '방',
     nameEn: '영문명',
     commonItems: '자주 들어가는 물품',
@@ -142,6 +143,7 @@ export default defineNs({
     handlingPh: '예: 보관',
   },
   en: {
+    flt: { validPeriod: 'Valid period' },
     room: 'Room',
     nameEn: 'English name',
     commonItems: 'Common items',
@@ -282,6 +284,7 @@ export default defineNs({
     handlingPh: 'e.g. Storage',
   },
   zh: {
+    flt: { validPeriod: '有效期间' },
     room: '房间',
     nameEn: '英文名',
     commonItems: '常用物品',

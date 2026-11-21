@@ -11,6 +11,8 @@ import {
   Button,
   Checkbox,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   ListPage,
   Modal,
@@ -20,6 +22,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -63,6 +67,8 @@ export default function Notices() {
   const [rows, setRows] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  /** 검색 옆 필터 — 작성일·작성자·대상 조직·고정 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [editing, setEditing] = useState<Notice | 'new' | null>(null);
 
   const load = useCallback(async () => {
@@ -169,9 +175,50 @@ export default function Notices() {
     );
   }
 
-  const filtered = filter === 'all' ? rows : rows.filter((r) => r.audience === filter);
+  const distinct = (vs: (string | undefined)[]) =>
+    [...new Set(vs.filter((v): v is string => !!v))]
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .map((v) => ({ value: v, label: v }));
+  const filterFields: FilterField[] = [
+    { key: 'createdAt', label: t('notice.flt.createdAt'), type: 'date' },
+    {
+      key: 'author',
+      label: t('notice.flt.author'),
+      type: 'multi',
+      options: distinct(rows.map((r) => r.author?.name)),
+    },
+    {
+      key: 'org',
+      label: t('notice.flt.org'),
+      type: 'multi',
+      options: distinct(rows.flatMap((r) => r.orgUnits.map((o) => o.name))),
+    },
+    {
+      key: 'pinned',
+      label: t('notice.flt.pinned'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('notice.flt.yes') },
+        { value: 'false', label: t('notice.flt.no') },
+      ],
+    },
+  ];
+  // 대상 조직은 공지 하나에 여럿이라 따로 — 고른 조직 중 하나라도 대상이면
+  const pickedOrgs = (flt.org as string[] | undefined) ?? [];
+  const picked = filterRows(
+    rows.filter((r) => !pickedOrgs.length || r.orgUnits.some((o) => pickedOrgs.includes(o.name))),
+    filterFields.filter((f) => f.key !== 'org'),
+    flt,
+    (r, key) =>
+      key === 'author'
+        ? r.author?.name
+        : key === 'pinned'
+          ? String(r.pinned)
+          : r[key as keyof Notice],
+  );
+  const filtered = filter === 'all' ? picked : picked.filter((r) => r.audience === filter);
   const count = (f: Filter) =>
-    f === 'all' ? rows.length : rows.filter((r) => r.audience === f).length;
+    f === 'all' ? picked.length : picked.filter((r) => r.audience === f).length;
 
   const columns: Column[] = [
     {
@@ -208,6 +255,7 @@ export default function Notices() {
   return (
     <ListPage title={t('nav.notices')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
         rows={filtered as unknown as Row[]}
         loading={loading}

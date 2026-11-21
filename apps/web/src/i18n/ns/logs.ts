@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { type: '종류', source: '출처', who: '사용자', target: '대상' },
     level: {
       ERROR: '오류',
       WARN: '경고',
@@ -73,6 +74,7 @@ export default defineNs({
     allAct: '전체',
   },
   en: {
+    flt: { type: 'Type', source: 'Source', who: 'User', target: 'Target' },
     level: {
       ERROR: 'Error',
       WARN: 'Warning',
@@ -145,6 +147,7 @@ export default defineNs({
     allAct: 'All',
   },
   zh: {
+    flt: { type: '类型', source: '来源', who: '用户', target: '对象' },
     level: {
       ERROR: '错误',
       WARN: '警告',

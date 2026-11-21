@@ -1,7 +1,7 @@
 import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { ESTIMATE_OPTION_GROUPS, type EstimateOptionGroup } from '@tongin/shared';
-import { Badge } from '../components/ui';
+import { Badge, type FilterField } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { ESTIMATE_OPTION_GROUP_LABEL } from '../i18n/codes';
 
@@ -104,6 +104,29 @@ const fields: FormField[] = [
  * 구성 밖이어도 견적에서 '추가 상품'으로 고를 수 있다. 코드는 서버 발급(OPT-0001).
  * 이사물량은 물품정보(방·물품·처리방법)로 물량을 잡는 특별한 상품이다.
  */
+/** 검색 옆 필터 — 묶음·단위·사용 여부(날짜·메모 묻기 칸은 거를 일이 없어 뺀다) */
+const filterFields: FilterField[] = [
+  ...fields
+    .filter((f) => f.name === 'groupCode' || f.name === 'unit')
+    .map(
+      (f): FilterField => ({
+        key: f.name,
+        label: f.label,
+        type: 'multi',
+        options: f.options ?? [],
+      }),
+    ),
+  {
+    key: 'isActive',
+    label: i18n.t('prod.activeLabel'),
+    type: 'single',
+    options: [
+      { value: 'true', label: i18n.t('misc.yes') },
+      { value: 'false', label: i18n.t('misc.no') },
+    ],
+  },
+];
+
 export default function Addons() {
   const { t } = useTranslation();
   return (
@@ -112,6 +135,7 @@ export default function Addons() {
       path="/addon-services"
       columns={columns}
       fields={fields}
+      filterFields={filterFields}
       editable
       deletable
       hideHeader

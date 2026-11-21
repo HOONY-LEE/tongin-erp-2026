@@ -3,6 +3,16 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '계약 기간',
+      contractStart: '계약 시작',
+      contractEnd: '계약 만료',
+      status: '상태',
+      fee: '가맹비 입금',
+      deposit: '보증금 입금',
+      paid: '확인',
+      unpaid: '미확인',
+    },
     won: '{{v0}}원',
     expiredDays: ' (만료 {{v0}}일)',
     paid: '입금',
@@ -60,6 +70,16 @@ export default defineNs({
     terminated: '해지',
   },
   en: {
+    flt: {
+      period: 'Contract period',
+      contractStart: 'Contract start',
+      contractEnd: 'Contract end',
+      status: 'Status',
+      fee: 'Fee payment',
+      deposit: 'Deposit payment',
+      paid: 'Confirmed',
+      unpaid: 'Unconfirmed',
+    },
     won: '₩{{v0}}',
     expiredDays: ' (expired {{v0}}d ago)',
     paid: 'Paid',
@@ -117,6 +137,16 @@ export default defineNs({
     terminated: 'Terminated',
   },
   zh: {
+    flt: {
+      period: '合同期间',
+      contractStart: '合同开始',
+      contractEnd: '合同到期',
+      status: '状态',
+      fee: '加盟费入账',
+      deposit: '保证金入账',
+      paid: '已确认',
+      unpaid: '未确认',
+    },
     won: '{{v0}} 韩元',
     expiredDays: '（已过期 {{v0}} 天）',
     paid: '已到账',

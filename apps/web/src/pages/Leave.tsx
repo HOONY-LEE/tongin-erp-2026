@@ -19,6 +19,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   Input,
   ListPage,
@@ -29,6 +31,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
   type StatusMap,
@@ -184,6 +188,26 @@ export function LeaveRequestTable({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  /** 검색 옆 필터 — 휴가 기간·종류·상태 */
+  const [flt, setFlt] = useState<FilterValues>({});
+  const filterFields: FilterField[] = [
+    { key: 'startDate', label: t('leave.flt.period'), type: 'date' },
+    {
+      key: 'type',
+      label: t('leave.flt.type'),
+      type: 'multi',
+      options: [...new Set(rows.map((r) => r.leaveType.name))].map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: 'status',
+      label: t('leave.flt.status'),
+      type: 'multi',
+      options: Object.entries(STATUS_MAP).map(([value, s]) => ({ value, label: s.label })),
+    },
+  ];
+  const listed = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'type' ? r.leaveType.name : r[key as keyof LeaveRequestRow],
+  );
   const columns: Column[] = [
     { title: t('leave.col.type'), render: (r) => (r as unknown as LeaveRequestRow).leaveType.name },
     {
@@ -208,8 +232,9 @@ export function LeaveRequestTable({
   ];
   return (
     <DataTable
+      filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
       columns={columns}
-      rows={rows as unknown as Row[]}
+      rows={listed as unknown as Row[]}
       loading={loading}
       onRowClick={(r) =>
         r.approvalDocId && navigate(`/approvals?detail=${String(r.approvalDocId)}`)
@@ -525,6 +550,8 @@ function LeaveSummary() {
   const [rows, setRows] = useState<SummaryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [adjusting, setAdjusting] = useState<SummaryRow | null>(null);
+  /** 검색 옆 필터 — 소속·직책·잔여 연차·입사 1년 미만 */
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -540,6 +567,50 @@ function LeaveSummary() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const distinct = (vs: (string | null)[]) =>
+    [...new Set(vs.filter((v): v is string => !!v))]
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .map((v) => ({ value: v, label: v }));
+  const yesNo = [
+    { value: 'yes', label: t('leave.flt.yes') },
+    { value: 'no', label: t('leave.flt.no') },
+  ];
+  const filterFields: FilterField[] = [
+    {
+      key: 'orgUnitName',
+      label: t('leave.flt.org'),
+      type: 'multi',
+      options: distinct(rows.map((r) => r.orgUnitName)),
+    },
+    {
+      key: 'positionName',
+      label: t('leave.flt.position'),
+      type: 'multi',
+      options: distinct(rows.map((r) => r.positionName)),
+    },
+    {
+      key: 'remain',
+      label: t('leave.flt.remain'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('leave.flt.hasRemain') },
+        { value: 'no', label: t('leave.flt.noRemain') },
+      ],
+    },
+    { key: 'firstYear', label: t('leave.flt.firstYear'), type: 'single', options: yesNo },
+  ];
+  const listed = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'remain'
+      ? num(r.remaining) > 0
+        ? 'yes'
+        : 'no'
+      : key === 'firstYear'
+        ? r.firstYear
+          ? 'yes'
+          : 'no'
+        : r[key as keyof SummaryRow],
+  );
 
   const columns: Column[] = [
     { title: t('leave.col.name'), dataIndex: 'name' },
@@ -566,7 +637,7 @@ function LeaveSummary() {
     <>
       <DataTable
         columns={columns}
-        rows={rows as unknown as Row[]}
+        rows={listed as unknown as Row[]}
         loading={loading}
         exportable
         exportFileName={t('leave.statusTitle')}
@@ -574,14 +645,17 @@ function LeaveSummary() {
           can('LEAVE.UPDATE') ? (r) => setAdjusting(r as unknown as SummaryRow) : undefined
         }
         filters={
-          <SegmentedControl
-            value={scope}
-            onChange={(v) => setScope(v as 'hq' | 'all')}
-            options={[
-              { value: 'hq', label: t('leave.hq') },
-              { value: 'all', label: t('leave.allIncl') },
-            ]}
-          />
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <SegmentedControl
+              value={scope}
+              onChange={(v) => setScope(v as 'hq' | 'all')}
+              options={[
+                { value: 'hq', label: t('leave.hq') },
+                { value: 'all', label: t('leave.allIncl') },
+              ]}
+            />
+          </>
         }
       />
       {adjusting && (
@@ -825,6 +899,8 @@ export function LeaveGrant() {
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<AdjustmentRow[]>([]);
   const [loading, setLoading] = useState(false);
+  /** 아래 부여·조정 내역 필터 — 적용일·소속·부여/차감 */
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -882,6 +958,28 @@ export function LeaveGrant() {
     }
   };
 
+  const grantFilter: FilterField[] = [
+    { key: 'effectiveDate', label: t('leave.flt.applyDate'), type: 'date' },
+    {
+      key: 'org',
+      label: t('leave.flt.org'),
+      type: 'multi',
+      options: [
+        ...new Set(rows.map((r) => r.employee.orgUnit?.name).filter((v): v is string => !!v)),
+      ]
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: 'kind',
+      label: t('leave.flt.kind'),
+      type: 'single',
+      options: [
+        { value: 'grant', label: t('leave.flt.grant') },
+        { value: 'deduct', label: t('leave.flt.deduct') },
+      ],
+    },
+  ];
   const columns: Column[] = [
     { title: t('leave.date'), width: 110, render: (r) => d10(r.effectiveDate) },
     {
@@ -989,7 +1087,22 @@ export function LeaveGrant() {
           </div>
         </div>
       </section>
-      <DataTable columns={columns} rows={rows as unknown as Row[]} loading={loading} />
+      <DataTable
+        filters={<FilterButton fields={grantFilter} value={flt} onChange={setFlt} />}
+        columns={columns}
+        rows={
+          filterRows(rows, grantFilter, flt, (r, key) =>
+            key === 'org'
+              ? (r.employee.orgUnit?.name ?? '')
+              : key === 'kind'
+                ? num(r.days) < 0
+                  ? 'deduct'
+                  : 'grant'
+                : r[key as keyof AdjustmentRow],
+          ) as unknown as Row[]
+        }
+        loading={loading}
+      />
     </>
   );
 }

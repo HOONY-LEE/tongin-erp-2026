@@ -10,6 +10,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   Modal,
   PasswordInput,
@@ -17,6 +19,8 @@ import {
   Select,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   PhoneInput,
 } from '../../components/ui';
@@ -97,6 +101,8 @@ export default function AccountList() {
   const [resetting, setResetting] = useState<Account | null>(null);
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
   const orgs = useOptions('/org-units', 'name');
+  /** 검색 옆 필터 — 소속·직책·권한 그룹·상태·사용 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const isWildcard = user?.permissions.includes('*') ?? false;
 
   const load = useCallback(async () => {
@@ -168,6 +174,57 @@ export default function AccountList() {
     status: statusText(r),
     active: r.isActive ? t('acc.on') : t('acc.off'),
   }));
+
+  const filterFields: FilterField[] = [
+    {
+      key: 'org',
+      label: t('acc.flt.org'),
+      type: 'multi',
+      options: [...new Set(tableRows.map((r) => r.org).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: 'positionId',
+      label: t('acc.flt.position'),
+      type: 'multi',
+      options: positions.map((p) => ({ value: p.id, label: p.name })),
+    },
+    {
+      key: 'roleId',
+      label: t('acc.flt.group'),
+      type: 'multi',
+      options: roles.map((r) => ({ value: r.id, label: r.name })),
+    },
+    {
+      key: 'status',
+      label: t('acc.flt.status'),
+      type: 'single',
+      options: [t('acc.active'), t('acc.retired'), t('acc.partner')].map((v) => ({
+        value: v,
+        label: v,
+      })),
+    },
+    {
+      key: 'isActive',
+      label: t('acc.flt.active'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('acc.on') },
+        { value: 'false', label: t('acc.off') },
+      ],
+    },
+  ];
+  // 권한 그룹은 한 계정에 여러 개라 따로 — 고른 그룹 중 하나라도 있으면
+  const pickedRoles = (flt.roleId as string[] | undefined) ?? [];
+  const listed = filterRows(
+    tableRows.filter(
+      (r) => !pickedRoles.length || r.roles.some((x) => pickedRoles.includes(x.roleId)),
+    ),
+    filterFields.filter((f) => f.key !== 'roleId'),
+    flt,
+    (r, key) => (key === 'isActive' ? String(r.isActive) : r[key as keyof typeof r]),
+  );
 
   const columns: Column[] = [
     { title: 'ID', dataIndex: 'loginId', width: 150 },
@@ -302,8 +359,9 @@ export default function AccountList() {
   return (
     <>
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={tableRows as unknown as Row[]}
+        rows={listed as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={

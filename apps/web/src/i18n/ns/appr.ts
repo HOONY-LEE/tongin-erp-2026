@@ -3,6 +3,16 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '기간',
+      submitted: '상신일',
+      completed: '완료일',
+      type: '종류',
+      status: '상태',
+      myTurn: '내 결재 차례',
+      yes: '예',
+      no: '아니오',
+    },
     contract: '계약',
     contractApply1: '— 승인하면 계약서에 바로',
     contractApply2: '반영됩니다.',
@@ -232,6 +242,16 @@ export default defineNs({
     formDeleted: '양식(지워짐)',
   },
   en: {
+    flt: {
+      period: 'Period',
+      submitted: 'Submitted',
+      completed: 'Completed',
+      type: 'Type',
+      status: 'Status',
+      myTurn: 'My turn',
+      yes: 'Yes',
+      no: 'No',
+    },
     contract: 'Contract',
     contractApply1: '— once approved, it is applied to the contract',
     contractApply2: 'immediately.',
@@ -466,6 +486,16 @@ export default defineNs({
     formDeleted: 'Form (deleted)',
   },
   zh: {
+    flt: {
+      period: '期间',
+      submitted: '提交日',
+      completed: '完成日',
+      type: '类型',
+      status: '状态',
+      myTurn: '轮到我审批',
+      yes: '是',
+      no: '否',
+    },
     contract: '合同',
     contractApply1: '— 批准后将直接',
     contractApply2: '反映到合同。',

@@ -12,6 +12,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   ListToolbar,
   Modal,
@@ -21,6 +23,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import styles from './duties.module.css';
@@ -71,6 +75,8 @@ export default function Duties() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
+  /** 표 보기(조직별·내 업무) 검색 옆 필터 — 주기·담당자·부담당자·진행 중 작업 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [open, setOpen] = useState<DutyView | 'new' | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
 
@@ -132,6 +138,47 @@ export default function Duties() {
       {t('duty.addBtn')}
     </Button>
   );
+
+  const assigned = [
+    { value: 'yes', label: t('duty.flt.assigned') },
+    { value: 'no', label: t('duty.flt.unassigned') },
+  ];
+  const filterFields: FilterField[] = [
+    {
+      key: 'cycle',
+      label: t('duty.flt.cycle'),
+      type: 'multi',
+      options: DUTY_CYCLES.map((c) => ({ value: c, label: DUTY_CYCLE_LABEL[c] })),
+    },
+    { key: 'owner', label: t('duty.flt.owner'), type: 'single', options: assigned },
+    { key: 'backup', label: t('duty.flt.backup'), type: 'single', options: assigned },
+    {
+      key: 'inProgress',
+      label: t('duty.flt.inProgress'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('duty.flt.has') },
+        { value: 'no', label: t('duty.flt.none') },
+      ],
+    },
+  ];
+  const sift = (list: DutyView[]) =>
+    filterRows(list, filterFields, flt, (d, key) =>
+      key === 'owner'
+        ? d.ownerEmpId
+          ? 'yes'
+          : 'no'
+        : key === 'backup'
+          ? d.backupEmpId
+            ? 'yes'
+            : 'no'
+          : key === 'inProgress'
+            ? d.inProgress > 0
+              ? 'yes'
+              : 'no'
+            : d[key as keyof DutyView],
+    );
+  const filterButton = <FilterButton fields={filterFields} value={flt} onChange={setFlt} />;
 
   const q = query.trim();
   const match = (d: DutyView) =>
@@ -247,8 +294,11 @@ export default function Duties() {
           <div className={styles.orgMain}>
             {org && <MissionBox org={org} canManage={canManage} onSaved={load} />}
             <DataTable
+              filters={filterButton}
               columns={orgColumns}
-              rows={duties.filter((d) => d.orgUnitId === orgId).filter(match) as unknown as Row[]}
+              rows={
+                sift(duties.filter((d) => d.orgUnitId === orgId).filter(match)) as unknown as Row[]
+              }
               loading={loading}
               fit
               pageSize={0}
@@ -342,13 +392,16 @@ export default function Duties() {
         </>
       ) : (
         <DataTable
+          filters={filterButton}
           columns={mineColumns}
           rows={
-            duties
-              .filter(
-                (d) => d.ownerEmpId === user?.employeeId || d.backupEmpId === user?.employeeId,
-              )
-              .filter(match) as unknown as Row[]
+            sift(
+              duties
+                .filter(
+                  (d) => d.ownerEmpId === user?.employeeId || d.backupEmpId === user?.employeeId,
+                )
+                .filter(match),
+            ) as unknown as Row[]
           }
           loading={loading}
           fit

@@ -10,6 +10,8 @@ import {
   Button,
   Checkbox,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   ListToolbar,
   Modal,
@@ -19,6 +21,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   PhoneInput,
 } from '../components/ui';
@@ -140,6 +144,8 @@ export default function Spaces() {
   const [rows, setRows] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<Reservation | null>(null);
+  /** 이달 목록 검색 옆 필터 — 공간·종류·예약자·결제 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [editing, setEditing] = useState<
     { res: Reservation } | { spaceId?: string; start?: number } | null
   >(null);
@@ -222,6 +228,47 @@ export default function Spaces() {
           : '',
     };
   });
+
+  const filterFields: FilterField[] = [
+    {
+      key: 'spaceId',
+      label: t('space.flt.space'),
+      type: 'multi',
+      options: spaces.map((s) => ({ value: s.id, label: s.name })),
+    },
+    {
+      key: 'kind',
+      label: t('space.flt.kind'),
+      type: 'multi',
+      options: (['MEETING', 'RENTAL'] as const).map((k) => ({ value: k, label: KIND_LABEL[k] })),
+    },
+    {
+      key: 'bookedByName',
+      label: t('space.flt.booker'),
+      type: 'multi',
+      options: [...new Set(rows.map((r) => r.bookedByName))]
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((v) => ({ value: v, label: v })),
+    },
+    {
+      key: 'paid',
+      label: t('space.flt.paid'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('space.flt.paidYes') },
+        { value: 'false', label: t('space.flt.paidNo') },
+      ],
+    },
+  ];
+  const listShown = filterRows(listRows, filterFields, flt, (r, key) =>
+    key === 'kind'
+      ? spaceOf(r.spaceId)?.kind
+      : key === 'paid'
+        ? r.paid == null
+          ? ''
+          : String(r.paid)
+        : r[key as keyof typeof r],
+  );
 
   // 목록 화면 공통 배치 — 날짜(왼쪽) ……… 일간/이달 목록(오른쪽) / ……… 공간 관리·예약하기(오른쪽)
   const dateNav = (
@@ -365,10 +412,15 @@ export default function Spaces() {
       ) : (
         <DataTable
           columns={listColumns}
-          rows={listRows as unknown as Row[]}
+          rows={listShown as unknown as Row[]}
           loading={loading}
           onRowClick={(r) => setDetail(rows.find((x) => x.id === r.id) ?? null)}
-          filters={dateNav}
+          filters={
+            <>
+              <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+              {dateNav}
+            </>
+          }
           viewSwitch={viewSwitch}
           toolbarActions={actions}
           exportable

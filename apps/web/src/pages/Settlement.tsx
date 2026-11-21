@@ -9,6 +9,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   Input,
   PageCard,
@@ -19,6 +21,8 @@ import {
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
   type StatusMap,
@@ -84,6 +88,8 @@ export default function Settlement() {
   const [ruleOpen, setRuleOpen] = useState(false);
   // 규칙 목록을 처음 받기 전에는 상세가 '찾을 수 없음'으로 보이지 않게
   const [rulesLoading, setRulesLoading] = useState(true);
+  /** 수수료 규칙 표 검색 옆 필터 */
+  const [ruleFlt, setRuleFlt] = useState<FilterValues>({});
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const [orgId, setOrgId] = useState('');
@@ -301,6 +307,37 @@ export default function Settlement() {
     );
   }
 
+  const ruleFilterFields: FilterField[] = [
+    {
+      key: 'calcType',
+      label: t('settlement.flt.calcType'),
+      type: 'multi',
+      options: Object.entries(CALC).map(([value, v]) => ({ value, label: v.label })),
+    },
+    ...(orgs.length > 1
+      ? [
+          {
+            key: 'orgUnitId',
+            label: t('settlement.flt.branch'),
+            type: 'multi',
+            options: orgs,
+          } as FilterField,
+        ]
+      : []),
+    {
+      key: 'active',
+      label: t('settlement.flt.active'),
+      type: 'single',
+      options: [
+        { value: 'on', label: t('settlement.flt.on') },
+        { value: 'off', label: t('settlement.flt.off') },
+      ],
+    },
+  ];
+  const shownRules = filterRows(rules, ruleFilterFields, ruleFlt, (r, key) =>
+    key === 'active' ? (r.isActive === false ? 'off' : 'on') : r[key],
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.settlement')} onRefresh={loadAll} updatedAt={updatedAt} />
@@ -327,7 +364,7 @@ export default function Settlement() {
 
       <PageCard
         title={t('settlement.commissionRules')}
-        count={rules.length}
+        count={shownRules.length}
         actions={
           <Button variant="primary" size="sm" onClick={() => setRuleOpen(true)}>
             + {t('settlement.addRule')}
@@ -335,7 +372,12 @@ export default function Settlement() {
         }
         plain
       >
-        <DataTable columns={ruleCols} rows={rules} onRowClick={(r) => openDetail(String(r.id))} />
+        <DataTable
+          columns={ruleCols}
+          rows={shownRules}
+          onRowClick={(r) => openDetail(String(r.id))}
+          filters={<FilterButton fields={ruleFilterFields} value={ruleFlt} onChange={setRuleFlt} />}
+        />
       </PageCard>
 
       <PageCard title={t('settlement.branchSettlement')}>

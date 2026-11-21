@@ -6,10 +6,14 @@ import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   DataTable,
+  FilterButton,
+  filterRows,
   PageHeader,
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -29,6 +33,7 @@ export default function Contracts() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,13 +62,34 @@ export default function Contracts() {
     { title: t('contract.balance'), numeric: true, render: (r) => won(r.balanceAmount) },
   ];
 
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('deals.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'createdAt', label: t('deals.flt.createdAt') },
+        { value: 'contractDate', label: t('deals.flt.contractDate') },
+        { value: 'signedAt', label: t('deals.flt.signedAt') },
+      ],
+    },
+    {
+      key: 'status',
+      label: t('deals.status'),
+      type: 'multi',
+      options: Object.entries(CONTRACT_STATUS).map(([value, s]) => ({ value, label: s.label })),
+    },
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) => r[key]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.contracts')} onRefresh={load} updatedAt={updatedAt} />
       {/* 계약은 접수 화면의 '고객에게 견적서 보내기'로 만들어진다 — 여기서 따로 만들지 않는다 */}
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         onRowClick={(r) => navigate(`/contracts/${String(r.id)}`)}
       />

@@ -104,6 +104,7 @@ export default {
     cancel: '취소',
   },
   service: {
+    flt: { period: '기간', createdAt: '등록일' },
     register: '서비스 주문 등록',
     orderNo: '주문번호',
     line: '서비스',
@@ -125,6 +126,7 @@ export default {
     canceledMsg: '취소되었습니다',
   },
   order: {
+    flt: { period: '요청일', status: '상태', org: '지점' },
     register: '발주 등록',
     orderNo: '발주번호',
     org: '발주 지점',
@@ -146,6 +148,18 @@ export default {
     canceled: '취소되었습니다',
   },
   billing: {
+    flt: {
+      period: '기간',
+      createdAt: '작성일',
+      issuedAt: '발행일',
+      dueDate: '납부 기한',
+      status: '상태',
+      partner: '거래처',
+      branch: '담당 지점',
+      outstanding: '미수금',
+      has: '있음',
+      none: '없음',
+    },
     margins: '계약 마진',
     contractNo: '계약번호',
     customer: '고객',
@@ -175,6 +189,7 @@ export default {
     outstanding: '미수금',
   },
   material: {
+    flt: { category: '분류', stock: '재고', low: '부족', ok: '정상' },
     register: '자재 등록',
     code: '코드',
     name: '자재명',
@@ -210,6 +225,7 @@ export default {
     geocoded: '좌표 확인됨',
   },
   settlement: {
+    flt: { calcType: '계산 방식', branch: '지점', active: '사용 여부', on: '사용', off: '미사용' },
     receivables: '고객별 미수금',
     customer: '고객',
     contracts: '계약수',
@@ -272,6 +288,7 @@ export default {
     back: '목록',
   },
   work: {
+    flt: { period: '기간', createdAt: '등록일' },
     detail: '상세',
     create: '작업토스',
     start: '작업 시작',

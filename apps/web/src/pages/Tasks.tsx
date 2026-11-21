@@ -29,6 +29,8 @@ import {
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   ListPage,
   ListToolbar,
@@ -37,6 +39,8 @@ import {
   Select,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
   SearchInput,
@@ -136,8 +140,8 @@ export default function Tasks() {
   const [rows, setRows] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'ALL' | TaskStatus>('ALL');
-  const [priority, setPriority] = useState<'ALL' | Task['priority']>('ALL');
-  const [teamFilter, setTeamFilter] = useState('ALL');
+  /** 목록 보기 검색 옆 필터 — 기간·우선순위·팀·담당자·기한 지남 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Task | 'new' | null>(null);
   // 칸반 칸 아래 '+ 업무 추가'로 열면 그 칸의 상태로 시작한다
@@ -433,25 +437,86 @@ export default function Tasks() {
     );
   }
 
-  const count = (s: 'ALL' | TaskStatus) =>
-    s === 'ALL' ? rows.length : rows.filter((r) => r.status === s).length;
-  const statusOptions = [
-    { value: 'ALL', label: t('task.allStatus', { v0: count('ALL') }) },
-    ...TASK_STATUS.map((s) => ({ value: s, label: `${TASK_STATUS_LABEL[s]} ${count(s)}` })),
-  ];
-  const teamOptions = [
-    { value: 'ALL', label: t('task.allTeams') },
+  const teamChoices = [
     ...[...new Map(rows.filter((r) => r.team).map((r) => [r.team!.id, r.team!.name])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([value, label]) => ({ value, label })),
     ...(rows.some((r) => !r.team) ? [{ value: 'NONE', label: t('task.noTeam') }] : []),
   ];
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('task.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'dueDate', label: t('task.flt.due') },
+        { value: 'createdAt', label: t('task.flt.created') },
+        { value: 'doneAt', label: t('task.flt.done') },
+      ],
+    },
+    {
+      key: 'priority',
+      label: t('task.flt.priority'),
+      type: 'multi',
+      options: (['A', 'B', 'C'] as const).map((p) => ({
+        value: p,
+        label: TASK_PRIORITY_META[p].label,
+      })),
+    },
+    ...(teamChoices.length > 1
+      ? [
+          {
+            key: 'team',
+            label: t('task.flt.team'),
+            type: 'multi',
+            options: teamChoices,
+          } as FilterField,
+        ]
+      : []),
+    {
+      key: 'assignee',
+      label: t('task.flt.assignee'),
+      type: 'multi',
+      options: [
+        ...new Map(
+          rows.filter((r) => r.assignee).map((r) => [r.assigneeEmpId!, r.assignee!.name]),
+        ).entries(),
+      ]
+        .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+        .map(([value, label]) => ({ value, label })),
+    },
+    {
+      key: 'overdue',
+      label: t('task.flt.overdue'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('task.flt.yes') },
+        { value: 'no', label: t('task.flt.no') },
+      ],
+    },
+  ];
+  // 필터를 먼저 걸고, 상태 요약 숫자도 걸린 목록 기준으로
+  const base = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'team'
+      ? (r.team?.id ?? 'NONE')
+      : key === 'assignee'
+        ? r.assigneeEmpId
+        : key === 'overdue'
+          ? r.status !== 'DONE' && r.dueDate && ddayInfo(r.dueDate, 3)?.level === 'over'
+            ? 'yes'
+            : 'no'
+          : r[key as keyof Task],
+  );
+  const count = (s: 'ALL' | TaskStatus) =>
+    s === 'ALL' ? base.length : base.filter((r) => r.status === s).length;
+  const statusOptions = [
+    { value: 'ALL', label: t('task.allStatus', { v0: count('ALL') }) },
+    ...TASK_STATUS.map((s) => ({ value: s, label: `${TASK_STATUS_LABEL[s]} ${count(s)}` })),
+  ];
   const term = q.trim().toLowerCase();
-  const listRows = rows.filter(
+  const listRows = base.filter(
     (r) =>
       (status === 'ALL' || r.status === status) &&
-      (priority === 'ALL' || r.priority === priority) &&
-      (teamFilter === 'ALL' || (teamFilter === 'NONE' ? !r.team : r.team?.id === teamFilter)) &&
       (!term ||
         [r.title, r.project, r.assignee?.name, r.creator?.name, `t-${r.seq}`].some((x) =>
           x?.toLowerCase().includes(term),
@@ -588,7 +653,8 @@ export default function Tasks() {
             loading={loading}
             onRowClick={(r) => detail.open(String(r.id))}
             viewSwitch={viewSwitch}
-            // 범위 탭(내 업무·우리 팀·전체) 오른쪽에 상태·우선순위·팀 고르기
+            filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+            // 범위 탭(내 업무·우리 팀·전체) 오른쪽에 상태 고르기(우선순위·팀은 검색 옆 필터로)
             tabs={
               <>
                 {scopeTabs}
@@ -600,30 +666,6 @@ export default function Tasks() {
                     aria-label={t('task.f.status')}
                   />
                 </div>
-                <div className={styles.statusFilter}>
-                  <Select
-                    value={priority}
-                    onValueChange={(v) => setPriority(v as 'ALL' | Task['priority'])}
-                    options={[
-                      { value: 'ALL', label: t('task.allPriority') },
-                      ...(['A', 'B', 'C'] as const).map((p) => ({
-                        value: p,
-                        label: TASK_PRIORITY_META[p].label,
-                      })),
-                    ]}
-                    aria-label={t('task.f.priority')}
-                  />
-                </div>
-                {teamOptions.length > 2 && (
-                  <div className={styles.statusFilter}>
-                    <Select
-                      value={teamFilter}
-                      onValueChange={setTeamFilter}
-                      options={teamOptions}
-                      aria-label={t('task.f.team')}
-                    />
-                  </div>
-                )}
               </>
             }
             toolbarActions={addButton}

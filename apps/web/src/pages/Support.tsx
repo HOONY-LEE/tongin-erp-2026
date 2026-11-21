@@ -9,6 +9,8 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageHeader,
   RecordDetail,
@@ -16,6 +18,8 @@ import {
   useToast,
   type Column,
   type FormField,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -69,6 +73,7 @@ export default function Support() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const [flt, setFlt] = useState<FilterValues>({});
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const customerName = useMemo(
@@ -175,6 +180,33 @@ export default function Support() {
     { name: 'content', label: t('support.content') },
   ];
 
+  const filterFields: FilterField[] = [
+    { key: 'createdAt', label: t('misc.receivedAt'), type: 'date' },
+    { key: 'kind', label: t('support.kind'), type: 'multi', options: fields[0].options ?? [] },
+    {
+      key: 'status',
+      label: t('support.status'),
+      type: 'multi',
+      options: Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label })),
+    },
+    {
+      key: 'priority',
+      label: t('support.priority'),
+      type: 'multi',
+      options: Object.entries(PRIORITY).map(([value, s]) => ({ value, label: s.label })),
+    },
+    {
+      key: 'channel',
+      label: t('support.channel'),
+      type: 'multi',
+      options: fields.find((f) => f.name === 'channel')?.options ?? [],
+    },
+    ...(orgs.length > 1
+      ? [{ key: 'orgUnitId', label: t('support.org'), type: 'multi', options: orgs } as FilterField]
+      : []),
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) => r[key]);
+
   if (detailId) {
     const d = rows.find((r) => r.id === detailId);
     const channelOpts = fields.find((f) => f.name === 'channel')?.options ?? [];
@@ -251,8 +283,9 @@ export default function Support() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.support')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={

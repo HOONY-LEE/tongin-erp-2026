@@ -17,6 +17,8 @@ import {
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   ListPage,
   Modal,
@@ -25,6 +27,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import { ApprovalDetail } from '../components/approval/ApprovalDetail';
@@ -55,6 +59,8 @@ export default function Approvals() {
   const [rows, setRows] = useState<ApprovalDocView[]>([]);
   const [loading, setLoading] = useState(false);
   const [todoCount, setTodoCount] = useState(0);
+  /** 검색 옆 필터 — 기간·종류·상태·내 결재 차례 */
+  const [flt, setFlt] = useState<FilterValues>({});
   // 새 결재 — 고르기 → 일반 품의 / 결재 양식 작성
   const [writing, setWriting] = useState<'pick' | 'general' | 'leave' | ApprovalFormDef | null>(
     null,
@@ -134,6 +140,48 @@ export default function Approvals() {
     { title: t('appr.submitted'), width: 130, render: (r) => dt(r.submittedAt) },
   ];
 
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('appr.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'submittedAt', label: t('appr.flt.submitted') },
+        { value: 'completedAt', label: t('appr.flt.completed') },
+      ],
+    },
+    {
+      key: 'docTypeLabel',
+      label: t('appr.flt.type'),
+      type: 'multi',
+      options: [...new Set(rows.map((r) => r.docTypeLabel).filter(Boolean))].map((v) => ({
+        value: v,
+        label: v,
+      })),
+    },
+    {
+      key: 'status',
+      label: t('appr.flt.status'),
+      type: 'multi',
+      options: Object.entries(APPROVAL_STATUS_MAP).map(([value, s]) => ({
+        value,
+        label: s.label,
+      })),
+    },
+    {
+      key: 'canAct',
+      label: t('appr.flt.myTurn'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('appr.flt.yes') },
+        { value: 'false', label: t('appr.flt.no') },
+      ],
+    },
+  ];
+  const listed = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'canAct' ? String(r.canAct) : r[key as keyof ApprovalDocView],
+  );
+
   const submitted = (doc: ApprovalDocView) => {
     setWriting(null);
     notifyApprovalsChanged();
@@ -181,8 +229,9 @@ export default function Approvals() {
       ) : (
         <DataTable
           tabs={boxTabs}
+          filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
           columns={columns}
-          rows={rows as unknown as Row[]}
+          rows={listed as unknown as Row[]}
           loading={loading}
           onRowClick={(r) => detail.open(String(r.id))}
           toolbarActions={

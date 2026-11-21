@@ -3,6 +3,13 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '기간',
+      createdAt: '등록일',
+      nextActionAt: '다음 연락일',
+      lastActivityAt: '최근 상담일',
+      expectedAt: '예정일',
+    },
     won: '{{v0}}원',
     eok: '{{v0}}억',
     man: '{{v0}}만',
@@ -112,6 +119,13 @@ export default defineNs({
     result: '결과',
   },
   en: {
+    flt: {
+      period: 'Period',
+      createdAt: 'Created',
+      nextActionAt: 'Next contact',
+      lastActivityAt: 'Last activity',
+      expectedAt: 'Expected date',
+    },
     won: '₩{{v0}}',
     eok: '₩{{v0}}×100M',
     man: '₩{{v0}}×10K',
@@ -222,6 +236,13 @@ export default defineNs({
     result: 'Result',
   },
   zh: {
+    flt: {
+      period: '期间',
+      createdAt: '登记日',
+      nextActionAt: '下次联系日',
+      lastActivityAt: '最近咨询日',
+      expectedAt: '预定日',
+    },
     won: '{{v0}} 韩元',
     eok: '{{v0}} 亿韩元',
     man: '{{v0}} 万韩元',

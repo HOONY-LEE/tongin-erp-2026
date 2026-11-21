@@ -3,6 +3,14 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '기간',
+      updatedAt: '수정일',
+      createdAt: '만든 날',
+      status: '상태',
+      visibility: '공개 범위',
+      trigger: '시작 방식',
+    },
     sug: {
       '1': '이번 주 미계약 고객들에게 계약 안내 문자 한 번 더 보내줘',
       '2': '다음 주 이사 예정인 건 지점별로 정리해줘',
@@ -284,6 +292,14 @@ export default defineNs({
     runningDots: '실행 중…',
   },
   en: {
+    flt: {
+      period: 'Period',
+      updatedAt: 'Updated',
+      createdAt: 'Created',
+      status: 'Status',
+      visibility: 'Visibility',
+      trigger: 'Trigger',
+    },
     sug: {
       '1': "Send one more contract reminder SMS to this week's uncontracted customers",
       '2': "Summarize next week's scheduled moves by branch",
@@ -572,6 +588,14 @@ export default defineNs({
     runningDots: 'Running…',
   },
   zh: {
+    flt: {
+      period: '期间',
+      updatedAt: '修改日',
+      createdAt: '创建日',
+      status: '状态',
+      visibility: '公开范围',
+      trigger: '启动方式',
+    },
     sug: {
       '1': '给本周未签约的客户再发一次签约提醒短信',
       '2': '按分店整理下周预定的搬家',

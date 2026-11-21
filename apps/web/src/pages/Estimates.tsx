@@ -6,10 +6,14 @@ import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   DataTable,
+  FilterButton,
+  filterRows,
   PageHeader,
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -26,6 +30,7 @@ export default function Estimates() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,13 +62,25 @@ export default function Estimates() {
     },
   ];
 
+  const filterFields: FilterField[] = [
+    { key: 'createdAt', label: t('deals.flt.createdAt'), type: 'date' },
+    {
+      key: 'status',
+      label: t('deals.status'),
+      type: 'multi',
+      options: Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label })),
+    },
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) => r[key]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.estimates')} onRefresh={load} updatedAt={updatedAt} />
       {/* 견적은 접수를 열면 자동으로 만들어진다 — 여기서 따로 만들지 않는다 */}
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         // 견적은 접수 상세(= 견적서 화면)에서 본다
         onRowClick={(r) =>

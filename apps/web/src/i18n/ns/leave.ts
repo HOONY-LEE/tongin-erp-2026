@@ -3,6 +3,23 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '휴가 기간',
+      type: '휴가 종류',
+      status: '상태',
+      org: '소속',
+      position: '직책',
+      firstYear: '입사 1년 미만',
+      remain: '잔여 연차',
+      hasRemain: '남음',
+      noRemain: '없음',
+      yes: '예',
+      no: '아니오',
+      applyDate: '적용일',
+      kind: '구분',
+      grant: '부여(+)',
+      deduct: '차감(-)',
+    },
     days: '{{v0}}일',
     tab: {
       mine: '내 휴가',
@@ -106,6 +123,23 @@ export default defineNs({
     yearN: '{{v0}}년차',
   },
   en: {
+    flt: {
+      period: 'Leave period',
+      type: 'Leave type',
+      status: 'Status',
+      org: 'Organization',
+      position: 'Position',
+      firstYear: 'Under 1 year',
+      remain: 'Remaining',
+      hasRemain: 'Some left',
+      noRemain: 'None left',
+      yes: 'Yes',
+      no: 'No',
+      applyDate: 'Effective date',
+      kind: 'Kind',
+      grant: 'Grant (+)',
+      deduct: 'Deduct (-)',
+    },
     days: '{{v0}}d',
     tab: {
       mine: 'My leave',
@@ -210,6 +244,23 @@ export default defineNs({
     yearN: 'Year {{v0}}',
   },
   zh: {
+    flt: {
+      period: '休假期间',
+      type: '休假类型',
+      status: '状态',
+      org: '所属',
+      position: '职位',
+      firstYear: '入职未满1年',
+      remain: '剩余年假',
+      hasRemain: '有剩余',
+      noRemain: '无剩余',
+      yes: '是',
+      no: '否',
+      applyDate: '生效日',
+      kind: '类别',
+      grant: '发放(+)',
+      deduct: '扣减(-)',
+    },
     days: '{{v0}}天',
     tab: {
       mine: '我的休假',

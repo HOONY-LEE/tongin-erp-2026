@@ -8,6 +8,8 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageHeader,
   RecordDetail,
@@ -15,6 +17,8 @@ import {
   useToast,
   type Column,
   type FormField,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -58,6 +62,7 @@ export default function ServiceOrders() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const [flt, setFlt] = useState<FilterValues>({});
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
   const nameOf = useMemo(() => {
@@ -229,12 +234,41 @@ export default function ServiceOrders() {
     );
   }
 
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('service.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'scheduledDate', label: t('service.scheduled') },
+        { value: 'createdAt', label: t('service.flt.createdAt') },
+      ],
+    },
+    {
+      key: 'serviceLine',
+      label: t('service.line'),
+      type: 'multi',
+      options: Object.entries(SVC_LINE).map(([value, s]) => ({ value, label: s.label })),
+    },
+    {
+      key: 'status',
+      label: t('service.status'),
+      type: 'multi',
+      options: Object.entries(SVC_STATUS).map(([value, s]) => ({ value, label: s.label })),
+    },
+    ...(orgs.length > 1
+      ? [{ key: 'orgUnitId', label: t('service.org'), type: 'multi', options: orgs } as FilterField]
+      : []),
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) => r[key]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.serviceOrders')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={

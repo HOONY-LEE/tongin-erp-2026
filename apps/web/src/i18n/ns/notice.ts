@@ -3,6 +3,14 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      createdAt: '작성일',
+      author: '작성자',
+      org: '대상 조직',
+      pinned: '고정',
+      yes: '고정됨',
+      no: '고정 안 됨',
+    },
     scope: {
       ALL: '전사',
       ORG: '팀',
@@ -40,6 +48,14 @@ export default defineNs({
     pinTop: '목록 맨 위에 고정',
   },
   en: {
+    flt: {
+      createdAt: 'Posted',
+      author: 'Author',
+      org: 'Target team',
+      pinned: 'Pinned',
+      yes: 'Pinned',
+      no: 'Not pinned',
+    },
     scope: {
       ALL: 'Company',
       ORG: 'Team',
@@ -78,6 +94,14 @@ export default defineNs({
     pinTop: 'Pin to the top of the list',
   },
   zh: {
+    flt: {
+      createdAt: '发布日',
+      author: '作者',
+      org: '目标部门',
+      pinned: '置顶',
+      yes: '已置顶',
+      no: '未置顶',
+    },
     scope: {
       ALL: '全公司',
       ORG: '团队',

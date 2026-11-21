@@ -1,6 +1,6 @@
 import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '../components/ui';
+import { Badge, type FilterField } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { useOptions } from '../lib/useOptions';
 
@@ -68,12 +68,36 @@ export default function PriceConditions() {
     { name: 'validTo', label: t('prod.validToDate'), type: 'date' },
   ];
 
+  // 검색 옆 필터 — 자동(거래처·할인 방식)에 유효 기간을 더한다
+  const filterFields: FilterField[] = [
+    {
+      key: 'valid',
+      label: t('prod.flt.validPeriod'),
+      type: 'date',
+      options: [
+        { value: 'validFrom', label: t('prod.validFromDate') },
+        { value: 'validTo', label: t('prod.validToDate') },
+      ],
+    },
+    ...fields
+      .filter((f) => (f.name === 'partnerId' || f.name === 'discountType') && f.options?.length)
+      .map(
+        (f): FilterField => ({
+          key: f.name,
+          label: f.label,
+          type: 'multi',
+          options: f.options ?? [],
+        }),
+      ),
+  ];
+
   return (
     <CrudTable
       title={t('prod.priceTitle')}
       path="/price-conditions"
       columns={columns}
       fields={fields}
+      filterFields={filterFields}
       hideHeader
     />
   );

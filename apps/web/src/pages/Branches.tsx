@@ -11,11 +11,15 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageHeader,
   RecordDetail,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
 } from '../components/ui';
@@ -43,6 +47,8 @@ export default function Branches() {
   const [loading, setLoading] = useState(false);
   // null=닫힘, 'new'=등록, 행=수정할 지점 id
   const [editing, setEditing] = useState<string | 'new' | null>(null);
+  /** 검색 옆 필터 — 지역·상태·진행 중 작업 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const { updatedAt, touch } = useUpdatedAt();
   const detail = useDetailParam();
   const { units, reload: reloadUnits } = useOrgUnits();
@@ -281,6 +287,51 @@ export default function Branches() {
     );
   }
 
+  const regions = [...new Set(rows.map((r) => r.sido as string).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'ko'),
+  );
+  const filterFields: FilterField[] = [
+    ...(regions.length
+      ? [
+          {
+            key: 'sido',
+            label: t('biz.flt.region'),
+            type: 'multi',
+            options: regions.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+    {
+      key: 'active',
+      label: t('biz.flt.status'),
+      type: 'single',
+      options: [
+        { value: 'on', label: t('biz.flt.on') },
+        { value: 'off', label: t('biz.flt.off') },
+      ],
+    },
+    {
+      key: 'work',
+      label: t('biz.flt.work'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('biz.flt.has') },
+        { value: 'no', label: t('biz.flt.none') },
+      ],
+    },
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'active'
+      ? r.isActive
+        ? 'on'
+        : 'off'
+      : key === 'work'
+        ? Number(r.workActive) > 0
+          ? 'yes'
+          : 'no'
+        : r[key],
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
@@ -290,8 +341,9 @@ export default function Branches() {
         updatedAt={updatedAt}
       />
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         rowKey="orgUnitId"
         onRowClick={(r) => detail.open(String(r.orgUnitId))}

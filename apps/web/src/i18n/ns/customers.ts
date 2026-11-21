@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { createdAt: '등록일', region: '지역' },
     gradeNameReq: '등급 이름을 입력하세요',
     gradeDup: '같은 이름의 등급이 있습니다',
     gradeSaved: '고객 등급을 저장했습니다',
@@ -53,6 +54,7 @@ export default defineNs({
     },
   },
   en: {
+    flt: { createdAt: 'Created', region: 'Region' },
     gradeNameReq: 'Enter a grade name',
     gradeDup: 'A grade with the same name exists',
     gradeSaved: 'Customer grades saved',
@@ -104,6 +106,7 @@ export default defineNs({
     },
   },
   zh: {
+    flt: { createdAt: '登记日', region: '地区' },
     gradeNameReq: '请输入等级名称',
     gradeDup: '已存在同名等级',
     gradeSaved: '客户等级已保存',

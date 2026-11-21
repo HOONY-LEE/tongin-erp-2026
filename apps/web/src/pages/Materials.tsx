@@ -8,12 +8,16 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageHeader,
   RecordDetail,
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
   type StatusMap,
@@ -39,6 +43,8 @@ export default function Materials() {
   const { t } = useTranslation();
   const toast = useToast();
   const [rows, setRows] = useState<MaterialRow[]>([]);
+  /** 검색 옆 필터 — 분류·재고 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [moveRow, setMoveRow] = useState<MaterialRow | null>(null);
@@ -198,12 +204,41 @@ export default function Materials() {
     );
   }
 
+  const categories = [...new Set(rows.map((m) => m.category).filter((x): x is string => !!x))].sort(
+    (a, b) => a.localeCompare(b, 'ko'),
+  );
+  const filterFields: FilterField[] = [
+    ...(categories.length
+      ? [
+          {
+            key: 'category',
+            label: t('material.flt.category'),
+            type: 'multi',
+            options: categories.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+    {
+      key: 'stock',
+      label: t('material.flt.stock'),
+      type: 'single',
+      options: [
+        { value: 'LOW', label: t('material.flt.low') },
+        { value: 'OK', label: t('material.flt.ok') },
+      ],
+    },
+  ];
+  const shown = filterRows(rows, filterFields, flt, (m, key) =>
+    key === 'stock' ? (m.lowStock ? 'LOW' : 'OK') : m[key],
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.materials')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={

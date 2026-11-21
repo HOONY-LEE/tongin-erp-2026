@@ -24,6 +24,8 @@ import {
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   ListPage,
   RecordDetail,
@@ -31,6 +33,8 @@ import {
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
   type StatusMap,
@@ -97,6 +101,8 @@ export default function BranchCases() {
   const [loading, setLoading] = useState(false);
   const [kind, setKind] = useState<'ALL' | BranchCaseKind>('ALL');
   const [status, setStatus] = useState<'ACTIVE' | 'ALL' | BranchCaseStatus>('ACTIVE');
+  /** 검색 옆 필터 — 기간·지점·담당자 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [editing, setEditing] = useState<BranchCase | 'new' | null>(null);
 
   const load = useCallback(async () => {
@@ -305,15 +311,62 @@ export default function BranchCases() {
     );
   }
 
-  const byKind = kind === 'ALL' ? rows : rows.filter((r) => r.kind === kind);
+  const names = (xs: (string | undefined)[]) =>
+    [...new Set(xs.filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, 'ko'));
+  const branchNames = names(rows.map((c) => c.branch?.name));
+  const ownerNames = names(rows.map((c) => c.assignee?.name));
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('biz.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'occurredAt', label: t('biz.flt.occurredAt') },
+        { value: 'dueDate', label: t('biz.flt.dueDate') },
+        { value: 'createdAt', label: t('biz.flt.createdAt') },
+      ],
+    },
+    ...(branchNames.length > 1
+      ? [
+          {
+            key: 'branch',
+            label: t('biz.flt.branch'),
+            type: 'multi',
+            options: branchNames.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+    ...(ownerNames.length
+      ? [
+          {
+            key: 'owner',
+            label: t('biz.flt.owner'),
+            type: 'multi',
+            options: [
+              ...ownerNames.map((x) => ({ value: x, label: x })),
+              { value: '', label: t('biz.flt.noOwner') },
+            ],
+          } as FilterField,
+        ]
+      : []),
+  ];
+  // 필터를 먼저 걸고, 종류 탭·상태 숫자도 걸린 목록 기준으로
+  const picked = filterRows(rows, filterFields, flt, (c, key) =>
+    key === 'branch'
+      ? (c.branch?.name ?? '')
+      : key === 'owner'
+        ? (c.assignee?.name ?? '')
+        : c[key as keyof BranchCase],
+  );
+  const byKind = kind === 'ALL' ? picked : picked.filter((r) => r.kind === kind);
   const statusMatch = (c: BranchCase, s: typeof status) =>
     s === 'ALL' ? true : s === 'ACTIVE' ? c.status !== 'CLOSED' : c.status === s;
   const statusCount = (s: typeof status) => byKind.filter((r) => statusMatch(r, s)).length;
   const kindOptions = [
-    { value: 'ALL', label: t('biz.allN', { v0: rows.length }) },
+    { value: 'ALL', label: t('biz.allN', { v0: picked.length }) },
     ...BRANCH_CASE_KIND.map((k) => ({
       value: k,
-      label: `${BRANCH_CASE_KIND_LABEL[k]} ${rows.filter((r) => r.kind === k).length}`,
+      label: `${BRANCH_CASE_KIND_LABEL[k]} ${picked.filter((r) => r.kind === k).length}`,
     })),
   ];
   const statusOptions = [
@@ -379,11 +432,14 @@ export default function BranchCases() {
         loading={loading}
         onRowClick={(r) => detail.open(String(r.id))}
         filters={
-          <SegmentedControl
-            value={status}
-            onChange={(v) => setStatus(v as typeof status)}
-            options={statusOptions}
-          />
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <SegmentedControl
+              value={status}
+              onChange={(v) => setStatus(v as typeof status)}
+              options={statusOptions}
+            />
+          </>
         }
         toolbarActions={
           can('BRANCH_CASE.CREATE') ? (

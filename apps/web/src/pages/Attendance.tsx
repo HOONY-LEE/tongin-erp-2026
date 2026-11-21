@@ -11,6 +11,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   ListPage,
   Modal,
@@ -19,6 +21,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -380,6 +384,30 @@ function ScopeToggle({
   );
 }
 
+/** 소속·직책 필터 — 지금 목록에 있는 값으로 */
+function orgPositionFields(
+  rows: { orgUnitName: string | null; positionName: string | null }[],
+): FilterField[] {
+  const opts = (vs: (string | null)[]) =>
+    [...new Set(vs.filter((v): v is string => !!v))]
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .map((v) => ({ value: v, label: v }));
+  return [
+    {
+      key: 'orgUnitName',
+      label: i18n.t('att.flt.org'),
+      type: 'multi',
+      options: opts(rows.map((r) => r.orgUnitName)),
+    },
+    {
+      key: 'positionName',
+      label: i18n.t('att.flt.position'),
+      type: 'multi',
+      options: opts(rows.map((r) => r.positionName)),
+    },
+  ];
+}
+
 function Daily() {
   const { t } = useTranslation();
   const toast = useToast();
@@ -389,6 +417,8 @@ function Daily() {
   const [rows, setRows] = useState<DailyRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<DailyRow | null>(null);
+  /** 검색 옆 필터 — 상태·소속·직책 */
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -412,6 +442,20 @@ function Daily() {
     for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
     return c;
   }, [rows]);
+
+  const filterFields: FilterField[] = [
+    {
+      key: 'status',
+      label: t('att.flt.status'),
+      type: 'multi',
+      options: [...new Set(rows.map((r) => r.status))].map((s) => ({
+        value: s,
+        label: ATT_STATUS_MAP[s]?.label ?? s,
+      })),
+    },
+    ...orgPositionFields(rows),
+  ];
+  const listed = filterRows(rows, filterFields, flt, (r, key) => r[key as keyof DailyRow]);
 
   const columns: Column[] = [
     { title: t('att.col.name'), dataIndex: 'name' },
@@ -456,11 +500,16 @@ function Daily() {
       </div>
       <DataTable
         columns={columns}
-        rows={rows.map((r) => ({ ...r, id: r.employeeId })) as unknown as Row[]}
+        rows={listed.map((r) => ({ ...r, id: r.employeeId })) as unknown as Row[]}
         loading={loading}
         exportable
         exportFileName={t('att.exportName', { v0: date })}
-        filters={<ScopeToggle value={scope} onChange={setScope} />}
+        filters={
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <ScopeToggle value={scope} onChange={setScope} />
+          </>
+        }
         onRowClick={
           can('ATTENDANCE.UPDATE') ? (r) => setEditing(r as unknown as DailyRow) : undefined
         }
@@ -580,6 +629,8 @@ function Monthly() {
   const [scope, setScope] = useState<'hq' | 'all'>('hq');
   const [rows, setRows] = useState<MonthlyRow[]>([]);
   const [loading, setLoading] = useState(false);
+  /** 검색 옆 필터 — 소속·직책·근태 이슈(지각·조퇴·결근·퇴근 미기록이 있는 직원) */
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -601,6 +652,28 @@ function Monthly() {
   }, [load]);
 
   const n = (v: unknown) => (Number(v) ? String(v) : '-');
+  const filterFields: FilterField[] = [
+    ...orgPositionFields(rows),
+    {
+      key: 'issue',
+      label: t('att.flt.issue'),
+      type: 'single',
+      options: [
+        { value: 'late', label: t('att.sum.late') },
+        { value: 'early', label: t('att.sum.early') },
+        { value: 'absent', label: t('att.sum.absent') },
+        { value: 'noOut', label: t('att.sum.noOut') },
+      ],
+    },
+  ];
+  // 근태 이슈는 고른 항목이 1번 이상이면 그 이름을 돌려 맞춘다
+  const listed = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'issue'
+      ? flt.issue && Number(r[flt.issue as keyof MonthlyRow])
+        ? flt.issue
+        : ''
+      : r[key as keyof MonthlyRow],
+  );
   const columns: Column[] = [
     { title: t('att.col.name'), dataIndex: 'name' },
     { title: t('att.col.position'), render: (r) => String(r.positionName ?? '-') },
@@ -627,11 +700,16 @@ function Monthly() {
       </div>
       <DataTable
         columns={columns}
-        rows={rows.map((r) => ({ ...r, id: r.employeeId })) as unknown as Row[]}
+        rows={listed.map((r) => ({ ...r, id: r.employeeId })) as unknown as Row[]}
         loading={loading}
         exportable
         exportFileName={t('att.exportName', { v0: month })}
-        filters={<ScopeToggle value={scope} onChange={setScope} />}
+        filters={
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <ScopeToggle value={scope} onChange={setScope} />
+          </>
+        }
       />
     </>
   );

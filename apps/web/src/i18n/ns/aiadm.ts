@@ -3,6 +3,22 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      account: '계정',
+      activeAcc: '쓰는 계정',
+      inactiveAcc: '쉬는 계정',
+      org: '소속',
+      position: '직책',
+      assistant: 'AI 비서',
+      builder: '에이전트 빌더',
+      used: '이번 달 사용',
+      usedYes: '썼음',
+      usedNo: '안 씀',
+      feature: '기능',
+      model: '모델',
+      user: '사용자',
+      result: '결과',
+    },
     yearMonth: '{{v0}}년 {{v1}}월',
     tab: {
       usage: '사용 현황',
@@ -161,6 +177,22 @@ export default defineNs({
     lastSaved: '마지막 저장',
   },
   en: {
+    flt: {
+      account: 'Account',
+      activeAcc: 'Active',
+      inactiveAcc: 'Inactive',
+      org: 'Organization',
+      position: 'Position',
+      assistant: 'AI assistant',
+      builder: 'Agent builder',
+      used: 'Used this month',
+      usedYes: 'Used',
+      usedNo: 'Not used',
+      feature: 'Feature',
+      model: 'Model',
+      user: 'User',
+      result: 'Result',
+    },
     yearMonth: '{{v1}}/{{v0}}',
     tab: {
       usage: 'Usage',
@@ -319,6 +351,22 @@ export default defineNs({
     lastSaved: 'Last saved',
   },
   zh: {
+    flt: {
+      account: '账号',
+      activeAcc: '使用中',
+      inactiveAcc: '停用',
+      org: '所属',
+      position: '职位',
+      assistant: 'AI助理',
+      builder: '智能体构建',
+      used: '本月使用',
+      usedYes: '已使用',
+      usedNo: '未使用',
+      feature: '功能',
+      model: '模型',
+      user: '用户',
+      result: '结果',
+    },
     yearMonth: '{{v0}}年{{v1}}月',
     tab: {
       usage: '使用概况',

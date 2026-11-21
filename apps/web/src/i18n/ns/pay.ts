@@ -3,6 +3,13 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '기간',
+      depositPaidAt: '계약금 입금일',
+      method: '입금 확인',
+      auto: '자동 확인',
+      manual: '직접 확인',
+    },
     st: {
       waiting: '계약금 입금대기',
       deposit: '계약금 입금',
@@ -41,6 +48,13 @@ export default defineNs({
       "고객에게 견적서를 보내면 여기에 올라옵니다 · 계약금이 들어오면 자동으로 '계약금 입금'으로 바뀝니다",
   },
   en: {
+    flt: {
+      period: 'Period',
+      depositPaidAt: 'Deposit paid',
+      method: 'Confirmation',
+      auto: 'Automatic',
+      manual: 'Manual',
+    },
     st: {
       waiting: 'Awaiting deposit',
       deposit: 'Deposit paid',
@@ -79,6 +93,13 @@ export default defineNs({
       "Estimates sent to customers appear here · when the deposit arrives, it changes to 'Deposit paid' automatically",
   },
   zh: {
+    flt: {
+      period: '期间',
+      depositPaidAt: '定金到账日',
+      method: '到账确认',
+      auto: '自动确认',
+      manual: '手动确认',
+    },
     st: {
       waiting: '等待定金',
       deposit: '定金到账',

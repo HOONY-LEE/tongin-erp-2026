@@ -10,11 +10,15 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   PageHeader,
   RecordDetail,
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -56,6 +60,7 @@ export default function PaymentConfirm() {
   const [rows, setRows] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const [flt, setFlt] = useState<FilterValues>({});
   // 상세는 견적 단위(?detail=<estimateId>) — 목록 행 키와 같다
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
@@ -185,6 +190,53 @@ export default function PaymentConfirm() {
     },
   ];
 
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('pay.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'sentAt', label: t('pay.estimateSent') },
+        { value: 'depositPaidAt', label: t('pay.flt.depositPaidAt') },
+      ],
+    },
+    {
+      key: 'status',
+      label: t('pay.status'),
+      type: 'multi',
+      options: Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label })),
+    },
+    {
+      key: 'signed',
+      label: t('pay.signature'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('pay.signed') },
+        { value: 'no', label: t('pay.awaitingSign') },
+      ],
+    },
+    {
+      key: 'method',
+      label: t('pay.flt.method'),
+      type: 'single',
+      options: [
+        { value: 'auto', label: t('pay.flt.auto') },
+        { value: 'manual', label: t('pay.flt.manual') },
+      ],
+    },
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'signed'
+      ? r.signed
+        ? 'yes'
+        : 'no'
+      : key === 'method'
+        ? r.depositProvider === 'TOSS'
+          ? 'auto'
+          : 'manual'
+        : r[key],
+  );
+
   // 입금 확인 상세 — 행 끝에 두던 입금 확인·시뮬레이션 버튼과 접수 링크를 머리글로 옮겼다
   if (detailId) {
     const d = rows.find((r) => r.estimateId === detailId);
@@ -303,8 +355,9 @@ export default function PaymentConfirm() {
         updatedAt={updatedAt}
       />
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         rowKey="estimateId"
         loading={loading}
         onRowClick={(r) => openDetail(String(r.estimateId))}

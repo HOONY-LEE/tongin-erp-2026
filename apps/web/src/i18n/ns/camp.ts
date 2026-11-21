@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { period: '기간', createdAt: '작성일', sendAt: '발송일' },
     notConnected: {
       KAKAO: '아직 알림톡 연결이 안되었습니다.',
       EMAIL: '아직 이메일 발송이 연결되지 않았습니다.',
@@ -242,6 +243,7 @@ export default defineNs({
     call: '콜',
   },
   en: {
+    flt: { period: 'Period', createdAt: 'Created', sendAt: 'Send date' },
     notConnected: {
       KAKAO: 'Kakao Alimtalk is not connected yet.',
       EMAIL: 'Email sending is not connected yet.',
@@ -483,6 +485,7 @@ export default defineNs({
     call: 'Call',
   },
   zh: {
+    flt: { period: '期间', createdAt: '创建日', sendAt: '发送日' },
     notConnected: {
       KAKAO: '尚未连接 Kakao 通知。',
       EMAIL: '尚未连接邮件发送。',

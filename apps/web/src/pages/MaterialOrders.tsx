@@ -8,6 +8,8 @@ import { useDetailParam } from '../lib/useDetailParam';
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   Modal,
   PageHeader,
@@ -16,6 +18,8 @@ import {
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -53,6 +57,8 @@ export default function MaterialOrders() {
   const materials = useOptions('/materials', 'name');
 
   const [rows, setRows] = useState<Order[]>([]);
+  /** 검색 옆 필터 — 요청일·상태·지점 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -237,12 +243,39 @@ export default function MaterialOrders() {
     );
   }
 
+  const orderOrgs = [
+    ...new Set(rows.map((o) => o.orgUnit?.name).filter((x): x is string => !!x)),
+  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  const filterFields: FilterField[] = [
+    { key: 'createdAt', label: t('order.flt.period'), type: 'date' },
+    {
+      key: 'status',
+      label: t('order.flt.status'),
+      type: 'multi',
+      options: Object.entries(ORDER_STATUS).map(([value, v]) => ({ value, label: v.label })),
+    },
+    ...(orderOrgs.length > 1
+      ? [
+          {
+            key: 'org',
+            label: t('order.flt.org'),
+            type: 'multi',
+            options: orderOrgs.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+  ];
+  const shown = filterRows(rows, filterFields, flt, (o, key) =>
+    key === 'org' ? (o.orgUnit?.name ?? '') : o[key],
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.materialOrders')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         onRowClick={(r) => openDetail(String(r.id))}
         toolbarActions={

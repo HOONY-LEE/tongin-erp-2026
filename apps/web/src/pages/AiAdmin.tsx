@@ -12,6 +12,8 @@ import {
   Button,
   Checkbox,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   Modal,
   PageHeader,
@@ -20,6 +22,8 @@ import {
   Select,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import { ChoiceChips } from '../components/ui';
@@ -346,7 +350,8 @@ function Users({ settings }: { settings: SettingsRes | null }) {
   const [month, setMonth] = useState(thisMonth());
   const [rows, setRows] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [onlyActive, setOnlyActive] = useState(true);
+  /** 검색 옆 필터 — 처음엔 쓰는 계정만(예전 '쓰는 계정만' 체크) */
+  const [flt, setFlt] = useState<FilterValues>({ active: 'true' });
   const [editing, setEditing] = useState<UserRow | null>(null);
   // 표 편집 모드 — 'AI 사용'·'에이전트 빌더'를 체크박스로 고치고 저장해야 적용된다
   const [editMode, setEditMode] = useState(false);
@@ -448,13 +453,63 @@ function Users({ settings }: { settings: SettingsRes | null }) {
     );
   };
 
+  const distinct = (vs: (string | null)[]) =>
+    [...new Set(vs.filter((v): v is string => !!v))]
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .map((v) => ({ value: v, label: v }));
+  const onOff = [
+    { value: 'true', label: t('aiadm.on') },
+    { value: 'false', label: t('aiadm.off') },
+  ];
+  const filterFields: FilterField[] = [
+    {
+      key: 'active',
+      label: t('aiadm.flt.account'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('aiadm.flt.activeAcc') },
+        { value: 'false', label: t('aiadm.flt.inactiveAcc') },
+      ],
+    },
+    {
+      key: 'org',
+      label: t('aiadm.flt.org'),
+      type: 'multi',
+      options: distinct(rows.map((r) => (r.isExternal ? t('aiadm.external') : r.orgUnitName))),
+    },
+    {
+      key: 'positionName',
+      label: t('aiadm.flt.position'),
+      type: 'multi',
+      options: distinct(rows.map((r) => r.positionName)),
+    },
+    { key: 'canUse', label: t('aiadm.flt.assistant'), type: 'single', options: onOff },
+    { key: 'canBuild', label: t('aiadm.flt.builder'), type: 'single', options: onOff },
+    {
+      key: 'used',
+      label: t('aiadm.flt.used'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('aiadm.flt.usedYes') },
+        { value: 'false', label: t('aiadm.flt.usedNo') },
+      ],
+    },
+  ];
+
   // 많이 쓴 사람 먼저, 같으면 이름순
-  const shown = rows
-    .filter((r) => !onlyActive || r.active)
-    .sort(
-      (a, b) =>
-        b.tokens - a.tokens || (a.name ?? a.loginId).localeCompare(b.name ?? b.loginId, 'ko'),
-    );
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'org'
+      ? r.isExternal
+        ? t('aiadm.external')
+        : r.orgUnitName
+      : key === 'used'
+        ? String(r.calls > 0)
+        : key === 'active' || key === 'canUse' || key === 'canBuild'
+          ? String(r[key])
+          : r[key as keyof UserRow],
+  ).sort(
+    (a, b) => b.tokens - a.tokens || (a.name ?? a.loginId).localeCompare(b.name ?? b.loginId, 'ko'),
+  );
   const tableRows = shown.map((r) => ({
     ...r,
     id: r.userId,
@@ -647,6 +702,7 @@ function Users({ settings }: { settings: SettingsRes | null }) {
         }
         filters={
           <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
             <div className={styles.monthSelect}>
               <Select
                 value={month}
@@ -655,11 +711,6 @@ function Users({ settings }: { settings: SettingsRes | null }) {
                 aria-label={t('aiadm.month')}
               />
             </div>
-            <Checkbox
-              checked={onlyActive}
-              onCheckedChange={(c) => setOnlyActive(c === true)}
-              label={t('aiadm.activeOnly')}
-            />
           </>
         }
       />
@@ -848,7 +899,9 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
   const toast = useToast();
   const [from, setFrom] = useState(daysAgo(6));
   const [to, setTo] = useState(kstToday());
-  const [feature, setFeature] = useState('ALL');
+  /** 검색 옆 필터 — 기능은 서버에서 거르고, 모델·사용자·결과는 받은 목록에서 */
+  const [flt, setFlt] = useState<FilterValues>({});
+  const feature = (flt.feature as string | undefined) ?? 'ALL';
   const [rows, setRows] = useState<UsageRow[]>([]);
   const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -887,6 +940,42 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
       })),
     [rows, models],
   );
+
+  const logFilter: FilterField[] = [
+    {
+      key: 'feature',
+      label: t('aiadm.flt.feature'),
+      type: 'single',
+      options: Object.entries(AI_FEATURES).map(([value, label]) => ({ value, label })),
+    },
+    {
+      key: 'modelName',
+      label: t('aiadm.flt.model'),
+      type: 'multi',
+      options: [...new Set(tableRows.map((r) => r.modelName))].map((v) => ({ value: v, label: v })),
+    },
+    ...(userId
+      ? []
+      : [
+          {
+            key: 'userName',
+            label: t('aiadm.flt.user'),
+            type: 'multi',
+            options: [...new Set(tableRows.map((r) => r.userName).filter(Boolean))]
+              .sort((a, b) => a.localeCompare(b, 'ko'))
+              .map((v) => ({ value: v, label: v })),
+          } as FilterField,
+        ]),
+    {
+      key: 'ok',
+      label: t('aiadm.flt.result'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('aiadm.ok') },
+        { value: 'false', label: t('aiadm.fail') },
+      ],
+    },
+  ];
 
   const columns: Column[] = [
     { title: t('aiadm.col.at'), dataIndex: 'at', width: 170 },
@@ -1000,13 +1089,21 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
       {truncated && <p className={styles.notice}>{t('aiadm.tooMany')}</p>}
       <DataTable
         columns={columns}
-        rows={tableRows as unknown as Row[]}
+        rows={
+          filterRows(
+            tableRows,
+            logFilter.filter((f) => f.key !== 'feature'),
+            flt,
+            (r, key) => (key === 'ok' ? String(r.ok) : r[key as keyof typeof r]),
+          ) as unknown as Row[]
+        }
         loading={loading}
         onRowClick={compact ? undefined : (r) => open(String(r.id))}
         exportable
         exportFileName={t('aiadm.exportLogs', { v0: from, v1: to })}
         filters={
           <>
+            <FilterButton fields={logFilter} value={flt} onChange={setFlt} />
             <DatePicker
               className={styles.dateInput}
               value={from}
@@ -1021,15 +1118,6 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
               min={from}
               aria-label={t('aiadm.to')}
               onChange={(v) => v && setTo(v)}
-            />
-            <Select
-              value={feature}
-              onValueChange={setFeature}
-              aria-label={t('aiadm.col.feature')}
-              options={[
-                { value: 'ALL', label: t('aiadm.allFeatures') },
-                ...Object.entries(AI_FEATURES).map(([value, label]) => ({ value, label })),
-              ]}
             />
           </>
         }

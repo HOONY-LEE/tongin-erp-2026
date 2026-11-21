@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { org: '소속', position: '직책', status: '상태', issue: '근태 이슈' },
     dow: {
       '0': '일',
       '1': '월',
@@ -103,6 +104,7 @@ export default defineNs({
     skipped: ' (범위 밖 {{v0}}건 제외)',
   },
   en: {
+    flt: { org: 'Organization', position: 'Position', status: 'Status', issue: 'Attendance issue' },
     dow: {
       '0': 'Sun',
       '1': 'Mon',
@@ -209,6 +211,7 @@ export default defineNs({
     skipped: ' ({{v0}} out of range excluded)',
   },
   zh: {
+    flt: { org: '所属', position: '职位', status: '状态', issue: '考勤问题' },
     dow: {
       '0': '日',
       '1': '一',

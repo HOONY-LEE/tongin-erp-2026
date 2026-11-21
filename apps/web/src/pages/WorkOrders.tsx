@@ -8,12 +8,16 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageHeader,
   StatusBadge,
   useToast,
   type Column,
   type FormField,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -34,6 +38,7 @@ export default function WorkOrders() {
   const [open, setOpen] = useState(false);
   const contracts = useOptions('/contracts', 'contractNo');
   const { updatedAt, touch } = useUpdatedAt();
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,12 +99,32 @@ export default function WorkOrders() {
     { title: t('work.scheduled'), render: (r) => String(r.scheduledDate ?? '-').slice(0, 10) },
   ];
 
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('work.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'scheduledDate', label: t('work.scheduled') },
+        { value: 'createdAt', label: t('work.flt.createdAt') },
+      ],
+    },
+    {
+      key: 'status',
+      label: t('misc.status'),
+      type: 'multi',
+      options: Object.entries(WORK_STATUS).map(([value, s]) => ({ value, label: s.label })),
+    },
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) => r[key]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader title={t('nav.workOrders')} onRefresh={load} updatedAt={updatedAt} />
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         onRowClick={(r) => navigate(`/work-orders/${String(r.id)}`)}
         toolbarActions={

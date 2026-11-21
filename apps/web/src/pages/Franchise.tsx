@@ -17,12 +17,16 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageHeader,
   RecordDetail,
   SegmentedControl,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
 } from '../components/ui';
@@ -81,6 +85,8 @@ export default function Franchise() {
   const [data, setData] = useState<Res | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<FranchiseBranchRow | null>(null);
+  /** 검색 옆 필터 — 계약 기간·상태·입금 확인 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const { tab, setTab } = useTabParam<Tab>('all');
   const detail = useDetailParam();
   const { updatedAt, touch } = useUpdatedAt();
@@ -102,9 +108,40 @@ export default function Franchise() {
 
   const rows = data?.rows ?? [];
   const s = data?.summary ?? {};
+  const paidOpts = [
+    { value: 'paid', label: t('fran.flt.paid') },
+    { value: 'unpaid', label: t('fran.flt.unpaid') },
+  ];
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('fran.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'contractEnd', label: t('fran.flt.contractEnd') },
+        { value: 'contractStart', label: t('fran.flt.contractStart') },
+      ],
+    },
+    {
+      key: 'status',
+      label: t('fran.flt.status'),
+      type: 'multi',
+      options: FRANCHISE_STATUSES.map((v) => ({ value: v, label: FRANCHISE_STATUS_LABEL[v] })),
+    },
+    { key: 'fee', label: t('fran.flt.fee'), type: 'single', options: paidOpts },
+    { key: 'deposit', label: t('fran.flt.deposit'), type: 'single', options: paidOpts },
+  ];
+  const paidOf = (amount: number | null, at: string | null) =>
+    !amount ? '' : at ? 'paid' : 'unpaid';
   const shown = useMemo(
     () =>
-      rows.filter((r) =>
+      filterRows(rows, filterFields, flt, (r, key) =>
+        key === 'fee'
+          ? paidOf(r.franchiseFee, r.feePaidAt)
+          : key === 'deposit'
+            ? paidOf(r.deposit, r.depositPaidAt)
+            : r[key as keyof FranchiseBranchRow],
+      ).filter((r) =>
         tab === 'renewal'
           ? r.renewalDue
           : tab === 'unpaid'
@@ -115,7 +152,8 @@ export default function Franchise() {
                 ? r.status === 'TERMINATED'
                 : r.status !== 'TERMINATED',
       ),
-    [rows, tab],
+    // filterFields는 렌더마다 새로 만들지만 내용은 flt·rows로 정해진다
+    [rows, tab, flt],
   );
 
   const fields: FormField[] = [
@@ -404,6 +442,7 @@ export default function Franchise() {
         rowKey="orgUnitId"
         loading={loading}
         fit
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         exportable
         exportFileName={t('fran.exportName')}
         tabs={

@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { org: '소속', position: '직책', group: '권한 그룹', status: '상태', active: '사용' },
     scope: {
       OWN: '본인 담당',
       ORG: '소속 조직',
@@ -193,6 +194,13 @@ export default defineNs({
     posAddBtn: '+ 직책 추가',
   },
   en: {
+    flt: {
+      org: 'Organization',
+      position: 'Position',
+      group: 'Permission group',
+      status: 'Status',
+      active: 'Enabled',
+    },
     scope: {
       OWN: 'Own records',
       ORG: 'Own department',
@@ -386,6 +394,7 @@ export default defineNs({
     posAddBtn: '+ Add position',
   },
   zh: {
+    flt: { org: '所属', position: '职位', group: '权限组', status: '状态', active: '启用' },
     scope: {
       OWN: '本人负责',
       ORG: '所属部门',

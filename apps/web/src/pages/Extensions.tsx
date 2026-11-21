@@ -10,10 +10,14 @@ import {
   Button,
   ConfirmModal,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   ListPage,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 
@@ -32,6 +36,18 @@ export default function Extensions() {
   const rows = useExtensions();
   const [editing, setEditing] = useState<Extension | 'new' | null>(null);
   const [del, setDel] = useState<Extension | null>(null);
+  /** 검색 옆 필터 — 부서 */
+  const [flt, setFlt] = useState<FilterValues>({});
+  const filterFields: FilterField[] = [
+    {
+      key: 'dept',
+      label: t('prod.dept'),
+      type: 'multi',
+      options: [...new Set(rows.map((r) => r.dept).filter((v): v is string => !!v))]
+        .sort((a, b) => a.localeCompare(b, 'ko'))
+        .map((v) => ({ value: v, label: v })),
+    },
+  ];
   const dir = useWorkDirectory();
   // 직원 선택지 — 이미 내선이 있는 직원은 흐리게(지금 고치는 내선의 주인은 고를 수 있게)
   const employeeGroups = useMemo(() => {
@@ -127,8 +143,16 @@ export default function Extensions() {
       <DataTable
         fit
         pageSize={20}
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows as unknown as Row[]}
+        rows={
+          filterRows(
+            rows,
+            filterFields,
+            flt,
+            (r, key) => r[key as keyof Extension],
+          ) as unknown as Row[]
+        }
         onRowClick={editable ? (r) => setEditing(r as unknown as Extension) : undefined}
         exportable
         exportFileName={t('prod.extExport')}

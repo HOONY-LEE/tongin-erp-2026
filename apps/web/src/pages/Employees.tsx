@@ -13,10 +13,14 @@ import { EMPLOYMENT_TYPES } from '@tongin/shared';
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageCard,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
 } from '../components/ui';
@@ -70,6 +74,8 @@ export default function Employees({ view = 'list', branch }: Props) {
     [units, branch],
   );
   const orgLabel = branch ? t('employees.branch') : t('employees.org');
+  /** 검색 옆 필터 — 입사일·소속·직책·고용형태·재직 */
+  const [flt, setFlt] = useState<FilterValues>({});
 
   // 본사 화면이면 지점 소속 직원을 뺀다(조직 목록을 받기 전엔 판단할 수 없어 기다린다)
   const shown = useMemo(() => {
@@ -152,6 +158,41 @@ export default function Employees({ view = 'list', branch }: Props) {
     { name: 'emergencyPhone', label: t('employees.emergencyPhone'), type: 'tel' },
     { name: 'memo', label: t('employees.memo') },
   ];
+
+  const filterFields: FilterField[] = [
+    { key: 'hireDate', label: t('employees.flt.hireDate'), type: 'date' },
+    // 지점 상세 안에선 모두 같은 지점이라 뺀다
+    ...(branch
+      ? []
+      : [
+          {
+            key: 'orgUnitId',
+            label: t('employees.flt.org'),
+            type: 'multi',
+            options: orgs,
+          } as FilterField,
+        ]),
+    { key: 'positionId', label: t('employees.flt.position'), type: 'multi', options: positions },
+    {
+      key: 'employmentType',
+      label: t('employees.flt.type'),
+      type: 'multi',
+      options: EMPLOYMENT_TYPES.map((v) => ({ value: v, label: EMPLOYMENT_TYPE_LABEL[v] })),
+    },
+    {
+      key: 'isActive',
+      label: t('employees.flt.status'),
+      type: 'single',
+      options: [
+        { value: 'true', label: t('employees.flt.active') },
+        { value: 'false', label: t('employees.flt.inactive') },
+      ],
+    },
+  ];
+  const listed = filterRows(shown, filterFields, flt, (r, key) =>
+    key === 'isActive' ? String(!!r.isActive) : r[key],
+  );
+  const filterButton = <FilterButton fields={filterFields} value={flt} onChange={setFlt} />;
 
   const columns: Column[] = [
     {
@@ -256,10 +297,11 @@ export default function Employees({ view = 'list', branch }: Props) {
   // 지점 상세 안에선 '소속 직원 (N)' 제목이 달린 카드로 — 상세 화면의 한 구획이라
   if (branch) {
     return (
-      <PageCard title={t('employees.members')} count={shown.length} actions={addButton}>
+      <PageCard title={t('employees.members')} count={listed.length} actions={addButton}>
         <DataTable
+          filters={filterButton}
           columns={columns}
-          rows={shown}
+          rows={listed}
           loading={loading}
           onRowClick={(r) => openDetail(String(r.id))}
         />
@@ -280,8 +322,9 @@ export default function Employees({ view = 'list', branch }: Props) {
         />
       ) : (
         <DataTable
+          filters={filterButton}
           columns={columns}
-          rows={shown}
+          rows={listed}
           loading={loading || units.length === 0}
           onRowClick={(r) => openDetail(String(r.id))}
           toolbarActions={addButton}
