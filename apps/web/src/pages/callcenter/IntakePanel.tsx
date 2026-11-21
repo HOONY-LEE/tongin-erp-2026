@@ -27,6 +27,7 @@ import styles from '../callcenter.module.css';
 import { MemoPresetPicker } from './MemoPresets';
 import { CallRecordButton } from './CallRecordModal';
 import { SmsModal } from './SmsModal';
+import { DatePicker } from '../../components/ui';
 
 export interface IntakeCall {
   id: string;
@@ -590,11 +591,7 @@ export function IntakePanel({
         </div>
         <label className={styles.field}>
           <span>{t('cc.serviceDate')}</span>
-          <Input
-            type="date"
-            value={v.moveDate}
-            onChange={(e) => setField('moveDate', e.target.value)}
-          />
+          <DatePicker value={v.moveDate} onChange={(v) => setField('moveDate', v)} />
         </label>
         {/* 주소 — 출발지 왼쪽, 도착지 오른쪽 */}
         <div className={styles.field}>

@@ -18,6 +18,7 @@ import {
   type Row,
 } from '../components/ui';
 import styles from './aiAdmin.module.css';
+import { DatePicker } from '../components/ui';
 
 interface LogRow {
   id: string;
@@ -223,22 +224,20 @@ export default function SystemLogs() {
               onChange={(e) => setQ(e.target.value)}
               style={{ width: 200 }}
             />
-            <Input
-              type="date"
+            <DatePicker
               className={styles.dateInput}
               value={from}
               max={to}
               aria-label={t('logs.from')}
-              onChange={(e) => e.target.value && setFrom(e.target.value)}
+              onChange={(v) => v && setFrom(v)}
             />
             <span className={styles.muted}>~</span>
-            <Input
-              type="date"
+            <DatePicker
               className={styles.dateInput}
               value={to}
               min={from}
               aria-label={t('logs.to')}
-              onChange={(e) => e.target.value && setTo(e.target.value)}
+              onChange={(v) => v && setTo(v)}
             />
             <Select
               value={level}

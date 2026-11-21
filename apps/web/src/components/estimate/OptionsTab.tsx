@@ -11,6 +11,7 @@ import { useTabForm } from './useTabForm';
 import { toNum, won, type EstimateDetailData, type TabProps } from './types';
 import styles from './estimate.module.css';
 import { ACCESS_LABEL, BUNDLE_ROLE_LABEL } from '../../i18n/codes';
+import { DatePicker } from '../ui';
 
 const ACCESS_OPTIONS = ACCESS_METHODS.map((a) => ({ value: a, label: ACCESS_LABEL[a] }));
 const GROUPS: { key: EstimateOptionGroup; title: string; sub: string }[] = [
@@ -259,11 +260,10 @@ export function OptionsTab({ data, canEdit, onSaved, onDirtyChange, lockedReason
             <span />
           )}
           {def.hasDate ? (
-            <Input
-              type="date"
+            <DatePicker
               aria-label={t('est.dateOf', { v0: def.name })}
               value={o.serviceDate}
-              onChange={(e) => setOpt(def.id, { serviceDate: e.target.value })}
+              onChange={(v) => setOpt(def.id, { serviceDate: v })}
               disabled={!canEdit || off}
             />
           ) : (
