@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { period: '기간', createdAt: '작성일', contractDate: '계약일', signedAt: '서명일' },
     DRAFT: '작성중',
     QUOTED: '발송됨',
     estimateNo: '견적번호',
@@ -21,6 +22,12 @@ export default defineNs({
     viewLead: '접수 보기',
   },
   en: {
+    flt: {
+      period: 'Period',
+      createdAt: 'Created',
+      contractDate: 'Contract date',
+      signedAt: 'Signed',
+    },
     DRAFT: 'Draft',
     QUOTED: 'Sent',
     estimateNo: 'Estimate no.',
@@ -39,6 +46,7 @@ export default defineNs({
     viewLead: 'View lead',
   },
   zh: {
+    flt: { period: '期间', createdAt: '创建日', contractDate: '合同日', signedAt: '签署日' },
     DRAFT: '草稿',
     QUOTED: '已发送',
     estimateNo: '报价编号',

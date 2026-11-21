@@ -3,6 +3,14 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      space: '공간',
+      kind: '종류',
+      booker: '예약자',
+      paid: '결제',
+      paidYes: '결제 완료',
+      paidNo: '미결제',
+    },
     kind: {
       MEETING: '회의실',
       RENTAL: '대여 공간',
@@ -133,6 +141,14 @@ export default defineNs({
     acceptBookings: '예약 받기(사용)',
   },
   en: {
+    flt: {
+      space: 'Space',
+      kind: 'Type',
+      booker: 'Booked by',
+      paid: 'Payment',
+      paidYes: 'Paid',
+      paidNo: 'Unpaid',
+    },
     kind: {
       MEETING: 'Meeting room',
       RENTAL: 'Rental space',
@@ -263,6 +279,14 @@ export default defineNs({
     acceptBookings: 'Accept bookings (active)',
   },
   zh: {
+    flt: {
+      space: '空间',
+      kind: '类型',
+      booker: '预订人',
+      paid: '付款',
+      paidYes: '已付款',
+      paidNo: '未付款',
+    },
     kind: {
       MEETING: '会议室',
       RENTAL: '租赁空间',

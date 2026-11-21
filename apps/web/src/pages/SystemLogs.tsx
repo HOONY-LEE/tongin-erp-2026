@@ -9,12 +9,15 @@ import {
   Badge,
   CopyText,
   DataTable,
+  FilterButton,
+  filterRows,
   Input,
   PageHeader,
   RecordDetail,
-  Select,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import styles from './aiAdmin.module.css';
@@ -57,8 +60,10 @@ export default function SystemLogs() {
   const { updatedAt, touch } = useUpdatedAt();
   const [from, setFrom] = useState(kstDate(6));
   const [to, setTo] = useState(kstDate());
-  const [level, setLevel] = useState('ALL');
-  const [source, setSource] = useState('ALL');
+  /** 검색 옆 필터 — 종류·출처는 서버에서 거르고, 사용자는 받은 목록에서 */
+  const [flt, setFlt] = useState<FilterValues>({});
+  const level = (flt.level as string | undefined) ?? 'ALL';
+  const source = (flt.source as string | undefined) ?? 'ALL';
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<LogRow[]>([]);
@@ -109,6 +114,43 @@ export default function SystemLogs() {
         refText: r.ref ?? '',
       })),
     [rows],
+  );
+
+  const filterFields: FilterField[] = [
+    {
+      key: 'level',
+      label: t('logs.flt.type'),
+      type: 'single',
+      options: [
+        { value: 'ERROR', label: LEVEL_LABEL.ERROR },
+        { value: 'WARN', label: LEVEL_LABEL.WARN },
+      ],
+    },
+    {
+      key: 'source',
+      label: t('logs.flt.source'),
+      type: 'single',
+      options: [
+        { value: 'API', label: SOURCE_LABEL.API },
+        { value: 'WEB', label: SOURCE_LABEL.WEB },
+      ],
+    },
+    {
+      key: 'who',
+      label: t('logs.flt.who'),
+      type: 'multi',
+      options: [...new Set(tableRows.map((r) => r.who).filter(Boolean))].map((v) => ({
+        value: v,
+        label: v,
+      })),
+    },
+  ];
+  // 종류·출처는 이미 서버가 걸렀다 — 사용자만 여기서
+  const listed = filterRows(
+    tableRows,
+    filterFields.filter((f) => f.key === 'who'),
+    flt,
+    (r, key) => r[key as keyof typeof r],
   );
 
   const columns: Column[] = [
@@ -210,13 +252,14 @@ export default function SystemLogs() {
       {truncated && <p className={styles.notice}>{t('logs.tooMany')}</p>}
       <DataTable
         columns={columns}
-        rows={tableRows as unknown as Row[]}
+        rows={listed as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => open(String(r.id))}
         exportable
         exportFileName={t('logs.exportName', { v0: from, v1: to })}
         filters={
           <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
             <Input
               value={q}
               placeholder={t('logs.searchPh')}
@@ -238,26 +281,6 @@ export default function SystemLogs() {
               min={from}
               aria-label={t('logs.to')}
               onChange={(v) => v && setTo(v)}
-            />
-            <Select
-              value={level}
-              onValueChange={setLevel}
-              aria-label={t('logs.col.type')}
-              options={[
-                { value: 'ALL', label: t('logs.all') },
-                { value: 'ERROR', label: t('logs.errorsOnly') },
-                { value: 'WARN', label: t('logs.warnsOnly') },
-              ]}
-            />
-            <Select
-              value={source}
-              onValueChange={setSource}
-              aria-label={t('logs.col.source')}
-              options={[
-                { value: 'ALL', label: t('logs.allSrc') },
-                { value: 'API', label: t('logs.src.API') },
-                { value: 'WEB', label: t('logs.src.WEB') },
-              ]}
             />
           </>
         }

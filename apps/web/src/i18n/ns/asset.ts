@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { period: '기간', start: '시작일', end: '만료일', manager: '담당자', noManager: '미지정' },
     expired: '만료됨',
     kind: '종류',
     name: '이름',
@@ -38,6 +39,13 @@ export default defineNs({
     exportName: '계약자산',
   },
   en: {
+    flt: {
+      period: 'Period',
+      start: 'Start',
+      end: 'Expiry',
+      manager: 'Owner',
+      noManager: 'Unassigned',
+    },
     expired: 'Expired',
     kind: 'Type',
     name: 'Name',
@@ -73,6 +81,7 @@ export default defineNs({
     exportName: 'Contracts_assets',
   },
   zh: {
+    flt: { period: '期间', start: '开始日', end: '到期日', manager: '负责人', noManager: '未指定' },
     expired: '已到期',
     kind: '类型',
     name: '名称',

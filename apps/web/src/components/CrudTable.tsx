@@ -2,7 +2,17 @@ import i18n from '../i18n';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
-import { Button, DataTable, FormModal, PageHeader, RecordDetail, useToast } from './ui';
+import {
+  Button,
+  DataTable,
+  FilterButton,
+  filterRows,
+  FormModal,
+  PageHeader,
+  RecordDetail,
+  useToast,
+} from './ui';
+import type { FilterField, FilterValues } from './ui';
 import type { DetailItem } from './ui';
 import { useDetailParam } from '../lib/useDetailParam';
 import type { Column, FormField, Row } from './ui';
@@ -32,7 +42,35 @@ interface Props {
   rowFilter?: (row: Row) => boolean;
   /** 상세 화면 아래에 더 그릴 것(예: 조직의 역할·목표·업무분장) */
   detailExtra?: (row: Row) => ReactNode;
+  /**
+   * 검색 옆 필터 조건 — 주지 않으면 등록 항목 중 고르기(선택지)·예/아니오 칸으로 자동으로 만든다.
+   * 빈 배열이면 필터 버튼을 숨긴다.
+   */
+  filterFields?: FilterField[];
+  /** 필터 조건 칸의 값(기본 row[key]) */
+  filterGet?: (row: Row, key: string) => unknown;
 }
+
+/** 등록 항목에서 필터 조건 만들기 — 선택지가 있는 칸은 여러 개 고르기, 예/아니오 칸은 하나 고르기 */
+const autoFilterFields = (fields: FormField[]): FilterField[] =>
+  fields.flatMap((f): FilterField[] => {
+    if (f.type === 'boolean')
+      return [
+        {
+          key: f.name,
+          label: f.label,
+          type: 'single',
+          options: [
+            { value: 'true', label: i18n.t('misc.yes') },
+            { value: 'false', label: i18n.t('misc.no') },
+          ],
+        },
+      ];
+    const opts = f.options ?? f.optionGroups?.flatMap((g) => g.options);
+    if (opts && opts.length > 1 && opts.length <= 20 && !f.optionsBy)
+      return [{ key: f.name, label: f.label, type: 'multi', options: opts }];
+    return [];
+  });
 
 /** 행 값을 폼 초기값(문자열)으로 — 주소 칸은 우편번호·주소·좌표 등 여러 키로 나뉜다 */
 const toInitial = (row: Row, fields: FormField[]) => {
@@ -75,8 +113,12 @@ export default function CrudTable({
   headerActions,
   rowFilter,
   detailExtra,
+  filterFields,
+  filterGet,
 }: Props) {
   const { t } = useTranslation();
+  const [flt, setFlt] = useState<FilterValues>({});
+  const fFields = filterFields ?? autoFilterFields(fields);
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
@@ -222,8 +264,19 @@ export default function CrudTable({
         <PageHeader title={title} onRefresh={load} updatedAt={updatedAt} actions={headerActions} />
       )}
       <DataTable
+        filters={
+          fFields.length ? (
+            <FilterButton fields={fFields} value={flt} onChange={setFlt} />
+          ) : undefined
+        }
         columns={columns}
-        rows={rows}
+        rows={filterRows(rows, fFields, flt, (r, key) =>
+          filterGet
+            ? filterGet(r, key)
+            : r[key] === null || r[key] === undefined
+              ? ''
+              : String(r[key]),
+        )}
         loading={loading}
         onRowClick={(r) => (onDetail ? onDetail(r) : detail.open(String(r.id)))}
         toolbarActions={addButton}

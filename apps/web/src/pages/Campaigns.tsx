@@ -9,10 +9,14 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   ListPage,
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
 } from '../components/ui';
@@ -36,6 +40,7 @@ export default function Campaigns() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,11 +88,46 @@ export default function Campaigns() {
     { title: t('camp.col.createdAt'), render: (r) => dt(r.createdAt) },
   ];
 
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('camp.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'createdAt', label: t('camp.flt.createdAt') },
+        { value: 'sendAt', label: t('camp.flt.sendAt') },
+      ],
+    },
+    {
+      key: 'channel',
+      label: t('camp.col.channel'),
+      type: 'multi',
+      options: Object.entries(CAMPAIGN_CHANNEL_LABEL).map(([value, label]) => ({
+        value,
+        label,
+      })),
+    },
+    {
+      key: 'status',
+      label: t('camp.col.status'),
+      type: 'multi',
+      options: Object.entries(CAMPAIGN_STATUS_MAP).map(([value, s]) => ({
+        value,
+        label: s.label,
+      })),
+    },
+  ];
+  // 발송일 — 예약이면 예약 시각, 아니면 보낸 시각(표의 '발송(예약)' 칸과 같은 기준)
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'sendAt' ? (r.status === 'SCHEDULED' ? r.scheduledAt : r.sentAt) : r[key],
+  );
+
   return (
     <ListPage title={t('nav.campaigns')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows}
+        rows={shown}
         loading={loading}
         onRowClick={(r) => navigate(`/campaigns/${String(r.id)}`)}
         toolbarActions={

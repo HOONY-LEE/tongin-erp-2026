@@ -11,7 +11,17 @@ import { FileText } from 'lucide-react';
 import { DateFilter, type DateRange } from './DateFilter';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
-import { DataTable, SegmentedControl, useToast, type Column, type Row } from '../../components/ui';
+import {
+  DataTable,
+  FilterButton,
+  filterRows,
+  SegmentedControl,
+  useToast,
+  type Column,
+  type FilterField,
+  type FilterValues,
+  type Row,
+} from '../../components/ui';
 import { Phone as PhoneCell } from 'softium-ui/table';
 import styles from '../callcenter.module.css';
 
@@ -89,6 +99,7 @@ export function CallList({
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<DateRange>({ from: '', to: '' });
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(
     async (sc: 'mine' | 'all', rg: DateRange) => {
@@ -201,6 +212,41 @@ export function CallList({
     },
   ];
 
+  const yesNo = [
+    { value: 'yes', label: t('cc.flt.has') },
+    { value: 'no', label: t('cc.flt.none') },
+  ];
+  const filterFields: FilterField[] = [
+    {
+      key: 'status',
+      label: t('cc.status'),
+      type: 'multi',
+      options: [
+        { value: 'OPEN', label: t('cc.notWrapped') },
+        ...(['OUTCALL', 'DONE', 'CANCELED'] as const).map((v) => ({
+          value: v,
+          label: STATUS_LABEL[v],
+        })),
+      ],
+    },
+    { key: 'lead', label: t('cc.flt.lead'), type: 'single', options: yesNo },
+    { key: 'recording', label: t('cc.flt.recording'), type: 'single', options: yesNo },
+  ];
+  // 날짜는 서버에서(DateFilter), 나머지 조건은 받은 목록에서 거른다
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'status'
+      ? r.status === 'ASSIGNED' || r.status === 'CALLBACK'
+        ? 'OPEN'
+        : r.status
+      : key === 'lead'
+        ? r.leadId
+          ? 'yes'
+          : 'no'
+        : r.hasRecording
+          ? 'yes'
+          : 'no',
+  );
+
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
       {stats}
@@ -216,11 +262,16 @@ export function CallList({
             ]}
           />
         }
-        filters={<DateFilter value={range} onChange={setRange} />}
+        filters={
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <DateFilter value={range} onChange={setRange} />
+          </>
+        }
         fit
         pageSize={20}
         columns={columns}
-        rows={rows as unknown as Row[]}
+        rows={shown as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => onOpen(r.id as string)}
         exportable

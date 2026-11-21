@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { org: '소속', grade: '등급', noGrade: '실적 없음', setup: '지표 설정' },
     src: {
       OWN: '직접 구성',
       ORG: '조직 구성',
@@ -118,6 +119,7 @@ export default defineNs({
     noDutiesShort: '아직 정한 업무분장이 없습니다.',
   },
   en: {
+    flt: { org: 'Organization', grade: 'Grade', noGrade: 'No data', setup: 'KPI setup' },
     src: {
       OWN: 'Own setup',
       ORG: 'Department setup',
@@ -236,6 +238,7 @@ export default defineNs({
     noDutiesShort: 'No duty assignments yet.',
   },
   zh: {
+    flt: { org: '所属', grade: '等级', noGrade: '无业绩', setup: '指标设置' },
     src: {
       OWN: '自定义配置',
       ORG: '部门配置',

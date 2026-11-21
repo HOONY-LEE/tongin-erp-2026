@@ -3,6 +3,16 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      cycle: '주기',
+      owner: '담당자',
+      backup: '부담당자',
+      assigned: '지정됨',
+      unassigned: '미지정',
+      inProgress: '진행 중 작업',
+      has: '있음',
+      none: '없음',
+    },
     loadFailed: '불러오지 못했습니다',
     view: {
       org: '조직별',
@@ -77,6 +87,16 @@ export default defineNs({
       '이 조직이 맡는 일을 한두 문장으로(예: 가맹점 모집·계약부터 교육·점검까지 가맹점 운영을 돕는다)',
   },
   en: {
+    flt: {
+      cycle: 'Cycle',
+      owner: 'Owner',
+      backup: 'Backup',
+      assigned: 'Assigned',
+      unassigned: 'Unassigned',
+      inProgress: 'Tasks in progress',
+      has: 'Yes',
+      none: 'No',
+    },
     loadFailed: 'Could not load',
     view: {
       org: 'By department',
@@ -152,6 +172,16 @@ export default defineNs({
       'What this department does, in a sentence or two (e.g. supports franchisees from recruitment and contracts to training and inspections)',
   },
   zh: {
+    flt: {
+      cycle: '周期',
+      owner: '负责人',
+      backup: '副负责人',
+      assigned: '已指定',
+      unassigned: '未指定',
+      inProgress: '进行中任务',
+      has: '有',
+      none: '无',
+    },
     loadFailed: '加载失败',
     view: {
       org: '按部门',

@@ -10,6 +10,8 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   ListPage,
   ListToolbar,
   SegmentedControl,
@@ -17,6 +19,8 @@ import {
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
   type StatusMap,
   SearchInput,
@@ -81,6 +85,8 @@ export default function AgentBlueprints() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  /** 검색 옆 필터 — 기간·상태·공개 범위·시작 방식 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [view, setView] = useState<View>(readView);
   // 카드형 검색어(목록형은 표 자체 검색창을 쓴다)
   const [query, setQuery] = useState('');
@@ -110,9 +116,50 @@ export default function AgentBlueprints() {
     void load();
   }, [load]);
 
+  const filterFields: FilterField[] = useMemo(
+    () => [
+      {
+        key: 'period',
+        label: t('ai.flt.period'),
+        type: 'date',
+        options: [
+          { value: 'updatedAt', label: t('ai.flt.updatedAt') },
+          { value: 'createdAt', label: t('ai.flt.createdAt') },
+        ],
+      },
+      {
+        key: 'status',
+        label: t('ai.flt.status'),
+        type: 'multi',
+        options: Object.entries(STATUS_MAP).map(([value, v]) => ({ value, label: v.label })),
+      },
+      {
+        key: 'visibility',
+        label: t('ai.flt.visibility'),
+        type: 'multi',
+        options: Object.entries(AGENT_VISIBILITY_LABEL).map(([value, label]) => ({ value, label })),
+      },
+      {
+        key: 'trigger',
+        label: t('ai.flt.trigger'),
+        type: 'multi',
+        options: Object.entries(TRIGGER_KIND_LABEL).map(([value, label]) => ({ value, label })),
+      },
+    ],
+    [t],
+  );
+  // 필터를 먼저 걸고, 전체·내 것·공유받은 탭 숫자도 걸린 목록 기준으로
+  const picked = useMemo(
+    () =>
+      filterRows(rows, filterFields, flt, (r, key) =>
+        key === 'trigger' ? ((r.trigger as TriggerConfig | null)?.kind ?? '') : r[key],
+      ),
+    [rows, filterFields, flt],
+  );
   const shown = useMemo(
-    () => rows.filter((r) => (filter === 'all' ? true : filter === 'mine' ? r.isMine : !r.isMine)),
-    [rows, filter],
+    () =>
+      picked.filter((r) => (filter === 'all' ? true : filter === 'mine' ? r.isMine : !r.isMine)),
+    [picked, filter],
   );
 
   // 카드형 — 이름·설명으로 거른다
@@ -175,9 +222,12 @@ export default function AgentBlueprints() {
       value={filter}
       onChange={(v) => setFilter(v as Filter)}
       options={[
-        { value: 'all', label: t('ai.allN', { v0: rows.length }) },
-        { value: 'mine', label: t('ai.mineN', { v0: rows.filter((r) => r.isMine).length }) },
-        { value: 'shared', label: t('ai.sharedN', { v0: rows.filter((r) => !r.isMine).length }) },
+        { value: 'all', label: t('ai.allN', { v0: picked.length }) },
+        { value: 'mine', label: t('ai.mineN', { v0: picked.filter((r) => r.isMine).length }) },
+        {
+          value: 'shared',
+          label: t('ai.sharedN', { v0: picked.filter((r) => !r.isMine).length }),
+        },
       ]}
     />
   );
@@ -209,6 +259,7 @@ export default function AgentBlueprints() {
       ]}
     />
   );
+  const filterButton = <FilterButton fields={filterFields} value={flt} onChange={setFlt} />;
   // 툴바 셋째 줄 오른쪽 — 새 에이전트
   const actions = (
     <Button variant="primary" size="sm" onClick={() => navigate('/agent-builder/new')}>
@@ -231,6 +282,7 @@ export default function AgentBlueprints() {
           loading={loading}
           onRowClick={open}
           tabs={tabs}
+          filters={filterButton}
           viewSwitch={viewSwitch}
           toolbarActions={actions}
         />
@@ -242,6 +294,7 @@ export default function AgentBlueprints() {
               search={
                 <SearchInput value={query} onChange={setQuery} ariaLabel={t('ai.searchAgents')} />
               }
+              filters={filterButton}
               viewSwitch={viewSwitch}
               tabs={tabs}
               actions={actions}

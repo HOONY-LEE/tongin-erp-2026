@@ -29,6 +29,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   ListPage,
   ListToolbar,
@@ -39,6 +41,8 @@ import {
   Input,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
 } from '../components/ui';
@@ -111,6 +115,7 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState('');
   const [mineOnly, setMineOnly] = useState(false);
+  const [flt, setFlt] = useState<FilterValues>({});
   const [editing, setEditing] = useState<CrmLeadView | 'new' | null>(null);
   const [links, setLinks] = useState<{ value: string; label: string }[]>([]);
   const [importing, setImporting] = useState(false);
@@ -144,9 +149,59 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
   }, [load, def.link]);
 
   const term = q.trim();
+  const distinct = (k: 'region' | 'ownerName') =>
+    [...new Set(rows.map((r) => r[k]).filter((x): x is string => !!x))]
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .map((x) => ({ value: x, label: x }));
+  const regions = distinct('region');
+  const owners = distinct('ownerName');
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('crm.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'createdAt', label: t('crm.flt.createdAt') },
+        { value: 'nextActionAt', label: t('crm.flt.nextActionAt') },
+        { value: 'lastActivityAt', label: t('crm.flt.lastActivityAt') },
+        ...(def.expectedLabel ? [{ value: 'expectedAt', label: def.expectedLabel }] : []),
+      ],
+    },
+    {
+      key: 'stage',
+      label: t('crm.f.stage'),
+      type: 'multi',
+      options: def.stages.map((s) => ({ value: s.key, label: s.label })),
+    },
+    {
+      key: 'interest',
+      label: t('crm.f.interest'),
+      type: 'multi',
+      options: CRM_INTERESTS.map((v) => ({ value: v, label: CRM_INTEREST_LABEL[v] })),
+    },
+    {
+      key: 'source',
+      label: t('crm.f.source'),
+      type: 'multi',
+      options: def.sources.map((s) => ({ value: s.key, label: s.label })),
+    },
+    ...(regions.length > 1
+      ? [{ key: 'region', label: def.regionLabel, type: 'multi', options: regions } as FilterField]
+      : []),
+    ...(owners.length > 1
+      ? [
+          {
+            key: 'ownerName',
+            label: t('crm.f.owner'),
+            type: 'multi',
+            options: owners,
+          } as FilterField,
+        ]
+      : []),
+  ];
   const filtered = useMemo(
     () =>
-      rows.filter(
+      filterRows(rows, filterFields, flt, (r, key) => r[key as keyof CrmLeadView]).filter(
         (r) =>
           (!mineOnly || r.ownerEmpId === user?.employeeId) &&
           (!term ||
@@ -156,7 +211,8 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
             (term.replace(/\D/g, '').length >= 3 &&
               (r.phone ?? '').includes(term.replace(/\D/g, '')))),
       ),
-    [rows, mineOnly, term, user?.employeeId],
+    // filterFields는 rows·def에서 만들어진다
+    [rows, mineOnly, term, user?.employeeId, flt],
   );
   const today = kstToday();
   const weekLater = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000)
@@ -385,14 +441,17 @@ export default function Crm({ pipeline }: { pipeline: CrmPipelineKey }) {
     />
   );
   const filters = (
-    <SegmentedControl
-      value={mineOnly ? 'mine' : 'all'}
-      onChange={(v) => setMineOnly(v === 'mine')}
-      options={[
-        { value: 'all', label: t('crm.scope.all') },
-        { value: 'mine', label: t('crm.scope.mine') },
-      ]}
-    />
+    <>
+      <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+      <SegmentedControl
+        value={mineOnly ? 'mine' : 'all'}
+        onChange={(v) => setMineOnly(v === 'mine')}
+        options={[
+          { value: 'all', label: t('crm.scope.all') },
+          { value: 'mine', label: t('crm.scope.mine') },
+        ]}
+      />
+    </>
   );
   const search = (
     <SearchInput

@@ -14,6 +14,8 @@ import { ddayInfo, toInitial, useWorkDirectory, won, ymd, type PersonRef } from 
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   ListPage,
   RecordDetail,
@@ -21,6 +23,8 @@ import {
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
   type StatusMap,
@@ -90,6 +94,8 @@ export default function Assets() {
   const [loading, setLoading] = useState(false);
   const [kind, setKind] = useState<'ALL' | AssetKind>('ALL');
   const [due, setDue] = useState<DueFilter>('ALL');
+  /** 검색 옆 필터 — 기간(시작·만료)·담당자 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [editing, setEditing] = useState<Asset | 'new' | null>(null);
 
   const load = useCallback(async () => {
@@ -269,18 +275,49 @@ export default function Assets() {
     );
   }
 
+  const managers = [
+    ...new Set(rows.map((a) => a.manager?.name).filter((x): x is string => !!x)),
+  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  const filterFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('asset.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'endDate', label: t('asset.flt.end') },
+        { value: 'startDate', label: t('asset.flt.start') },
+      ],
+    },
+    ...(managers.length
+      ? [
+          {
+            key: 'manager',
+            label: t('asset.flt.manager'),
+            type: 'multi',
+            options: [
+              ...managers.map((x) => ({ value: x, label: x })),
+              { value: '', label: t('asset.flt.noManager') },
+            ],
+          } as FilterField,
+        ]
+      : []),
+  ];
+  // 필터를 먼저 걸고, 종류 탭·기한 숫자도 걸린 목록 기준으로
+  const picked = filterRows(rows, filterFields, flt, (a, key) =>
+    key === 'manager' ? (a.manager?.name ?? '') : a[key as keyof Asset],
+  );
   // 종류(머리글 아래 세그먼트) × 기한(검색창 옆 세그먼트)
-  const byKind = kind === 'ALL' ? rows : rows.filter((r) => r.kind === kind);
+  const byKind = kind === 'ALL' ? picked : picked.filter((r) => r.kind === kind);
   const dueMatch = (a: Asset, f: DueFilter) => {
     if (f === 'ALL') return true;
     const lv = ddayInfo(a.endDate, WARN_DAYS)?.level;
     return f === 'SOON' ? lv === 'soon' : lv === 'over';
   };
   const kindOptions = [
-    { value: 'ALL', label: t('asset.allN', { v0: rows.length }) },
+    { value: 'ALL', label: t('asset.allN', { v0: picked.length }) },
     ...ASSET_KIND.map((k) => ({
       value: k,
-      label: `${ASSET_KIND_LABEL[k]} ${rows.filter((r) => r.kind === k).length}`,
+      label: `${ASSET_KIND_LABEL[k]} ${picked.filter((r) => r.kind === k).length}`,
     })),
   ];
   const dueCount = (f: DueFilter) => byKind.filter((r) => dueMatch(r, f)).length;
@@ -340,11 +377,14 @@ export default function Assets() {
         loading={loading}
         onRowClick={(r) => detail.open(String(r.id))}
         filters={
-          <SegmentedControl
-            value={due}
-            onChange={(v) => setDue(v as DueFilter)}
-            options={dueOptions}
-          />
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <SegmentedControl
+              value={due}
+              onChange={(v) => setDue(v as DueFilter)}
+              options={dueOptions}
+            />
+          </>
         }
         toolbarActions={
           can('ASSET.CREATE') ? (

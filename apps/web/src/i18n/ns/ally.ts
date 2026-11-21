@@ -3,6 +3,15 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      createdAt: '등록일',
+      use: '사용 여부',
+      on: '사용',
+      off: '사용 안 함',
+      yearLeads: '올해 접수',
+      has: '있음',
+      none: '없음',
+    },
     kind: {
       AFFILIATE: '제휴',
       EXCLUSIVE: '전속',
@@ -93,6 +102,15 @@ export default defineNs({
     headerMissing: "머리글 줄에 '업체명' 칸이 있어야 합니다.",
   },
   en: {
+    flt: {
+      createdAt: 'Created',
+      use: 'In use',
+      on: 'Active',
+      off: 'Inactive',
+      yearLeads: 'Leads this year',
+      has: 'Yes',
+      none: 'No',
+    },
     kind: {
       AFFILIATE: 'Affiliate',
       EXCLUSIVE: 'Exclusive',
@@ -187,6 +205,15 @@ export default defineNs({
     headerMissing: "The header row must include a '업체명' (business name) column.",
   },
   zh: {
+    flt: {
+      createdAt: '登记日',
+      use: '使用状态',
+      on: '使用',
+      off: '停用',
+      yearLeads: '今年受理',
+      has: '有',
+      none: '无',
+    },
     kind: {
       AFFILIATE: '合作',
       EXCLUSIVE: '专属',

@@ -7,10 +7,13 @@ import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Badge,
   DataTable,
+  FilterButton,
+  filterRows,
   PageHeader,
-  Select,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import styles from './aiAdmin.module.css';
@@ -98,7 +101,9 @@ export default function AccessLogs() {
   const { updatedAt, touch } = useUpdatedAt();
   const [from, setFrom] = useState(kstDate(6));
   const [to, setTo] = useState(kstDate());
-  const [action, setAction] = useState('EXPORT');
+  /** 검색 옆 필터 — 종류는 서버에서 거르고(처음엔 내려받기만), 대상·사용자는 받은 목록에서 */
+  const [flt, setFlt] = useState<FilterValues>({ action: 'EXPORT' });
+  const action = (flt.action as string | undefined) ?? 'ALL';
   const [rows, setRows] = useState<AccessRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -129,6 +134,41 @@ export default function AccessLogs() {
         info: detailText(r),
       })),
     [rows],
+  );
+
+  const distinct = (vs: string[]) =>
+    [...new Set(vs.filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .map((v) => ({ value: v, label: v }));
+  const filterFields: FilterField[] = [
+    {
+      key: 'action',
+      label: t('logs.flt.type'),
+      type: 'single',
+      options: (['EXPORT', 'VIEW', 'LIST'] as const).map((a) => ({
+        value: a,
+        label: ACTION_LABEL[a],
+      })),
+    },
+    {
+      key: 'target',
+      label: t('logs.flt.target'),
+      type: 'multi',
+      options: distinct(tableRows.map((r) => r.target)),
+    },
+    {
+      key: 'who',
+      label: t('logs.flt.who'),
+      type: 'multi',
+      options: distinct(tableRows.map((r) => r.who)),
+    },
+  ];
+  // 종류는 이미 서버가 걸렀다
+  const listed = filterRows(
+    tableRows,
+    filterFields.filter((f) => f.key !== 'action'),
+    flt,
+    (r, key) => r[key as keyof typeof r],
   );
 
   const columns: Column[] = [
@@ -164,12 +204,13 @@ export default function AccessLogs() {
       {rows.length >= 1000 && <p className={styles.notice}>{t('logs.tooManyAccess')}</p>}
       <DataTable
         columns={columns}
-        rows={tableRows as unknown as Row[]}
+        rows={listed as unknown as Row[]}
         loading={loading}
         exportable
         exportFileName={t('logs.accessExport', { v0: from, v1: to })}
         filters={
           <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
             <DatePicker
               className={styles.dateInput}
               value={from}
@@ -184,17 +225,6 @@ export default function AccessLogs() {
               min={from}
               aria-label={t('logs.to')}
               onChange={(v) => v && setTo(v)}
-            />
-            <Select
-              value={action}
-              onValueChange={setAction}
-              aria-label={t('logs.col.type')}
-              options={[
-                { value: 'EXPORT', label: t('logs.act.EXPORT') },
-                { value: 'VIEW', label: t('logs.act.VIEW') },
-                { value: 'LIST', label: t('logs.act.LIST') },
-                { value: 'ALL', label: t('logs.allAct') },
-              ]}
             />
           </>
         }

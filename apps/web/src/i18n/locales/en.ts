@@ -104,6 +104,7 @@ export default {
     cancel: 'Cancel',
   },
   service: {
+    flt: { period: 'Period', createdAt: 'Created' },
     register: 'New service order',
     orderNo: 'Order No.',
     line: 'Service',
@@ -125,6 +126,7 @@ export default {
     canceledMsg: 'Canceled',
   },
   order: {
+    flt: { period: 'Requested', status: 'Status', org: 'Branch' },
     register: 'New order',
     orderNo: 'Order No.',
     org: 'Branch',
@@ -146,6 +148,18 @@ export default {
     canceled: 'Canceled',
   },
   billing: {
+    flt: {
+      period: 'Period',
+      createdAt: 'Created',
+      issuedAt: 'Issued',
+      dueDate: 'Due date',
+      status: 'Status',
+      partner: 'Partner',
+      branch: 'Branch',
+      outstanding: 'Outstanding',
+      has: 'Yes',
+      none: 'No',
+    },
     margins: 'Contract margins',
     contractNo: 'Contract No.',
     customer: 'Customer',
@@ -175,6 +189,7 @@ export default {
     outstanding: 'Outstanding',
   },
   material: {
+    flt: { category: 'Category', stock: 'Stock', low: 'Low', ok: 'OK' },
     register: 'New material',
     code: 'Code',
     name: 'Name',
@@ -210,6 +225,13 @@ export default {
     geocoded: 'Geocoded',
   },
   settlement: {
+    flt: {
+      calcType: 'Calculation',
+      branch: 'Branch',
+      active: 'In use',
+      on: 'In use',
+      off: 'Not used',
+    },
     receivables: 'Receivables by customer',
     customer: 'Customer',
     contracts: 'Contracts',
@@ -272,6 +294,7 @@ export default {
     back: 'List',
   },
   work: {
+    flt: { period: 'Period', createdAt: 'Created' },
     detail: 'Detail',
     create: 'Dispatch',
     start: 'Start',

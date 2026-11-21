@@ -9,6 +9,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   PageCard,
   PageHeader,
@@ -16,6 +18,8 @@ import {
   StatusBadge,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
   type StatusMap,
@@ -87,6 +91,8 @@ export default function Billing() {
   const [receiptInv, setReceiptInv] = useState<Invoice | null>(null);
   // 청구서 목록을 처음 받기 전에는 상세가 '찾을 수 없음'으로 보이지 않게
   const [invLoading, setInvLoading] = useState(true);
+  /** 청구서 표 검색 옆 필터 */
+  const [invFlt, setInvFlt] = useState<FilterValues>({});
   const { updatedAt, touch } = useUpdatedAt();
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
 
@@ -159,6 +165,65 @@ export default function Billing() {
   };
 
   const collectedOf = (inv: Invoice) => inv.receipts.reduce((s, r) => s + Number(r.amount), 0);
+  const invPartners = [
+    ...new Set(invoices.map((i) => i.partner?.name).filter((x): x is string => !!x)),
+  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  const invFields: FilterField[] = [
+    {
+      key: 'period',
+      label: t('billing.flt.period'),
+      type: 'date',
+      options: [
+        { value: 'createdAt', label: t('billing.flt.createdAt') },
+        { value: 'issuedAt', label: t('billing.flt.issuedAt') },
+        { value: 'dueDate', label: t('billing.flt.dueDate') },
+      ],
+    },
+    {
+      key: 'status',
+      label: t('billing.flt.status'),
+      type: 'multi',
+      options: Object.entries(INV_STATUS).map(([value, v]) => ({ value, label: v.label })),
+    },
+    ...(invPartners.length
+      ? [
+          {
+            key: 'partner',
+            label: t('billing.flt.partner'),
+            type: 'multi',
+            options: invPartners.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+    ...(orgs.length > 1
+      ? [
+          {
+            key: 'orgUnitId',
+            label: t('billing.flt.branch'),
+            type: 'multi',
+            options: orgs,
+          } as FilterField,
+        ]
+      : []),
+    {
+      key: 'outstanding',
+      label: t('billing.flt.outstanding'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('billing.flt.has') },
+        { value: 'no', label: t('billing.flt.none') },
+      ],
+    },
+  ];
+  const shownInvoices = filterRows(invoices, invFields, invFlt, (i, key) =>
+    key === 'partner'
+      ? (i.partner?.name ?? '')
+      : key === 'outstanding'
+        ? i.status !== 'CANCELED' && Number(i.amount) - collectedOf(i) > 0
+          ? 'yes'
+          : 'no'
+        : i[key],
+  );
 
   const marginCols: Column[] = [
     { title: t('billing.contractNo'), dataIndex: 'contractNo' },
@@ -376,7 +441,7 @@ export default function Billing() {
 
       <PageCard
         title={t('billing.invoices')}
-        count={invoices.length}
+        count={shownInvoices.length}
         actions={
           <Button variant="primary" size="sm" onClick={() => setInvOpen(true)}>
             + {t('billing.newInvoice')}
@@ -384,7 +449,12 @@ export default function Billing() {
         }
         plain
       >
-        <DataTable columns={invCols} rows={invoices} onRowClick={(r) => openDetail(String(r.id))} />
+        <DataTable
+          columns={invCols}
+          rows={shownInvoices}
+          onRowClick={(r) => openDetail(String(r.id))}
+          filters={<FilterButton fields={invFields} value={invFlt} onChange={setInvFlt} />}
+        />
       </PageCard>
 
       <PageCard title={t('billing.partnerReceivables')} count={precv.length} plain>

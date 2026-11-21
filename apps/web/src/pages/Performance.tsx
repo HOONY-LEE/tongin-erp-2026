@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Settings2, Users } from 'lucide-react';
 import {
   KPI_CATALOG,
+  KPI_GRADES,
   kpiPeriodOf,
   kpiPeriodOptions,
   type DutyView,
@@ -21,6 +22,8 @@ import {
   Button,
   Checkbox,
   DataTable,
+  FilterButton,
+  filterRows,
   ListToolbar,
   Modal,
   PageHeader,
@@ -29,6 +32,8 @@ import {
   Select,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../components/ui';
 import { RadarChart, type RadarDatum } from '../components/performance/RadarChart';
@@ -134,6 +139,8 @@ export default function Performance() {
   const [query, setQuery] = useState('');
   // 여러 명에게 한꺼번에 — 대상 고르기(조직·직접) → 지표 구성 창
   const [bulkPick, setBulkPick] = useState(false);
+  /** 개인 표 검색 옆 필터 — 소속·등급·지표 설정 */
+  const [flt, setFlt] = useState<FilterValues>({});
   const [bulk, setBulk] = useState<{ ids: string[]; label: string; template: KpiResult } | null>(
     null,
   );
@@ -179,6 +186,42 @@ export default function Performance() {
   const q = query.trim();
   const orgs = (data?.orgs ?? []).filter((o) => !q || o.name.includes(q));
   const people = data?.people ?? [];
+  const peopleOrgs = [
+    ...new Set(people.map((p) => p.orgUnitName).filter((x): x is string => !!x)),
+  ].sort((a, b) => a.localeCompare(b, 'ko'));
+  const filterFields: FilterField[] = [
+    ...(peopleOrgs.length > 1
+      ? [
+          {
+            key: 'orgUnitName',
+            label: t('perf.flt.org'),
+            type: 'multi',
+            options: peopleOrgs.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+    {
+      key: 'grade',
+      label: t('perf.flt.grade'),
+      type: 'multi',
+      options: [
+        ...KPI_GRADES.map((g) => ({ value: g, label: g })),
+        { value: '', label: t('perf.flt.noGrade') },
+      ],
+    },
+    {
+      key: 'source',
+      label: t('perf.flt.setup'),
+      type: 'multi',
+      options: (['OWN', 'ORG', 'DEFAULT'] as const).map((v) => ({
+        value: v,
+        label: SOURCE_LABEL[v],
+      })),
+    },
+  ];
+  const shownPeople = filterRows(people, filterFields, flt, (p, key) =>
+    String(p[key as keyof KpiResult] ?? ''),
+  );
 
   const tabs = (
     <SegmentedControl
@@ -304,12 +347,17 @@ export default function Performance() {
       ) : (
         <DataTable
           columns={columns}
-          rows={people as unknown as Row[]}
+          rows={shownPeople as unknown as Row[]}
           loading={loading}
           fit
           exportable
           exportFileName={t('perf.exportName', { v0: period })}
-          filters={groupSwitch}
+          filters={
+            <>
+              <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+              {groupSwitch}
+            </>
+          }
           tabs={tabs}
           toolbarActions={
             data?.canEdit ? (

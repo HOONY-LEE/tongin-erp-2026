@@ -11,10 +11,14 @@ import { dial, enablePhone, getPhoneState, usePhone } from '../../lib/softphone'
 import {
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   Modal,
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type Row,
 } from '../../components/ui';
 import styles from '../callcenter.module.css';
@@ -80,6 +84,7 @@ export function FollowupList({
   const [open, setOpen] = useState<FollowupRow | null>(null);
   const [memo, setMemo] = useState('');
   const [busy, setBusy] = useState(false);
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -200,6 +205,40 @@ export function FollowupList({
     },
   ];
 
+  const distinct = (k: 'orgName' | 'ownerName') =>
+    [...new Set(rows.map((r) => r[k]).filter((x): x is string => !!x))]
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .map((x) => ({ value: x, label: x }));
+  const branches = distinct('orgName');
+  const owners = distinct('ownerName');
+  const filterFields: FilterField[] = [
+    {
+      key: 'result',
+      label: t('cc.status'),
+      type: 'multi',
+      options: [
+        { value: 'WAITING', label: t('cc.waiting') },
+        { value: 'DONE', label: RESULT.DONE },
+        { value: 'NO_ANSWER', label: RESULT.NO_ANSWER },
+      ],
+    },
+    ...(branches.length > 1
+      ? [
+          {
+            key: 'orgName',
+            label: t('cc.ownerBranch'),
+            type: 'multi',
+            options: branches,
+          } as FilterField,
+        ]
+      : []),
+    ...(owners.length > 1
+      ? [{ key: 'ownerName', label: t('cc.owner'), type: 'multi', options: owners } as FilterField]
+      : []),
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'result' ? (r.result ?? 'WAITING') : r[key as 'orgName' | 'ownerName'],
+  );
   const L = LABEL[kind];
   return (
     <>
@@ -214,10 +253,11 @@ export function FollowupList({
             <DatePicker value={date} onChange={(v) => setDate(v)} aria-label={t('cc.moveDate')} />
           </span>
         }
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         fit
         pageSize={20}
         columns={columns}
-        rows={rows as unknown as Row[]}
+        rows={shown as unknown as Row[]}
         loading={loading}
         onRowClick={(r) => {
           setOpen(r as unknown as FollowupRow);

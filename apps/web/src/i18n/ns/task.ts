@@ -3,6 +3,18 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: {
+      period: '기간',
+      due: '기한',
+      created: '등록일',
+      done: '완료일',
+      priority: '우선순위',
+      team: '팀',
+      assignee: '담당자',
+      overdue: '기한 지남',
+      yes: '예',
+      no: '아니오',
+    },
     /** 칸반 칸 아래 '+ 업무 추가'(라이브러리 글자를 CSS로 덮는다 — base.css) */
     addCard: '업무 추가',
     f: {
@@ -103,6 +115,18 @@ export default defineNs({
     priorityOf: '우선순위 {{v0}}',
   },
   en: {
+    flt: {
+      period: 'Period',
+      due: 'Due date',
+      created: 'Created',
+      done: 'Completed',
+      priority: 'Priority',
+      team: 'Team',
+      assignee: 'Assignee',
+      overdue: 'Overdue',
+      yes: 'Yes',
+      no: 'No',
+    },
     /** 칸반 칸 아래 '+ 업무 추가'(라이브러리 글자를 CSS로 덮는다 — base.css) */
     addCard: 'Add task',
     f: {
@@ -204,6 +228,18 @@ export default defineNs({
     priorityOf: 'Priority {{v0}}',
   },
   zh: {
+    flt: {
+      period: '期间',
+      due: '截止日',
+      created: '创建日',
+      done: '完成日',
+      priority: '优先级',
+      team: '团队',
+      assignee: '负责人',
+      overdue: '已逾期',
+      yes: '是',
+      no: '否',
+    },
     /** 칸반 칸 아래 '+ 업무 추가'(라이브러리 글자를 CSS로 덮는다 — base.css) */
     addCard: '添加任务',
     f: {

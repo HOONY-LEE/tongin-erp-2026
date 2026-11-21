@@ -17,6 +17,8 @@ import {
   Badge,
   Button,
   DataTable,
+  FilterButton,
+  filterRows,
   FormModal,
   ListPage,
   Modal,
@@ -25,6 +27,8 @@ import {
   Textarea,
   useToast,
   type Column,
+  type FilterField,
+  type FilterValues,
   type FormField,
   type Row,
 } from '../components/ui';
@@ -106,6 +110,7 @@ export default function Alliances() {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Partner | 'new' | null>(null);
   const [importing, setImporting] = useState(false);
+  const [flt, setFlt] = useState<FilterValues>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -283,6 +288,48 @@ export default function Alliances() {
     },
   ];
 
+  const filterFields: FilterField[] = [
+    { key: 'createdAt', label: t('ally.flt.createdAt'), type: 'date' },
+    {
+      key: 'contractStatus',
+      label: t('ally.col.status'),
+      type: 'multi',
+      options: PARTNER_CONTRACT_STATUSES.map((v) => ({
+        value: v,
+        label: PARTNER_CONTRACT_STATUS_LABEL[v],
+      })),
+    },
+    {
+      key: 'isActive',
+      label: t('ally.flt.use'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('ally.flt.on') },
+        { value: 'no', label: t('ally.flt.off') },
+      ],
+    },
+    {
+      key: 'yearLeads',
+      label: t('ally.flt.yearLeads'),
+      type: 'single',
+      options: [
+        { value: 'yes', label: t('ally.flt.has') },
+        { value: 'no', label: t('ally.flt.none') },
+      ],
+    },
+  ];
+  const shown = filterRows(rows, filterFields, flt, (r, key) =>
+    key === 'isActive'
+      ? r.isActive
+        ? 'yes'
+        : 'no'
+      : key === 'yearLeads'
+        ? r.leadCountYear > 0
+          ? 'yes'
+          : 'no'
+        : r[key as 'createdAt' | 'contractStatus'],
+  );
+
   const actions = can('PARTNER.CREATE') ? (
     <>
       <Button variant="outline" size="sm" onClick={() => setImporting(true)}>
@@ -341,8 +388,9 @@ export default function Alliances() {
       </div>
       <DataTable
         fit
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         columns={columns}
-        rows={rows as unknown as Row[]}
+        rows={shown as unknown as Row[]}
         loading={loading}
         exportable
         exportFileName={t('ally.exportName', { v0: k.label })}

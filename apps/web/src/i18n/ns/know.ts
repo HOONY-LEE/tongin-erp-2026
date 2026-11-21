@@ -3,6 +3,7 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    flt: { updated: '수정일', category: '분류', ai: 'AI 정리', author: '수정한 사람' },
     st: {
       running: 'AI 정리 중',
       failed: '정리 실패',
@@ -80,6 +81,7 @@ export default defineNs({
     saveHint2: '잇습니다.',
   },
   en: {
+    flt: { updated: 'Updated', category: 'Category', ai: 'AI analysis', author: 'Updated by' },
     st: {
       running: 'AI organizing',
       failed: 'Organizing failed',
@@ -160,6 +162,7 @@ export default defineNs({
     saveHint2: 'to the graph.',
   },
   zh: {
+    flt: { updated: '修改日', category: '分类', ai: 'AI整理', author: '修改人' },
     st: {
       running: 'AI 整理中',
       failed: '整理失败',

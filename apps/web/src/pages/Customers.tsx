@@ -245,6 +245,20 @@ export default function Customers() {
         columns={columns}
         fields={fields}
         editable
+        filterFields={[
+          { key: 'createdAt', label: t('customers.flt.createdAt'), type: 'date' },
+          { key: 'grade', label: t('customers.col.grade'), type: 'multi', options: grades },
+          ...(orgs.length > 1
+            ? [
+                {
+                  key: 'ownerOrgId',
+                  label: t('customers.ownerOrg'),
+                  type: 'multi' as const,
+                  options: orgs,
+                },
+              ]
+            : []),
+        ]}
         detailExtra={(row) => <CustomerHistory customerId={String(row.id)} />}
         headerActions={
           can('COMMON_CODE.UPDATE') ? (
