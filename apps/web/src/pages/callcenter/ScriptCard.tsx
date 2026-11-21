@@ -240,14 +240,8 @@ export function ScriptCard() {
         busy={busy}
         onClose={() => setDelTarget(null)}
         onConfirm={() => delTarget && void remove(delTarget)}
-      >
-        <p style={{ margin: 0 }}>
-          &apos;{delTarget?.title}
-          {t('cc.deleteMemoQ')}
-          {delTarget?.shared ? t('cc.sharedMemoNote') : ''} {t('cc.deletedNote1')}
-          {t('cc.deletedNote2')}
-        </p>
-      </ConfirmModal>
+        message={`'${delTarget?.title ?? ''}${t('cc.deleteMemoQ')}${delTarget?.shared ? t('cc.sharedMemoNote') : ''}`}
+      />
     </section>
   );
 }

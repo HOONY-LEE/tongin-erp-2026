@@ -1,0 +1,15 @@
+/* 확인 창 공통 — 묻는 말 한 줄을 크게, 입력칸 등은 그 아래 */
+.message {
+  margin: 0;
+  color: var(--ark-color-text);
+  font-size: calc(17px * var(--font-scale, 1));
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+.message b {
+  font-weight: 700;
+}
+.extra {
+  margin-top: 14px;
+}

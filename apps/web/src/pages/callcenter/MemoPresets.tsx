@@ -89,16 +89,15 @@ export function MemoPresetPicker({
       )}
       <ConfirmModal
         open={!!ask}
-        title={ask ? t('cc.replaceQ', { v0: ask.title }) : ''}
+        title={t('cc.replace')}
+        message={ask ? t('cc.replaceQ', { v0: ask.title }) : ''}
         confirmLabel={t('cc.replace')}
         onClose={() => setAsk(null)}
         onConfirm={() => {
           if (ask) apply(ask);
           setAsk(null);
         }}
-      >
-        {t('cc.replaceNote')}
-      </ConfirmModal>
+      />
       {manage && <PresetManager onClose={() => setManage(false)} />}
     </span>
   );
@@ -261,16 +260,15 @@ function PresetManager({ onClose }: { onClose: () => void }) {
       <ConfirmModal
         open={!!del}
         danger
-        title={del ? t('cc.presetDeleteQ', { v0: del.title }) : ''}
+        title={t('cc.delete')}
+        message={del ? t('cc.presetDeleteQ', { v0: del.title }) : ''}
         confirmLabel={t('cc.delete')}
         onClose={() => setDel(null)}
         onConfirm={() => {
           if (del) void remove(del);
           setDel(null);
         }}
-      >
-        {t('cc.presetDeleteNote')}
-      </ConfirmModal>
+      />
     </>
   );
 }

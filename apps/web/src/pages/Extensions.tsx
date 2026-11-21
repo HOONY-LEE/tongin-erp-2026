@@ -185,16 +185,15 @@ export default function Extensions() {
       <ConfirmModal
         open={!!del}
         danger
-        title={del ? t('prod.extDeleteQ', { v0: del.label }) : ''}
+        title={t('prod.delete')}
+        message={del ? t('prod.extDeleteQ', { v0: del.label }) : ''}
         confirmLabel={t('prod.delete')}
         onClose={() => setDel(null)}
         onConfirm={() => {
           if (del) void remove(del);
           setDel(null);
         }}
-      >
-        {t('prod.extDeleteNote')}
-      </ConfirmModal>
+      />
     </ListPage>
   );
 }
