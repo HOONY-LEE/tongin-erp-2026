@@ -78,6 +78,7 @@ export default defineNs({
     msN: '{{v0}}분 {{v1}}초',
     dialFailed: '전화를 걸지 못했습니다',
     ended: '상담을 종료했습니다',
+    draftLoaded: '같은 고객의 앞 상담({{v0}})에 적던 내용을 불러왔습니다',
     pickProduct: '{{v0}} 상품을 골라 주세요.',
     kind: {
       AFFILIATE: '제휴',
@@ -439,6 +440,7 @@ export default defineNs({
     msN: '{{v0}}m {{v1}}s',
     dialFailed: 'Could not place the call',
     ended: 'Consultation ended',
+    draftLoaded: "Loaded what was written in this customer's previous consult ({{v0}})",
     pickProduct: 'Please choose a {{v0}} product.',
     kind: {
       AFFILIATE: 'Affiliate',
@@ -808,6 +810,7 @@ export default defineNs({
     msN: '{{v0}} 分 {{v1}} 秒',
     dialFailed: '拨号失败',
     ended: '已结束咨询',
+    draftLoaded: '已载入同一客户上次咨询（{{v0}}）中填写的内容',
     pickProduct: '请选择{{v0}}产品。',
     kind: {
       AFFILIATE: '合作',
