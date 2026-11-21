@@ -5,6 +5,8 @@ import { api } from './api';
 /** 내선(돌려주기 연락처) — 사무실 직원·부서. number = 돌려줄 실제 번호(숫자만) */
 export interface Extension {
   id: string;
+  /** 내선 주인(직원) — 이으면 label·dept는 직원 정보 */
+  employeeId: string | null;
   label: string;
   dept: string | null;
   extNo: string | null;
@@ -42,7 +44,7 @@ export const extName = (x: Extension) => (x.dept ? `${x.label}(${x.dept})` : x.l
  * 돌려주기 잠금 — 시험 기간에는 실제로 넘기지 않는다(목록·검색은 그대로).
  * 실통화 시험을 마치면 false로 바꾼다.
  */
-export const TRANSFER_BLOCKED = true;
+export const TRANSFER_BLOCKED = false;
 
 export async function transferTo(
   x: { label: string; dept?: string | null; number: string },

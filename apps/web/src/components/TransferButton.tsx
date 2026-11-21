@@ -1,11 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SearchInput } from './ui/SearchInput';
-import { useNavigate } from 'react-router-dom';
-import { PhoneForwarded, Settings2 } from 'lucide-react';
+import { PhoneForwarded } from 'lucide-react';
 import { formatPhone } from '../lib/phone';
 import { searchExtensions, transferTo, useExtensions, type Extension } from '../lib/extensions';
-import { useAuth } from '../auth/AuthContext';
 import { Button, useToast } from './ui';
 import styles from './SoftphoneBar.module.css';
 
@@ -19,10 +17,8 @@ type Target = Pick<Extension, 'id' | 'label' | 'dept' | 'number'> & { extNo?: st
 export function TransferButton({ customerPhone }: { customerPhone: string }) {
   const { t } = useTranslation();
   const toast = useToast();
-  const { can } = useAuth();
   const [open, setOpen] = useState(false);
   const targets = useExtensions();
-  const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -125,18 +121,6 @@ export function TransferButton({ customerPhone }: { customerPhone: string }) {
             ))}
           </div>
           <div className={styles.xferFoot}>
-            {can('CS_CALL.EXTENSIONS') && (
-              <button
-                type="button"
-                className={styles.xferManage}
-                onClick={() => {
-                  setOpen(false);
-                  navigate('/extensions');
-                }}
-              >
-                <Settings2 size={13} /> {t('cc.manageExt')}
-              </button>
-            )}
             <Button
               variant="primary"
               size="sm"

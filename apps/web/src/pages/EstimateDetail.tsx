@@ -431,14 +431,12 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
 
       <ConfirmModal
         open={approveOpen}
-        title={t('est.approveQ')}
+        title={t('est.flow.approved')}
+        message={t('est.approveQ')}
         confirmLabel={t('est.flow.approved')}
         onClose={() => setApproveOpen(false)}
         onConfirm={() => void approve()}
-      >
-        {t('est.approveHelp1')}
-        {t('est.approveHelp2')}
-      </ConfirmModal>
+      />
       <FormModal
         open={rejectOpen}
         onOpenChange={setRejectOpen}

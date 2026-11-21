@@ -637,20 +637,16 @@ export default function CallCenter() {
             t('cc.dismissed'),
           ).then(() => setCancelTarget(null));
         }}
-      >
-        {cancelTarget && (
-          <p style={{ margin: 0, lineHeight: 1.6 }}>
-            <b>{formatPhone(cancelTarget.phone)}</b>
-            {cancelTarget.customerName ? ` (${cancelTarget.customerName})` : ''} {t('cc.dismissQ1')}
-            {t('cc.dismissQ2')}
-            <br />
-            <span className={styles.muted}>
-              {t('cc.dismissHint1')}
-              {t('cc.dismissHint2')}
-            </span>
-          </p>
-        )}
-      </ConfirmModal>
+        message={
+          cancelTarget && (
+            <>
+              <b>{formatPhone(cancelTarget.phone)}</b>
+              {cancelTarget.customerName ? ` (${cancelTarget.customerName})` : ''}{' '}
+              {t('cc.dismissQ1')} {t('cc.dismissQ2')}
+            </>
+          )
+        }
+      />
     </ListPage>
   );
 }

@@ -21,7 +21,10 @@ const digits = (s: string) => s.replace(/\D/g, '');
 
 class TargetDto {
   @IsOptional() @IsUUID() id?: string;
-  @IsString() @MinLength(1) @MaxLength(40) label!: string;
+  /** 내선 주인(직원) — 새로 등록할 때는 필수, 이름·직책·부서는 직원 정보를 따른다 */
+  @IsOptional() @IsUUID() employeeId?: string;
+  /** 직원과 잇지 않은 옛 내선만 */
+  @IsOptional() @IsString() @MaxLength(40) label?: string;
   @IsOptional() @IsString() @MaxLength(40) dept?: string;
   @IsOptional() @IsString() @MaxLength(20) extNo?: string;
   @IsString() @MinLength(7) @MaxLength(20) number!: string;
@@ -93,13 +96,38 @@ export class CsTransferController implements OnModuleInit {
 
   /** 내선 목록 — 상담원(돌려주기)과 내선 관리자 */
   @Get('cs-transfer-targets')
-  list(@CurrentUser() user: AuthPrincipal) {
+  async list(@CurrentUser() user: AuthPrincipal) {
     if (!has(user, 'LEAD.CREATE', 'CS_CALL.EXTENSIONS'))
       throw new ForbiddenException('내선 목록을 볼 권한이 없습니다.');
-    return this.prisma.csTransferTarget.findMany({
+    const rows = await this.prisma.csTransferTarget.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-      select: { id: true, label: true, dept: true, extNo: true, number: true, memo: true },
+      select: {
+        id: true,
+        label: true,
+        dept: true,
+        extNo: true,
+        number: true,
+        memo: true,
+        employeeId: true,
+        employee: {
+          select: {
+            name: true,
+            position: { select: { name: true } },
+            orgUnit: { select: { name: true } },
+          },
+        },
+      },
     });
+    // 직원과 이은 내선은 이름·직책·부서를 직원 정보에서(바뀌면 따라 바뀐다)
+    return rows.map(({ employee: e, ...r }) =>
+      e
+        ? {
+            ...r,
+            label: [e.name, e.position?.name].filter(Boolean).join(' '),
+            dept: e.orgUnit?.name ?? r.dept,
+          }
+        : r,
+    );
   }
 
   @Post('cs-transfer-targets')
@@ -107,9 +135,36 @@ export class CsTransferController implements OnModuleInit {
     assertManager(user);
     const number = digits(dto.number);
     if (number.length < 7) throw new BadRequestException('번호를 확인해 주세요.');
+    const prev = dto.id
+      ? await this.prisma.csTransferTarget.findUnique({
+          where: { id: dto.id },
+          select: { employeeId: true, label: true },
+        })
+      : null;
+    if (dto.id && !prev) throw new BadRequestException('내선을 찾을 수 없습니다.');
+    const employeeId = dto.employeeId ?? null;
+    // 새 내선은 직원을 골라야 한다(내선 있는 직원만 등록). 옛 내선은 이름만으로도 고칠 수 있게 둔다
+    if (!employeeId && !prev) throw new BadRequestException('내선 주인(직원)을 골라 주세요.');
+    let label = dto.label?.trim() || prev?.label || '';
+    if (employeeId) {
+      const emp = await this.prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { name: true, position: { select: { name: true } } },
+      });
+      if (!emp) throw new BadRequestException('직원을 찾을 수 없습니다.');
+      const dup = await this.prisma.csTransferTarget.findUnique({
+        where: { employeeId },
+        select: { id: true },
+      });
+      if (dup && dup.id !== dto.id)
+        throw new BadRequestException('이 직원은 이미 내선이 등록되어 있습니다.');
+      label = [emp.name, emp.position?.name].filter(Boolean).join(' ');
+    }
+    if (!label) throw new BadRequestException('이름을 입력해 주세요.');
     const data = {
-      label: dto.label.trim(),
-      dept: dto.dept?.trim() || null,
+      employeeId,
+      label,
+      dept: employeeId ? null : dto.dept?.trim() || null,
       extNo: dto.extNo?.trim() || null,
       number,
       memo: dto.memo?.trim() || null,

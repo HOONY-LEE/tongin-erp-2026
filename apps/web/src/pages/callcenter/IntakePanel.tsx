@@ -613,13 +613,10 @@ export function IntakePanel({
           setDialOpen(false);
           dial(call.phone, call.id);
         }}
-      >
-        <p style={{ margin: 0, lineHeight: 1.6 }}>
-          {t('call.dialBody', {
-            who: `${formatPhone(call.phone)}${call.customerName ? ` (${call.customerName})` : ''}`,
-          })}
-        </p>
-      </ConfirmModal>
+        message={t('call.dialBody', {
+          who: `${formatPhone(call.phone)}${call.customerName ? ` (${call.customerName})` : ''}`,
+        })}
+      />
       <ConfirmModal
         open={recallOpen}
         title={t('cc.callCustomer')}
@@ -627,18 +624,14 @@ export function IntakePanel({
         busy={busy}
         onClose={() => setRecallOpen(false)}
         onConfirm={() => void recall()}
-      >
-        <p style={{ margin: 0, lineHeight: 1.6 }}>
-          <b>{formatPhone(call.phone)}</b>
-          {call.customerName ? ` (${call.customerName})` : ''}
-          {t('cc.callQ')}
-          <br />
-          <span className={styles.muted}>
-            {t('cc.callbackNote')}
-            {phone.status !== 'ready' && t('cc.enableNote')}
-          </span>
-        </p>
-      </ConfirmModal>
+        message={
+          <>
+            <b>{formatPhone(call.phone)}</b>
+            {call.customerName ? ` (${call.customerName})` : ''}
+            {t('cc.callQ')}
+          </>
+        }
+      />
       <ConfirmModal
         open={endOpen}
         title={t('call.complete')}
@@ -646,19 +639,12 @@ export function IntakePanel({
         busy={busy}
         onClose={() => setEndOpen(false)}
         onConfirm={() => void endConsult()}
-      >
-        <p style={{ margin: 0, lineHeight: 1.6 }}>
-          {call.leadId
+        message={
+          (call.leadId
             ? t('cc.endWithLead', { v0: call.leadNo ?? t('cc.registered') })
-            : t('cc.endNoLead')}
-          {phone.call ? t('cc.endHangup') : ''}
-          <br />
-          <span className={styles.muted}>
-            {t('cc.endNote1')}
-            {t('cc.endNote2')}
-          </span>
-        </p>
-      </ConfirmModal>
+            : t('cc.endNoLead')) + (phone.call ? t('cc.endHangup') : '')
+        }
+      />
     </div>
   );
 }
