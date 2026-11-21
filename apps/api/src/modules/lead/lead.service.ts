@@ -27,6 +27,26 @@ interface LeadFilter {
   orgUnitId?: string;
 }
 
+/** 접수 목록 검색 — 화면의 필터·검색·상태 탭을 서버에서 건다 */
+export interface LeadSearch {
+  q?: string;
+  /** ALL | 상태 | REJECTED(반려) | CONTRACT_PENDING(견적완료 포함) */
+  stage?: string;
+  /** 기간 기준 칸 */
+  period?: 'createdAt' | 'moveDate' | 'visitDate';
+  from?: string;
+  to?: string;
+  source?: string[];
+  serviceLine?: string[];
+  fromSido?: string[];
+  owner?: 'yes' | 'no';
+  contract?: 'yes' | 'no';
+}
+
+/** 한 번에 보내는 최대 행 수 — 넘으면 limited로 알린다(필터·검색으로 좁히게) */
+const SEARCH_LIMIT = 1000;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 @Injectable()
 export class LeadService {
   constructor(
@@ -59,6 +79,122 @@ export class LeadService {
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
+  }
+
+  /** 화면 상태(탭) 조건 — 반려는 접수 상태 중 반려된 것, 계약미승인에는 견적완료(QUOTED)도 */
+  private stageWhere(stage?: string): Prisma.LeadWhereInput {
+    if (!stage || stage === 'ALL') return {};
+    if (stage === 'REJECTED') return { status: 'RECEIVED', rejectedAt: { not: null } };
+    if (stage === 'RECEIVED') return { status: 'RECEIVED', rejectedAt: null };
+    if (stage === 'CONTRACT_PENDING') return { status: { in: ['CONTRACT_PENDING', 'QUOTED'] } };
+    return { status: stage };
+  }
+
+  async search(f: LeadSearch, principal?: AuthPrincipal) {
+    const ids = await this.scope.orgScopeIds(principal);
+    const and: Prisma.LeadWhereInput[] = [];
+    if (ids !== null) and.push({ orgUnitId: { in: ids } });
+    const q = f.q?.trim();
+    if (q) {
+      const digits = q.replace(/\D/g, '');
+      and.push({
+        OR: [
+          { leadNo: { contains: q, mode: 'insensitive' } },
+          { legacyNo: { contains: q, mode: 'insensitive' } },
+          { customer: { name: { contains: q, mode: 'insensitive' } } },
+          { customer: { phonePrimary: { contains: q } } },
+          // 하이픈 없이 친 번호(01012345678)도 — 저장값은 010-1234-5678
+          ...(digits.length >= 4 && digits !== q
+            ? [{ customer: { phonePrimary: { contains: digits } } }]
+            : []),
+          ...(digits.length >= 7 && /^\d+$/.test(q)
+            ? [
+                {
+                  customer: {
+                    phonePrimary: {
+                      contains: digits.replace(/^(\d{2,3})(\d{3,4})(\d{4})$/, '$1-$2-$3'),
+                    },
+                  },
+                },
+              ]
+            : []),
+          { fromAddr: { contains: q, mode: 'insensitive' } },
+        ],
+      });
+    }
+    if ((f.from && DAY_RE.test(f.from)) || (f.to && DAY_RE.test(f.to))) {
+      const key = f.period ?? 'createdAt';
+      const from = f.from && DAY_RE.test(f.from) ? f.from : undefined;
+      const to = f.to && DAY_RE.test(f.to) ? f.to : undefined;
+      if (key === 'createdAt') {
+        // 접수일시는 한국 시각 날짜로
+        const next = to
+          ? new Date(new Date(`${to}T00:00:00+09:00`).getTime() + 86_400_000)
+          : undefined;
+        and.push({
+          createdAt: {
+            ...(from ? { gte: new Date(`${from}T00:00:00+09:00`) } : {}),
+            ...(next ? { lt: next } : {}),
+          },
+        });
+      } else {
+        and.push({
+          [key]: {
+            ...(from ? { gte: new Date(`${from}T00:00:00Z`) } : {}),
+            ...(to ? { lte: new Date(`${to}T00:00:00Z`) } : {}),
+          },
+        });
+      }
+    }
+    if (f.source?.length) and.push({ source: { in: f.source } });
+    if (f.serviceLine?.length) and.push({ serviceLine: { in: f.serviceLine } });
+    if (f.fromSido?.length) and.push({ fromSido: { in: f.fromSido } });
+    if (f.owner === 'yes') and.push({ ownerEmpId: { not: null } });
+    if (f.owner === 'no') and.push({ ownerEmpId: null });
+    if (f.contract === 'yes') and.push({ contracts: { some: {} } });
+    if (f.contract === 'no') and.push({ contracts: { none: {} } });
+
+    const base: Prisma.LeadWhereInput = { AND: and };
+    const where: Prisma.LeadWhereInput = { AND: [...and, this.stageWhere(f.stage)] };
+    const [rows, byStatus, rejected, regions] = await Promise.all([
+      this.prisma.lead.findMany({
+        where,
+        include: {
+          customer: { select: { id: true, name: true, phonePrimary: true } },
+          partner: { select: { id: true, name: true, type: true } },
+          contracts: {
+            select: { id: true, contractNo: true, status: true, estimateId: true, signedAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+          ownerEmp: { select: EMPLOYEE_BRIEF_SELECT },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: SEARCH_LIMIT + 1,
+      }),
+      // 상태 탭 숫자 — 필터·검색은 걸고 탭(상태)만 빼고 센다
+      this.prisma.lead.groupBy({ by: ['status'], where: base, _count: { _all: true } }),
+      this.prisma.lead.count({ where: { AND: [...and, this.stageWhere('REJECTED')] } }),
+      // 출발지 지역 고르기 목록 — 볼 수 있는 접수 전체 기준
+      this.prisma.lead.groupBy({
+        by: ['fromSido'],
+        where: { AND: ids === null ? [] : [{ orgUnitId: { in: ids } }], fromSido: { not: null } },
+        orderBy: { fromSido: 'asc' },
+      }),
+    ]);
+    const counts: Record<string, number> = { ALL: 0, REJECTED: rejected };
+    for (const g of byStatus) {
+      counts.ALL += g._count._all;
+      const k = g.status === 'QUOTED' ? 'CONTRACT_PENDING' : g.status;
+      counts[k] = (counts[k] ?? 0) + g._count._all;
+    }
+    counts.RECEIVED = (counts.RECEIVED ?? 0) - rejected;
+    return {
+      rows: rows.slice(0, SEARCH_LIMIT),
+      limited: rows.length > SEARCH_LIMIT,
+      counts,
+      regions: regions.map((r) => r.fromSido as string),
+    };
   }
 
   async findOne(id: string, principal?: AuthPrincipal) {

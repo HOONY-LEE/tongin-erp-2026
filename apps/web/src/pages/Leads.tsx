@@ -12,12 +12,12 @@ import {
   CopyText,
   DataTable,
   FilterButton,
-  filterRows,
   FormModal,
   ListPage,
   SegmentedControl,
   useToast,
   type Column,
+  type DateRange,
   type FilterField,
   type FilterValues,
   type Row,
@@ -64,7 +64,26 @@ const STAGES: { key: string; label: string }[] = [
   { key: 'DONE', label: STATUS.DONE.label },
   { key: 'CANCELED', label: STATUS.CANCELED.label },
 ];
-const inStage = (r: Row, key: string) => key === 'ALL' || statusKey(r) === key;
+/** 필터 값 → 서버 검색 주소 조건 */
+const searchParams = (flt: FilterValues, stage: string, q: string) => {
+  const p = new URLSearchParams();
+  if (q.trim()) p.set('q', q.trim());
+  if (stage !== 'ALL') p.set('stage', stage);
+  const period = flt.period as DateRange | undefined;
+  if (period?.from) p.set('from', period.from);
+  if (period?.to) p.set('to', period.to);
+  if (period?.on) p.set('period', period.on);
+  for (const k of ['source', 'serviceLine', 'fromSido'])
+    if ((flt[k] as string[] | undefined)?.length) p.set(k, (flt[k] as string[]).join(','));
+  for (const k of ['owner', 'contract']) if (flt[k]) p.set(k, flt[k] as string);
+  return p.toString();
+};
+type LeadSearchResult = {
+  rows: Row[];
+  limited: boolean;
+  counts: Record<string, number>;
+  regions: string[];
+};
 
 export default function Leads() {
   const { t } = useTranslation();
@@ -85,6 +104,13 @@ export default function Leads() {
   const [stage, setStage] = useState('ALL');
   /** 검색 옆 필터 — 날짜·경로·상품·지역·담당·계약서 */
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 표 검색칸 — 서버에서 찾는다(접수번호·옛 번호·고객명·전화·출발지) */
+  const [q, setQ] = useState('');
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [regions, setRegions] = useState<string[]>([]);
+  /** 조건에 맞는 접수가 한 번에 보낼 수(1,000건)보다 많다 */
+  const [limited, setLimited] = useState(false);
+  const query = searchParams(flt, stage, q);
   /** 계약서 보기 창 */
   const [doc, setDoc] = useState<LeadContract | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
@@ -92,12 +118,20 @@ export default function Leads() {
   // 간편접수 창 항목·기본값 — 상담 콘솔과 같은 창
   const { fields: createFields, defaults } = useLeadCreateForm();
 
+  // 늦게 온 앞선 응답이 최근 조건의 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      // 접수번호 칸 검색값에 옛 번호(이전 전산·시연 번호)도 — 옛 번호로 찾아도 나온다
+      const res = await api<LeadSearchResult>(`/leads/search${query ? `?${query}` : ''}`);
+      if (my !== seq.current) return;
+      setCounts(res.counts);
+      setRegions(res.regions);
+      setLimited(res.limited);
+      // 접수번호 칸 검색값에 옛 번호(이전 전산·시연 번호)도
       setRows(
-        (await api<Row[]>('/leads')).map((r) => ({
+        res.rows.map((r) => ({
           ...r,
           leadNoSearch: [r.leadNo, r.legacyNo].filter(Boolean).join(' '),
           ownerName: (r.ownerEmp as EmployeeBrief | null)?.name ?? '',
@@ -105,14 +139,17 @@ export default function Leads() {
       );
       touch();
     } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
+      if (my === seq.current)
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.loadFailed') });
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, query]);
 
+  // 조건이 바뀌면 잠깐 기다렸다가(검색칸 타자 중엔 한 번만) 다시 받는다
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const createInitial: Record<string, string> = { ...defaults };
@@ -264,9 +301,6 @@ export default function Leads() {
     },
   ];
 
-  const regions = [...new Set(rows.map((r) => r.fromSido as string).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b, 'ko'),
-  );
   const filterFields: FilterField[] = [
     {
       key: 'period',
@@ -309,20 +343,9 @@ export default function Leads() {
       ],
     },
   ];
-  // 필터를 먼저 걸고, 상태 탭 숫자도 걸린 목록 기준으로
-  const picked = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'owner'
-      ? r.ownerEmpId || r.ownerEmp
-        ? 'yes'
-        : 'no'
-      : key === 'contract'
-        ? (r.contracts as LeadContract[] | undefined)?.length
-          ? 'yes'
-          : 'no'
-        : r[key],
-  );
-  const filtered = picked.filter((r) => inStage(r, stage));
-  const countFor = (key: string) => picked.filter((r) => inStage(r, key)).length;
+  // 필터·검색·상태 탭은 서버에서 — 탭 숫자도 서버가 센 값
+  const filtered = rows;
+  const countFor = (key: string) => counts[key] ?? 0;
 
   return (
     // 화면 높이에 맞춘다 — 기본 20개씩 보기, 화면에 다 안 들어가는 행은 표 안에서 스크롤(풋터는 늘 보임)
@@ -334,11 +357,17 @@ export default function Leads() {
             onChange={setStage}
             options={STAGES.map((s) => ({
               value: s.key,
-              label: loading && !rows.length ? s.label : `${s.label} ${countFor(s.key)}`,
+              label: !Object.keys(counts).length ? s.label : `${s.label} ${countFor(s.key)}`,
             }))}
           />
         }
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
+        filters={
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            {limited && <span className="dt-limit-note">{t('leads.limited')}</span>}
+          </>
+        }
+        onSearch={setQ}
         fit
         pageSize={20}
         columns={columns}

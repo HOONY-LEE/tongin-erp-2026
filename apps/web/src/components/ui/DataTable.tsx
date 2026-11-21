@@ -54,7 +54,15 @@ interface Props {
   tabs?: ReactNode;
   /** 보기 바꾸기(목록/칸반/카드 등) — 둘째 줄 오른쪽 끝(검색 · 필터 ……… 보기) */
   viewSwitch?: ReactNode;
+  /**
+   * 서버 검색 — 주면 검색칸 글자를 이 함수로 넘기고 표 안에서는 다시 거르지 않는다
+   * (서버가 이미 거른 행을 보낸다. 받아 온 행만 검색하는 기본 동작 대신)
+   */
+  onSearch?: (query: string) => void;
 }
+
+/** 서버 검색일 때 표 검색 범위로 쓰는 가짜 칸 — 모든 행에 지금 검색어를 넣어 늘 맞게 한다 */
+const SRV_KEY = '__srvq';
 
 /** 처음 불러오는 동안 표 안에 깔아 둘 자리표시 행 수 */
 const SKELETON_ROWS = 8;
@@ -142,6 +150,7 @@ export function DataTable({
   fit,
   tabs,
   viewSwitch,
+  onSearch,
 }: Props) {
   const { t, i18n } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -287,14 +296,31 @@ export function DataTable({
     [rowKey],
   );
 
+  // 서버 검색: 표가 기억하는 검색어(srvQ)를 모든 행의 가짜 칸에 넣어 표 안 검색은 늘 통과
+  const [srvQ, setSrvQ] = useState('');
+  const srvRows = useMemo(
+    () => (onSearch ? rows.map((r) => ({ ...r, [SRV_KEY]: srvQ })) : rows),
+    [rows, onSearch, srvQ],
+  );
   const table = useTable<Row>({
-    data: showSkeleton ? skeletonRows : rows,
+    data: showSkeleton ? skeletonRows : srvRows,
     columns: softiumColumns,
     getRowId: (r) => String(r[rowKey]),
     // 넘기지 않으면 softium Table이 페이지네이션을 끄고(전체 렌더) 푸터의
     // "N개씩 보기" 선택기도 감춘다.
     pageSize: pageSize ?? (fit ? FIT_PAGE_SIZE : DEFAULT_PAGE_SIZE),
   });
+
+  const search = table.getSearch();
+  const query = search.query;
+  useEffect(() => {
+    if (!onSearch) return;
+    if (!Array.isArray(search.scope) || search.scope[0] !== SRV_KEY)
+      table.setSearch({ query, scope: [SRV_KEY] });
+    setSrvQ(query);
+    onSearch(query);
+    // onSearch는 렌더마다 새 함수일 수 있다 — 검색어가 바뀔 때만
+  }, [query, !!onSearch]);
 
   // softium 표는 칸 폭을 처음 그릴 때 상태로 저장한다 — 데이터가 들어와 다시 잰 폭을 상태에 넣는다
   useLayoutEffect(() => {
