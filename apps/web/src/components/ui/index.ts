@@ -33,6 +33,7 @@ export {
   Card,
   Badge,
   Checkbox,
+  Switch,
   Textarea,
   Input,
   PasswordInput,

@@ -41,7 +41,6 @@ const Materials = lazy(() => import('./pages/Materials'));
 const Settlement = lazy(() => import('./pages/Settlement'));
 const Billing = lazy(() => import('./pages/Billing'));
 const MaterialOrders = lazy(() => import('./pages/MaterialOrders'));
-const ServiceOrders = lazy(() => import('./pages/ServiceOrders'));
 const Support = lazy(() => import('./pages/Support'));
 const AiAssistant = lazy(() => import('./pages/AiAssistant'));
 const AgentBlueprints = lazy(() => import('./pages/AgentBlueprints'));
@@ -157,7 +156,8 @@ function Shell() {
         <Route path="/settlements" element={page(<Settlement />)} />
         <Route path="/billing" element={page(<Billing />)} />
         <Route path="/material-orders" element={page(<MaterialOrders />)} />
-        <Route path="/service-orders" element={page(<ServiceOrders />)} />
+        {/* 리빙·케어 메뉴는 없앴다 — 리빙·케어도 접수 화면에서(상품: 리빙·케어) */}
+        <Route path="/service-orders" element={<Navigate to="/leads" replace />} />
         <Route path="/support" element={page(<Support />)} />
         <Route path="/campaigns" element={page(<Campaigns />)} />
         <Route path="/campaigns/:id" element={page(<CampaignEditor />)} />

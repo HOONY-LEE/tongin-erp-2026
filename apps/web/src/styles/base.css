@@ -902,6 +902,13 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   display: none !important;
 }
 
+/* 스위치(akron Switch) — 켜짐은 통인 오렌지 대신 초록 */
+:root {
+  --ark-switch-bg-on: #34c759;
+}
+button[class*='_switch_'][data-state='checked']:hover:not([data-disabled]) {
+  background-color: #2db84f !important;
+}
 /* 체크박스 크기 — 기본(14·16·20px)보다 한 단계 크게 */
 :root {
   --ark-checkbox-size-sm: 16px;
