@@ -401,6 +401,8 @@ export default {
     empty: 'No data',
     prev: 'Prev',
     next: 'Next',
+    perPage: '{{n}} / page',
+    rowsPerPage: 'Rows per page',
     export: 'Export',
     maskExport: 'Export masked',
     fmt: {

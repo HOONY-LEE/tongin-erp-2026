@@ -501,10 +501,21 @@ input.no-focus-ring:focus:not([readonly]) {
   font-weight: 600;
 }
 
-/* 표 아래 '10개씩 보기'를 옆 설정 버튼(30px)과 같은 높이로 */
-.sft-tfoot__pagesize {
-  height: 30px;
-  box-sizing: border-box;
+/* 표 아래 'N개씩 보기' — 브라우저 기본 select는 숨기고 공통 Select(DataTable .dt-pagesize)를 쓴다 */
+.dt-wrap .sft-tfoot__pagesize {
+  display: none;
+}
+.dt-pagesize {
+  display: inline-flex;
+  width: 130px;
+}
+.dt-pagesize > * {
+  width: 100%;
+}
+/* 표 아래 왼쪽 '전체 N행' */
+.dt-wrap .sft-tfoot__total {
+  font-size: calc(14px * var(--font-scale, 1));
+  white-space: nowrap;
 }
 
 /* 표 행 높이 — softium Table이 표마다 인라인으로 44px를 박아 넣어서 글자 크기 배율을 따르게 덮어쓴다 */

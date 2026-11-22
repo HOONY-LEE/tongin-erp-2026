@@ -395,6 +395,8 @@ export default {
     empty: '暂无数据',
     prev: '上一页',
     next: '下一页',
+    perPage: '每页 {{n}} 条',
+    rowsPerPage: '每页行数',
     export: '导出',
     maskExport: '遮蔽后导出',
     fmt: {

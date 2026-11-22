@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from './Skeleton';
+import { Select } from '@sunghoon_lee/akron-ui';
 import type { MouseEvent, ReactNode } from 'react';
 import { Table, useTable, type ReactColumnDef } from 'softium-ui/table';
 import type { Column, Row } from './types';
@@ -137,6 +138,9 @@ const DEFAULT_PAGE_SIZE = 20;
 /** 화면 높이 맞춤(fit) 목록의 기본 — 900px 높이 화면에서 머리글·툴바·풋터와 함께 스크롤 없이 들어간다 */
 const FIT_PAGE_SIZE = 10;
 /** 컬럼 정의로 렌더하는 공통 테이블 — softium-ui Table(정렬·검색·컬럼설정 내장) 기반. */
+/** 풋터 'N개씩 보기' 선택지(softium 기본과 같게) */
+const PAGE_SIZES = [10, 20, 50, 100];
+
 export function DataTable({
   columns,
   rows,
@@ -161,9 +165,13 @@ export function DataTable({
   // 셋째 줄은 세그먼트 탭이 있을 때만 — 탭이 없으면 내보내기·생성 버튼은 검색 줄 오른쪽 끝으로
   const row3 = !!tabs;
   const [pagerSlot, setPagerSlot] = useState<Element | null>(null);
+  // 'N개씩 보기' — 브라우저 기본 드롭다운 대신 앱 공통 Select를 풋터 오른쪽에 그린다(기본 select는 CSS로 숨김)
+  const [sizeSlot, setSizeSlot] = useState<Element | null>(null);
   useLayoutEffect(() => {
     const el = containerRef.current?.querySelector('.sft-tfoot__center') ?? null;
     if (el !== pagerSlot) setPagerSlot(el);
+    const right = containerRef.current?.querySelector('.sft-tfoot__right') ?? null;
+    if (right !== sizeSlot) setSizeSlot(right);
   });
   const wasLoading = useRef(false);
   // 여러 줄 셀이 있는 표 — 행 높이를 내용에 맞춰 늘린다(고정 행 높이 전제의 가상 스크롤은 끈다)
@@ -363,8 +371,8 @@ export function DataTable({
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    // 풋터의 'N개씩 보기' 선택값(select)
-    const picked = Number(el.querySelector<HTMLSelectElement>('.sft-tfoot select')?.value);
+    // 풋터의 'N개씩 보기' 선택값
+    const picked = table.getPageSize();
     const n = Number.isFinite(picked) && picked > 0 ? picked : basePage;
     if (el.style.getPropertyValue('--dt-rows') !== String(n))
       el.style.setProperty('--dt-rows', String(n));
@@ -445,6 +453,23 @@ export function DataTable({
         }
         disableVirtualization={multiline}
       />
+      {sizeSlot &&
+        table.getPageSize() > 0 &&
+        createPortal(
+          <span className="dt-pagesize">
+            <Select
+              size="sm"
+              value={String(table.getPageSize())}
+              onValueChange={(v) => table.setPageSize(Number(v))}
+              options={PAGE_SIZES.map((n) => ({
+                value: String(n),
+                label: t('table.perPage', { n }),
+              }))}
+              aria-label={t('table.rowsPerPage')}
+            />
+          </span>,
+          sizeSlot,
+        )}
       {pagerSlot &&
         createPortal(
           <nav className="sft-pager dt-pager-single" aria-label="pagination">

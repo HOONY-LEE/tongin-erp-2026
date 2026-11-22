@@ -395,6 +395,8 @@ export default {
     empty: '데이터가 없습니다',
     prev: '이전',
     next: '다음',
+    perPage: '{{n}}개씩 보기',
+    rowsPerPage: '페이지당 행 수',
     export: '내보내기',
     maskExport: '가려서 받기',
     fmt: {
