@@ -15,7 +15,6 @@ import { useAuth } from '../../auth/AuthContext';
 import {
   DataTable,
   FilterButton,
-  SegmentedControl,
   useToast,
   type Column,
   type FilterField,
@@ -95,7 +94,6 @@ export function CallList({
   // '전체 전화'는 상담 콘솔 전체 보기 권한이 있는 사람만(그 밖에는 '내 전화' 하나)
   const { can } = useAuth();
   const canAll = can('CS_CALL.ALL');
-  const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [flt, setFlt] = useState<FilterValues>({});
@@ -105,7 +103,9 @@ export function CallList({
   // 날짜·필터·검색 모두 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
   const seq = useRef(0);
   const load = useCallback(
-    async (sc: 'mine' | 'all', f: FilterValues, text: string) => {
+    async (f: FilterValues, text: string) => {
+      // 내 전화 / 전체 전화 — 필터의 '전화'(전체 보기 권한이 있을 때만 있음). 없으면 내 전화
+      const sc = f.scope === 'all' ? 'all' : 'mine';
       const my = ++seq.current;
       setLoading(true);
       try {
@@ -116,7 +116,7 @@ export function CallList({
         if (rg.to) qs.set('to', rg.to);
         const picked = Object.fromEntries(
           Object.entries(f).filter(
-            ([k, v]) => k !== 'period' && (Array.isArray(v) ? v.length : !!v),
+            ([k, v]) => k !== 'period' && k !== 'scope' && (Array.isArray(v) ? v.length : !!v),
           ),
         );
         if (Object.keys(picked).length) qs.set('f', JSON.stringify(picked));
@@ -137,9 +137,9 @@ export function CallList({
     [toast],
   );
   useEffect(() => {
-    const id = window.setTimeout(() => void load(scope, flt, q), 250);
+    const id = window.setTimeout(() => void load(flt, q), 250);
     return () => window.clearTimeout(id);
-  }, [scope, flt, q, refreshKey, load]);
+  }, [flt, q, refreshKey, load]);
 
   const columns: Column[] = [
     {
@@ -234,6 +234,19 @@ export function CallList({
   ];
   const filterFields: FilterField[] = [
     { key: 'period', label: t('cc.callDate'), type: 'date' },
+    ...(canAll
+      ? [
+          {
+            key: 'scope',
+            label: t('cc.flt.scope'),
+            type: 'single',
+            options: [
+              { value: 'mine', label: t('cc.myCalls') },
+              { value: 'all', label: t('cc.allCalls') },
+            ],
+          } as FilterField,
+        ]
+      : []),
     {
       key: 'status',
       label: t('cc.status'),
@@ -254,18 +267,8 @@ export function CallList({
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
       {stats}
+      {head && <div className={styles.listHead}>{head}</div>}
       <DataTable
-        viewSwitch={head}
-        tabs={
-          <SegmentedControl
-            value={scope}
-            onChange={(x) => setScope(x as 'mine' | 'all')}
-            options={[
-              { value: 'mine', label: t('cc.myCalls') },
-              ...(canAll ? [{ value: 'all', label: t('cc.allCalls') }] : []),
-            ]}
-          />
-        }
         filters={
           <FilterButton
             fields={filterFields}

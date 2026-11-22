@@ -241,14 +241,16 @@ export function FollowupList({
   const L = LABEL[kind];
   return (
     <>
+      {viewSwitch && <div className={styles.listHead}>{viewSwitch}</div>}
       <DataTable
-        viewSwitch={viewSwitch}
-        tabs={
-          <span className={styles.fuDate}>
-            <DatePicker value={date} onChange={(v) => setDate(v)} aria-label={t('cc.moveDate')} />
-          </span>
+        filters={
+          <>
+            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
+            <span className={styles.fuDate}>
+              <DatePicker value={date} onChange={(v) => setDate(v)} aria-label={t('cc.moveDate')} />
+            </span>
+          </>
         }
-        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         fit
         pageSize={20}
         columns={columns}
