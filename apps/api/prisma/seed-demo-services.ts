@@ -210,7 +210,7 @@ async function main() {
     orderBy: { contractNo: 'asc' },
   });
   const customers = await prisma.customer.findMany({
-    where: { phonePrimary: { startsWith: '010-0000-' } },
+    where: { phonePrimary: { startsWith: '0100000' } },
     select: { id: true, name: true, phonePrimary: true, ownerOrgId: true },
     orderBy: { phonePrimary: 'asc' },
   });

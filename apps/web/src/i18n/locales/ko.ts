@@ -399,13 +399,9 @@ export default {
     maskExport: '가려서 받기',
     fmt: {
       csv: 'CSV 형식',
-      csvDesc: '쉼표로 나눈 글자 파일 · 엑셀·구글 시트 어디서나 열림',
       xlsx: 'Excel 형식 (.xlsx)',
-      xlsxDesc: '엑셀에서 바로 열리는 표 파일',
       json: 'JSON 형식',
-      jsonDesc: '다른 프로그램·개발에 넘기는 데이터 파일',
       xml: 'XML 형식',
-      xmlDesc: '다른 시스템에 넘기는 구조화 데이터 파일',
     },
     mask: '가리기',
     masked: '가림 {{n}}',

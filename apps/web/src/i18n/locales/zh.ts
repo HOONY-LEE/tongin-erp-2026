@@ -399,13 +399,9 @@ export default {
     maskExport: '遮蔽后导出',
     fmt: {
       csv: 'CSV 格式',
-      csvDesc: '逗号分隔的文本 · Excel、Google 表格均可打开',
       xlsx: 'Excel 格式 (.xlsx)',
-      xlsxDesc: '可直接用 Excel 打开的表格文件',
       json: 'JSON 格式',
-      jsonDesc: '供其他程序或开发使用的数据文件',
       xml: 'XML 格式',
-      xmlDesc: '供其他系统使用的结构化数据文件',
     },
     mask: '遮蔽',
     masked: '已遮蔽 {{n}}',

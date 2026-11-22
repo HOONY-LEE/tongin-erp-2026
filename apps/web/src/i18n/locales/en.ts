@@ -405,13 +405,9 @@ export default {
     maskExport: 'Export masked',
     fmt: {
       csv: 'CSV format',
-      csvDesc: 'Comma-separated text · opens in Excel or Google Sheets',
       xlsx: 'Excel format (.xlsx)',
-      xlsxDesc: 'Spreadsheet that opens directly in Excel',
       json: 'JSON format',
-      jsonDesc: 'Data file for other programs and developers',
       xml: 'XML format',
-      xmlDesc: 'Structured data file for other systems',
     },
     mask: 'Mask',
     masked: 'Masked {{n}}',

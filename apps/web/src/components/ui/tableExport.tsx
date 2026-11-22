@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Download } from 'lucide-react';
+import { Download, FileCode, FileJson, FileSpreadsheet, FileText } from 'lucide-react';
 import { buildExportTable, downloadTableExport, type TableInstance } from 'softium-ui/table';
 import { Checkbox } from '@sunghoon_lee/akron-ui';
 import { api } from '../../lib/api';
@@ -64,44 +64,14 @@ function downloadCsv<T>(table: TableInstance<T>, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-/** 형식마다 파일 아이콘 색·글자(각 형식에서 흔히 쓰는 색) */
+/** 형식마다 파일 아이콘·색(각 형식에서 흔히 쓰는 색) */
 const FORMATS = [
-  { format: 'csv', color: '#16a34a', tag: 'CSV' },
-  { format: 'xlsx', color: '#107c41', tag: 'XLS' },
-  { format: 'json', color: '#d97706', tag: '{ }' },
-  { format: 'xml', color: '#e5531a', tag: '</>' },
+  { format: 'csv', color: '#16a34a', Icon: FileText },
+  { format: 'xlsx', color: '#107c41', Icon: FileSpreadsheet },
+  { format: 'json', color: '#d97706', Icon: FileJson },
+  { format: 'xml', color: '#e5531a', Icon: FileCode },
 ] as const;
 type Format = (typeof FORMATS)[number]['format'];
-
-/** 파일 아이콘 — 접힌 모서리 종이 + 아래 색 띠에 형식 글자 */
-function FileBadge({ color, tag }: { color: string; tag: string }) {
-  return (
-    <svg className="dt-export-item__icon" width="28" height="32" viewBox="0 0 28 32" aria-hidden>
-      <path
-        d="M4 1.5h13.5L25.5 9.5V29a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 29V3A1.5 1.5 0 0 1 4 1.5z"
-        fill="var(--ark-color-bg, #fff)"
-        stroke="var(--ark-color-border-strong, #c7c7cc)"
-      />
-      <path
-        d="M17.5 1.5V8a1.5 1.5 0 0 0 1.5 1.5h6.5"
-        fill="none"
-        stroke="var(--ark-color-border-strong, #c7c7cc)"
-      />
-      <rect x="0.5" y="16" width="22" height="11" rx="2" fill={color} />
-      <text
-        x="11.5"
-        y="24.2"
-        textAnchor="middle"
-        fontSize="7.5"
-        fontWeight="700"
-        fontFamily="system-ui, sans-serif"
-        fill="#fff"
-      >
-        {tag}
-      </text>
-    </svg>
-  );
-}
 
 /** 메뉴 밖을 누르면 닫는다 */
 function useCloseOnOutside(open: boolean, close: () => void) {
@@ -218,7 +188,7 @@ export function ExportMenu<T>({
               <MaskChecks columns={maskable} checked={mask} onChange={onMaskChange} />
             </div>
           )}
-          {FORMATS.map(({ format, color, tag }) => (
+          {FORMATS.map(({ format, color, Icon }) => (
             <button
               key={format}
               type="button"
@@ -226,11 +196,8 @@ export function ExportMenu<T>({
               role="menuitem"
               onClick={() => download(format)}
             >
-              <FileBadge color={color} tag={tag} />
-              <span className="dt-export-item__text">
-                <b>{t(`table.fmt.${format}`)}</b>
-                <small>{t(`table.fmt.${format}Desc`)}</small>
-              </span>
+              <Icon size={16} color={color} className="dt-export-item__icon" aria-hidden />
+              <span className="dt-export-item__text">{t(`table.fmt.${format}`)}</span>
             </button>
           ))}
         </div>
