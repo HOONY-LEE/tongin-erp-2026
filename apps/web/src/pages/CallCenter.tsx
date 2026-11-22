@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Laptop,
-  Trash2,
+  Minus,
   PhoneIncoming,
   PhoneOutgoing,
   Settings,
@@ -94,6 +94,23 @@ const since = (iso: string, now: number) => {
     : m < 60
       ? i18n.t('cc.minN', { v0: m })
       : i18n.t('cc.hmN', { v0: Math.floor(m / 60), v1: m % 60 });
+};
+/** 전화 온 시각 · 얼마 전 — 오늘이면 '14:21 · 53분 전', 지난날이면 '11/20 14:21 · 2일 전' */
+const cameAt = (iso: string, now: number) => {
+  const d = new Date(iso);
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const today = new Date(now).toDateString() === d.toDateString();
+  const at = today ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+  const m = Math.max(0, Math.floor((now - d.getTime()) / 60_000));
+  const ago =
+    m < 1
+      ? i18n.t('cc.justNow')
+      : m < 60
+        ? i18n.t('cc.agoMin', { v0: m })
+        : m < 60 * 24
+          ? i18n.t('cc.agoHour', { v0: Math.floor(m / 60) })
+          : i18n.t('cc.agoDay', { v0: Math.floor(m / 1440) });
+  return `${at} · ${ago}`;
 };
 const STATE: Record<Console['agents'][number]['state'], { label: string; cls: string }> = {
   BUSY: { label: i18n.t('cc.st.TALKING'), cls: 'busy' },
@@ -571,8 +588,7 @@ export default function CallCenter() {
                           )}
                         </b>
                         <span className={styles.ocInfo}>
-                          {c.customerName ?? t('cc.newNumber')} · {since(c.receivedAt, now)}{' '}
-                          {t('cc.waiting')}
+                          {c.customerName ?? t('cc.newNumber')} · {cameAt(c.receivedAt, now)}
                           {c.attempts > 0 && t('cc.notAnsweredN', { v0: c.attempts })}
                           {c.channel?.includes(t('cc.missed')) && t('cc.missedSep')}
                         </span>
@@ -586,16 +602,16 @@ export default function CallCenter() {
                       >
                         <PhoneOutgoing size={14} /> {t('cc.callback')}
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <button
+                        type="button"
+                        className={styles.ocRemove}
                         disabled={busy}
                         title={t('cc.dismissTip')}
                         aria-label={t('cc.dismiss')}
                         onClick={() => setCancelTarget(c)}
                       >
-                        <Trash2 size={14} />
-                      </Button>
+                        <Minus size={14} strokeWidth={3} />
+                      </button>
                     </li>
                   ))}
                 </ol>

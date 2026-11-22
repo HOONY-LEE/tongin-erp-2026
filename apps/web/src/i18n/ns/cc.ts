@@ -3,10 +3,13 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
-    flt: { lead: '접수 연결', recording: '녹취', has: '있음', none: '없음' },
+    flt: { lead: '접수 연결', recording: '녹취', has: '있음', none: '없음', scope: '전화' },
     justNow: '방금',
     minN: '{{v0}}분',
     hmN: '{{v0}}시간 {{v1}}분',
+    agoMin: '{{v0}}분 전',
+    agoHour: '{{v0}}시간 전',
+    agoDay: '{{v0}}일 전',
     st: {
       TALKING: '상담 중',
       AVAILABLE: '상담 가능',
@@ -356,10 +359,13 @@ export default defineNs({
     yearMonth: '{{v0}}년 {{v1}}월',
   },
   en: {
-    flt: { lead: 'Linked lead', recording: 'Recording', has: 'Yes', none: 'No' },
+    flt: { lead: 'Linked lead', recording: 'Recording', has: 'Yes', none: 'No', scope: 'Calls' },
     justNow: 'just now',
     minN: '{{v0}}m',
     hmN: '{{v0}}h {{v1}}m',
+    agoMin: '{{v0}}m ago',
+    agoHour: '{{v0}}h ago',
+    agoDay: '{{v0}}d ago',
     st: {
       TALKING: 'On a call',
       AVAILABLE: 'Available',
@@ -717,10 +723,13 @@ export default defineNs({
     yearMonth: '{{v1}}/{{v0}}',
   },
   zh: {
-    flt: { lead: '关联受理', recording: '录音', has: '有', none: '无' },
+    flt: { lead: '关联受理', recording: '录音', has: '有', none: '无', scope: '通话' },
     justNow: '刚刚',
     minN: '{{v0}} 分钟',
     hmN: '{{v0}} 小时 {{v1}} 分钟',
+    agoMin: '{{v0}} 分钟前',
+    agoHour: '{{v0}} 小时前',
+    agoDay: '{{v0}} 天前',
     st: {
       TALKING: '咨询中',
       AVAILABLE: '可咨询',

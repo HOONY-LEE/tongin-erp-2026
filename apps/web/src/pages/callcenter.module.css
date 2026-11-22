@@ -733,11 +733,10 @@
   cursor: pointer;
 }
 
-/* 아웃콜 — 한 줄 카드(번호·대기 정보 · 콜백·정리) */
+/* 아웃콜 — 상담원 현황처럼 줄로 구분(번호·전화 온 시각 · 콜백·빼기) */
 .ocList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -745,14 +744,37 @@
 .ocItem {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 10px;
-  background: var(--ark-color-bg);
+  gap: 8px;
+  padding: 9px 2px;
 }
-.ocItem:hover {
-  border-color: var(--ark-color-text-tertiary, #9aa0aa);
+.ocItem + .ocItem {
+  border-top: 1px solid var(--ark-color-border);
+}
+/* 빼기(목록에서 정리) — 빨간 동그라미 − */
+.ocRemove {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--ark-color-error-500, #ef4444);
+  color: #fff;
+  cursor: pointer;
+}
+.ocRemove:hover:not(:disabled) {
+  background: var(--ark-color-error-600, #dc2626);
+}
+.ocRemove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.listHead {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
 }
 .ocNo {
   flex: none;
