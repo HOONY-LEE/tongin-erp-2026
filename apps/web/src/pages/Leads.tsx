@@ -213,17 +213,11 @@ export default function Leads() {
       exportValue: (r) => String(r.leadNo),
     },
     {
-      title: t('leads.col.at'),
-      dataIndex: 'createdAt',
-      width: 168,
-      render: (r) => fmtDateTime(r.createdAt),
-      exportValue: (r) => fmtDateTime(r.createdAt),
-    },
-    {
       title: t('leads.col.customer'),
       // 이름이 긴 고객(법인명 등)이 많다
       width: 150,
-      render: (r) => (r.customer as { name?: string } | null)?.name ?? '-',
+      render: (r) => <b>{(r.customer as { name?: string } | null)?.name ?? '-'}</b>,
+      exportValue: (r) => (r.customer as { name?: string } | null)?.name ?? '',
     },
     {
       title: t('leads.col.phone'),
@@ -232,6 +226,17 @@ export default function Leads() {
         const phone = (r.customer as { phonePrimary?: string } | null)?.phonePrimary;
         return phone ? <Phone value={phone} link={false} /> : '-';
       },
+    },
+    {
+      title: t('leads.col.product'),
+      // 상품 이름이 긴 경우가 많다
+      width: 170,
+      render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string),
+    },
+    {
+      title: t('leads.col.source'),
+      width: 112,
+      render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string),
     },
     {
       title: t('leads.col.status'),
@@ -249,17 +254,6 @@ export default function Leads() {
         const key = statusKey(r);
         return key === 'REJECTED' ? t('leads.st.REJECTED') : (STATUS[key]?.label ?? key);
       },
-    },
-    {
-      title: t('leads.col.source'),
-      width: 112,
-      render: (r) => codeLabel(RECEIPT_SOURCES, r.source as string),
-    },
-    {
-      title: t('leads.col.product'),
-      // 상품 이름이 긴 경우가 많다
-      width: 170,
-      render: (r) => codeLabel(SERVICE_LINES, r.serviceLine as string),
     },
     {
       title: t('leads.col.owner'),
@@ -300,6 +294,13 @@ export default function Leads() {
         );
       },
       exportValue: (r) => (r.contracts as LeadContract[] | undefined)?.[0]?.contractNo ?? '',
+    },
+    {
+      title: t('leads.col.at'),
+      dataIndex: 'createdAt',
+      width: 168,
+      render: (r) => fmtDateTime(r.createdAt),
+      exportValue: (r) => fmtDateTime(r.createdAt),
     },
     {
       title: t('leads.col.from'),

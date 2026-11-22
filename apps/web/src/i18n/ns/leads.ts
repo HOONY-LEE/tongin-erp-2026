@@ -48,7 +48,7 @@ export default defineNs({
     },
     callNotClosed: '접수는 등록했지만 콜을 끝내지 못했습니다 — 상담 콘솔에서 끝내 주세요',
     col: {
-      no: '접수번호',
+      no: '접수ID',
       at: '접수일시',
       customer: '고객명',
       phone: '전화번호',
@@ -112,7 +112,7 @@ export default defineNs({
     callNotClosed:
       'The lead was registered but the call was not closed — please close it in the call console',
     col: {
-      no: 'Lead no.',
+      no: 'Lead ID',
       at: 'Received at',
       customer: 'Customer',
       phone: 'Phone',
@@ -175,7 +175,7 @@ export default defineNs({
     },
     callNotClosed: '已登记受理，但通话未结束 — 请在咨询控制台结束',
     col: {
-      no: '受理编号',
+      no: '受理ID',
       at: '受理时间',
       customer: '客户名',
       phone: '电话',

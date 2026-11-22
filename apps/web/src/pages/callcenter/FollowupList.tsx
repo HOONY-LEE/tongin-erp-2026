@@ -18,11 +18,11 @@ import {
   useToast,
   type Column,
   type FilterField,
+  type DateRange,
   type FilterValues,
   type Row,
 } from '../../components/ui';
 import styles from '../callcenter.module.css';
-import { DatePicker } from '../../components/ui';
 import { DialButton } from './DialButton';
 
 export type FollowupKind = 'CONFIRM' | 'HAPPY';
@@ -77,7 +77,6 @@ export function FollowupList({
   const toast = useToast();
   const navigate = useNavigate();
   const phone = usePhone();
-  const [date, setDate] = useState('');
   const [rows, setRows] = useState<FollowupRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<FollowupRow | null>(null);
@@ -85,14 +84,19 @@ export function FollowupList({
   const [busy, setBusy] = useState(false);
   const [flt, setFlt] = useState<FilterValues>({});
 
+  // 이사일 — 필터의 '기간'. 처음엔 서버 기본(확인콜 2일 뒤 · 해피콜 어제) 하루를 채워 보여 준다
+  const range = flt.period as DateRange | undefined;
+  const from = range?.from ?? '';
+  const to = range?.to ?? '';
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api<{ date: string; rows: FollowupRow[] }>(
-        `/cs-followups?kind=${kind}${date ? `&date=${date}` : ''}`,
-      );
+      const qs = new URLSearchParams({ kind });
+      if (from) qs.set('date', from);
+      if (to) qs.set('to', to);
+      const r = await api<{ date: string; to: string; rows: FollowupRow[] }>(`/cs-followups?${qs}`);
       setRows(r.rows);
-      if (!date) setDate(r.date);
+      if (!from) setFlt((f) => ({ ...f, period: { from: r.date, to: r.to } }));
     } catch (e) {
       toast({
         type: 'error',
@@ -101,11 +105,10 @@ export function FollowupList({
     } finally {
       setLoading(false);
     }
-  }, [kind, date, toast]);
+  }, [kind, from, to, toast]);
   useEffect(() => {
     void load();
   }, [load]);
-  useEffect(() => setDate(''), [kind]);
 
   const call = async (r: FollowupRow) => {
     if (!r.phone) return;
@@ -135,6 +138,11 @@ export function FollowupList({
   };
 
   const columns: Column[] = [
+    {
+      title: t('cc.moveDate'),
+      dataIndex: 'moveDate',
+      width: 110,
+    },
     {
       title: t('cc.customerName'),
       dataIndex: 'customerName',
@@ -211,6 +219,7 @@ export function FollowupList({
   const branches = distinct('orgName');
   const owners = distinct('ownerName');
   const filterFields: FilterField[] = [
+    { key: 'period', label: t('cc.moveDate'), type: 'date' },
     {
       key: 'result',
       label: t('cc.status'),
@@ -235,22 +244,19 @@ export function FollowupList({
       ? [{ key: 'ownerName', label: t('cc.owner'), type: 'multi', options: owners } as FilterField]
       : []),
   ];
-  const shown = filterRows(rows, filterFields, flt, (r, key) =>
-    key === 'result' ? (r.result ?? 'WAITING') : r[key as 'orgName' | 'ownerName'],
+  // 기간은 서버에서 — 화면에서는 나머지 조건만
+  const shown = filterRows(
+    rows,
+    filterFields.filter((f) => f.key !== 'period'),
+    flt,
+    (r, key) => (key === 'result' ? (r.result ?? 'WAITING') : r[key as 'orgName' | 'ownerName']),
   );
   const L = LABEL[kind];
   return (
     <>
       {viewSwitch && <div className={styles.listHead}>{viewSwitch}</div>}
       <DataTable
-        filters={
-          <>
-            <FilterButton fields={filterFields} value={flt} onChange={setFlt} />
-            <span className={styles.fuDate}>
-              <DatePicker value={date} onChange={(v) => setDate(v)} aria-label={t('cc.moveDate')} />
-            </span>
-          </>
-        }
+        filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         fit
         pageSize={20}
         columns={columns}
