@@ -1,5 +1,5 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { tDyn } from '../i18n';
 import { api, ApiError } from '../lib/api';
@@ -7,17 +7,25 @@ import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { useNavigate } from 'react-router-dom';
+import { Settings2 } from 'lucide-react';
+import { Phone } from 'softium-ui/table';
+import { formatPhone } from '@tongin/shared';
+import { useAuth } from '../auth/AuthContext';
+import { fmtDateTime } from '../lib/dateFormat';
+import { AsIntakeModal } from '../components/support/AsIntakeModal';
+import { AsCategoryManager } from '../components/support/AsCategoryManager';
+import { PriorityLabel } from '../components/support/PriorityLabel';
 import {
   Button,
+  CopyText,
   DataTable,
   FilterButton,
-  FormModal,
   PageHeader,
   RecordDetail,
   StatusBadge,
   useToast,
   type Column,
-  type FormField,
   type FilterField,
   type FilterValues,
   type Row,
@@ -35,18 +43,20 @@ const STATUS: StatusMap = {
   CLOSED: { label: i18n.t('misc.st.closed'), color: 'neutral' },
   CANCELED: { label: i18n.t('misc.st.canceled'), color: 'error' },
 };
-const PRIORITY: StatusMap = {
-  LOW: { label: i18n.t('misc.pri.low'), color: 'neutral' },
-  NORMAL: { label: i18n.t('misc.pri.normal'), color: 'info' },
-  HIGH: { label: i18n.t('misc.pri.high'), color: 'error' },
-};
 
 interface Ticket extends Row {
   id: string;
   ticketNo: string;
   kind: string;
+  category?: string | null;
   subject: string;
   customerId?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  leadId?: string | null;
+  leadNo?: string | null;
+  /** 담당 지점 — 관련 접수(견적건) → 고객 지점(서버가 채움). 옛 건은 orgUnitId */
+  orgName?: string | null;
   priority: string;
   status: string;
   orgUnitId?: string | null;
@@ -66,8 +76,27 @@ const NEXT: Record<string, { to: string; labelKey: string }[]> = {
 export default function Support() {
   const { t } = useTranslation();
   const toast = useToast();
-  const customers = useOptions('/customers', 'name');
+  const navigate = useNavigate();
+  const { can } = useAuth();
   const orgs = useOptions('/org-units', 'name');
+  /** 접수 유형(코드 → 이름) */
+  const [categories, setCategories] = useState<
+    { code: string; name: string; isActive?: boolean }[]
+  >([]);
+  const [catOpen, setCatOpen] = useState(false);
+  const loadCategories = useCallback(
+    () =>
+      api<{ code: string; name: string; isActive?: boolean }[]>('/support-tickets/categories')
+        .then(setCategories)
+        .catch(() => setCategories([])),
+    [],
+  );
+  useEffect(() => {
+    void loadCategories();
+  }, [loadCategories]);
+  const catName = (code?: string | null) =>
+    categories.find((c) => c.code === code)?.name ?? code ?? '-';
+  const orgOf = (r: Ticket) => r.orgName ?? orgs.find((o) => o.value === r.orgUnitId)?.label ?? '-';
 
   const [rows, setRows] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(false);
@@ -78,11 +107,6 @@ export default function Support() {
   const [q, setQ] = useState('');
   const query = filterQuery(flt, q);
   const { id: detailId, open: openDetail, close: closeDetail } = useDetailParam();
-
-  const customerName = useMemo(
-    () => new Map(customers.map((o) => [o.value, o.label])),
-    [customers],
-  );
 
   const fail = useCallback(
     (e: unknown) =>
@@ -112,17 +136,6 @@ export default function Support() {
     return () => window.clearTimeout(id);
   }, [load]);
 
-  const onCreate = async (values: Record<string, unknown>) => {
-    try {
-      await api('/support-tickets', { method: 'POST', body: JSON.stringify(values) });
-      toast({ type: 'success', title: t('common.created') });
-      await load();
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('common.saveFailed') });
-      throw e;
-    }
-  };
-
   const transition = async (id: string, to: string) => {
     try {
       await api(`/support-tickets/${id}/transition`, {
@@ -137,61 +150,117 @@ export default function Support() {
   };
 
   const columns: Column[] = [
-    { title: t('support.ticketNo'), dataIndex: 'ticketNo' },
-    { title: t('support.kind'), render: (r) => <StatusBadge value={String(r.kind)} map={KIND} /> },
-    { title: t('support.subject'), dataIndex: 'subject' },
-    { title: t('support.customer'), render: (r) => customerName.get(String(r.customerId)) ?? '-' },
+    {
+      title: t('support.ticketNo'),
+      dataIndex: 'ticketNo',
+      width: 150,
+      render: (r) => <CopyText value={String(r.ticketNo)} />,
+      exportValue: (r) => String(r.ticketNo),
+    },
+    {
+      title: t('asx.colCategory'),
+      dataIndex: 'category',
+      width: 110,
+      render: (r) => catName(r.category as string | null),
+      exportValue: (r) => catName(r.category as string | null),
+    },
+    { title: t('support.subject'), dataIndex: 'subject', flex: 1, minWidth: 180 },
+    {
+      title: t('support.customer'),
+      dataIndex: 'customerName',
+      width: 110,
+      render: (r) => <b>{(r.customerName as string | null) ?? '-'}</b>,
+      exportValue: (r) => (r.customerName as string | null) ?? '',
+    },
+    {
+      title: t('leads.col.phone'),
+      dataIndex: 'customerPhone',
+      width: 140,
+      render: (r) =>
+        r.customerPhone ? <Phone value={String(r.customerPhone)} link={false} /> : '-',
+    },
+    {
+      title: t('asx.colLead'),
+      dataIndex: 'leadNo',
+      width: 150,
+      mask: false,
+      render: (r) =>
+        r.leadId ? (
+          <button
+            type="button"
+            className="dt-doc-btn"
+            onClick={(e) => {
+              e.stopPropagation(); // 행 클릭(A/S 상세)과 겹치지 않게
+              navigate(`/leads/${r.leadId as string}`);
+            }}
+          >
+            <span className="id-mono">{String(r.leadNo)}</span>
+          </button>
+        ) : (
+          '-'
+        ),
+      exportValue: (r) => (r.leadNo as string | null) ?? '',
+    },
+    {
+      title: t('asx.colOrg'),
+      width: 120,
+      render: (r) => orgOf(r as Ticket),
+    },
     {
       title: t('support.priority'),
-      render: (r) => <StatusBadge value={String(r.priority)} map={PRIORITY} />,
+      dataIndex: 'priority',
+      width: 90,
+      mask: false,
+      render: (r) => <PriorityLabel value={r.priority as string} />,
+      exportValue: (r) =>
+        t(
+          r.priority === 'HIGH'
+            ? 'support.high'
+            : r.priority === 'LOW'
+              ? 'support.low'
+              : 'support.normal',
+        ),
     },
     {
       title: t('support.status'),
+      dataIndex: 'status',
+      width: 100,
       render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
+    },
+    {
+      title: t('asx.colAt'),
+      dataIndex: 'createdAt',
+      width: 150,
+      render: (r) => fmtDateTime(r.createdAt as string),
+      exportValue: (r) => fmtDateTime(r.createdAt as string),
     },
   ];
 
-  const fields: FormField[] = [
-    {
-      name: 'kind',
-      label: t('support.kind'),
-      required: true,
-      type: 'select',
-      options: [
-        { value: 'CS', label: t('support.cs') },
-        { value: 'AS', label: t('support.as') },
-      ],
-    },
-    { name: 'orgUnitId', label: t('support.org'), required: true, type: 'select', options: orgs },
-    { name: 'subject', label: t('support.subject'), required: true, placeholder: t('misc.title') },
-    { name: 'customerId', label: t('support.customer'), type: 'select', options: customers },
-    {
-      name: 'channel',
-      label: t('support.channel'),
-      type: 'select',
-      options: [
-        { value: 'PHONE', label: t('support.phone') },
-        { value: 'EMAIL', label: t('misc.email') },
-        { value: 'KAKAO', label: t('misc.kakao') },
-        { value: 'VISIT', label: t('support.visit') },
-      ],
-    },
-    {
-      name: 'priority',
-      label: t('support.priority'),
-      type: 'select',
-      options: [
-        { value: 'LOW', label: t('support.low') },
-        { value: 'NORMAL', label: t('support.normal') },
-        { value: 'HIGH', label: t('support.high') },
-      ],
-    },
-    { name: 'content', label: t('support.content') },
+  const KIND_OPTS = [
+    { value: 'CS', label: t('support.cs') },
+    { value: 'AS', label: t('support.as') },
+  ];
+  const CHANNEL_OPTS = [
+    { value: 'PHONE', label: t('support.phone') },
+    { value: 'EMAIL', label: t('misc.email') },
+    { value: 'KAKAO', label: t('misc.kakao') },
+    { value: 'VISIT', label: t('support.visit') },
+  ];
+  const PRIORITY_OPTS = [
+    { value: 'HIGH', label: t('support.high') },
+    { value: 'NORMAL', label: t('support.normal') },
+    { value: 'LOW', label: t('support.low') },
   ];
 
   const filterFields: FilterField[] = [
     { key: 'createdAt', label: t('misc.receivedAt'), type: 'date' },
-    { key: 'kind', label: t('support.kind'), type: 'multi', options: fields[0].options ?? [] },
+    {
+      key: 'category',
+      label: t('asx.colCategory'),
+      type: 'multi',
+      options: categories.map((c) => ({ value: c.code, label: c.name })),
+    },
+    { key: 'kind', label: t('support.kind'), type: 'multi', options: KIND_OPTS },
     {
       key: 'status',
       label: t('support.status'),
@@ -202,23 +271,19 @@ export default function Support() {
       key: 'priority',
       label: t('support.priority'),
       type: 'multi',
-      options: Object.entries(PRIORITY).map(([value, s]) => ({ value, label: s.label })),
+      options: PRIORITY_OPTS,
     },
     {
       key: 'channel',
       label: t('support.channel'),
       type: 'multi',
-      options: fields.find((f) => f.name === 'channel')?.options ?? [],
+      options: CHANNEL_OPTS,
     },
-    ...(orgs.length > 1
-      ? [{ key: 'orgUnitId', label: t('support.org'), type: 'multi', options: orgs } as FilterField]
-      : []),
   ];
 
   if (detailId) {
     const d = rows.find((r) => r.id === detailId);
-    const channelOpts = fields.find((f) => f.name === 'channel')?.options ?? [];
-    const orgName = (id?: string | null) => orgs.find((o) => o.value === id)?.label;
+    const channelOpts = CHANNEL_OPTS;
     return (
       <RecordDetail
         loading={!d && loading}
@@ -259,12 +324,29 @@ export default function Support() {
                       label: t('support.status'),
                       value: <StatusBadge value={d.status} map={STATUS} />,
                     },
+                    { label: t('asx.colCategory'), value: catName(d.category) },
+                    { label: t('support.priority'), value: <PriorityLabel value={d.priority} /> },
                     {
-                      label: t('support.priority'),
-                      value: <StatusBadge value={d.priority} map={PRIORITY} />,
+                      label: t('support.customer'),
+                      value: d.customerName
+                        ? `${d.customerName}${d.customerPhone ? ` · ${formatPhone(d.customerPhone)}` : ''}`
+                        : '-',
                     },
-                    { label: t('support.customer'), value: customerName.get(String(d.customerId)) },
-                    { label: t('support.org'), value: orgName(d.orgUnitId) },
+                    {
+                      label: t('asx.colLead'),
+                      value: d.leadId ? (
+                        <button
+                          type="button"
+                          className="dt-doc-btn"
+                          onClick={() => navigate(`/leads/${d.leadId as string}`)}
+                        >
+                          <span className="id-mono">{d.leadNo}</span>
+                        </button>
+                      ) : (
+                        '-'
+                      ),
+                    },
+                    { label: t('asx.colOrg'), value: orgOf(d) },
                     {
                       label: t('support.channel'),
                       value: channelOpts.find((o) => o.value === d.channel)?.label ?? d.channel,
@@ -304,20 +386,31 @@ export default function Support() {
         rows={rows}
         loading={loading}
         onRowClick={(r) => openDetail(String(r.id))}
+        exportable
+        exportCompact
+        exportFileName="as"
         toolbarActions={
-          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-            + {t('support.register')}
-          </Button>
+          <>
+            {/* 접수 유형 관리 — 관리자만 */}
+            {can('COMMON_CODE.UPDATE') && (
+              <Button variant="outline" size="sm" onClick={() => setCatOpen(true)}>
+                <Settings2 size={15} /> {t('asx.manage')}
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+              + {t('asx.btn')}
+            </Button>
+          </>
         }
       />
 
-      <FormModal
-        open={open}
-        onOpenChange={setOpen}
-        title={t('support.register')}
-        size="md"
-        fields={fields}
-        onSubmit={onCreate}
+      <AsIntakeModal open={open} onClose={() => setOpen(false)} onCreated={() => void load()} />
+      <AsCategoryManager
+        open={catOpen}
+        onClose={() => {
+          setCatOpen(false);
+          void loadCategories();
+        }}
       />
     </div>
   );

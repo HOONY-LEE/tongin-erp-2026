@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Phone, RotateCcw, MessageSquare, PhoneForwarded } from 'lucide-react';
+import { Phone, RotateCcw, MessageSquare, PhoneForwarded, Wrench } from 'lucide-react';
 import { Combobox } from '@sunghoon_lee/akron-ui';
 import { useAuth } from '../../auth/AuthContext';
 import { api, ApiError, cachedApi } from '../../lib/api';
@@ -24,6 +24,7 @@ import {
 import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import { useLeadDuplicateGate } from '../../components/lead/LeadDuplicateGate';
+import { AsIntakeModal } from '../../components/support/AsIntakeModal';
 import styles from '../callcenter.module.css';
 import { MemoPresetPicker } from './MemoPresets';
 import { CallRecordButton } from './CallRecordModal';
@@ -333,6 +334,7 @@ export function IntakePanel({
   // [접수 등록] → 간편접수 창(접수 화면과 같은 창)에 입력한 값을 넘겨 한 번 더 확인 후 등록
   const leadForm = useLeadCreateForm({ withCallFields: true });
   const dup = useLeadDuplicateGate();
+  const [asOpen, setAsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const formInitial = (): Record<string, string> => {
     const addr: Record<string, string> = {};
@@ -473,6 +475,11 @@ export function IntakePanel({
                 <MessageSquare size={14} /> {t('cc.sms')}
               </Button>
             )}
+            {can('SUPPORT.CREATE') && (
+              <Button variant="outline" size="sm" onClick={() => setAsOpen(true)}>
+                <Wrench size={14} /> {t('asx.btn')}
+              </Button>
+            )}
           </span>
         ) : (
           <span className={styles.headActions}>
@@ -508,6 +515,16 @@ export function IntakePanel({
             >
               {t('call.complete')}
             </Button>
+            {can('SUPPORT.CREATE') && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pending}
+                onClick={() => setAsOpen(true)}
+              >
+                <Wrench size={14} /> {t('asx.btn')}
+              </Button>
+            )}
             {call.leadId ? (
               <button
                 type="button"
@@ -655,6 +672,18 @@ export function IntakePanel({
       </fieldset>
 
       {dup.modal}
+      {/* A/S 접수 — 이 콜의 고객에 잇는다(고객이 없으면 이 번호로 만든다) */}
+      <AsIntakeModal
+        open={asOpen}
+        onClose={() => setAsOpen(false)}
+        channel="PHONE"
+        customer={{
+          id: call.customerId ?? null,
+          name: v.customerName.trim() || null,
+          phone: call.phone,
+        }}
+        onCreated={() => void onSaved?.()}
+      />
       <FormModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

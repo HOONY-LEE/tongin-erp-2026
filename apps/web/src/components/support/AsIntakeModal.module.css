@@ -1,0 +1,60 @@
+/* A/S 접수 창 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 560px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--ark-font-size-sm);
+  font-weight: 500;
+  color: var(--ark-color-text);
+}
+.label i {
+  font-style: normal;
+  color: var(--ark-color-primary-500);
+}
+.customer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: var(--control-radius, 8px);
+  background: var(--ark-color-bg-muted);
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.customer span {
+  color: var(--ark-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.customerNew {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+}
+.customerNew > span {
+  color: var(--ark-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.customerNew small {
+  grid-column: 1 / -1;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+}

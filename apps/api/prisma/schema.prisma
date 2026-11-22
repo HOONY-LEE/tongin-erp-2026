@@ -142,29 +142,30 @@ model EmployeeConcurrentOrg {
 }
 
 model Customer {
-  id           String     @id @default(uuid()) @db.Uuid
+  id             String          @id @default(uuid()) @db.Uuid
   /// 고객 번호 CU+일련 6자리 — DB 트리거가 붙인다(next_doc_no)
-  customerNo   String?    @unique @map("customer_no")
+  customerNo     String?         @unique @map("customer_no")
   /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
-  legacyNo     String?    @map("legacy_no")
-  name         String
-  phonePrimary String?    @map("phone_primary")
-  legacyId     String?    @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
-  grade        String?    @default("NORMAL")
-  status       String?
-  zipcode      String? // 카카오/다음 우편번호
-  addr         String? // 도로명주소
-  addrDetail   String?    @map("addr_detail")
-  sido         String?
-  sigungu      String?
-  lat          Float?
-  lng          Float?
-  ownerOrgId   String?    @map("owner_org_id") @db.Uuid
-  ownerOrg     OrgUnit?   @relation(fields: [ownerOrgId], references: [id])
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  leads        Lead[]
-  estimates    Estimate[]
-  contracts    Contract[]
+  legacyNo       String?         @map("legacy_no")
+  name           String
+  phonePrimary   String?         @map("phone_primary")
+  legacyId       String?         @map("legacy_id") // 레거시 memID 보존(마이그레이션 crosswalk)
+  grade          String?         @default("NORMAL")
+  status         String?
+  zipcode        String? // 카카오/다음 우편번호
+  addr           String? // 도로명주소
+  addrDetail     String?         @map("addr_detail")
+  sido           String?
+  sigungu        String?
+  lat            Float?
+  lng            Float?
+  ownerOrgId     String?         @map("owner_org_id") @db.Uuid
+  ownerOrg       OrgUnit?        @relation(fields: [ownerOrgId], references: [id])
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  leads          Lead[]
+  estimates      Estimate[]
+  contracts      Contract[]
+  supportTickets SupportTicket[]
 
   @@index([phonePrimary])
   @@index([legacyNo])
@@ -477,60 +478,61 @@ model PriceCondition {
 
 // ── Phase 1: 리드(접수) — 이사 프로세스의 출발점 (DB스키마 §5) ──
 model Lead {
-  id                String      @id @default(uuid()) @db.Uuid
-  leadNo            String      @unique @map("lead_no") // 접수번호 RC+YYMMDD+일련 4자리(next_doc_no)
+  id                String          @id @default(uuid()) @db.Uuid
+  leadNo            String          @unique @map("lead_no") // 접수번호 RC+YYMMDD+일련 4자리(next_doc_no)
   /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
-  legacyNo          String?     @map("legacy_no")
-  customerId        String?     @map("customer_id") @db.Uuid
-  customer          Customer?   @relation(fields: [customerId], references: [id])
-  orgUnitId         String      @map("org_unit_id") @db.Uuid // 담당 지점
-  orgUnit           OrgUnit     @relation(fields: [orgUnitId], references: [id])
-  ownerEmpId        String?     @map("owner_emp_id") @db.Uuid
-  ownerEmp          Employee?   @relation(fields: [ownerEmpId], references: [id])
-  partnerId         String?     @map("partner_id") @db.Uuid // 제휴/전속 출처
-  partner           Partner?    @relation(fields: [partnerId], references: [id])
+  legacyNo          String?         @map("legacy_no")
+  customerId        String?         @map("customer_id") @db.Uuid
+  customer          Customer?       @relation(fields: [customerId], references: [id])
+  orgUnitId         String          @map("org_unit_id") @db.Uuid // 담당 지점
+  orgUnit           OrgUnit         @relation(fields: [orgUnitId], references: [id])
+  ownerEmpId        String?         @map("owner_emp_id") @db.Uuid
+  ownerEmp          Employee?       @relation(fields: [ownerEmpId], references: [id])
+  partnerId         String?         @map("partner_id") @db.Uuid // 제휴/전속 출처
+  partner           Partner?        @relation(fields: [partnerId], references: [id])
   source            String? // common_code: RECEIPT_PATH
-  serviceLine       String?     @map("service_line")
-  status            String      @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
-  fromZipcode       String?     @map("from_zipcode")
-  fromAddr          String?     @map("from_addr") // 도로명주소(카카오/다음 우편번호)
-  fromAddrDetail    String?     @map("from_addr_detail") // 상세주소
-  fromSido          String?     @map("from_sido")
-  fromSigungu       String?     @map("from_sigungu")
-  fromLat           Float?      @map("from_lat") // 위도(카카오 Local geocode)
-  fromLng           Float?      @map("from_lng") // 경도
-  toZipcode         String?     @map("to_zipcode")
-  toAddr            String?     @map("to_addr")
-  toAddrDetail      String?     @map("to_addr_detail")
-  toSido            String?     @map("to_sido")
-  toSigungu         String?     @map("to_sigungu")
-  toLat             Float?      @map("to_lat")
-  toLng             Float?      @map("to_lng")
-  moveDate          DateTime?   @map("move_date") @db.Date
-  visitDate         DateTime?   @map("visit_date") @db.Date
-  expectedAmount    Decimal?    @map("expected_amount") @db.Decimal(14, 2)
+  serviceLine       String?         @map("service_line")
+  status            String          @default("RECEIVED") // 상태머신(shared LEAD_STATUS)
+  fromZipcode       String?         @map("from_zipcode")
+  fromAddr          String?         @map("from_addr") // 도로명주소(카카오/다음 우편번호)
+  fromAddrDetail    String?         @map("from_addr_detail") // 상세주소
+  fromSido          String?         @map("from_sido")
+  fromSigungu       String?         @map("from_sigungu")
+  fromLat           Float?          @map("from_lat") // 위도(카카오 Local geocode)
+  fromLng           Float?          @map("from_lng") // 경도
+  toZipcode         String?         @map("to_zipcode")
+  toAddr            String?         @map("to_addr")
+  toAddrDetail      String?         @map("to_addr_detail")
+  toSido            String?         @map("to_sido")
+  toSigungu         String?         @map("to_sigungu")
+  toLat             Float?          @map("to_lat")
+  toLng             Float?          @map("to_lng")
+  moveDate          DateTime?       @map("move_date") @db.Date
+  visitDate         DateTime?       @map("visit_date") @db.Date
+  expectedAmount    Decimal?        @map("expected_amount") @db.Decimal(14, 2)
   /// 고객 요청사항(상담 중 받은 요청) — 상담 콘솔에서 접수할 때 함께 저장
-  customerRequest   String?     @map("customer_request")
-  productNote       String?     @map("product_note") // 상품 특이사항(제휴·전속 혜택·조건) — 접수 때 업체 내용을 옮겨 둔다
+  customerRequest   String?         @map("customer_request")
+  productNote       String?         @map("product_note") // 상품 특이사항(제휴·전속 혜택·조건) — 접수 때 업체 내용을 옮겨 둔다
   /// 지점 반려(마지막) — 지점이 처리할 수 없어 본사로 되돌린 형태·사유·지점
-  rejectKind        String?     @map("reject_kind")
-  rejectReason      String?     @map("reject_reason")
-  rejectedAt        DateTime?   @map("rejected_at") @db.Timestamptz(6)
-  rejectedFromOrgId String?     @map("rejected_from_org_id") @db.Uuid
+  rejectKind        String?         @map("reject_kind")
+  rejectReason      String?         @map("reject_reason")
+  rejectedAt        DateTime?       @map("rejected_at") @db.Timestamptz(6)
+  rejectedFromOrgId String?         @map("rejected_from_org_id") @db.Uuid
   /// 접수 취소 형태·사유
-  cancelKind        String?     @map("cancel_kind")
-  cancelReason      String?     @map("cancel_reason")
+  cancelKind        String?         @map("cancel_kind")
+  cancelReason      String?         @map("cancel_reason")
   /// 중복 접수 — 같은 출발지·같은 서비스 요청일로 먼저 들어온 접수(가족이 따로 전화한 경우 등).
   /// 새 접수로 진행하면 먼저 건은 '중복 접수'로 취소되고, 새 접수가 그 건을 가리킨다
-  dupOfLeadId       String?     @map("dup_of_lead_id") @db.Uuid
-  dupOf             Lead?       @relation("LeadDup", fields: [dupOfLeadId], references: [id], onDelete: SetNull)
-  dupLeads          Lead[]      @relation("LeadDup")
+  dupOfLeadId       String?         @map("dup_of_lead_id") @db.Uuid
+  dupOf             Lead?           @relation("LeadDup", fields: [dupOfLeadId], references: [id], onDelete: SetNull)
+  dupLeads          Lead[]          @relation("LeadDup")
   attributes        Json?
-  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime?       @updatedAt @map("updated_at") @db.Timestamptz(6)
   estimates         Estimate[]
   contracts         Contract[]
   workOrders        WorkOrder[]
+  supportTickets    SupportTicket[]
 
   @@index([status])
   @@index([orgUnitId])
@@ -983,24 +985,34 @@ model ServiceOrder {
 
 // ── AS-01: CS·AS 접수/처리 (상담·불만=CS, 하자보수=AS) ──
 model SupportTicket {
-  id            String   @id @default(uuid()) @db.Uuid
-  ticketNo      String   @unique @map("ticket_no")
+  id            String    @id @default(uuid()) @db.Uuid
+  ticketNo      String    @unique @map("ticket_no")
   /// 옛 시스템(통인 기존 전산)·시연 데이터의 원래 번호 — 화면엔 새 번호, 옛 번호로도 찾을 수 있게
-  legacyNo      String?  @map("legacy_no")
+  legacyNo      String?   @map("legacy_no")
   kind          String // CS | AS
-  customerId    String?  @map("customer_id") @db.Uuid
-  contractId    String?  @map("contract_id") @db.Uuid // AS는 원계약 연결
-  orgUnitId     String   @map("org_unit_id") @db.Uuid // 담당 지점(데이터범위 스코프)
+  /// 고객 — A/S 접수는 반드시 고객에 잇는다(전화번호·이름·이력)
+  customerId    String?   @map("customer_id") @db.Uuid
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  contractId    String?   @map("contract_id") @db.Uuid // AS는 원계약 연결
+  /// 관련 접수(견적건) — 담당 지점은 이 접수·고객에서 따른다
+  leadId        String?   @map("lead_id") @db.Uuid
+  lead          Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  /// 옛 데이터의 담당 지점 — 새 접수는 비워 두고 접수(견적건)·고객의 지점을 쓴다
+  orgUnitId     String?   @map("org_unit_id") @db.Uuid
+  /// 접수 유형(공통 코드 AS_CATEGORY — 상담 관련·작업 관련·비용 관련·기타 문의, 관리자가 고친다)
+  category      String?
   channel       String? // PHONE | EMAIL | KAKAO | VISIT
   subject       String
   content       String?
-  priority      String   @default("NORMAL") // LOW | NORMAL | HIGH
-  status        String   @default("RECEIVED") // RECEIVED→IN_PROGRESS→RESOLVED→CLOSED / CANCELED
-  assigneeEmpId String?  @map("assignee_emp_id") @db.Uuid
+  priority      String    @default("NORMAL") // LOW | NORMAL | HIGH
+  status        String    @default("RECEIVED") // RECEIVED→IN_PROGRESS→RESOLVED→CLOSED / CANCELED
+  assigneeEmpId String?   @map("assignee_emp_id") @db.Uuid
   resolution    String?
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([orgUnitId])
+  @@index([customerId])
+  @@index([leadId])
   @@map("support_ticket")
 }
 

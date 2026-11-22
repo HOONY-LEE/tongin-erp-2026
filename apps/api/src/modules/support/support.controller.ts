@@ -37,6 +37,23 @@ export class SupportController {
     return this.service.findAll(kind, status, user, f, q);
   }
 
+  /** 고객의 접수(견적건) — A/S 접수 창의 '관련 접수' */
+  @Get('customer-leads')
+  @RequirePermissions('SUPPORT.CREATE')
+  customerLeads(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('customerId', ParseUUIDPipe) customerId: string,
+  ) {
+    return this.service.customerLeads(customerId, user);
+  }
+
+  /** 접수 유형(쓰는 것만) — 접수 창에서 고른다. 고치기는 공통 코드(관리자) */
+  @Get('categories')
+  @RequirePermissions('SUPPORT.READ')
+  categories() {
+    return this.service.categories();
+  }
+
   @AccessLog('support', 'VIEW')
   @Get(':id')
   @RequirePermissions('SUPPORT.READ')

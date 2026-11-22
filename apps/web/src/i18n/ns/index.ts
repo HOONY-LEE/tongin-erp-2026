@@ -11,6 +11,7 @@ import signin from './signin';
 import ui from './ui';
 import leads from './leads';
 import leadDup from './leadDup';
+import asx from './asx';
 import employees from './employees';
 import customers from './customers';
 import cal from './cal';
@@ -87,6 +88,7 @@ export const NAMESPACES = {
   employees,
   leads,
   leadDup,
+  asx,
   account,
   code,
   picker,
