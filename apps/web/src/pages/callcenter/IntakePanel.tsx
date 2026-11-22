@@ -407,7 +407,13 @@ export function IntakePanel({
     <div className={styles.intake}>
       {/* 머리 — 왼쪽 들어온 번호·돌려준 곳(끝난 콜이면 상태·상담원·시각), 오른쪽 [전화하기] [문자] [상담 종료] [접수 등록] */}
       <div className={styles.intakeHead}>
-        <span className={styles.channel}>{call.channel ?? t('cc.mainNumber')}</span>
+        <span className={styles.channel}>
+          {call.channel
+            ? /^\d{7,}$/.test(call.channel)
+              ? formatPhone(call.channel)
+              : call.channel
+            : t('cc.mainNumber')}
+        </span>
         {call.transferTo && (
           <span className={styles.transferTag} title={t('cc.transferredFrom')}>
             <PhoneForwarded size={12} /> {call.transferTo}

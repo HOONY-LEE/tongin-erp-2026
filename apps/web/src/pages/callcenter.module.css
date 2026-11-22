@@ -2318,39 +2318,6 @@ textarea.memoBox {
   background: #2db84f !important;
   border-color: #2db84f !important;
 }
-/* 통화 받아쓰기 — 펼쳐 보는 대화 원문 */
-.transcriptList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.transcriptList li {
-  display: flex;
-  gap: 10px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.trMeta {
-  display: flex;
-  flex: 0 0 72px;
-  flex-direction: column;
-  color: var(--ark-color-text-secondary);
-  font-size: 12px;
-}
-.trA .trMeta b {
-  color: #0063cc;
-}
-.trB .trMeta b {
-  color: #248a3d;
-}
-.trText {
-  flex: 1;
-  white-space: pre-wrap;
-}
-
 /* 오른쪽 카드 머리 — 마감 달력과 같은 얇은 머리(아이콘 없이 제목 · 개수 · 오른쪽 버튼) + 아래 구분선 */
 .sideHead {
   display: flex;
@@ -2411,6 +2378,70 @@ textarea.memoBox {
 .recSectionHead b {
   font-size: calc(14px * var(--font-scale, 1));
   font-weight: 600;
+}
+/* 녹취록 — 채팅처럼 상담사는 오른쪽, 고객은 왼쪽 말풍선 */
+.recHeadBtns {
+  display: flex;
+  gap: 6px;
+}
+.chatList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  list-style: none;
+  background: var(--ark-color-bg-subtle, #f7f7f9);
+}
+.chatList li {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+.chatMe {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.chatThem {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+.chatWho {
+  margin: 8px 4px 2px;
+  color: var(--ark-color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chatRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.chatMe .chatRow {
+  flex-direction: row-reverse;
+}
+.chatBubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chatThem .chatBubble {
+  border: 1px solid var(--ark-color-border);
+  border-top-left-radius: 4px;
+  background: var(--ark-color-bg, #fff);
+  color: var(--ark-color-text);
+}
+.chatMe .chatBubble {
+  border-top-right-radius: 4px;
+  background: var(--ark-color-primary-500);
+  color: #fff;
+}
+.chatTime {
+  flex: none;
+  color: var(--ark-color-text-tertiary, #8e8e93);
+  font-size: 11px;
 }
 .recModalAudio {
   width: 100%;

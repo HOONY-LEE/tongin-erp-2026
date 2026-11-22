@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Clock, X } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import dp from './DatePicker.module.css';
 import styles from './TimePicker.module.css';
 
@@ -24,7 +24,7 @@ export interface TimePickerProps {
   disabled?: boolean;
   /** 분 간격(기본 5분) — 지금 값이 간격에 안 맞아도 목록에 넣어 보여 준다 */
   minuteStep?: number;
-  /** 지우기(×) — 기본 끔 */
+  /** 목록 아래 '지우기' — 기본 끔 */
   clearable?: boolean;
   size?: 'sm' | 'md';
   className?: string;
@@ -171,16 +171,6 @@ export function TimePicker({
           </span>
           <Clock size={15} className={dp.icon} aria-hidden />
         </button>
-        {clearable && shown && !disabled && (
-          <button
-            type="button"
-            className={dp.clear}
-            aria-label={t('picker.clear')}
-            onClick={() => onChange('')}
-          >
-            <X size={13} />
-          </button>
-        )}
       </span>
       {open &&
         createPortal(
