@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ChevronDown, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { buildExportTable, downloadTableExport, type TableInstance } from 'softium-ui/table';
 import { Checkbox } from '@sunghoon_lee/akron-ui';
 import { api } from '../../lib/api';
@@ -64,12 +64,44 @@ function downloadCsv<T>(table: TableInstance<T>, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+/** 형식마다 파일 아이콘 색·글자(각 형식에서 흔히 쓰는 색) */
 const FORMATS = [
-  { format: 'csv', label: 'CSV' },
-  { format: 'xlsx', label: 'Excel (.xlsx)' },
-  { format: 'json', label: 'JSON' },
-  { format: 'xml', label: 'XML' },
+  { format: 'csv', color: '#16a34a', tag: 'CSV' },
+  { format: 'xlsx', color: '#107c41', tag: 'XLS' },
+  { format: 'json', color: '#d97706', tag: '{ }' },
+  { format: 'xml', color: '#e5531a', tag: '</>' },
 ] as const;
+type Format = (typeof FORMATS)[number]['format'];
+
+/** 파일 아이콘 — 접힌 모서리 종이 + 아래 색 띠에 형식 글자 */
+function FileBadge({ color, tag }: { color: string; tag: string }) {
+  return (
+    <svg className="dt-export-item__icon" width="28" height="32" viewBox="0 0 28 32" aria-hidden>
+      <path
+        d="M4 1.5h13.5L25.5 9.5V29a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 29V3A1.5 1.5 0 0 1 4 1.5z"
+        fill="var(--ark-color-bg, #fff)"
+        stroke="var(--ark-color-border-strong, #c7c7cc)"
+      />
+      <path
+        d="M17.5 1.5V8a1.5 1.5 0 0 0 1.5 1.5h6.5"
+        fill="none"
+        stroke="var(--ark-color-border-strong, #c7c7cc)"
+      />
+      <rect x="0.5" y="16" width="22" height="11" rx="2" fill={color} />
+      <text
+        x="11.5"
+        y="24.2"
+        textAnchor="middle"
+        fontSize="7.5"
+        fontWeight="700"
+        fontFamily="system-ui, sans-serif"
+        fill="#fff"
+      >
+        {tag}
+      </text>
+    </svg>
+  );
+}
 
 /** 메뉴 밖을 누르면 닫는다 */
 function useCloseOnOutside(open: boolean, close: () => void) {
@@ -117,50 +149,50 @@ function MaskChecks({
 }
 
 /**
- * 내보내기 메뉴 — softium 기본 메뉴와 같은 모양(같은 CSS 클래스)이고, CSV만 BOM을 붙여 직접 만든다.
+ * 내보내기 메뉴 — softium 기본 메뉴와 같은 CSS 클래스. CSV만 BOM을 붙여 직접 만들고
  * Excel(.xlsx)·JSON·XML은 라이브러리 그대로(UTF-8로 잘 열린다).
- * 전화·주소·이름 칸은 '가려서 받기'를 고를 수 있다(화면에서는 늘 다 보인다).
- * 내려받으면 누가 어느 화면에서 몇 건·어떤 칸을 받았는지 접근 기록에 남긴다.
+ * 버튼은 두 가지: 기본(아이콘 + '내보내기'), compact(아이콘만 — 좁은 카드 목록).
+ * 전화·주소·이름 칸은 '가려서 받기'를 고를 수 있다 — 고른 칸은 화면 표에서도 가려지고, 받은 파일에도 가려진다
+ * (가린 상태는 표(DataTable)가 갖고 있다). 내려받으면 누가 어느 화면에서 몇 건·어떤 칸을 받았는지 접근 기록에 남긴다.
  */
 export function ExportMenu<T>({
   table,
   fileName = 'table',
   maskable = [],
-  exportMask,
+  mask,
+  onMaskChange,
+  compact = false,
 }: {
   table: TableInstance<T>;
   fileName?: string;
   maskable?: MaskableColumn[];
-  /** 내보내는 동안 가릴 칸을 표 칸(exportValue)에 알려 주는 자리 */
-  exportMask?: MutableRefObject<Set<string> | null>;
+  /** 가린 칸(표와 같이 쓴다) */
+  mask: Set<string>;
+  onMaskChange: (next: Set<string>) => void;
+  /** 아이콘만 있는 축약형 버튼 */
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [mask, setMask] = useState<Set<string>>(new Set());
   const rootRef = useCloseOnOutside(open, () => setOpen(false));
 
-  const download = (format: (typeof FORMATS)[number]['format']) => {
-    if (exportMask) exportMask.current = mask;
-    try {
-      const { headers, rows } = buildExportTable(table);
-      const keys = table.getRenderColumns().map((c) => c.key);
-      if (format === 'csv') downloadCsv(table, fileName);
-      else downloadTableExport(table, format, { fileName });
-      const columns = headers.filter((_, i) => keys[i] !== '__spacer').map(String);
-      void api('/access-logs/export', {
-        method: 'POST',
-        body: JSON.stringify({
-          screen: window.location.pathname,
-          fileName,
-          format,
-          rowCount: rows.length,
-          columns,
-          masked: maskable.filter((c) => mask.has(c.key)).map((c) => c.label),
-        }),
-      }).catch(() => undefined);
-    } finally {
-      if (exportMask) exportMask.current = null;
-    }
+  const download = (format: Format) => {
+    const { headers, rows } = buildExportTable(table);
+    const keys = table.getRenderColumns().map((c) => c.key);
+    if (format === 'csv') downloadCsv(table, fileName);
+    else downloadTableExport(table, format, { fileName });
+    const columns = headers.filter((_, i) => keys[i] !== '__spacer').map(String);
+    void api('/access-logs/export', {
+      method: 'POST',
+      body: JSON.stringify({
+        screen: window.location.pathname,
+        fileName,
+        format,
+        rowCount: rows.length,
+        columns,
+        masked: maskable.filter((c) => mask.has(c.key)).map((c) => c.label),
+      }),
+    }).catch(() => undefined);
     setOpen(false);
   };
 
@@ -168,35 +200,37 @@ export function ExportMenu<T>({
     <div className="sft-export" ref={rootRef}>
       <button
         type="button"
-        className="sft-export__trigger"
+        className={`sft-export__trigger${compact ? ' dt-export-compact' : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => {
-          if (!open) setMask(new Set());
-          setOpen((v) => !v);
-        }}
+        aria-label={compact ? t('table.export') : undefined}
+        title={compact ? t('table.export') : undefined}
+        onClick={() => setOpen((v) => !v)}
       >
-        <Download size={15} />
-        <span>{t('table.export')}</span>
-        <ChevronDown size={14} />
+        <Download size={compact ? 17 : 15} />
+        {!compact && <span>{t('table.export')}</span>}
       </button>
       {open && (
         <div className="sft-export__menu" role="menu">
           {maskable.length > 0 && (
             <div className="dt-mask-section">
               <div className="dt-mask-title">{t('table.maskExport')}</div>
-              <MaskChecks columns={maskable} checked={mask} onChange={setMask} />
+              <MaskChecks columns={maskable} checked={mask} onChange={onMaskChange} />
             </div>
           )}
-          {FORMATS.map(({ format, label }) => (
+          {FORMATS.map(({ format, color, tag }) => (
             <button
               key={format}
               type="button"
-              className="sft-export__item"
+              className="sft-export__item dt-export-item"
               role="menuitem"
               onClick={() => download(format)}
             >
-              {label}
+              <FileBadge color={color} tag={tag} />
+              <span className="dt-export-item__text">
+                <b>{t(`table.fmt.${format}`)}</b>
+                <small>{t(`table.fmt.${format}Desc`)}</small>
+              </span>
             </button>
           ))}
         </div>

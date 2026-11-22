@@ -283,6 +283,7 @@ export function CallList({
         onRowClick={(r) => onOpen(r.id as string)}
         exportable
         exportFileName={t('cc.exportName')}
+        exportCompact
         toolbarActions={<DialButton />}
       />
     </section>

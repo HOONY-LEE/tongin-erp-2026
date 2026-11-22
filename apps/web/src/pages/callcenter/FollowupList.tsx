@@ -23,6 +23,7 @@ import {
 } from '../../components/ui';
 import styles from '../callcenter.module.css';
 import { DatePicker } from '../../components/ui';
+import { DialButton } from './DialButton';
 
 export type FollowupKind = 'CONFIRM' | 'HAPPY';
 interface FollowupRow {
@@ -259,6 +260,8 @@ export function FollowupList({
         }}
         exportable
         exportFileName={L.title}
+        exportCompact
+        toolbarActions={<DialButton />}
       />
       <Modal
         open={!!open}
