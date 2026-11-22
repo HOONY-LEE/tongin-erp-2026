@@ -84,6 +84,9 @@ export class LeadService {
   /** 화면 상태(탭) 조건 — 반려는 접수 상태 중 반려된 것, 계약미승인에는 견적완료(QUOTED)도 */
   private stageWhere(stage?: string): Prisma.LeadWhereInput {
     if (!stage || stage === 'ALL') return {};
+    // 여러 상태(쉼표로 이어 보냄) — 하나라도 맞으면
+    const many = stage.split(',').filter(Boolean);
+    if (many.length > 1) return { OR: many.map((s) => this.stageWhere(s)) };
     if (stage === 'REJECTED') return { status: 'RECEIVED', rejectedAt: { not: null } };
     if (stage === 'RECEIVED') return { status: 'RECEIVED', rejectedAt: null };
     if (stage === 'CONTRACT_PENDING') return { status: { in: ['CONTRACT_PENDING', 'QUOTED'] } };
