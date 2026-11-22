@@ -6,7 +6,7 @@ import {
   Minus,
   PhoneIncoming,
   PhoneOutgoing,
-  Settings,
+  Settings2,
   UserRound,
   PhoneOff,
 } from 'lucide-react';
@@ -715,7 +715,7 @@ function PcPhone() {
         title={t('cc.sound')}
         onClick={() => setSoundOpen(true)}
       >
-        <Settings size={20} />
+        <Settings2 size={20} />
       </Button>
       {soundOpen && <PhoneSettingsModal onClose={() => setSoundOpen(false)} />}
     </>

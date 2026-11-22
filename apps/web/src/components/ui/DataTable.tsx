@@ -52,6 +52,8 @@ interface Props {
    */
   /** 검색·도구 줄 없이 표만(카드 안 작은 목록) */
   bare?: boolean;
+  /** 풋터(전체 N행·쪽·N개씩 보기) 없이 — 행을 전부 표 안에서 스크롤(pageSize={0}과 함께) */
+  noFooter?: boolean;
   fit?: boolean;
   /** 세그먼트 탭(상태·범위) — 셋째 줄 왼쪽. 오른쪽 끝에는 내보내기·toolbarActions(생성 버튼) */
   tabs?: ReactNode;
@@ -149,6 +151,7 @@ export function DataTable({
   onRowClick,
   toolbarActions,
   bare = false,
+  noFooter = false,
   filters,
   exportable,
   exportFileName,
@@ -416,6 +419,7 @@ export function DataTable({
         multiline ? 'dt-multiline' : '',
         fit ? 'dt-fit' : '',
         bare ? 'dt-bare' : '',
+        noFooter ? 'dt-no-foot' : '',
         // 셋째 줄(탭)이 없으면 그 줄을 비우지 않고 접는다
         row3 ? '' : 'dt-no-row3',
       ]

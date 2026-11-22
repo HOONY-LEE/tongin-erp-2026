@@ -88,39 +88,26 @@ export function CallerHistory({ customerId, callId }: { customerId: string; call
     },
   ];
 
+  // 카드 없이 표만 — 풋터·쪽 나눔 없이 이력 전부를 표 안에서 스크롤, 머리 오른쪽 끝에 [자세히](고객 이력)
   return (
-    <section className={`${styles.card} ${styles.paneCard} ${styles.historyCard}`}>
-      <div className={`${styles.paneHead} ${styles.historyHead}`}>
-        <b>{t('cc.history')}</b>
-        {items && <span className={styles.count}>{items.length}</span>}
-        <button
-          type="button"
-          className={styles.historyMore}
-          onClick={() => navigate(`/customers?detail=${customerId}`)}
-        >
-          {t('cc.viewCustomer')}
-        </button>
-      </div>
-      <div className={styles.paneBody}>
-        {items === null ? (
-          <p className={styles.muted}>{t('cc.loading')}</p>
-        ) : items.length === 0 ? (
-          <p className={styles.muted}>{t('cc.noHistory')}</p>
-        ) : (
-          <DataTable
-            bare
-            fit
-            pageSize={50}
-            columns={columns}
-            rows={
-              items
-                .slice(0, 50)
-                .map((it, i) => ({ ...it, id: `${it.at}-${i}` })) as unknown as Row[]
-            }
-            onRowClick={(r) => r.link && navigate(String(r.link))}
-          />
-        )}
-      </div>
-    </section>
+    <div className={styles.historyCard}>
+      <DataTable
+        bare
+        fit
+        noFooter
+        pageSize={0}
+        loading={items === null}
+        columns={columns}
+        rows={(items ?? []).map((it, i) => ({ ...it, id: `${it.at}-${i}` })) as unknown as Row[]}
+        onRowClick={(r) => r.link && navigate(String(r.link))}
+      />
+      <button
+        type="button"
+        className={styles.historyMore}
+        onClick={() => navigate(`/customers?detail=${customerId}`)}
+      >
+        {t('cc.historyMore')}
+      </button>
+    </div>
   );
 }

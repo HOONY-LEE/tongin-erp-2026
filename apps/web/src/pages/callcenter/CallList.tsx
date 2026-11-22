@@ -196,7 +196,8 @@ export function CallList({
             }}
           >
             <FileText size={13} />
-            {(r.leadNo as string | null) ?? t('cc.lead')}
+            {/* 접수 ID — 다른 ID와 같은 고정폭 서체 */}
+            <span className="id-mono">{(r.leadNo as string | null) ?? t('cc.lead')}</span>
           </button>
         ) : (
           <span className={styles.callState}>-</span>
