@@ -275,7 +275,56 @@ export class LeadService {
     return { ...lead, supportTickets };
   }
 
+  /**
+   * 중복 접수 찾기 — 같은 출발지 주소·같은 서비스 요청일(이사일)로 이미 들어온 접수(취소 건 빼고).
+   * 부부가 따로 전화하는 경우 등 — 접수 전에 알려 하나로 진행하게 한다.
+   */
+  async duplicates(fromAddr: string, moveDate: string, principal?: AuthPrincipal) {
+    const addr = fromAddr.trim();
+    if (!addr || !/^\d{4}-\d{2}-\d{2}/.test(moveDate)) return [];
+    const ids = await this.scope.orgScopeIds(principal);
+    const rows = await this.prisma.lead.findMany({
+      where: {
+        fromAddr: { equals: addr, mode: 'insensitive' },
+        moveDate: new Date(moveDate.slice(0, 10)),
+        status: { not: 'CANCELED' },
+        ...(ids !== null && { orgUnitId: { in: ids } }),
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 5,
+      select: {
+        id: true,
+        leadNo: true,
+        status: true,
+        rejectedAt: true,
+        createdAt: true,
+        fromAddrDetail: true,
+        customer: { select: { name: true, phonePrimary: true } },
+        orgUnit: { select: { name: true } },
+        ownerEmp: { select: { name: true } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      leadNo: r.leadNo,
+      status: r.status,
+      rejected: !!r.rejectedAt && r.status === 'RECEIVED',
+      createdAt: r.createdAt,
+      fromAddrDetail: r.fromAddrDetail,
+      customerName: r.customer?.name ?? null,
+      customerPhone: r.customer?.phonePrimary ?? null,
+      orgName: r.orgUnit?.name ?? null,
+      ownerName: r.ownerEmp?.name ?? null,
+      // 새 접수로 대체(먼저 건 취소)할 수 있는지 — 작업까지 끝난 건은 못 바꾼다
+      replaceable: canTransition(r.status as LeadStatus, 'CANCELED'),
+    }));
+  }
+
   async create(dto: CreateLeadDto, principal?: AuthPrincipal) {
+    // 중복 접수를 대체하면 먼저 건을 볼 수 있고 취소할 수 있는지 먼저 확인한다(새 접수만 남는 일이 없게)
+    const replaced = dto.replaceLeadId ? await this.findOne(dto.replaceLeadId, principal) : null;
+    if (replaced && !canTransition(replaced.status as LeadStatus, 'CANCELED'))
+      throw new BadRequestException('먼저 접수된 건은 이미 끝나 대체할 수 없습니다.');
     const ids = await this.scope.orgScopeIds(principal);
     if (ids !== null && !ids.includes(dto.orgUnitId)) {
       throw new ForbiddenException('소속 조직으로만 접수할 수 있습니다.');
@@ -361,6 +410,7 @@ export class LeadService {
       visitDate: dto.visitDate ? new Date(dto.visitDate) : undefined,
       customerRequest: dto.customerRequest?.trim() || undefined,
       productNote: dto.productNote?.trim() || (await this.partnerNote(dto.partnerId)) || undefined,
+      dupOfLeadId: replaced?.id,
     };
     try {
       const created = await this.prisma.lead.create({ data });
@@ -377,6 +427,13 @@ export class LeadService {
           by: principal?.employeeId ?? null,
         },
       });
+      // 중복 접수 대체 — 먼저 건은 '중복 접수'로 취소(사유에 새 접수 번호)
+      if (replaced)
+        await this.cancel(
+          replaced.id,
+          { kind: '중복 접수', reason: `${created.leadNo}(으)로 다시 접수해 진행` },
+          principal,
+        );
       return created;
     } catch (e) {
       throw this.mapError(e);

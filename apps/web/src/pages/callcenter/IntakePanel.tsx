@@ -23,6 +23,7 @@ import {
 } from '../../components/ui';
 import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
+import { useLeadDuplicateGate } from '../../components/lead/LeadDuplicateGate';
 import styles from '../callcenter.module.css';
 import { MemoPresetPicker } from './MemoPresets';
 import { CallRecordButton } from './CallRecordModal';
@@ -331,6 +332,7 @@ export function IntakePanel({
 
   // [접수 등록] → 간편접수 창(접수 화면과 같은 창)에 입력한 값을 넘겨 한 번 더 확인 후 등록
   const leadForm = useLeadCreateForm({ withCallFields: true });
+  const dup = useLeadDuplicateGate();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const formInitial = (): Record<string, string> => {
     const addr: Record<string, string> = {};
@@ -366,15 +368,22 @@ export function IntakePanel({
   };
   /** 확인 창에서 [저장] — 접수를 만들고 콜을 끝낸다(실패하면 창이 열린 채로 남는다) */
   const submitLead = async (values: Record<string, unknown>) => {
+    // 같은 출발지·서비스 요청일의 접수가 먼저 있으면(가족이 따로 전화 등) 하나로 진행하게 묻는다
+    const pick = await dup.ask(values);
+    if (!pick) throw new Error('duplicate-check-closed');
     try {
-      const lead = await api<{ id: string; leadNo?: string }>('/leads', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...values,
-          // 같은 번호의 기존 고객이면 그 고객에 잇는다
-          ...(call.customerId && { customerId: call.customerId }),
-        }),
-      });
+      const lead =
+        pick.kind === 'existing'
+          ? { id: pick.lead.id, leadNo: pick.lead.leadNo }
+          : await api<{ id: string; leadNo?: string }>('/leads', {
+              method: 'POST',
+              body: JSON.stringify({
+                ...values,
+                // 같은 번호의 기존 고객이면 그 고객에 잇는다
+                ...(call.customerId && { customerId: call.customerId }),
+                ...(pick.kind === 'replace' && { replaceLeadId: pick.lead.id }),
+              }),
+            });
       const request =
         typeof values.customerRequest === 'string' ? values.customerRequest : v.request;
       // 콜은 끝내지 않고 접수만 잇는다 — 상담 화면에 그대로 남고, [상담 종료]로 마친다
@@ -393,7 +402,10 @@ export function IntakePanel({
       );
       toast({
         type: 'success',
-        title: t('cc.leadCreated', { v0: lead.leadNo ? ` (${lead.leadNo})` : '' }),
+        title:
+          pick.kind === 'existing'
+            ? t('leadDup.linked', { v0: lead.leadNo ?? '' })
+            : t('cc.leadCreated', { v0: lead.leadNo ? ` (${lead.leadNo})` : '' }),
       });
       setConfirmOpen(false);
       await onSaved?.();
@@ -642,6 +654,7 @@ export function IntakePanel({
         </div>
       </fieldset>
 
+      {dup.modal}
       <FormModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

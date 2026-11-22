@@ -369,6 +369,40 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
           {data.lead.rejectReason && <p>{data.lead.rejectReason}</p>}
         </div>
       )}
+      {/* 중복 접수 — 서로 이어진 접수(번호를 누르면 그 접수로) */}
+      {(data.lead?.dupOf || !!data.lead?.dupLeads?.length) && (
+        <div className={estStyles.cancelNote}>
+          <b>{t('leadDup.title')}</b>
+          {data.lead.dupOf && (
+            <span>
+              {t('leadDup.replacedOld')}{' '}
+              <a
+                href={`/leads/${data.lead.dupOf.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/leads/${data.lead!.dupOf!.id}`);
+                }}
+              >
+                {data.lead.dupOf.leadNo}
+              </a>
+            </span>
+          )}
+          {data.lead.dupLeads?.map((x) => (
+            <span key={x.id}>
+              {t('leadDup.replacedBy')}{' '}
+              <a
+                href={`/leads/${x.id}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/leads/${x.id}`);
+                }}
+              >
+                {x.leadNo}
+              </a>
+            </span>
+          ))}
+        </div>
+      )}
       {/* 취소 사유 */}
       {leadStatus === 'CANCELED' && data.lead?.cancelKind && (
         <div className={estStyles.cancelNote}>

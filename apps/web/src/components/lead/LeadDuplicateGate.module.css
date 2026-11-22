@@ -1,0 +1,67 @@
+/* 중복 접수 확인 창 */
+.lead {
+  margin: 0 0 10px;
+  font-size: calc(14px * var(--font-scale, 1));
+  color: var(--ark-color-text);
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.item:hover {
+  border-color: var(--ark-color-text-tertiary, #9aa0aa);
+}
+.on,
+.on:hover {
+  border-color: var(--chip-on-bg);
+  box-shadow: 0 0 0 1px var(--chip-on-bg);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(14px * var(--font-scale, 1));
+}
+.row > span:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+  color: var(--ark-color-text-secondary);
+}
+.sub {
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--ark-color-text-secondary);
+}
+/* 고객 안내 멘트 */
+.script {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ark-color-bg-muted);
+}
+.script b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.script p {
+  margin: 0;
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.55;
+}

@@ -106,6 +106,9 @@ export interface EstimateDetailData {
     rejectedFromOrgId?: string | null;
     /** 접수 취소 형태·사유 */
     cancelKind?: string | null;
+    /** 중복 접수 — 이 접수가 대체한 먼저 건 / 이 접수를 대체한 새 건 */
+    dupOf?: { id: string; leadNo: string } | null;
+    dupLeads?: { id: string; leadNo: string }[];
     cancelReason?: string | null;
     /** 제휴·전속 업체(제휴이사·전속이사) — 혜택을 견적 위에 띄운다 */
     partner: {

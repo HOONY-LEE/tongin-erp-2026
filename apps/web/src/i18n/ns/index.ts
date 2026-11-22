@@ -10,6 +10,7 @@ import settings from './settings';
 import signin from './signin';
 import ui from './ui';
 import leads from './leads';
+import leadDup from './leadDup';
 import employees from './employees';
 import customers from './customers';
 import cal from './cal';
@@ -85,6 +86,7 @@ export const NAMESPACES = {
   customers,
   employees,
   leads,
+  leadDup,
   account,
   code,
   picker,

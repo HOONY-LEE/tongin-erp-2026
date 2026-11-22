@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useLeadCreateForm } from '../components/lead/useLeadCreateForm';
+import { useLeadDuplicateGate } from '../components/lead/LeadDuplicateGate';
 import {
   AddressView,
   Button,
@@ -115,6 +116,7 @@ export default function Leads() {
 
   // 간편접수 창 항목·기본값 — 상담 콘솔과 같은 창
   const { fields: createFields, defaults } = useLeadCreateForm();
+  const dup = useLeadDuplicateGate();
 
   // 늦게 온 앞선 응답이 최근 조건의 결과를 덮지 않게
   const seq = useRef(0);
@@ -160,12 +162,27 @@ export default function Leads() {
   }
 
   const onCreate = async (values: Record<string, unknown>) => {
+    // 같은 출발지·서비스 요청일의 접수가 먼저 있으면 하나로 진행하게 묻는다(창을 닫으면 입력 창은 그대로)
+    const pick = await dup.ask(values);
+    if (!pick) throw new Error('duplicate-check-closed');
     try {
-      const created = await api<{ id: string }>('/leads', {
-        method: 'POST',
-        body: JSON.stringify(values),
+      const created =
+        pick.kind === 'existing'
+          ? { id: pick.lead.id }
+          : await api<{ id: string }>('/leads', {
+              method: 'POST',
+              body: JSON.stringify({
+                ...values,
+                ...(pick.kind === 'replace' && { replaceLeadId: pick.lead.id }),
+              }),
+            });
+      toast({
+        type: 'success',
+        title:
+          pick.kind === 'existing'
+            ? t('leadDup.linked', { v0: pick.lead.leadNo })
+            : t('common.created'),
       });
-      toast({ type: 'success', title: t('common.created') });
       // 콜에서 온 접수면 그 콜을 끝내고 접수와 잇는다(실패해도 접수는 남아 있으니 알리기만)
       if (callId)
         await api(`/cs-calls/${callId}/finish`, {
@@ -391,6 +408,7 @@ export default function Leads() {
         initialValues={createInitial}
         onSubmit={onCreate}
       />
+      {dup.modal}
       {doc && (
         <DocumentViewer
           path={`/estimates/${doc.estimateId}/document`}
