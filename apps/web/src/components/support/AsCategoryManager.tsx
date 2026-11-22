@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Input, Modal, Switch } from '@sunghoon_lee/akron-ui';
+import { Input, Modal } from '@sunghoon_lee/akron-ui';
 import { api, ApiError } from '../../lib/api';
-import { Button, useToast } from '../ui';
+import { Button, Switch, useToast } from '../ui';
 import styles from './AsCategoryManager.module.css';
 
 interface Code {

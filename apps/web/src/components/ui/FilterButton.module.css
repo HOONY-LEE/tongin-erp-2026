@@ -26,6 +26,18 @@
 .active {
   border-color: var(--ark-color-text);
 }
+/* 축약형 — 아이콘만(정사각), 고른 조건 수는 오른쪽 위 모서리 배지 */
+.compact {
+  position: relative;
+  width: 38px;
+  padding: 0;
+  justify-content: center;
+}
+.compact .count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+}
 .count {
   min-width: 18px;
   padding: 0 6px;

@@ -194,12 +194,15 @@ export function FilterButton({
   value,
   onChange,
   limited,
+  variant = 'compact',
 }: {
   fields: FilterField[];
   value: FilterValues;
   onChange: (v: FilterValues) => void;
   /** 서버가 한도(1,000건)까지 보냈다 — 버튼 옆에 '조건을 좁혀 주세요' */
   limited?: boolean;
+  /** 축약형(기본) = 아이콘만(고른 조건 수는 모서리 배지) · 풀형 = 아이콘 + '필터' */
+  variant?: 'compact' | 'full';
 }) {
   const { t } = useTranslation();
   const btn = useRef<HTMLButtonElement>(null);
@@ -254,13 +257,15 @@ export function FilterButton({
       <button
         ref={btn}
         type="button"
-        className={`${styles.trigger} ${open ? styles.open : ''} ${count ? styles.active : ''}`}
+        className={`${styles.trigger} ${variant === 'compact' ? styles.compact : ''} ${open ? styles.open : ''} ${count ? styles.active : ''}`}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={t('filter.button')}
+        title={variant === 'compact' ? t('filter.button') : undefined}
         onClick={() => (open ? close() : setOpen(true))}
       >
-        <SlidersHorizontal size={15} aria-hidden />
-        {t('filter.button')}
+        <SlidersHorizontal size={variant === 'compact' ? 17 : 15} aria-hidden />
+        {variant === 'full' && t('filter.button')}
         {count > 0 && <span className={styles.count}>{count}</span>}
       </button>
       {limited && <span className={styles.limited}>{t('filter.limited')}</span>}
