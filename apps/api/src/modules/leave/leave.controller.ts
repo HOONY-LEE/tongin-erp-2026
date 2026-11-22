@@ -76,11 +76,7 @@ export class LeaveController {
   /** 조정 이력 — f: 필터(JSON), q: 검색어 */
   @Get('adjustments')
   @RequirePermissions('LEAVE.UPDATE')
-  adjustments(
-    @CurrentUser() p: AuthPrincipal,
-    @Query('f') f?: string,
-    @Query('q') q?: string,
-  ) {
+  adjustments(@CurrentUser() p: AuthPrincipal, @Query('f') f?: string, @Query('q') q?: string) {
     return this.leave.adjustments(p, f, q);
   }
 }
