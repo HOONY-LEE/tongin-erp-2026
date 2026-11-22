@@ -73,10 +73,14 @@ export class LeaveController {
     return this.leave.bulkAdjust(p, dto);
   }
 
-  /** 최근 조정 이력 */
+  /** 조정 이력 — f: 필터(JSON), q: 검색어 */
   @Get('adjustments')
   @RequirePermissions('LEAVE.UPDATE')
-  adjustments(@CurrentUser() p: AuthPrincipal) {
-    return this.leave.adjustments(p);
+  adjustments(
+    @CurrentUser() p: AuthPrincipal,
+    @Query('f') f?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.leave.adjustments(p, f, q);
   }
 }

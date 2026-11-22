@@ -1,5 +1,5 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Combobox } from '@sunghoon_lee/akron-ui';
@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { useTabParam } from '../lib/useDetailParam';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
+import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import {
   notifyApprovalsChanged,
   toLinePayload,
@@ -879,7 +880,7 @@ interface AdjustmentRow {
   reason: string;
   effectiveDate: string;
   createdAt: string;
-  employee: { name: string; orgUnit: { name: string } | null };
+  employee: { name: string; orgUnitId?: string; orgUnit: { name: string } | null };
 }
 
 /**
@@ -899,21 +900,29 @@ export function LeaveGrant() {
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<AdjustmentRow[]>([]);
   const [loading, setLoading] = useState(false);
-  /** 아래 부여·조정 내역 필터 — 적용일·소속·부여/차감 */
+  /** 아래 부여·조정 내역 필터 — 적용일·소속·부여/차감(서버에서 거른다) */
   const [flt, setFlt] = useState<FilterValues>({});
+  /** 검색칸 — 서버에서 찾는다(직원 이름·사유) */
+  const [q, setQ] = useState('');
+  const query = filterQuery(flt, q);
 
+  // 늦게 온 앞선 응답이 최근 결과를 덮지 않게
+  const seq = useRef(0);
   const load = useCallback(async () => {
+    const my = ++seq.current;
     setLoading(true);
     try {
-      setRows(await api<AdjustmentRow[]>('/leave/adjustments'));
+      const list = await api<AdjustmentRow[]>(`/leave/adjustments${query}`);
+      if (my === seq.current) setRows(list);
     } catch {
-      setRows([]);
+      if (my === seq.current) setRows([]);
     } finally {
-      setLoading(false);
+      if (my === seq.current) setLoading(false);
     }
-  }, []);
+  }, [query]);
   useEffect(() => {
-    void load();
+    const id = window.setTimeout(() => void load(), 250);
+    return () => window.clearTimeout(id);
   }, [load]);
 
   const n = Number(days);
@@ -964,11 +973,9 @@ export function LeaveGrant() {
       key: 'org',
       label: t('leave.flt.org'),
       type: 'multi',
-      options: [
-        ...new Set(rows.map((r) => r.employee.orgUnit?.name).filter((v): v is string => !!v)),
-      ]
-        .sort((a, b) => a.localeCompare(b, 'ko'))
-        .map((v) => ({ value: v, label: v })),
+      options: [...orgs]
+        .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+        .map((o) => ({ value: o.id, label: o.name })),
     },
     {
       key: 'kind',
@@ -1088,19 +1095,17 @@ export function LeaveGrant() {
         </div>
       </section>
       <DataTable
-        filters={<FilterButton fields={grantFilter} value={flt} onChange={setFlt} />}
-        columns={columns}
-        rows={
-          filterRows(rows, grantFilter, flt, (r, key) =>
-            key === 'org'
-              ? (r.employee.orgUnit?.name ?? '')
-              : key === 'kind'
-                ? num(r.days) < 0
-                  ? 'deduct'
-                  : 'grant'
-                : r[key as keyof AdjustmentRow],
-          ) as unknown as Row[]
+        filters={
+          <FilterButton
+            fields={grantFilter}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
         }
+        columns={columns}
+        rows={rows as unknown as Row[]}
+        onSearch={setQ}
         loading={loading}
       />
     </>

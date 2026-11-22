@@ -6,6 +6,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-filter';
 import {
   LEAVE_SLOT_LABEL,
   PERMISSION_WILDCARD,
@@ -18,7 +19,6 @@ import {
   type LeaveFormSettings,
   type LeaveSlot,
 } from '@tongin/shared';
-import { LIST_LIMIT } from '../../common/list-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ScopeService } from '../../scope/scope.service';
 import { ApprovalService } from '../approval/approval.service';
@@ -488,16 +488,31 @@ export class LeaveService implements OnModuleInit {
     return { count: emps.length };
   }
 
-  /** 최근 조정 이력(관리 화면) — 데이터 범위 안 */
-  async adjustments(p: AuthPrincipal) {
+  /** 조정 이력(관리 화면) — 데이터 범위 안, 필터(f)·검색(q)은 서버에서 */
+  async adjustments(p: AuthPrincipal, f?: string, q?: string) {
     const scopeIds = await this.scope.orgScopeIds(p);
+    const rules: ListFilterRules = {
+      effectiveDate: { date: { effectiveDate: ['effectiveDate', 'date'] } },
+      org: { in: 'employee.orgUnitId' },
+      kind: { one: { grant: { days: { gt: 0 } }, deduct: { days: { lt: 0 } } } },
+    };
     return this.prisma.leaveAdjustment.findMany({
-      where: scopeIds === null ? {} : { employee: { orgUnitId: { in: scopeIds } } },
+      where: {
+        AND: [
+          scopeIds === null ? {} : { employee: { orgUnitId: { in: scopeIds } } },
+          ...(listWhere(rules, f, q, [
+            'employee.name',
+            'reason',
+          ]) as Prisma.LeaveAdjustmentWhereInput[]),
+        ],
+      },
       include: {
-        employee: { select: { name: true, orgUnit: { select: { name: true } } } },
+        employee: {
+          select: { name: true, orgUnitId: true, orgUnit: { select: { name: true } } },
+        },
       },
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: LIST_LIMIT,
     });
   }
 
