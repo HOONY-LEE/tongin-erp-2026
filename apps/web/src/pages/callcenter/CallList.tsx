@@ -8,7 +8,7 @@ import { CopyText } from '../../components/ui/CopyText';
 import { APPLE } from '../../lib/palette';
 import { useNavigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
-import { DateFilter, type DateRange } from './DateFilter';
+import { DialButton } from './DialButton';
 import { api, ApiError } from '../../lib/api';
 import { LIST_LIMIT } from '../../lib/serverFilter';
 import { useAuth } from '../../auth/AuthContext';
@@ -98,7 +98,6 @@ export function CallList({
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState<DateRange>({ from: '', to: '' });
   const [flt, setFlt] = useState<FilterValues>({});
   /** 검색칸 — 서버에서 찾는다(전화번호·고객명) */
   const [q, setQ] = useState('');
@@ -106,15 +105,19 @@ export function CallList({
   // 날짜·필터·검색 모두 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
   const seq = useRef(0);
   const load = useCallback(
-    async (sc: 'mine' | 'all', rg: DateRange, f: FilterValues, text: string) => {
+    async (sc: 'mine' | 'all', f: FilterValues, text: string) => {
       const my = ++seq.current;
       setLoading(true);
       try {
         const qs = new URLSearchParams({ scope: sc, limit: String(LIST_LIMIT) });
+        // 통화 날짜(필터의 '기간')는 from·to로, 나머지 조건은 f로
+        const rg = (f.period ?? {}) as { from?: string; to?: string };
         if (rg.from) qs.set('from', rg.from);
         if (rg.to) qs.set('to', rg.to);
         const picked = Object.fromEntries(
-          Object.entries(f).filter(([, v]) => (Array.isArray(v) ? v.length : !!v)),
+          Object.entries(f).filter(
+            ([k, v]) => k !== 'period' && (Array.isArray(v) ? v.length : !!v),
+          ),
         );
         if (Object.keys(picked).length) qs.set('f', JSON.stringify(picked));
         if (text.trim()) qs.set('q', text.trim().slice(0, 50));
@@ -134,9 +137,9 @@ export function CallList({
     [toast],
   );
   useEffect(() => {
-    const id = window.setTimeout(() => void load(scope, range, flt, q), 250);
+    const id = window.setTimeout(() => void load(scope, flt, q), 250);
     return () => window.clearTimeout(id);
-  }, [scope, range, flt, q, refreshKey, load]);
+  }, [scope, flt, q, refreshKey, load]);
 
   const columns: Column[] = [
     {
@@ -230,6 +233,7 @@ export function CallList({
     { value: 'no', label: t('cc.flt.none') },
   ];
   const filterFields: FilterField[] = [
+    { key: 'period', label: t('cc.callDate'), type: 'date' },
     {
       key: 'status',
       label: t('cc.status'),
@@ -245,7 +249,7 @@ export function CallList({
     { key: 'lead', label: t('cc.flt.lead'), type: 'single', options: yesNo },
     { key: 'recording', label: t('cc.flt.recording'), type: 'single', options: yesNo },
   ];
-  // 날짜(DateFilter)·필터·검색은 서버에서 거른다
+  // 기간·필터·검색은 서버에서 거른다
 
   return (
     <section className={`${styles.card} ${styles.listCard}`}>
@@ -263,15 +267,12 @@ export function CallList({
           />
         }
         filters={
-          <>
-            <FilterButton
-              fields={filterFields}
-              value={flt}
-              onChange={setFlt}
-              limited={rows.length >= LIST_LIMIT}
-            />
-            <DateFilter value={range} onChange={setRange} />
-          </>
+          <FilterButton
+            fields={filterFields}
+            value={flt}
+            onChange={setFlt}
+            limited={rows.length >= LIST_LIMIT}
+          />
         }
         fit
         pageSize={20}
@@ -282,6 +283,7 @@ export function CallList({
         onRowClick={(r) => onOpen(r.id as string)}
         exportable
         exportFileName={t('cc.exportName')}
+        toolbarActions={<DialButton />}
       />
     </section>
   );

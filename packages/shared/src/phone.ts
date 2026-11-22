@@ -19,10 +19,20 @@ export function formatPhone(raw: string | null | undefined): string {
     const v = digits.slice(0, 8);
     return v.length <= 4 ? v : `${v.slice(0, 4)}-${v.slice(4)}`;
   }
+  // 안심번호(0502~0508) — 0504-1234-5678(12자리) · 0505-123-4567(11자리)
+  if (/^050\d/.test(digits)) {
+    const v = digits.slice(0, 12);
+    if (v.length <= 4) return v;
+    if (v.length <= 8) return `${v.slice(0, 4)}-${v.slice(4)}`;
+    if (v.length <= 11) return `${v.slice(0, 4)}-${v.slice(4, 7)}-${v.slice(7)}`;
+    return `${v.slice(0, 4)}-${v.slice(4, 8)}-${v.slice(8)}`;
+  }
   if (/^01[016789]/.test(digits)) {
     const v = digits.slice(0, 11);
     if (v.length <= 3) return v;
-    if (v.length <= 7) return `${v.slice(0, 3)}-${v.slice(3)}`;
+    if (v.length <= 6) return `${v.slice(0, 3)}-${v.slice(3)}`;
+    // 옛 10자리(011-123-4567)는 3-3-4, 11자리는 3-4-4
+    if (v.length <= 10) return `${v.slice(0, 3)}-${v.slice(3, 6)}-${v.slice(6)}`;
     return `${v.slice(0, 3)}-${v.slice(3, 7)}-${v.slice(7, 11)}`;
   }
   const v = digits.slice(0, 11);

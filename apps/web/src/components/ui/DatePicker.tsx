@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import styles from './DatePicker.module.css';
 
 /**
@@ -28,7 +28,7 @@ export interface DatePickerProps {
   /** 고를 수 있는 처음·끝(같은 형식) */
   min?: string;
   max?: string;
-  /** 지우기(×) — 날짜는 기본 켬, 월은 기본 끔 */
+  /** 달력 아래 '지우기' — 날짜는 기본 켬, 월은 기본 끔 */
   clearable?: boolean;
   size?: 'sm' | 'md';
   className?: string;
@@ -242,16 +242,6 @@ export function DatePicker({
           </span>
           <CalendarDays size={15} className={styles.icon} aria-hidden />
         </button>
-        {clearable && shown && !disabled && (
-          <button
-            type="button"
-            className={styles.clear}
-            aria-label={t('picker.clear')}
-            onClick={() => onChange('')}
-          >
-            <X size={13} />
-          </button>
-        )}
       </span>
       {open &&
         createPortal(

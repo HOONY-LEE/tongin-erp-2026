@@ -3,11 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Laptop,
-  Phone,
   Trash2,
   PhoneIncoming,
   PhoneOutgoing,
-  Settings2,
+  Settings,
   UserRound,
   PhoneOff,
 } from 'lucide-react';
@@ -19,7 +18,6 @@ import {
   Button,
   ConfirmModal,
   CopyText,
-  Input,
   ListPage,
   SegmentedControl,
   useToast,
@@ -690,59 +688,11 @@ function PcPhone() {
   const phone = usePhone();
   const toast = useToast();
   const [soundOpen, setSoundOpen] = useState(false);
-  // 번호로 직접 걸기(대표번호로 발신 — 발신번호 인증 ARS 등)
-  const [dialOpen, setDialOpen] = useState(false);
-  const [dialNo, setDialNo] = useState('');
-  const dialOk = dialNo.replace(/\D/g, '').length >= 7;
+  // 번호로 걸기는 콜 목록의 [전화하기](DialButton)
   const soundButton = (
     <>
-      {phone.status === 'ready' && !phone.call && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setDialNo('');
-            setDialOpen(true);
-          }}
-          aria-label={t('cc.dialNumber')}
-          title={t('cc.dialNumber')}
-        >
-          <Phone size={14} />
-        </Button>
-      )}
-      <ConfirmModal
-        open={dialOpen}
-        title={t('cc.dialNumber')}
-        confirmLabel={t('cc.dial')}
-        onClose={() => setDialOpen(false)}
-        onConfirm={() => {
-          if (!dialOk) return;
-          setDialOpen(false);
-          dial(dialNo);
-        }}
-      >
-        <Input
-          autoFocus
-          inputMode="tel"
-          value={dialNo}
-          placeholder={t('cc.dialPh')}
-          onChange={(e) => setDialNo(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && dialOk) {
-              setDialOpen(false);
-              dial(dialNo);
-            }
-          }}
-        />
-      </ConfirmModal>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setSoundOpen(true)}
-        aria-label={t('cc.soundSettings')}
-        title={t('cc.sound')}
-      >
-        <Settings2 size={14} />
+      <Button variant="outline" size="sm" onClick={() => setSoundOpen(true)}>
+        <Settings size={16} /> {t('cc.sound')}
       </Button>
       {soundOpen && <PhoneSettingsModal onClose={() => setSoundOpen(false)} />}
     </>

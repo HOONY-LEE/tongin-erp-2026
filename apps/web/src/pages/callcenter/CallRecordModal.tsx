@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@sunghoon_lee/akron-ui';
-import { Download, Headphones } from 'lucide-react';
+import { ArrowLeftRight, Download, Headphones } from 'lucide-react';
 import { api, getToken } from '../../lib/api';
 import { Button, useToast } from '../../components/ui';
 import styles from '../callcenter.module.css';
@@ -49,6 +49,8 @@ export function CallRecordButton({
   const [audioState, setAudioState] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [segments, setSegments] = useState<Segment[] | null>(null);
   const [scriptFailed, setScriptFailed] = useState(false);
+  /** 상담사·고객 바꾸기 — 화자 구분이 자동이라 뒤바뀌어 나올 수 있다(받아 둔 파일에도 그대로) */
+  const [swapped, setSwapped] = useState(false);
   const fileNo = callNo ?? callId.slice(0, 8).toUpperCase();
 
   useEffect(
@@ -93,13 +95,11 @@ export function CallRecordButton({
     }
   };
 
-  const who = (sp: string) => {
-    if (/^agent$/i.test(sp)) return t('transcript.agent');
-    if (/^customer$/i.test(sp)) return t('transcript.customer');
-    const n = /(\d+)$/.exec(sp);
-    return t('transcript.speaker', { n: n ? Number(n[1]) + 1 : sp });
-  };
-  const isFirst = (sp: string) => /(^agent$)|(_0$)/i.test(sp);
+  // 상담사 = 예전 형식이면 AGENT, 아니면 처음 말한 사람(바꾸기로 뒤집는다). 나머지는 고객
+  const base =
+    segments?.find((s) => /^agent$/i.test(s.speaker))?.speaker ?? segments?.[0]?.speaker ?? '';
+  const isAgent = (sp: string) => (sp === base) !== swapped;
+  const who = (sp: string) => (isAgent(sp) ? t('transcript.agent') : t('transcript.customer'));
 
   const downloadAudio = async () => {
     const u = await loadAudio();
@@ -152,14 +152,24 @@ export function CallRecordButton({
           <section className={styles.recSection}>
             <div className={styles.recSectionHead}>
               <b>{t('transcript.script')}</b>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!segments?.length}
-                onClick={downloadScript}
-              >
-                <Download size={14} /> {t('transcript.downloadScript')}
-              </Button>
+              <span className={styles.recHeadBtns}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!segments?.length}
+                  onClick={() => setSwapped((v) => !v)}
+                >
+                  <ArrowLeftRight size={14} /> {t('transcript.swap')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!segments?.length}
+                  onClick={downloadScript}
+                >
+                  <Download size={14} /> {t('transcript.downloadScript')}
+                </Button>
+              </span>
             </div>
             {!hasTranscript ? (
               <p className={styles.muted}>{t('transcript.noScript')}</p>
@@ -170,16 +180,21 @@ export function CallRecordButton({
             ) : segments.length === 0 ? (
               <p className={styles.muted}>{t('transcript.empty')}</p>
             ) : (
-              <ol className={`${styles.transcriptList} ${styles.recScript}`}>
-                {segments.map((s, i) => (
-                  <li key={i} className={isFirst(s.speaker) ? styles.trA : styles.trB}>
-                    <span className={styles.trMeta}>
-                      <b>{who(s.speaker)}</b>
-                      <time className="id-mono">{mmss(s.start)}</time>
-                    </span>
-                    <span className={styles.trText}>{s.text}</span>
-                  </li>
-                ))}
+              <ol className={`${styles.chatList} ${styles.recScript}`}>
+                {segments.map((s, i) => {
+                  const me = isAgent(s.speaker);
+                  // 같은 사람이 이어 말하면 이름은 처음에만
+                  const cont = i > 0 && isAgent(segments[i - 1].speaker) === me;
+                  return (
+                    <li key={i} className={me ? styles.chatMe : styles.chatThem}>
+                      {!cont && <span className={styles.chatWho}>{who(s.speaker)}</span>}
+                      <span className={styles.chatRow}>
+                        <span className={styles.chatBubble}>{s.text}</span>
+                        <time className={`id-mono ${styles.chatTime}`}>{mmss(s.start)}</time>
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </section>

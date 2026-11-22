@@ -41,16 +41,14 @@ interface FollowupRow {
   at: string | null;
   by: string | null;
 }
-const LABEL: Record<FollowupKind, { title: string; when: string; guide: string }> = {
+const LABEL: Record<FollowupKind, { title: string; guide: string }> = {
   CONFIRM: {
     title: i18n.t('cc.fu.CONFIRM'),
-    when: i18n.t('cc.fu.confirmWhen'),
     guide:
       '안녕하세요, 통인익스프레스입니다. ○○일 이사 예정이셔서 확인차 연락드렸습니다. 이사 시간·주소·짐 변동 사항 있으실까요?',
   },
   HAPPY: {
     title: i18n.t('cc.fu.HAPPY'),
-    when: i18n.t('cc.fu.happyWhen'),
     guide:
       '안녕하세요, 통인익스프레스입니다. 어제 이사는 잘 마치셨을까요? 작업 중 불편하셨던 점이나 파손·분실된 물건은 없으신지 여쭤보려고 연락드렸습니다.',
   },
@@ -246,10 +244,6 @@ export function FollowupList({
         viewSwitch={viewSwitch}
         tabs={
           <span className={styles.fuDate}>
-            <b>
-              {L.when} · {L.title}
-            </b>
-            <span className={styles.muted}>{t('cc.moveDate')}</span>
             <DatePicker value={date} onChange={(v) => setDate(v)} aria-label={t('cc.moveDate')} />
           </span>
         }

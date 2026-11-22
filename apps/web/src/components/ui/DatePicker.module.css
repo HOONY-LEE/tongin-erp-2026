@@ -74,29 +74,6 @@
   flex: none;
   color: var(--ark-color-text-secondary);
 }
-/* 값이 있으면 달력 아이콘 자리에 지우기(×)가 겹쳐 뜬다(마우스를 올렸을 때) */
-.clear {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  display: none;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--ark-color-bg-muted, #f2f2f7);
-  color: var(--ark-color-text-secondary);
-  cursor: pointer;
-  transform: translateY(-50%);
-}
-.field:hover .clear {
-  display: grid;
-}
-.field:hover:has(.clear) .icon {
-  visibility: hidden;
-}
-
 /* ── 펼친 달력 ── */
 .pop {
   position: fixed;

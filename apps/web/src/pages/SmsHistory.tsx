@@ -21,7 +21,6 @@ import {
   type FilterValues,
   type Row,
 } from '../components/ui';
-import { DateFilter, type DateRange } from './callcenter/DateFilter';
 import styles from './callcenter.module.css';
 
 interface SmsRow {
@@ -54,7 +53,6 @@ export default function SmsHistory() {
   const toast = useToast();
   const navigate = useNavigate();
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
-  const [range, setRange] = useState<DateRange>({ from: '', to: '' });
   const [rows, setRows] = useState<SmsRow[]>([]);
   const [canAll, setCanAll] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -62,12 +60,15 @@ export default function SmsHistory() {
   const [flt, setFlt] = useState<FilterValues>({});
   /** 검색칸 — 서버에서 찾는다(번호·제목·본문·고객명) */
   const [q, setQ] = useState('');
-  // 단문/장문은 바이트 수라 화면에서 거른다 — 서버에는 나머지 조건만
+  // 단문/장문은 바이트 수라 화면에서 거른다 — 서버에는 나머지 조건만(보낸 날짜 '기간'은 from·to로)
   const serverFlt = JSON.stringify(
     Object.fromEntries(
-      Object.entries(flt).filter(([k, v]) => k !== 'type' && (Array.isArray(v) ? v.length : !!v)),
+      Object.entries(flt).filter(
+        ([k, v]) => k !== 'type' && k !== 'period' && (Array.isArray(v) ? v.length : !!v),
+      ),
     ),
   );
+  const range = (flt.period ?? {}) as { from?: string; to?: string };
 
   // 날짜·필터·검색은 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
   const seq = useRef(0);
@@ -93,7 +94,7 @@ export default function SmsHistory() {
     } finally {
       if (my === seq.current) setLoading(false);
     }
-  }, [scope, range, toast, serverFlt, q]);
+  }, [scope, range.from, range.to, toast, serverFlt, q]);
   useEffect(() => {
     const id = window.setTimeout(() => void load(), 250);
     return () => window.clearTimeout(id);
@@ -170,6 +171,7 @@ export default function SmsHistory() {
   }, [rows]);
   const senders = [...seenSenders].sort((a, b) => a.localeCompare(b, 'ko'));
   const filterFields: FilterField[] = [
+    { key: 'period', label: t('camp.col.sentAt'), type: 'date' },
     {
       key: 'ok',
       label: t('camp.col.result'),
@@ -230,7 +232,6 @@ export default function SmsHistory() {
               onChange={setFlt}
               limited={rows.length >= LIST_LIMIT}
             />
-            <DateFilter value={range} onChange={setRange} />
           </>
         }
         fit

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LEAD_STATUS_LABEL, type LeadStatus } from '@tongin/shared';
+import { LEAD_STATUS_LABEL, formatPhone, type LeadStatus } from '@tongin/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /** 이력 한 줄 — 화면은 kind로 아이콘·색을, link로 이동할 화면을 정한다 */
@@ -217,7 +217,11 @@ export class CustomerHistoryService {
         kind: 'call',
         title: missed ? '부재중 전화' : outgoing ? '전화 (콜백)' : '전화 받음',
         detail: [
-          c.channel ?? '대표번호',
+          c.channel
+            ? /^\d{7,}$/.test(c.channel)
+              ? formatPhone(c.channel)
+              : c.channel
+            : '대표번호',
           dur(c.durationSec),
           c.request ?? c.memo,
           c.leadId && leadNo.get(c.leadId) ? `접수 ${leadNo.get(c.leadId)}` : null,

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
+import { formatPhone } from '../../lib/phone';
 import { useAuth } from '../../auth/AuthContext';
 import { Input, PhoneInput, Select, useToast } from '../ui';
 import { AddressField } from '../ui/AddressField';
@@ -144,7 +145,10 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
       <div className={styles.infoBox}>
         <Info label={t('est.contractNo')} value={m.contractNo ?? t('est.beforeContract')} />
         <Info label={t('est.estimator')} value={m.estimatorName} />
-        <Info label={t('est.estimatorPhone')} value={m.estimatorPhone} />
+        <Info
+          label={t('est.estimatorPhone')}
+          value={m.estimatorPhone ? formatPhone(m.estimatorPhone) : m.estimatorPhone}
+        />
         <Info label={t('est.branchName')} value={m.orgUnitName} />
       </div>
 
