@@ -138,12 +138,14 @@ export class CsOpsService {
   }
 
   /** 그날 이사하는(확인콜) / 이사한(해피콜) 접수와 마지막 통화 결과 */
-  async followups(p: AuthPrincipal, kind: FollowupKind, date?: string) {
+  async followups(p: AuthPrincipal, kind: FollowupKind, date?: string, to?: string) {
     const day = date || this.defaultDate(kind);
+    // 기간(필터) — to가 있으면 day~to 사이 이사일
+    const end = to && to > day ? to : null;
     const ids = await this.scope.orgScopeIds(p);
     const leads = await this.prisma.lead.findMany({
       where: {
-        moveDate: asDate(day),
+        moveDate: end ? { gte: asDate(day), lte: asDate(end) } : asDate(day),
         status: { in: kind === 'CONFIRM' ? CONFIRM_STATUSES : HAPPY_STATUSES },
         ...(ids !== null && { orgUnitId: { in: ids } }),
       },
@@ -153,7 +155,7 @@ export class CsOpsService {
         ownerEmp: { select: { name: true } },
         partner: { select: { name: true, type: true } },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ moveDate: 'asc' }, { createdAt: 'asc' }],
       take: 500,
     });
     const logs = leads.length
@@ -171,6 +173,7 @@ export class CsOpsService {
       : [];
     return {
       date: day,
+      to: end ?? day,
       rows: leads.map((l) => {
         const mine = logs.filter((x) => x.leadId === l.id);
         const last = mine[0];
@@ -184,7 +187,7 @@ export class CsOpsService {
           orgName: l.orgUnit?.name ?? null,
           ownerName: l.ownerEmp?.name ?? null,
           partnerName: l.partner?.name ?? null,
-          moveDate: day,
+          moveDate: l.moveDate ? l.moveDate.toISOString().slice(0, 10) : day,
           tries: mine.length,
           result: last?.result ?? null,
           memo: last?.memo ?? null,

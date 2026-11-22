@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { Pencil, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
-import { Button, ConfirmModal, Input, SegmentedControl, useToast } from '../../components/ui';
+import { ConfirmModal, Input, SegmentedControl, useToast } from '../../components/ui';
 import styles from '../callcenter.module.css';
 
 interface Script {
@@ -91,17 +91,19 @@ export function ScriptCard() {
       <div className={`${styles.paneHead} ${styles.sideHead}`}>
         <b>{t('cc.memo')}</b>
         <span className={styles.scriptTools}>
-          <Button
-            variant="outline"
-            // 고치기 모드에서도 자리는 그대로(보이지만 않게) — 아래 메모장이 위로 올라가지 않게
+          <button
+            type="button"
+            className={styles.headIconBtn}
+            // 고치기 모드에서도 자리는 그대로(보이지만 않게)
             style={edit ? { visibility: 'hidden' } : undefined}
             disabled={!!edit}
             tabIndex={edit ? -1 : undefined}
-            size="sm"
+            aria-label={t('cc.newMemo')}
+            title={t('cc.newMemo')}
             onClick={() => setEdit({ id: null, title: '', body: '', shared: false })}
           >
-            <Plus size={14} /> {t('cc.newMemo')}
-          </Button>
+            <Plus size={18} />
+          </button>
         </span>
       </div>
 

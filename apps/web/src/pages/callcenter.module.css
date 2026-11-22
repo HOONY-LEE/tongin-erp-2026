@@ -1315,7 +1315,7 @@ textarea.memoBox {
 }
 .paneHead {
   flex: none;
-  min-height: 36px;
+  min-height: 30px;
   padding: 0 12px;
   border-bottom: 1px solid var(--ark-color-border);
   box-sizing: border-box;
@@ -1563,16 +1563,6 @@ textarea.memoBox {
   color: #2563eb;
 }
 
-/* ── 이사 확인콜 · 해피콜 ── */
-.fuDate {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-}
-.fuDate input {
-  width: 150px;
-}
 .fuState {
   display: inline-flex;
   align-items: center;
@@ -1696,9 +1686,8 @@ textarea.memoBox {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 10px;
 }
+/* 메모 사이 구분선(상담원 현황·아웃콜과 같게) */
 .scriptList li + li {
   border-top: 1px solid var(--ark-color-border);
 }
@@ -1708,9 +1697,9 @@ textarea.memoBox {
   flex-direction: column;
   gap: 3px;
   width: 100%;
-  padding: 10px 34px 10px 12px;
+  padding: 9px 28px 9px 2px;
   border: 0;
-  background: var(--ark-color-bg);
+  background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -2351,7 +2340,24 @@ textarea.memoBox {
   font-weight: 600;
 }
 .sideHead .scriptTools button {
-  height: 26px;
+  height: 24px;
+}
+/* 머리 오른쪽 아이콘 버튼(새 메모 +) */
+.headIconBtn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.headIconBtn:hover:not(:disabled) {
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text);
 }
 /* 상담 메모 본문 — 머리 아래 여백 */
 .scriptPaneBody {

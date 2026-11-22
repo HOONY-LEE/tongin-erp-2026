@@ -24,6 +24,8 @@ class ClosureStatusDto {
 class FollowupQuery {
   @IsIn(['CONFIRM', 'HAPPY']) kind!: FollowupKind;
   @IsOptional() @Matches(DAY) date?: string;
+  /** 기간 끝(이사일) — 없으면 date 하루 */
+  @IsOptional() @Matches(DAY) to?: string;
 }
 class FollowupDto {
   @IsUUID() leadId!: string;
@@ -72,7 +74,7 @@ export class CsFollowupController {
   @Get()
   @RequirePermissions('LEAD.CREATE')
   list(@CurrentUser() user: AuthPrincipal, @Query() q: FollowupQuery) {
-    return this.ops.followups(user, q.kind, q.date);
+    return this.ops.followups(user, q.kind, q.date, q.to);
   }
 
   @Get('counts')
