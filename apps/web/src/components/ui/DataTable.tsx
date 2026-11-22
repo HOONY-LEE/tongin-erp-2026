@@ -41,6 +41,8 @@ interface Props {
   exportable?: boolean;
   /** 내보내기 파일명(확장자 제외). 기본 'table'. */
   exportFileName?: string;
+  /** 내보내기 버튼을 아이콘만(축약형)으로 — 좁은 카드 안 목록 */
+  exportCompact?: boolean;
   /** 한 페이지 행 수. 0을 주면 페이지 없이 전체를 그린다(상세 화면의 짧은 목록 등). */
   pageSize?: number;
   /**
@@ -146,6 +148,7 @@ export function DataTable({
   filters,
   exportable,
   exportFileName,
+  exportCompact,
   pageSize,
   fit,
   tabs,
@@ -166,8 +169,8 @@ export function DataTable({
   // 여러 줄 셀이 있는 표 — 행 높이를 내용에 맞춰 늘린다(고정 행 높이 전제의 가상 스크롤은 끈다)
   const multiline = columns.some((c) => c.multiline);
 
-  // 개인정보 가리기 — 화면에서는 늘 다 보이고, 내보낼 때 고른 칸만 가려서 내려받는다(exportMask)
-  const exportMask = useRef<Set<string> | null>(null);
+  // 개인정보 가리기 — 내보내기의 '가려서 받기'로 고른 칸은 화면 표에서도 가리고, 내려받는 파일에도 가린다
+  const [mask, setMask] = useState<Set<string>>(() => new Set());
   const maskable: MaskableColumn[] = useMemo(
     () =>
       columns
@@ -246,9 +249,7 @@ export function DataTable({
               : (data[c.dataIndex ?? ''] as string | number | null | undefined);
           const out = v === null || v === undefined || v === '' ? null : v;
           // '가려서 받기'로 고른 칸
-          return kind && out !== null && exportMask.current?.has(key)
-            ? maskValue(kind, String(out))
-            : out;
+          return kind && out !== null && mask.has(key) ? maskValue(kind, String(out)) : out;
         },
         renderCell: ({ row }) =>
           row.data.__sk ? (
@@ -258,6 +259,9 @@ export function DataTable({
             <div className="dt-cell-multiline">
               {c.render ? c.render(row.data) : String(row.data[c.dataIndex ?? ''] ?? '')}
             </div>
+          ) : kind && mask.has(key) ? (
+            // '가려서 받기'로 고른 칸 — 화면에서도 가린 글자로
+            maskValue(kind, cellText(c, row.data))
           ) : c.render ? (
             num(c.render(row.data))
           ) : (
@@ -282,7 +286,7 @@ export function DataTable({
       });
     }
     return mapped;
-  }, [columns, rowsSig]);
+  }, [columns, rowsSig, mask]);
 
   // 처음 불러오기가 끝나기 전에는 '데이터가 없습니다' 대신 표 안에 자리표시 행을 깐다
   // (검색창·내보내기·등록 버튼 같은 툴바는 그대로 보인다).
@@ -386,7 +390,9 @@ export function DataTable({
       table={table}
       fileName={exportFileName ?? 'table'}
       maskable={maskable}
-      exportMask={exportMask}
+      mask={mask}
+      onMaskChange={setMask}
+      compact={exportCompact}
     />
   ) : null;
   const hasActions = !!(exportable || toolbarActions);

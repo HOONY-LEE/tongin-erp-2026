@@ -886,3 +886,62 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
 .dt-wrap.dt-bare .sft-toolbar {
   display: none !important;
 }
+
+/* ── 체크박스(akron Checkbox) — 통인 오렌지 대신 검정(칩 선택색과 같게, 다크는 뒤집힘) ── */
+button[class*='_checkbox_'][data-state='checked'],
+button[class*='_checkbox_'][data-state='indeterminate'] {
+  border-color: var(--chip-on-bg) !important;
+  background-color: var(--chip-on-bg) !important;
+  color: var(--chip-on-fg);
+}
+button[class*='_checkbox_'][data-state='checked']:hover:not([data-disabled]),
+button[class*='_checkbox_'][data-state='indeterminate']:hover:not([data-disabled]) {
+  border-color: color-mix(in srgb, var(--chip-on-bg) 82%, var(--chip-on-fg)) !important;
+  background-color: color-mix(in srgb, var(--chip-on-bg) 82%, var(--chip-on-fg)) !important;
+}
+button[class*='_checkbox_'][data-state='unchecked']:hover:not([data-disabled]) {
+  border-color: var(--chip-on-bg) !important;
+  background-color: transparent !important;
+}
+button[class*='_checkbox_']:focus-visible {
+  outline-color: var(--chip-on-bg) !important;
+}
+button[class*='_checkbox_'] [class*='_indicator_'] {
+  color: var(--chip-on-fg);
+}
+
+/* ── 내보내기 — 형식마다 아이콘 + 이름 + 설명. 축약형은 아이콘만 ── */
+.sft-export__trigger.dt-export-compact {
+  width: 38px;
+  padding: 0;
+  justify-content: center;
+}
+/* 툴바 버튼 높이 고정(38px)이 메뉴 항목에는 걸리지 않게 */
+.dt-wrap .sft-export__menu .dt-export-item,
+.sft-export__menu .dt-export-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: auto;
+  min-width: 300px;
+  padding: 8px 10px;
+  text-align: left;
+}
+.dt-export-item__icon {
+  flex: none;
+}
+.dt-export-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.dt-export-item__text b {
+  font-size: calc(14px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.dt-export-item__text small {
+  color: var(--ark-color-text-secondary);
+  white-space: nowrap;
+  font-size: calc(12px * var(--font-scale, 1));
+}
