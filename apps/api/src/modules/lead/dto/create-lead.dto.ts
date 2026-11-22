@@ -60,4 +60,9 @@ export class CreateLeadDto extends MoveAddressDto {
   @IsString()
   @MaxLength(2000)
   productNote?: string;
+
+  /** 중복 접수를 이 접수로 대체 — 먼저 들어온 그 건은 '중복 접수'로 취소하고 이 접수가 가리킨다 */
+  @IsOptional()
+  @IsUUID()
+  replaceLeadId?: string;
 }

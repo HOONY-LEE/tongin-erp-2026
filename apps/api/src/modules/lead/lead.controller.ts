@@ -63,6 +63,17 @@ export class LeadController {
     );
   }
 
+  /** 중복 접수 찾기 — 같은 출발지 주소·서비스 요청일로 이미 들어온 접수 */
+  @Get('duplicates')
+  @RequirePermissions('LEAD.CREATE')
+  duplicates(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('fromAddr') fromAddr = '',
+    @Query('moveDate') moveDate = '',
+  ) {
+    return this.leadService.duplicates(fromAddr.slice(0, 300), moveDate.slice(0, 10), user);
+  }
+
   @AccessLog('lead', 'VIEW')
   @Get(':id')
   @RequirePermissions('LEAD.READ')

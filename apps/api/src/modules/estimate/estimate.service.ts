@@ -143,6 +143,9 @@ export class EstimateService implements OnModuleInit {
           rejectedFromOrgId: true,
           cancelKind: true,
           cancelReason: true,
+          // 중복 접수 — 이 접수가 대체한 먼저 건 / 이 접수를 대체한 새 건
+          dupOf: { select: { id: true, leadNo: true } },
+          dupLeads: { select: { id: true, leadNo: true }, orderBy: { createdAt: 'asc' } },
           partner: { select: { id: true, name: true, type: true, benefit: true, intake: true } },
         },
       }),
