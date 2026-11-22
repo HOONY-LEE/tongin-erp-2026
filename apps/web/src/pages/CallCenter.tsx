@@ -691,8 +691,15 @@ function PcPhone() {
   // 번호로 걸기는 콜 목록의 [전화하기](DialButton)
   const soundButton = (
     <>
-      <Button variant="outline" size="sm" onClick={() => setSoundOpen(true)}>
-        <Settings size={16} /> {t('cc.sound')}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="cc-icon-btn"
+        aria-label={t('cc.sound')}
+        title={t('cc.sound')}
+        onClick={() => setSoundOpen(true)}
+      >
+        <Settings size={20} />
       </Button>
       {soundOpen && <PhoneSettingsModal onClose={() => setSoundOpen(false)} />}
     </>

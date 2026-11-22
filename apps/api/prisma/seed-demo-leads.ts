@@ -9,7 +9,7 @@
  *  - 캘린더(조직 일정): 작업오더 — 앞으로 할 작업(작업토스)·오늘 전후(작업중)·지난 작업(완료)
  *
  * seed-demo.ts(지점·직원)와 seed-demo-catalog.ts(상품·이사물품)를 먼저 돌려야 한다.
- * 고객은 가상 인물이고 전화번호는 010-0000-NNNN(실제로 문자가 가지 않는 번호대)이다.
+ * 고객은 가상 인물이고 전화번호는 0100000NNNN(실제로 문자가 가지 않는 번호대)이다.
  * 날짜는 오늘 기준 상대일 — 언제 돌려도 최근 데이터가 된다.
  * 멱등하다 — 번호(RS/ES/CS/WS + 순번)로 upsert 하고, 견적품목·결제·배정은 그 건의 것만 지우고 다시 넣는다.
  */
@@ -155,7 +155,7 @@ const GIVEN = [
 ];
 const customerName = (i: number) =>
   FAMILY[(i * 7) % FAMILY.length] + GIVEN[(i * 11) % GIVEN.length];
-const customerPhone = (i: number) => `010-0000-${String(1000 + i).padStart(4, '0')}`;
+const customerPhone = (i: number) => `0100000${String(1000 + i).padStart(4, '0')}`;
 
 // ── 지역별 주소 — 지점 이름의 지역어로 고른다(없으면 서울 강남) ──
 type Region = { sido: string; sigungu: string; zip: string; roads: string[] };
