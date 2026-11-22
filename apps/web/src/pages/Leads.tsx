@@ -14,7 +14,6 @@ import {
   FilterButton,
   FormModal,
   ListPage,
-  SegmentedControl,
   useToast,
   type Column,
   type DateRange,
@@ -52,9 +51,8 @@ const isRejected = (r: Row) => !!r.rejectedAt && r.status === 'RECEIVED';
 const statusKey = (r: Row) =>
   isRejected(r) ? 'REJECTED' : r.status === 'QUOTED' ? 'CONTRACT_PENDING' : String(r.status);
 
-// 상태 탭 — 전체 + 모든 상태(반려 포함, 견적완료는 계약미승인에 포함)
+// 상태 필터 — 모든 상태(반려 포함, 견적완료는 계약미승인에 포함)
 const STAGES: { key: string; label: string }[] = [
-  { key: 'ALL', label: i18n.t('leads.all') },
   { key: 'RECEIVED', label: i18n.t('leads.st.RECEIVED') },
   { key: 'REJECTED', label: i18n.t('leads.st.REJECTED') },
   { key: 'CONSULT_TOSS', label: STATUS.CONSULT_TOSS.label },
@@ -65,10 +63,11 @@ const STAGES: { key: string; label: string }[] = [
   { key: 'CANCELED', label: STATUS.CANCELED.label },
 ];
 /** 필터 값 → 서버 검색 주소 조건 */
-const searchParams = (flt: FilterValues, stage: string, q: string) => {
+const searchParams = (flt: FilterValues, q: string) => {
   const p = new URLSearchParams();
   if (q.trim()) p.set('q', q.trim());
-  if (stage !== 'ALL') p.set('stage', stage);
+  if ((flt.stage as string[] | undefined)?.length)
+    p.set('stage', (flt.stage as string[]).join(','));
   const period = flt.period as DateRange | undefined;
   if (period?.from) p.set('from', period.from);
   if (period?.to) p.set('to', period.to);
@@ -101,8 +100,7 @@ export default function Leads() {
   useEffect(() => {
     if (fromCall) setCreateOpen(true);
   }, [fromCall]);
-  const [stage, setStage] = useState('ALL');
-  /** 검색 옆 필터 — 날짜·경로·상품·지역·담당·계약서 */
+  /** 검색 옆 필터 — 기간·상태·경로·상품·지역·담당·계약서 */
   const [flt, setFlt] = useState<FilterValues>({});
   /** 표 검색칸 — 서버에서 찾는다(접수번호·옛 번호·고객명·전화·출발지) */
   const [q, setQ] = useState('');
@@ -110,7 +108,7 @@ export default function Leads() {
   const [regions, setRegions] = useState<string[]>([]);
   /** 조건에 맞는 접수가 한 번에 보낼 수(1,000건)보다 많다 */
   const [limited, setLimited] = useState(false);
-  const query = searchParams(flt, stage, q);
+  const query = searchParams(flt, q);
   /** 계약서 보기 창 */
   const [doc, setDoc] = useState<LeadContract | null>(null);
   const { updatedAt, touch } = useUpdatedAt();
@@ -312,6 +310,16 @@ export default function Leads() {
         { value: 'visitDate', label: t('leads.flt.visitDate') },
       ],
     },
+    {
+      key: 'stage',
+      label: t('leads.col.status'),
+      type: 'multi',
+      // 상태마다 건수(다른 조건을 건 상태에서 서버가 센 값)
+      options: STAGES.map((s) => ({
+        value: s.key,
+        label: Object.keys(counts).length ? `${s.label} ${counts[s.key] ?? 0}` : s.label,
+      })),
+    },
     { key: 'source', label: t('leads.flt.source'), type: 'multi', options: RECEIPT_SOURCES },
     { key: 'serviceLine', label: t('leads.flt.product'), type: 'multi', options: SERVICE_LINES },
     ...(regions.length
@@ -343,24 +351,13 @@ export default function Leads() {
       ],
     },
   ];
-  // 필터·검색·상태 탭은 서버에서 — 탭 숫자도 서버가 센 값
+  // 필터·검색은 서버에서
   const filtered = rows;
-  const countFor = (key: string) => counts[key] ?? 0;
 
   return (
     // 화면 높이에 맞춘다 — 기본 20개씩 보기, 화면에 다 안 들어가는 행은 표 안에서 스크롤(풋터는 늘 보임)
     <ListPage fit title={t('nav.leads')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
-        tabs={
-          <SegmentedControl
-            value={stage}
-            onChange={setStage}
-            options={STAGES.map((s) => ({
-              value: s.key,
-              label: !Object.keys(counts).length ? s.label : `${s.label} ${countFor(s.key)}`,
-            }))}
-          />
-        }
         filters={
           <FilterButton fields={filterFields} value={flt} onChange={setFlt} limited={limited} />
         }
@@ -377,6 +374,7 @@ export default function Leads() {
           </Button>
         }
         exportable
+        exportCompact
         exportFileName="leads"
       />
 

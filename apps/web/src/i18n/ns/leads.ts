@@ -28,7 +28,6 @@ export default defineNs({
       CANCELED: '취소',
       REJECTED: '반려',
     },
-    all: '전체',
     line: {
       MOVING: '이사(무빙)',
       LIVING: '리빙',
@@ -92,7 +91,6 @@ export default defineNs({
       CANCELED: 'Canceled',
       REJECTED: 'Rejected',
     },
-    all: 'All',
     line: {
       MOVING: 'Moving',
       LIVING: 'Living',
@@ -157,7 +155,6 @@ export default defineNs({
       CANCELED: '已取消',
       REJECTED: '已驳回',
     },
-    all: '全部',
     line: {
       MOVING: '搬家',
       LIVING: '生活',
