@@ -1848,17 +1848,26 @@ textarea.memoBox {
 }
 
 /* 고객 이력 — 공통 표(DataTable bare)를 카드 높이에 꽉 */
-.historyCard .paneBody {
+/* 상담 화면 아래 고객 이력 — 카드 없이 표만, 머리 오른쪽 끝에 [자세히] */
+.historyCard {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 0 !important;
 }
-.historyCard .paneBody > :global(.dt-wrap) {
+.historyCard > :global(.dt-wrap) {
   flex: 1 1 auto;
   min-height: 0;
 }
-.historyCard .muted {
-  padding: 12px 16px;
+.historyCard > .historyMore {
+  position: absolute;
+  top: 1px;
+  right: 14px;
+  height: 45px;
+  z-index: 2;
+}
+/* 마지막 머리 칸 글자가 [자세히]와 겹치지 않게 */
+.historyCard :global(.sft-thead [role='columnheader']:last-child) {
+  padding-right: 64px;
 }
 
 /* 상담 카드 — 입력 묶음이 카드 남은 높이를 채우고, 마지막 메모 줄이 늘어난다 */

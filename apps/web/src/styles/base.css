@@ -893,6 +893,10 @@ button[class*='_button_wkrzh_'][class*='_primary_']:hover:not(:disabled) {
   min-height: calc(var(--dt-rows, 10) * var(--sft-table-row-height, 44px));
 }
 
+/* 풋터 없는 표(DataTable noFooter) — 행 전부를 표 안에서 스크롤 */
+.dt-wrap.dt-no-foot .sft-tfoot {
+  display: none !important;
+}
 /* 표만(검색·도구 줄 없이) — 카드 안 작은 목록(DataTable bare) */
 .dt-wrap.dt-bare .sft-toolbar {
   display: none !important;
