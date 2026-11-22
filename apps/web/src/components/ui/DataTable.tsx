@@ -461,7 +461,10 @@ export function DataTable({
               size="sm"
               value={String(table.getPageSize())}
               onValueChange={(v) => table.setPageSize(Number(v))}
-              options={PAGE_SIZES.map((n) => ({ value: String(n), label: t('table.perPage', { n }) }))}
+              options={PAGE_SIZES.map((n) => ({
+                value: String(n),
+                label: t('table.perPage', { n }),
+              }))}
               aria-label={t('table.rowsPerPage')}
             />
           </span>,
