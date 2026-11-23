@@ -501,6 +501,8 @@ function PieViz({
   const { tip, show, hide } = useTip();
   const pickOf = usePick();
   const colors = useMemo(() => colorMap(items.map((i) => i.key)), [items]);
+  // 도넛은 가운데가 곧 설명 — 조각에 올리면 그 조각, 아니면 합계
+  const [hover, setHover] = useState<string | null>(null);
   const total = items.reduce((s, i) => s + i.value, 0);
   if (!total) return <Empty />;
   const narrow = width < 300;
@@ -549,7 +551,15 @@ function PieViz({
         }}
       >
         {width > 0 && (
-          <svg width={size} height={size} style={{ overflow: 'visible' }} onMouseLeave={hide}>
+          <svg
+            width={size}
+            height={size}
+            style={{ overflow: 'visible' }}
+            onMouseLeave={() => {
+              hide();
+              setHover(null);
+            }}
+          >
             {arcs.map(({ it, d, mid }) => (
               <path
                 key={it.key}
@@ -558,39 +568,69 @@ function PieViz({
                 stroke="var(--surface)"
                 strokeWidth={2}
                 fillRule="evenodd"
+                opacity={donut && hover && hover !== it.key ? 0.35 : 1}
                 {...pickOf(it.key)}
-                onMouseMove={() =>
-                  show({
-                    x:
-                      (narrow ? width / 2 - r : (width * 0.56 - size) / 2) +
-                      r +
-                      Math.cos(mid) * r * 0.7,
-                    y: r + Math.sin(mid) * r * 0.7,
-                    content: (
-                      <>
-                        {it.label} · <b>{fmtExact(it.value, format)}</b> (
-                        {((it.value / total) * 100).toFixed(1)}%)
-                      </>
-                    ),
-                  })
+                onMouseEnter={donut ? () => setHover(it.key) : undefined}
+                onMouseMove={
+                  donut
+                    ? undefined
+                    : () =>
+                        show({
+                          x:
+                            (narrow ? width / 2 - r : (width * 0.56 - size) / 2) +
+                            r +
+                            Math.cos(mid) * r * 0.7,
+                          y: r + Math.sin(mid) * r * 0.7,
+                          content: (
+                            <>
+                              {it.label} · <b>{fmtExact(it.value, format)}</b> (
+                              {((it.value / total) * 100).toFixed(1)}%)
+                            </>
+                          ),
+                        })
                 }
               />
             ))}
-            {donut && (
-              <>
-                <text x={r} y={r - 4} textAnchor="middle" className={styles.axisText}>
-                  {t('dash.total')}
-                </text>
-                <text
-                  x={r}
-                  y={r + 14}
-                  textAnchor="middle"
-                  style={{ fill: 'var(--ink)', fontSize: Math.max(13, r / 4), fontWeight: 700 }}
-                >
-                  {fmt(total, format)}
-                </text>
-              </>
-            )}
+            {donut &&
+              (() => {
+                const h = hover ? items.find((i) => i.key === hover) : undefined;
+                // 글자 크기는 안쪽 원에 맞춰, 두 줄이 겹치지 않게 위아래로 벌린다
+                const big = Math.max(14, Math.min(ir * 0.42, 40));
+                const small = Math.max(11, Math.min(big * 0.42, 14));
+                const label = h ? h.label : t('dash.total');
+                return (
+                  <g pointerEvents="none">
+                    <text
+                      x={r}
+                      y={r - big * 0.5 - 2}
+                      textAnchor="middle"
+                      dominantBaseline="auto"
+                      style={{ fill: 'var(--muted)', fontSize: small }}
+                    >
+                      {label.length > 10 ? `${label.slice(0, 9)}…` : label}
+                    </text>
+                    <text
+                      x={r}
+                      y={r + big * 0.35}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      style={{ fill: 'var(--ink)', fontSize: big, fontWeight: 700 }}
+                    >
+                      {fmt(h ? h.value : total, format)}
+                    </text>
+                    {h && (
+                      <text
+                        x={r}
+                        y={r + big * 0.35 + big * 0.5 + small + 2}
+                        textAnchor="middle"
+                        style={{ fill: 'var(--muted)', fontSize: small }}
+                      >
+                        {((h.value / total) * 100).toFixed(1)}%
+                      </text>
+                    )}
+                  </g>
+                );
+              })()}
           </svg>
         )}
       </div>
