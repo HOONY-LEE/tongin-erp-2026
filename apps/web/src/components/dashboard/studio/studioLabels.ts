@@ -1,4 +1,9 @@
-import { STUDIO_DATASET_MAP, type DashPeriod, type DashViz } from '@tongin/shared';
+import {
+  STUDIO_DATASET_GROUPS,
+  STUDIO_DATASET_MAP,
+  type DashPeriod,
+  type DashViz,
+} from '@tongin/shared';
 import { tDyn } from '../../../i18n';
 import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../../../i18n/codes';
 
@@ -8,6 +13,9 @@ import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../../../i18n/codes';
  */
 export const dsLabel = (ds: string) =>
   tDyn(`studio.cat.${ds}._`, STUDIO_DATASET_MAP.get(ds)?.label ?? ds);
+/** 데이터 묶음 이름(영업·운영·인사…) */
+export const dsGroupLabel = (g: string) =>
+  tDyn(`studio.dsGroup.${g}`, STUDIO_DATASET_GROUPS.find((x) => x.key === g)?.label ?? g);
 export const dimLabel = (ds: string, key: string) =>
   tDyn(
     `studio.cat.${ds}.${key}`,

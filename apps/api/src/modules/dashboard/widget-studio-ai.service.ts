@@ -45,6 +45,10 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
   'org'(지점별) 선택지가 자동으로 숨겨집니다. 그래서 "본사는 지점별로도 보고 지점은 자기 것만"이면
   dimension 조작에 'org'를 넣으면 됩니다(따로 권한 조건을 만들 필요 없음).
 - 계약(contract)은 상태를 따로 정하지 않으면 서명완료만, 입금(payment)은 입금완료만, 작업(work)은 취소 제외로 셉니다.
+  휴가(leave)는 승인된 것만, 청구(invoice)는 발행·수금 완료만, 결재(approval)는 회수 제외, 지점·조직(branch)은 운영 중만
+  — 'status' 기준·필터를 쓰면 이 기본 조건이 풀립니다. 직원(employee)의 기간은 입사일 기준이라 '지금 재직 인원'은 period를 all로.
+- 데이터 고르기: 카탈로그 description을 읽고 가장 가까운 데이터를 씁니다(예: 인원·입사 → employee, 지각 → attendance,
+  업무·할 일 → task, 콜·통화 → cs_call, 가맹·기업 영업 리드 → crm_lead, 미수금 → invoice).
 - title은 20자 안팎, subtitle은 무엇을 어떻게 세는지 한 줄.
 
 제안 규칙

@@ -83,7 +83,8 @@ export const DASH_METRIC_LABEL: Record<DashMetric, string> = {
   workCount: '작업 건수',
 };
 
-export type DashFormat = 'count' | 'won' | 'percent';
+/** count: 건수(…건) · won: 금액 · percent: 비율(0~1) · number: 단위 없는 수(평균 일수·시간·수량) */
+export type DashFormat = 'count' | 'won' | 'percent' | 'number';
 
 export interface DashWidgetDef {
   key: string;

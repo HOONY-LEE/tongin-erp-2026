@@ -165,6 +165,23 @@ const DATASET_LIST: Record<string, string> = {
   work: '/work-orders',
   support: '/support',
   customer: '/customers',
+  estimate: '/estimates',
+  service_order: '/service-orders',
+  material_order: '/material-orders',
+  stock: '/materials',
+  cs_call: '/callcenter',
+  cs_sms: '/sms-history',
+  campaign: '/campaigns',
+  invoice: '/billing',
+  attendance: '/attendance',
+  leave: '/leave',
+  approval: '/approvals',
+  task: '/tasks',
+  calendar: '/calendar',
+  space: '/spaces',
+  asset: '/assets',
+  branch: '/org-units',
+  branch_case: '/branch-cases',
 };
 
 /**
