@@ -10,7 +10,6 @@ import {
   MapPin,
   Plus,
   Ruler,
-  Sparkles,
   Store,
   Tag,
   Trash2,
@@ -48,7 +47,6 @@ import {
   DataTable,
   SegmentedControl,
   Skeleton,
-  Textarea,
   useToast,
   type Column,
 } from '../components/ui';
@@ -196,6 +194,79 @@ export function WidgetList({ reloadKey = 0 }: { reloadKey?: number }) {
   );
 }
 
+// ═══════════ 양쪽 판 너비 — 경계선을 끌어 조절, 브라우저에 기억 ═══════════
+const PANE_MIN = 220;
+const PANE_MAX = 640;
+const clampW = (w: number) => Math.round(Math.min(PANE_MAX, Math.max(PANE_MIN, w)));
+function usePaneWidth(side: 'left' | 'right', initial: number) {
+  const key = `tongin_studio_pane_${side}`;
+  const [w, setW] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(key));
+      return v ? clampW(v) : initial;
+    } catch {
+      return initial;
+    }
+  });
+  const set = useCallback(
+    (v: number) => {
+      const c = clampW(v);
+      setW(c);
+      try {
+        localStorage.setItem(key, String(c));
+      } catch {
+        // 저장이 막힌 브라우저 — 이번 화면에서만
+      }
+    },
+    [key],
+  );
+  return [w, set] as const;
+}
+
+function PaneResizer({
+  side,
+  width,
+  onChange,
+}: {
+  side: 'left' | 'right';
+  width: number;
+  onChange: (w: number) => void;
+}) {
+  const { t } = useTranslation();
+  const start = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = width;
+    const move = (ev: PointerEvent) =>
+      onChange(side === 'left' ? w0 + (ev.clientX - x0) : w0 - (ev.clientX - x0));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={t('studio.resizePane')}
+      tabIndex={0}
+      className={`${styles.resizer} ${side === 'left' ? styles.resizerLeft : styles.resizerRight}`}
+      onPointerDown={start}
+      onDoubleClick={() => onChange(side === 'left' ? 300 : 360)}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowLeft') onChange(width + (side === 'left' ? -16 : 16));
+        if (e.key === 'ArrowRight') onChange(width + (side === 'left' ? 16 : -16));
+      }}
+    />
+  );
+}
+
 // ═══════════ 스튜디오 — 왼쪽 설정 · 가운데 미리보기 · 오른쪽 AI ═══════════
 function Studio({ id }: { id: string | null }) {
   const { t } = useTranslation();
@@ -207,6 +278,8 @@ function Studio({ id }: { id: string | null }) {
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const canSave = id ? can('DASHBOARD.UPDATE') : can('DASHBOARD.CREATE');
+  const [leftW, setLeftW] = usePaneWidth('left', 300);
+  const [rightW, setRightW] = usePaneWidth('right', 360);
 
   // 제목·부제는 치는 그대로 둔다(비워도 '새 위젯'으로 되돌아가지 않게 — 저장할 때 채운다)
   const setSpec = useCallback(
@@ -314,14 +387,19 @@ function Studio({ id }: { id: string | null }) {
           <Skeleton height="100%" radius={12} />
         </div>
       ) : (
-        <div className={styles.panes}>
+        <div
+          className={styles.panes}
+          style={{ gridTemplateColumns: `${leftW}px minmax(0, 1fr) ${rightW}px` }}
+        >
           <aside className={styles.left}>
             <SettingsPane spec={spec} patch={patch} />
+            <PaneResizer side="left" width={leftW} onChange={setLeftW} />
           </aside>
           <main className={styles.center}>
             <PreviewCanvas spec={spec} />
           </main>
           <aside className={styles.right}>
+            <PaneResizer side="right" width={rightW} onChange={setRightW} />
             <AiChat
               spec={spec}
               enabled={can('DASHBOARD.CREATE')}
@@ -868,7 +946,7 @@ function AiChat({
   return (
     <div className={styles.chat}>
       <div className={styles.chatHead}>
-        <Sparkles size={15} aria-hidden /> <b>{t('studio.ai.title')}</b>
+        <b>{t('studio.ai.title')}</b>
       </div>
       <div ref={listRef} className={styles.chatList}>
         {!enabled ? (
@@ -959,27 +1037,31 @@ function AiChat({
       </div>
       {enabled && (
         <div className={styles.composer}>
-          <Textarea
-            value={text}
-            rows={3}
-            placeholder={t('studio.ai.ph')}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void send(text);
-              }
-            }}
-          />
-          <button
-            type="button"
-            className={styles.sendBtn}
-            onClick={() => void send(text)}
-            disabled={busy || !text.trim()}
-            aria-label={t('studio.ai.send')}
-          >
-            <ArrowUp size={16} />
-          </button>
+          <div className={styles.inputBox}>
+            <textarea
+              value={text}
+              rows={3}
+              placeholder={t('studio.ai.ph')}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  void send(text);
+                }
+              }}
+            />
+            <div className={styles.inputBar}>
+              <button
+                type="button"
+                className={styles.sendBtn}
+                onClick={() => void send(text)}
+                disabled={busy || !text.trim()}
+                aria-label={t('studio.ai.send')}
+              >
+                <ArrowUp size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

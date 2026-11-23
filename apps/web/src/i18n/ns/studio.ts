@@ -4,6 +4,7 @@ import { defineNs } from './define';
 export default defineNs({
   ko: {
     title: '위젯 스튜디오',
+    resizePane: '판 너비 조절',
     listTitle: '만든 위젯',
     openStudio: '위젯 스튜디오',
     newWidget: '새 위젯',
@@ -41,7 +42,7 @@ export default defineNs({
     },
     grain: { day: '일간', week: '주간', month: '월간', quarter: '분기', year: '연간' },
     ai: {
-      title: 'AI에게 말하기',
+      title: 'AI로 위젯 생성하기',
       ph: '예) 주간·월간·연간으로 매출을 보고 싶어. 본사는 지점별로도 보고, 지점은 자기 지점만.',
       ask: '제안 받기',
       refine: '이 위젯 고쳐 달라기',
@@ -50,8 +51,7 @@ export default defineNs({
       questions: 'AI가 더 알고 싶은 것',
       failed: 'AI 제안을 받지 못했습니다',
       noPerm: '위젯을 만들 권한이 없어 AI 제안을 쓸 수 없습니다',
-      hello:
-        '어떤 위젯이 필요한지 말해 주세요. 몇 가지 안을 보여 드리고, 고르시면 그걸로 미리보기를 바꿔 드려요. 이어서 다듬어 달라고 하셔도 됩니다.',
+      hello: '원하는 위젯을 말해 주세요.',
       ex1: '주간·월간·연간 매출을 보고 싶어. 본사는 지점별로도',
       ex2: '상품별 계약 금액이 어떻게 퍼져 있는지',
       ex3: '지점별 접수 건수와 계약 전환율 관계',
@@ -182,6 +182,7 @@ export default defineNs({
   },
   en: {
     title: 'Widget Studio',
+    resizePane: 'Resize panel',
     listTitle: 'Custom widgets',
     openStudio: 'Widget Studio',
     newWidget: 'New widget',
@@ -213,7 +214,7 @@ export default defineNs({
     },
     grain: { day: 'Daily', week: 'Weekly', month: 'Monthly', quarter: 'Quarterly', year: 'Yearly' },
     ai: {
-      title: 'Ask AI',
+      title: 'Create widget with AI',
       ph: 'e.g. Show revenue weekly/monthly/yearly. HQ can split by branch; branches see only their own.',
       ask: 'Get suggestions',
       refine: 'Ask AI to change this widget',
@@ -222,8 +223,7 @@ export default defineNs({
       questions: 'AI would like to know',
       failed: 'Could not get AI suggestions',
       noPerm: 'You need permission to create widgets to use AI suggestions',
-      hello:
-        'Tell me what widget you need. I will show a few options; pick one to preview it, then keep refining.',
+      hello: 'Describe the widget you want.',
       ex1: 'Revenue weekly/monthly/yearly, with a by-branch view for HQ',
       ex2: 'How contract amounts are distributed by product',
       ex3: 'Lead count vs conversion rate by branch',
@@ -354,6 +354,7 @@ export default defineNs({
   },
   zh: {
     title: '组件工作室',
+    resizePane: '调整面板宽度',
     listTitle: '自建组件',
     openStudio: '组件工作室',
     newWidget: '新组件',
@@ -385,7 +386,7 @@ export default defineNs({
     },
     grain: { day: '按日', week: '按周', month: '按月', quarter: '按季度', year: '按年' },
     ai: {
-      title: '告诉 AI',
+      title: '用 AI 生成组件',
       ph: '例) 想按周/月/年查看销售额。总部还能按门店查看，门店只看自己的。',
       ask: '获取建议',
       refine: '让 AI 修改此组件',
@@ -394,7 +395,7 @@ export default defineNs({
       questions: 'AI 想进一步了解',
       failed: '未能获取 AI 建议',
       noPerm: '没有创建组件的权限，无法使用 AI 建议',
-      hello: '请告诉我需要什么组件。我会给出几个方案，选择后即可预览，也可以继续让我调整。',
+      hello: '请描述您想要的组件。',
       ex1: '按周/月/年查看销售额，总部还能按门店查看',
       ex2: '各商品的合同金额分布',
       ex3: '各门店受理件数与签约转化率的关系',
