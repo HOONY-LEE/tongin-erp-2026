@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Input, Select } from '@sunghoon_lee/akron-ui';
 import {
+  AlignLeft,
   ArrowLeft,
+  BarChart3,
+  GripVertical,
+  LayoutTemplate,
+  SlidersHorizontal,
+  Type,
   ArrowUp,
   Calendar,
   Hash,
@@ -345,6 +351,14 @@ function Studio({ id }: { id: string | null }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const canSave = id ? can('DASHBOARD.UPDATE') : can('DASHBOARD.CREATE');
   const [leftW, setLeftW] = usePaneWidth('left', 300);
+  // 고른 요소(트리·미리보기 공통)와 왼쪽 판 탭
+  const [sel, setSelRaw] = useState<string | null>(null);
+  const [paneTab, setPaneTab] = useState<PaneTab>('data');
+  const setSel = useCallback((id: string | null) => {
+    setSelRaw(id);
+    // 차트·보기 옵션·부제를 고르면 그걸 고치는 '차트 모양' 탭으로
+    if (id && id !== 'widget') setPaneTab('chart');
+  }, []);
   const [rightW, setRightW] = usePaneWidth('right', 360);
 
   // 제목·부제는 치는 그대로 둔다(비워도 '새 위젯'으로 되돌아가지 않게 — 저장할 때 채운다)
@@ -458,11 +472,29 @@ function Studio({ id }: { id: string | null }) {
           style={{ gridTemplateColumns: `${leftW}px minmax(0, 1fr) ${rightW}px` }}
         >
           <aside className={styles.left}>
-            <SettingsPane spec={spec} patch={patch} />
+            <SettingsPane
+              spec={spec}
+              patch={patch}
+              sel={sel}
+              onSel={setSel}
+              tab={paneTab}
+              setTab={setPaneTab}
+            />
             <PaneResizer side="left" width={leftW} onChange={setLeftW} />
           </aside>
           <main className={styles.center}>
-            <PreviewCanvas spec={spec} />
+            <PreviewCanvas
+              spec={spec}
+              sel={sel}
+              onSel={setSel}
+              onRemove={(id) => {
+                const p = removeElement(spec, id);
+                if (p) {
+                  patch(p);
+                  setSel(null);
+                }
+              }}
+            />
           </main>
           <aside className={styles.right}>
             <PaneResizer side="right" width={rightW} onChange={setRightW} />
@@ -491,12 +523,347 @@ function Studio({ id }: { id: string | null }) {
 
 // ═══════════ 왼쪽 — 직접 설정(태블로처럼: 데이터 → 차트 → 구성 → 조작 요소) ═══════════
 type SelectCtl = Extract<StudioControl, { kind: 'segment' | 'dropdown' }>;
+type PaneTab = 'data' | 'chart';
+type DragItem = { kind: 'measure' | 'dimension' | 'field'; key: string };
+const DRAG_MIME = 'application/x-tongin-field';
+
 function SettingsPane({
   spec,
   patch,
+  sel,
+  onSel,
+  tab,
+  setTab,
 }: {
   spec: StudioSpec;
   patch: (p: Partial<StudioSpec>) => void;
+  sel: string | null;
+  onSel: (id: string | null) => void;
+  tab: PaneTab;
+  setTab: (t: PaneTab) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className={styles.leftWrap}>
+      <div className={styles.leftTabs}>
+        <SegmentedControl
+          size="sm"
+          value={tab}
+          onChange={(v) => setTab(v as PaneTab)}
+          options={[
+            { value: 'data', label: t('studio.pane.data') },
+            { value: 'chart', label: t('studio.pane.chart') },
+          ]}
+        />
+      </div>
+      <div className={styles.paneScroll}>
+        {tab === 'data' ? (
+          <DataTab spec={spec} patch={patch} />
+        ) : (
+          <ChartTab spec={spec} patch={patch} sel={sel} onSel={onSel} />
+        )}
+      </div>
+      <ElementTree spec={spec} patch={patch} sel={sel} onSel={onSel} />
+    </div>
+  );
+}
+
+// ── 데이터 탭 — 태블로처럼 왼쪽에 항목을 세로로, 위에 열·행 칸(끌어 놓거나 누르기) ──
+function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioSpec>) => void }) {
+  const { t } = useTranslation();
+  const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
+  const dimIsTime = ds.dimensions.find((d) => d.key === spec.dimension)?.kind === 'time';
+  const [over, setOver] = useState<string | null>(null);
+  const distViz = spec.viz === 'histogram' || spec.viz === 'box';
+
+  const setDim = (dim: string | null) =>
+    patch({
+      dimension: dim,
+      split: dim ? spec.split : null,
+      viz: distViz && dim ? 'box' : fitViz(ds, dim, spec.viz),
+    });
+  const setField = (key: string | undefined) =>
+    patch(
+      key
+        ? { field: key, viz: spec.dimension ? 'box' : 'histogram' }
+        : { field: undefined, viz: fitViz(ds, spec.dimension ?? null, distViz ? 'bar' : spec.viz) },
+    );
+  /** 누르거나 끌어 놓았을 때 — 숫자는 행, 기준은 열(이미 있으면 두 번째 기준), 건별 숫자는 분포 */
+  const assign = (it: DragItem, shelf?: 'cols' | 'rows' | 'split' | 'rows2') => {
+    if (it.kind === 'dimension') {
+      if (shelf === 'split') {
+        if (it.key !== spec.dimension) patch({ split: it.key });
+        return;
+      }
+      if (shelf === 'rows' || shelf === 'rows2') return;
+      setDim(!shelf && spec.dimension === it.key ? null : it.key);
+      return;
+    }
+    if (it.kind === 'field') {
+      if (shelf === 'cols' || shelf === 'split') return;
+      setField(it.key);
+      return;
+    }
+    if (shelf === 'cols' || shelf === 'split') return;
+    if (shelf === 'rows2') {
+      if (it.key !== spec.measure) patch({ measure2: it.key, viz: 'scatter' });
+      return;
+    }
+    patch({
+      measure: it.key,
+      ...(distViz ? { field: undefined, viz: fitViz(ds, spec.dimension ?? null, 'bar') } : {}),
+    });
+  };
+  const readDrag = (e: React.DragEvent): DragItem | null => {
+    try {
+      return JSON.parse(e.dataTransfer.getData(DRAG_MIME)) as DragItem;
+    } catch {
+      return null;
+    }
+  };
+  const dropZone = (id: 'cols' | 'rows' | 'split' | 'rows2') => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+      e.preventDefault();
+      e.stopPropagation(); // 안쪽 칸(두 번째 기준·숫자)에 놓으면 바깥 칸은 받지 않는다
+      setOver(id);
+    },
+    onDragLeave: () => setOver((o) => (o === id ? null : o)),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setOver(null);
+      const it = readDrag(e);
+      if (it) assign(it, id);
+    },
+  });
+  const chip = (cls: string, icon: ReactNode, label: string, onRemove?: () => void) => (
+    <span className={`${styles.shelfChip} ${cls}`}>
+      {icon}
+      <span className={styles.shelfChipText}>{label}</span>
+      {onRemove && (
+        <button type="button" aria-label={t('studio.edit.remove')} onClick={onRemove}>
+          <X size={12} />
+        </button>
+      )}
+    </span>
+  );
+  const dim = ds.dimensions.find((d) => d.key === spec.dimension);
+  const DimI = dim ? DIM_ICON[dim.kind] : Tag;
+  const dragProps = (it: DragItem) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData(DRAG_MIME, JSON.stringify(it));
+      e.dataTransfer.effectAllowed = 'copy';
+    },
+  });
+
+  return (
+    <>
+      <section className={styles.section}>
+        <Select
+          value={spec.dataset}
+          onValueChange={(v) => {
+            const next = STUDIO_DATASET_MAP.get(v)!;
+            patch({
+              dataset: v,
+              measure: next.measures[0].key,
+              dimension: next.defaultTime,
+              split: null,
+              filters: [],
+              controls: [],
+              periodField: undefined,
+              field: undefined,
+              measure2: undefined,
+              viz: fitViz(next, next.defaultTime, spec.viz),
+            });
+          }}
+          options={STUDIO_DATASETS.map((d) => ({ value: d.key, label: dsLabel(d.key) }))}
+          aria-label={t('studio.edit.dataset')}
+        />
+        {/* 열·행 칸 */}
+        <div className={styles.shelves}>
+          <div className={styles.shelfRow}>
+            <span className={styles.shelfName}>{t('studio.pane.cols')}</span>
+            <div
+              className={`${styles.shelf} ${over === 'cols' ? styles.shelfOver : ''}`}
+              {...dropZone('cols')}
+            >
+              {spec.dimension ? (
+                chip(
+                  styles.dimension,
+                  <DimI size={12} aria-hidden />,
+                  dimLabel(ds.key, spec.dimension),
+                  () => setDim(null),
+                )
+              ) : (
+                <span className={styles.shelfEmpty}>{t('studio.pane.dropDim')}</span>
+              )}
+              {spec.dimension &&
+                (spec.split ? (
+                  chip(
+                    styles.dimension,
+                    <Tag size={12} aria-hidden />,
+                    dimLabel(ds.key, spec.split),
+                    () => patch({ split: null }),
+                  )
+                ) : (
+                  <span
+                    className={`${styles.shelfSlot} ${over === 'split' ? styles.shelfOver : ''}`}
+                    {...dropZone('split')}
+                  >
+                    {t('studio.pane.dropSplit')}
+                  </span>
+                ))}
+            </div>
+          </div>
+          <div className={styles.shelfRow}>
+            <span className={styles.shelfName}>{t('studio.pane.rows')}</span>
+            <div
+              className={`${styles.shelf} ${over === 'rows' ? styles.shelfOver : ''}`}
+              {...dropZone('rows')}
+            >
+              {distViz && spec.field
+                ? chip(
+                    styles.fieldPill,
+                    <Ruler size={12} aria-hidden />,
+                    fieldLabel(ds.key, spec.field),
+                    () => setField(undefined),
+                  )
+                : chip(
+                    styles.measure,
+                    <Hash size={12} aria-hidden />,
+                    measureLabel(ds.key, spec.measure),
+                  )}
+              {!distViz &&
+                (spec.viz === 'scatter' && spec.measure2 ? (
+                  chip(
+                    styles.measure,
+                    <Hash size={12} aria-hidden />,
+                    measureLabel(ds.key, spec.measure2),
+                    () =>
+                      patch({
+                        measure2: undefined,
+                        viz: fitViz(ds, spec.dimension ?? null, 'bar'),
+                      }),
+                  )
+                ) : ds.measures.length > 1 && spec.dimension ? (
+                  <span
+                    className={`${styles.shelfSlot} ${over === 'rows2' ? styles.shelfOver : ''}`}
+                    {...dropZone('rows2')}
+                  >
+                    {t('studio.pane.dropMeasure2')}
+                  </span>
+                ) : null)}
+            </div>
+          </div>
+        </div>
+        <div className={styles.inline2}>
+          {dimIsTime && (
+            <label className={styles.field}>
+              <span>{t('studio.edit.grain')}</span>
+              <Select
+                size="sm"
+                value={spec.grain ?? 'month'}
+                onValueChange={(v) => patch({ grain: v as StudioSpec['grain'] })}
+                options={STUDIO_GRAINS.map((g) => ({ value: g, label: grainLabel(g) }))}
+              />
+            </label>
+          )}
+          <label className={styles.field}>
+            <span>{t('studio.edit.period')}</span>
+            <Select
+              size="sm"
+              value={spec.period}
+              onValueChange={(v) => patch({ period: v as StudioSpec['period'] })}
+              options={DASH_PERIODS.map((p) => ({ value: p, label: DASH_PERIOD_LABEL[p] }))}
+            />
+          </label>
+        </div>
+      </section>
+
+      {/* 항목 목록 — 세로로(태블로 데이터 판) */}
+      <section className={`${styles.section} ${styles.fieldList}`}>
+        <p className={styles.muted}>{t('studio.pane.dragHint')}</p>
+        <span className={`${styles.catHead} ${styles.catMeasure}`}>
+          {t('studio.catalog.measures')}
+        </span>
+        {ds.measures.map((m) => {
+          const on = spec.measure === m.key || spec.measure2 === m.key;
+          return (
+            <button
+              key={m.key}
+              type="button"
+              className={`${styles.fieldRow} ${styles.measure} ${on ? styles.fieldOn : ''}`}
+              title={m.description}
+              onClick={() => assign({ kind: 'measure', key: m.key })}
+              {...dragProps({ kind: 'measure', key: m.key })}
+            >
+              <GripVertical size={12} className={styles.grip} aria-hidden />
+              <Hash size={12} aria-hidden />
+              <span>{measureLabel(ds.key, m.key)}</span>
+            </button>
+          );
+        })}
+        <span className={`${styles.catHead} ${styles.catDim}`}>
+          {t('studio.catalog.dimensions')}
+        </span>
+        {ds.dimensions.map((d) => {
+          const I = DIM_ICON[d.kind];
+          const on = spec.dimension === d.key || spec.split === d.key;
+          return (
+            <button
+              key={d.key}
+              type="button"
+              className={`${styles.fieldRow} ${styles.dimension} ${on ? styles.fieldOn : ''}`}
+              onClick={() => assign({ kind: 'dimension', key: d.key })}
+              {...dragProps({ kind: 'dimension', key: d.key })}
+            >
+              <GripVertical size={12} className={styles.grip} aria-hidden />
+              <I size={12} aria-hidden />
+              <span>{dimLabel(ds.key, d.key)}</span>
+            </button>
+          );
+        })}
+        {ds.fields.length > 0 && (
+          <>
+            <span className={`${styles.catHead} ${styles.catField}`}>
+              {t('studio.catalog.fields')}
+            </span>
+            {ds.fields.map((f) => {
+              const on = distViz && spec.field === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`${styles.fieldRow} ${styles.fieldPill} ${on ? styles.fieldOn : ''}`}
+                  onClick={() => assign({ kind: 'field', key: f.key })}
+                  {...dragProps({ kind: 'field', key: f.key })}
+                >
+                  <GripVertical size={12} className={styles.grip} aria-hidden />
+                  <Ruler size={12} aria-hidden />
+                  <span>{fieldLabel(ds.key, f.key)}</span>
+                </button>
+              );
+            })}
+          </>
+        )}
+      </section>
+    </>
+  );
+}
+
+// ── 차트 모양 탭 — 차트 · 제목/부제 · 보기 옵션 ──
+function ChartTab({
+  spec,
+  patch,
+  sel,
+  onSel,
+}: {
+  spec: StudioSpec;
+  patch: (p: Partial<StudioSpec>) => void;
+  sel: string | null;
+  onSel: (id: string | null) => void;
 }) {
   const { t } = useTranslation();
   const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
@@ -505,6 +872,11 @@ function SettingsPane({
   const setControls = (c: StudioControl[]) => patch({ controls: c });
   const has = (target: string) =>
     controls.some((c) => c.kind !== 'filter' && (c as SelectCtl).target === target);
+  // 트리에서 고른 보기 옵션을 보이게
+  useEffect(() => {
+    if (sel?.startsWith('ctl:'))
+      document.querySelector(`[data-ctl="${sel}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [sel]);
 
   const addCtl = (kind: 'grain' | 'dimension' | 'measure' | 'period' | 'filter') => {
     if (kind === 'filter') {
@@ -546,89 +918,9 @@ function SettingsPane({
             : [...STUDIO_VIZ];
 
   return (
-    <div className={styles.paneScroll}>
-      {/* 데이터 — 측정값(초록)·차원(파랑)·분포 칸(보라) */}
-      <section className={styles.section}>
-        <h3>{t('studio.edit.dataset')}</h3>
-        <Select
-          value={spec.dataset}
-          onValueChange={(v) => {
-            const next = STUDIO_DATASET_MAP.get(v)!;
-            patch({
-              dataset: v,
-              measure: next.measures[0].key,
-              dimension: next.defaultTime,
-              split: null,
-              filters: [],
-              controls: [],
-              periodField: undefined,
-              field: undefined,
-              measure2: undefined,
-              viz: fitViz(next, next.defaultTime, spec.viz),
-            });
-          }}
-          options={STUDIO_DATASETS.map((d) => ({ value: d.key, label: dsLabel(d.key) }))}
-        />
-        <span className={styles.catHead}>{t('studio.catalog.measures')}</span>
-        <div className={styles.pills}>
-          {ds.measures.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              className={`${styles.pill} ${styles.measure} ${spec.measure === m.key ? styles.pillOn : ''}`}
-              onClick={() => patch({ measure: m.key })}
-              title={m.description}
-            >
-              <Hash size={12} aria-hidden /> {measureLabel(ds.key, m.key)}
-            </button>
-          ))}
-        </div>
-        <span className={styles.catHead}>{t('studio.catalog.dimensions')}</span>
-        <div className={styles.pills}>
-          {ds.dimensions.map((d) => {
-            const I = DIM_ICON[d.kind];
-            return (
-              <button
-                key={d.key}
-                type="button"
-                className={`${styles.pill} ${styles.dimension} ${spec.dimension === d.key ? styles.pillOn : ''}`}
-                onClick={() => {
-                  const dim = spec.dimension === d.key ? null : d.key;
-                  patch({ dimension: dim, viz: fitViz(ds, dim, spec.viz) });
-                }}
-              >
-                <I size={12} aria-hidden /> {dimLabel(ds.key, d.key)}
-              </button>
-            );
-          })}
-        </div>
-        {ds.fields.length > 0 && (
-          <>
-            <span className={styles.catHead}>{t('studio.catalog.fields')}</span>
-            <div className={styles.pills}>
-              {ds.fields.map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={`${styles.pill} ${styles.fieldPill} ${
-                    (spec.viz === 'histogram' || spec.viz === 'box') && spec.field === f.key
-                      ? styles.pillOn
-                      : ''
-                  }`}
-                  onClick={() =>
-                    patch({ field: f.key, viz: spec.viz === 'box' ? 'box' : 'histogram' })
-                  }
-                >
-                  <Ruler size={12} aria-hidden /> {fieldLabel(ds.key, f.key)}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-
+    <>
       {/* 차트 — 쓰임새별(태블로 'Show Me'처럼) */}
-      <section className={styles.section}>
+      <section className={`${styles.section} ${sel === 'chart' ? styles.sectionSel : ''}`}>
         <h3>{t('studio.edit.viz')}</h3>
         {STUDIO_VIZ_GROUPS.map((g) => (
           <div key={g.key} className={styles.vizGroup}>
@@ -656,84 +948,18 @@ function SettingsPane({
         ))}
       </section>
 
-      {/* 구성 */}
-      <section className={styles.section}>
-        <h3>{t('studio.edit.shelf')}</h3>
+      {/* 제목·부제 */}
+      <section
+        className={`${styles.section} ${sel === 'subtitle' || sel === 'title' ? styles.sectionSel : ''}`}
+      >
+        <h3>{t('studio.pane.text')}</h3>
         <label className={styles.field}>
-          <span>{t('studio.edit.measure')}</span>
-          <Select
-            value={spec.measure}
-            onValueChange={(v) => patch({ measure: v })}
-            options={ds.measures.map((m) => ({ value: m.key, label: measureLabel(ds.key, m.key) }))}
-          />
-        </label>
-        {spec.viz === 'scatter' && (
-          <label className={styles.field}>
-            <span>{t('studio.edit.measure2')}</span>
-            <Select
-              value={spec.measure2 ?? ''}
-              onValueChange={(v) => patch({ measure2: v })}
-              options={ds.measures
-                .filter((m) => m.key !== spec.measure)
-                .map((m) => ({ value: m.key, label: measureLabel(ds.key, m.key) }))}
-            />
-          </label>
-        )}
-        {(spec.viz === 'histogram' || spec.viz === 'box') && (
-          <label className={styles.field}>
-            <span>{t('studio.edit.field')}</span>
-            <Select
-              value={spec.field ?? ''}
-              onValueChange={(v) => patch({ field: v })}
-              options={ds.fields.map((f) => ({ value: f.key, label: fieldLabel(ds.key, f.key) }))}
-            />
-          </label>
-        )}
-        <label className={styles.field}>
-          <span>{t('studio.edit.dimension')}</span>
-          <Select
-            value={spec.dimension ?? '__none'}
-            onValueChange={(v) => {
-              const dim = v === '__none' ? null : v;
-              patch({ dimension: dim, viz: fitViz(ds, dim, spec.viz) });
-            }}
-            options={[
-              { value: '__none', label: t('studio.edit.none') },
-              ...ds.dimensions.map((d) => ({ value: d.key, label: dimLabel(ds.key, d.key) })),
-            ]}
-          />
-        </label>
-        {dimIsTime && (
-          <label className={styles.field}>
-            <span>{t('studio.edit.grain')}</span>
-            <Select
-              value={spec.grain ?? 'month'}
-              onValueChange={(v) => patch({ grain: v as StudioSpec['grain'] })}
-              options={STUDIO_GRAINS.map((g) => ({ value: g, label: grainLabel(g) }))}
-            />
-          </label>
-        )}
-        {(spec.viz === 'stacked' || spec.viz === 'heatmap' || spec.split) && (
-          <label className={styles.field}>
-            <span>{t('studio.edit.split')}</span>
-            <Select
-              value={spec.split ?? '__none'}
-              onValueChange={(v) => patch({ split: v === '__none' ? null : v })}
-              options={[
-                { value: '__none', label: t('studio.edit.splitNone') },
-                ...ds.dimensions
-                  .filter((d) => d.key !== spec.dimension && d.kind !== 'time')
-                  .map((d) => ({ value: d.key, label: dimLabel(ds.key, d.key) })),
-              ]}
-            />
-          </label>
-        )}
-        <label className={styles.field}>
-          <span>{t('studio.edit.period')}</span>
-          <Select
-            value={spec.period}
-            onValueChange={(v) => patch({ period: v as StudioSpec['period'] })}
-            options={DASH_PERIODS.map((p) => ({ value: p, label: DASH_PERIOD_LABEL[p] }))}
+          <span>{t('studio.edit.name')}</span>
+          <Input
+            value={spec.title ?? ''}
+            maxLength={60}
+            onFocus={() => onSel('title')}
+            onChange={(e) => patch({ title: e.target.value })}
           />
         </label>
         <label className={styles.field}>
@@ -741,17 +967,23 @@ function SettingsPane({
           <Input
             value={spec.subtitle ?? ''}
             maxLength={120}
+            onFocus={() => onSel('subtitle')}
             onChange={(e) => patch({ subtitle: e.target.value || undefined })}
           />
         </label>
       </section>
 
-      {/* 보는 사람이 누르는 요소 */}
+      {/* 보기 옵션 — 보는 사람이 바꾸는 탭·드롭다운·필터 */}
       <section className={styles.section}>
         <h3>{t('studio.edit.controls')}</h3>
         {!controls.length && <p className={styles.muted}>{t('studio.edit.noControls')}</p>}
         {controls.map((c, i) => (
-          <div key={i} className={styles.ctl}>
+          <div
+            key={i}
+            data-ctl={`ctl:${i}`}
+            className={`${styles.ctl} ${sel === `ctl:${i}` ? styles.ctlSel : ''}`}
+            onPointerDownCapture={() => onSel(`ctl:${i}`)}
+          >
             <div className={styles.ctlHead}>
               {c.kind === 'filter' ? (
                 <Badge variant="subtle" color="neutral">
@@ -772,7 +1004,10 @@ function SettingsPane({
                 type="button"
                 className={styles.iconBtn}
                 aria-label={t('studio.edit.remove')}
-                onClick={() => setControls(controls.filter((_, k) => k !== i))}
+                onClick={() => {
+                  setControls(controls.filter((_, k) => k !== i));
+                  onSel(null);
+                }}
               >
                 <X size={14} />
               </button>
@@ -856,14 +1091,156 @@ function SettingsPane({
           </div>
         )}
       </section>
+    </>
+  );
+}
+
+// ── 요소 트리 — 위젯 안의 요소를 고르고(미리보기에도 표시) 지운다 ──
+/** 요소 지우기 — 부제는 비우고 보기 옵션은 뺀다(제목·차트는 지우지 않는다) */
+const removeElement = (spec: StudioSpec, id: string): Partial<StudioSpec> | null => {
+  if (id === 'subtitle') return { subtitle: undefined };
+  if (id.startsWith('ctl:')) {
+    const i = Number(id.slice(4));
+    return { controls: (spec.controls ?? []).filter((_, k) => k !== i) };
+  }
+  return null;
+};
+
+function ElementTree({
+  spec,
+  patch,
+  sel,
+  onSel,
+}: {
+  spec: StudioSpec;
+  patch: (p: Partial<StudioSpec>) => void;
+  sel: string | null;
+  onSel: (id: string | null) => void;
+}) {
+  const { t } = useTranslation();
+  const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
+  const controls = spec.controls ?? [];
+  const VizI = VIZ_ICON[spec.viz] ?? BarChart3;
+  const row = (id: string, depth: number, icon: ReactNode, label: string, removable: boolean) => (
+    <div
+      key={id}
+      role="treeitem"
+      aria-selected={sel === id}
+      tabIndex={0}
+      className={`${styles.treeRow} ${sel === id ? styles.treeOn : ''}`}
+      style={{ paddingLeft: 10 + depth * 16 }}
+      onClick={() => onSel(sel === id ? null : id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSel(id);
+        }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && removable) {
+          const p = removeElement(spec, id);
+          if (p) {
+            patch(p);
+            onSel(null);
+          }
+        }
+      }}
+    >
+      {icon}
+      <span className={styles.treeLabel}>{label}</span>
+      {removable && (
+        <button
+          type="button"
+          className={styles.treeDel}
+          aria-label={t('studio.edit.remove')}
+          onClick={(e) => {
+            e.stopPropagation();
+            const p = removeElement(spec, id);
+            if (p) {
+              patch(p);
+              onSel(null);
+            }
+          }}
+        >
+          <Trash2 size={12} />
+        </button>
+      )}
+    </div>
+  );
+  return (
+    <div className={styles.tree} role="tree" aria-label={t('studio.pane.elements')}>
+      <div className={styles.treeHead}>{t('studio.pane.elements')}</div>
+      <div className={styles.treeBody}>
+        {row(
+          'widget',
+          0,
+          <LayoutTemplate size={13} aria-hidden />,
+          spec.title || t('studio.newWidget'),
+          false,
+        )}
+        {row('title', 1, <Type size={13} aria-hidden />, t('studio.pane.elTitle'), false)}
+        {spec.subtitle &&
+          row(
+            'subtitle',
+            1,
+            <AlignLeft size={13} aria-hidden />,
+            t('studio.pane.elSubtitle'),
+            true,
+          )}
+        {controls.length > 0 && (
+          <>
+            <div className={styles.treeGroup} style={{ paddingLeft: 26 }}>
+              <SlidersHorizontal size={13} aria-hidden /> {t('studio.edit.controls')}
+            </div>
+            {controls.map((c, i) =>
+              row(
+                `ctl:${i}`,
+                2,
+                <span className={styles.treeDot} />,
+                c.kind === 'filter'
+                  ? `${t('studio.edit.filter')} · ${dimLabel(ds.key, c.dim)}`
+                  : `${t(c.kind === 'segment' ? 'studio.edit.segment' : 'studio.edit.dropdown')} · ${t(`studio.target.${c.target}`)}`,
+                true,
+              ),
+            )}
+          </>
+        )}
+        {row(
+          'chart',
+          1,
+          <VizI size={13} aria-hidden />,
+          `${t('studio.pane.elChart')} · ${DASH_VIZ_LABEL[spec.viz]}`,
+          false,
+        )}
+      </div>
     </div>
   );
 }
 
 // ═══════════ 가운데 — 미리보기(실제 대시보드 칸 크기) ═══════════
 const SIZES = { s: 4, m: 6, l: 12 } as const;
-function PreviewCanvas({ spec }: { spec: StudioSpec }) {
+function PreviewCanvas({
+  spec,
+  sel,
+  onSel,
+  onRemove,
+}: {
+  spec: StudioSpec;
+  sel: string | null;
+  onSel: (id: string | null) => void;
+  onRemove: (id: string) => void;
+}) {
   const { t } = useTranslation();
+  // 고른 요소를 Delete·Backspace로 지운다(글 입력 중이면 그대로 글자 지우기)
+  useEffect(() => {
+    if (!sel) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') onRemove(sel);
+      if (e.key === 'Escape') onSel(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sel, onRemove, onSel]);
   const [size, setSize] = useState<keyof typeof SIZES>('m');
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -906,14 +1283,35 @@ function PreviewCanvas({ spec }: { spec: StudioSpec }) {
           ]}
         />
       </div>
-      <div ref={boxRef} className={styles.canvas}>
-        <section className={styles.frame} style={{ width: w, height: h }}>
+      <div
+        ref={boxRef}
+        className={styles.canvas}
+        onPointerDown={(e) => {
+          // 빈 곳을 누르면 선택 풀기
+          if (e.target === e.currentTarget) onSel(null);
+        }}
+      >
+        <section
+          className={`${styles.frame} ${sel === 'widget' ? styles.frameSel : ''}`}
+          style={{ width: w, height: h }}
+        >
           <div className={styles.frameHead}>
-            <span className={styles.frameTitle}>{spec.title || t('studio.newWidget')}</span>
+            <span
+              className={`${styles.frameTitle} ${styles.pickTitle} ${sel === 'title' ? styles.pickTitleOn : ''}`}
+              onPointerDown={() => onSel('title')}
+            >
+              {spec.title || t('studio.newWidget')}
+            </span>
             <span ref={setSlot} className={styles.frameSlot} />
           </div>
           <div className={styles.frameBody}>
-            <StudioWidget spec={preview} load={load} headerSlot={slot} />
+            <StudioWidget
+              spec={preview}
+              load={load}
+              headerSlot={slot}
+              selected={sel}
+              onSelect={onSel}
+            />
           </div>
         </section>
       </div>
