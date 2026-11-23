@@ -153,24 +153,24 @@ export function WidgetList({ reloadKey = 0 }: { reloadKey?: number }) {
     updatedText: fmtDateTime(r.updatedAt),
   }));
   return (
-      <DataTable
-        columns={columns}
-        rows={tableRows as never}
-        loading={rows === null}
-        onRowClick={(r) => navigate(`${LIST}/${String(r.id)}`)}
-        toolbarActions={
-          can('DASHBOARD.CREATE') ? (
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus size={14} />}
-              onClick={() => navigate(`${LIST}/new`)}
-            >
-              {t('studio.newWidget')}
-            </Button>
-          ) : undefined
-        }
-      />
+    <DataTable
+      columns={columns}
+      rows={tableRows as never}
+      loading={rows === null}
+      onRowClick={(r) => navigate(`${LIST}/${String(r.id)}`)}
+      toolbarActions={
+        can('DASHBOARD.CREATE') ? (
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus size={14} />}
+            onClick={() => navigate(`${LIST}/new`)}
+          >
+            {t('studio.newWidget')}
+          </Button>
+        ) : undefined
+      }
+    />
   );
 }
 
