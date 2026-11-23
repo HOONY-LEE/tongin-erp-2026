@@ -1344,6 +1344,23 @@ model Dashboard {
   @@map("dashboard")
 }
 
+/// 위젯 스튜디오에서 만든 위젯 — 설계서(spec)만 저장하고, 데이터는 서버 공통 실행기가 카탈로그로 만든다.
+/// 대시보드 배치에서는 widget = 'cw:' + id 로 가리킨다.
+model CustomWidget {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String
+  subtitle  String?
+  // StudioSpec(@tongin/shared) — { version, dataset, measure, dimension, viz, controls … }
+  spec      Json
+  // 만들 때 AI에게 한 말(다시 고칠 때 이어서)
+  prompt    String?
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("custom_widget")
+}
+
 /// 템플릿을 누구에게 기본으로 보여 줄지 — 권한 그룹(ROLE) 또는 사용자(USER) 하나에 템플릿 하나
 model DashboardAssignment {
   id          String    @id @default(uuid()) @db.Uuid

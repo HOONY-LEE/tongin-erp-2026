@@ -42,7 +42,6 @@ import {
   DASH_PERIODS,
   DASH_ROW_HEIGHT,
   DASH_WIDGETS,
-  DASH_WIDGET_MAP,
   canUseWidget,
   dashFlowOrder,
   flowDashLayout,
@@ -56,6 +55,7 @@ import {
   type DashViz,
 } from '@tongin/shared';
 import { useDashData } from './useDashData';
+import { CUSTOM_GROUP, customDef, defOf, useAvailableCustomWidgets } from '../studio/customWidgets';
 import { WidgetFrame } from './WidgetFrame';
 import styles from './builder.module.css';
 import { DASH_METRIC_LABEL, DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../../../i18n/codes';
@@ -128,6 +128,9 @@ export function DashboardEditor({
   const items = layout.items;
   const set = useCallback((next: DashItem[]) => onChange({ version: 1, items: next }), [onChange]);
   const { results, loading } = useDashData(items);
+  // 만든 위젯(위젯 스튜디오) — 위젯 목록·끌어 놓기에 기본 위젯과 함께
+  const customRows = useAvailableCustomWidgets();
+  const customMap = useMemo(() => new Map(customRows.map((r) => [r.key, r])), [customRows]);
 
   // ── 캔버스 크기 ──
   // 위젯 목록이 사이드바(240px) 자리를 그대로 쓰므로, 콘텐츠 칸 폭 = 실제 대시보드 콘텐츠 폭.
@@ -253,7 +256,7 @@ export function DashboardEditor({
     if (!key) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-    const def = DASH_WIDGET_MAP.get(key);
+    const def = defOf(key, customMap);
     if (!def) return;
     const c = cellAt(e);
     const x = Math.max(0, Math.min(DASH_COLS - def.size.w, c.x - Math.floor(def.size.w / 2) + 1));
@@ -275,7 +278,7 @@ export function DashboardEditor({
   const dragKey = useRef<string | null>(null);
 
   const addToBottom = (key: string) => {
-    const def = DASH_WIDGET_MAP.get(key);
+    const def = defOf(key, customMap);
     if (!def) return;
     const it = makeDashItem(def);
     set(flowDashLayout([...dashFlowOrder(items), it]));
@@ -355,8 +358,12 @@ export function DashboardEditor({
   // ── 위젯 목록 ──
   const [q, setQ] = useState('');
   const usable = useMemo(
-    () => DASH_WIDGETS.filter((w) => canUseWidget(w, permissions)),
-    [permissions],
+    () => [
+      // 위젯 스튜디오에서 만든 위젯(볼 수 있는 데이터만) — 맨 위 묶음
+      ...customRows.map((r) => customDef(r.key, r)),
+      ...DASH_WIDGETS.filter((w) => canUseWidget(w, permissions)),
+    ],
+    [permissions, customRows],
   );
   const shown = usable.filter((w) => {
     const k = q.trim();
@@ -367,7 +374,7 @@ export function DashboardEditor({
       groupLabel(w.group).includes(k)
     );
   });
-  const hidden = DASH_WIDGETS.length - usable.length;
+  const hidden = DASH_WIDGETS.length + customRows.length - usable.length;
 
   const view = dropPreview ?? preview ?? items;
   const used = view.reduce((m, i) => Math.max(m, i.y + i.h), 0);
@@ -395,7 +402,7 @@ export function DashboardEditor({
         </div>
         <SearchInput value={q} onChange={setQ} placeholder={t('dash.findWidget')} />
         <div className={styles.paletteList}>
-          {DASH_GROUPS.map((g) => {
+          {[CUSTOM_GROUP, ...DASH_GROUPS].map((g) => {
             const list = shown.filter((w) => w.group === g);
             if (!list.length) return null;
             return (
@@ -645,7 +652,7 @@ function WidgetMenu({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const def = DASH_WIDGET_MAP.get(item.widget)!;
+  const def = defOf(item.widget, new Map())!;
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: at.x, top: at.y });
   useLayoutEffect(() => {

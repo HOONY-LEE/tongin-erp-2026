@@ -10,6 +10,10 @@ import {
   canUseWidget,
   defaultDashLayout,
   normalizeDashLayout,
+  CUSTOM_WIDGET_PREFIX,
+  isCustomWidgetKey,
+  PERMISSION_WILDCARD,
+  STUDIO_DATASET_MAP,
   type AuthPrincipal,
   type DashLayout,
 } from '@tongin/shared';
@@ -25,10 +29,12 @@ export interface TemplateInput {
 }
 
 /** 볼 수 없는 위젯은 빼고 보여 준다(관리자가 지정한 템플릿에 권한 밖 위젯이 있어도) */
-function visibleOnly(layout: DashLayout, p: AuthPrincipal): DashLayout {
+function visibleOnly(layout: DashLayout, p: AuthPrincipal, custom: Set<string>): DashLayout {
   return {
     version: 1,
     items: layout.items.filter((it) => {
+      // 만든 위젯 — 있는 것 중 그 데이터를 볼 수 있는 것만
+      if (isCustomWidgetKey(it.widget)) return custom.has(it.widget);
       const def = DASH_WIDGET_MAP.get(it.widget);
       return !!def && canUseWidget(def, p.permissions);
     }),
@@ -78,10 +84,25 @@ export class DashboardService {
     return def ? { template: def, via: 'DEFAULT' as const } : null;
   }
 
+  /** 내가 볼 수 있는 만든 위젯('cw:' + id) — 위젯 데이터 권한(데이터별 읽기 권한)으로 */
+  private async visibleCustom(p: AuthPrincipal): Promise<Set<string>> {
+    const rows = await this.prisma.customWidget.findMany({ select: { id: true, spec: true } });
+    const all = p.permissions.includes(PERMISSION_WILDCARD);
+    return new Set(
+      rows
+        .filter((r) => {
+          const ds = STUDIO_DATASET_MAP.get(String((r.spec as { dataset?: unknown })?.dataset));
+          return !!ds && (all || p.permissions.includes(ds.perm));
+        })
+        .map((r) => `${CUSTOM_WIDGET_PREFIX}${r.id}`),
+    );
+  }
+
   async mine(p: AuthPrincipal) {
-    const [assigned, personal] = await Promise.all([
+    const [assigned, personal, custom] = await Promise.all([
       this.assignedTemplate(p),
       this.prisma.dashboard.findUnique({ where: { ownerUserId: p.userId } }),
+      this.visibleCustom(p),
     ]);
     const canCustomize = !assigned || assigned.template.allowPersonal;
     const base = assigned
@@ -94,11 +115,11 @@ export class DashboardService {
       templateName: assigned?.template.name ?? null,
       canCustomize,
       hasPersonal: !!personal,
-      layout: visibleOnly(usePersonal ? normalizeDashLayout(personal.layout) : base, p),
+      layout: visibleOnly(usePersonal ? normalizeDashLayout(personal.layout) : base, p, custom),
       /** 차트 색 — 받은 템플릿 색(개인 대시보드도 템플릿 색을 따른다) */
       color: assigned?.template.color ?? DASH_DEFAULT_COLOR,
       /** '기본으로 되돌리기'를 눌렀을 때 보일 구성 */
-      baseLayout: visibleOnly(base, p),
+      baseLayout: visibleOnly(base, p, custom),
       updatedAt: usePersonal ? personal.updatedAt : (assigned?.template.updatedAt ?? null),
     };
   }
@@ -109,7 +130,7 @@ export class DashboardService {
       throw new ForbiddenException('관리자가 정한 대시보드라 고칠 수 없습니다.');
     }
     // 권한 밖 위젯은 저장하지 않는다
-    const clean = visibleOnly(normalizeDashLayout(layout), p);
+    const clean = visibleOnly(normalizeDashLayout(layout), p, await this.visibleCustom(p));
     await this.prisma.dashboard.upsert({
       where: { ownerUserId: p.userId },
       update: { layout: clean as object },

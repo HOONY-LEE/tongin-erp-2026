@@ -951,6 +951,22 @@ export function normalizeDashLayout(raw: unknown): DashLayout {
   const items = Array.isArray((raw as DashLayout | null)?.items) ? (raw as DashLayout).items : [];
   const out: DashItem[] = [];
   for (const it of items) {
+    // 위젯 스튜디오에서 만든 위젯('cw:' + id) — 모양·크기만 정리(데이터·조작은 위젯 설계서에)
+    if (String(it?.widget).startsWith('cw:') && /^cw:[0-9a-f-]{36}$/i.test(String(it.widget))) {
+      const w = Math.min(DASH_COLS, Math.max(2, Math.round(Number(it.w) || 6)));
+      const h = Math.min(12, Math.max(2, Math.round(Number(it.h) || 4)));
+      out.push({
+        id: String(it.id || newDashItemId()),
+        widget: String(it.widget),
+        viz: (DASH_VIZ as readonly string[]).includes(String(it.viz)) ? it.viz : 'bar',
+        x: Math.min(DASH_COLS - w, Math.max(0, Math.round(Number(it.x) || 0))),
+        y: Math.max(0, Math.round(Number(it.y) || 0)),
+        w,
+        h,
+        ...(it.title ? { title: String(it.title).slice(0, 60) } : {}),
+      });
+      continue;
+    }
     const def = DASH_WIDGET_MAP.get(String(it?.widget));
     if (!def) continue;
     const w = Math.min(DASH_COLS, Math.max(2, Math.round(Number(it.w) || def.size.w)));
