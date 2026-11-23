@@ -55,7 +55,10 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
 - followups: 사용자가 다음에 누를 만한 짧은 다듬기 요청 3개(예: "지점별 비교도 볼래요", "주간·월간 탭 넣기",
   "도넛으로 바꿔 줘"). 사용자의 말투로, 15자 안팎. 누르면 그 말이 그대로 다음 요청이 됩니다.
 - <history>는 지금까지의 대화입니다. 앞에서 정한 것을 이어서 고칩니다.
-- 현재 설계서(current)가 주어지면 그것을 고쳐 달라는 뜻입니다 — 첫 안은 고친 설계서로.`;
+- 현재 설계서(current)가 주어지면 그것을 고쳐 달라는 뜻입니다 — 첫 안은 고친 설계서로.
+- 첨부 그림(차트 캡처·스케치 등)이 있으면 그 모양(차트 종류·축·묶는 기준·쌓기·탭 위치)을 참고해 가장 가까운
+  설계서로 만들고, summary에 그림에서 무엇을 읽었는지와 우리 데이터로 못 맞춘 부분을 짧게 적습니다.
+  첨부 문서·표(PDF·CSV)는 원하는 지표나 구성을 알아내는 참고 자료로만 씁니다.`;
 
 const SPEC_SCHEMA = {
   type: 'object',
@@ -135,6 +138,37 @@ const TOOL = {
   },
 };
 
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
+type ImageType = (typeof IMAGE_TYPES)[number];
+
+/** 첨부를 AI 입력으로 — 그림은 image, PDF는 document, 글 파일은 앞부분을 글로(그림·문서를 글보다 먼저 둔다) */
+function attachBlocks(
+  list: { name: string; mediaType: string; data: string }[],
+): Anthropic.ContentBlockParam[] {
+  const out: Anthropic.ContentBlockParam[] = [];
+  for (const a of list.slice(0, 4)) {
+    if ((IMAGE_TYPES as readonly string[]).includes(a.mediaType))
+      out.push({
+        type: 'image',
+        source: { type: 'base64', media_type: a.mediaType as ImageType, data: a.data },
+      });
+    else if (a.mediaType === 'application/pdf')
+      out.push({
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: a.data },
+        title: a.name.slice(0, 100),
+      });
+    else {
+      const text = Buffer.from(a.data, 'base64').toString('utf8').slice(0, 20_000);
+      out.push({
+        type: 'text',
+        text: `<file name="${a.name.replace(/"/g, '')}">\n${text}\n</file>`,
+      });
+    }
+  }
+  return out;
+}
+
 /** 카탈로그를 AI가 읽기 좋게 */
 const CATALOG = JSON.stringify(
   STUDIO_DATASETS.map((d) => ({
@@ -180,6 +214,7 @@ export class WidgetStudioAiService {
     prompt: string,
     current?: StudioSpec | null,
     history: { role: 'user' | 'ai'; text: string }[] = [],
+    attachments: { name: string; mediaType: string; data: string }[] = [],
   ): Promise<StudioProposeResult> {
     const client = this.client;
     if (!client) throw new ServiceUnavailableException('AI가 설정되지 않았습니다(API 키 없음).');
@@ -209,7 +244,9 @@ export class WidgetStudioAiService {
           system: SYSTEM,
           tools: [TOOL],
           tool_choice: { type: 'auto' },
-          messages: [{ role: 'user', content: user }],
+          messages: [
+            { role: 'user', content: [...attachBlocks(attachments), { type: 'text', text: user }] },
+          ],
         }),
       );
     } catch (e) {

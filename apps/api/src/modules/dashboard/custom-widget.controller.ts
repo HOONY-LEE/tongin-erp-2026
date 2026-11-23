@@ -74,6 +74,29 @@ class HistoryItemDto {
   @MaxLength(2000)
   text!: string;
 }
+/** 첨부 — 그림(차트 참고)·PDF·글 파일(CSV 등). 내용은 base64 */
+export const STUDIO_ATTACH_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'text/plain',
+  'text/csv',
+] as const;
+class AttachmentDto {
+  @IsString()
+  @MaxLength(200)
+  name!: string;
+
+  @IsIn([...STUDIO_ATTACH_TYPES])
+  mediaType!: (typeof STUDIO_ATTACH_TYPES)[number];
+
+  /** base64 — 원본 약 5MB까지 */
+  @IsString()
+  @MaxLength(7_000_000)
+  data!: string;
+}
 class ProposeDto {
   @IsString()
   @MaxLength(2000)
@@ -90,6 +113,14 @@ class ProposeDto {
   @ValidateNested({ each: true })
   @Type(() => HistoryItemDto)
   history?: HistoryItemDto[];
+
+  /** 이번 요청에 붙인 파일(최대 4개) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(4)
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentDto)
+  attachments?: AttachmentDto[];
 }
 
 /** 조작 값 — 아는 칸만(값 검사는 실행기가 카탈로그로) */
@@ -240,6 +271,7 @@ export class CustomWidgetController {
       (dto.history ?? [])
         .filter((h) => h && (h.role === 'user' || h.role === 'ai') && typeof h.text === 'string')
         .map((h) => ({ role: h.role, text: h.text })),
+      dto.attachments ?? [],
     );
   }
 
