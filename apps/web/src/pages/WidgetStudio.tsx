@@ -11,6 +11,7 @@ import {
   STUDIO_DATASET_MAP,
   STUDIO_GRAINS,
   STUDIO_VIZ,
+  STUDIO_VIZ_GROUPS,
   normalizeStudioSpec,
   type CustomWidgetRow,
   type StudioControl,
@@ -40,11 +41,13 @@ import { StudioWidget } from '../components/dashboard/studio/StudioWidget';
 import {
   dimLabel,
   dsLabel,
+  fieldLabel,
   grainLabel,
   measureLabel,
   optLabel,
 } from '../components/dashboard/studio/studioLabels';
 import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../i18n/codes';
+import { tDyn } from '../i18n';
 import styles from './WidgetStudio.module.css';
 
 const BACK = '/dashboard-admin';
@@ -573,7 +576,21 @@ function EditPanel({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studi
             <Select
               value={spec.viz}
               onValueChange={(v) => patch({ viz: v as StudioSpec['viz'] })}
-              options={STUDIO_VIZ.map((v) => ({ value: v, label: DASH_VIZ_LABEL[v] }))}
+              options={STUDIO_VIZ_GROUPS.flatMap((g) =>
+                g.viz
+                  // 분포는 건별 숫자 칸이 있는 데이터만, 산점도는 숫자가 두 개 이상일 때만
+                  .filter((v) =>
+                    v === 'histogram' || v === 'box'
+                      ? ds.fields.length > 0
+                      : v === 'scatter'
+                        ? ds.measures.length > 1
+                        : true,
+                  )
+                  .map((v) => ({
+                    value: v,
+                    label: `${tDyn(`studio.vizGroup.${g.key}`, g.label)} · ${DASH_VIZ_LABEL[v]}`,
+                  })),
+              )}
             />
           </label>
           <label className={styles.field}>
@@ -586,6 +603,28 @@ function EditPanel({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studi
           </label>
         </div>
 
+        {spec.viz === 'scatter' && (
+          <label className={styles.field}>
+            <span>{t('studio.edit.measure2')}</span>
+            <Select
+              value={spec.measure2 ?? ''}
+              onValueChange={(v) => patch({ measure2: v })}
+              options={ds.measures
+                .filter((m) => m.key !== spec.measure)
+                .map((m) => ({ value: m.key, label: measureLabel(ds.key, m.key) }))}
+            />
+          </label>
+        )}
+        {(spec.viz === 'histogram' || spec.viz === 'box') && (
+          <label className={styles.field}>
+            <span>{t('studio.edit.field')}</span>
+            <Select
+              value={spec.field ?? ''}
+              onValueChange={(v) => patch({ field: v })}
+              options={ds.fields.map((f) => ({ value: f.key, label: fieldLabel(ds.key, f.key) }))}
+            />
+          </label>
+        )}
         <div className={styles.field}>
           <span>{t('studio.edit.controls')}</span>
           {!controls.length && <p className={styles.muted}>{t('studio.edit.noControls')}</p>}

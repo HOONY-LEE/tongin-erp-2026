@@ -18,6 +18,11 @@ export const measureLabel = (ds: string, key: string) =>
     `studio.cat.${ds}.m_${key}`,
     STUDIO_DATASET_MAP.get(ds)?.measures.find((m) => m.key === key)?.label ?? key,
   );
+export const fieldLabel = (ds: string, key: string) =>
+  tDyn(
+    `studio.cat.${ds}.f_${key}`,
+    STUDIO_DATASET_MAP.get(ds)?.fields.find((f) => f.key === key)?.label ?? key,
+  );
 export const grainLabel = (g: string) => tDyn(`studio.grain.${g}`, g);
 export const ctrlLabel = dimLabel;
 

@@ -81,6 +81,8 @@ function toParams(raw?: Record<string, unknown>): StudioParams {
       : {}),
     ...(str(r.measure) ? { measure: str(r.measure) } : {}),
     ...(str(r.period) ? { period: str(r.period) as StudioParams['period'] } : {}),
+    ...(str(r.viz) ? { viz: str(r.viz) as StudioParams['viz'] } : {}),
+    ...(str(r.field) ? { field: str(r.field) } : {}),
     ...(Object.keys(filters).length ? { filters } : {}),
   };
 }

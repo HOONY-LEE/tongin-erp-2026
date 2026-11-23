@@ -193,9 +193,12 @@ function GaugeViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
 function ColumnViz({
   items,
   format,
+  gapless,
 }: {
   items: { key: string; label: string; value: number }[];
   format: DashFormat;
+  /** 히스토그램 — 막대를 붙여 그린다(구간이 이어진다는 뜻) */
+  gapless?: boolean;
 }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
@@ -206,7 +209,7 @@ function ColumnViz({
   const h = Math.max(0, height - m.t - m.b);
   const { top, step } = niceMax(Math.max(...items.map((i) => i.value)));
   const band = w / items.length;
-  const bw = Math.max(2, Math.min(48, band - 2));
+  const bw = gapless ? Math.max(1, band - 1) : Math.max(2, Math.min(48, band - 2));
   const maxIdx = items.reduce((mi, it, i) => (it.value > items[mi].value ? i : mi), 0);
   const every = Math.max(1, Math.ceil(items.length / Math.max(1, Math.floor(w / 46))));
   const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
@@ -953,6 +956,28 @@ function TableViz({ d }: { d: DashData }) {
       r,
       ...d.cols.map((_, ci) => (d.cells[ri]?.[ci] ?? 0).toLocaleString()),
     ]);
+  } else if (d.shape === 'box') {
+    head = [
+      { label: t('dash.item') },
+      { label: 'n', num: true },
+      { label: t('dash.boxMin'), num: true },
+      { label: 'Q1', num: true },
+      { label: t('dash.boxMedian'), num: true },
+      { label: 'Q3', num: true },
+      { label: t('dash.boxMax'), num: true },
+    ];
+    body = d.items.map((i) => [
+      i.label,
+      i.n.toLocaleString(),
+      ...[i.min, i.q1, i.median, i.q3, i.max].map((v) => fmtExact(v, d.format)),
+    ]);
+  } else if (d.shape === 'scatter') {
+    head = [
+      { label: t('dash.item') },
+      { label: d.xLabel, num: true },
+      { label: d.yLabel, num: true },
+    ];
+    body = d.points.map((p) => [p.label, fmtExact(p.x, d.xFormat), fmtExact(p.y, d.yFormat)]);
   } else if (d.shape === 'points') {
     head = [{ label: t('dash.branch') }, { label: t('dash.value'), num: true }];
     body = [...d.points]
@@ -1066,6 +1091,441 @@ function ListViz({ d }: { d: Extract<DashData, { shape: 'rows' }> }) {
 }
 
 /** 위젯 본문 — 데이터 모양과 고른 시각화에 맞는 그림 */
+// ═══════════ 누적 막대(두 기준) ═══════════
+function StackedViz({ d }: { d: Extract<DashData, { shape: 'matrix' }> }) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const { tip, show, hide } = useTip();
+  const keys = d.rows;
+  const colors = useMemo(() => colorMap(keys), [keys]);
+  if (!d.cols.length || !d.rows.length) return <Empty />;
+  const legendH = 22;
+  const m = { l: 44, r: 8, t: 10, b: 22 };
+  const w = Math.max(0, width - m.l - m.r);
+  const h = Math.max(0, height - m.t - m.b - legendH);
+  const totals = d.cols.map((_, ci) =>
+    d.rows.reduce((s, _r, ri) => s + (d.cells[ri]?.[ci] ?? 0), 0),
+  );
+  const { top, step } = niceMax(Math.max(...totals));
+  const band = w / d.cols.length;
+  const bw = Math.max(2, Math.min(48, band - 4));
+  const every = Math.max(1, Math.ceil(d.cols.length / Math.max(1, Math.floor(w / 46))));
+  const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
+  return (
+    <div ref={ref} className={styles.vizRoot} style={{ display: 'flex', flexDirection: 'column' }}>
+      {width > 0 && (
+        <svg className={styles.svg} width={width} height={height - legendH} onMouseLeave={hide}>
+          <g transform={`translate(${m.l},${m.t})`}>
+            {ticks.map((t) => {
+              const y = h - (t / top) * h;
+              return (
+                <g key={t}>
+                  {t > 0 && <line x1={0} x2={w} y1={y} y2={y} className={styles.gridLine} />}
+                  <text x={-6} y={y} dy="0.32em" textAnchor="end" className={styles.axisText}>
+                    {fmt(t, d.format)}
+                  </text>
+                </g>
+              );
+            })}
+            {d.cols.map((c, ci) => {
+              const x = ci * band + (band - bw) / 2;
+              let acc = 0;
+              return (
+                <g key={c}>
+                  {d.rows.map((r, ri) => {
+                    const v = d.cells[ri]?.[ci] ?? 0;
+                    if (!v) return null;
+                    const y0 = h - ((acc + v) / top) * h;
+                    const hh = (v / top) * h;
+                    acc += v;
+                    return (
+                      <rect
+                        key={r}
+                        x={x}
+                        y={y0}
+                        width={bw}
+                        height={Math.max(0, hh - 1)}
+                        rx={2}
+                        fill={colors.get(r)}
+                        onMouseMove={() =>
+                          show({
+                            x: m.l + x + bw / 2,
+                            y: m.t + y0,
+                            content: (
+                              <>
+                                {c} · {r} · <b>{fmtExact(v, d.format)}</b>
+                              </>
+                            ),
+                          })
+                        }
+                      />
+                    );
+                  })}
+                  {ci % every === 0 && (
+                    <text x={x + bw / 2} y={h + 15} textAnchor="middle" className={styles.axisText}>
+                      {c}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+            <line x1={0} x2={w} y1={h} y2={h} className={styles.baseline} />
+          </g>
+        </svg>
+      )}
+      <div className={styles.legendRow}>
+        {d.rows.map((r) => (
+          <span key={r}>
+            <i className={styles.swatch} style={{ background: colors.get(r) }} />
+            {r}
+          </span>
+        ))}
+      </div>
+      {tip}
+    </div>
+  );
+}
+
+// ═══════════ 트리맵(비중을 넓이로) ═══════════
+type Rect = { x: number; y: number; w: number; h: number };
+/** 정사각형에 가깝게 나누기(squarified) */
+function squarify(values: number[], box: Rect): Rect[] {
+  const out: Rect[] = new Array(values.length);
+  const total = values.reduce((s, v) => s + v, 0) || 1;
+  const scale = (box.w * box.h) / total;
+  const areas = values.map((v) => v * scale);
+  let { x, y, w, h } = box;
+  let i = 0;
+  const worst = (row: number[], side: number) => {
+    const s = row.reduce((a, b) => a + b, 0);
+    const mx = Math.max(...row);
+    const mn = Math.min(...row);
+    return Math.max((side * side * mx) / (s * s), (s * s) / (side * side * mn));
+  };
+  while (i < areas.length) {
+    const side = Math.min(w, h);
+    const row = [areas[i]];
+    let j = i + 1;
+    while (j < areas.length && worst([...row, areas[j]], side) <= worst(row, side)) {
+      row.push(areas[j]);
+      j++;
+    }
+    const s = row.reduce((a, b) => a + b, 0);
+    if (w >= h) {
+      const rw = s / h;
+      let yy = y;
+      row.forEach((a, k) => {
+        out[i + k] = { x, y: yy, w: rw, h: a / rw };
+        yy += a / rw;
+      });
+      x += rw;
+      w -= rw;
+    } else {
+      const rh = s / w;
+      let xx = x;
+      row.forEach((a, k) => {
+        out[i + k] = { x: xx, y, w: a / rh, h: rh };
+        xx += a / rh;
+      });
+      y += rh;
+      h -= rh;
+    }
+    i = j;
+  }
+  return out;
+}
+function TreemapViz({
+  items,
+  format,
+}: {
+  items: { key: string; label: string; value: number }[];
+  format: DashFormat;
+}) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const { tip, show, hide } = useTip();
+  const pickOf = usePick();
+  const list = items.filter((i) => i.value > 0).sort((a, b) => b.value - a.value);
+  const colors = useMemo(() => colorMap(list.map((i) => i.key)), [list]);
+  if (!list.length) return <Empty />;
+  const total = list.reduce((s, i) => s + i.value, 0);
+  const rects =
+    width > 0
+      ? squarify(
+          list.map((i) => i.value),
+          { x: 0, y: 0, w: width, h: height },
+        )
+      : [];
+  return (
+    <div ref={ref} className={styles.vizRoot}>
+      {width > 0 && (
+        <svg className={styles.svg} width={width} height={height} onMouseLeave={hide}>
+          {list.map((it, i) => {
+            const r = rects[i];
+            if (!r) return null;
+            const big = r.w > 56 && r.h > 34;
+            return (
+              <g
+                key={it.key}
+                {...pickOf(it.key)}
+                onMouseMove={() =>
+                  show({
+                    x: r.x + r.w / 2,
+                    y: r.y + 4,
+                    content: (
+                      <>
+                        {it.label} · <b>{fmtExact(it.value, format)}</b> (
+                        {((it.value / total) * 100).toFixed(1)}%)
+                      </>
+                    ),
+                  })
+                }
+              >
+                <rect
+                  x={r.x + 1}
+                  y={r.y + 1}
+                  width={Math.max(0, r.w - 2)}
+                  height={Math.max(0, r.h - 2)}
+                  rx={4}
+                  fill={colors.get(it.key)}
+                />
+                {big && (
+                  <>
+                    <text x={r.x + 8} y={r.y + 18} className={styles.treeLabel}>
+                      {it.label.length > r.w / 9
+                        ? `${it.label.slice(0, Math.floor(r.w / 9))}…`
+                        : it.label}
+                    </text>
+                    <text x={r.x + 8} y={r.y + 32} className={styles.treeValue}>
+                      {fmt(it.value, format)} · {((it.value / total) * 100).toFixed(0)}%
+                    </text>
+                  </>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      {tip}
+    </div>
+  );
+}
+
+// ═══════════ 박스플롯(분포) ═══════════
+function BoxViz({ d }: { d: Extract<DashData, { shape: 'box' }> }) {
+  const { t } = useTranslation();
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const { tip, show, hide } = useTip();
+  if (!d.items.length) return <Empty />;
+  const labelW = Math.min(110, Math.max(56, width * 0.24));
+  const m = { r: 14, b: 20 };
+  const w = Math.max(0, width - labelW - m.r);
+  const rowH = Math.max(22, Math.min(40, (height - m.b) / d.items.length));
+  const boxH = Math.max(8, rowH * 0.55);
+  const { top, step } = niceMax(Math.max(...d.items.map((i) => i.max)));
+  const lo = Math.min(0, ...d.items.map((i) => i.min));
+  const sx = (v: number) => labelW + ((v - lo) / (top - lo || 1)) * w;
+  const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step).filter(
+    (v) => v >= lo,
+  );
+  const H = rowH * d.items.length;
+  return (
+    <div ref={ref} className={styles.vizRoot} style={{ overflowY: 'auto' }}>
+      {width > 0 && (
+        <svg
+          className={styles.svg}
+          width={width}
+          height={H + m.b}
+          style={{ height: H + m.b }}
+          onMouseLeave={hide}
+        >
+          {ticks.map((v) => (
+            <g key={v}>
+              <line x1={sx(v)} x2={sx(v)} y1={0} y2={H} className={styles.gridLine} />
+              <text x={sx(v)} y={H + 14} textAnchor="middle" className={styles.axisText}>
+                {fmt(v, d.format)}
+              </text>
+            </g>
+          ))}
+          {d.items.map((it, i) => {
+            const cy = i * rowH + rowH / 2;
+            return (
+              <g
+                key={it.key}
+                onMouseMove={() =>
+                  show({
+                    x: sx(it.median),
+                    y: cy - boxH / 2,
+                    content: (
+                      <>
+                        <b>{it.label}</b> · {t('dash.boxN', { v0: it.n })}
+                        <br />
+                        {t('dash.boxMin')} {fmtExact(it.min, d.format)} · Q1{' '}
+                        {fmtExact(it.q1, d.format)}
+                        <br />
+                        {t('dash.boxMedian')} <b>{fmtExact(it.median, d.format)}</b>
+                        <br />
+                        Q3 {fmtExact(it.q3, d.format)} · {t('dash.boxMax')}{' '}
+                        {fmtExact(it.max, d.format)}
+                      </>
+                    ),
+                  })
+                }
+              >
+                <rect x={0} y={i * rowH} width={width} height={rowH} fill="transparent" />
+                <text
+                  x={labelW - 8}
+                  y={cy}
+                  dy="0.32em"
+                  textAnchor="end"
+                  className={styles.labelText}
+                >
+                  {it.label.length > 9 ? `${it.label.slice(0, 8)}…` : it.label}
+                </text>
+                <line
+                  x1={sx(it.min)}
+                  x2={sx(it.max)}
+                  y1={cy}
+                  y2={cy}
+                  stroke="var(--ink-3, #999)"
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={sx(it.min)}
+                  x2={sx(it.min)}
+                  y1={cy - boxH / 4}
+                  y2={cy + boxH / 4}
+                  stroke="var(--ink-3, #999)"
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={sx(it.max)}
+                  x2={sx(it.max)}
+                  y1={cy - boxH / 4}
+                  y2={cy + boxH / 4}
+                  stroke="var(--ink-3, #999)"
+                  strokeWidth={1.5}
+                />
+                <rect
+                  x={sx(it.q1)}
+                  y={cy - boxH / 2}
+                  width={Math.max(2, sx(it.q3) - sx(it.q1))}
+                  height={boxH}
+                  rx={3}
+                  fill="color-mix(in srgb, var(--series-1) 30%, transparent)"
+                  stroke="var(--series-1)"
+                  strokeWidth={1.5}
+                />
+                <line
+                  x1={sx(it.median)}
+                  x2={sx(it.median)}
+                  y1={cy - boxH / 2}
+                  y2={cy + boxH / 2}
+                  stroke="var(--series-1)"
+                  strokeWidth={2.5}
+                />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      {tip}
+    </div>
+  );
+}
+
+// ═══════════ 산점도(두 숫자의 관계) ═══════════
+function ScatterViz({ d }: { d: Extract<DashData, { shape: 'scatter' }> }) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const { tip, show, hide } = useTip();
+  const pickOf = usePick();
+  if (!d.points.length) return <Empty />;
+  const m = { l: 50, r: 14, t: 12, b: 34 };
+  const w = Math.max(0, width - m.l - m.r);
+  const h = Math.max(0, height - m.t - m.b);
+  const X = niceMax(Math.max(...d.points.map((p) => p.x)));
+  const Y = niceMax(Math.max(...d.points.map((p) => p.y)));
+  const sx = (v: number) => (v / X.top) * w;
+  const sy = (v: number) => h - (v / Y.top) * h;
+  const xt = Array.from({ length: Math.round(X.top / X.step) + 1 }, (_, i) => i * X.step);
+  const yt = Array.from({ length: Math.round(Y.top / Y.step) + 1 }, (_, i) => i * Y.step);
+  // 이름표는 바깥쪽(큰 값) 몇 개만 — 점이 많을 때 글자가 겹치지 않게
+  const labeled = new Set(
+    [...d.points]
+      .sort((a, b) => b.x / X.top + b.y / Y.top - (a.x / X.top + a.y / Y.top))
+      .slice(0, 4)
+      .map((p) => p.key),
+  );
+  return (
+    <div ref={ref} className={styles.vizRoot}>
+      {width > 0 && (
+        <svg className={styles.svg} width={width} height={height} onMouseLeave={hide}>
+          <g transform={`translate(${m.l},${m.t})`}>
+            {yt.map((v) => (
+              <g key={`y${v}`}>
+                {v > 0 && <line x1={0} x2={w} y1={sy(v)} y2={sy(v)} className={styles.gridLine} />}
+                <text x={-6} y={sy(v)} dy="0.32em" textAnchor="end" className={styles.axisText}>
+                  {fmt(v, d.yFormat)}
+                </text>
+              </g>
+            ))}
+            {xt.map((v) => (
+              <text
+                key={`x${v}`}
+                x={sx(v)}
+                y={h + 14}
+                textAnchor="middle"
+                className={styles.axisText}
+              >
+                {fmt(v, d.xFormat)}
+              </text>
+            ))}
+            <line x1={0} x2={w} y1={h} y2={h} className={styles.baseline} />
+            <text x={w} y={h + 28} textAnchor="end" className={styles.axisText}>
+              {d.xLabel} →
+            </text>
+            <text x={4} y={-2} className={styles.axisText}>
+              ↑ {d.yLabel}
+            </text>
+            {d.points.map((p) => (
+              <g key={p.key} {...pickOf(p.key)}>
+                <circle
+                  cx={sx(p.x)}
+                  cy={sy(p.y)}
+                  r={5}
+                  fill="var(--series-1)"
+                  fillOpacity={0.75}
+                  stroke="var(--surface)"
+                  strokeWidth={1.5}
+                  onMouseMove={() =>
+                    show({
+                      x: m.l + sx(p.x),
+                      y: m.t + sy(p.y) - 6,
+                      content: (
+                        <>
+                          <b>{p.label}</b>
+                          <br />
+                          {d.xLabel} {fmtExact(p.x, d.xFormat)}
+                          <br />
+                          {d.yLabel} {fmtExact(p.y, d.yFormat)}
+                        </>
+                      ),
+                    })
+                  }
+                />
+                {labeled.has(p.key) && (
+                  <text x={sx(p.x) + 7} y={sy(p.y) - 6} className={styles.axisText}>
+                    {p.label}
+                  </text>
+                )}
+              </g>
+            ))}
+          </g>
+        </svg>
+      )}
+      {tip}
+    </div>
+  );
+}
+
 export function VizBody({
   viz,
   data,
@@ -1097,15 +1557,18 @@ export function VizBody({
         </div>
       );
     case 'category':
+      if (viz === 'treemap') return <TreemapViz items={data.items} format={data.format} />;
+      if (viz === 'histogram') return <ColumnViz items={data.items} format={data.format} gapless />;
+      if (viz === 'bar' || viz === 'stacked')
+        return <ColumnViz items={data.items} format={data.format} />;
       if (viz === 'hbar') return <HBarViz items={data.items} format={data.format} />;
-      if (viz === 'bar') return <ColumnViz items={data.items} format={data.format} />;
       if (viz === 'pie' || viz === 'donut')
         return <PieViz items={data.items} format={data.format} donut={viz === 'donut'} />;
       if (viz === 'funnel') return <FunnelViz items={data.items} format={data.format} />;
       if (viz === 'map') return <MapViz d={data} />;
       return <HBarViz items={data.items} format={data.format} />;
     case 'series':
-      if (viz === 'bar')
+      if (viz === 'bar' || viz === 'stacked' || viz === 'histogram')
         return (
           <ColumnViz
             items={data.points.map((p) => ({ key: p.x, label: p.label, value: p.value }))}
@@ -1114,7 +1577,11 @@ export function VizBody({
         );
       return <LineViz points={data.points} format={data.format} area={viz === 'area'} />;
     case 'matrix':
-      return <HeatmapViz d={data} />;
+      return viz === 'stacked' ? <StackedViz d={data} /> : <HeatmapViz d={data} />;
+    case 'box':
+      return <BoxViz d={data} />;
+    case 'scatter':
+      return <ScatterViz d={data} />;
     case 'rows':
       return <ListViz d={data} />;
     case 'points':

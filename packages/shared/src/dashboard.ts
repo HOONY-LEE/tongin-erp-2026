@@ -18,6 +18,12 @@ export const DASH_VIZ = [
   'map',
   'heatmap',
   'text',
+  // 위젯 스튜디오에서 더한 차트 — 비교(누적 막대·트리맵), 분포(히스토그램·박스플롯), 관계(산점도)
+  'stacked',
+  'treemap',
+  'histogram',
+  'box',
+  'scatter',
 ] as const;
 export type DashViz = (typeof DASH_VIZ)[number];
 export const DASH_VIZ_LABEL: Record<DashViz, string> = {
@@ -35,6 +41,11 @@ export const DASH_VIZ_LABEL: Record<DashViz, string> = {
   map: '지도',
   heatmap: '히트맵',
   text: '글',
+  stacked: '누적 막대',
+  treemap: '트리맵',
+  histogram: '히스토그램',
+  box: '박스플롯',
+  scatter: '산점도',
 };
 
 /**
@@ -1154,6 +1165,30 @@ export type DashData =
       rows: Record<string, string | number | null>[];
       /** 행을 누르면 갈 화면(예: /leads/:id) — {id} 자리에 행 id */
       link?: string;
+    }
+  | {
+      /** 분포 — 항목마다 최솟값·사분위·중앙값·최댓값(박스플롯) */
+      shape: 'box';
+      format: DashFormat;
+      items: {
+        key: string;
+        label: string;
+        min: number;
+        q1: number;
+        median: number;
+        q3: number;
+        max: number;
+        n: number;
+      }[];
+    }
+  | {
+      /** 관계 — 항목마다 두 숫자(x·y). 산점도 */
+      shape: 'scatter';
+      xLabel: string;
+      yLabel: string;
+      xFormat: DashFormat;
+      yFormat: DashFormat;
+      points: { key: string; label: string; x: number; y: number }[];
     }
   | {
       shape: 'points';
