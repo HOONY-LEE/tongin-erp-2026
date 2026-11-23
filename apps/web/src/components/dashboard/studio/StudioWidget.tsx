@@ -26,12 +26,15 @@ export function StudioWidget({
   load,
   showSubtitle = true,
   headerSlot,
+  chartOnly = false,
 }: {
   spec: StudioSpec;
   load: (params: StudioParams) => Promise<StudioResult>;
   showSubtitle?: boolean;
   /** 위젯 제목 줄의 오른쪽 칸 — '제목 줄'에 놓은 조작 요소가 여기로 간다 */
   headerSlot?: HTMLElement | null;
+  /** 차트만(목록 카드의 작은 미리보기) — 탭·드롭다운·필터는 그리지 않는다 */
+  chartOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const [params, setParams] = useState<StudioParams>({});
@@ -91,10 +94,11 @@ export function StudioWidget({
 
   const curDim = params.dimension !== undefined ? params.dimension : spec.dimension;
   const timeDim = !!ds?.dimensions.find((d) => d.key === curDim && d.kind === 'time');
-  const selects = (spec.controls ?? []).filter(
+  const controls = chartOnly ? [] : (spec.controls ?? []);
+  const selects = controls.filter(
     (c): c is Extract<StudioControl, { kind: 'segment' | 'dropdown' }> => c.kind !== 'filter',
   );
-  const filterCtl = (spec.controls ?? []).filter(
+  const filterCtl = controls.filter(
     (c): c is Extract<StudioControl, { kind: 'filter' }> => c.kind === 'filter',
   );
   const filterFields: FilterField[] = filterCtl.map((c) => ({

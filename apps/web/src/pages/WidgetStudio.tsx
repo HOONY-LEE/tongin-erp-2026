@@ -38,13 +38,14 @@ import {
   type StudioViz,
 } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
-import { fmtDateTime } from '../lib/dateFormat';
+import { fmtDate, fmtDateTime } from '../lib/dateFormat';
 import { useAuth } from '../auth/AuthContext';
 import {
   Badge,
   Button,
   ConfirmModal,
   DataTable,
+  ListToolbar,
   SegmentedControl,
   Skeleton,
   useToast,
@@ -63,6 +64,7 @@ import {
 import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../i18n/codes';
 import { tDyn } from '../i18n';
 import styles from './WidgetStudio.module.css';
+import builder from '../components/dashboard/builder/builder.module.css';
 
 /** 만든 위젯 목록은 대시보드 관리의 '위젯' 탭 */
 const LIST_TAB = '/dashboard-admin?tab=widgets';
@@ -130,7 +132,16 @@ export default function WidgetStudio() {
 }
 
 // ═══════════ 목록(대시보드 관리 '위젯' 탭 안에 들어간다) ═══════════
-export function WidgetList({ reloadKey = 0 }: { reloadKey?: number }) {
+export function WidgetList({
+  reloadKey = 0,
+  view = 'list',
+  viewSwitch,
+}: {
+  reloadKey?: number;
+  /** 대시보드 탭과 같은 카드/목록 보기 */
+  view?: 'card' | 'list';
+  viewSwitch?: React.ReactNode;
+}) {
   const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
@@ -172,25 +183,80 @@ export function WidgetList({ reloadKey = 0 }: { reloadKey?: number }) {
     byText: r.createdByName ?? '',
     updatedText: fmtDateTime(r.updatedAt),
   }));
+  const canCreate = can('DASHBOARD.CREATE');
+  const open = (id: string) => navigate(`${LIST}/${id}`);
+  const createButton = canCreate ? (
+    <Button
+      variant="primary"
+      size="sm"
+      leftIcon={<Plus size={14} />}
+      onClick={() => navigate(`${LIST}/new`)}
+    >
+      {t('studio.newWidget')}
+    </Button>
+  ) : undefined;
+  if (view === 'list' || rows === null)
+    return (
+      <DataTable
+        columns={columns}
+        rows={tableRows as never}
+        loading={rows === null}
+        onRowClick={(r) => open(String(r.id))}
+        viewSwitch={viewSwitch}
+        toolbarActions={createButton}
+      />
+    );
   return (
-    <DataTable
-      columns={columns}
-      rows={tableRows as never}
-      loading={rows === null}
-      onRowClick={(r) => navigate(`${LIST}/${String(r.id)}`)}
-      toolbarActions={
-        can('DASHBOARD.CREATE') ? (
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Plus size={14} />}
-            onClick={() => navigate(`${LIST}/new`)}
+    <>
+      <ListToolbar viewSwitch={viewSwitch} actions={createButton} />
+      <div className={builder.cardGrid}>
+        {tableRows.map((r) => (
+          <article
+            key={r.id}
+            className={builder.tplCard}
+            onClick={() => open(r.id)}
+            aria-label={r.title}
           >
+            {/* 실제 데이터로 그린 작은 미리보기 — 누르기만 하면 스튜디오로 */}
+            <div className={`${builder.tplPreview} ${styles.cardPreview}`}>
+              <StudioWidget
+                spec={r.spec}
+                showSubtitle={false}
+                chartOnly
+                load={(params) =>
+                  api<StudioResult>(`/custom-widgets/${r.id}/data`, {
+                    method: 'POST',
+                    body: JSON.stringify({ params }),
+                  })
+                }
+              />
+            </div>
+            <div className={builder.tplBody}>
+              <span className={builder.tplName}>{r.title}</span>
+              <span className={builder.tplDesc}>{r.subtitle || t('dash.noDesc')}</span>
+              <div className={builder.tplTags}>
+                <Badge variant="subtle" color="neutral" size="sm">
+                  {r.datasetText}
+                </Badge>
+                <Badge variant="subtle" color="primary" size="sm">
+                  {r.vizText}
+                </Badge>
+              </div>
+              <div className={builder.tplFoot}>
+                {r.byText ? `${r.byText} · ` : ''}
+                {fmtDate(r.updatedAt)}
+              </div>
+            </div>
+          </article>
+        ))}
+        {canCreate && (
+          <button type="button" className={builder.newCard} onClick={() => navigate(`${LIST}/new`)}>
+            <Plus size={22} />
             {t('studio.newWidget')}
-          </Button>
-        ) : undefined
-      }
-    />
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 

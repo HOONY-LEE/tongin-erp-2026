@@ -244,7 +244,7 @@ export default function DashboardAdmin() {
       </div>
 
       {tab === 'widgets' ? (
-        <WidgetList reloadKey={widgetReload} />
+        <WidgetList reloadKey={widgetReload} view={view} viewSwitch={viewSwitch} />
       ) : rows === null ? (
         <TableSkeleton rows={4} cols={4} />
       ) : view === 'list' ? (
