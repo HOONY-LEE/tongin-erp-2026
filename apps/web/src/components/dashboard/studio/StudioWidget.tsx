@@ -27,6 +27,8 @@ export function StudioWidget({
   showSubtitle = true,
   headerSlot,
   chartOnly = false,
+  selected,
+  onSelect,
 }: {
   spec: StudioSpec;
   load: (params: StudioParams) => Promise<StudioResult>;
@@ -35,6 +37,9 @@ export function StudioWidget({
   headerSlot?: HTMLElement | null;
   /** 차트만(목록 카드의 작은 미리보기) — 탭·드롭다운·필터는 그리지 않는다 */
   chartOnly?: boolean;
+  /** 스튜디오 편집 — 고른 요소('subtitle'·'ctl:<번호>'·'chart')에 테두리, 누르면 그 요소를 고른다 */
+  selected?: string | null;
+  onSelect?: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [params, setParams] = useState<StudioParams>({});
@@ -92,6 +97,22 @@ export function StudioWidget({
   const setCtl = (target: string, v: string) =>
     setParams((p) => ({ ...p, [target]: v }) as StudioParams);
 
+  /** 편집 중이면 요소를 고를 수 있게 감싼다(대시보드에서는 그대로) */
+  const pickable = (id: string, node: ReactNode, key?: string) =>
+    onSelect ? (
+      <span
+        key={key ?? id}
+        className={`${styles.pickable} ${selected === id ? styles.picked : ''}`}
+        onPointerDownCapture={() => onSelect(id)}
+        data-el={id}
+      >
+        {node}
+      </span>
+    ) : (
+      node
+    );
+  const ctlIndex = (c: StudioControl) => (spec.controls ?? []).indexOf(c);
+
   const curDim = params.dimension !== undefined ? params.dimension : spec.dimension;
   const timeDim = !!ds?.dimensions.find((d) => d.key === curDim && d.kind === 'time');
   const controls = chartOnly ? [] : (spec.controls ?? []);
@@ -126,7 +147,8 @@ export function StudioWidget({
     const options = opts.map((o) => ({ value: o, label: optLabel(spec.dataset, c.target, o) }));
     placed.push({
       place: where(c.place),
-      node:
+      node: pickable(
+        `ctl:${ctlIndex(c)}`,
         c.kind === 'segment' ? (
           <SegmentedControl
             key={`s${i}`}
@@ -146,12 +168,15 @@ export function StudioWidget({
             />
           </div>
         ),
+        `s${i}`,
+      ),
     });
   });
   if (filterCtl.length)
     placed.push({
       place: where(filterCtl[0].place),
-      node: (
+      node: pickable(
+        `ctl:${ctlIndex(filterCtl[0])}`,
         <FilterButton
           key="filter"
           fields={filterFields}
@@ -164,7 +189,8 @@ export function StudioWidget({
               ) as Record<string, string[]>,
             }))
           }
-        />
+        />,
+        'filter',
       ),
     });
   const at = (p: StudioPlace) => placed.filter((x) => x.place === p).map((x) => x.node);
@@ -178,14 +204,21 @@ export function StudioWidget({
       {headerSlot &&
         head.length > 0 &&
         createPortal(<span className={styles.headCtl}>{head}</span>, headerSlot)}
-      {showSubtitle && spec.subtitle && <p className={styles.subtitle}>{spec.subtitle}</p>}
+      {showSubtitle &&
+        spec.subtitle &&
+        pickable('subtitle', <p className={styles.subtitle}>{spec.subtitle}</p>)}
       {(left.length > 0 || right.length > 0) && (
         <div className={styles.controls}>
           {left}
           {right.length > 0 && <span className={styles.ctlRight}>{right}</span>}
         </div>
       )}
-      <div className={`${styles.chart} ${busy && res ? styles.dim : ''}`}>
+      <div
+        className={`${styles.chart} ${busy && res ? styles.dim : ''} ${
+          onSelect ? styles.chartPick : ''
+        } ${onSelect && selected === 'chart' ? styles.picked : ''}`}
+        onPointerDownCapture={onSelect ? () => onSelect('chart') : undefined}
+      >
         {err ? (
           <div className={styles.error}>{err}</div>
         ) : !res ? (

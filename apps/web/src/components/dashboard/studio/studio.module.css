@@ -53,3 +53,31 @@
   gap: 6px;
   margin-left: auto;
 }
+
+/* 스튜디오 편집 — 요소 고르기(올리면 점선, 고르면 실선) */
+.pickable {
+  display: inline-flex;
+  max-width: 100%;
+  border-radius: 6px;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  cursor: pointer;
+  transition: outline-color 0.12s;
+}
+.pickable > p {
+  margin: 0;
+}
+.chartPick {
+  border-radius: 6px;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  cursor: pointer;
+}
+.chartPick:hover,
+.pickable:hover {
+  outline-color: var(--ark-color-border-strong, #c7c7cc);
+}
+.picked,
+.picked:hover {
+  outline: 2px solid var(--ark-color-primary-500);
+}
