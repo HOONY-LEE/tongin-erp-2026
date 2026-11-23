@@ -98,6 +98,28 @@ const vizOk = (ds: StudioDataset, v: StudioViz) =>
       ? ds.measures.length > 1
       : true;
 
+/** 기준(차원) 없이 그리는 차트 — 숫자 하나·게이지·히스토그램(건별 값의 분포) */
+const NO_DIM_VIZ: StudioViz[] = ['card', 'gauge', 'histogram'];
+
+/** 지금 고른 기준으로 그릴 수 있는 차트인가 — 기준이 없으면 숫자 카드류만, 있으면 그 반대 */
+const vizFits = (ds: StudioDataset, dimension: string | null | undefined, v: StudioViz) => {
+  if (!vizOk(ds, v)) return false;
+  const dim = dimension ? ds.dimensions.find((d) => d.key === dimension) : undefined;
+  if (!dim) return NO_DIM_VIZ.includes(v);
+  if (NO_DIM_VIZ.includes(v)) return false;
+  if (v === 'line' || v === 'area') return dim.kind === 'time';
+  if (v === 'map') return dim.kind === 'geo';
+  return true;
+};
+
+/** 기준을 바꿀 때 차트가 안 맞으면 맞는 것으로 — 없음→숫자 카드, 날짜→선, 지역→지도, 그 밖→막대 */
+const fitViz = (ds: StudioDataset, dimension: string | null, v: StudioViz): StudioViz => {
+  if (vizFits(ds, dimension, v)) return v;
+  if (!dimension) return 'card';
+  const kind = ds.dimensions.find((d) => d.key === dimension)?.kind;
+  return kind === 'time' ? 'line' : kind === 'geo' ? 'map' : 'bar';
+};
+
 /** 위젯 스튜디오 — /dashboard-admin/widgets(목록), /new·/:wid(만들기·고치기) */
 export default function WidgetStudio() {
   const { wid } = useParams();
@@ -398,7 +420,7 @@ function SettingsPane({
               periodField: undefined,
               field: undefined,
               measure2: undefined,
-              viz: vizOk(next, spec.viz) ? spec.viz : 'line',
+              viz: fitViz(next, next.defaultTime, spec.viz),
             });
           }}
           options={STUDIO_DATASETS.map((d) => ({ value: d.key, label: dsLabel(d.key) }))}
@@ -426,7 +448,10 @@ function SettingsPane({
                 key={d.key}
                 type="button"
                 className={`${styles.pill} ${styles.dimension} ${spec.dimension === d.key ? styles.pillOn : ''}`}
-                onClick={() => patch({ dimension: spec.dimension === d.key ? null : d.key })}
+                onClick={() => {
+                  const dim = spec.dimension === d.key ? null : d.key;
+                  patch({ dimension: dim, viz: fitViz(ds, dim, spec.viz) });
+                }}
               >
                 <I size={12} aria-hidden /> {dimLabel(ds.key, d.key)}
               </button>
@@ -472,7 +497,7 @@ function SettingsPane({
                     key={v}
                     type="button"
                     className={`${styles.vizBtn} ${spec.viz === v ? styles.vizOn : ''}`}
-                    disabled={!vizOk(ds, v)}
+                    disabled={!vizFits(ds, spec.dimension, v)}
                     title={DASH_VIZ_LABEL[v]}
                     aria-pressed={spec.viz === v}
                     onClick={() => patch({ viz: v })}
@@ -524,7 +549,10 @@ function SettingsPane({
           <span>{t('studio.edit.dimension')}</span>
           <Select
             value={spec.dimension ?? '__none'}
-            onValueChange={(v) => patch({ dimension: v === '__none' ? null : v })}
+            onValueChange={(v) => {
+              const dim = v === '__none' ? null : v;
+              patch({ dimension: dim, viz: fitViz(ds, dim, spec.viz) });
+            }}
             options={[
               { value: '__none', label: t('studio.edit.none') },
               ...ds.dimensions.map((d) => ({ value: d.key, label: dimLabel(ds.key, d.key) })),
@@ -744,7 +772,6 @@ function PreviewCanvas({ spec }: { spec: StudioSpec }) {
             <StudioWidget spec={preview} load={load} headerSlot={slot} />
           </div>
         </section>
-        <p className={styles.note}>{t('studio.preview.scopeNote')}</p>
       </div>
     </>
   );
