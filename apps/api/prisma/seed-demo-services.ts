@@ -1,11 +1,11 @@
 /**
- * 시드 — 고객A/S·CS, 리빙케어(서비스 주문), 마케팅 캠페인 3개.
+ * 시드 — 고객A/S·CS, 리빙·케어 접수(접수 화면), 마케팅 캠페인 3개.
  *
  *   pnpm --filter @tongin/api demo:seed:services
  *
  * seed-demo-leads.ts(가상 고객·계약)를 먼저 돌려야 한다 — 고객·계약·지점을 거기서 가져다 쓴다.
  * 실제로 보내지 않는다: 캠페인은 '발송 완료'(결과 기록만)와 '작성 중'뿐이라 예약 발송이 문자를 내보낼 일이 없다.
- * 날짜는 오늘 기준 상대일. 멱등하다 — 번호(AS/LV + 순번)·고정 id로 upsert, 받는 사람은 지우고 다시 넣는다.
+ * 날짜는 오늘 기준 상대일. 멱등하다 — 옛 번호(AS/LV + 순번)·고정 id로 upsert, 받는 사람은 지우고 다시 넣는다.
  */
 import { docNo } from './seed-doc-no';
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -58,7 +58,7 @@ const SERVICE_PRODUCTS = [
   },
 ];
 
-/** 서비스 주문 — [상품 코드, 상태, 일정(상대일), 금액, 메모] */
+/** 리빙·케어 접수 — [상품 코드, 옛 주문 상태, 서비스 요청일(상대일), 금액, 고객 요청] */
 const SERVICE_ORDERS: [string, string, number, number, string][] = [
   ['P-LV-CLEAN', 'DONE', -21, 380000, '32평 아파트, 베란다 포함'],
   ['P-LV-CLEAN', 'DONE', -12, 420000, '입주 전날 오후 시공'],
@@ -229,7 +229,7 @@ async function main() {
     ).map((e) => [e.orgUnitId, e.id]),
   );
 
-  // ── 리빙케어 상품·주문 ──
+  // ── 리빙·케어 상품·접수 ──
   const productId = new Map<string, string>();
   for (const p of SERVICE_PRODUCTS) {
     const row = await prisma.product.upsert({
@@ -244,33 +244,39 @@ async function main() {
     });
     productId.set(p.code, row.id);
   }
+  // 리빙·케어도 접수(lead)로 — 마이그레이션 20261122400000_service_orders_to_leads와 같은 칸
+  // (요청→접수, 일정 확정→계약, 완료→작업완료, 취소→취소 · 상품 이름은 상품 특이사항)
+  const LEAD_STATUS: Record<string, string> = {
+    REQUESTED: 'RECEIVED',
+    SCHEDULED: 'CONTRACTED',
+    DONE: 'DONE',
+  };
   for (const [i, [code, status, offset, amount, note]] of SERVICE_ORDERS.entries()) {
     const c = contracts[(i * 3) % contracts.length];
     const p = SERVICE_PRODUCTS.find((x) => x.code === code)!;
-    const orderNo = `LV${String(i + 1).padStart(4, '0')}`;
+    const legacyNo = `LV${String(i + 1).padStart(4, '0')}`;
     const data = {
       serviceLine: p.serviceLine,
-      productId: productId.get(code),
       customerId: c.customerId,
       orgUnitId: c.orgUnitId,
-      scheduledDate: day(offset),
-      address: c.lead?.toAddr ?? null,
-      amount: new Prisma.Decimal(amount),
-      note,
-      status,
-      assignedEmpId: status === 'REQUESTED' ? null : (branchStaff.get(c.orgUnitId) ?? null),
+      ownerEmpId: status === 'REQUESTED' ? null : (branchStaff.get(c.orgUnitId) ?? null),
+      status: LEAD_STATUS[status] ?? 'CANCELED',
+      fromAddr: c.lead?.toAddr ?? null,
+      moveDate: day(offset),
+      expectedAmount: new Prisma.Decimal(amount),
+      customerRequest: note,
+      productNote: p.name,
       createdAt: at(Math.min(offset, 0) - 7, 10 + (i % 6)),
     };
-    const oldSo = await prisma.serviceOrder.findFirst({
-      where: { legacyNo: orderNo },
-      select: { id: true },
-    });
-    if (oldSo) await prisma.serviceOrder.update({ where: { id: oldSo.id }, data });
+    const old = await prisma.lead.findFirst({ where: { legacyNo }, select: { id: true } });
+    if (old) await prisma.lead.update({ where: { id: old.id }, data });
     else
-      await prisma.serviceOrder.create({
-        data: { orderNo: await docNo(prisma, 'SV', data.createdAt), legacyNo: orderNo, ...data },
+      await prisma.lead.create({
+        data: { leadNo: await docNo(prisma, 'RC', data.createdAt), legacyNo, ...data },
       });
   }
+  // 예전 시드가 만든 서비스 주문은 접수로 옮겼으니 지운다(같은 건이 두 번 나오지 않게)
+  await prisma.serviceOrder.deleteMany({ where: { legacyNo: { startsWith: 'LV' } } });
 
   // ── A/S·CS 접수 — A/S는 이사가 끝난 계약 고객 ──
   for (const [
@@ -401,11 +407,11 @@ async function main() {
   }
 
   const [so, tk, cp] = await Promise.all([
-    prisma.serviceOrder.count(),
+    prisma.lead.count({ where: { serviceLine: { in: ['LIVING', 'CARE'] } } }),
     prisma.supportTicket.count(),
     prisma.campaign.count(),
   ]);
-  console.log(`리빙케어 ${so}건 · A/S·CS ${tk}건 · 캠페인 ${cp}개`);
+  console.log(`리빙·케어 접수 ${so}건 · A/S·CS ${tk}건 · 캠페인 ${cp}개`);
 }
 
 main()
