@@ -575,3 +575,10 @@
 .resizer:focus-visible {
   outline: none;
 }
+
+/* 위젯 카드의 미리보기 — 보기만(누르면 카드 전체가 스튜디오로) */
+.cardPreview {
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
