@@ -235,7 +235,12 @@ export default function AppLayout() {
   }));
 
   // 화면 전체를 쓰는 작업 화면 — AI 비서 대화, 에이전트 만들기·편집(캔버스), 드라이브
-  const flush = under('/ai') || under('/drive') || pathname.startsWith('/agent-builder/');
+  const flush =
+    under('/ai') ||
+    under('/drive') ||
+    pathname.startsWith('/agent-builder/') ||
+    // 위젯 스튜디오 — 왼쪽 설정·가운데 미리보기·오른쪽 AI, 콘텐츠 영역을 다 쓴다
+    /^\/dashboard-admin\/widgets\/[^/]+/.test(pathname);
 
   // 새 창으로 띄운 작업 화면 — 사이드바·헤더 없이 화면만
   if (isPopoutWindow())

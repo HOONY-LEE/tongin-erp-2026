@@ -52,6 +52,9 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
 - why에는 이 안이 좋은 이유를 한두 문장으로.
 - 카탈로그에 없는 데이터를 원하면 summary에 솔직히 말하고 가장 가까운 안을 냅니다.
 - 꼭 필요한 것만 questions에 최대 2개(없으면 비움).
+- followups: 사용자가 다음에 누를 만한 짧은 다듬기 요청 3개(예: "지점별 비교도 볼래요", "주간·월간 탭 넣기",
+  "도넛으로 바꿔 줘"). 사용자의 말투로, 15자 안팎. 누르면 그 말이 그대로 다음 요청이 됩니다.
+- <history>는 지금까지의 대화입니다. 앞에서 정한 것을 이어서 고칩니다.
 - 현재 설계서(current)가 주어지면 그것을 고쳐 달라는 뜻입니다 — 첫 안은 고친 설계서로.`;
 
 const SPEC_SCHEMA = {
@@ -126,6 +129,7 @@ const TOOL = {
         },
       },
       questions: { type: 'array', items: { type: 'string' }, maxItems: 2 },
+      followups: { type: 'array', items: { type: 'string' }, maxItems: 3 },
     },
     required: ['summary', 'proposals'],
   },
@@ -152,6 +156,7 @@ export interface StudioProposeResult {
   summary: string;
   proposals: StudioProposal[];
   questions: string[];
+  followups: string[];
 }
 
 /** 위젯 스튜디오 — 자연어 요청을 위젯 설계서 제안으로 */
@@ -171,7 +176,11 @@ export class WidgetStudioAiService {
       : null;
   }
 
-  async propose(prompt: string, current?: StudioSpec | null): Promise<StudioProposeResult> {
+  async propose(
+    prompt: string,
+    current?: StudioSpec | null,
+    history: { role: 'user' | 'ai'; text: string }[] = [],
+  ): Promise<StudioProposeResult> {
     const client = this.client;
     if (!client) throw new ServiceUnavailableException('AI가 설정되지 않았습니다(API 키 없음).');
     const ask = prompt.trim();
@@ -179,6 +188,12 @@ export class WidgetStudioAiService {
     const model = resolveChatModel();
     const user =
       `<catalog>\n${CATALOG}\n</catalog>\n` +
+      (history.length
+        ? `<history>\n${history
+            .slice(-10)
+            .map((h) => `${h.role === 'user' ? '사용자' : 'AI'}: ${h.text.slice(0, 400)}`)
+            .join('\n')}\n</history>\n`
+        : '') +
       (current ? `<current>\n${JSON.stringify(current)}\n</current>\n` : '') +
       `<request>\n${ask.slice(0, 2000)}\n</request>`;
     let res: Anthropic.Message;
@@ -218,6 +233,7 @@ export class WidgetStudioAiService {
       summary?: unknown;
       proposals?: { name?: unknown; why?: unknown; spec?: unknown }[];
       questions?: unknown[];
+      followups?: unknown[];
     };
     const proposals = (Array.isArray(out.proposals) ? out.proposals : []).slice(0, 4).map((p) => ({
       name: String(p?.name ?? '').slice(0, 60) || '제안',
@@ -230,6 +246,9 @@ export class WidgetStudioAiService {
       summary: String(out.summary ?? '').slice(0, 600),
       proposals,
       questions: (Array.isArray(out.questions) ? out.questions : []).map(String).slice(0, 2),
+      followups: (Array.isArray(out.followups) ? out.followups : [])
+        .map((x) => String(x).slice(0, 40))
+        .slice(0, 3),
     };
   }
 }
