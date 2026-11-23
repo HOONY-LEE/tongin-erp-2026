@@ -1,9 +1,13 @@
-import { useEffect, useState, type HTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { ChevronRight, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   DASH_WIDGET_MAP,
+  isCustomWidgetKey,
+  type CustomWidgetRow,
+  type StudioParams,
+  type StudioResult,
   type DashDataResult,
   type DashItem,
   type StatsOverview,
@@ -11,6 +15,7 @@ import {
 import { api } from '../../../lib/api';
 import { Skeleton } from '../../ui';
 import { DrillCtx, VizBody } from '../viz/Charts';
+import { StudioWidget } from '../studio/StudioWidget';
 import { hasItemLink, itemLink, widgetLink } from '../drill';
 import { UnitPerformance } from '../UnitPerformance';
 import { BranchAnomalyCard } from '../BranchAnomalyCard';
@@ -55,6 +60,16 @@ export function WidgetFrame({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  if (isCustomWidgetKey(item.widget))
+    return (
+      <CustomFrame
+        item={item}
+        actions={actions}
+        selected={selected}
+        dragHandleProps={dragHandleProps}
+        drill={drill}
+      />
+    );
   const def = DASH_WIDGET_MAP.get(item.widget);
   if (!def) return null;
   if (def.shape === 'embed') {
@@ -136,6 +151,104 @@ export function WidgetFrame({
           <DrillCtx.Provider value={pick}>
             <VizBody viz={item.viz} data={result?.ok ? result.data : null} item={item} />
           </DrillCtx.Provider>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** 만든 위젯의 데이터 목록 화면(제목을 누르면) */
+const DATASET_LIST: Record<string, string> = {
+  lead: '/leads',
+  contract: '/contracts',
+  payment: '/payments-confirm',
+  work: '/work-orders',
+  support: '/support',
+  customer: '/customers',
+};
+
+/**
+ * 만든 위젯(위젯 스튜디오) 한 칸 — 설계서와 첫 데이터를 한 번에 받고, 조작하면 다시 부른다.
+ * 데이터 권한·지점 범위는 서버가 보는 사람 기준으로 건다.
+ */
+function CustomFrame({
+  item,
+  actions,
+  selected,
+  dragHandleProps,
+  drill,
+}: {
+  item: DashItem;
+  actions?: ReactNode;
+  selected?: boolean;
+  dragHandleProps?: HTMLAttributes<HTMLDivElement>;
+  drill?: boolean;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const id = item.widget.slice(3);
+  const [widget, setWidget] = useState<CustomWidgetRow | null>(null);
+  const [error, setError] = useState('');
+  const first = useRef<StudioResult | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api<StudioResult & { widget: CustomWidgetRow }>(`/custom-widgets/${id}/data`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+      .then((r) => {
+        if (!alive) return;
+        first.current = r;
+        setWidget(r.widget);
+      })
+      .catch((e) => alive && setError(e instanceof Error ? e.message : String(e)));
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+  const load = (params: StudioParams) => {
+    if (first.current && !Object.keys(params).length) {
+      const r = first.current;
+      first.current = null;
+      return Promise.resolve(r);
+    }
+    return api<StudioResult>(`/custom-widgets/${id}/data`, {
+      method: 'POST',
+      body: JSON.stringify({ params }),
+    });
+  };
+  const title = item.title || widget?.title || '';
+  const link = drill && widget ? DATASET_LIST[widget.spec.dataset] : null;
+  return (
+    <section className={`${styles.frame} ${selected ? styles.selected : ''}`} aria-label={title}>
+      <div className={styles.head} {...dragHandleProps}>
+        {link ? (
+          <button
+            type="button"
+            className={`${styles.title} ${styles.titleLink}`}
+            title={t('dash.openList')}
+            onClick={() => navigate(link)}
+          >
+            {title}
+            <ChevronRight size={14} aria-hidden />
+          </button>
+        ) : (
+          <span className={styles.title} title={widget?.subtitle ?? undefined}>
+            {title}
+          </span>
+        )}
+        <span className={styles.spacer} />
+        {actions}
+      </div>
+      <div className={styles.body}>
+        {error ? (
+          <div className={styles.error}>
+            <Lock size={14} aria-hidden /> {error}
+          </div>
+        ) : !widget ? (
+          <Skeleton height="100%" radius={8} />
+        ) : (
+          <StudioWidget spec={widget.spec} load={load} />
         )}
       </div>
     </section>

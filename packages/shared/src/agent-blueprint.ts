@@ -1331,6 +1331,7 @@ export const AI_FEATURES = {
   AGENT_RUN: '에이전트 실행',
   AGENT_FILE: '양식 채우기',
   KNOWLEDGE: '지식베이스 정리',
+  WIDGET_STUDIO: '위젯 스튜디오',
 } as const;
 export type AiFeature = keyof typeof AI_FEATURES;
 

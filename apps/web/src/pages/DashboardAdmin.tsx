@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDate } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Settings2, Sparkles, Trash2 } from 'lucide-react';
 import { defaultDashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { openDashboardEditor, useDashEditorMessages } from '../lib/dashboardWindow';
@@ -224,6 +224,16 @@ export default function DashboardAdmin() {
         subtitle={t('dash.manageSub')}
         onRefresh={load}
         updatedAt={updatedAt}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Sparkles size={14} />}
+            onClick={() => navigate('/dashboard-admin/widgets')}
+          >
+            {t('studio.openStudio')}
+          </Button>
+        }
       />
 
       {rows === null ? (

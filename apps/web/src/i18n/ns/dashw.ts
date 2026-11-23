@@ -119,6 +119,7 @@ export default defineNs({
       text_note: { t: '메모·공지', d: '직접 쓴 글을 보여 줍니다(공지·목표 등)' },
     },
     g: {
+      '만든 위젯': '만든 위젯',
       '핵심 지표': '핵심 지표',
       기업영업: '기업영업',
       '가맹 영업': '가맹 영업',
@@ -366,6 +367,7 @@ export default defineNs({
       text_note: { t: 'Note/Notice', d: 'Shows text you write (notices, goals, etc.)' },
     },
     g: {
+      '만든 위젯': 'Custom widgets',
       '핵심 지표': 'Key metrics',
       기업영업: 'B2B sales',
       '가맹 영업': 'Franchise sales',
@@ -523,6 +525,7 @@ export default defineNs({
       text_note: { t: '备忘·公告', d: '显示你直接编写的文字(公告·目标等)' },
     },
     g: {
+      '만든 위젯': '自建组件',
       '핵심 지표': '核心指标',
       기업영업: '企业销售',
       '가맹 영업': '加盟销售',

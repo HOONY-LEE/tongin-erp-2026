@@ -976,6 +976,7 @@ export const AI_TITLE_MAX = 60;
 export * from './agent-blueprint';
 export * from './drive';
 export * from './dashboard';
+export * from './widget-studio';
 export * from './hr';
 export * from './performance';
 export * from './phone';
