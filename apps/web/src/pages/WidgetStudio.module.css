@@ -851,3 +851,34 @@
 .pickTitleOn:hover {
   outline: 2px solid var(--ark-color-primary-500);
 }
+
+/* 미리보기 머리글 — 열·행 칸(왼쪽) · 시간 단위·기간(오른쪽) */
+.shelfBar {
+  display: grid;
+  flex: none;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ark-color-border);
+  background: var(--ark-color-bg);
+}
+.shelfBar .shelves {
+  margin-top: 0;
+}
+.shelfBar .shelfRow {
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+.shelfOpts {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.shelfOpts .field {
+  min-width: 110px;
+}
+@media (max-width: 1280px) {
+  .shelfBar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

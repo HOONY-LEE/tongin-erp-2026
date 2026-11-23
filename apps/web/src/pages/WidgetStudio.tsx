@@ -485,6 +485,7 @@ function Studio({ id }: { id: string | null }) {
           <main className={styles.center}>
             <PreviewCanvas
               spec={spec}
+              patch={patch}
               sel={sel}
               onSel={setSel}
               onRemove={(id) => {
@@ -569,13 +570,10 @@ function SettingsPane({
 }
 
 // ── 데이터 탭 — 태블로처럼 왼쪽에 항목을 세로로, 위에 열·행 칸(끌어 놓거나 누르기) ──
-function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioSpec>) => void }) {
-  const { t } = useTranslation();
+/** 열·행 칸에 넣고 빼기 — 데이터 판(누르기)과 미리보기 머리글의 칸(끌어 놓기)이 같이 쓴다 */
+function useShelfOps(spec: StudioSpec, patch: (p: Partial<StudioSpec>) => void) {
   const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
-  const dimIsTime = ds.dimensions.find((d) => d.key === spec.dimension)?.kind === 'time';
-  const [over, setOver] = useState<string | null>(null);
   const distViz = spec.viz === 'histogram' || spec.viz === 'box';
-
   const setDim = (dim: string | null) =>
     patch({
       dimension: dim,
@@ -614,6 +612,17 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
       ...(distViz ? { field: undefined, viz: fitViz(ds, spec.dimension ?? null, 'bar') } : {}),
     });
   };
+  return { setDim, setField, assign };
+}
+
+/** 미리보기 머리글의 열·행 칸 + 시간 단위·기간 — 왼쪽 항목을 끌어 놓는다 */
+function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioSpec>) => void }) {
+  const { t } = useTranslation();
+  const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
+  const dimIsTime = ds.dimensions.find((d) => d.key === spec.dimension)?.kind === 'time';
+  const distViz = spec.viz === 'histogram' || spec.viz === 'box';
+  const [over, setOver] = useState<string | null>(null);
+  const { setDim, setField, assign } = useShelfOps(spec, patch);
   const readDrag = (e: React.DragEvent): DragItem | null => {
     try {
       return JSON.parse(e.dataTransfer.getData(DRAG_MIME)) as DragItem;
@@ -650,6 +659,116 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
   );
   const dim = ds.dimensions.find((d) => d.key === spec.dimension);
   const DimI = dim ? DIM_ICON[dim.kind] : Tag;
+  return (
+    <div className={styles.shelfBar}>
+      {/* 열·행 칸 */}
+      <div className={styles.shelves}>
+        <div className={styles.shelfRow}>
+          <span className={styles.shelfName}>{t('studio.pane.cols')}</span>
+          <div
+            className={`${styles.shelf} ${over === 'cols' ? styles.shelfOver : ''}`}
+            {...dropZone('cols')}
+          >
+            {spec.dimension ? (
+              chip(
+                styles.dimension,
+                <DimI size={12} aria-hidden />,
+                dimLabel(ds.key, spec.dimension),
+                () => setDim(null),
+              )
+            ) : (
+              <span className={styles.shelfEmpty}>{t('studio.pane.dropDim')}</span>
+            )}
+            {spec.dimension &&
+              (spec.split ? (
+                chip(
+                  styles.dimension,
+                  <Tag size={12} aria-hidden />,
+                  dimLabel(ds.key, spec.split),
+                  () => patch({ split: null }),
+                )
+              ) : (
+                <span
+                  className={`${styles.shelfSlot} ${over === 'split' ? styles.shelfOver : ''}`}
+                  {...dropZone('split')}
+                >
+                  {t('studio.pane.dropSplit')}
+                </span>
+              ))}
+          </div>
+        </div>
+        <div className={styles.shelfRow}>
+          <span className={styles.shelfName}>{t('studio.pane.rows')}</span>
+          <div
+            className={`${styles.shelf} ${over === 'rows' ? styles.shelfOver : ''}`}
+            {...dropZone('rows')}
+          >
+            {distViz && spec.field
+              ? chip(
+                  styles.fieldPill,
+                  <Ruler size={12} aria-hidden />,
+                  fieldLabel(ds.key, spec.field),
+                  () => setField(undefined),
+                )
+              : chip(
+                  styles.measure,
+                  <Hash size={12} aria-hidden />,
+                  measureLabel(ds.key, spec.measure),
+                )}
+            {!distViz &&
+              (spec.viz === 'scatter' && spec.measure2 ? (
+                chip(
+                  styles.measure,
+                  <Hash size={12} aria-hidden />,
+                  measureLabel(ds.key, spec.measure2),
+                  () =>
+                    patch({
+                      measure2: undefined,
+                      viz: fitViz(ds, spec.dimension ?? null, 'bar'),
+                    }),
+                )
+              ) : ds.measures.length > 1 && spec.dimension ? (
+                <span
+                  className={`${styles.shelfSlot} ${over === 'rows2' ? styles.shelfOver : ''}`}
+                  {...dropZone('rows2')}
+                >
+                  {t('studio.pane.dropMeasure2')}
+                </span>
+              ) : null)}
+          </div>
+        </div>
+      </div>
+      <div className={styles.shelfOpts}>
+        {dimIsTime && (
+          <label className={styles.field}>
+            <span>{t('studio.edit.grain')}</span>
+            <Select
+              size="sm"
+              value={spec.grain ?? 'month'}
+              onValueChange={(v) => patch({ grain: v as StudioSpec['grain'] })}
+              options={STUDIO_GRAINS.map((g) => ({ value: g, label: grainLabel(g) }))}
+            />
+          </label>
+        )}
+        <label className={styles.field}>
+          <span>{t('studio.edit.period')}</span>
+          <Select
+            size="sm"
+            value={spec.period}
+            onValueChange={(v) => patch({ period: v as StudioSpec['period'] })}
+            options={DASH_PERIODS.map((p) => ({ value: p, label: DASH_PERIOD_LABEL[p] }))}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioSpec>) => void }) {
+  const { t } = useTranslation();
+  const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
+  const distViz = spec.viz === 'histogram' || spec.viz === 'box';
+  const { assign } = useShelfOps(spec, patch);
   const dragProps = (it: DragItem) => ({
     draggable: true,
     onDragStart: (e: React.DragEvent) => {
@@ -681,105 +800,6 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
           options={STUDIO_DATASETS.map((d) => ({ value: d.key, label: dsLabel(d.key) }))}
           aria-label={t('studio.edit.dataset')}
         />
-        {/* 열·행 칸 */}
-        <div className={styles.shelves}>
-          <div className={styles.shelfRow}>
-            <span className={styles.shelfName}>{t('studio.pane.cols')}</span>
-            <div
-              className={`${styles.shelf} ${over === 'cols' ? styles.shelfOver : ''}`}
-              {...dropZone('cols')}
-            >
-              {spec.dimension ? (
-                chip(
-                  styles.dimension,
-                  <DimI size={12} aria-hidden />,
-                  dimLabel(ds.key, spec.dimension),
-                  () => setDim(null),
-                )
-              ) : (
-                <span className={styles.shelfEmpty}>{t('studio.pane.dropDim')}</span>
-              )}
-              {spec.dimension &&
-                (spec.split ? (
-                  chip(
-                    styles.dimension,
-                    <Tag size={12} aria-hidden />,
-                    dimLabel(ds.key, spec.split),
-                    () => patch({ split: null }),
-                  )
-                ) : (
-                  <span
-                    className={`${styles.shelfSlot} ${over === 'split' ? styles.shelfOver : ''}`}
-                    {...dropZone('split')}
-                  >
-                    {t('studio.pane.dropSplit')}
-                  </span>
-                ))}
-            </div>
-          </div>
-          <div className={styles.shelfRow}>
-            <span className={styles.shelfName}>{t('studio.pane.rows')}</span>
-            <div
-              className={`${styles.shelf} ${over === 'rows' ? styles.shelfOver : ''}`}
-              {...dropZone('rows')}
-            >
-              {distViz && spec.field
-                ? chip(
-                    styles.fieldPill,
-                    <Ruler size={12} aria-hidden />,
-                    fieldLabel(ds.key, spec.field),
-                    () => setField(undefined),
-                  )
-                : chip(
-                    styles.measure,
-                    <Hash size={12} aria-hidden />,
-                    measureLabel(ds.key, spec.measure),
-                  )}
-              {!distViz &&
-                (spec.viz === 'scatter' && spec.measure2 ? (
-                  chip(
-                    styles.measure,
-                    <Hash size={12} aria-hidden />,
-                    measureLabel(ds.key, spec.measure2),
-                    () =>
-                      patch({
-                        measure2: undefined,
-                        viz: fitViz(ds, spec.dimension ?? null, 'bar'),
-                      }),
-                  )
-                ) : ds.measures.length > 1 && spec.dimension ? (
-                  <span
-                    className={`${styles.shelfSlot} ${over === 'rows2' ? styles.shelfOver : ''}`}
-                    {...dropZone('rows2')}
-                  >
-                    {t('studio.pane.dropMeasure2')}
-                  </span>
-                ) : null)}
-            </div>
-          </div>
-        </div>
-        <div className={styles.inline2}>
-          {dimIsTime && (
-            <label className={styles.field}>
-              <span>{t('studio.edit.grain')}</span>
-              <Select
-                size="sm"
-                value={spec.grain ?? 'month'}
-                onValueChange={(v) => patch({ grain: v as StudioSpec['grain'] })}
-                options={STUDIO_GRAINS.map((g) => ({ value: g, label: grainLabel(g) }))}
-              />
-            </label>
-          )}
-          <label className={styles.field}>
-            <span>{t('studio.edit.period')}</span>
-            <Select
-              size="sm"
-              value={spec.period}
-              onValueChange={(v) => patch({ period: v as StudioSpec['period'] })}
-              options={DASH_PERIODS.map((p) => ({ value: p, label: DASH_PERIOD_LABEL[p] }))}
-            />
-          </label>
-        </div>
       </section>
 
       {/* 항목 목록 — 세로로(태블로 데이터 판) */}
@@ -1219,11 +1239,13 @@ function ElementTree({
 const SIZES = { s: 4, m: 6, l: 12 } as const;
 function PreviewCanvas({
   spec,
+  patch,
   sel,
   onSel,
   onRemove,
 }: {
   spec: StudioSpec;
+  patch: (p: Partial<StudioSpec>) => void;
   sel: string | null;
   onSel: (id: string | null) => void;
   onRemove: (id: string) => void;
@@ -1269,6 +1291,7 @@ function PreviewCanvas({
   const preview = useMemo(() => spec, [spec]);
   return (
     <>
+      <ShelfBar spec={spec} patch={patch} />
       <div className={styles.centerBar}>
         <b>{t('studio.preview.title')}</b>
         <span className={styles.spacer} />
