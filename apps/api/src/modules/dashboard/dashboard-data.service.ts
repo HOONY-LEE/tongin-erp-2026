@@ -49,12 +49,6 @@ const SUPPORT_STATUS_LABEL: Record<string, string> = {
   CLOSED: '종료',
   CANCELED: '취소',
 };
-const SERVICE_STATUS_LABEL: Record<string, string> = {
-  REQUESTED: '요청',
-  SCHEDULED: '일정 확정',
-  DONE: '완료',
-  CANCELED: '취소',
-};
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 type Unit = 'day' | 'week' | 'month';
@@ -916,13 +910,14 @@ export class DashboardDataService {
         };
       }
       case 'service.byStatus':
+        // 리빙·케어는 접수로 받는다(서비스 주문은 접수로 옮겼다) — 리빙·케어 접수의 상태별
         return this.statusCategory(
-          await this.prisma.serviceOrder.groupBy({
+          await this.prisma.lead.groupBy({
             by: ['status'],
-            where: { ...org, ...since('createdAt') },
+            where: { ...org, ...since('createdAt'), serviceLine: { in: ['LIVING', 'CARE'] } },
             _count: true,
           }),
-          SERVICE_STATUS_LABEL,
+          LEAD_STATUS_LABEL,
         );
 
       // ── 마케팅·일정 ──

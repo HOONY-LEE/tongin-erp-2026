@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, downloadFile } from '../lib/api';
+import { useUrlFilter } from '../lib/useUrlFilter';
 import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useOptions } from '../lib/useOptions';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -38,7 +39,7 @@ export default function WorkOrders() {
   const [open, setOpen] = useState(false);
   const contracts = useOptions('/contracts', 'contractNo');
   const { updatedAt, touch } = useUpdatedAt();
-  const [flt, setFlt] = useState<FilterValues>({});
+  const [flt, setFlt] = useUrlFilter();
   /** 검색칸 — 서버에서 찾는다(작업번호·옛 번호·계약번호·고객명) */
   const [q, setQ] = useState('');
   const query = filterQuery(flt, q);

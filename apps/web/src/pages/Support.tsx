@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { tDyn } from '../i18n';
 import { api, ApiError } from '../lib/api';
+import { useUrlFilter } from '../lib/useUrlFilter';
 import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
@@ -102,7 +103,7 @@ export default function Support() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
-  const [flt, setFlt] = useState<FilterValues>({});
+  const [flt, setFlt] = useUrlFilter();
   /** 검색칸 — 서버에서 찾는다(접수번호·옛 번호·제목·내용·고객명) */
   const [q, setQ] = useState('');
   const query = filterQuery(flt, q);
