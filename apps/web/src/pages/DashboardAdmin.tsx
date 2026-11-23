@@ -102,7 +102,8 @@ export default function DashboardAdmin() {
   // 대시보드(템플릿) / 위젯(만든 위젯) — 주소 ?tab=widgets로 기억(스튜디오에서 돌아올 때 위젯 탭으로)
   const [params, setParams] = useSearchParams();
   const tab: 'dashboards' | 'widgets' = params.get('tab') === 'widgets' ? 'widgets' : 'dashboards';
-  const setTab = (v: string) => setParams(v === 'widgets' ? { tab: 'widgets' } : {}, { replace: true });
+  const setTab = (v: string) =>
+    setParams(v === 'widgets' ? { tab: 'widgets' } : {}, { replace: true });
   const [widgetReload, setWidgetReload] = useState(0);
 
   const load = useCallback(async () => {
