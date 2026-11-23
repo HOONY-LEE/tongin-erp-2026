@@ -46,7 +46,6 @@ import {
   Button,
   ConfirmModal,
   DataTable,
-  PageHeader,
   SegmentedControl,
   Skeleton,
   Textarea,
@@ -67,7 +66,8 @@ import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../i18n/codes';
 import { tDyn } from '../i18n';
 import styles from './WidgetStudio.module.css';
 
-const BACK = '/dashboard-admin';
+/** 만든 위젯 목록은 대시보드 관리의 '위젯' 탭 */
+const LIST_TAB = '/dashboard-admin?tab=widgets';
 const LIST = '/dashboard-admin/widgets';
 
 const DIM_ICON: Record<StudioDimKind, typeof Tag> = {
@@ -101,11 +101,16 @@ const vizOk = (ds: StudioDataset, v: StudioViz) =>
 /** 위젯 스튜디오 — /dashboard-admin/widgets(목록), /new·/:wid(만들기·고치기) */
 export default function WidgetStudio() {
   const { wid } = useParams();
-  return wid ? <Studio id={wid === 'new' ? null : wid} /> : <WidgetList />;
+  const navigate = useNavigate();
+  // 목록 주소로 오면 대시보드 관리의 '위젯' 탭으로
+  useEffect(() => {
+    if (!wid) navigate(LIST_TAB, { replace: true });
+  }, [wid, navigate]);
+  return wid ? <Studio id={wid === 'new' ? null : wid} /> : null;
 }
 
-// ═══════════ 목록 ═══════════
-function WidgetList() {
+// ═══════════ 목록(대시보드 관리 '위젯' 탭 안에 들어간다) ═══════════
+export function WidgetList({ reloadKey = 0 }: { reloadKey?: number }) {
   const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
@@ -121,7 +126,7 @@ function WidgetList() {
   }, [toast, t]);
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadKey]);
 
   const columns: Column[] = [
     {
@@ -148,12 +153,6 @@ function WidgetList() {
     updatedText: fmtDateTime(r.updatedAt),
   }));
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader
-        title={t('studio.listTitle')}
-        breadcrumbs={[{ label: t('dash.manage'), onClick: () => navigate(BACK) }]}
-        onRefresh={load}
-      />
       <DataTable
         columns={columns}
         rows={tableRows as never}
@@ -172,7 +171,6 @@ function WidgetList() {
           ) : undefined
         }
       />
-    </div>
   );
 }
 
@@ -209,7 +207,7 @@ function Studio({ id }: { id: string | null }) {
       })
       .catch((e) => {
         toast({ type: 'error', title: e instanceof ApiError ? e.message : t('studio.loadFailed') });
-        navigate(LIST, { replace: true });
+        navigate(LIST_TAB, { replace: true });
       });
   }, [id, navigate, toast, t]);
 
@@ -240,7 +238,7 @@ function Studio({ id }: { id: string | null }) {
     try {
       await api(`/custom-widgets/${id}`, { method: 'DELETE' });
       toast({ type: 'success', title: t('studio.deleted') });
-      navigate(LIST, { replace: true });
+      navigate(LIST_TAB, { replace: true });
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('studio.saveFailed') });
     } finally {
@@ -255,7 +253,7 @@ function Studio({ id }: { id: string | null }) {
         <button
           type="button"
           className={styles.iconBtn}
-          onClick={() => navigate(LIST)}
+          onClick={() => navigate(LIST_TAB)}
           aria-label={t('studio.listTitle')}
           title={t('studio.listTitle')}
         >
