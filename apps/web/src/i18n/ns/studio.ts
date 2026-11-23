@@ -100,8 +100,6 @@ export default defineNs({
       s: '작게',
       m: '보통',
       l: '넓게',
-      scopeNote:
-        '지금 보는 사람의 권한·지점 범위로 보입니다. 지점 직원에게는 자기 지점 숫자만, 지점별 선택지는 숨겨집니다.',
     },
     save: '저장',
     saved: '저장했습니다',
@@ -274,8 +272,6 @@ export default defineNs({
       s: 'Small',
       m: 'Medium',
       l: 'Wide',
-      scopeNote:
-        'Shown with the current viewer’s permissions and branch scope. Branch staff see only their branch; branch splits are hidden.',
     },
     save: 'Save',
     saved: 'Saved',
@@ -447,7 +443,6 @@ export default defineNs({
       s: '小',
       m: '中',
       l: '宽',
-      scopeNote: '按当前查看者的权限和门店范围显示。门店员工只看到本门店数据，按门店的选项会隐藏。',
     },
     save: '保存',
     saved: '已保存',
