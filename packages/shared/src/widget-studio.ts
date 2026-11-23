@@ -214,8 +214,12 @@ export const STUDIO_VIZ_GROUPS: { key: string; label: string; viz: StudioViz[] }
 ];
 export type StudioViz = (typeof STUDIO_VIZ)[number];
 
+/** 조작 요소 자리 — 제목 줄(오른쪽 끝) · 차트 위 왼쪽 · 차트 위 오른쪽 · 차트 아래 */
+export const STUDIO_PLACES = ['title', 'left', 'right', 'bottom'] as const;
+export type StudioPlace = (typeof STUDIO_PLACES)[number];
+
 /** 위젯 안 조작 요소 — 보는 사람이 눌러 바꾼다(세그먼트 탭·드롭다운·필터) */
-export type StudioControl =
+export type StudioControl = (
   | {
       kind: 'segment' | 'dropdown';
       /** 무엇을 바꾸나 — 시간 단위·묶을 기준·숫자·기간·차트 모양 */
@@ -228,7 +232,11 @@ export type StudioControl =
       /** 거를 차원(항목 여러 개 고르기) */
       dim: string;
       label?: string;
-    };
+    }
+) & {
+  /** 놓을 자리(없으면 차트 위 왼쪽) */
+  place?: StudioPlace;
+};
 
 export interface StudioFilter {
   dim: string;
@@ -280,6 +288,11 @@ export interface StudioParams {
 export const CUSTOM_WIDGET_PREFIX = 'cw:';
 export const isCustomWidgetKey = (k: string) => k.startsWith(CUSTOM_WIDGET_PREFIX);
 
+const placeOf = (v: unknown): { place?: StudioPlace } =>
+  (STUDIO_PLACES as readonly string[]).includes(String(v)) && v !== 'left'
+    ? { place: v as StudioPlace }
+    : {};
+
 /** 설계서 검사 — 카탈로그에 없는 데이터·칸·모양은 고쳐서 쓸 수 있는 값만 남긴다(AI 답·저장 값 공통) */
 export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: string[] } {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -312,7 +325,12 @@ export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: s
     if (x.kind === 'filter') {
       const dim = dimOk(x.dim);
       if (dim && !timeDims.has(dim))
-        controls.push({ kind: 'filter', dim, ...(x.label ? { label: String(x.label) } : {}) });
+        controls.push({
+          kind: 'filter',
+          dim,
+          ...(x.label ? { label: String(x.label) } : {}),
+          ...placeOf(x.place),
+        });
       continue;
     }
     if (x.kind !== 'segment' && x.kind !== 'dropdown') continue;
@@ -339,6 +357,7 @@ export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: s
       target: target as 'grain',
       options: options.slice(0, 8),
       ...(x.label ? { label: String(x.label).slice(0, 20) } : {}),
+      ...placeOf(x.place),
     });
   }
   const fKeys = new Set(ds.fields.map((f) => f.key));

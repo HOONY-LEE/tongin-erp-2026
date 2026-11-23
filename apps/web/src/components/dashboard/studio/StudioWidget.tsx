@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Select } from '@sunghoon_lee/akron-ui';
 import {
@@ -7,6 +8,7 @@ import {
   type StudioControl,
   type StudioParams,
   type StudioResult,
+  type StudioPlace,
   type StudioSpec,
 } from '@tongin/shared';
 import { ApiError } from '../../../lib/api';
@@ -23,10 +25,13 @@ export function StudioWidget({
   spec,
   load,
   showSubtitle = true,
+  headerSlot,
 }: {
   spec: StudioSpec;
   load: (params: StudioParams) => Promise<StudioResult>;
   showSubtitle?: boolean;
+  /** 위젯 제목 줄의 오른쪽 칸 — '제목 줄'에 놓은 조작 요소가 여기로 간다 */
+  headerSlot?: HTMLElement | null;
 }) {
   const { t } = useTranslation();
   const [params, setParams] = useState<StudioParams>({});
@@ -105,54 +110,75 @@ export function StudioWidget({
     [viz],
   );
 
+  // 조작 요소를 자리별로 — 제목 줄(headerSlot이 있을 때)·위 왼쪽·위 오른쪽·아래
+  const placed: { place: StudioPlace; node: ReactNode }[] = [];
+  const where = (p?: StudioPlace): StudioPlace =>
+    p === 'title' && !headerSlot ? 'right' : (p ?? 'left');
+  selects.forEach((c, i) => {
+    const opts = visibleOptions(c);
+    if (opts.length < 2) return;
+    // 시간 단위 탭은 날짜로 묶을 때만(지점별·상품별로 바꾸면 숨긴다)
+    if (c.target === 'grain' && !timeDim) return;
+    const options = opts.map((o) => ({ value: o, label: optLabel(spec.dataset, c.target, o) }));
+    placed.push({
+      place: where(c.place),
+      node:
+        c.kind === 'segment' ? (
+          <SegmentedControl
+            key={`s${i}`}
+            size="sm"
+            value={current(c)}
+            onChange={(v) => setCtl(c.target, v)}
+            options={options}
+          />
+        ) : (
+          <div key={`s${i}`} className={styles.select}>
+            <Select
+              size="sm"
+              value={current(c)}
+              onValueChange={(v) => setCtl(c.target, v)}
+              options={options}
+              aria-label={c.label || t(`studio.target.${c.target}`)}
+            />
+          </div>
+        ),
+    });
+  });
+  if (filterCtl.length)
+    placed.push({
+      place: where(filterCtl[0].place),
+      node: (
+        <FilterButton
+          key="filter"
+          fields={filterFields}
+          value={params.filters ?? {}}
+          onChange={(f) =>
+            setParams((p) => ({
+              ...p,
+              filters: Object.fromEntries(
+                Object.entries(f).filter(([, v]) => Array.isArray(v) && v.length),
+              ) as Record<string, string[]>,
+            }))
+          }
+        />
+      ),
+    });
+  const at = (p: StudioPlace) => placed.filter((x) => x.place === p).map((x) => x.node);
+  const left = at('left');
+  const right = at('right');
+  const bottom = at('bottom');
+  const head = at('title');
+
   return (
     <div className={styles.widget}>
+      {headerSlot &&
+        head.length > 0 &&
+        createPortal(<span className={styles.headCtl}>{head}</span>, headerSlot)}
       {showSubtitle && spec.subtitle && <p className={styles.subtitle}>{spec.subtitle}</p>}
-      {(selects.length > 0 || filterCtl.length > 0) && (
+      {(left.length > 0 || right.length > 0) && (
         <div className={styles.controls}>
-          {selects.map((c, i) => {
-            const opts = visibleOptions(c);
-            if (opts.length < 2) return null;
-            // 시간 단위 탭은 날짜로 묶을 때만(지점별·상품별로 바꾸면 숨긴다)
-            if (c.target === 'grain' && !timeDim) return null;
-            const options = opts.map((o) => ({
-              value: o,
-              label: optLabel(spec.dataset, c.target, o),
-            }));
-            return c.kind === 'segment' ? (
-              <SegmentedControl
-                key={i}
-                size="sm"
-                value={current(c)}
-                onChange={(v) => setCtl(c.target, v)}
-                options={options}
-              />
-            ) : (
-              <div key={i} className={styles.select}>
-                <Select
-                  size="sm"
-                  value={current(c)}
-                  onValueChange={(v) => setCtl(c.target, v)}
-                  options={options}
-                  aria-label={c.label || t(`studio.target.${c.target}`)}
-                />
-              </div>
-            );
-          })}
-          {filterCtl.length > 0 && (
-            <FilterButton
-              fields={filterFields}
-              value={params.filters ?? {}}
-              onChange={(f) =>
-                setParams((p) => ({
-                  ...p,
-                  filters: Object.fromEntries(
-                    Object.entries(f).filter(([, v]) => Array.isArray(v) && v.length),
-                  ) as Record<string, string[]>,
-                }))
-              }
-            />
-          )}
+          {left}
+          {right.length > 0 && <span className={styles.ctlRight}>{right}</span>}
         </div>
       )}
       <div className={`${styles.chart} ${busy && res ? styles.dim : ''}`}>
@@ -164,6 +190,7 @@ export function StudioWidget({
           <VizBody viz={viz} data={res.data} item={fakeItem} />
         )}
       </div>
+      {bottom.length > 0 && <div className={styles.controls}>{bottom}</div>}
       {!ds && <div className={styles.error}>{t('studio.badDataset')}</div>}
     </div>
   );

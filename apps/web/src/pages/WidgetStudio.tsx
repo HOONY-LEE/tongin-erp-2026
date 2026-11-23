@@ -10,6 +10,7 @@ import {
   STUDIO_DATASETS,
   STUDIO_DATASET_MAP,
   STUDIO_GRAINS,
+  STUDIO_PLACES,
   STUDIO_VIZ,
   STUDIO_VIZ_GROUPS,
   normalizeStudioSpec,
@@ -17,6 +18,7 @@ import {
   type StudioControl,
   type StudioDimKind,
   type StudioParams,
+  type StudioPlace,
   type StudioProposal,
   type StudioResult,
   type StudioSpec,
@@ -682,6 +684,20 @@ function EditPanel({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studi
                   </span>
                 </>
               )}
+              <span className={styles.place}>
+                <Select
+                  size="sm"
+                  value={c.place ?? 'left'}
+                  onValueChange={(v) =>
+                    updateCtl(i, { ...c, place: v === 'left' ? undefined : (v as StudioPlace) })
+                  }
+                  options={STUDIO_PLACES.map((pl) => ({
+                    value: pl,
+                    label: t(`studio.place.${pl}`),
+                  }))}
+                  aria-label={t('studio.edit.place')}
+                />
+              </span>
               <button
                 type="button"
                 className={styles.iconBtn}
@@ -781,6 +797,7 @@ const SIZES = { s: 4, m: 6, l: 12 } as const;
 function PreviewPanel({ spec }: { spec: StudioSpec }) {
   const { t } = useTranslation();
   const [size, setSize] = useState<keyof typeof SIZES>('m');
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(0);
   useEffect(() => {
@@ -821,9 +838,12 @@ function PreviewPanel({ spec }: { spec: StudioSpec }) {
       >
         <div ref={boxRef} className={styles.stage}>
           <section className={styles.frame} style={{ width: Math.min(w, boxW || w), height: h }}>
-            <div className={styles.frameHead}>{spec.title || t('studio.newWidget')}</div>
+            <div className={styles.frameHead}>
+              <span className={styles.frameTitle}>{spec.title || t('studio.newWidget')}</span>
+              <span ref={setSlot} className={styles.frameSlot} />
+            </div>
             <div className={styles.frameBody}>
-              <StudioWidget spec={preview} load={load} />
+              <StudioWidget spec={preview} load={load} headerSlot={slot} />
             </div>
           </section>
         </div>

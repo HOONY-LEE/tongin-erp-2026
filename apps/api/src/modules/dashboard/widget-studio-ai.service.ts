@@ -40,6 +40,7 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
   · {kind:'segment', target:'measure', options:[측정값 key…]} — 매출/건수 바꾸기
   · {kind:'dropdown', target:'period', options:['30d','90d','12m']}
   · {kind:'filter', dim:'차원 key'} — 항목 골라 거르기(시간 차원은 안 됨)
+  · place로 자리를 정합니다: title(제목 줄 오른쪽 — 작은 탭 하나일 때 깔끔), left(기본), right, bottom
 - 권한·지점 범위는 서버가 자동으로 겁니다: 지점 직원은 자기 지점 데이터만 봅니다. 한 지점만 보는 사람에게는
   'org'(지점별) 선택지가 자동으로 숨겨집니다. 그래서 "본사는 지점별로도 보고 지점은 자기 것만"이면
   dimension 조작에 'org'를 넣으면 됩니다(따로 권한 조건을 만들 필요 없음).
@@ -90,6 +91,11 @@ const SPEC_SCHEMA = {
           dim: { type: 'string' },
           label: { type: 'string' },
           options: { type: 'array', items: { type: 'string' } },
+          place: {
+            type: 'string',
+            enum: ['title', 'left', 'right', 'bottom'],
+            description: '놓을 자리: 제목 줄·차트 위 왼쪽(기본)·차트 위 오른쪽·차트 아래',
+          },
         },
         required: ['kind'],
       },

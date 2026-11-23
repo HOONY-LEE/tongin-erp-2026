@@ -26,6 +26,12 @@ export default defineNs({
       relation: '관계',
       geo: '지역',
     },
+    place: {
+      title: '제목 줄',
+      left: '위 왼쪽',
+      right: '위 오른쪽',
+      bottom: '차트 아래',
+    },
     target: {
       grain: '시간 단위',
       dimension: '묶을 기준',
@@ -70,6 +76,7 @@ export default defineNs({
       filter: '필터',
       remove: '빼기',
       filterDim: '거를 기준',
+      place: '자리',
       measure2: '세로축 숫자(산점도)',
       field: '분포를 볼 값(건마다)',
     },
@@ -185,6 +192,12 @@ export default defineNs({
       relation: 'Relationship',
       geo: 'Region',
     },
+    place: {
+      title: 'Title line',
+      left: 'Top left',
+      right: 'Top right',
+      bottom: 'Below chart',
+    },
     target: {
       grain: 'Time unit',
       dimension: 'Group by',
@@ -229,6 +242,7 @@ export default defineNs({
       filter: 'Filter',
       remove: 'Remove',
       filterDim: 'Filter by',
+      place: 'Position',
       measure2: 'Y-axis measure (scatter)',
       field: 'Value per record (distribution)',
     },
@@ -344,6 +358,12 @@ export default defineNs({
       relation: '关系',
       geo: '地区',
     },
+    place: {
+      title: '标题行',
+      left: '左上',
+      right: '右上',
+      bottom: '图表下方',
+    },
     target: {
       grain: '时间单位',
       dimension: '分组依据',
@@ -388,6 +408,7 @@ export default defineNs({
       filter: '筛选',
       remove: '移除',
       filterDim: '筛选依据',
+      place: '位置',
       measure2: '纵轴数值(散点图)',
       field: '查看分布的值(每件)',
     },

@@ -219,6 +219,8 @@ function CustomFrame({
   };
   const title = item.title || widget?.title || '';
   const link = drill && widget ? DATASET_LIST[widget.spec.dataset] : null;
+  /** 제목 줄 오른쪽 칸 — '제목 줄'에 놓은 조작 요소(탭·드롭다운)가 들어온다 */
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
     <section className={`${styles.frame} ${selected ? styles.selected : ''}`} aria-label={title}>
       <div className={styles.head} {...dragHandleProps}>
@@ -238,6 +240,7 @@ function CustomFrame({
           </span>
         )}
         <span className={styles.spacer} />
+        <span ref={setSlot} className={styles.headSlot} onMouseDown={(e) => e.stopPropagation()} />
         {actions}
       </div>
       <div className={styles.body}>
@@ -248,7 +251,7 @@ function CustomFrame({
         ) : !widget ? (
           <Skeleton height="100%" radius={8} />
         ) : (
-          <StudioWidget spec={widget.spec} load={load} />
+          <StudioWidget spec={widget.spec} load={load} headerSlot={slot} />
         )}
       </div>
     </section>
