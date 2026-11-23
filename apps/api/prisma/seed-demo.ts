@@ -117,6 +117,8 @@ const HQ_EXCLUDE = [
   /^NOTICE\.(CREATE|UPDATE|DELETE)$/,
   /^TASK\.DELETE$/,
   /^(ASSET|BRANCH_CASE)\./,
+  // 상담 콘솔 '전체 전화'는 상담 관리자 그룹에만(마이그레이션 20261123100000_cs_manager_role)
+  /^CS_CALL\.ALL$/,
 ];
 
 /** 이름 칸에서 사람 이름만 — 사람 이름이 아니면(공용·시험 계정) null */

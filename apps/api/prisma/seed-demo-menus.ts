@@ -310,6 +310,14 @@ const TEAM_ROLES = [
       'NOTICE.UPDATE',
     ],
   },
+  {
+    code: 'CS_MANAGER',
+    name: '상담 관리자',
+    description: '상담 콘솔 전체 보기 — 모든 상담원의 상담·문자 내역, 상담 메모 프리셋 관리',
+    // 부서로 붙이지 않는다 — 맡은 사람만 계정·권한 화면에서 넣는다
+    orgs: [],
+    perms: ['CS_CALL.ALL'],
+  },
 ];
 
 async function seedTeamRoles(orgId: Map<string, string>) {
