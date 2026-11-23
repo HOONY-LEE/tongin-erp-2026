@@ -48,6 +48,7 @@ export default {
     accounts: 'Accounts & Access',
     aiAgents: 'Agent Builder',
     aiAdmin: 'AI Admin',
+    devTools: 'Developer',
     systemLogs: 'System Logs',
     accessLogs: 'Access Logs',
     dashboardAdmin: 'Dashboards',

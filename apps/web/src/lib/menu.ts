@@ -9,6 +9,7 @@ import {
   CalendarClock,
   CalendarDays,
   ClipboardList,
+  Code2,
   DoorOpen,
   Briefcase,
   Building,
@@ -54,6 +55,7 @@ import { api } from './api';
 
 /** 카탈로그의 아이콘 이름 → 컴포넌트(카탈로그에 새 아이콘을 쓰면 여기 한 줄 추가) */
 const ICONS: Record<string, LucideIcon> = {
+  Code2,
   Award,
   Banknote,
   Bot,

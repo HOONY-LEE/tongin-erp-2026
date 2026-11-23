@@ -1,0 +1,81 @@
+/* 개발자 메뉴 — AI 도구 목록·시험 실행 */
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nameCell small {
+  overflow: hidden;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.muted {
+  margin: 0;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.desc {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.params {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.params th,
+.params td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ark-color-border);
+  text-align: left;
+  vertical-align: top;
+}
+.params th {
+  color: var(--ark-color-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.params td:nth-child(3) {
+  white-space: nowrap;
+}
+.test {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .test {
+    grid-template-columns: 1fr;
+  }
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--ark-font-size-sm);
+  font-weight: 500;
+}
+.code,
+.result {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.result {
+  max-height: 480px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--ark-color-bg-muted);
+  font-weight: 400;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.err {
+  color: var(--ark-color-error-500, #e5484d);
+  font-weight: 400;
+}

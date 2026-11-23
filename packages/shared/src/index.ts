@@ -641,6 +641,7 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
       { action: 'USE', label: 'AI 비서 사용' },
       { action: 'MANAGE', label: '에이전트 빌더' },
       { action: 'ADMIN', label: 'AI 관리(모델·사용자별 권한·사용량)' },
+      { action: 'DEV', label: '개발자 메뉴 — AI 도구 목록·시험 실행' },
     ],
     hint: 'AI는 사용자 본인 권한 안에서만 도구를 실행합니다',
   },

@@ -6,6 +6,7 @@ import { AiService } from './ai.service';
 import { AiFiles } from './ai-files.service';
 import { AiUsageService } from './ai-usage.service';
 import { AiAdminController } from './ai-admin.controller';
+import { DevToolsController } from './dev-tools.controller';
 import { ApiCatalog } from './api-catalog';
 import { DomainTools } from './domain-tools';
 import { PiiVault } from './pii-vault';
@@ -13,7 +14,7 @@ import { PiiVault } from './pii-vault';
 /** AIX-03: AI 비서 — Claude가 ERP 도구(API 카탈로그 + 업무 도구)를 골라 실행한다 */
 @Module({
   imports: [DiscoveryModule],
-  controllers: [AiController, AiAdminController],
+  controllers: [AiController, AiAdminController, DevToolsController],
   providers: [
     AiService,
     AiFiles,
