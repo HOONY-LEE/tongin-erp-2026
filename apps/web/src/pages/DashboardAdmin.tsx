@@ -2,8 +2,8 @@ import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDate } from '../lib/dateFormat';
-import { useNavigate } from 'react-router-dom';
-import { Pencil, Plus, Settings2, Sparkles, Trash2 } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import { defaultDashLayout } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { openDashboardEditor, useDashEditorMessages } from '../lib/dashboardWindow';
@@ -27,6 +27,7 @@ import {
 import { LayoutThumb, type ThumbItem } from '../components/dashboard/builder/LayoutThumb';
 import styles from '../components/dashboard/builder/builder.module.css';
 import { fs } from '../lib/fontScale';
+import { WidgetList } from './WidgetStudio';
 
 export interface TemplateRow {
   id: string;
@@ -98,6 +99,11 @@ export default function DashboardAdmin() {
   const [view, setView] = useState<View>(readView);
   const [open, setOpen] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
+  // 대시보드(템플릿) / 위젯(만든 위젯) — 주소 ?tab=widgets로 기억(스튜디오에서 돌아올 때 위젯 탭으로)
+  const [params, setParams] = useSearchParams();
+  const tab: 'dashboards' | 'widgets' = params.get('tab') === 'widgets' ? 'widgets' : 'dashboards';
+  const setTab = (v: string) => setParams(v === 'widgets' ? { tab: 'widgets' } : {}, { replace: true });
+  const [widgetReload, setWidgetReload] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -222,21 +228,23 @@ export default function DashboardAdmin() {
       <PageHeader
         title={t('dash.manage')}
         subtitle={t('dash.manageSub')}
-        onRefresh={load}
-        updatedAt={updatedAt}
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<Sparkles size={14} />}
-            onClick={() => navigate('/dashboard-admin/widgets')}
-          >
-            {t('studio.openStudio')}
-          </Button>
-        }
+        onRefresh={tab === 'widgets' ? () => setWidgetReload((n) => n + 1) : load}
+        updatedAt={tab === 'widgets' ? undefined : updatedAt}
       />
+      <div>
+        <SegmentedControl
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'dashboards', label: t('dash.tab.dashboards') },
+            { value: 'widgets', label: t('dash.tab.widgets') },
+          ]}
+        />
+      </div>
 
-      {rows === null ? (
+      {tab === 'widgets' ? (
+        <WidgetList reloadKey={widgetReload} />
+      ) : rows === null ? (
         <TableSkeleton rows={4} cols={4} />
       ) : view === 'list' ? (
         // 목록은 보기만 — 행을 누르면 위젯 배치(상세), 설정·삭제는 그 머리글에
