@@ -24,6 +24,8 @@ export interface AiTool {
   mode: ToolMode;
   /** 도구 묶음(업무 이름) — 에이전트 빌더의 도구 탐색기에서 묶어 보여 준다 */
   group?: string;
+  /** API 도구면 'GET /leads/search'처럼 실제 주소(개발자 메뉴에 보인다). 업무 도구는 없음 */
+  endpoint?: string;
   /** 이 권한을 모두 가진 사용자에게만 도구가 보인다 */
   permissions: string[];
   /**

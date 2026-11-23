@@ -48,6 +48,7 @@ export default {
     accounts: '账户与权限',
     aiAgents: 'Agent Builder',
     aiAdmin: 'AI 管理',
+    devTools: '开发者菜单',
     systemLogs: '系统日志',
     accessLogs: '访问记录',
     dashboardAdmin: '仪表板管理',

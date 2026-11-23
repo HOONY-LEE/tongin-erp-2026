@@ -48,6 +48,7 @@ export default {
     accounts: '계정·권한',
     aiAgents: 'Agent Builder',
     aiAdmin: 'AI 관리',
+    devTools: '개발자 메뉴',
     systemLogs: '시스템 로그',
     accessLogs: '접근 기록',
     dashboardAdmin: '대시보드 관리',

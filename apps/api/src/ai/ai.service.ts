@@ -164,6 +164,16 @@ export class AiService implements OnModuleInit {
     return [...byName.values()];
   }
 
+  /** 개발자 메뉴 — 권한과 상관없이 등록된 도구 전부(업무 도구 우선, 같은 이름은 하나만) */
+  allTools(): (AiTool & { source: 'domain' | 'api' })[] {
+    const byName = new Map<string, AiTool & { source: 'domain' | 'api' }>();
+    for (const t of this.domain.list())
+      if (!byName.has(t.name)) byName.set(t.name, { ...t, source: 'domain' });
+    for (const t of this.catalog.list())
+      if (!byName.has(t.name)) byName.set(t.name, { ...t, source: 'api' });
+    return [...byName.values()];
+  }
+
   /** 승인 카드의 받는 사람 더하기용 고객 검색 */
   findCustomers(q: string, principal: AuthPrincipal) {
     return this.domain.findCustomers(q, principal);

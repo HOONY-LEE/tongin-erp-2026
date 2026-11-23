@@ -146,6 +146,8 @@ const OVERRIDE: Record<string, string> = {
 const EXCLUDED_CONTROLLERS = new Set([
   'auth',
   'ai',
+  // 개발자 메뉴(도구 목록·시험 실행)는 사람이 쓰는 화면
+  'dev',
   'agent-blueprints',
   'agent-runs',
   'knowledge',
@@ -335,6 +337,7 @@ export class ApiCatalog implements OnApplicationBootstrap {
       },
       mode,
       group: domain.split(' — ')[0],
+      endpoint: `${r.httpMethod} /${path}`,
       permissions: r.permissions,
       deferred: true,
       summarize: (input) => `${r.httpMethod} /${fillPath(path, input)}`,
