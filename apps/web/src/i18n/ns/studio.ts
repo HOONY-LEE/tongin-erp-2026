@@ -50,6 +50,12 @@ export default defineNs({
       questions: 'AI가 더 알고 싶은 것',
       failed: 'AI 제안을 받지 못했습니다',
       noPerm: '위젯을 만들 권한이 없어 AI 제안을 쓸 수 없습니다',
+      hello:
+        '어떤 위젯이 필요한지 말해 주세요. 몇 가지 안을 보여 드리고, 고르시면 그걸로 미리보기를 바꿔 드려요. 이어서 다듬어 달라고 하셔도 됩니다.',
+      ex1: '주간·월간·연간 매출을 보고 싶어. 본사는 지점별로도',
+      ex2: '상품별 계약 금액이 어떻게 퍼져 있는지',
+      ex3: '지점별 접수 건수와 계약 전환율 관계',
+      send: '보내기',
     },
     edit: {
       title: '직접 고치기',
@@ -76,6 +82,7 @@ export default defineNs({
       filter: '필터',
       remove: '빼기',
       filterDim: '거를 기준',
+      shelf: '구성',
       place: '자리',
       measure2: '세로축 숫자(산점도)',
       field: '분포를 볼 값(건마다)',
@@ -84,6 +91,7 @@ export default defineNs({
       title: '쓸 수 있는 데이터',
       measures: '숫자(측정값)',
       dimensions: '기준(차원)',
+      fields: '건별 숫자(분포)',
       hint: '누르면 위젯에 바로 씁니다',
     },
     preview: {
@@ -216,6 +224,12 @@ export default defineNs({
       questions: 'AI would like to know',
       failed: 'Could not get AI suggestions',
       noPerm: 'You need permission to create widgets to use AI suggestions',
+      hello:
+        'Tell me what widget you need. I will show a few options; pick one to preview it, then keep refining.',
+      ex1: 'Revenue weekly/monthly/yearly, with a by-branch view for HQ',
+      ex2: 'How contract amounts are distributed by product',
+      ex3: 'Lead count vs conversion rate by branch',
+      send: 'Send',
     },
     edit: {
       title: 'Edit manually',
@@ -242,6 +256,7 @@ export default defineNs({
       filter: 'Filter',
       remove: 'Remove',
       filterDim: 'Filter by',
+      shelf: 'Layout',
       place: 'Position',
       measure2: 'Y-axis measure (scatter)',
       field: 'Value per record (distribution)',
@@ -250,6 +265,7 @@ export default defineNs({
       title: 'Available data',
       measures: 'Measures',
       dimensions: 'Dimensions',
+      fields: 'Per-record values (distribution)',
       hint: 'Click to use in the widget',
     },
     preview: {
@@ -382,6 +398,11 @@ export default defineNs({
       questions: 'AI 想进一步了解',
       failed: '未能获取 AI 建议',
       noPerm: '没有创建组件的权限，无法使用 AI 建议',
+      hello: '请告诉我需要什么组件。我会给出几个方案，选择后即可预览，也可以继续让我调整。',
+      ex1: '按周/月/年查看销售额，总部还能按门店查看',
+      ex2: '各商品的合同金额分布',
+      ex3: '各门店受理件数与签约转化率的关系',
+      send: '发送',
     },
     edit: {
       title: '手动修改',
@@ -408,6 +429,7 @@ export default defineNs({
       filter: '筛选',
       remove: '移除',
       filterDim: '筛选依据',
+      shelf: '构成',
       place: '位置',
       measure2: '纵轴数值(散点图)',
       field: '查看分布的值(每件)',
@@ -416,6 +438,7 @@ export default defineNs({
       title: '可用数据',
       measures: '数值(度量)',
       dimensions: '维度',
+      fields: '每件数值(分布)',
       hint: '点击即可用于组件',
     },
     preview: {

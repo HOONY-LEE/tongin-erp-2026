@@ -10,7 +10,17 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  IsIn,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import {
   normalizeStudioSpec,
   type AuthPrincipal,
@@ -56,6 +66,14 @@ class DataDto {
   @IsObject()
   params?: Record<string, unknown>;
 }
+class HistoryItemDto {
+  @IsIn(['user', 'ai'])
+  role!: 'user' | 'ai';
+
+  @IsString()
+  @MaxLength(2000)
+  text!: string;
+}
 class ProposeDto {
   @IsString()
   @MaxLength(2000)
@@ -64,6 +82,14 @@ class ProposeDto {
   @IsOptional()
   @IsObject()
   current?: Record<string, unknown>;
+
+  /** 지금까지의 대화(최근 것만 쓴다) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @ValidateNested({ each: true })
+  @Type(() => HistoryItemDto)
+  history?: HistoryItemDto[];
 }
 
 /** 조작 값 — 아는 칸만(값 검사는 실행기가 카탈로그로) */
@@ -211,6 +237,9 @@ export class CustomWidgetController {
     return this.ai.propose(
       dto.prompt,
       dto.current ? (normalizeStudioSpec(dto.current).spec as StudioSpec) : null,
+      (dto.history ?? [])
+        .filter((h) => h && (h.role === 'user' || h.role === 'ai') && typeof h.text === 'string')
+        .map((h) => ({ role: h.role, text: h.text })),
     );
   }
 
