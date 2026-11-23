@@ -10,12 +10,15 @@ import {
   STUDIO_DATASETS,
   STUDIO_DATASET_MAP,
   STUDIO_GRAINS,
+  STUDIO_PLACES,
   STUDIO_VIZ,
+  STUDIO_VIZ_GROUPS,
   normalizeStudioSpec,
   type CustomWidgetRow,
   type StudioControl,
   type StudioDimKind,
   type StudioParams,
+  type StudioPlace,
   type StudioProposal,
   type StudioResult,
   type StudioSpec,
@@ -40,11 +43,13 @@ import { StudioWidget } from '../components/dashboard/studio/StudioWidget';
 import {
   dimLabel,
   dsLabel,
+  fieldLabel,
   grainLabel,
   measureLabel,
   optLabel,
 } from '../components/dashboard/studio/studioLabels';
 import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../i18n/codes';
+import { tDyn } from '../i18n';
 import styles from './WidgetStudio.module.css';
 
 const BACK = '/dashboard-admin';
@@ -573,7 +578,21 @@ function EditPanel({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studi
             <Select
               value={spec.viz}
               onValueChange={(v) => patch({ viz: v as StudioSpec['viz'] })}
-              options={STUDIO_VIZ.map((v) => ({ value: v, label: DASH_VIZ_LABEL[v] }))}
+              options={STUDIO_VIZ_GROUPS.flatMap((g) =>
+                g.viz
+                  // 분포는 건별 숫자 칸이 있는 데이터만, 산점도는 숫자가 두 개 이상일 때만
+                  .filter((v) =>
+                    v === 'histogram' || v === 'box'
+                      ? ds.fields.length > 0
+                      : v === 'scatter'
+                        ? ds.measures.length > 1
+                        : true,
+                  )
+                  .map((v) => ({
+                    value: v,
+                    label: `${tDyn(`studio.vizGroup.${g.key}`, g.label)} · ${DASH_VIZ_LABEL[v]}`,
+                  })),
+              )}
             />
           </label>
           <label className={styles.field}>
@@ -586,6 +605,28 @@ function EditPanel({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studi
           </label>
         </div>
 
+        {spec.viz === 'scatter' && (
+          <label className={styles.field}>
+            <span>{t('studio.edit.measure2')}</span>
+            <Select
+              value={spec.measure2 ?? ''}
+              onValueChange={(v) => patch({ measure2: v })}
+              options={ds.measures
+                .filter((m) => m.key !== spec.measure)
+                .map((m) => ({ value: m.key, label: measureLabel(ds.key, m.key) }))}
+            />
+          </label>
+        )}
+        {(spec.viz === 'histogram' || spec.viz === 'box') && (
+          <label className={styles.field}>
+            <span>{t('studio.edit.field')}</span>
+            <Select
+              value={spec.field ?? ''}
+              onValueChange={(v) => patch({ field: v })}
+              options={ds.fields.map((f) => ({ value: f.key, label: fieldLabel(ds.key, f.key) }))}
+            />
+          </label>
+        )}
         <div className={styles.field}>
           <span>{t('studio.edit.controls')}</span>
           {!controls.length && <p className={styles.muted}>{t('studio.edit.noControls')}</p>}
@@ -643,6 +684,20 @@ function EditPanel({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studi
                   </span>
                 </>
               )}
+              <span className={styles.place}>
+                <Select
+                  size="sm"
+                  value={c.place ?? 'left'}
+                  onValueChange={(v) =>
+                    updateCtl(i, { ...c, place: v === 'left' ? undefined : (v as StudioPlace) })
+                  }
+                  options={STUDIO_PLACES.map((pl) => ({
+                    value: pl,
+                    label: t(`studio.place.${pl}`),
+                  }))}
+                  aria-label={t('studio.edit.place')}
+                />
+              </span>
               <button
                 type="button"
                 className={styles.iconBtn}
@@ -742,6 +797,7 @@ const SIZES = { s: 4, m: 6, l: 12 } as const;
 function PreviewPanel({ spec }: { spec: StudioSpec }) {
   const { t } = useTranslation();
   const [size, setSize] = useState<keyof typeof SIZES>('m');
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(0);
   useEffect(() => {
@@ -782,9 +838,12 @@ function PreviewPanel({ spec }: { spec: StudioSpec }) {
       >
         <div ref={boxRef} className={styles.stage}>
           <section className={styles.frame} style={{ width: Math.min(w, boxW || w), height: h }}>
-            <div className={styles.frameHead}>{spec.title || t('studio.newWidget')}</div>
+            <div className={styles.frameHead}>
+              <span className={styles.frameTitle}>{spec.title || t('studio.newWidget')}</span>
+              <span ref={setSlot} className={styles.frameSlot} />
+            </div>
             <div className={styles.frameBody}>
-              <StudioWidget spec={preview} load={load} />
+              <StudioWidget spec={preview} load={load} headerSlot={slot} />
             </div>
           </section>
         </div>

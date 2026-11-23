@@ -32,6 +32,9 @@ import {
   Trash2,
   Type,
   Grid3x3,
+  LayoutGrid,
+  BoxSelect,
+  ScatterChart,
   CircleDot,
   X,
 } from 'lucide-react';
@@ -84,6 +87,11 @@ export const VIZ_ICON: Record<DashViz, typeof BarChart3> = {
   map: MapIcon,
   heatmap: Grid3x3,
   text: Type,
+  stacked: BarChart3,
+  treemap: LayoutGrid,
+  histogram: BarChart3,
+  box: BoxSelect,
+  scatter: ScatterChart,
 };
 
 type Drag = {

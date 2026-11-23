@@ -37,6 +37,8 @@ interface DatasetSql {
   base?: Expr;
   dims: Record<string, DimSql>;
   measures: Record<string, Expr>;
+  /** 건별 숫자 칸(분포용) — 값이 없는 건(NULL)은 빼고 센다 */
+  fields?: Record<string, Expr>;
 }
 
 const KST = (col: string) => `(${col} AT TIME ZONE 'Asia/Seoul')`;
@@ -97,6 +99,10 @@ const SQL: Record<string, DatasetSql> = {
       expectedAmount: 'COALESCE(SUM(t.expected_amount), 0)::float8',
       conversion: `COALESCE(AVG(CASE WHEN t.status IN ${CONTRACTED} THEN 1 ELSE 0 END), 0)::float8`,
     },
+    fields: {
+      expectedAmount: 't.expected_amount::float8',
+      leadDays: `(t.move_date - ${KST('t.created_at')}::date)::float8`,
+    },
   },
   contract: {
     from: 'contract t LEFT JOIN lead l ON l.id = t.lead_id',
@@ -117,6 +123,11 @@ const SQL: Record<string, DatasetSql> = {
       avgAmount: 'COALESCE(AVG(t.total_amount), 0)::float8',
       deposit: 'COALESCE(SUM(t.deposit_amount), 0)::float8',
     },
+    fields: {
+      totalAmount: 't.total_amount::float8',
+      depositAmount: 't.deposit_amount::float8',
+      signDays: `(${KST('t.signed_at')}::date - ${KST('l.created_at')}::date)::float8`,
+    },
   },
   payment: {
     from: 'payment t JOIN contract c ON c.id = t.contract_id',
@@ -133,6 +144,7 @@ const SQL: Record<string, DatasetSql> = {
       amount: 'COALESCE(SUM(t.amount), 0)::float8',
       count: 'COUNT(*)::float8',
     },
+    fields: { amount: 't.amount::float8' },
   },
   work: {
     from: 'work_order t',
@@ -293,6 +305,139 @@ export class StudioQueryService {
 
     const options = await this.filterOptions(spec, q, ids);
     const applied = { measure, dimension, grain, period };
+    const viz = params.viz ?? spec.viz;
+
+    // ── 분포: 히스토그램(건별 숫자를 구간으로) · 박스플롯(기준별 사분위) ──
+    const fieldKey = params.field && q.fields?.[params.field] ? params.field : (spec.field ?? '');
+    const fieldSql = q.fields?.[fieldKey];
+    const fieldDef = ds.fields.find((f) => f.key === fieldKey);
+    if ((viz === 'histogram' || viz === 'box') && fieldSql && fieldDef) {
+      const cur = range();
+      values.length = 0;
+      const w = where(cur.from, cur.to);
+      const notNull = `${w ? `${w} AND` : 'WHERE'} (${fieldSql}) IS NOT NULL`;
+      const fFmt = fieldDef.format;
+      if (viz === 'histogram') {
+        const [mm] = await this.prisma.$queryRawUnsafe<{ lo: number | null; hi: number | null }[]>(
+          `SELECT MIN(${fieldSql}) AS lo, MAX(${fieldSql}) AS hi FROM ${q.from} ${notNull}`,
+          ...values,
+        );
+        const lo = Number(mm?.lo ?? 0);
+        const hi = Number(mm?.hi ?? 0);
+        if (mm?.lo == null)
+          return {
+            data: { shape: 'category', format: 'count', items: [] },
+            options,
+            multiOrg,
+            applied,
+          };
+        // 보기 좋은 구간 폭(1·2·5 단위)으로 12개 안팎
+        const raw = Math.max((hi - lo) / 12, fFmt === 'won' ? 10000 : 1);
+        const mag = 10 ** Math.floor(Math.log10(raw));
+        const step = [1, 2, 2.5, 5, 10].map((x) => x * mag).find((x) => x >= raw) ?? 10 * mag;
+        const start = Math.floor(lo / step) * step;
+        const rows = await this.prisma.$queryRawUnsafe<{ b: number; n: number }[]>(
+          `SELECT FLOOR(((${fieldSql}) - ${bind(start)}::float8) / ${bind(step)}::float8)::int AS b, COUNT(*)::int AS n FROM ${q.from} ${notNull} GROUP BY 1 ORDER BY 1`,
+          ...values,
+        );
+        const byBin = new Map(rows.map((r) => [Number(r.b), Number(r.n)]));
+        const last = Math.max(0, ...rows.map((r) => Number(r.b)));
+        const lab = (v: number) =>
+          fFmt === 'won'
+            ? v >= 1e8
+              ? `${+(v / 1e8).toFixed(1)}억`
+              : v >= 1e4
+                ? `${Math.round(v / 1e4).toLocaleString()}만`
+                : v.toLocaleString()
+            : `${v.toLocaleString()}${fieldDef.unit ?? ''}`;
+        return {
+          data: {
+            shape: 'category',
+            format: 'count',
+            items: Array.from({ length: last + 1 }, (_, i) => ({
+              key: String(i),
+              label: lab(start + i * step),
+              value: byBin.get(i) ?? 0,
+            })),
+          },
+          options,
+          multiOrg,
+          applied,
+        };
+      }
+      // 박스플롯 — 기준이 있으면 기준별(건수 많은 12개), 없으면 하나
+      const k1 = dimension ? keyExpr(dimension) : `''`;
+      const rows = await this.prisma.$queryRawUnsafe<{ k1: string; p: number[]; n: number }[]>(
+        `SELECT ${k1} AS k1, percentile_cont(ARRAY[0, 0.25, 0.5, 0.75, 1]) WITHIN GROUP (ORDER BY ${fieldSql}) AS p, COUNT(*)::int AS n FROM ${q.from} ${notNull} GROUP BY 1 ORDER BY 3 DESC LIMIT 12`,
+        ...values,
+      );
+      const label = dimension
+        ? await this.labeler(
+            q,
+            [dimension],
+            rows.map((r) => ({ k1: r.k1, k2: '' })),
+          )
+        : null;
+      const items = rows.map((r) => {
+        const [min, q1, median, q3, max] = (r.p ?? []).map(Number);
+        const isTime = dimension ? !!q.dims[dimension].time : false;
+        return {
+          key: r.k1 || 'ALL',
+          label: !dimension
+            ? fieldDef.label
+            : isTime
+              ? bucketLabel(r.k1, grain)
+              : (label!(dimension, r.k1) ?? (r.k1 || '미지정')),
+          min,
+          q1,
+          median,
+          q3,
+          max,
+          n: Number(r.n),
+        };
+      });
+      if (dimension && q.dims[dimension].time) items.sort((a, b) => a.key.localeCompare(b.key));
+      return { data: { shape: 'box', format: fFmt, items }, options, multiOrg, applied };
+    }
+
+    // ── 관계: 산점도(기준별로 두 숫자) ──
+    const m2key = spec.measure2 && q.measures[spec.measure2] ? spec.measure2 : null;
+    if (viz === 'scatter' && m2key && dimension) {
+      const cur = range();
+      values.length = 0;
+      const k1 = keyExpr(dimension);
+      const rows = await this.prisma.$queryRawUnsafe<{ k1: string; x: number; y: number }[]>(
+        `SELECT ${k1} AS k1, ${q.measures[measure]} AS x, ${q.measures[m2key]} AS y FROM ${q.from} ${where(cur.from, cur.to)} GROUP BY 1`,
+        ...values,
+      );
+      const label = await this.labeler(
+        q,
+        [dimension],
+        rows.map((r) => ({ k1: r.k1, k2: '' })),
+      );
+      const isTime = !!q.dims[dimension].time;
+      const mDef = (k: string) => ds.measures.find((x) => x.key === k)!;
+      return {
+        data: {
+          shape: 'scatter',
+          xLabel: mDef(measure).label,
+          yLabel: mDef(m2key).label,
+          xFormat: mDef(measure).format,
+          yFormat: mDef(m2key).format,
+          points: rows.map((r) => ({
+            key: r.k1 || 'NONE',
+            label: isTime
+              ? bucketLabel(r.k1, grain)
+              : (label(dimension, r.k1) ?? (r.k1 || '미지정')),
+            x: Number(r.x),
+            y: Number(r.y),
+          })),
+        },
+        options,
+        multiOrg,
+        applied,
+      };
+    }
 
     // ── 숫자 하나 ──
     if (!dimension) {

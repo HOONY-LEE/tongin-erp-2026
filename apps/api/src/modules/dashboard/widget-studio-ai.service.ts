@@ -26,8 +26,13 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
 - dataset·measure·dimension·split·filters.dim·periodField·controls의 값은 카탈로그의 key만 씁니다.
 - dimension: 묶을 기준(없으면 숫자 하나). 시간 차원이면 grain(day·week·month·quarter·year)을 정합니다.
 - split: 두 번째 기준(히트맵의 행). 보통은 비웁니다.
-- viz 고르기: 시간 흐름 → line·area·bar / 항목 비교 → hbar·bar / 항목 6개 이하 비중 → donut·pie /
-  단계 → funnel / 출발지 시도(geo) → map / 두 기준 → heatmap / 숫자 하나 → card / 비율 숫자 하나 → gauge / 자세한 숫자 → table
+- viz 고르기(무엇을 보여 주나):
+  · 비교: 항목 비교 → hbar·bar / 항목×두 번째 기준 → stacked(split 필요) / 자세한 숫자 → table
+  · 구성(비중): 6개 이하 → donut·pie / 항목이 많은 비중 → treemap / 단계 → funnel
+  · 추이(시간): 날짜 차원 → line·area·bar
+  · 분포: 건마다의 값이 어떻게 퍼져 있나 → histogram(field 필요, 기준 없이) / 기준별 분포 비교 → box(field + dimension)
+  · 관계: 기준별로 두 숫자의 관계 → scatter(measure=가로축, measure2=세로축, dimension 필요) / 두 기준 → heatmap(split 필요)
+  · 지역: 출발지 시도(geo) → map / 숫자 하나 → card / 비율 하나 → gauge
 - period: 7d·30d·90d·12m·all. 연간 비교면 12m 또는 all.
 - controls(보는 사람이 누르는 요소, 최대 4개):
   · {kind:'segment', target:'grain', options:['week','month','year']} — 주간/월간/연간 탭
@@ -35,6 +40,7 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
   · {kind:'segment', target:'measure', options:[측정값 key…]} — 매출/건수 바꾸기
   · {kind:'dropdown', target:'period', options:['30d','90d','12m']}
   · {kind:'filter', dim:'차원 key'} — 항목 골라 거르기(시간 차원은 안 됨)
+  · place로 자리를 정합니다: title(제목 줄 오른쪽 — 작은 탭 하나일 때 깔끔), left(기본), right, bottom
 - 권한·지점 범위는 서버가 자동으로 겁니다: 지점 직원은 자기 지점 데이터만 봅니다. 한 지점만 보는 사람에게는
   'org'(지점별) 선택지가 자동으로 숨겨집니다. 그래서 "본사는 지점별로도 보고 지점은 자기 것만"이면
   dimension 조작에 'org'를 넣으면 됩니다(따로 권한 조건을 만들 필요 없음).
@@ -55,6 +61,8 @@ const SPEC_SCHEMA = {
     subtitle: { type: 'string' },
     dataset: { type: 'string', enum: STUDIO_DATASETS.map((d) => d.key) },
     measure: { type: 'string' },
+    measure2: { type: 'string', description: '산점도 세로축 측정값' },
+    field: { type: 'string', description: '히스토그램·박스플롯의 건별 숫자 칸(catalog fields)' },
     dimension: { type: ['string', 'null'] },
     grain: { type: 'string', enum: [...STUDIO_GRAINS] },
     split: { type: ['string', 'null'] },
@@ -83,6 +91,11 @@ const SPEC_SCHEMA = {
           dim: { type: 'string' },
           label: { type: 'string' },
           options: { type: 'array', items: { type: 'string' } },
+          place: {
+            type: 'string',
+            enum: ['title', 'left', 'right', 'bottom'],
+            description: '놓을 자리: 제목 줄·차트 위 왼쪽(기본)·차트 위 오른쪽·차트 아래',
+          },
         },
         required: ['kind'],
       },
@@ -131,6 +144,7 @@ const CATALOG = JSON.stringify(
       ...(m.description ? { note: m.description } : {}),
     })),
     dimensions: d.dimensions.map((x) => ({ key: x.key, label: x.label, kind: x.kind })),
+    fields: d.fields.map((f) => ({ key: f.key, label: f.label, format: f.format })),
   })),
 );
 
@@ -186,7 +200,14 @@ export class WidgetStudioAiService {
       if (e instanceof HttpException) throw e;
       const msg = e instanceof Error ? e.message : String(e);
       this.logger.warn(`위젯 제안 AI 호출 실패: ${msg.slice(0, 200)}`);
-      throw new ServiceUnavailableException('AI 호출에 실패했습니다. 잠시 뒤 다시 시도해 주세요.');
+      const status = (e as { status?: number }).status;
+      throw new ServiceUnavailableException(
+        status === 401 || status === 403
+          ? 'AI 키가 만료됐거나 잘못돼 AI를 쓸 수 없습니다. 관리자에게 AI 키 교체를 요청해 주세요.'
+          : status === 429
+            ? 'AI 사용량이 잠시 많습니다. 잠시 뒤 다시 시도해 주세요.'
+            : 'AI 호출에 실패했습니다. 잠시 뒤 다시 시도해 주세요.',
+      );
     }
     const block = res.content.find((b) => b.type === 'tool_use');
     if (!block || block.type !== 'tool_use') {

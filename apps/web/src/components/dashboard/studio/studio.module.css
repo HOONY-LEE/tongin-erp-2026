@@ -40,3 +40,16 @@
   font-size: calc(13px * var(--font-scale, 1));
   text-align: center;
 }
+.ctlRight {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+/* 제목 줄에 놓은 조작 요소 — 제목 오른쪽 끝 */
+.headCtl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}

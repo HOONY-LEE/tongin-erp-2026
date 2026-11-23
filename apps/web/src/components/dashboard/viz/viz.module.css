@@ -360,3 +360,29 @@ button.listItem:hover {
   position: relative;
   padding-left: 10px;
 }
+
+/* 누적 막대 범례 — 차트 아래 한 줄 */
+.legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  height: 22px;
+  overflow: hidden;
+  font-size: calc(11.5px * var(--font-scale, 1));
+  color: var(--ink-2);
+}
+.legendRow span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+/* 트리맵 칸 글자 */
+.treeLabel {
+  fill: #fff;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.treeValue {
+  fill: rgba(255, 255, 255, 0.85);
+  font-size: calc(11px * var(--font-scale, 1));
+}

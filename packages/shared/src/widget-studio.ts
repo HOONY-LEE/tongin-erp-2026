@@ -29,6 +29,14 @@ export interface StudioMeasure {
   format: 'count' | 'won' | 'percent';
   description?: string;
 }
+/** 건마다 있는 숫자 칸 — 분포(히스토그램·박스플롯)는 이 값을 한 건씩 센다 */
+export interface StudioField {
+  key: string;
+  label: string;
+  format: 'count' | 'won' | 'percent';
+  /** 단위 이름(일·원) — 축 표기용 */
+  unit?: string;
+}
 export interface StudioDataset {
   key: string;
   label: string;
@@ -39,6 +47,8 @@ export interface StudioDataset {
   defaultTime: string;
   dimensions: StudioDimension[];
   measures: StudioMeasure[];
+  /** 분포용 숫자 칸(없으면 히스토그램·박스플롯을 못 쓴다) */
+  fields: StudioField[];
 }
 
 /**
@@ -72,6 +82,10 @@ export const STUDIO_DATASETS: StudioDataset[] = [
         description: '계약 이후 단계까지 간 접수 ÷ 전체 접수',
       },
     ],
+    fields: [
+      { key: 'expectedAmount', label: '예상 금액', format: 'won' },
+      { key: 'leadDays', label: '접수~이사일 일수', format: 'count', unit: '일' },
+    ],
   },
   {
     key: 'contract',
@@ -94,6 +108,11 @@ export const STUDIO_DATASETS: StudioDataset[] = [
       { key: 'avgAmount', label: '평균 계약 금액', format: 'won' },
       { key: 'deposit', label: '계약금 합계', format: 'won' },
     ],
+    fields: [
+      { key: 'totalAmount', label: '계약 금액', format: 'won' },
+      { key: 'depositAmount', label: '계약금', format: 'won' },
+      { key: 'signDays', label: '접수~서명 일수', format: 'count', unit: '일' },
+    ],
   },
   {
     key: 'payment',
@@ -112,6 +131,7 @@ export const STUDIO_DATASETS: StudioDataset[] = [
       { key: 'amount', label: '입금액', format: 'won' },
       { key: 'count', label: '입금 건수', format: 'count' },
     ],
+    fields: [{ key: 'amount', label: '입금액', format: 'won' }],
   },
   {
     key: 'work',
@@ -125,6 +145,7 @@ export const STUDIO_DATASETS: StudioDataset[] = [
       { key: 'org', label: '담당 지점', kind: 'org' },
     ],
     measures: [{ key: 'count', label: '작업 건수', format: 'count' }],
+    fields: [],
   },
   {
     key: 'support',
@@ -142,6 +163,7 @@ export const STUDIO_DATASETS: StudioDataset[] = [
       { key: 'org', label: '담당 지점', kind: 'org' },
     ],
     measures: [{ key: 'count', label: '접수 건수', format: 'count' }],
+    fields: [],
   },
   {
     key: 'customer',
@@ -155,6 +177,7 @@ export const STUDIO_DATASETS: StudioDataset[] = [
       { key: 'org', label: '담당 지점', kind: 'org' },
     ],
     measures: [{ key: 'count', label: '고객 수', format: 'count' }],
+    fields: [],
   },
 ];
 export const STUDIO_DATASET_MAP = new Map(STUDIO_DATASETS.map((d) => [d.key, d]));
@@ -173,11 +196,30 @@ export const STUDIO_VIZ = [
   'table',
   'map',
   'heatmap',
+  'stacked',
+  'treemap',
+  'histogram',
+  'box',
+  'scatter',
 ] as const satisfies readonly DashViz[];
+/** 차트 쓰임새 — 무엇을 보여 주나(스튜디오에서 묶어 보여 주고 AI 규칙에도 쓴다) */
+export const STUDIO_VIZ_GROUPS: { key: string; label: string; viz: StudioViz[] }[] = [
+  { key: 'single', label: '숫자 하나', viz: ['card', 'gauge'] },
+  { key: 'compare', label: '비교', viz: ['bar', 'hbar', 'stacked', 'table'] },
+  { key: 'part', label: '구성(비중)', viz: ['pie', 'donut', 'treemap', 'funnel'] },
+  { key: 'trend', label: '추이(시간)', viz: ['line', 'area'] },
+  { key: 'dist', label: '분포', viz: ['histogram', 'box'] },
+  { key: 'relation', label: '관계', viz: ['scatter', 'heatmap'] },
+  { key: 'geo', label: '지역', viz: ['map'] },
+];
 export type StudioViz = (typeof STUDIO_VIZ)[number];
 
+/** 조작 요소 자리 — 제목 줄(오른쪽 끝) · 차트 위 왼쪽 · 차트 위 오른쪽 · 차트 아래 */
+export const STUDIO_PLACES = ['title', 'left', 'right', 'bottom'] as const;
+export type StudioPlace = (typeof STUDIO_PLACES)[number];
+
 /** 위젯 안 조작 요소 — 보는 사람이 눌러 바꾼다(세그먼트 탭·드롭다운·필터) */
-export type StudioControl =
+export type StudioControl = (
   | {
       kind: 'segment' | 'dropdown';
       /** 무엇을 바꾸나 — 시간 단위·묶을 기준·숫자·기간·차트 모양 */
@@ -190,7 +232,11 @@ export type StudioControl =
       /** 거를 차원(항목 여러 개 고르기) */
       dim: string;
       label?: string;
-    };
+    }
+) & {
+  /** 놓을 자리(없으면 차트 위 왼쪽) */
+  place?: StudioPlace;
+};
 
 export interface StudioFilter {
   dim: string;
@@ -204,6 +250,10 @@ export interface StudioSpec {
   subtitle?: string;
   dataset: string;
   measure: string;
+  /** 산점도의 세로축 숫자(가로축은 measure) */
+  measure2?: string;
+  /** 분포(히스토그램·박스플롯)에 쓸 건별 숫자 칸 */
+  field?: string;
   /** 묶을 기준(없으면 숫자 하나) */
   dimension?: string | null;
   /** 시간 차원일 때 단위 */
@@ -228,6 +278,8 @@ export interface StudioParams {
   measure?: string;
   period?: DashPeriod;
   viz?: StudioViz;
+  /** 분포 칸 바꾸기 */
+  field?: string;
   /** 필터 조작 — 차원 → 고른 값 */
   filters?: Record<string, string[]>;
 }
@@ -235,6 +287,11 @@ export interface StudioParams {
 /** 대시보드 배치에서 만든 위젯을 가리키는 widget 값 — 'cw:' + 위젯 id */
 export const CUSTOM_WIDGET_PREFIX = 'cw:';
 export const isCustomWidgetKey = (k: string) => k.startsWith(CUSTOM_WIDGET_PREFIX);
+
+const placeOf = (v: unknown): { place?: StudioPlace } =>
+  (STUDIO_PLACES as readonly string[]).includes(String(v)) && v !== 'left'
+    ? { place: v as StudioPlace }
+    : {};
 
 /** 설계서 검사 — 카탈로그에 없는 데이터·칸·모양은 고쳐서 쓸 수 있는 값만 남긴다(AI 답·저장 값 공통) */
 export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: string[] } {
@@ -268,7 +325,12 @@ export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: s
     if (x.kind === 'filter') {
       const dim = dimOk(x.dim);
       if (dim && !timeDims.has(dim))
-        controls.push({ kind: 'filter', dim, ...(x.label ? { label: String(x.label) } : {}) });
+        controls.push({
+          kind: 'filter',
+          dim,
+          ...(x.label ? { label: String(x.label) } : {}),
+          ...placeOf(x.place),
+        });
       continue;
     }
     if (x.kind !== 'segment' && x.kind !== 'dropdown') continue;
@@ -295,8 +357,20 @@ export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: s
       target: target as 'grain',
       options: options.slice(0, 8),
       ...(x.label ? { label: String(x.label).slice(0, 20) } : {}),
+      ...placeOf(x.place),
     });
   }
+  const fKeys = new Set(ds.fields.map((f) => f.key));
+  let vizOut = viz;
+  // 분포는 건별 숫자 칸이 있어야, 산점도는 숫자가 두 개 있어야 — 없으면 막대로
+  const field = fKeys.has(String(r.field)) ? String(r.field) : ds.fields[0]?.key;
+  if ((viz === 'histogram' || viz === 'box') && !field) vizOut = 'bar';
+  const others = ds.measures.filter((m) => m.key !== measure);
+  const measure2 =
+    mKeys.has(String(r.measure2)) && String(r.measure2) !== measure
+      ? String(r.measure2)
+      : others[0]?.key;
+  if (viz === 'scatter' && !measure2) vizOut = 'bar';
   const limit = Number(r.limit);
   const spec: StudioSpec = {
     version: 1,
@@ -307,7 +381,9 @@ export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: s
     dimension: dimOk(r.dimension),
     grain,
     split: dimOk(r.split),
-    viz,
+    viz: vizOut,
+    ...(vizOut === 'scatter' && measure2 ? { measure2 } : {}),
+    ...((vizOut === 'histogram' || vizOut === 'box') && field ? { field } : {}),
     period,
     ...(timeDims.has(String(r.periodField)) ? { periodField: String(r.periodField) } : {}),
     ...(filters.length ? { filters } : {}),

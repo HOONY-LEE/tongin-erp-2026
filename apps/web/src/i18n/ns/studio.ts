@@ -17,6 +17,21 @@ export default defineNs({
     },
     loadFailed: '데이터를 불러오지 못했습니다',
     badDataset: '이 위젯의 데이터를 쓸 수 없습니다',
+    vizGroup: {
+      single: '숫자 하나',
+      compare: '비교',
+      part: '구성',
+      trend: '추이',
+      dist: '분포',
+      relation: '관계',
+      geo: '지역',
+    },
+    place: {
+      title: '제목 줄',
+      left: '위 왼쪽',
+      right: '위 오른쪽',
+      bottom: '차트 아래',
+    },
     target: {
       grain: '시간 단위',
       dimension: '묶을 기준',
@@ -61,6 +76,9 @@ export default defineNs({
       filter: '필터',
       remove: '빼기',
       filterDim: '거를 기준',
+      place: '자리',
+      measure2: '세로축 숫자(산점도)',
+      field: '분포를 볼 값(건마다)',
     },
     catalog: {
       title: '쓸 수 있는 데이터',
@@ -87,6 +105,8 @@ export default defineNs({
     cat: {
       lead: {
         _: '접수',
+        f_expectedAmount: '예상 금액',
+        f_leadDays: '접수~이사일 일수',
         createdAt: '접수일',
         moveDate: '서비스 요청일(이사일)',
         status: '상태',
@@ -101,6 +121,9 @@ export default defineNs({
       },
       contract: {
         _: '계약',
+        f_totalAmount: '계약 금액',
+        f_depositAmount: '계약금',
+        f_signDays: '접수~서명 일수',
         signedAt: '서명일',
         contractDate: '계약일',
         status: '상태',
@@ -115,6 +138,7 @@ export default defineNs({
       },
       payment: {
         _: '입금',
+        f_amount: '입금액',
         paidAt: '입금일',
         kind: '구분(계약금·잔금)',
         method: '결제 수단',
@@ -159,6 +183,21 @@ export default defineNs({
     col: { title: 'Widget', dataset: 'Data', viz: 'Chart', by: 'Created by', updated: 'Updated' },
     loadFailed: 'Could not load data',
     badDataset: 'This widget’s data is unavailable',
+    vizGroup: {
+      single: 'Single',
+      compare: 'Compare',
+      part: 'Composition',
+      trend: 'Trend',
+      dist: 'Distribution',
+      relation: 'Relationship',
+      geo: 'Region',
+    },
+    place: {
+      title: 'Title line',
+      left: 'Top left',
+      right: 'Top right',
+      bottom: 'Below chart',
+    },
     target: {
       grain: 'Time unit',
       dimension: 'Group by',
@@ -203,6 +242,9 @@ export default defineNs({
       filter: 'Filter',
       remove: 'Remove',
       filterDim: 'Filter by',
+      place: 'Position',
+      measure2: 'Y-axis measure (scatter)',
+      field: 'Value per record (distribution)',
     },
     catalog: {
       title: 'Available data',
@@ -229,6 +271,8 @@ export default defineNs({
     cat: {
       lead: {
         _: 'Leads',
+        f_expectedAmount: 'Expected amount',
+        f_leadDays: 'Days from lead to move',
         createdAt: 'Received date',
         moveDate: 'Service date (move date)',
         status: 'Status',
@@ -243,6 +287,9 @@ export default defineNs({
       },
       contract: {
         _: 'Contracts',
+        f_totalAmount: 'Contract amount',
+        f_depositAmount: 'Deposit',
+        f_signDays: 'Days from lead to signing',
         signedAt: 'Signed date',
         contractDate: 'Contract date',
         status: 'Status',
@@ -257,6 +304,7 @@ export default defineNs({
       },
       payment: {
         _: 'Payments',
+        f_amount: 'Amount paid',
         paidAt: 'Paid date',
         kind: 'Type (deposit/balance)',
         method: 'Method',
@@ -301,6 +349,21 @@ export default defineNs({
     col: { title: '组件', dataset: '数据', viz: '图表', by: '创建人', updated: '修改日期' },
     loadFailed: '无法加载数据',
     badDataset: '无法使用此组件的数据',
+    vizGroup: {
+      single: '单个数字',
+      compare: '比较',
+      part: '构成',
+      trend: '趋势',
+      dist: '分布',
+      relation: '关系',
+      geo: '地区',
+    },
+    place: {
+      title: '标题行',
+      left: '左上',
+      right: '右上',
+      bottom: '图表下方',
+    },
     target: {
       grain: '时间单位',
       dimension: '分组依据',
@@ -345,6 +408,9 @@ export default defineNs({
       filter: '筛选',
       remove: '移除',
       filterDim: '筛选依据',
+      place: '位置',
+      measure2: '纵轴数值(散点图)',
+      field: '查看分布的值(每件)',
     },
     catalog: {
       title: '可用数据',
@@ -370,6 +436,8 @@ export default defineNs({
     cat: {
       lead: {
         _: '受理',
+        f_expectedAmount: '预计金额',
+        f_leadDays: '受理至搬家天数',
         createdAt: '受理日',
         moveDate: '服务请求日(搬家日)',
         status: '状态',
@@ -384,6 +452,9 @@ export default defineNs({
       },
       contract: {
         _: '合同',
+        f_totalAmount: '合同金额',
+        f_depositAmount: '定金',
+        f_signDays: '受理至签署天数',
         signedAt: '签署日',
         contractDate: '合同日',
         status: '状态',
@@ -398,6 +469,7 @@ export default defineNs({
       },
       payment: {
         _: '收款',
+        f_amount: '收款额',
         paidAt: '收款日',
         kind: '类别(定金·尾款)',
         method: '支付方式',

@@ -277,7 +277,11 @@
   transition: width 0.2s;
 }
 .frameHead {
-  padding: 12px 14px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px 2px;
   font-size: calc(14px * var(--font-scale, 1));
   font-weight: 600;
 }
@@ -290,4 +294,17 @@
   margin: 10px 0 0;
   color: var(--ark-color-text-secondary);
   font-size: calc(12px * var(--font-scale, 1));
+}
+.frameTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.frameSlot {
+  display: inline-flex;
+  margin-left: auto;
+}
+.place {
+  min-width: 120px;
 }
