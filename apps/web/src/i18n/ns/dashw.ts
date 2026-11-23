@@ -96,7 +96,7 @@ export default defineNs({
       customer_byRegion: { t: '시도별 고객', d: '고객 주소 시도 기준 분포' },
       support_byStatus: { t: '문의 상태', d: '접수·처리 중·해결 등 상태별 문의' },
       support_recent: { t: '최근 문의', d: '가장 최근 고객 문의 10건' },
-      service_byStatus: { t: '리빙·케어 상태', d: '요청·예정·완료 등 상태별 리빙·케어 주문' },
+      service_byStatus: { t: '리빙·케어 상태', d: '접수·계약·완료 등 상태별 리빙·케어 접수' },
       campaign_recent: { t: '최근 캠페인 결과', d: '최근 발송한 캠페인의 대상·성공·실패' },
       calendar_upcoming: { t: '다가오는 내 일정', d: '오늘부터 2주 안의 내 일정' },
       kpi_attendanceToday: {
@@ -330,7 +330,7 @@ export default defineNs({
       support_recent: { t: 'Recent inquiries', d: 'The 10 most recent customer inquiries' },
       service_byStatus: {
         t: 'Living/care status',
-        d: 'Living/care orders by status: requested, scheduled, done, etc.',
+        d: 'Living/care leads by status: received, contracted, done, etc.',
       },
       campaign_recent: {
         t: 'Recent campaign results',
@@ -503,7 +503,7 @@ export default defineNs({
       customer_byRegion: { t: '按省市的客户', d: '按客户地址省市的分布' },
       support_byStatus: { t: '咨询状态', d: '按受理·处理中·已解决等状态的咨询' },
       support_recent: { t: '最近咨询', d: '最近的10条客户咨询' },
-      service_byStatus: { t: '生活·护理状态', d: '按请求·预定·完成等状态的生活·护理订单' },
+      service_byStatus: { t: '生活·护理状态', d: '按受理·签约·完成等状态的生活·护理受理' },
       campaign_recent: { t: '最近活动结果', d: '最近发送活动的对象·成功·失败' },
       calendar_upcoming: { t: '即将到来的我的日程', d: '从今天起2周内的我的日程' },
       kpi_attendanceToday: {

@@ -39,6 +39,8 @@ export interface LeadSearch {
   source?: string[];
   serviceLine?: string[];
   fromSido?: string[];
+  /** 담당 지점(조직 id) — 대시보드에서 지점을 눌러 들어올 때 */
+  orgUnitId?: string[];
   owner?: 'yes' | 'no';
   contract?: 'yes' | 'no';
 }
@@ -152,6 +154,7 @@ export class LeadService {
     if (f.source?.length) and.push({ source: { in: f.source } });
     if (f.serviceLine?.length) and.push({ serviceLine: { in: f.serviceLine } });
     if (f.fromSido?.length) and.push({ fromSido: { in: f.fromSido } });
+    if (f.orgUnitId?.length) and.push({ orgUnitId: { in: f.orgUnitId } });
     if (f.owner === 'yes') and.push({ ownerEmpId: { not: null } });
     if (f.owner === 'no') and.push({ ownerEmpId: null });
     if (f.contract === 'yes') and.push({ contracts: { some: {} } });

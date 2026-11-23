@@ -765,7 +765,7 @@ export const DASH_WIDGETS: DashWidgetDef[] = [
     key: 'service.byStatus',
     title: '리빙·케어 상태',
     group: '고객지원·리빙케어',
-    description: '요청·예정·완료 등 상태별 리빙·케어 주문',
+    description: '접수·계약·완료 등 상태별 리빙·케어 접수',
     shape: 'category',
     viz: ['donut', 'bar', 'table'],
     perms: ['SERVICE_ORDER.READ'],

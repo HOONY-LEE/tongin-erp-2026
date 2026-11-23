@@ -28,7 +28,7 @@ export function DashboardView({ layout, refreshKey }: { layout: DashLayout; refr
             ['--h' as string]: it.h,
           }}
         >
-          <WidgetFrame item={it} result={results[it.id]} loading={loading.has(it.id)} />
+          <WidgetFrame item={it} result={results[it.id]} loading={loading.has(it.id)} drill />
         </div>
       ))}
     </div>

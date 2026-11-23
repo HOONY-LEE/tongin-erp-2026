@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useUrlFilter } from '../lib/useUrlFilter';
 import { filterQuery, LIST_LIMIT } from '../lib/serverFilter';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
@@ -33,7 +34,7 @@ export default function Contracts() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
-  const [flt, setFlt] = useState<FilterValues>({});
+  const [flt, setFlt] = useUrlFilter();
   /** 검색칸 — 서버에서 찾는다(계약번호·옛 번호·고객명) */
   const [q, setQ] = useState('');
   const query = filterQuery(flt, q);

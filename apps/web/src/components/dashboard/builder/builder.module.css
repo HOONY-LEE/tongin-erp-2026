@@ -41,6 +41,46 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.titleLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.titleLink svg {
+  flex: none;
+  color: var(--ark-color-text-secondary);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.frame:hover .titleLink svg,
+.titleLink:focus-visible svg {
+  opacity: 1;
+}
+.titleLink:hover {
+  color: var(--ark-color-primary-500);
+}
+.bodyLink {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.bodyLink:hover {
+  background: var(--ark-color-bg-muted);
+}
 .meta {
   font-size: calc(12px * var(--font-scale, 1));
   color: var(--ark-color-text-tertiary);

@@ -56,6 +56,9 @@ export class LeadController {
         source: list(q.source),
         serviceLine: list(q.serviceLine),
         fromSido: list(q.fromSido),
+        orgUnitId: list(q.org)
+          ?.filter((x) => /^[0-9a-f-]{36}$/i.test(x))
+          .slice(0, 50),
         owner: yn(q.owner),
         contract: yn(q.contract),
       },

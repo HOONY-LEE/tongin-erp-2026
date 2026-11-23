@@ -1,5 +1,7 @@
 import { useEffect, useState, type HTMLAttributes, type ReactNode } from 'react';
-import { Lock } from 'lucide-react';
+import { ChevronRight, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   DASH_WIDGET_MAP,
   type DashDataResult,
@@ -8,7 +10,8 @@ import {
 } from '@tongin/shared';
 import { api } from '../../../lib/api';
 import { Skeleton } from '../../ui';
-import { VizBody } from '../viz/Charts';
+import { DrillCtx, VizBody } from '../viz/Charts';
+import { hasItemLink, itemLink, widgetLink } from '../drill';
 import { UnitPerformance } from '../UnitPerformance';
 import { BranchAnomalyCard } from '../BranchAnomalyCard';
 import styles from './builder.module.css';
@@ -39,6 +42,7 @@ export function WidgetFrame({
   actions,
   selected,
   dragHandleProps,
+  drill,
 }: {
   item: DashItem;
   result?: DashDataResult;
@@ -46,7 +50,11 @@ export function WidgetFrame({
   actions?: ReactNode;
   selected?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
+  /** 보기 화면 — 제목·숫자·항목을 누르면 목록으로(편집 화면은 끈다) */
+  drill?: boolean;
 }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const def = DASH_WIDGET_MAP.get(item.widget);
   if (!def) return null;
   if (def.shape === 'embed') {
@@ -64,6 +72,16 @@ export function WidgetFrame({
       </div>
     );
   }
+  const ok = !!result?.ok;
+  const link = drill && ok ? widgetLink(item) : null;
+  const pick =
+    drill && ok && hasItemLink(item)
+      ? (key: string) => {
+          const href = itemLink(item, key);
+          if (href) navigate(href);
+        }
+      : null;
+  const title = itemTitle(item.title, def);
   const meta = [
     item.period ? DASH_PERIOD_LABEL[item.period] : null,
     def.metric && item.metric ? DASH_METRIC_LABEL[item.metric] : null,
@@ -76,9 +94,21 @@ export function WidgetFrame({
       aria-label={itemTitle(item.title, def)}
     >
       <div className={styles.head} {...dragHandleProps}>
-        <span className={styles.title} title={widgetDesc(def)}>
-          {itemTitle(item.title, def)}
-        </span>
+        {link ? (
+          <button
+            type="button"
+            className={`${styles.title} ${styles.titleLink}`}
+            title={`${widgetDesc(def)}\n${t('dash.openList')}`}
+            onClick={() => navigate(link)}
+          >
+            {title}
+            <ChevronRight size={14} aria-hidden />
+          </button>
+        ) : (
+          <span className={styles.title} title={widgetDesc(def)}>
+            {title}
+          </span>
+        )}
         {meta && <span className={styles.meta}>{meta}</span>}
         <span className={styles.spacer} />
         {actions}
@@ -92,8 +122,20 @@ export function WidgetFrame({
           <div className={styles.error}>
             <Lock size={14} aria-hidden /> {result.error}
           </div>
+        ) : link && def.shape === 'value' ? (
+          // 숫자 카드는 칸 전체를 눌러 목록으로
+          <button
+            type="button"
+            className={styles.bodyLink}
+            aria-label={`${title} — ${t('dash.openList')}`}
+            onClick={() => navigate(link)}
+          >
+            <VizBody viz={item.viz} data={result?.ok ? result.data : null} item={item} />
+          </button>
         ) : (
-          <VizBody viz={item.viz} data={result?.ok ? result.data : null} item={item} />
+          <DrillCtx.Provider value={pick}>
+            <VizBody viz={item.viz} data={result?.ok ? result.data : null} item={item} />
+          </DrillCtx.Provider>
         )}
       </div>
     </section>

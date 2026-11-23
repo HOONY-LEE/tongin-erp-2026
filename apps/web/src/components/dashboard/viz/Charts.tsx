@@ -1,12 +1,33 @@
 import i18n from '../../../i18n';
 import { useTranslation } from 'react-i18next';
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import type { DashData, DashFormat, DashItem, DashViz } from '@tongin/shared';
 import { KOREA_MAP, normalizeSido, projectLatLng } from '../koreaMap';
 import styles from './viz.module.css';
 import { fs } from '../../../lib/fontScale';
+
+/**
+ * 항목 하나 누르기(드릴다운) — 보기 화면에서 위젯이 그 항목만 걸러진 목록으로 갈 수 있으면 함수를 준다.
+ * 편집 화면·갈 곳이 없는 위젯은 null(누를 수 없다).
+ */
+export const DrillCtx = createContext<((key: string) => void) | null>(null);
+/** 누를 수 있는 표시 — 손가락 커서 */
+const PICK = { cursor: 'pointer' } as const;
+const usePick = () => {
+  const pick = useContext(DrillCtx);
+  return (key: string) =>
+    pick && key !== 'OTHER' ? { onClick: () => pick(key), style: PICK } : {};
+};
 
 // ── 숫자 표기 ──
 export function fmt(v: number, f: DashFormat | 'date' | 'text' | undefined): string {
@@ -178,6 +199,7 @@ function ColumnViz({
 }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
+  const pickOf = usePick();
   if (!items.length) return <Empty />;
   const m = { l: 44, r: 8, t: 18, b: 22 };
   const w = Math.max(0, width - m.l - m.r);
@@ -231,6 +253,7 @@ function ColumnViz({
                     width={band}
                     height={h}
                     fill="transparent"
+                    {...pickOf(it.key)}
                     onMouseMove={() =>
                       show({
                         x: m.l + x + bw / 2,
@@ -265,6 +288,7 @@ function HBarViz({
 }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
+  const pickOf = usePick();
   if (!items.length) return <Empty />;
   const labelW = Math.min(110, Math.max(60, width * 0.28));
   const valueW = 58;
@@ -289,6 +313,7 @@ function HBarViz({
             return (
               <g
                 key={it.key}
+                {...pickOf(it.key)}
                 onMouseMove={() =>
                   show({
                     x: labelW + bw / 2,
@@ -471,6 +496,7 @@ function PieViz({
   const { t } = useTranslation();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
+  const pickOf = usePick();
   const colors = useMemo(() => colorMap(items.map((i) => i.key)), [items]);
   const total = items.reduce((s, i) => s + i.value, 0);
   if (!total) return <Empty />;
@@ -529,6 +555,7 @@ function PieViz({
                 stroke="var(--surface)"
                 strokeWidth={2}
                 fillRule="evenodd"
+                {...pickOf(it.key)}
                 onMouseMove={() =>
                   show({
                     x:
@@ -594,6 +621,7 @@ function FunnelViz({
   const { t } = useTranslation();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
+  const pickOf = usePick();
   if (!items.length || !items[0].value) return <Empty />;
   const labelW = Math.min(90, width * 0.25);
   const sideW = 92;
@@ -619,6 +647,7 @@ function FunnelViz({
             return (
               <g
                 key={it.key}
+                {...pickOf(it.key)}
                 onMouseMove={() =>
                   show({
                     x: labelW + w / 2,
@@ -771,15 +800,21 @@ function MapViz({ d }: { d: Extract<DashData, { shape: 'category' | 'points' }> 
   const { t } = useTranslation();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const { tip, show, hide } = useTip();
-  const bySido = useMemo(() => {
+  const pickOf = usePick();
+  const [bySido, keyOf] = useMemo(() => {
     const m = new Map<string, number>();
+    /** 지도 칸 → 데이터의 원래 키(누르면 그 키로 거른다) */
+    const k = new Map<string, string>();
     if (d.shape === 'category') {
       for (const it of d.items) {
         const s = normalizeSido(it.key);
-        if (s) m.set(s, (m.get(s) ?? 0) + it.value);
+        if (s) {
+          m.set(s, (m.get(s) ?? 0) + it.value);
+          if (!k.has(s)) k.set(s, it.key);
+        }
       }
     }
-    return m;
+    return [m, k] as const;
   }, [d]);
   const max =
     d.shape === 'category'
@@ -816,6 +851,7 @@ function MapViz({ d }: { d: Extract<DashData, { shape: 'category' | 'points' }> 
                       : 'var(--map-empty)'
                     : 'var(--map-empty)'
                 }
+                {...(d.shape === 'category' && keyOf.has(r.sido) ? pickOf(keyOf.get(r.sido)!) : {})}
                 onMouseMove={
                   d.shape === 'category'
                     ? () => {
@@ -848,6 +884,7 @@ function MapViz({ d }: { d: Extract<DashData, { shape: 'category' | 'points' }> 
                     cy={y}
                     r={rad}
                     className={styles.dot}
+                    {...pickOf(p.key)}
                     onMouseMove={() => {
                       const s = toScreen(x, y);
                       show({

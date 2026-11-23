@@ -4,6 +4,8 @@ import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
+import { useUrlFilter } from '../lib/useUrlFilter';
+import { useOrgUnits } from '../lib/orgUnits';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import { useLeadCreateForm } from '../components/lead/useLeadCreateForm';
 import { useLeadDuplicateGate } from '../components/lead/LeadDuplicateGate';
@@ -73,7 +75,7 @@ const searchParams = (flt: FilterValues, q: string) => {
   if (period?.from) p.set('from', period.from);
   if (period?.to) p.set('to', period.to);
   if (period?.on) p.set('period', period.on);
-  for (const k of ['source', 'serviceLine', 'fromSido'])
+  for (const k of ['source', 'serviceLine', 'fromSido', 'org'])
     if ((flt[k] as string[] | undefined)?.length) p.set(k, (flt[k] as string[]).join(','));
   for (const k of ['owner', 'contract']) if (flt[k]) p.set(k, flt[k] as string);
   return p.toString();
@@ -102,7 +104,10 @@ export default function Leads() {
     if (fromCall) setCreateOpen(true);
   }, [fromCall]);
   /** 검색 옆 필터 — 기간·상태·경로·상품·지역·담당·계약서 */
-  const [flt, setFlt] = useState<FilterValues>({});
+  const [flt, setFlt] = useUrlFilter();
+  // 담당 지점 필터 — 조직 목록을 볼 수 있는 계정만(못 보면 칸을 숨긴다)
+  const { units } = useOrgUnits();
+  const branches = units.filter((u) => u.type === 'BRANCH' && u.isActive);
   /** 표 검색칸 — 서버에서 찾는다(접수번호·옛 번호·고객명·전화·출발지) */
   const [q, setQ] = useState('');
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -347,6 +352,16 @@ export default function Leads() {
             label: t('leads.flt.region'),
             type: 'multi',
             options: regions.map((x) => ({ value: x, label: x })),
+          } as FilterField,
+        ]
+      : []),
+    ...(branches.length
+      ? [
+          {
+            key: 'org',
+            label: t('leads.flt.branch'),
+            type: 'multi',
+            options: branches.map((u) => ({ value: u.id, label: u.name })),
           } as FilterField,
         ]
       : []),
