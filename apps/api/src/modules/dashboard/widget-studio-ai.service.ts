@@ -202,11 +202,13 @@ export class WidgetStudioAiService {
       res = await trackClaude('WIDGET_STUDIO', model, () =>
         client.messages.create({
           model,
-          max_tokens: 6000,
-          thinking: { type: 'disabled' },
+          max_tokens: 16000,
+          // Sonnet·Opus 5.5는 생각 끄기·도구 강제(tool_choice tool/any)를 받지 않는다 —
+          // 생각은 켜 두고 도구는 auto로, '반드시 propose_widgets로 답한다'는 시스템 규칙으로 부르게 한다
+          thinking: { type: 'adaptive' },
           system: SYSTEM,
           tools: [TOOL],
-          tool_choice: { type: 'tool', name: TOOL.name },
+          tool_choice: { type: 'auto' },
           messages: [{ role: 'user', content: user }],
         }),
       );
