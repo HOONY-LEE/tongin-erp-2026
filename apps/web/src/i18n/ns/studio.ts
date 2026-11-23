@@ -1,5 +1,6 @@
 // 위젯 스튜디오 — 만든 위젯 목록·만들기(AI 제안·직접 고치기·미리보기)
 import { defineNs } from './define';
+import { STUDIO_CAT_MORE } from './studioCat';
 
 export default defineNs({
   ko: {
@@ -139,6 +140,7 @@ export default defineNs({
         status: '상태',
         source: '접수경로',
         serviceLine: '상품 종류',
+        product: '상품',
         fromSido: '출발지 시도',
         org: '담당 지점',
         contracted: '계약 여부',
@@ -155,6 +157,7 @@ export default defineNs({
         contractDate: '계약일',
         status: '상태',
         serviceLine: '상품 종류',
+        product: '상품',
         source: '접수경로',
         fromSido: '출발지 시도',
         org: '담당 지점',
@@ -199,6 +202,16 @@ export default defineNs({
         org: '담당 지점',
         m_count: '고객 수',
       },
+      ...STUDIO_CAT_MORE.ko,
+    },
+    dsGroup: {
+      sales: '영업',
+      ops: '운영',
+      customer: '고객·상담',
+      finance: '입금·청구',
+      hr: '인사',
+      work: '업무·총무',
+      branch: '지점·가맹',
     },
   },
   en: {
@@ -332,6 +345,7 @@ export default defineNs({
         status: 'Status',
         source: 'Source',
         serviceLine: 'Product type',
+        product: 'Product',
         fromSido: 'Origin region',
         org: 'Branch',
         contracted: 'Contracted',
@@ -348,6 +362,7 @@ export default defineNs({
         contractDate: 'Contract date',
         status: 'Status',
         serviceLine: 'Product type',
+        product: 'Product',
         source: 'Source',
         fromSido: 'Origin region',
         org: 'Branch',
@@ -392,6 +407,16 @@ export default defineNs({
         org: 'Branch',
         m_count: 'Customer count',
       },
+      ...STUDIO_CAT_MORE.en,
+    },
+    dsGroup: {
+      sales: 'Sales',
+      ops: 'Operations',
+      customer: 'Customers·CS',
+      finance: 'Payments·billing',
+      hr: 'HR',
+      work: 'Work·admin',
+      branch: 'Branches·franchise',
     },
   },
   zh: {
@@ -525,6 +550,7 @@ export default defineNs({
         status: '状态',
         source: '受理渠道',
         serviceLine: '商品类型',
+        product: '商品',
         fromSido: '出发地区',
         org: '负责门店',
         contracted: '是否签约',
@@ -541,6 +567,7 @@ export default defineNs({
         contractDate: '合同日',
         status: '状态',
         serviceLine: '商品类型',
+        product: '商品',
         source: '受理渠道',
         fromSido: '出发地区',
         org: '负责门店',
@@ -585,6 +612,16 @@ export default defineNs({
         org: '负责门店',
         m_count: '客户数',
       },
+      ...STUDIO_CAT_MORE.zh,
+    },
+    dsGroup: {
+      sales: '销售',
+      ops: '运营',
+      customer: '客户·咨询',
+      finance: '收款·账单',
+      hr: '人事',
+      work: '工作·总务',
+      branch: '门店·加盟',
     },
   },
 });

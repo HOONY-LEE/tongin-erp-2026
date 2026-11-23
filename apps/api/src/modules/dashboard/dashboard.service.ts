@@ -12,8 +12,8 @@ import {
   normalizeDashLayout,
   CUSTOM_WIDGET_PREFIX,
   isCustomWidgetKey,
-  PERMISSION_WILDCARD,
   STUDIO_DATASET_MAP,
+  studioCanSee,
   type AuthPrincipal,
   type DashLayout,
 } from '@tongin/shared';
@@ -87,13 +87,14 @@ export class DashboardService {
   /** 내가 볼 수 있는 만든 위젯('cw:' + id) — 위젯 데이터 권한(데이터별 읽기 권한)으로 */
   private async visibleCustom(p: AuthPrincipal): Promise<Set<string>> {
     const rows = await this.prisma.customWidget.findMany({ select: { id: true, spec: true } });
-    const all = p.permissions.includes(PERMISSION_WILDCARD);
     return new Set(
       rows
-        .filter((r) => {
-          const ds = STUDIO_DATASET_MAP.get(String((r.spec as { dataset?: unknown })?.dataset));
-          return !!ds && (all || p.permissions.includes(ds.perm));
-        })
+        .filter((r) =>
+          studioCanSee(
+            STUDIO_DATASET_MAP.get(String((r.spec as { dataset?: unknown })?.dataset)),
+            p.permissions,
+          ),
+        )
         .map((r) => `${CUSTOM_WIDGET_PREFIX}${r.id}`),
     );
   }

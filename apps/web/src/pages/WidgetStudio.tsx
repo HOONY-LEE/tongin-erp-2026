@@ -28,6 +28,7 @@ import {
   DASH_PERIODS,
   DASH_ROW_HEIGHT,
   STUDIO_DATASETS,
+  STUDIO_DATASET_GROUPS,
   STUDIO_DATASET_MAP,
   STUDIO_GRAINS,
   STUDIO_PLACES,
@@ -63,6 +64,7 @@ import { StudioWidget } from '../components/dashboard/studio/StudioWidget';
 import { VIZ_ICON } from '../components/dashboard/builder/DashboardEditor';
 import {
   dimLabel,
+  dsGroupLabel,
   dsLabel,
   fieldLabel,
   grainLabel,
@@ -771,6 +773,16 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
   const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
   const distViz = spec.viz === 'histogram' || spec.viz === 'box';
   const { assign } = useShelfOps(spec, patch);
+  const { can } = useAuth();
+  // 데이터 고르기 — 묶음(영업·운영·인사…)별로, 볼 권한이 있는 데이터만(지금 고른 것은 늘 보인다)
+  const datasetOptions = STUDIO_DATASET_GROUPS.map((g) => ({
+    label: dsGroupLabel(g.key),
+    options: STUDIO_DATASETS.filter(
+      (d) =>
+        d.group === g.key &&
+        (d.key === spec.dataset || (Array.isArray(d.perm) ? d.perm : [d.perm]).some(can)),
+    ).map((d) => ({ value: d.key, label: dsLabel(d.key) })),
+  })).filter((g) => g.options.length);
   const dragProps = (it: DragItem) => ({
     draggable: true,
     onDragStart: (e: React.DragEvent) => {
@@ -799,7 +811,7 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
               viz: fitViz(next, next.defaultTime, spec.viz),
             });
           }}
-          options={STUDIO_DATASETS.map((d) => ({ value: d.key, label: dsLabel(d.key) }))}
+          options={datasetOptions}
           aria-label={t('studio.edit.dataset')}
         />
       </section>
