@@ -519,7 +519,7 @@
 }
 .inputBar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   padding: 6px 8px 8px;
 }
 .sendBtn {
@@ -881,4 +881,98 @@
   .shelfBar {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* 채팅 첨부 */
+.chatDrop {
+  outline: 2px dashed var(--ark-color-primary-500);
+  outline-offset: -6px;
+}
+.attachRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+.attach {
+  position: relative;
+  display: inline-flex;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+}
+.attach img {
+  display: block;
+  width: 52px;
+  height: 52px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+.attachFile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 160px;
+  height: 52px;
+  padding: 0 10px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.attachFile span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attach button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ark-color-text);
+  color: var(--ark-color-bg);
+  cursor: pointer;
+}
+.clipBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.clipBtn:hover:not(:disabled) {
+  background: var(--ark-color-bg-subtle);
+  color: var(--ark-color-text);
+}
+.clipBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.msgFiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.msgFiles img {
+  max-width: 140px;
+  max-height: 100px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.msgFile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: calc(12px * var(--font-scale, 1));
+  opacity: 0.85;
 }

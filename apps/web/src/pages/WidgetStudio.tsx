@@ -11,6 +11,8 @@ import {
   SlidersHorizontal,
   Type,
   ArrowUp,
+  FileText,
+  Paperclip,
   Calendar,
   Hash,
   MapPin,
@@ -1349,8 +1351,50 @@ interface AiReply {
   questions: string[];
   followups: string[];
 }
+/** 채팅에 붙인 파일 — 그림은 미리보기 주소도 */
+interface Attach {
+  name: string;
+  mediaType: string;
+  data: string;
+  preview?: string;
+}
+const ATTACH_MAX = 4;
+const ATTACH_BYTES = 5 * 1024 * 1024;
+const ATTACH_EXT: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+  csv: 'text/csv',
+  txt: 'text/plain',
+};
+const ATTACH_ACCEPT = Object.keys(ATTACH_EXT)
+  .map((e) => `.${e}`)
+  .join(',');
+/** 파일 → 첨부(종류는 확장자로 — CSV는 브라우저마다 MIME이 달라서) */
+const readAttach = (f: File): Promise<Attach | null> => {
+  const mediaType = ATTACH_EXT[f.name.split('.').pop()?.toLowerCase() ?? ''];
+  if (!mediaType) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const url = String(r.result);
+      resolve({
+        name: f.name,
+        mediaType,
+        data: url.slice(url.indexOf(',') + 1),
+        preview: mediaType.startsWith('image/') ? url : undefined,
+      });
+    };
+    r.onerror = () => resolve(null);
+    r.readAsDataURL(f);
+  });
+};
+
 type Msg =
-  | { role: 'user'; text: string }
+  | { role: 'user'; text: string; files?: Attach[] }
   | { role: 'ai'; reply: AiReply; picked: number }
   | { role: 'error'; text: string };
 
@@ -1369,6 +1413,28 @@ function AiChat({
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [files, setFiles] = useState<Attach[]>([]);
+  const [dropOver, setDropOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
+  /** 파일 붙이기 — 그림·PDF·CSV·TXT, 5MB·4개까지 */
+  const addFiles = async (list: FileList | File[]) => {
+    const arr = [...list];
+    if (!arr.length) return;
+    const room = ATTACH_MAX - files.length;
+    if (room <= 0 || arr.length > room) toast({ type: 'warning', title: t('studio.ai.fileMax') });
+    const ok: Attach[] = [];
+    for (const f of arr.slice(0, Math.max(0, room))) {
+      if (f.size > ATTACH_BYTES) {
+        toast({ type: 'warning', title: t('studio.ai.fileBig', { v0: f.name }) });
+        continue;
+      }
+      const a = await readAttach(f);
+      if (!a) toast({ type: 'warning', title: t('studio.ai.fileType', { v0: f.name }) });
+      else ok.push(a);
+    }
+    if (ok.length) setFiles((cur) => [...cur, ...ok].slice(0, ATTACH_MAX));
+  };
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
@@ -1393,11 +1459,14 @@ function AiChat({
 
   const send = async (raw: string) => {
     // 글자 수 표시가 보내기 버튼과 겹쳐서 maxLength 대신 보낼 때 자른다(서버도 2000자)
-    const ask = raw.trim().slice(0, 2000);
+    const sending = files;
+    // 그림만 붙이고 말이 없으면 '이 그림처럼'으로
+    const ask = (raw.trim() || (sending.length ? t('studio.ai.fromImage') : '')).slice(0, 2000);
     if (!ask || busy) return;
-    const next: Msg[] = [...msgs, { role: 'user', text: ask }];
+    const next: Msg[] = [...msgs, { role: 'user', text: ask, files: sending }];
     setMsgs(next);
     setText('');
+    setFiles([]);
     setBusy(true);
     onAsk(ask);
     try {
@@ -1408,6 +1477,15 @@ function AiChat({
           // 앞에서 고른 안(지금 미리보기)이 있으면 그것을 고쳐 달라는 뜻
           ...(msgs.some((m) => m.role === 'ai') ? { current: spec } : {}),
           history: history(msgs),
+          ...(sending.length
+            ? {
+                attachments: sending.map((f) => ({
+                  name: f.name,
+                  mediaType: f.mediaType,
+                  data: f.data,
+                })),
+              }
+            : {}),
         }),
       });
       setMsgs([...next, { role: 'ai', reply, picked: 0 }]);
@@ -1431,7 +1509,23 @@ function AiChat({
 
   const examples = [t('studio.ai.ex1'), t('studio.ai.ex2'), t('studio.ai.ex3')];
   return (
-    <div className={styles.chat}>
+    <div
+      className={`${styles.chat} ${dropOver ? styles.chatDrop : ''}`}
+      onDragOver={(e) => {
+        if (!enabled || !e.dataTransfer.types.includes('Files')) return;
+        e.preventDefault();
+        setDropOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropOver(false);
+      }}
+      onDrop={(e) => {
+        if (!e.dataTransfer.files.length) return;
+        e.preventDefault();
+        setDropOver(false);
+        void addFiles(e.dataTransfer.files);
+      }}
+    >
       <div className={styles.chatHead}>
         <b>{t('studio.ai.title')}</b>
       </div>
@@ -1456,6 +1550,19 @@ function AiChat({
           msgs.map((m, mi) =>
             m.role === 'user' ? (
               <div key={mi} className={styles.userMsg}>
+                {!!m.files?.length && (
+                  <span className={styles.msgFiles}>
+                    {m.files.map((f, fi) =>
+                      f.preview ? (
+                        <img key={fi} src={f.preview} alt={f.name} />
+                      ) : (
+                        <span key={fi} className={styles.msgFile}>
+                          <FileText size={12} aria-hidden /> {f.name}
+                        </span>
+                      ),
+                    )}
+                  </span>
+                )}
                 {m.text}
               </div>
             ) : m.role === 'error' ? (
@@ -1525,8 +1632,38 @@ function AiChat({
       {enabled && (
         <div className={styles.composer}>
           <div className={styles.inputBox}>
+            {files.length > 0 && (
+              <div className={styles.attachRow}>
+                {files.map((f, i) => (
+                  <span key={i} className={styles.attach} title={f.name}>
+                    {f.preview ? (
+                      <img src={f.preview} alt={f.name} />
+                    ) : (
+                      <span className={styles.attachFile}>
+                        <FileText size={14} aria-hidden />
+                        <span>{f.name}</span>
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={t('studio.ai.removeFile', { v0: f.name })}
+                      onClick={() => setFiles((cur) => cur.filter((_, k) => k !== i))}
+                    >
+                      <X size={11} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <textarea
               value={text}
+              onPaste={(e) => {
+                // 캡처한 그림을 바로 붙여 넣기
+                if (e.clipboardData.files.length) {
+                  e.preventDefault();
+                  void addFiles(e.clipboardData.files);
+                }
+              }}
               rows={3}
               placeholder={t('studio.ai.ph')}
               onChange={(e) => setText(e.target.value)}
@@ -1540,9 +1677,31 @@ function AiChat({
             <div className={styles.inputBar}>
               <button
                 type="button"
+                className={styles.clipBtn}
+                onClick={() => fileRef.current?.click()}
+                disabled={busy || files.length >= ATTACH_MAX}
+                aria-label={t('studio.ai.attach')}
+                title={t('studio.ai.attach')}
+              >
+                <Paperclip size={16} />
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept={ATTACH_ACCEPT}
+                hidden
+                onChange={(e) => {
+                  if (e.target.files) void addFiles(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <span className={styles.spacer} />
+              <button
+                type="button"
                 className={styles.sendBtn}
                 onClick={() => void send(text)}
-                disabled={busy || !text.trim()}
+                disabled={busy || (!text.trim() && !files.length)}
                 aria-label={t('studio.ai.send')}
               >
                 <ArrowUp size={16} />
