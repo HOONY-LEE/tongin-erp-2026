@@ -22,6 +22,8 @@
     "demo:seed:work": "tsx prisma/seed-demo-work.ts",
     "demo:seed:history": "tsx prisma/seed-demo-history.ts",
     "demo:clear:history": "tsx prisma/clear-demo-history.ts",
+    "demo:seed:history-ops": "tsx prisma/seed-demo-history-ops.ts",
+    "demo:clear:history-ops": "tsx prisma/clear-demo-history-ops.ts",
     "demo:seed:once": "tsx prisma/seed-demo-once.ts",
     "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:catalog && pnpm demo:seed:leads && pnpm demo:seed:services && pnpm demo:seed:agents && pnpm demo:seed:hr && pnpm demo:seed:dashboards && pnpm demo:seed:work && pnpm demo:seed:menus && pnpm demo:seed:dashboard-inbox"
   },
