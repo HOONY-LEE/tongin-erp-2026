@@ -266,6 +266,7 @@ export default defineNs({
       calendar: '캘린더',
       gantt: '간트 차트',
       typo: '타이포그래피',
+      grouped: '병렬 막대',
     },
     dashPeriod: {
       '7d': '최근 7일',
@@ -699,6 +700,7 @@ export default defineNs({
       calendar: 'Calendar',
       gantt: 'Gantt chart',
       typo: 'Typography',
+      grouped: 'Grouped bar',
     },
     dashPeriod: {
       '7d': 'Last 7 days',
@@ -1132,6 +1134,7 @@ export default defineNs({
       calendar: '日历',
       gantt: '甘特图',
       typo: '大字排版',
+      grouped: '分组柱状图',
     },
     dashPeriod: {
       '7d': '最近7天',

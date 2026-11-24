@@ -27,7 +27,7 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
 - dimension: 묶을 기준(없으면 숫자 하나). 시간 차원이면 grain(day·week·month·quarter·year)을 정합니다.
 - split: 두 번째 기준(히트맵의 행). 보통은 비웁니다.
 - viz 고르기(무엇을 보여 주나):
-  · 비교: 항목 비교 → hbar·bar / 항목×두 번째 기준 → stacked(split 필요) / 자세한 숫자 → table
+  · 비교: 항목 비교 → hbar·bar / 항목×두 번째 기준 → stacked(쌓기) 또는 grouped(나란히 비교, 예: 날짜마다 접수·계약·취소 막대) — 둘 다 split 필요 / 자세한 숫자 → table
   · 구성(비중): 6개 이하 → donut·pie / 항목이 많은 비중 → treemap / 단계 → funnel
   · 추이(시간): 날짜 차원 → line·area·bar
   · 분포: 건마다의 값이 어떻게 퍼져 있나 → histogram(field 필요, 기준 없이) / 기준별 분포 비교 → box(field + dimension)

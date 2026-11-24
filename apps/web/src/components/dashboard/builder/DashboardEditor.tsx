@@ -38,6 +38,7 @@ import {
   CalendarDays,
   GanttChart,
   CaseSensitive,
+  BarChartBig,
   CircleDot,
   X,
 } from 'lucide-react';
@@ -98,6 +99,7 @@ export const VIZ_ICON: Record<DashViz, typeof BarChart3> = {
   calendar: CalendarDays,
   gantt: GanttChart,
   typo: CaseSensitive,
+  grouped: BarChartBig,
 };
 
 type Drag = {

@@ -784,11 +784,12 @@ export const STUDIO_VIZ = [
   'calendar',
   'gantt',
   'typo',
+  'grouped',
 ] as const satisfies readonly DashViz[];
 /** 차트 쓰임새 — 무엇을 보여 주나(스튜디오에서 묶어 보여 주고 AI 규칙에도 쓴다) */
 export const STUDIO_VIZ_GROUPS: { key: string; label: string; viz: StudioViz[] }[] = [
   { key: 'single', label: '숫자 하나', viz: ['card', 'gauge', 'typo'] },
-  { key: 'compare', label: '비교', viz: ['bar', 'hbar', 'stacked', 'table'] },
+  { key: 'compare', label: '비교', viz: ['bar', 'hbar', 'stacked', 'grouped', 'table'] },
   { key: 'part', label: '구성(비중)', viz: ['pie', 'donut', 'treemap', 'funnel'] },
   { key: 'trend', label: '추이(시간)', viz: ['line', 'area', 'calendar'] },
   { key: 'plan', label: '기간', viz: ['gantt'] },
