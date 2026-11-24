@@ -386,3 +386,52 @@ button.listItem:hover {
   fill: rgba(255, 255, 255, 0.85);
   font-size: calc(11px * var(--font-scale, 1));
 }
+
+/* 타이포그래피 */
+.typo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  overflow: hidden;
+}
+.typoHero {
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.typoList {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.typoRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  border-bottom: 1px solid var(--grid, rgba(0, 0, 0, 0.06));
+}
+.typoRow:last-child {
+  border-bottom: 0;
+}
+.typoLabel {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.typoValue {
+  flex: none;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}

@@ -32,7 +32,9 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
   · 추이(시간): 날짜 차원 → line·area·bar
   · 분포: 건마다의 값이 어떻게 퍼져 있나 → histogram(field 필요, 기준 없이) / 기준별 분포 비교 → box(field + dimension)
   · 관계: 기준별로 두 숫자의 관계 → scatter(measure=가로축, measure2=세로축, dimension 필요) / 두 기준 → heatmap(split 필요)
-  · 지역: 출발지 시도(geo) → map / 숫자 하나 → card / 비율 하나 → gauge
+  · 지역: 출발지 시도(geo) → map / 숫자 하나 → card / 비율 하나 → gauge / 숫자를 큰 글자로 강조 → typo
+  · 날짜별 많고 적음(달력) → calendar(날짜 차원, grain 'day')
+  · 항목별 기간(시작~끝) → gantt(날짜가 아닌 dimension + periodField=시작 날짜, endField=끝 날짜 차원)
 - period: 7d·30d·90d·12m·all. 연간 비교면 12m 또는 all.
 - controls(보는 사람이 누르는 요소, 최대 4개):
   · {kind:'segment', target:'grain', options:['week','month','year']} — 주간/월간/연간 탭
@@ -73,6 +75,7 @@ const SPEC_SCHEMA = {
     measure: { type: 'string' },
     measure2: { type: 'string', description: '산점도 세로축 측정값' },
     field: { type: 'string', description: '히스토그램·박스플롯의 건별 숫자 칸(catalog fields)' },
+    endField: { type: 'string', description: '간트 차트의 끝 날짜 차원' },
     dimension: { type: ['string', 'null'] },
     grain: { type: 'string', enum: [...STUDIO_GRAINS] },
     split: { type: ['string', 'null'] },
