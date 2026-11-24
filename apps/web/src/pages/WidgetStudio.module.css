@@ -447,6 +447,65 @@
   color: var(--ark-color-text-secondary);
   font-size: calc(12.5px * var(--font-scale, 1));
 }
+.consultBtn {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 999px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+}
+.consultBtn svg {
+  color: var(--ark-color-primary-500);
+}
+.consultBtn:hover {
+  border-color: var(--ark-color-primary-500);
+}
+.ideas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.idea {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 10px;
+  background: var(--ark-color-bg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.idea b {
+  color: var(--ark-color-text);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.idea span {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  line-height: 1.5;
+}
+.idea:hover:not(:disabled) {
+  border-color: var(--ark-color-primary-500);
+}
+.tabKey {
+  padding: 1px 6px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 4px;
+  color: var(--ark-color-text-tertiary, var(--ark-color-text-secondary));
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+}
 .followups {
   display: flex;
   flex-wrap: wrap;

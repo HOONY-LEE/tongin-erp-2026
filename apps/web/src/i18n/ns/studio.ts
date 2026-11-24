@@ -53,7 +53,6 @@ export default defineNs({
     grain: { day: '일간', week: '주간', month: '월간', quarter: '분기', year: '연간' },
     ai: {
       title: 'AI로 위젯 생성하기',
-      ph: '예) 주간·월간·연간으로 매출을 보고 싶어. 본사는 지점별로도 보고, 지점은 자기 지점만.',
       ask: '제안 받기',
       refine: '이 위젯 고쳐 달라기',
       asking: 'AI가 위젯을 구상하는 중…',
@@ -72,6 +71,13 @@ export default defineNs({
       fileBig: '{{v0}} — 5MB 이하만 붙일 수 있어요',
       fileType: '{{v0}} — 그림(PNG·JPG·GIF·WEBP)·PDF·CSV·TXT만 붙일 수 있어요',
       fromImage: '첨부한 그림처럼 만들어 줘',
+      consult: '위젯 제안해 주기',
+      consultHello:
+        '어느 팀에서 어떤 일을 하세요? 자주 확인하거나 보고하는 숫자가 있으면 같이 알려 주세요. 맞는 위젯을 골라 드릴게요.',
+      consultEx1: '영업팀이에요. 지점별 계약을 챙겨요',
+      consultEx2: 'CS팀이라 상담·민원을 관리해요',
+      consultEx3: '운영팀에서 작업 일정을 배정해요',
+      makeIdea: '"{{v0}}" 위젯 만들어 줘',
     },
     edit: {
       ganttStart: '시작 날짜',
@@ -280,7 +286,6 @@ export default defineNs({
     grain: { day: 'Daily', week: 'Weekly', month: 'Monthly', quarter: 'Quarterly', year: 'Yearly' },
     ai: {
       title: 'Create widget with AI',
-      ph: 'e.g. Show revenue weekly/monthly/yearly. HQ can split by branch; branches see only their own.',
       ask: 'Get suggestions',
       refine: 'Ask AI to change this widget',
       asking: 'AI is designing widgets…',
@@ -299,6 +304,13 @@ export default defineNs({
       fileBig: '{{v0}} — files must be 5MB or smaller',
       fileType: '{{v0}} — only images (PNG/JPG/GIF/WEBP), PDF, CSV, TXT',
       fromImage: 'Make it like the attached image',
+      consult: 'Suggest widgets',
+      consultHello:
+        'Which team are you on and what do you work on? Tell me the numbers you check or report often, and I will suggest widgets that fit.',
+      consultEx1: 'Sales team — I track contracts by branch',
+      consultEx2: 'CS team — I handle consultations and complaints',
+      consultEx3: 'Operations — I schedule moving jobs',
+      makeIdea: 'Build the "{{v0}}" widget',
     },
     edit: {
       ganttStart: 'Start date',
@@ -507,7 +519,6 @@ export default defineNs({
     grain: { day: '按日', week: '按周', month: '按月', quarter: '按季度', year: '按年' },
     ai: {
       title: '用 AI 生成组件',
-      ph: '例) 想按周/月/年查看销售额。总部还能按门店查看，门店只看自己的。',
       ask: '获取建议',
       refine: '让 AI 修改此组件',
       asking: 'AI 正在设计组件…',
@@ -526,6 +537,12 @@ export default defineNs({
       fileBig: '{{v0}} — 仅支持 5MB 以下文件',
       fileType: '{{v0}} — 仅支持图片（PNG·JPG·GIF·WEBP）、PDF、CSV、TXT',
       fromImage: '按附件图片的样子做',
+      consult: '推荐组件',
+      consultHello: '您在哪个团队、做什么工作？告诉我您常查看或汇报的数字，我来推荐合适的组件。',
+      consultEx1: '我是销售团队，负责各门店的合同',
+      consultEx2: '客服团队，管理咨询和投诉',
+      consultEx3: '运营团队，负责安排作业日程',
+      makeIdea: '帮我做"{{v0}}"组件',
     },
     edit: {
       ganttStart: '开始日期',

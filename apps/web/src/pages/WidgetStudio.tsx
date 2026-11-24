@@ -18,6 +18,7 @@ import {
   Globe,
   Hash,
   Plus,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
@@ -1718,6 +1719,7 @@ function PreviewCanvas({
 interface AiReply {
   summary: string;
   proposals: StudioProposal[];
+  ideas?: { title: string; why: string }[];
   questions: string[];
   followups: string[];
 }
@@ -1783,6 +1785,8 @@ function AiChat({
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  /** 위젯 제안해 주기 — 팀·업무를 묻고 아이디어부터 */
+  const [consult, setConsult] = useState(false);
   const [files, setFiles] = useState<Attach[]>([]);
   const [dropOver, setDropOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1820,8 +1824,10 @@ function AiChat({
               {
                 role: 'ai' as const,
                 text: `${m.reply.summary}${
-                  m.picked >= 0 ? ` (고른 안: ${m.reply.proposals[m.picked]?.name ?? ''})` : ''
-                }`,
+                  m.reply.ideas?.length
+                    ? ` (아이디어: ${m.reply.ideas.map((i) => i.title).join(', ')})`
+                    : ''
+                }${m.picked >= 0 ? ` (고른 안: ${m.reply.proposals[m.picked]?.name ?? ''})` : ''}`,
               },
             ]
           : [],
@@ -1847,6 +1853,7 @@ function AiChat({
           // 앞에서 고른 안(지금 미리보기)이 있으면 그것을 고쳐 달라는 뜻
           ...(msgs.some((m) => m.role === 'ai') ? { current: spec } : {}),
           history: history(msgs),
+          ...(consult ? { mode: 'consult' } : {}),
           ...(sending.length
             ? {
                 attachments: sending.map((f) => ({
@@ -1858,9 +1865,10 @@ function AiChat({
             : {}),
         }),
       });
-      setMsgs([...next, { role: 'ai', reply, picked: 0 }]);
-      // 추천안을 바로 미리보기로
-      onApply(reply.proposals[0].spec);
+      const has = reply.proposals.length > 0;
+      setMsgs([...next, { role: 'ai', reply, picked: has ? 0 : -1 }]);
+      // 추천안을 바로 미리보기로(되묻기·아이디어만이면 그대로)
+      if (has) onApply(reply.proposals[0].spec);
     } catch (e) {
       setMsgs([
         ...next,
@@ -1877,7 +1885,39 @@ function AiChat({
     onApply(m.reply.proposals[pi].spec);
   };
 
+  /** 위젯 제안해 주기 — AI가 먼저 팀·업무를 묻는다(첫 물음은 바로 띄운다) */
+  const startConsult = () => {
+    setConsult(true);
+    setMsgs((list) => [
+      ...list,
+      {
+        role: 'ai',
+        picked: -1,
+        reply: {
+          summary: t('studio.ai.consultHello'),
+          proposals: [],
+          questions: [],
+          followups: [
+            t('studio.ai.consultEx1'),
+            t('studio.ai.consultEx2'),
+            t('studio.ai.consultEx3'),
+          ],
+        },
+      },
+    ]);
+  };
+
+  // 다음에 할 말 제안 — 입력칸에 흐리게 보이고 Tab으로 넣는다(클로드처럼)
   const examples = [t('studio.ai.ex1'), t('studio.ai.ex2'), t('studio.ai.ex3')];
+  const [exIdx] = useState(() => Math.floor(Math.random() * 3));
+  const last = msgs[msgs.length - 1];
+  const suggestion = busy
+    ? ''
+    : !msgs.length
+      ? examples[exIdx]
+      : last?.role === 'ai'
+        ? (last.reply.followups[0] ?? '')
+        : '';
   return (
     <div
       className={`${styles.chat} ${dropOver ? styles.chatDrop : ''}`}
@@ -1905,16 +1945,10 @@ function AiChat({
         ) : !msgs.length ? (
           <div className={styles.chatEmpty}>
             <p>{t('studio.ai.hello')}</p>
-            {examples.map((ex) => (
-              <button
-                key={ex}
-                type="button"
-                className={styles.suggest}
-                onClick={() => void send(ex)}
-              >
-                {ex}
-              </button>
-            ))}
+            <button type="button" className={styles.consultBtn} onClick={startConsult}>
+              <Sparkles size={14} aria-hidden />
+              {t('studio.ai.consult')}
+            </button>
           </div>
         ) : (
           msgs.map((m, mi) =>
@@ -1942,30 +1976,48 @@ function AiChat({
             ) : (
               <div key={mi} className={styles.aiMsg}>
                 {m.reply.summary && <p>{m.reply.summary}</p>}
-                <div className={styles.proposals}>
-                  {m.reply.proposals.map((p, pi) => {
-                    const I = VIZ_ICON[p.spec.viz];
-                    return (
+                {!!m.reply.ideas?.length && (
+                  <div className={styles.ideas}>
+                    {m.reply.ideas.map((idea) => (
                       <button
-                        key={pi}
+                        key={idea.title}
                         type="button"
-                        className={`${styles.proposal} ${m.picked === pi ? styles.picked : ''}`}
-                        onClick={() => pick(mi, pi)}
+                        className={styles.idea}
+                        disabled={busy}
+                        onClick={() => void send(t('studio.ai.makeIdea', { v0: idea.title }))}
                       >
-                        <span className={styles.proposalHead}>
-                          <I size={14} aria-hidden />
-                          <b>{p.name}</b>
-                          {pi === 0 && (
-                            <Badge variant="subtle" color="primary">
-                              {t('studio.ai.recommended')}
-                            </Badge>
-                          )}
-                        </span>
-                        <span className={styles.proposalWhy}>{p.why}</span>
+                        <b>{idea.title}</b>
+                        <span>{idea.why}</span>
                       </button>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                )}
+                {m.reply.proposals.length > 0 && (
+                  <div className={styles.proposals}>
+                    {m.reply.proposals.map((p, pi) => {
+                      const I = VIZ_ICON[p.spec.viz];
+                      return (
+                        <button
+                          key={pi}
+                          type="button"
+                          className={`${styles.proposal} ${m.picked === pi ? styles.picked : ''}`}
+                          onClick={() => pick(mi, pi)}
+                        >
+                          <span className={styles.proposalHead}>
+                            <I size={14} aria-hidden />
+                            <b>{p.name}</b>
+                            {pi === 0 && (
+                              <Badge variant="subtle" color="primary">
+                                {t('studio.ai.recommended')}
+                              </Badge>
+                            )}
+                          </span>
+                          <span className={styles.proposalWhy}>{p.why}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {m.reply.questions.length > 0 && (
                   <ul className={styles.questions}>
                     {m.reply.questions.map((q) => (
@@ -2035,9 +2087,14 @@ function AiChat({
                 }
               }}
               rows={3}
-              placeholder={t('studio.ai.ph')}
+              placeholder={suggestion}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
+                if (e.key === 'Tab' && !e.shiftKey && !text && suggestion) {
+                  e.preventDefault();
+                  setText(suggestion);
+                  return;
+                }
                 if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   void send(text);
@@ -2067,6 +2124,11 @@ function AiChat({
                 }}
               />
               <span className={styles.spacer} />
+              {!text && suggestion && (
+                <kbd className={styles.tabKey} aria-hidden>
+                  Tab
+                </kbd>
+              )}
               <button
                 type="button"
                 className={styles.sendBtn}
