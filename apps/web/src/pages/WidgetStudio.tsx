@@ -390,7 +390,12 @@ function Studio({ id }: { id: string | null }) {
   const [rightW, setRightW] = usePaneWidth('right', 360);
   // 미리보기 데이터의 항목(항목별 색 고르기)
   const [items, setItems] = useState<{ key: string; label: string }[]>([]);
-  const onData = useCallback((r: StudioResult) => setItems(colorItems(r)), []);
+  // 미리보기가 지금 그리는 숫자 — AI에게 '지금 작업 영역' 맥락으로 같이 보낸다
+  const [digest, setDigest] = useState('');
+  const onData = useCallback((r: StudioResult) => {
+    setItems(colorItems(r));
+    setDigest(dataDigest(r));
+  }, []);
 
   // 제목·부제는 치는 그대로 둔다(비워도 '새 위젯'으로 되돌아가지 않게 — 저장할 때 채운다)
   const setSpec = useCallback(
@@ -534,6 +539,9 @@ function Studio({ id }: { id: string | null }) {
             <PaneResizer side="right" width={rightW} onChange={setRightW} />
             <AiChat
               spec={spec}
+              // 처음 연 새 위젯(아무것도 안 고친 시작 상태)은 '지금 작업'으로 보내지 않는다
+              hasWork={!!id || JSON.stringify(spec) !== JSON.stringify(STARTER)}
+              digest={digest}
               enabled={can('DASHBOARD.CREATE')}
               onApply={(next) =>
                 // AI 안은 데이터·차트만 바꾼다 — 내가 잡은 배치·글자·크기는 그대로
@@ -1177,6 +1185,44 @@ function ChartTab({
 
 // ── 색상 — 색 묶음(팔레트)과 항목마다 색 ──
 /** 데이터에서 색을 줄 수 있는 항목 — 항목별 값·누적 막대의 줄·간트 줄 */
+/** 미리보기 데이터 요약(AI 맥락용) — 모양별로 앞쪽 몇 개만, 4000자 안 */
+function dataDigest(r: StudioResult): string {
+  const d = r.data;
+  const n = (v: number) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : v);
+  const a = r.applied;
+  const head = `측정값=${a.measure} 기준=${a.dimension ?? '없음'} 단위=${a.grain} 기간=${a.period}`;
+  let body = '';
+  if (d.shape === 'value')
+    body = `값 ${n(d.value)}${d.previous != null ? ` (직전 ${n(d.previous)})` : ''}`;
+  else if (d.shape === 'category')
+    body = `항목 ${d.items.length}개: ${d.items
+      .slice(0, 30)
+      .map((i) => `${i.label}=${n(i.value)}`)
+      .join(', ')}`;
+  else if (d.shape === 'series')
+    body = `시점 ${d.points.length}개: ${d.points
+      .slice(-30)
+      .map((p) => `${p.label}=${n(p.value)}`)
+      .join(', ')}`;
+  else if (d.shape === 'matrix')
+    body = `행 ${d.rows.length}×열 ${d.cols.length}: ${d.rows
+      .slice(0, 12)
+      .map(
+        (row, i) =>
+          `${row}[${d.cols
+            .slice(0, 12)
+            .map((c, j) => `${c}=${n(d.cells[i]?.[j] ?? 0)}`)
+            .join(' ')}]`,
+      )
+      .join('; ')}`;
+  else if (d.shape === 'gantt')
+    body = `항목 ${d.items.length}개: ${d.items
+      .slice(0, 20)
+      .map((i) => `${i.label} ${i.start}~${i.end}`)
+      .join(', ')}`;
+  else body = `모양 ${d.shape}`;
+  return `${head}\n${body}`.slice(0, 4000);
+}
 function colorItems(r: StudioResult): { key: string; label: string }[] {
   const d = r.data;
   if (d.shape === 'category' || d.shape === 'gantt')
@@ -1777,11 +1823,17 @@ type Msg =
 
 function AiChat({
   spec,
+  hasWork,
+  digest,
   enabled,
   onApply,
   onAsk,
 }: {
   spec: StudioSpec;
+  /** 작업 영역에 만들던 위젯이 있나(처음 연 빈 시작 상태면 false) */
+  hasWork: boolean;
+  /** 미리보기가 지금 그리는 숫자 요약 */
+  digest: string;
   enabled: boolean;
   onApply: (s: StudioSpec) => void;
   onAsk: (prompt: string) => void;
@@ -1855,8 +1907,10 @@ function AiChat({
         method: 'POST',
         body: JSON.stringify({
           prompt: ask,
-          // 앞에서 고른 안(지금 미리보기)이 있으면 그것을 고쳐 달라는 뜻
-          ...(msgs.some((m) => m.role === 'ai') ? { current: spec } : {}),
+          // 지금 작업 영역의 위젯과 그 숫자 — '이거', '여기' 같은 말이 무엇을 가리키는지 알게
+          ...(hasWork || msgs.some((m) => m.role === 'ai')
+            ? { current: spec, ...(digest ? { currentData: digest } : {}) }
+            : {}),
           history: history(msgs),
           ...(consult ? { mode: 'consult' } : {}),
           ...(sending.length

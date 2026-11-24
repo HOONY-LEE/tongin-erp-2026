@@ -379,7 +379,7 @@
   max-width: 88%;
   padding: 8px 12px;
   border-radius: 12px 12px 4px 12px;
-  background: var(--ark-color-primary-500);
+  background: #1c1c1e;
   color: #fff;
   font-size: calc(13px * var(--font-scale, 1));
   line-height: 1.5;
@@ -1176,4 +1176,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 내 말 풍선 — 밝은 화면은 검정, 어두운 화면은 밝은 회색(통인색 안 씀) */
+:global([data-theme='dark']) .userMsg {
+  background: #e5e5ea;
+  color: #1c1c1e;
 }

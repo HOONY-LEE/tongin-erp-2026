@@ -71,7 +71,10 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
   title은 위젯 이름(15자 안팎), why는 그 팀에 왜 쓸모 있는지 한 문장. summary에는 이해한 업무를 한 문장으로.
 - 사용자가 아이디어를 고르거나 원하는 것을 구체적으로 말하면 그때 proposals로 설계서를 냅니다.
 - <history>는 지금까지의 대화입니다. 앞에서 정한 것을 이어서 고칩니다.
-- 현재 설계서(current)가 주어지면 그것을 고쳐 달라는 뜻입니다 — 첫 안은 고친 설계서로.
+- <current>는 사용자가 지금 작업 영역(미리보기)에서 보고 있는 위젯입니다. '이거', '여기', '막대', '이 숫자' 같은 말은
+  이 위젯을 가리킵니다. 새로 만들어 달라는 뜻이 분명하지 않으면 이것을 고쳐 달라는 뜻입니다 — 첫 안은 고친 설계서로.
+- <current_data>는 그 위젯이 지금 그리는 실제 숫자(요약)입니다. 숫자를 보고 판단할 일(값이 너무 커서 안 보임,
+  항목이 너무 많음, 0뿐임, 어느 지점이 높음 등)은 이것을 근거로 답하고, summary에서 숫자를 짧게 짚어 줍니다.
 - 첨부 그림(차트 캡처·스케치 등)이 있으면 그 모양(차트 종류·축·묶는 기준·쌓기·탭 위치)을 참고해 가장 가까운
   설계서로 만들고, summary에 그림에서 무엇을 읽었는지와 우리 데이터로 못 맞춘 부분을 짧게 적습니다.
   첨부 문서·표(PDF·CSV)는 원하는 지표나 구성을 알아내는 참고 자료로만 씁니다.`;
@@ -244,6 +247,7 @@ export class WidgetStudioAiService {
     history: { role: 'user' | 'ai'; text: string }[] = [],
     attachments: { name: string; mediaType: string; data: string }[] = [],
     mode: 'consult' | null = null,
+    currentData: string | null = null,
   ): Promise<StudioProposeResult> {
     const client = this.client;
     if (!client) throw new ServiceUnavailableException('AI가 설정되지 않았습니다(API 키 없음).');
@@ -259,6 +263,9 @@ export class WidgetStudioAiService {
             .join('\n')}\n</history>\n`
         : '') +
       (current ? `<current>\n${JSON.stringify(current)}\n</current>\n` : '') +
+      (current && currentData
+        ? `<current_data>\n${currentData.slice(0, 4000)}\n</current_data>\n`
+        : '') +
       (mode ? `<mode>${mode}</mode>\n` : '') +
       `<request>\n${ask.slice(0, 2000)}\n</request>`;
     let res: Anthropic.Message;
