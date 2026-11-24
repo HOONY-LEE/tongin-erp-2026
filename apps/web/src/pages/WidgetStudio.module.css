@@ -736,13 +736,9 @@
   cursor: grabbing;
 }
 /* 고른 항목 — 테두리 대신 연한 해당 색 배경(차원 파랑·측정값 초록) */
-.dimension.fieldOn,
-.dimension.fieldOn:hover {
-  background: color-mix(in srgb, #007aff 14%, transparent) !important;
-}
-.measure.fieldOn,
-.measure.fieldOn:hover {
-  background: color-mix(in srgb, #34c759 16%, transparent) !important;
+.fieldOn,
+.fieldOn:hover {
+  background: var(--ark-color-bg-subtle) !important;
 }
 .fieldOn span {
   font-weight: 600;
