@@ -829,7 +829,9 @@ export class StudioQueryService {
         : (spec.dimension ?? null);
     // 한 지점만 보는 사람에게 '지점별'은 의미가 없다 — 그 칸이면 기준 없이(또는 다음 기준으로)
     if (dimension === 'org' && !multiOrg) dimension = null;
-    const grain = params.grain ?? spec.grain ?? 'month';
+    const viz = params.viz ?? spec.viz;
+    // 캘린더는 날짜별 칸이라 늘 하루 단위
+    const grain = viz === 'calendar' ? 'day' : (params.grain ?? spec.grain ?? 'month');
     const period = params.period ?? spec.period;
     const split = has(spec.split) && spec.split !== dimension ? spec.split! : null;
     const timeField = has(spec.periodField) ? spec.periodField! : ds.defaultTime;
@@ -876,7 +878,6 @@ export class StudioQueryService {
 
     const options = await this.filterOptions(spec, q, ids, p);
     const applied = { measure, dimension, grain, period };
-    const viz = params.viz ?? spec.viz;
 
     // ── 분포: 히스토그램(건별 숫자를 구간으로) · 박스플롯(기준별 사분위) ──
     const fieldKey = params.field && q.fields?.[params.field] ? params.field : (spec.field ?? '');
@@ -1033,6 +1034,43 @@ export class StudioQueryService {
           value,
           previous,
           ...(fmt === 'percent' ? { max: 1 } : { max: Math.max(value, previous ?? 0) * 1.25 || 1 }),
+        },
+        options,
+        multiOrg,
+        applied,
+      };
+    }
+
+    // ── 간트: 항목(날짜 아닌 기준)마다 시작 날짜의 처음 ~ 끝 날짜의 마지막 ──
+    if (viz === 'gantt' && !q.dims[dimension].time) {
+      const cur = range();
+      values.length = 0;
+      const endKey = spec.endField && q.dims[spec.endField]?.time ? spec.endField : timeField;
+      const sd = `(${q.dims[timeField].expr})::date`;
+      const ed = `(${q.dims[endKey].expr})::date`;
+      const sql = `SELECT ${keyExpr(dimension)} AS k1, to_char(MIN(${sd}), 'YYYY-MM-DD') AS s,
+        to_char(MAX(COALESCE(${ed}, ${sd})), 'YYYY-MM-DD') AS e, ${m} AS v
+        FROM ${q.from} ${where(cur.from, cur.to)} GROUP BY 1 HAVING MIN(${sd}) IS NOT NULL
+        ORDER BY MIN(${sd}) LIMIT ${Math.min(50, spec.limit ?? 30)}`;
+      const rows = await this.prisma.$queryRawUnsafe<
+        { k1: string; s: string; e: string; v: number }[]
+      >(sql, ...values);
+      const label = await this.labeler(
+        q,
+        [dimension],
+        rows.map((r) => ({ k1: r.k1, k2: '' })),
+      );
+      return {
+        data: {
+          shape: 'gantt',
+          format: fmt,
+          items: rows.map((r) => ({
+            key: r.k1 || 'NONE',
+            label: r.k1 ? (label(dimension!, r.k1) ?? r.k1) : '미지정',
+            start: r.s,
+            end: r.e < r.s ? r.s : r.e,
+            value: Number(r.v),
+          })),
         },
         options,
         multiOrg,

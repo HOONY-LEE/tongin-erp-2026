@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Input, Select } from '@sunghoon_lee/akron-ui';
 import {
   AlignLeft,
+  ChevronDown,
   ArrowLeft,
   BarChart3,
   GripVertical,
@@ -24,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  DASH_COLORS,
   DASH_COLS,
   DASH_PERIODS,
   DASH_ROW_HEIGHT,
@@ -80,6 +82,8 @@ import {
   optLabel,
 } from '../components/dashboard/studio/studioLabels';
 import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../i18n/codes';
+import { useTheme } from '../theme/ThemeProvider';
+import { colorLabel } from '../i18n/dashWidgets';
 import { tDyn } from '../i18n';
 import styles from './WidgetStudio.module.css';
 import builder from '../components/dashboard/builder/builder.module.css';
@@ -117,14 +121,18 @@ const vizOk = (ds: StudioDataset, v: StudioViz) =>
       : true;
 
 /** 기준(차원) 없이 그리는 차트 — 숫자 하나·게이지·히스토그램(건별 값의 분포) */
-const NO_DIM_VIZ: StudioViz[] = ['card', 'gauge', 'histogram'];
+const NO_DIM_VIZ: StudioViz[] = ['card', 'gauge', 'histogram', 'typo'];
 
 /** 지금 고른 기준으로 그릴 수 있는 차트인가 — 기준이 없으면 숫자 카드류만, 있으면 그 반대 */
 const vizFits = (ds: StudioDataset, dimension: string | null | undefined, v: StudioViz) => {
   if (!vizOk(ds, v)) return false;
   const dim = dimension ? ds.dimensions.find((d) => d.key === dimension) : undefined;
   if (!dim) return NO_DIM_VIZ.includes(v);
+  // 타이포그래피는 기준이 있어도(위 몇 개를 큰 글자로) — 날짜 기준만 빼고
+  if (v === 'typo') return dim.kind !== 'time';
   if (NO_DIM_VIZ.includes(v)) return false;
+  if (v === 'calendar') return dim.kind === 'time';
+  if (v === 'gantt') return dim.kind !== 'time';
   if (v === 'line' || v === 'area') return dim.kind === 'time';
   if (v === 'map') return dim.kind === 'geo';
   return true;
@@ -371,6 +379,9 @@ function Studio({ id }: { id: string | null }) {
     if (id && id !== 'widget') setPaneTab('chart');
   }, []);
   const [rightW, setRightW] = usePaneWidth('right', 360);
+  // 미리보기 데이터의 항목(항목별 색 고르기)
+  const [items, setItems] = useState<{ key: string; label: string }[]>([]);
+  const onData = useCallback((r: StudioResult) => setItems(colorItems(r)), []);
 
   // 제목·부제는 치는 그대로 둔다(비워도 '새 위젯'으로 되돌아가지 않게 — 저장할 때 채운다)
   const setSpec = useCallback(
@@ -490,6 +501,7 @@ function Studio({ id }: { id: string | null }) {
               onSel={setSel}
               tab={paneTab}
               setTab={setPaneTab}
+              items={items}
             />
             <PaneResizer side="left" width={leftW} onChange={setLeftW} />
           </aside>
@@ -499,6 +511,7 @@ function Studio({ id }: { id: string | null }) {
               patch={patch}
               sel={sel}
               onSel={setSel}
+              onData={onData}
               onRemove={(id) => {
                 const p = removeElement(spec, id);
                 if (p) {
@@ -549,6 +562,7 @@ function SettingsPane({
   onSel,
   tab,
   setTab,
+  items,
 }: {
   spec: StudioSpec;
   patch: (p: Partial<StudioSpec>) => void;
@@ -556,6 +570,7 @@ function SettingsPane({
   onSel: (id: string | null) => void;
   tab: PaneTab;
   setTab: (t: PaneTab) => void;
+  items: { key: string; label: string }[];
 }) {
   const { t } = useTranslation();
   return (
@@ -575,10 +590,10 @@ function SettingsPane({
         {tab === 'data' ? (
           <DataTab spec={spec} patch={patch} />
         ) : (
-          <ChartTab spec={spec} patch={patch} sel={sel} onSel={onSel} />
+          <ChartTab spec={spec} patch={patch} sel={sel} onSel={onSel} items={items} />
         )}
       </div>
-      <ElementTree spec={spec} patch={patch} sel={sel} onSel={onSel} />
+      {tab === 'chart' && <ElementTree spec={spec} patch={patch} sel={sel} onSel={onSel} />}
     </div>
   );
 }
@@ -828,7 +843,6 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
 
       {/* 항목 목록 — 세로로(태블로 데이터 판) */}
       <section className={`${styles.section} ${styles.fieldList}`}>
-        <p className={styles.muted}>{t('studio.pane.dragHint')}</p>
         <span className={`${styles.catHead} ${styles.catMeasure}`}>
           {t('studio.catalog.measures')}
         </span>
@@ -903,14 +917,17 @@ function ChartTab({
   patch,
   sel,
   onSel,
+  items,
 }: {
   spec: StudioSpec;
   patch: (p: Partial<StudioSpec>) => void;
   sel: string | null;
   onSel: (id: string | null) => void;
+  items: { key: string; label: string }[];
 }) {
   const { t } = useTranslation();
   const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
+  const timeDims = ds.dimensions.filter((d) => d.kind === 'time');
   const dimIsTime = ds.dimensions.find((d) => d.key === spec.dimension)?.kind === 'time';
   const controls = spec.controls ?? [];
   const setControls = (c: StudioControl[]) => patch({ controls: c });
@@ -991,7 +1008,33 @@ function ChartTab({
             </div>
           </div>
         ))}
+        {spec.viz === 'gantt' && (
+          <>
+            <div className={styles.layoutRow}>
+              <span>{t('studio.edit.ganttStart')}</span>
+              <Select
+                size="sm"
+                value={spec.periodField ?? ds.defaultTime}
+                onValueChange={(v) => patch({ periodField: v })}
+                options={timeDims.map((d) => ({ value: d.key, label: dimLabel(ds.key, d.key) }))}
+                aria-label={t('studio.edit.ganttStart')}
+              />
+            </div>
+            <div className={styles.layoutRow}>
+              <span>{t('studio.edit.ganttEnd')}</span>
+              <Select
+                size="sm"
+                value={spec.endField ?? spec.periodField ?? ds.defaultTime}
+                onValueChange={(v) => patch({ endField: v })}
+                options={timeDims.map((d) => ({ value: d.key, label: dimLabel(ds.key, d.key) }))}
+                aria-label={t('studio.edit.ganttEnd')}
+              />
+            </div>
+          </>
+        )}
       </section>
+
+      <ColorSection spec={spec} patch={patch} items={items} />
 
       {/* 제목·부제 */}
       <section
@@ -1126,6 +1169,102 @@ function ChartTab({
         )}
       </section>
     </>
+  );
+}
+
+// ── 색상 — 색 묶음(팔레트)과 항목마다 색 ──
+/** 데이터에서 색을 줄 수 있는 항목 — 항목별 값·누적 막대의 줄·간트 줄 */
+function colorItems(r: StudioResult): { key: string; label: string }[] {
+  const d = r.data;
+  if (d.shape === 'category' || d.shape === 'gantt')
+    return d.items.slice(0, 20).map((i) => ({ key: i.key, label: i.label }));
+  if (d.shape === 'matrix') return d.rows.slice(0, 20).map((x) => ({ key: x, label: x }));
+  return [];
+}
+function ColorSection({
+  spec,
+  patch,
+  items,
+}: {
+  spec: StudioSpec;
+  patch: (p: Partial<StudioSpec>) => void;
+  items: { key: string; label: string }[];
+}) {
+  const { t } = useTranslation();
+  const { resolved } = useTheme();
+  const look = spec.look ?? {};
+  const colors = look.colors ?? {};
+  const setLook = (l: Partial<StudioLook>) => patch({ look: { ...look, ...l } });
+  const setColor = (k: string, v: string | null) => {
+    const next = { ...colors };
+    if (v) next[k] = v;
+    else delete next[k];
+    setLook({ colors: Object.keys(next).length ? next : undefined });
+  };
+  const dark = resolved === 'dark';
+  return (
+    <section className={styles.section}>
+      <h3>{t('studio.color.title')}</h3>
+      <div className={styles.palette} role="radiogroup" aria-label={t('studio.color.palette')}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!look.palette}
+          className={`${styles.swatch} ${styles.swatchAuto} ${!look.palette ? styles.swatchOn : ''}`}
+          title={t('studio.color.dashDefault')}
+          onClick={() => setLook({ palette: undefined })}
+        >
+          A
+        </button>
+        {DASH_COLORS.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            role="radio"
+            aria-checked={look.palette === c.key}
+            className={`${styles.swatch} ${look.palette === c.key ? styles.swatchOn : ''}`}
+            style={{ background: dark ? c.dark : c.light }}
+            title={colorLabel(c)}
+            aria-label={colorLabel(c)}
+            onClick={() => setLook({ palette: c.key })}
+          />
+        ))}
+      </div>
+      {items.length > 0 && (
+        <div className={styles.colorList}>
+          {items.map((it) => (
+            <div key={it.key} className={styles.colorRow}>
+              <label className={styles.colorPick} title={t('studio.color.pick')}>
+                <input
+                  type="color"
+                  value={colors[it.key] ?? '#999999'}
+                  onChange={(e) => setColor(it.key, e.target.value)}
+                  aria-label={`${it.label} ${t('studio.color.pick')}`}
+                />
+                <span
+                  className={colors[it.key] ? undefined : styles.colorAuto}
+                  style={colors[it.key] ? { background: colors[it.key] } : undefined}
+                />
+              </label>
+              <span className={styles.colorLabel}>{it.label}</span>
+              {colors[it.key] ? (
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  aria-label={t('studio.color.reset')}
+                  title={t('studio.color.reset')}
+                  onClick={() => setColor(it.key, null)}
+                >
+                  <X size={12} />
+                </button>
+              ) : (
+                <small className={styles.muted}>{t('studio.color.auto')}</small>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1283,6 +1422,22 @@ function ElementTree({
   const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
   const controls = spec.controls ?? [];
   const VizI = VIZ_ICON[spec.viz] ?? BarChart3;
+  // 접었다 펼치기(기억)
+  const [open, setOpenRaw] = useState(() => {
+    try {
+      return localStorage.getItem('tongin_studio_tree') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const setOpen = (v: boolean) => {
+    setOpenRaw(v);
+    try {
+      localStorage.setItem('tongin_studio_tree', v ? '1' : '0');
+    } catch {
+      /* 저장 못 해도 그대로 */
+    }
+  };
   const row = (id: string, depth: number, icon: ReactNode, label: string, removable: boolean) => (
     <div
       key={id}
@@ -1329,50 +1484,64 @@ function ElementTree({
   );
   return (
     <div className={styles.tree} role="tree" aria-label={t('studio.pane.elements')}>
-      <div className={styles.treeHead}>{t('studio.pane.elements')}</div>
-      <div className={styles.treeBody}>
-        {row(
-          'widget',
-          0,
-          <LayoutTemplate size={13} aria-hidden />,
-          spec.title || t('studio.newWidget'),
-          false,
-        )}
-        {row('title', 1, <Type size={13} aria-hidden />, t('studio.pane.elTitle'), false)}
-        {spec.subtitle &&
-          row(
-            'subtitle',
-            1,
-            <AlignLeft size={13} aria-hidden />,
-            t('studio.pane.elSubtitle'),
-            true,
+      <button
+        type="button"
+        className={styles.treeHead}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <ChevronDown
+          size={14}
+          className={open ? undefined : styles.treeChevronClosed}
+          aria-hidden
+        />
+        {t('studio.pane.elements')}
+      </button>
+      {open && (
+        <div className={styles.treeBody}>
+          {row(
+            'widget',
+            0,
+            <LayoutTemplate size={13} aria-hidden />,
+            spec.title || t('studio.newWidget'),
+            false,
           )}
-        {controls.length > 0 && (
-          <>
-            <div className={styles.treeGroup} style={{ paddingLeft: 26 }}>
-              <SlidersHorizontal size={13} aria-hidden /> {t('studio.edit.controls')}
-            </div>
-            {controls.map((c, i) =>
-              row(
-                `ctl:${i}`,
-                2,
-                <span className={styles.treeDot} />,
-                c.kind === 'filter'
-                  ? `${t('studio.edit.filter')} · ${dimLabel(ds.key, c.dim)}`
-                  : `${t(c.kind === 'segment' ? 'studio.edit.segment' : 'studio.edit.dropdown')} · ${t(`studio.target.${c.target}`)}`,
-                true,
-              ),
+          {row('title', 1, <Type size={13} aria-hidden />, t('studio.pane.elTitle'), false)}
+          {spec.subtitle &&
+            row(
+              'subtitle',
+              1,
+              <AlignLeft size={13} aria-hidden />,
+              t('studio.pane.elSubtitle'),
+              true,
             )}
-          </>
-        )}
-        {row(
-          'chart',
-          1,
-          <VizI size={13} aria-hidden />,
-          `${t('studio.pane.elChart')} · ${DASH_VIZ_LABEL[spec.viz]}`,
-          false,
-        )}
-      </div>
+          {controls.length > 0 && (
+            <>
+              <div className={styles.treeGroup} style={{ paddingLeft: 26 }}>
+                <SlidersHorizontal size={13} aria-hidden /> {t('studio.edit.controls')}
+              </div>
+              {controls.map((c, i) =>
+                row(
+                  `ctl:${i}`,
+                  2,
+                  <span className={styles.treeDot} />,
+                  c.kind === 'filter'
+                    ? `${t('studio.edit.filter')} · ${dimLabel(ds.key, c.dim)}`
+                    : `${t(c.kind === 'segment' ? 'studio.edit.segment' : 'studio.edit.dropdown')} · ${t(`studio.target.${c.target}`)}`,
+                  true,
+                ),
+              )}
+            </>
+          )}
+          {row(
+            'chart',
+            1,
+            <VizI size={13} aria-hidden />,
+            `${t('studio.pane.elChart')} · ${DASH_VIZ_LABEL[spec.viz]}`,
+            false,
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1385,12 +1554,14 @@ function PreviewCanvas({
   sel,
   onSel,
   onRemove,
+  onData,
 }: {
   spec: StudioSpec;
   patch: (p: Partial<StudioSpec>) => void;
   sel: string | null;
   onSel: (id: string | null) => void;
   onRemove: (id: string) => void;
+  onData: (r: StudioResult) => void;
 }) {
   const { t } = useTranslation();
   // 고른 요소를 Delete·Backspace로 지운다(글 입력 중이면 그대로 글자 지우기)
@@ -1464,7 +1635,6 @@ function PreviewCanvas({
     <>
       <ShelfBar spec={spec} patch={patch} />
       <div className={styles.centerBar}>
-        <b>{t('studio.preview.title')}</b>
         <span className={styles.spacer} />
         <span className={styles.sizeLabel}>{t('studio.layout.sizeIs', cur)}</span>
       </div>
@@ -1495,6 +1665,10 @@ function PreviewCanvas({
               selected={sel}
               onSelect={onSel}
               onLayout={(layout) => patch({ layout })}
+              onText={(id, v) =>
+                patch(id === 'title' ? { title: v } : { subtitle: v.trim() || undefined })
+              }
+              onData={onData}
             />
           </div>
           <span

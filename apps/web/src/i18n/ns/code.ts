@@ -263,6 +263,9 @@ export default defineNs({
       histogram: '히스토그램',
       box: '박스플롯',
       scatter: '산점도',
+      calendar: '캘린더',
+      gantt: '간트 차트',
+      typo: '타이포그래피',
     },
     dashPeriod: {
       '7d': '최근 7일',
@@ -693,6 +696,9 @@ export default defineNs({
       histogram: 'Histogram',
       box: 'Box plot',
       scatter: 'Scatter plot',
+      calendar: 'Calendar',
+      gantt: 'Gantt chart',
+      typo: 'Typography',
     },
     dashPeriod: {
       '7d': 'Last 7 days',
@@ -1123,6 +1129,9 @@ export default defineNs({
       histogram: '直方图',
       box: '箱线图',
       scatter: '散点图',
+      calendar: '日历',
+      gantt: '甘特图',
+      typo: '大字排版',
     },
     dashPeriod: {
       '7d': '最近7天',

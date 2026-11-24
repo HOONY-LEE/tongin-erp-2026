@@ -107,34 +107,46 @@
 
 /* 스튜디오 편집 — 요소를 누르면 고르고, 끌면 옮긴다(보기 옵션은 편집 중엔 눌리지 않게) */
 .cellEdit {
-  border-radius: 6px;
-  outline: 1px dashed transparent;
-  outline-offset: 2px;
-  cursor: grab;
+  outline: 1px solid transparent;
+  outline-offset: 1px;
+  cursor: default;
   touch-action: none;
   user-select: none;
-  transition: outline-color 0.12s;
 }
+/* 피그마처럼 — 올리면 얇은 파란 선, 고르면 파란 선 + 손잡이(모서리 둥글림 없음) */
 .cellEdit:hover {
-  outline-color: var(--ark-color-border-strong, #c7c7cc);
+  outline-color: var(--studio-select, #0d99ff);
 }
 .picked,
 .picked:hover {
-  outline: 2px solid var(--ark-color-primary-500);
+  outline: 1.5px solid var(--studio-select, #0d99ff);
 }
-/* 폭 바꾸기 손잡이 — 고른 요소 오른쪽 가장자리 */
+/* 폭 바꾸기 손잡이 — 고른 요소 오른쪽 가장자리 가운데(흰 네모 + 파란 테두리) */
 .resize {
   position: absolute;
   top: 50%;
-  right: -7px;
+  right: -5px;
   z-index: 2;
   width: 8px;
-  height: 22px;
-  border: 1.5px solid var(--ark-color-primary-500);
-  border-radius: 4px;
-  background: var(--ark-color-bg);
+  height: 8px;
+  border: 1px solid var(--studio-select, #0d99ff);
+  background: #fff;
   cursor: ew-resize;
   transform: translateY(-50%);
+}
+/* 그 자리에서 글 고치기 */
+.inlineEdit {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.35;
+  outline: none;
+  box-shadow: none !important;
 }
 /* 끄는 동안 — 12칸 안내선과 놓일 자리 */
 .guides {
@@ -147,15 +159,13 @@
   pointer-events: none;
 }
 .guides > span {
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--ark-color-primary-500) 7%, transparent);
+  background: color-mix(in srgb, var(--studio-select, #0d99ff) 6%, transparent);
 }
 .ghost {
   position: absolute;
   z-index: 3;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
-  outline: 1.5px solid var(--ark-color-primary-500);
+  background: color-mix(in srgb, var(--studio-select, #0d99ff) 14%, transparent);
+  outline: 1px solid var(--studio-select, #0d99ff);
   pointer-events: none;
   transition:
     left 0.08s,

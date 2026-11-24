@@ -35,6 +35,9 @@ import {
   LayoutGrid,
   BoxSelect,
   ScatterChart,
+  CalendarDays,
+  GanttChart,
+  CaseSensitive,
   CircleDot,
   X,
 } from 'lucide-react';
@@ -92,6 +95,9 @@ export const VIZ_ICON: Record<DashViz, typeof BarChart3> = {
   histogram: BarChart3,
   box: BoxSelect,
   scatter: ScatterChart,
+  calendar: CalendarDays,
+  gantt: GanttChart,
+  typo: CaseSensitive,
 };
 
 type Drag = {

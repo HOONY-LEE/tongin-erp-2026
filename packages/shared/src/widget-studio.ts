@@ -781,13 +781,17 @@ export const STUDIO_VIZ = [
   'histogram',
   'box',
   'scatter',
+  'calendar',
+  'gantt',
+  'typo',
 ] as const satisfies readonly DashViz[];
 /** 차트 쓰임새 — 무엇을 보여 주나(스튜디오에서 묶어 보여 주고 AI 규칙에도 쓴다) */
 export const STUDIO_VIZ_GROUPS: { key: string; label: string; viz: StudioViz[] }[] = [
-  { key: 'single', label: '숫자 하나', viz: ['card', 'gauge'] },
+  { key: 'single', label: '숫자 하나', viz: ['card', 'gauge', 'typo'] },
   { key: 'compare', label: '비교', viz: ['bar', 'hbar', 'stacked', 'table'] },
   { key: 'part', label: '구성(비중)', viz: ['pie', 'donut', 'treemap', 'funnel'] },
-  { key: 'trend', label: '추이(시간)', viz: ['line', 'area'] },
+  { key: 'trend', label: '추이(시간)', viz: ['line', 'area', 'calendar'] },
+  { key: 'plan', label: '기간', viz: ['gantt'] },
   { key: 'dist', label: '분포', viz: ['histogram', 'box'] },
   { key: 'relation', label: '관계', viz: ['scatter', 'heatmap'] },
   { key: 'geo', label: '지역', viz: ['map'] },
@@ -832,6 +836,8 @@ export interface StudioSpec {
   measure: string;
   /** 산점도의 세로축 숫자(가로축은 measure) */
   measure2?: string;
+  /** 간트 차트의 끝 날짜 칸(시작은 periodField·기본 날짜) — 없으면 같은 칸의 처음~마지막 */
+  endField?: string;
   /** 분포(히스토그램·박스플롯)에 쓸 건별 숫자 칸 */
   field?: string;
   /** 묶을 기준(없으면 숫자 하나) */
@@ -872,6 +878,10 @@ export interface StudioLook {
   titleSize?: number;
   titleBold?: boolean;
   subtitleSize?: number;
+  /** 차트 색 묶음(대시보드 색 key) — 없으면 대시보드 색을 따른다 */
+  palette?: string;
+  /** 항목마다 색(항목 key → #rrggbb) */
+  colors?: Record<string, string>;
 }
 export const STUDIO_TITLE_SIZES = [12, 13, 14, 16, 18, 20, 24, 28, 32];
 export const STUDIO_SUBTITLE_SIZES = [11, 12, 13, 14, 16, 18];
@@ -1063,7 +1073,18 @@ function normalizeLook(raw: unknown): StudioLook | undefined {
     ...(titleSize ? { titleSize } : {}),
     ...(subtitleSize ? { subtitleSize } : {}),
     ...(typeof r.titleBold === 'boolean' ? { titleBold: r.titleBold } : {}),
+    ...(typeof r.palette === 'string' && /^[a-z]{2,12}$/.test(r.palette)
+      ? { palette: r.palette }
+      : {}),
   };
+  if (r.colors && typeof r.colors === 'object') {
+    const colors = Object.fromEntries(
+      Object.entries(r.colors as Record<string, unknown>)
+        .filter(([k, v]) => k.length <= 120 && typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v))
+        .slice(0, 40),
+    ) as Record<string, string>;
+    if (Object.keys(colors).length) look.colors = colors;
+  }
   return Object.keys(look).length ? look : undefined;
 }
 function normalizeSize(raw: unknown): { w: number; h: number } | undefined {
@@ -1189,6 +1210,9 @@ export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: s
     ...((vizOut === 'histogram' || vizOut === 'box') && field ? { field } : {}),
     period,
     ...(timeDims.has(String(r.periodField)) ? { periodField: String(r.periodField) } : {}),
+    ...(vizOut === 'gantt' && timeDims.has(String(r.endField))
+      ? { endField: String(r.endField) }
+      : {}),
     ...(filters.length ? { filters } : {}),
     ...(limit > 0 ? { limit: Math.min(50, Math.round(limit)) } : {}),
     ...(controls.length ? { controls: controls.slice(0, 4) } : {}),

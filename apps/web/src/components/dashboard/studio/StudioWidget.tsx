@@ -13,6 +13,7 @@ import { Select } from '@sunghoon_lee/akron-ui';
 import {
   STUDIO_COLS,
   STUDIO_DATASET_MAP,
+  dashColorVars,
   compactStudioRows,
   studioElementIds,
   studioLayout,
@@ -25,10 +26,12 @@ import {
 } from '@tongin/shared';
 import { ApiError } from '../../../lib/api';
 import { FilterButton, SegmentedControl, Skeleton, type FilterField } from '../../ui';
-import { VizBody } from '../viz/Charts';
+import { SeriesColorCtx, VizBody } from '../viz/Charts';
+import { useTheme } from '../../../theme/ThemeProvider';
 import { ctrlLabel, optLabel } from './studioLabels';
 import styles from './studio.module.css';
 
+const NO_COLORS: Record<string, string> = {};
 const ALIGN: Record<string, CSSProperties['justifyContent']> = {
   start: 'flex-start',
   center: 'center',
@@ -49,6 +52,8 @@ export function StudioWidget({
   selected,
   onSelect,
   onLayout,
+  onText,
+  onData,
 }: {
   spec: StudioSpec;
   load: (params: StudioParams) => Promise<StudioResult>;
@@ -64,6 +69,10 @@ export function StudioWidget({
   onSelect?: (id: string) => void;
   /** 스튜디오 편집 — 끌어 옮기거나 폭을 바꾸면 새 배치 */
   onLayout?: (layout: Record<string, StudioBox>) => void;
+  /** 스튜디오 편집 — 제목·부제를 그 자리에서 고치면(두 번 누르거나 Enter) */
+  onText?: (id: 'title' | 'subtitle', value: string) => void;
+  /** 받은 데이터(스튜디오의 항목별 색 고르기에 쓴다) */
+  onData?: (res: StudioResult) => void;
 }) {
   const { t } = useTranslation();
   const [params, setParams] = useState<StudioParams>({});
@@ -140,18 +149,57 @@ export function StudioWidget({
     [viz],
   );
 
+  const onDataRef = useRef(onData);
+  onDataRef.current = onData;
+  useEffect(() => {
+    if (res) onDataRef.current?.(res);
+  }, [res]);
+  // 색 — 위젯이 정한 색 묶음(없으면 대시보드 색)·항목별 색
+  const { resolved } = useTheme();
+  const palette = spec.look?.palette;
+  const colorVars = useMemo(
+    () => (palette ? (dashColorVars(palette, resolved === 'dark') as CSSProperties) : undefined),
+    [palette, resolved],
+  );
+  const itemColors = spec.look?.colors ?? NO_COLORS;
   const chart = (
-    <div className={`${styles.chart} ${busy && res ? styles.dim : ''}`}>
+    <div className={`${styles.chart} ${busy && res ? styles.dim : ''}`} style={colorVars}>
       {err ? (
         <div className={styles.error}>{err}</div>
       ) : !res ? (
         <Skeleton height="100%" radius={8} />
       ) : (
-        <VizBody viz={viz} data={res.data} item={fakeItem} />
+        <SeriesColorCtx.Provider value={itemColors}>
+          <VizBody viz={viz} data={res.data} item={fakeItem} />
+        </SeriesColorCtx.Provider>
       )}
     </div>
   );
   const editing = !!onSelect;
+  // 그 자리에서 글 고치기(제목·부제)
+  const [editText, setEditText] = useState<'title' | 'subtitle' | null>(null);
+  const inline = (id: 'title' | 'subtitle', value: string, style: CSSProperties) => (
+    <input
+      className={styles.inlineEdit}
+      style={style}
+      defaultValue={value}
+      autoFocus
+      maxLength={id === 'title' ? 60 : 120}
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={(e) => {
+        onText?.(id, e.currentTarget.value);
+        setEditText(null);
+      }}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Escape') {
+          e.currentTarget.value = value;
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
   const layout = useMemo(() => studioLayout(spec), [specKey]);
 
   // ── 요소별 내용 ──
@@ -165,7 +213,9 @@ export function StudioWidget({
     };
     if (text !== null)
       nodes.title =
-        onTitleClick && !editing ? (
+        editText === 'title' ? (
+          inline('title', spec.title ?? '', tStyle)
+        ) : onTitleClick && !editing ? (
           <button
             type="button"
             className={`${styles.title} ${styles.titleLink}`}
@@ -181,21 +231,24 @@ export function StudioWidget({
             {text}
           </span>
         );
+    const sStyle: CSSProperties = {
+      fontSize: `calc(${look.subtitleSize ?? 12}px * var(--font-scale, 1))`,
+    };
     if (spec.subtitle)
-      nodes.subtitle = (
-        <p
-          className={styles.subtitle}
-          style={{ fontSize: `calc(${look.subtitleSize ?? 12}px * var(--font-scale, 1))` }}
-        >
-          {spec.subtitle}
-        </p>
-      );
+      nodes.subtitle =
+        editText === 'subtitle' ? (
+          inline('subtitle', spec.subtitle, sStyle)
+        ) : (
+          <p className={styles.subtitle} style={sStyle}>
+            {spec.subtitle}
+          </p>
+        );
     controls.forEach((c, i) => {
       if (c.kind === 'filter') return;
       const opts = visibleOptions(c);
       if (opts.length < 2) return;
       // 시간 단위 탭은 날짜로 묶을 때만(지점별·상품별로 바꾸면 숨긴다)
-      if (c.target === 'grain' && !timeDim) return;
+      if (c.target === 'grain' && (!timeDim || viz === 'calendar')) return;
       const options = opts.map((o) => ({ value: o, label: optLabel(spec.dataset, c.target, o) }));
       nodes[`ctl:${i}`] =
         c.kind === 'segment' ? (
@@ -379,6 +432,11 @@ export function StudioWidget({
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      if (e.key === 'Enter' && onText && (selected === 'title' || selected === 'subtitle')) {
+        e.preventDefault();
+        setEditText(selected);
+        return;
+      }
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       const b = layout[selected];
       const x = b.x + (e.key === 'ArrowLeft' ? -1 : 1);
@@ -431,16 +489,21 @@ export function StudioWidget({
             onPointerDownCapture={
               editing
                 ? (e) => {
-                    if ((e.target as HTMLElement).dataset.resize) return;
+                    const el = e.target as HTMLElement;
+                    if (el.dataset.resize || el.tagName === 'INPUT') return;
                     e.stopPropagation();
                     if (onLayout) startDrag(e, id, 'move');
                     else onSelect?.(id);
                   }
                 : undefined
             }
+            onDoubleClick={
+              onText && (id === 'title' || id === 'subtitle') ? () => setEditText(id) : undefined
+            }
             onClickCapture={
               editing
                 ? (e) => {
+                    if ((e.target as HTMLElement).tagName === 'INPUT') return;
                     e.stopPropagation();
                     e.preventDefault();
                   }

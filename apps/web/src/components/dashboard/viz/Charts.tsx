@@ -65,11 +65,14 @@ function niceMax(max: number, ticks = 4): { top: number; step: number } {
 }
 
 /** 범주 색 — 항목 이름 순서로 고정(값 순위가 바뀌어도 같은 항목은 같은 색). 9번째부터·'기타'는 회색 */
-function colorMap(keys: string[]): Map<string, string> {
+/** 위젯이 항목마다 정한 색(항목 key → 색) — 위젯 스튜디오 '색상' */
+export const SeriesColorCtx = createContext<Record<string, string>>({});
+function colorMap(keys: string[], ov: Record<string, string> = {}): Map<string, string> {
   const sorted = [...keys].filter((k) => k !== 'OTHER').sort();
   const m = new Map<string, string>();
   sorted.forEach((k, i) => m.set(k, i < 8 ? `var(--series-${i + 1})` : 'var(--series-other)'));
   m.set('OTHER', 'var(--series-other)');
+  for (const k of keys) if (ov[k]) m.set(k, ov[k]);
   return m;
 }
 
@@ -201,6 +204,7 @@ function ColumnViz({
   gapless?: boolean;
 }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const ov = useContext(SeriesColorCtx);
   const { tip, show, hide } = useTip();
   const pickOf = usePick();
   if (!items.length) return <Empty />;
@@ -238,7 +242,7 @@ function ColumnViz({
                 <g key={it.key}>
                   <path
                     d={`M${x},${h} V${y + rr} Q${x},${y} ${x + rr},${y} H${x + bw - rr} Q${x + bw},${y} ${x + bw},${y + rr} V${h} Z`}
-                    fill="var(--series-1)"
+                    fill={ov[it.key] ?? 'var(--series-1)'}
                   />
                   {i === maxIdx && it.value > 0 && (
                     <text x={x + bw / 2} y={y - 5} textAnchor="middle" className={styles.valueText}>
@@ -290,6 +294,7 @@ function HBarViz({
   format: DashFormat;
 }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const ov = useContext(SeriesColorCtx);
   const { tip, show, hide } = useTip();
   const pickOf = usePick();
   if (!items.length) return <Empty />;
@@ -341,7 +346,9 @@ function HBarViz({
                 </text>
                 <path
                   d={`M${labelW},${y} H${labelW + bw - rr} Q${labelW + bw},${y} ${labelW + bw},${y + rr} V${y + barH - rr} Q${labelW + bw},${y + barH} ${labelW + bw - rr},${y + barH} H${labelW} Z`}
-                  fill={it.key === 'OTHER' ? 'var(--series-other)' : 'var(--series-1)'}
+                  fill={
+                    it.key === 'OTHER' ? 'var(--series-other)' : (ov[it.key] ?? 'var(--series-1)')
+                  }
                 />
                 <text x={labelW + bw + 6} y={y + barH / 2} dy="0.32em" className={styles.valueText}>
                   {fmt(it.value, format)}
@@ -498,9 +505,17 @@ function PieViz({
 }) {
   const { t } = useTranslation();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const ov = useContext(SeriesColorCtx);
   const { tip, show, hide } = useTip();
   const pickOf = usePick();
-  const colors = useMemo(() => colorMap(items.map((i) => i.key)), [items]);
+  const colors = useMemo(
+    () =>
+      colorMap(
+        items.map((i) => i.key),
+        ov,
+      ),
+    [items, ov],
+  );
   // 도넛은 가운데가 곧 설명 — 조각에 올리면 그 조각, 아니면 합계
   const [hover, setHover] = useState<string | null>(null);
   const total = items.reduce((s, i) => s + i.value, 0);
@@ -1018,6 +1033,13 @@ function TableViz({ d }: { d: DashData }) {
       { label: d.yLabel, num: true },
     ];
     body = d.points.map((p) => [p.label, fmtExact(p.x, d.xFormat), fmtExact(p.y, d.yFormat)]);
+  } else if (d.shape === 'gantt') {
+    head = [
+      { label: t('dash.item') },
+      { label: t('dash.period') },
+      { label: t('dash.value'), num: true },
+    ];
+    body = d.items.map((i) => [i.label, `${i.start} ~ ${i.end}`, fmtExact(i.value, d.format)]);
   } else if (d.shape === 'points') {
     head = [{ label: t('dash.branch') }, { label: t('dash.value'), num: true }];
     body = [...d.points]
@@ -1134,9 +1156,10 @@ function ListViz({ d }: { d: Extract<DashData, { shape: 'rows' }> }) {
 // ═══════════ 누적 막대(두 기준) ═══════════
 function StackedViz({ d }: { d: Extract<DashData, { shape: 'matrix' }> }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const ov = useContext(SeriesColorCtx);
   const { tip, show, hide } = useTip();
   const keys = d.rows;
-  const colors = useMemo(() => colorMap(keys), [keys]);
+  const colors = useMemo(() => colorMap(keys, ov), [keys, ov]);
   if (!d.cols.length || !d.rows.length) return <Empty />;
   const legendH = 22;
   const m = { l: 44, r: 8, t: 10, b: 22 };
@@ -1281,10 +1304,18 @@ function TreemapViz({
   format: DashFormat;
 }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const ov = useContext(SeriesColorCtx);
   const { tip, show, hide } = useTip();
   const pickOf = usePick();
   const list = items.filter((i) => i.value > 0).sort((a, b) => b.value - a.value);
-  const colors = useMemo(() => colorMap(list.map((i) => i.key)), [list]);
+  const colors = useMemo(
+    () =>
+      colorMap(
+        list.map((i) => i.key),
+        ov,
+      ),
+    [list, ov],
+  );
   if (!list.length) return <Empty />;
   const total = list.reduce((s, i) => s + i.value, 0);
   const rects =
@@ -1566,6 +1597,278 @@ function ScatterViz({ d }: { d: Extract<DashData, { shape: 'scatter' }> }) {
   );
 }
 
+// ═══════════ 캘린더 — 날짜별 칸(가로 = 주, 세로 = 요일), 많을수록 진하게 ═══════════
+const DAY_MS = 86400000;
+const parseDay = (s: string) => new Date(`${s.slice(0, 10)}T00:00:00Z`).getTime();
+function CalendarViz({ d }: { d: Extract<DashData, { shape: 'series' }> }) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const { tip, show, hide } = useTip();
+  const days = d.points.filter((p) => /^\d{4}-\d{2}-\d{2}/.test(p.x));
+  if (!days.length) return <Empty />;
+  const first = parseDay(days[0].x);
+  // 월요일 시작 주
+  const dow = (ms: number) => (new Date(ms).getUTCDay() + 6) % 7;
+  const start = first - dow(first) * DAY_MS;
+  const cells = days.map((p) => {
+    const ms = parseDay(p.x);
+    const i = Math.round((ms - start) / DAY_MS);
+    return { p, col: Math.floor(i / 7), row: i % 7, ms };
+  });
+  const weeks = Math.max(...cells.map((c) => c.col)) + 1;
+  const max = Math.max(0, ...days.map((p) => p.value));
+  const labelW = 22;
+  const topH = 16;
+  const legendH = 18;
+  // 칸 — 가로(주)·세로(요일)를 따로 맞춰 영역을 채운다(너무 길쭉하지 않게)
+  const cw = Math.max(3, Math.min(40, (width - labelW) / weeks));
+  const ch = Math.max(6, Math.min(28, (height - topH - legendH) / 7, cw * 2.5));
+  const size = cw;
+  const gridW = labelW + weeks * cw;
+  const ox = Math.max(0, (width - gridW) / 2);
+  const step = (v: number) => (v <= 0 || !max ? 0 : Math.min(7, Math.ceil((v / max) * 7)));
+  // 요일·달 이름은 화면 언어대로(2024-01-01이 월요일)
+  const wdFmt = new Intl.DateTimeFormat(i18n.language, { weekday: 'narrow', timeZone: 'UTC' });
+  const wd = Array.from({ length: 7 }, (_, i) => wdFmt.format(Date.UTC(2024, 0, 1 + i)));
+  const mFmt = new Intl.DateTimeFormat(i18n.language, { month: 'short', timeZone: 'UTC' });
+  // 달이 바뀌는 주에 달 이름
+  const months: { col: number; label: string }[] = [];
+  let lastM = -1;
+  for (const c of cells) {
+    const m = new Date(c.ms).getUTCMonth();
+    if (m !== lastM && c.row === 0) {
+      months.push({ col: c.col, label: mFmt.format(c.ms) });
+      lastM = m;
+    } else if (lastM === -1) lastM = m;
+  }
+  return (
+    <div ref={ref} className={styles.vizRoot}>
+      {width > 0 && (
+        <svg className={styles.svg} width={width} height={height} onMouseLeave={hide}>
+          <g transform={`translate(${ox},0)`}>
+            {months.map((m) => (
+              <text key={m.col} x={labelW + m.col * size} y={11} className={styles.axisText}>
+                {m.label}
+              </text>
+            ))}
+            {[0, 2, 4].map((r) => (
+              <text
+                key={r}
+                x={labelW - 5}
+                y={topH + r * ch + ch / 2}
+                dy="0.32em"
+                textAnchor="end"
+                className={styles.axisText}
+              >
+                {wd[r]}
+              </text>
+            ))}
+            {cells.map(({ p, col, row }) => (
+              <rect
+                key={p.x}
+                x={labelW + col * size + 1}
+                y={topH + row * ch + 1}
+                width={Math.max(1, cw - (cw > 6 ? 2 : 1))}
+                height={Math.max(1, ch - 2)}
+                rx={Math.min(3, cw / 5, ch / 5)}
+                fill={`var(--seq-${step(p.value)})`}
+                onMouseMove={() =>
+                  show({
+                    x: ox + labelW + col * size + size / 2,
+                    y: topH + row * ch,
+                    content: (
+                      <>
+                        {p.x.slice(0, 10)} · <b>{fmtExact(p.value, d.format)}</b>
+                      </>
+                    ),
+                  })
+                }
+              />
+            ))}
+            <g transform={`translate(${labelW},${topH + 7 * ch + 6})`}>
+              <text x={0} y={8} className={styles.axisText}>
+                0
+              </text>
+              {Array.from({ length: 7 }, (_, i) => (
+                <rect
+                  key={i}
+                  x={14 + i * 12}
+                  y={2}
+                  width={10}
+                  height={8}
+                  rx={2}
+                  fill={`var(--seq-${i + 1})`}
+                />
+              ))}
+              <text x={14 + 7 * 12 + 4} y={8} className={styles.axisText}>
+                {fmt(max, d.format)}
+              </text>
+            </g>
+          </g>
+        </svg>
+      )}
+      {tip}
+    </div>
+  );
+}
+
+// ═══════════ 간트 — 항목마다 시작~끝 막대 ═══════════
+function GanttViz({ d }: { d: Extract<DashData, { shape: 'gantt' }> }) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const ov = useContext(SeriesColorCtx);
+  const { tip, show, hide } = useTip();
+  if (!d.items.length) return <Empty />;
+  const s0 = Math.min(...d.items.map((i) => parseDay(i.start)));
+  const e0 = Math.max(...d.items.map((i) => parseDay(i.end))) + DAY_MS;
+  const span = Math.max(DAY_MS, e0 - s0);
+  const labelW = Math.min(
+    110,
+    Math.max(40, Math.max(...d.items.map((i) => i.label.length)) * 11 + 10),
+  );
+  const topH = 18;
+  const plotW = Math.max(10, width - labelW - 8);
+  const rowH = Math.max(12, Math.min(30, (height - topH) / d.items.length));
+  const x = (ms: number) => labelW + ((ms - s0) / span) * plotW;
+  // 눈금 — 기간 길이에 맞춰 달·주 단위
+  const ticks: { ms: number; label: string }[] = [];
+  const startD = new Date(s0);
+  const byMonth = span > 62 * DAY_MS;
+  const cur = byMonth
+    ? Date.UTC(startD.getUTCFullYear(), startD.getUTCMonth() + 1, 1)
+    : s0 + ((8 - new Date(s0).getUTCDay()) % 7) * DAY_MS;
+  for (let ms = cur, k = 0; ms < e0 && k < 60; k++) {
+    const dt = new Date(ms);
+    ticks.push({
+      ms,
+      label: byMonth
+        ? dt.getUTCMonth() === 0
+          ? `${String(dt.getUTCFullYear()).slice(2)}.1`
+          : `${dt.getUTCMonth() + 1}`
+        : `${dt.getUTCMonth() + 1}.${dt.getUTCDate()}`,
+    });
+    ms = byMonth ? Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1) : ms + 7 * DAY_MS;
+  }
+  const every = Math.max(1, Math.ceil(ticks.length / Math.max(1, Math.floor(plotW / 40))));
+  const colors = colorMap(
+    d.items.map((i) => i.key),
+    ov,
+  );
+  return (
+    <div ref={ref} className={styles.vizRoot}>
+      {width > 0 && (
+        <svg className={styles.svg} width={width} height={height} onMouseLeave={hide}>
+          {ticks.map((tk, i) =>
+            i % every === 0 ? (
+              <g key={tk.ms}>
+                <line
+                  x1={x(tk.ms)}
+                  x2={x(tk.ms)}
+                  y1={topH - 4}
+                  y2={topH + d.items.length * rowH}
+                  className={styles.gridLine}
+                />
+                <text x={x(tk.ms)} y={11} textAnchor="middle" className={styles.axisText}>
+                  {tk.label}
+                </text>
+              </g>
+            ) : null,
+          )}
+          {d.items.map((it, i) => {
+            const a = x(parseDay(it.start));
+            const b = x(parseDay(it.end) + DAY_MS);
+            const y = topH + i * rowH;
+            return (
+              <g key={it.key}>
+                <text
+                  x={labelW - 6}
+                  y={y + rowH / 2}
+                  dy="0.32em"
+                  textAnchor="end"
+                  className={styles.labelText}
+                >
+                  {it.label.length > 9 ? `${it.label.slice(0, 8)}…` : it.label}
+                </text>
+                <rect
+                  x={a}
+                  y={y + rowH * 0.2}
+                  width={Math.max(3, b - a)}
+                  height={rowH * 0.6}
+                  rx={Math.min(4, rowH * 0.2)}
+                  fill={colors.get(it.key)}
+                  onMouseMove={() =>
+                    show({
+                      x: (a + b) / 2,
+                      y,
+                      content: (
+                        <>
+                          {it.label} · {it.start} ~ {it.end} · <b>{fmtExact(it.value, d.format)}</b>
+                        </>
+                      ),
+                    })
+                  }
+                />
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      {tip}
+    </div>
+  );
+}
+
+// ═══════════ 타이포그래피 — 숫자를 큰 글자로(기준이 있으면 위 몇 개를 줄마다) ═══════════
+function TypoViz({ d }: { d: Extract<DashData, { shape: 'value' | 'category' }> }) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  if (d.shape === 'value') {
+    const text = fmt(d.value, d.format);
+    const size = Math.max(
+      18,
+      Math.min(height * 0.62, (width / Math.max(3, text.length)) * 1.7, 160),
+    );
+    const prev = d.previous;
+    const diff = prev != null && prev !== 0 ? (d.value - prev) / prev : null;
+    return (
+      <div ref={ref} className={`${styles.vizRoot} ${styles.typo}`}>
+        <span
+          className={styles.typoHero}
+          style={{ fontSize: size }}
+          title={fmtExact(d.value, d.format)}
+        >
+          {text}
+        </span>
+        {diff != null && (
+          <span className={`${styles.delta} ${diff >= 0 ? styles.deltaUp : styles.deltaDown}`}>
+            {diff >= 0 ? '+' : ''}
+            {(diff * 100).toFixed(1)}%
+          </span>
+        )}
+      </div>
+    );
+  }
+  const items = d.items.slice(0, Math.max(1, Math.min(6, Math.floor(height / 34) || 1)));
+  if (!items.length) return <Empty />;
+  const lineH = height / items.length;
+  const size = Math.max(14, Math.min(lineH * 0.62, 56));
+  return (
+    <div ref={ref} className={`${styles.vizRoot} ${styles.typoList}`}>
+      {items.map((i, k) => (
+        <div key={i.key} className={styles.typoRow} style={{ height: lineH }}>
+          <span className={styles.typoLabel} style={{ fontSize: Math.max(12, size * 0.4) }}>
+            {k + 1}. {i.label}
+          </span>
+          <span
+            className={styles.typoValue}
+            style={{ fontSize: size }}
+            title={fmtExact(i.value, d.format)}
+          >
+            {fmt(i.value, d.format)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function VizBody({
   viz,
   data,
@@ -1585,6 +1888,9 @@ export function VizBody({
   }
   if (!data) return <Empty />;
   if (viz === 'table') return <TableViz d={data} />;
+  if (viz === 'typo' && (data.shape === 'value' || data.shape === 'category'))
+    return <TypoViz d={data} />;
+  if (viz === 'calendar' && data.shape === 'series') return <CalendarViz d={data} />;
   switch (data.shape) {
     case 'value':
       return viz === 'gauge' ? (
@@ -1626,6 +1932,8 @@ export function VizBody({
       return <ListViz d={data} />;
     case 'points':
       return <MapViz d={data} />;
+    case 'gantt':
+      return <GanttViz d={data} />;
   }
   return <Empty />;
 }

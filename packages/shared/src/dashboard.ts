@@ -24,6 +24,10 @@ export const DASH_VIZ = [
   'histogram',
   'box',
   'scatter',
+  // 일정·글 — 캘린더(날짜별 칸) · 간트(항목별 기간 막대) · 타이포그래피(숫자를 큰 글자로)
+  'calendar',
+  'gantt',
+  'typo',
 ] as const;
 export type DashViz = (typeof DASH_VIZ)[number];
 export const DASH_VIZ_LABEL: Record<DashViz, string> = {
@@ -46,6 +50,9 @@ export const DASH_VIZ_LABEL: Record<DashViz, string> = {
   histogram: '히스토그램',
   box: '박스플롯',
   scatter: '산점도',
+  calendar: '캘린더',
+  gantt: '간트 차트',
+  typo: '타이포그래피',
 };
 
 /**
@@ -60,6 +67,7 @@ export type DashShape =
   | 'matrix'
   | 'rows'
   | 'points'
+  | 'gantt'
   | 'text'
   /** 화면이 스스로 데이터를 불러오는 기존 대시보드 부품(지역 확대 지도 등) */
   | 'embed';
@@ -1195,6 +1203,12 @@ export type DashData =
       shape: 'points';
       format: DashFormat;
       points: { key: string; label: string; lat: number; lng: number; value: number }[];
+    }
+  | {
+      /** 기간 — 항목마다 시작일·끝일(YYYY-MM-DD)과 값. 간트 차트 */
+      shape: 'gantt';
+      format: DashFormat;
+      items: { key: string; label: string; start: string; end: string; value: number }[];
     };
 
 export type DashDataResult = { ok: true; data: DashData } | { ok: false; error: string };
