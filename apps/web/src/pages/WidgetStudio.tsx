@@ -18,6 +18,8 @@ import {
   Globe,
   Hash,
   Plus,
+  MousePointer2,
+  Move,
   Sparkles,
   Trash2,
   X,
@@ -435,8 +437,9 @@ function Studio({ id }: { id: string | null }) {
         body: JSON.stringify(body),
       });
       toast({ type: 'success', title: t('studio.saved') });
-      if (!id) navigate(`${LIST}/${r.id}`, { replace: true });
-      else setSpecRaw(r.spec);
+      setSpecRaw(r.spec);
+      // 저장하면 위젯 목록으로
+      navigate(LIST_TAB);
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('studio.saveFailed') });
     } finally {
@@ -1658,9 +1661,20 @@ function PreviewCanvas({
   onData: (r: StudioResult) => void;
 }) {
   const { t } = useTranslation();
+  // 마우스 모드 — 써 보기(버튼·필터를 실제로 눌러 봄, 기본) / 편집(요소 고르기·옮기기·크기)
+  const [mode, setMode] = useState<'use' | 'edit'>('use');
+  const editing = mode === 'edit';
+  // 왼쪽 요소 목록에서 고르면 편집으로
+  useEffect(() => {
+    if (sel && sel !== 'widget') setMode('edit');
+  }, [sel]);
+  const changeMode = (m: 'use' | 'edit') => {
+    setMode(m);
+    if (m === 'use') onSel(null);
+  };
   // 고른 요소를 Delete·Backspace로 지운다(글 입력 중이면 그대로 글자 지우기)
   useEffect(() => {
-    if (!sel) return;
+    if (!sel || !editing) return;
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
@@ -1669,7 +1683,7 @@ function PreviewCanvas({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [sel, onRemove, onSel]);
+  }, [sel, editing, onRemove, onSel]);
   const boxRef = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(0);
   useEffect(() => {
@@ -1729,6 +1743,26 @@ function PreviewCanvas({
     <>
       <ShelfBar spec={spec} patch={patch} />
       <div className={styles.centerBar}>
+        <div className={styles.modeSwitch} role="radiogroup" aria-label={t('studio.mode.label')}>
+          {(
+            [
+              ['use', MousePointer2, t('studio.mode.use')],
+              ['edit', Move, t('studio.mode.edit')],
+            ] as const
+          ).map(([m, Icon, label]) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mode === m}
+              className={mode === m ? styles.modeOn : undefined}
+              onClick={() => changeMode(m)}
+            >
+              <Icon size={14} aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
         <span className={styles.spacer} />
         <span className={styles.sizeLabel}>{t('studio.layout.sizeIs', cur)}</span>
       </div>
@@ -1741,35 +1775,42 @@ function PreviewCanvas({
         }}
       >
         <section
-          className={`${styles.frame} ${sel === 'widget' ? styles.frameSel : ''}`}
+          className={`${styles.frame} ${editing && sel === 'widget' ? styles.frameSel : ''}`}
           style={{ width: w, height: h, transition: drag ? 'none' : undefined }}
           onPointerDown={(e) => {
-            if (e.target === e.currentTarget) onSel('widget');
+            if (editing && e.target === e.currentTarget) onSel('widget');
           }}
         >
           <div
             className={styles.frameBody}
             onPointerDown={(e) => {
-              if (e.target === e.currentTarget) onSel('widget');
+              if (editing && e.target === e.currentTarget) onSel('widget');
             }}
           >
-            <StudioWidget
-              spec={spec}
-              load={load}
-              selected={sel}
-              onSelect={onSel}
-              onLayout={(layout) => patch({ layout })}
-              onText={(id, v) =>
-                patch(id === 'title' ? { title: v } : { subtitle: v.trim() || undefined })
-              }
-              onData={onData}
-            />
+            {editing ? (
+              <StudioWidget
+                spec={spec}
+                load={load}
+                selected={sel}
+                onSelect={onSel}
+                onLayout={(layout) => patch({ layout })}
+                onText={(id, v) =>
+                  patch(id === 'title' ? { title: v } : { subtitle: v.trim() || undefined })
+                }
+                onData={onData}
+              />
+            ) : (
+              // 써 보기 — 대시보드에 올렸을 때처럼 버튼·필터가 그대로 눌린다
+              <StudioWidget spec={spec} load={load} onData={onData} />
+            )}
           </div>
-          <span
-            className={styles.frameResize}
-            title={t('studio.layout.dragSize')}
-            onPointerDown={startResize}
-          />
+          {editing && (
+            <span
+              className={styles.frameResize}
+              title={t('studio.layout.dragSize')}
+              onPointerDown={startResize}
+            />
+          )}
         </section>
       </div>
     </>

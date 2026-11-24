@@ -78,9 +78,9 @@ export function WidgetFrame({
         {(actions || dragHandleProps) && (
           <div className={styles.embedBar} {...dragHandleProps}>
             <span className={styles.title}>{itemTitle(item.title, def)}</span>
-            {actions}
           </div>
         )}
+        {actions && <div className={styles.floatActions}>{actions}</div>}
         <div className={styles.embedBody}>
           <Embed widget={def.key} />
         </div>
@@ -125,9 +125,8 @@ export function WidgetFrame({
           </span>
         )}
         {meta && <span className={styles.meta}>{meta}</span>}
-        <span className={styles.spacer} />
-        {actions}
       </div>
+      {actions && <div className={styles.floatActions}>{actions}</div>}
       <div className={styles.body}>
         {def.shape === 'text' ? (
           <VizBody viz="text" data={null} item={item} />
@@ -236,20 +235,23 @@ function CustomFrame({
   };
   const title = item.title || widget?.title || '';
   const link = drill && widget ? DATASET_LIST[widget.spec.dataset] : null;
-  // 편집 화면(옮기기 손잡이·메뉴)은 틀 머리에 제목, 보기 화면은 위젯 격자 안에 제목(배치대로)
+  // 제목은 위젯 격자 안(배치대로) — 편집 화면은 틀 전체가 옮기기 손잡이, 메뉴는 오른쪽 위에 떠 있다
   const editMode = !!(actions || dragHandleProps);
-  const headless = !editMode && !!widget && !error;
+  const headless = !!widget && !error;
   return (
-    <section className={`${styles.frame} ${selected ? styles.selected : ''}`} aria-label={title}>
+    <section
+      className={`${styles.frame} ${selected ? styles.selected : ''}`}
+      aria-label={title}
+      {...(editMode && headless ? dragHandleProps : {})}
+    >
       {!headless && (
         <div className={styles.head} {...dragHandleProps}>
           <span className={styles.title} title={widget?.subtitle ?? undefined}>
             {title}
           </span>
-          <span className={styles.spacer} />
-          {actions}
         </div>
       )}
+      {actions && <div className={styles.floatActions}>{actions}</div>}
       <div className={`${styles.body} ${headless ? styles.bodyHeadless : ''}`}>
         {error ? (
           <div className={styles.error}>
@@ -261,9 +263,9 @@ function CustomFrame({
           <StudioWidget
             spec={widget.spec}
             load={load}
-            title={editMode ? false : title}
+            title={title}
             titleHint={link ? t('dash.openList') : (widget.subtitle ?? undefined)}
-            onTitleClick={link ? () => navigate(link) : undefined}
+            onTitleClick={link && !editMode ? () => navigate(link) : undefined}
           />
         )}
       </div>

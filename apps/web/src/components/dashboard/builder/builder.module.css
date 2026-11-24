@@ -2,6 +2,7 @@
 
 /* ── 위젯 틀 ── */
 .frame {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -120,6 +121,7 @@
   text-align: center;
 }
 .embed {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -823,4 +825,27 @@
 }
 .headSlot:empty {
   display: none;
+}
+
+/* 편집 화면 위젯 메뉴(점 3개) — 내용을 밀지 않게 오른쪽 위에 떠 있다. 올리거나 고르면 보인다 */
+.floatActions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 4;
+  display: flex;
+  border-radius: 7px;
+  background: var(--ark-color-bg);
+  box-shadow:
+    0 0 0 1px var(--ark-color-border),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.frame:hover .floatActions,
+.embed:hover .floatActions,
+.selected .floatActions,
+.floatActions:focus-within,
+.floatActions:has(.iconBtnOn) {
+  opacity: 1;
 }
