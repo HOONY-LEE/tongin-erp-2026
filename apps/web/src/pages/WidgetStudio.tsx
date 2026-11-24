@@ -166,8 +166,11 @@ export function WidgetList({
   reloadKey = 0,
   view = 'list',
   viewSwitch,
+  lead,
 }: {
   reloadKey?: number;
+  /** 도구 줄 왼쪽(대시보드/위젯 탭) — 카드/목록·새 위젯과 한 줄에 */
+  lead?: React.ReactNode;
   /** 대시보드 탭과 같은 카드/목록 보기 */
   view?: 'card' | 'list';
   viewSwitch?: React.ReactNode;
@@ -225,20 +228,22 @@ export function WidgetList({
       {t('studio.newWidget')}
     </Button>
   ) : undefined;
+  const toolbar = <ListToolbar search={lead} viewSwitch={viewSwitch} actions={createButton} />;
   if (view === 'list' || rows === null)
     return (
-      <DataTable
-        columns={columns}
-        rows={tableRows as never}
-        loading={rows === null}
-        onRowClick={(r) => open(String(r.id))}
-        viewSwitch={viewSwitch}
-        toolbarActions={createButton}
-      />
+      <>
+        {toolbar}
+        <DataTable
+          columns={columns}
+          rows={tableRows as never}
+          loading={rows === null}
+          onRowClick={(r) => open(String(r.id))}
+        />
+      </>
     );
   return (
     <>
-      <ListToolbar viewSwitch={viewSwitch} actions={createButton} />
+      {toolbar}
       <div className={builder.cardGrid}>
         {tableRows.map((r) => (
           <article
