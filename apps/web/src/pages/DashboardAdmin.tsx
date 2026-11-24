@@ -224,6 +224,18 @@ export default function DashboardAdmin() {
     </Button>
   ) : undefined;
 
+  // 대시보드/위젯 탭 — 카드/목록·새 템플릿과 같은 줄 왼쪽
+  const tabSwitch = (
+    <SegmentedControl
+      value={tab}
+      onChange={setTab}
+      options={[
+        { value: 'dashboards', label: t('dash.tab.dashboards') },
+        { value: 'widgets', label: t('dash.tab.widgets') },
+      ]}
+    />
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <PageHeader
@@ -232,19 +244,11 @@ export default function DashboardAdmin() {
         onRefresh={tab === 'widgets' ? () => setWidgetReload((n) => n + 1) : load}
         updatedAt={tab === 'widgets' ? undefined : updatedAt}
       />
-      <div>
-        <SegmentedControl
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'dashboards', label: t('dash.tab.dashboards') },
-            { value: 'widgets', label: t('dash.tab.widgets') },
-          ]}
-        />
-      </div>
-
+      {tab !== 'widgets' && (
+        <ListToolbar search={tabSwitch} viewSwitch={viewSwitch} actions={createButton} />
+      )}
       {tab === 'widgets' ? (
-        <WidgetList reloadKey={widgetReload} view={view} viewSwitch={viewSwitch} />
+        <WidgetList reloadKey={widgetReload} view={view} viewSwitch={viewSwitch} lead={tabSwitch} />
       ) : rows === null ? (
         <TableSkeleton rows={4} cols={4} />
       ) : view === 'list' ? (
@@ -253,12 +257,9 @@ export default function DashboardAdmin() {
           columns={columns}
           rows={rows as unknown as Row[]}
           onRowClick={(r) => editLayout(String(r.id))}
-          viewSwitch={viewSwitch}
-          toolbarActions={createButton}
         />
       ) : (
         <>
-          <ListToolbar viewSwitch={viewSwitch} actions={createButton} />
           <div className={styles.cardGrid}>
             {rows.map((tpl) => (
               <article
