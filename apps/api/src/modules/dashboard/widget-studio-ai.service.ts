@@ -57,9 +57,19 @@ const SYSTEM = `당신은 통인익스프레스(이사·리빙·케어 회사) E
 - 첫 번째가 추천안입니다. 나머지는 모양이나 조작 방식이 분명히 다른 대안으로 냅니다.
 - why에는 이 안이 좋은 이유를 한두 문장으로.
 - 카탈로그에 없는 데이터를 원하면 summary에 솔직히 말하고 가장 가까운 안을 냅니다.
+- 요청이 너무 막연해 무엇을 볼지 정할 수 없으면 proposals를 비우고 summary에 짧게 되묻습니다(한 번에 한 가지만).
 - 꼭 필요한 것만 questions에 최대 2개(없으면 비움).
-- followups: 사용자가 다음에 누를 만한 짧은 다듬기 요청 3개(예: "지점별 비교도 볼래요", "주간·월간 탭 넣기",
-  "도넛으로 바꿔 줘"). 사용자의 말투로, 15자 안팎. 누르면 그 말이 그대로 다음 요청이 됩니다.
+- followups: 대화 흐름상 사용자가 다음에 할 만한 말 3개. 첫 번째가 가장 그럴듯한 것입니다.
+  사용자의 말투로, 20자 안팎. 위젯을 냈으면 다듬기 요청(예: "지점별 비교도 볼래요", "주간·월간 탭 넣기"),
+  되물었으면 그 물음에 대한 대답 예시. 누르면 그 말이 그대로 다음 요청이 됩니다.
+
+상담 모드(<mode>consult</mode>)
+- 사용자가 '위젯 제안해 주기'를 눌러 시작한 대화입니다. 무엇을 만들지 아직 모릅니다.
+- 먼저 어느 팀에서 어떤 일을 하는지, 무엇을 자주 확인·보고하는지를 알아냅니다. 모르는 게 있으면
+  proposals·ideas를 비우고 summary로 한 가지만 친근하게 묻습니다.
+- 팀·업무를 알면 그 일에 도움이 될 위젯 아이디어를 ideas에 3~5개 냅니다(카탈로그로 만들 수 있는 것만).
+  title은 위젯 이름(15자 안팎), why는 그 팀에 왜 쓸모 있는지 한 문장. summary에는 이해한 업무를 한 문장으로.
+- 사용자가 아이디어를 고르거나 원하는 것을 구체적으로 말하면 그때 proposals로 설계서를 냅니다.
 - <history>는 지금까지의 대화입니다. 앞에서 정한 것을 이어서 고칩니다.
 - 현재 설계서(current)가 주어지면 그것을 고쳐 달라는 뜻입니다 — 첫 안은 고친 설계서로.
 - 첨부 그림(차트 캡처·스케치 등)이 있으면 그 모양(차트 종류·축·묶는 기준·쌓기·탭 위치)을 참고해 가장 가까운
@@ -119,14 +129,13 @@ const SPEC_SCHEMA = {
 
 const TOOL = {
   name: 'propose_widgets',
-  description: '위젯 설계서 제안 2~4개(첫 번째가 추천)',
+  description: '위젯 설계서 제안 2~4개(첫 번째가 추천) — 되묻거나 아이디어만 낼 때는 비움',
   input_schema: {
     type: 'object' as const,
     properties: {
       summary: { type: 'string', description: '요청을 어떻게 이해했는지 한두 문장' },
       proposals: {
         type: 'array',
-        minItems: 1,
         maxItems: 4,
         items: {
           type: 'object',
@@ -138,10 +147,21 @@ const TOOL = {
           required: ['name', 'why', 'spec'],
         },
       },
+      ideas: {
+        type: 'array',
+        maxItems: 5,
+        description:
+          '상담 모드 — 업무에 맞는 위젯 아이디어(누르면 그 위젯을 만들어 달라는 요청이 됨)',
+        items: {
+          type: 'object',
+          properties: { title: { type: 'string' }, why: { type: 'string' } },
+          required: ['title', 'why'],
+        },
+      },
       questions: { type: 'array', items: { type: 'string' }, maxItems: 2 },
       followups: { type: 'array', items: { type: 'string' }, maxItems: 3 },
     },
-    required: ['summary', 'proposals'],
+    required: ['summary', 'proposals', 'followups'],
   },
 };
 
@@ -196,6 +216,7 @@ const CATALOG = JSON.stringify(
 export interface StudioProposeResult {
   summary: string;
   proposals: StudioProposal[];
+  ideas: { title: string; why: string }[];
   questions: string[];
   followups: string[];
 }
@@ -222,6 +243,7 @@ export class WidgetStudioAiService {
     current?: StudioSpec | null,
     history: { role: 'user' | 'ai'; text: string }[] = [],
     attachments: { name: string; mediaType: string; data: string }[] = [],
+    mode: 'consult' | null = null,
   ): Promise<StudioProposeResult> {
     const client = this.client;
     if (!client) throw new ServiceUnavailableException('AI가 설정되지 않았습니다(API 키 없음).');
@@ -237,6 +259,7 @@ export class WidgetStudioAiService {
             .join('\n')}\n</history>\n`
         : '') +
       (current ? `<current>\n${JSON.stringify(current)}\n</current>\n` : '') +
+      (mode ? `<mode>${mode}</mode>\n` : '') +
       `<request>\n${ask.slice(0, 2000)}\n</request>`;
     let res: Anthropic.Message;
     try {
@@ -278,6 +301,7 @@ export class WidgetStudioAiService {
     const out = block.input as {
       summary?: unknown;
       proposals?: { name?: unknown; why?: unknown; spec?: unknown }[];
+      ideas?: { title?: unknown; why?: unknown }[];
       questions?: unknown[];
       followups?: unknown[];
     };
@@ -286,11 +310,21 @@ export class WidgetStudioAiService {
       why: String(p?.why ?? '').slice(0, 400),
       spec: normalizeStudioSpec(p?.spec).spec,
     }));
-    if (!proposals.length)
+    const ideas = (Array.isArray(out.ideas) ? out.ideas : [])
+      .map((i) => ({
+        title: String(i?.title ?? '').slice(0, 40),
+        why: String(i?.why ?? '').slice(0, 200),
+      }))
+      .filter((i) => i.title)
+      .slice(0, 5);
+    const summary = String(out.summary ?? '').slice(0, 600);
+    // 되묻기(설계서 없이 말만)도 답이다 — 아무것도 없을 때만 실패
+    if (!proposals.length && !ideas.length && !summary.trim())
       throw new ServiceUnavailableException('AI가 제안을 만들지 못했습니다. 다시 시도해 주세요.');
     return {
-      summary: String(out.summary ?? '').slice(0, 600),
+      summary,
       proposals,
+      ideas,
       questions: (Array.isArray(out.questions) ? out.questions : []).map(String).slice(0, 2),
       followups: (Array.isArray(out.followups) ? out.followups : [])
         .map((x) => String(x).slice(0, 40))

@@ -121,6 +121,11 @@ class ProposeDto {
   @ValidateNested({ each: true })
   @Type(() => AttachmentDto)
   attachments?: AttachmentDto[];
+
+  /** 'consult' — 위젯 제안해 주기(팀·업무를 묻고 아이디어부터) */
+  @IsOptional()
+  @IsIn(['consult'])
+  mode?: 'consult';
 }
 
 /** 조작 값 — 아는 칸만(값 검사는 실행기가 카탈로그로) */
@@ -272,6 +277,7 @@ export class CustomWidgetController {
         .filter((h) => h && (h.role === 'user' || h.role === 'ai') && typeof h.text === 'string')
         .map((h) => ({ role: h.role, text: h.text })),
       dto.attachments ?? [],
+      dto.mode ?? null,
     );
   }
 
