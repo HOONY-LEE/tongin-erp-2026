@@ -703,6 +703,8 @@
 }
 /* 건마다의 값(분포용) — 측정값과 같이 두되 기울여 구분 */
 .rawField span {
+  /* 기울인 글씨 끝이 잘리지 않게 */
+  padding-right: 3px;
   font-style: italic;
 }
 .catField {
@@ -1054,6 +1056,25 @@
   font-size: 10px;
   font-weight: 700;
 }
+.swatchCustom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(
+    #ff3b30,
+    #ff9500,
+    #ffcc00,
+    #34c759,
+    #32ade6,
+    #5856d6,
+    #af52de,
+    #ff3b30
+  );
+  color: #fff;
+}
+.swatchCustom svg {
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.6));
+}
 .swatchOn {
   box-shadow: 0 0 0 2px #0d99ff;
 }
@@ -1075,14 +1096,9 @@
   flex: none;
   width: 18px;
   height: 18px;
-  cursor: pointer;
-}
-.colorPick input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: pointer;
 }
 .colorPick span {

@@ -1074,7 +1074,7 @@ function normalizeLook(raw: unknown): StudioLook | undefined {
     ...(titleSize ? { titleSize } : {}),
     ...(subtitleSize ? { subtitleSize } : {}),
     ...(typeof r.titleBold === 'boolean' ? { titleBold: r.titleBold } : {}),
-    ...(typeof r.palette === 'string' && /^[a-z]{2,12}$/.test(r.palette)
+    ...(typeof r.palette === 'string' && /^([a-z]{2,12}|#[0-9a-fA-F]{6})$/.test(r.palette)
       ? { palette: r.palette }
       : {}),
   };
