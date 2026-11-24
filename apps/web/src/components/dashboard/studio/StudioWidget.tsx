@@ -173,6 +173,14 @@ export function StudioWidget({
           <VizBody viz={viz} data={res.data} item={fakeItem} />
         </SeriesColorCtx.Provider>
       )}
+      {/* 스튜디오에서만 — 왜 비었는지·못 찾은 필터 값 */}
+      {!!onSelect && !!res?.notes?.length && (
+        <div className={styles.notes}>
+          {res.notes.map((n) => (
+            <p key={n}>{n}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
   const editing = !!onSelect;

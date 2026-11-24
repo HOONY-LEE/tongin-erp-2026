@@ -24,6 +24,7 @@
   min-width: 110px;
 }
 .chart {
+  position: relative;
   flex: 1;
   min-height: 0;
   transition: opacity 0.15s;
@@ -171,4 +172,22 @@
     left 0.08s,
     top 0.08s,
     width 0.08s;
+}
+
+/* 스튜디오 미리보기 안내 — 왜 비었는지 */
+.notes {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, #ff9500 12%, var(--ark-color-bg));
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  line-height: 1.5;
+  pointer-events: none;
+}
+.notes p {
+  margin: 0;
 }
