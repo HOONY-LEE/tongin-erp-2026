@@ -608,15 +608,6 @@ export function DashboardEditor({
                               >
                                 <MoreHorizontal size={15} />
                               </button>
-                              <button
-                                type="button"
-                                className={styles.iconBtn}
-                                aria-label={t('dash.remove')}
-                                title={t('dash.remove')}
-                                onClick={() => remove(it.id)}
-                              >
-                                <X size={14} />
-                              </button>
                             </>
                           }
                         />

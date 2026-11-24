@@ -130,6 +130,7 @@ export default defineNs({
       white: '흰색',
       black: '검은색',
     },
+    mode: { label: '마우스 모드', use: '써 보기', edit: '편집' },
     layout: {
       title: '배치',
       cols: '칸 수(12칸 중)',
@@ -363,6 +364,7 @@ export default defineNs({
       white: 'White',
       black: 'Black',
     },
+    mode: { label: 'Mouse mode', use: 'Try', edit: 'Edit' },
     layout: {
       title: 'Layout',
       cols: 'Width (of 12)',
@@ -595,6 +597,7 @@ export default defineNs({
       white: '白色',
       black: '黑色',
     },
+    mode: { label: '鼠标模式', use: '试用', edit: '编辑' },
     layout: {
       title: '布局',
       cols: '列数(共12)',

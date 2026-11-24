@@ -1183,3 +1183,35 @@
   background: #e5e5ea;
   color: #1c1c1e;
 }
+
+/* 마우스 모드 — 써 보기 / 편집 */
+.modeSwitch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--ark-color-bg-subtle);
+}
+.modeSwitch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  font: inherit;
+  font-size: calc(12.5px * var(--font-scale, 1));
+  cursor: pointer;
+}
+.modeSwitch button:hover {
+  color: var(--ark-color-text);
+}
+.modeSwitch .modeOn {
+  background: var(--ark-color-bg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  color: var(--ark-color-text);
+  font-weight: 600;
+}
