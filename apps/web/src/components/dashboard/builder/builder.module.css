@@ -105,6 +105,10 @@
   min-height: 0;
   padding: 6px 14px 12px;
 }
+/* 만든 위젯 보기 — 제목도 위젯 격자 안에 있어 위 여백을 머리 높이만큼 */
+.bodyHeadless {
+  padding-top: 12px;
+}
 .error {
   display: flex;
   align-items: center;

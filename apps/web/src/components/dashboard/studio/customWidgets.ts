@@ -3,6 +3,7 @@ import {
   CUSTOM_WIDGET_PREFIX,
   DASH_WIDGET_MAP,
   isCustomWidgetKey,
+  studioDefaultSize,
   type CustomWidgetRow,
   type DashWidgetDef,
 } from '@tongin/shared';
@@ -24,7 +25,7 @@ export function customDef(key: string, row?: CustomWidgetRow): DashWidgetDef {
     shape: 'embed',
     viz: [row?.spec.viz ?? 'bar'],
     perms: [],
-    size: { w: 6, h: 4 },
+    size: row ? studioDefaultSize(row.spec) : { w: 6, h: 4 },
   };
 }
 

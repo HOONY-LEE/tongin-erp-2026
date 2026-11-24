@@ -236,31 +236,21 @@ function CustomFrame({
   };
   const title = item.title || widget?.title || '';
   const link = drill && widget ? DATASET_LIST[widget.spec.dataset] : null;
-  /** 제목 줄 오른쪽 칸 — '제목 줄'에 놓은 조작 요소(탭·드롭다운)가 들어온다 */
-  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  // 편집 화면(옮기기 손잡이·메뉴)은 틀 머리에 제목, 보기 화면은 위젯 격자 안에 제목(배치대로)
+  const editMode = !!(actions || dragHandleProps);
+  const headless = !editMode && !!widget && !error;
   return (
     <section className={`${styles.frame} ${selected ? styles.selected : ''}`} aria-label={title}>
-      <div className={styles.head} {...dragHandleProps}>
-        {link ? (
-          <button
-            type="button"
-            className={`${styles.title} ${styles.titleLink}`}
-            title={t('dash.openList')}
-            onClick={() => navigate(link)}
-          >
-            {title}
-            <ChevronRight size={14} aria-hidden />
-          </button>
-        ) : (
+      {!headless && (
+        <div className={styles.head} {...dragHandleProps}>
           <span className={styles.title} title={widget?.subtitle ?? undefined}>
             {title}
           </span>
-        )}
-        <span className={styles.spacer} />
-        <span ref={setSlot} className={styles.headSlot} onMouseDown={(e) => e.stopPropagation()} />
-        {actions}
-      </div>
-      <div className={styles.body}>
+          <span className={styles.spacer} />
+          {actions}
+        </div>
+      )}
+      <div className={`${styles.body} ${headless ? styles.bodyHeadless : ''}`}>
         {error ? (
           <div className={styles.error}>
             <Lock size={14} aria-hidden /> {error}
@@ -268,7 +258,13 @@ function CustomFrame({
         ) : !widget ? (
           <Skeleton height="100%" radius={8} />
         ) : (
-          <StudioWidget spec={widget.spec} load={load} headerSlot={slot} />
+          <StudioWidget
+            spec={widget.spec}
+            load={load}
+            title={editMode ? false : title}
+            titleHint={link ? t('dash.openList') : (widget.subtitle ?? undefined)}
+            onTitleClick={link ? () => navigate(link) : undefined}
+          />
         )}
       </div>
     </section>

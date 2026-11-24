@@ -232,14 +232,6 @@
   background: color-mix(in srgb, var(--ark-color-primary-500) 12%, transparent);
   color: var(--ark-color-primary-600, var(--ark-color-primary-500));
 }
-.placeRow {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  font-size: calc(12px * var(--font-scale, 1));
-  color: var(--ark-color-text-secondary);
-}
 .iconBtn {
   display: inline-flex;
   margin-left: auto;
@@ -306,33 +298,16 @@
   border: 1px solid var(--ark-color-border);
   border-radius: 12px;
   background: var(--ark-color-bg);
+  position: relative;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
-  transition: width 0.2s;
-}
-.frameHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 14px 2px;
-  font-size: calc(14px * var(--font-scale, 1));
-  font-weight: 600;
-}
-.frameTitle {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.frameSlot {
-  display: inline-flex;
-  margin-left: auto;
-  font-weight: 400;
+  transition:
+    width 0.2s,
+    height 0.2s;
 }
 .frameBody {
   flex: 1;
   min-height: 0;
-  padding: 6px 14px 12px;
+  padding: 12px 14px 12px;
 }
 .note {
   max-width: 520px;
@@ -838,19 +813,6 @@
   outline: 2px solid var(--ark-color-primary-500);
   outline-offset: 3px;
 }
-.pickTitle {
-  border-radius: 4px;
-  outline: 1px dashed transparent;
-  outline-offset: 2px;
-  cursor: pointer;
-}
-.pickTitle:hover {
-  outline-color: var(--ark-color-border-strong, #c7c7cc);
-}
-.pickTitleOn,
-.pickTitleOn:hover {
-  outline: 2px solid var(--ark-color-primary-500);
-}
 
 /* 미리보기 머리글 — 열·행 칸(왼쪽) · 시간 단위·기간(오른쪽) */
 .shelfBar {
@@ -975,4 +937,50 @@
   gap: 4px;
   font-size: calc(12px * var(--font-scale, 1));
   opacity: 0.85;
+}
+
+/* 배치 — 칸 수·정렬·글자 크기·위젯 크기 */
+.layoutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+.layoutRow > span:first-child {
+  flex: none;
+  color: var(--ark-color-text-secondary);
+  white-space: nowrap;
+}
+.layoutRow > div:last-child {
+  min-width: 96px;
+}
+.sizePick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ark-color-text-tertiary);
+}
+.sizePick > div {
+  width: 72px;
+}
+.sizeLabel {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+/* 미리보기 위젯 오른쪽 아래 — 끌어 크기 바꾸기 */
+.frameResize {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 16px;
+  height: 16px;
+  border-right: 2px solid var(--ark-color-border-strong, #c7c7cc);
+  border-bottom: 2px solid var(--ark-color-border-strong, #c7c7cc);
+  border-radius: 0 0 12px 0;
+  cursor: nwse-resize;
+}
+.frameResize:hover {
+  border-color: var(--ark-color-primary-500);
 }
