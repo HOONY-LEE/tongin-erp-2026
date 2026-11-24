@@ -81,6 +81,7 @@ import {
 import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../i18n/codes';
 import { useTheme } from '../theme/ThemeProvider';
 import { colorLabel } from '../i18n/dashWidgets';
+import { ColorPicker, isHex } from '../components/ui/ColorPicker';
 import { tDyn } from '../i18n';
 import styles from './WidgetStudio.module.css';
 import builder from '../components/dashboard/builder/builder.module.css';
@@ -1198,6 +1199,16 @@ function ColorSection({
     setLook({ colors: Object.keys(next).length ? next : undefined });
   };
   const dark = resolved === 'dark';
+  const neutrals = [
+    { hex: '#8e8e93', label: t('studio.color.gray') },
+    { hex: '#ffffff', label: t('studio.color.white') },
+    { hex: '#1c1c1e', label: t('studio.color.black') },
+  ];
+  const presets = [
+    ...DASH_COLORS.map((c) => ({ hex: dark ? c.dark : c.light, label: colorLabel(c) })),
+    ...neutrals,
+  ];
+  const customOn = isHex(look.palette) && !neutrals.some((c) => c.hex === look.palette);
   return (
     <section className={styles.section}>
       <h3>{t('studio.color.title')}</h3>
@@ -1225,23 +1236,48 @@ function ColorSection({
             onClick={() => setLook({ palette: c.key })}
           />
         ))}
+        {neutrals.map((c) => (
+          <button
+            key={c.hex}
+            type="button"
+            role="radio"
+            aria-checked={look.palette === c.hex}
+            className={`${styles.swatch} ${look.palette === c.hex ? styles.swatchOn : ''}`}
+            style={{ background: c.hex }}
+            title={c.label}
+            aria-label={c.label}
+            onClick={() => setLook({ palette: c.hex })}
+          />
+        ))}
+        <ColorPicker
+          value={customOn ? look.palette : null}
+          onChange={(hex) => setLook({ palette: hex })}
+          presets={presets}
+          className={`${styles.swatch} ${customOn ? styles.swatchOn : styles.swatchCustom}`}
+          style={customOn ? { background: look.palette } : undefined}
+          title={t('studio.color.custom')}
+          aria-label={t('studio.color.custom')}
+        >
+          {!customOn && <Plus size={12} />}
+        </ColorPicker>
       </div>
       {items.length > 0 && (
         <div className={styles.colorList}>
           {items.map((it) => (
             <div key={it.key} className={styles.colorRow}>
-              <label className={styles.colorPick} title={t('studio.color.pick')}>
-                <input
-                  type="color"
-                  value={colors[it.key] ?? '#999999'}
-                  onChange={(e) => setColor(it.key, e.target.value)}
-                  aria-label={`${it.label} ${t('studio.color.pick')}`}
-                />
+              <ColorPicker
+                value={colors[it.key]}
+                onChange={(hex) => setColor(it.key, hex)}
+                presets={presets}
+                className={styles.colorPick}
+                title={t('studio.color.pick')}
+                aria-label={`${it.label} ${t('studio.color.pick')}`}
+              >
                 <span
                   className={colors[it.key] ? undefined : styles.colorAuto}
                   style={colors[it.key] ? { background: colors[it.key] } : undefined}
                 />
-              </label>
+              </ColorPicker>
               <span className={styles.colorLabel}>{it.label}</span>
               {colors[it.key] ? (
                 <button

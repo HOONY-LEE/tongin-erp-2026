@@ -1298,10 +1298,16 @@ export function dashColorVars(
     const c = DASH_COLORS.find((x) => x.key === k) ?? DASH_COLORS[0];
     return dark ? c.dark : c.light;
   };
+  // '#rrggbb' — 직접 고른 색(회색·흰색·검은색 포함)을 첫 색으로, 나머지는 기본 순서
+  const hex = typeof key === 'string' && /^#[0-9a-fA-F]{6}$/.test(key) ? key.toLowerCase() : null;
   const main = (
-    DASH_COLOR_KEYS.includes(key as DashColorKey) ? key : DASH_DEFAULT_COLOR
+    hex
+      ? DASH_DEFAULT_COLOR
+      : DASH_COLOR_KEYS.includes(key as DashColorKey)
+        ? key
+        : DASH_DEFAULT_COLOR
   ) as DashColorKey;
-  const skip = new Set<DashColorKey>([main, ...(NEAR[main] ?? [])]);
+  const skip = new Set<DashColorKey>(hex ? [] : [main, ...(NEAR[main] ?? [])]);
   // 순서대로 고르되 바로 앞 색과 헷갈리는 짝(색약 기준)은 한 칸 미룬다
   const keys: DashColorKey[] = [main];
   const rest = SERIES_ORDER.filter((k) => !skip.has(k));
@@ -1310,8 +1316,8 @@ export function dashColorVars(
     const i = rest.findIndex((k) => !CONFUSED.has(`${prev}:${k}`));
     keys.push(rest.splice(i < 0 ? 0 : i, 1)[0]);
   }
-  const series = keys.map(pick);
-  const accent = pick(main);
+  const series = hex ? [hex, ...SERIES_ORDER.slice(0, 7).map(pick)] : keys.map(pick);
+  const accent = hex ?? pick(main);
   const base = dark ? '#1c1c1e' : '#ffffff';
   const steps = [14, 28, 44, 60, 76, 100];
   const vars: Record<string, string> = {};

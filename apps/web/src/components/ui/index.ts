@@ -9,6 +9,7 @@ export { ListToolbar } from './ListToolbar';
 export { PopoutButton } from './PopoutButton';
 export { PhoneInput } from './PhoneInput';
 export { DatePicker } from './DatePicker';
+export { ColorPicker } from './ColorPicker';
 export { TimePicker } from './TimePicker';
 export { Skeleton, SkeletonText, TableSkeleton, PageSkeleton } from './Skeleton';
 export { FormModal } from './FormModal';

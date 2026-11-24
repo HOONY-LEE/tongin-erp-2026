@@ -119,6 +119,10 @@ export default defineNs({
       pick: '색 고르기',
       reset: '자동 색으로',
       auto: '자동',
+      custom: '직접 고르기',
+      gray: '회색',
+      white: '흰색',
+      black: '검은색',
     },
     layout: {
       title: '배치',
@@ -342,6 +346,10 @@ export default defineNs({
       pick: 'Pick color',
       reset: 'Back to auto',
       auto: 'Auto',
+      custom: 'Custom color',
+      gray: 'Gray',
+      white: 'White',
+      black: 'Black',
     },
     layout: {
       title: 'Layout',
@@ -565,6 +573,10 @@ export default defineNs({
       pick: '选择颜色',
       reset: '恢复自动',
       auto: '自动',
+      custom: '自定义颜色',
+      gray: '灰色',
+      white: '白色',
+      black: '黑色',
     },
     layout: {
       title: '布局',
