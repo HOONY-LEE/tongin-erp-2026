@@ -678,10 +678,32 @@
   gap: 2px;
 }
 .catMeasure {
+  margin-top: 8px;
   color: #2f8f4e;
 }
 .catDim {
   color: #2f6fd6;
+}
+/* 종류 표시 — 차원은 파랑, 측정값은 초록(태블로처럼) */
+.typeIcon {
+  flex: none;
+  width: 22px;
+  text-align: center;
+}
+.dimension .typeIcon {
+  color: #2f6fd6;
+}
+.measure .typeIcon {
+  color: #2f8f4e;
+}
+.abc {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+/* 건마다의 값(분포용) — 측정값과 같이 두되 기울여 구분 */
+.rawField span {
+  font-style: italic;
 }
 .catField {
   color: #8a4fd0;

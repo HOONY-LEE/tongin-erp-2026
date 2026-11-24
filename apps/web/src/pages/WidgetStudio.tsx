@@ -14,13 +14,10 @@ import {
   ArrowUp,
   FileText,
   Paperclip,
-  Calendar,
+  CalendarDays,
+  Globe,
   Hash,
-  MapPin,
   Plus,
-  Ruler,
-  Store,
-  Tag,
   Trash2,
   X,
 } from 'lucide-react';
@@ -92,12 +89,17 @@ import builder from '../components/dashboard/builder/builder.module.css';
 const LIST_TAB = '/dashboard-admin?tab=widgets';
 const LIST = '/dashboard-admin/widgets';
 
-const DIM_ICON: Record<StudioDimKind, typeof Tag> = {
-  cat: Tag,
-  time: Calendar,
-  geo: MapPin,
-  org: Store,
-};
+/** 항목 종류 표시(태블로처럼) — 글자 Abc · 날짜 달력 · 위치 지구본 · 숫자 # */
+function TypeIcon({ kind }: { kind: StudioDimKind | 'number' }) {
+  if (kind === 'time') return <CalendarDays size={13} aria-hidden className={styles.typeIcon} />;
+  if (kind === 'geo') return <Globe size={13} aria-hidden className={styles.typeIcon} />;
+  if (kind === 'number') return <Hash size={13} aria-hidden className={styles.typeIcon} />;
+  return (
+    <span className={`${styles.typeIcon} ${styles.abc}`} aria-hidden>
+      Abc
+    </span>
+  );
+}
 
 /** 처음 만들 때 — 접수 건수 월간 추이 */
 const STARTER: StudioSpec = {
@@ -687,7 +689,6 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
     </span>
   );
   const dim = ds.dimensions.find((d) => d.key === spec.dimension);
-  const DimI = dim ? DIM_ICON[dim.kind] : Tag;
   return (
     <div className={styles.shelfBar}>
       {/* 열·행 칸 */}
@@ -701,7 +702,7 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
             {spec.dimension ? (
               chip(
                 styles.dimension,
-                <DimI size={12} aria-hidden />,
+                <TypeIcon kind={dim?.kind ?? 'cat'} />,
                 dimLabel(ds.key, spec.dimension),
                 () => setDim(null),
               )
@@ -712,7 +713,9 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
               (spec.split ? (
                 chip(
                   styles.dimension,
-                  <Tag size={12} aria-hidden />,
+                  <TypeIcon
+                    kind={ds.dimensions.find((d) => d.key === spec.split)?.kind ?? 'cat'}
+                  />,
                   dimLabel(ds.key, spec.split),
                   () => patch({ split: null }),
                 )
@@ -735,20 +738,20 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
             {distViz && spec.field
               ? chip(
                   styles.fieldPill,
-                  <Ruler size={12} aria-hidden />,
+                  <TypeIcon kind="number" />,
                   fieldLabel(ds.key, spec.field),
                   () => setField(undefined),
                 )
               : chip(
                   styles.measure,
-                  <Hash size={12} aria-hidden />,
+                  <TypeIcon kind="number" />,
                   measureLabel(ds.key, spec.measure),
                 )}
             {!distViz &&
               (spec.viz === 'scatter' && spec.measure2 ? (
                 chip(
                   styles.measure,
-                  <Hash size={12} aria-hidden />,
+                  <TypeIcon kind="number" />,
                   measureLabel(ds.key, spec.measure2),
                   () =>
                     patch({
@@ -843,6 +846,25 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
 
       {/* 항목 목록 — 세로로(태블로 데이터 판) */}
       <section className={`${styles.section} ${styles.fieldList}`}>
+        <span className={`${styles.catHead} ${styles.catDim}`}>
+          {t('studio.catalog.dimensions')}
+        </span>
+        {ds.dimensions.map((d) => {
+          const on = spec.dimension === d.key || spec.split === d.key;
+          return (
+            <button
+              key={d.key}
+              type="button"
+              className={`${styles.fieldRow} ${styles.dimension} ${on ? styles.fieldOn : ''}`}
+              onClick={() => assign({ kind: 'dimension', key: d.key })}
+              {...dragProps({ kind: 'dimension', key: d.key })}
+            >
+              <GripVertical size={12} className={styles.grip} aria-hidden />
+              <TypeIcon kind={d.kind} />
+              <span>{dimLabel(ds.key, d.key)}</span>
+            </button>
+          );
+        })}
         <span className={`${styles.catHead} ${styles.catMeasure}`}>
           {t('studio.catalog.measures')}
         </span>
@@ -858,54 +880,28 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
               {...dragProps({ kind: 'measure', key: m.key })}
             >
               <GripVertical size={12} className={styles.grip} aria-hidden />
-              <Hash size={12} aria-hidden />
+              <TypeIcon kind="number" />
               <span>{measureLabel(ds.key, m.key)}</span>
             </button>
           );
         })}
-        <span className={`${styles.catHead} ${styles.catDim}`}>
-          {t('studio.catalog.dimensions')}
-        </span>
-        {ds.dimensions.map((d) => {
-          const I = DIM_ICON[d.kind];
-          const on = spec.dimension === d.key || spec.split === d.key;
+        {ds.fields.map((f) => {
+          const on = distViz && spec.field === f.key;
           return (
             <button
-              key={d.key}
+              key={f.key}
               type="button"
-              className={`${styles.fieldRow} ${styles.dimension} ${on ? styles.fieldOn : ''}`}
-              onClick={() => assign({ kind: 'dimension', key: d.key })}
-              {...dragProps({ kind: 'dimension', key: d.key })}
+              className={`${styles.fieldRow} ${styles.measure} ${styles.rawField} ${on ? styles.fieldOn : ''}`}
+              title={t('studio.catalog.rawHint')}
+              onClick={() => assign({ kind: 'field', key: f.key })}
+              {...dragProps({ kind: 'field', key: f.key })}
             >
               <GripVertical size={12} className={styles.grip} aria-hidden />
-              <I size={12} aria-hidden />
-              <span>{dimLabel(ds.key, d.key)}</span>
+              <TypeIcon kind="number" />
+              <span>{fieldLabel(ds.key, f.key)}</span>
             </button>
           );
         })}
-        {ds.fields.length > 0 && (
-          <>
-            <span className={`${styles.catHead} ${styles.catField}`}>
-              {t('studio.catalog.fields')}
-            </span>
-            {ds.fields.map((f) => {
-              const on = distViz && spec.field === f.key;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={`${styles.fieldRow} ${styles.fieldPill} ${on ? styles.fieldOn : ''}`}
-                  onClick={() => assign({ kind: 'field', key: f.key })}
-                  {...dragProps({ kind: 'field', key: f.key })}
-                >
-                  <GripVertical size={12} className={styles.grip} aria-hidden />
-                  <Ruler size={12} aria-hidden />
-                  <span>{fieldLabel(ds.key, f.key)}</span>
-                </button>
-              );
-            })}
-          </>
-        )}
       </section>
     </>
   );

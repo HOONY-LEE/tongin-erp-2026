@@ -106,9 +106,10 @@ export default defineNs({
     },
     catalog: {
       title: '쓸 수 있는 데이터',
-      measures: '숫자(측정값)',
-      dimensions: '기준(차원)',
+      measures: '측정값',
+      dimensions: '차원',
       fields: '건별 숫자(분포)',
+      rawHint: '건마다의 값 — 히스토그램·박스플롯에 씁니다',
       hint: '누르면 위젯에 바로 씁니다',
     },
     color: {
@@ -331,6 +332,7 @@ export default defineNs({
       measures: 'Measures',
       dimensions: 'Dimensions',
       fields: 'Per-record values (distribution)',
+      rawHint: 'Value of each record — used for histogram and box plot',
       hint: 'Click to use in the widget',
     },
     color: {
@@ -550,9 +552,10 @@ export default defineNs({
     },
     catalog: {
       title: '可用数据',
-      measures: '数值(度量)',
+      measures: '度量',
       dimensions: '维度',
       fields: '每件数值(分布)',
+      rawHint: '每条记录的值 — 用于直方图和箱线图',
       hint: '点击即可用于组件',
     },
     color: {
