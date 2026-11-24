@@ -809,7 +809,22 @@ export class StudioQueryService {
     return !!SQL[spec.dataset] && studioCanSee(STUDIO_DATASET_MAP.get(spec.dataset), p.permissions);
   }
 
+  /**
+   * 데이터 그리기 + 안내(notes) — 왜 비었는지(필터 값 못 찾음·기간에 없음)를 함께 돌려줘
+   * 미리보기와 AI가 원인을 알 수 있게 한다
+   */
   async run(rawSpec: unknown, params: StudioParams, p: AuthPrincipal): Promise<StudioResult> {
+    const notes: string[] = [];
+    const r = await this.runInner(rawSpec, params, p, notes);
+    return notes.length ? { ...r, notes: [...new Set(notes)].slice(0, 6) } : r;
+  }
+
+  private async runInner(
+    rawSpec: unknown,
+    params: StudioParams,
+    p: AuthPrincipal,
+    notes: string[],
+  ): Promise<StudioResult> {
     const { spec } = normalizeStudioSpec(rawSpec);
     if (!this.canSee(spec, p)) throw new ForbiddenException('이 데이터를 볼 권한이 없습니다.');
     const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
@@ -840,6 +855,44 @@ export class StudioQueryService {
     for (const f of spec.filters ?? []) if (has(f.dim)) filters.set(f.dim, f.values);
     for (const [k, v] of Object.entries(params.filters ?? {}))
       if (has(k) && Array.isArray(v) && v.length) filters.set(k, v.map(String).slice(0, 50));
+    // 필터 값은 코드(PHONE)든 이름(전화상담)이든 받는다 — 이름·비슷한 이름을 코드로 바꾸고, 못 찾으면 알린다
+    const dimLabel = (k: string) => ds.dimensions.find((d) => d.key === k)?.label ?? k;
+    for (const [k, vals] of [...filters]) {
+      if (q.dims[k].time) continue;
+      const known = await this.dimValues(q, k, ids, p);
+      if (!known.length) continue;
+      const byKey = new Set(known.map((x) => x.value));
+      const norm = (s: string) => s.toLowerCase().replace(/[\s·_\-()]/g, '');
+      const out: string[] = [];
+      const miss: string[] = [];
+      for (const v of vals) {
+        if (byKey.has(v)) {
+          out.push(v);
+          continue;
+        }
+        const nv = norm(v);
+        if (!nv) continue;
+        let hit = known.filter((x) => norm(x.label) === nv || norm(x.value) === nv);
+        if (!hit.length)
+          hit = known.filter((x) => {
+            const nl = norm(x.label);
+            return nl.length > 1 && (nl.includes(nv) || nv.includes(nl));
+          });
+        if (hit.length) out.push(...hit.map((x) => x.value));
+        else miss.push(v);
+      }
+      const names = known
+        .slice(0, 25)
+        .map((x) => x.label)
+        .join(', ');
+      if (miss.length)
+        notes.push(
+          `'${dimLabel(k)}' 필터에 없는 값: ${miss.join(', ')} — 있는 값: ${names}` +
+            (out.length ? '' : ' (맞는 값이 없어 이 필터는 빼고 셌습니다)'),
+        );
+      if (out.length) filters.set(k, [...new Set(out)]);
+      else filters.delete(k);
+    }
 
     const values: unknown[] = [];
     const bind = (v: unknown) => {
@@ -1089,6 +1142,12 @@ export class StudioQueryService {
     );
     const label = await this.labeler(q, [dimension, ...(split ? [split] : [])], rows);
     const isTime = !!q.dims[dimension].time;
+    if (!rows.length)
+      notes.push(
+        `조건에 맞는 데이터가 없습니다 — 기간 ${period}` +
+          (filters.size ? `, 필터 ${[...filters.keys()].map(dimLabel).join('·')}` : '') +
+          (q.base ? ', 기본 조건(예: 취소 제외·완료만)' : ''),
+      );
     const name = (dim: string, k: string) =>
       q.dims[dim].time ? bucketLabel(k, grain) : k ? (label(dim, k) ?? k) : '미지정';
 
@@ -1132,7 +1191,10 @@ export class StudioQueryService {
     // 두 기준 — 행(나눔) × 열(1차 기준)
     const t2 = new Map<string, number>();
     for (const r of rows) t2.set(r.k2, (t2.get(r.k2) ?? 0) + Number(r.v));
-    const keys2 = [...t2.keys()].sort((a, b) => (t2.get(b) ?? 0) - (t2.get(a) ?? 0)).slice(0, 12);
+    // 날짜 × 나눔이면 '상위 N개'는 나눔(경로·상품 등)에 건다 — 날짜 칸을 자르면 기간이 잘린다
+    const keys2 = [...t2.keys()]
+      .sort((a, b) => (t2.get(b) ?? 0) - (t2.get(a) ?? 0))
+      .slice(0, isTime && spec.limit ? Math.min(12, spec.limit) : 12);
     const cell = new Map(rows.map((r) => [`${r.k2}\u0000${r.k1}`, Number(r.v)]));
     return {
       data: {
@@ -1191,6 +1253,32 @@ export class StudioQueryService {
   }
 
   /** 필터 조작 요소가 고를 값 — 내 범위 안에서 실제로 있는 값 */
+  /** 차원의 실제 값(코드·이름) — 필터 이름 맞추기·안내용 */
+  private async dimValues(q: DatasetSql, dim: string, ids: string[] | null, p: AuthPrincipal) {
+    const d = q.dims[dim];
+    if (!d || d.time) return [];
+    const args: unknown[] = [];
+    const conds = scopeConds(q, {
+      bind: (v) => {
+        args.push(v);
+        return `$${args.length}`;
+      },
+      p,
+      ids,
+    });
+    const w = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+    const rows = await this.prisma.$queryRawUnsafe<{ k: string | null }[]>(
+      `SELECT DISTINCT (${d.expr})::text AS k FROM ${q.from} ${w} LIMIT 200`,
+      ...args,
+    );
+    const keys = rows.map((r) => r.k).filter((k): k is string => !!k);
+    const lab =
+      typeof d.labels === 'object' ? d.labels : d.labels ? await this.lookup(d.labels, keys) : {};
+    return keys
+      .map((k) => ({ value: k, label: lab[k] ?? k }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'ko'));
+  }
+
   private async filterOptions(
     spec: StudioSpec,
     q: DatasetSql,

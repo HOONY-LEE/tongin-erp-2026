@@ -1255,4 +1255,6 @@ export interface StudioResult {
   multiOrg: boolean;
   /** 실제로 쓴 값(조작 반영 후) */
   applied: { measure: string; dimension: string | null; grain: StudioGrain; period: DashPeriod };
+  /** 안내 — 왜 비었는지·못 찾은 필터 값 등(미리보기·AI가 본다) */
+  notes?: string[];
 }

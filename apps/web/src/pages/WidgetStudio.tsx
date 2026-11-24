@@ -1221,7 +1221,17 @@ function dataDigest(r: StudioResult): string {
       .map((i) => `${i.label} ${i.start}~${i.end}`)
       .join(', ')}`;
   else body = `모양 ${d.shape}`;
-  return `${head}\n${body}`.slice(0, 4000);
+  const opts = Object.entries(r.options)
+    .map(
+      ([k, list]) =>
+        `필터 ${k} 값: ${list
+          .slice(0, 25)
+          .map((o) => o.label)
+          .join(', ')}`,
+    )
+    .join('\n');
+  const notes = r.notes?.length ? `안내: ${r.notes.join(' / ')}` : '';
+  return [head, body, opts, notes].filter(Boolean).join('\n').slice(0, 4000);
 }
 function colorItems(r: StudioResult): { key: string; label: string }[] {
   const d = r.data;
