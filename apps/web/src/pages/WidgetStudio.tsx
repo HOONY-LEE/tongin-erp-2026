@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Input, Select } from '@sunghoon_lee/akron-ui';
@@ -31,16 +31,24 @@ import {
   STUDIO_DATASET_GROUPS,
   STUDIO_DATASET_MAP,
   STUDIO_GRAINS,
-  STUDIO_PLACES,
+  STUDIO_SIZE_LIMIT,
+  STUDIO_SUBTITLE_SIZES,
+  STUDIO_TITLE_SIZES,
+  STUDIO_COLS,
   STUDIO_VIZ,
   STUDIO_VIZ_GROUPS,
   normalizeStudioSpec,
+  studioDefaultSize,
+  studioLayout,
+  studioRemoveControl,
+  type StudioAlign,
+  type StudioBox,
+  type StudioLook,
   type CustomWidgetRow,
   type StudioControl,
   type StudioDataset,
   type StudioDimKind,
   type StudioParams,
-  type StudioPlace,
   type StudioProposal,
   type StudioResult,
   type StudioSpec,
@@ -231,7 +239,6 @@ export function WidgetList({
             <div className={`${builder.tplPreview} ${styles.cardPreview}`}>
               <StudioWidget
                 spec={r.spec}
-                showSubtitle={false}
                 chartOnly
                 load={(params) =>
                   api<StudioResult>(`/custom-widgets/${r.id}/data`, {
@@ -506,7 +513,10 @@ function Studio({ id }: { id: string | null }) {
             <AiChat
               spec={spec}
               enabled={can('DASHBOARD.CREATE')}
-              onApply={setSpec}
+              onApply={(next) =>
+                // AI 안은 데이터·차트만 바꾼다 — 내가 잡은 배치·글자·크기는 그대로
+                setSpec({ ...next, layout: spec.layout, look: spec.look, size: spec.size })
+              }
               onAsk={setLastPrompt}
             />
           </aside>
@@ -953,6 +963,7 @@ function ChartTab({
 
   return (
     <>
+      <LayoutSection spec={spec} patch={patch} sel={sel} />
       {/* 차트 — 쓰임새별(태블로 'Show Me'처럼) */}
       <section className={`${styles.section} ${sel === 'chart' ? styles.sectionSel : ''}`}>
         <h3>{t('studio.edit.viz')}</h3>
@@ -1039,7 +1050,7 @@ function ChartTab({
                 className={styles.iconBtn}
                 aria-label={t('studio.edit.remove')}
                 onClick={() => {
-                  setControls(controls.filter((_, k) => k !== i));
+                  patch(studioRemoveControl(spec, i));
                   onSel(null);
                 }}
               >
@@ -1084,17 +1095,6 @@ function ChartTab({
                 </span>
               </>
             )}
-            <label className={styles.placeRow}>
-              <span>{t('studio.edit.place')}</span>
-              <Select
-                size="sm"
-                value={c.place ?? 'left'}
-                onValueChange={(v) =>
-                  updateCtl(i, { ...c, place: v === 'left' ? undefined : (v as StudioPlace) })
-                }
-                options={STUDIO_PLACES.map((pl) => ({ value: pl, label: t(`studio.place.${pl}`) }))}
-              />
-            </label>
           </div>
         ))}
         {controls.length < 4 && (
@@ -1129,14 +1129,142 @@ function ChartTab({
   );
 }
 
+// ── 배치 — 고른 요소의 칸 수·정렬·글자, 위젯 기본 크기 ──
+function LayoutSection({
+  spec,
+  patch,
+  sel,
+}: {
+  spec: StudioSpec;
+  patch: (p: Partial<StudioSpec>) => void;
+  sel: string | null;
+}) {
+  const { t } = useTranslation();
+  const layout = studioLayout(spec);
+  const box = sel ? layout[sel] : undefined;
+  const look = spec.look ?? {};
+  const size = studioDefaultSize(spec);
+  const L = STUDIO_SIZE_LIMIT;
+  const setBox = (b: Partial<StudioBox>) => {
+    if (!sel || !box) return;
+    const next = { ...box, ...b };
+    // 칸 수를 늘려 옆 요소와 겹치면 늘린 만큼만
+    const others = Object.entries(layout)
+      .filter(([k, o]) => k !== sel && o.y === next.y && o.x >= next.x)
+      .map(([, o]) => o.x);
+    next.w = Math.max(1, Math.min(next.w, STUDIO_COLS - next.x, ...others.map((x) => x - next.x)));
+    patch({ layout: { ...layout, [sel]: next } });
+  };
+  const setLook = (l: Partial<StudioLook>) => patch({ look: { ...look, ...l } });
+  const range = (lo: number, hi: number) =>
+    Array.from({ length: hi - lo + 1 }, (_, i) => ({
+      value: String(lo + i),
+      label: String(lo + i),
+    }));
+  return (
+    <section className={styles.section}>
+      <h3>{t('studio.layout.title')}</h3>
+      {box && (
+        <>
+          <div className={styles.layoutRow}>
+            <span>{t('studio.layout.cols')}</span>
+            <Select
+              size="sm"
+              value={String(box.w)}
+              onValueChange={(v) => setBox({ w: Number(v) })}
+              options={range(1, STUDIO_COLS - box.x)}
+              aria-label={t('studio.layout.cols')}
+            />
+          </div>
+          {sel !== 'chart' && (
+            <div className={styles.layoutRow}>
+              <span>{t('studio.layout.align')}</span>
+              <SegmentedControl
+                size="sm"
+                value={box.align ?? 'start'}
+                onChange={(v) => setBox({ align: v === 'start' ? undefined : (v as StudioAlign) })}
+                options={[
+                  { value: 'start', label: t('studio.layout.left') },
+                  { value: 'center', label: t('studio.layout.center') },
+                  { value: 'end', label: t('studio.layout.right') },
+                ]}
+              />
+            </div>
+          )}
+          {sel === 'title' && (
+            <>
+              <div className={styles.layoutRow}>
+                <span>{t('studio.layout.fontSize')}</span>
+                <Select
+                  size="sm"
+                  value={String(look.titleSize ?? 14)}
+                  onValueChange={(v) => setLook({ titleSize: Number(v) })}
+                  options={STUDIO_TITLE_SIZES.map((n) => ({ value: String(n), label: `${n}px` }))}
+                  aria-label={t('studio.layout.fontSize')}
+                />
+              </div>
+              <div className={styles.layoutRow}>
+                <span>{t('studio.layout.weight')}</span>
+                <SegmentedControl
+                  size="sm"
+                  value={look.titleBold === false ? 'normal' : 'bold'}
+                  onChange={(v) => setLook({ titleBold: v === 'bold' ? undefined : false })}
+                  options={[
+                    { value: 'bold', label: t('studio.layout.bold') },
+                    { value: 'normal', label: t('studio.layout.normal') },
+                  ]}
+                />
+              </div>
+            </>
+          )}
+          {sel === 'subtitle' && (
+            <div className={styles.layoutRow}>
+              <span>{t('studio.layout.fontSize')}</span>
+              <Select
+                size="sm"
+                value={String(look.subtitleSize ?? 12)}
+                onValueChange={(v) => setLook({ subtitleSize: Number(v) })}
+                options={STUDIO_SUBTITLE_SIZES.map((n) => ({ value: String(n), label: `${n}px` }))}
+                aria-label={t('studio.layout.fontSize')}
+              />
+            </div>
+          )}
+        </>
+      )}
+      <div className={styles.layoutRow}>
+        <span>{t('studio.layout.size')}</span>
+        <span className={styles.sizePick}>
+          <Select
+            size="sm"
+            value={String(size.w)}
+            onValueChange={(v) => patch({ size: { ...size, w: Number(v) } })}
+            options={range(L.minW, L.maxW)}
+            aria-label={t('studio.layout.sizeW')}
+          />
+          ×
+          <Select
+            size="sm"
+            value={String(size.h)}
+            onValueChange={(v) => patch({ size: { ...size, h: Number(v) } })}
+            options={range(L.minH, L.maxH)}
+            aria-label={t('studio.layout.sizeH')}
+          />
+        </span>
+      </div>
+      {spec.layout && (
+        <button type="button" className={styles.add} onClick={() => patch({ layout: undefined })}>
+          {t('studio.layout.reset')}
+        </button>
+      )}
+    </section>
+  );
+}
+
 // ── 요소 트리 — 위젯 안의 요소를 고르고(미리보기에도 표시) 지운다 ──
 /** 요소 지우기 — 부제는 비우고 보기 옵션은 뺀다(제목·차트는 지우지 않는다) */
 const removeElement = (spec: StudioSpec, id: string): Partial<StudioSpec> | null => {
   if (id === 'subtitle') return { subtitle: undefined };
-  if (id.startsWith('ctl:')) {
-    const i = Number(id.slice(4));
-    return { controls: (spec.controls ?? []).filter((_, k) => k !== i) };
-  }
+  if (id.startsWith('ctl:')) return studioRemoveControl(spec, Number(id.slice(4)));
   return null;
 };
 
@@ -1250,7 +1378,7 @@ function ElementTree({
 }
 
 // ═══════════ 가운데 — 미리보기(실제 대시보드 칸 크기) ═══════════
-const SIZES = { s: 4, m: 6, l: 12 } as const;
+const ROW_GAP = 16;
 function PreviewCanvas({
   spec,
   patch,
@@ -1277,8 +1405,6 @@ function PreviewCanvas({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [sel, onRemove, onSel]);
-  const [size, setSize] = useState<keyof typeof SIZES>('m');
-  const [slot, setSlot] = useState<HTMLElement | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(0);
   useEffect(() => {
@@ -1288,12 +1414,44 @@ function PreviewCanvas({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // 대시보드 콘텐츠 폭(약 1,200px) 기준 12칸 중 몇 칸 — 넓게는 캔버스 폭을 다 쓴다
+  // 대시보드 콘텐츠 폭(약 1,200px) 기준 — 위젯 기본 크기(칸·줄)대로 그린다
+  const size = studioDefaultSize(spec);
+  const [drag, setDrag] = useState<{ w: number; h: number } | null>(null);
+  const cur = drag ?? size;
+  // 한 칸 폭 — 실제 대시보드(약 1,200px ÷ 12)를 넘지 않게, 좁은 화면에선 8칸이 캔버스를 채우는 비율로
   const avail = Math.max(300, boxW - 48);
-  const base = Math.min(avail, 1200);
-  const w = Math.min(avail, Math.max(300, Math.round((base * SIZES[size]) / DASH_COLS)));
-  const rowsH = spec.viz === 'card' || spec.viz === 'gauge' ? 2 : 4;
-  const h = rowsH * DASH_ROW_HEIGHT + (rowsH - 1) * 16;
+  const colPx = Math.min(1200 / DASH_COLS, avail / Math.max(cur.w, 8));
+  const w = Math.min(avail, Math.round(colPx * cur.w));
+  const h = cur.h * DASH_ROW_HEIGHT + (cur.h - 1) * ROW_GAP;
+  const L = STUDIO_SIZE_LIMIT;
+  /** 오른쪽 아래 모서리를 끌어 크기 바꾸기 — 대시보드 칸·줄에 맞춰 붙는다 */
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const sx = e.clientX;
+    const sy = e.clientY;
+    const start = { ...size };
+    let last = start;
+    const onMove = (ev: PointerEvent) => {
+      const nw = Math.round((start.w * colPx + (ev.clientX - sx)) / colPx);
+      const nh = Math.round(
+        (start.h * (DASH_ROW_HEIGHT + ROW_GAP) + (ev.clientY - sy)) / (DASH_ROW_HEIGHT + ROW_GAP),
+      );
+      last = {
+        w: Math.max(L.minW, Math.min(L.maxW, nw)),
+        h: Math.max(L.minH, Math.min(L.maxH, nh)),
+      };
+      setDrag(last);
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      setDrag(null);
+      if (last.w !== start.w || last.h !== start.h) patch({ size: last });
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
   const load = useCallback(
     (params: StudioParams) =>
       api<StudioResult>('/custom-widgets/preview', {
@@ -1302,23 +1460,13 @@ function PreviewCanvas({
       }),
     [spec],
   );
-  const preview = useMemo(() => spec, [spec]);
   return (
     <>
       <ShelfBar spec={spec} patch={patch} />
       <div className={styles.centerBar}>
         <b>{t('studio.preview.title')}</b>
         <span className={styles.spacer} />
-        <SegmentedControl
-          size="sm"
-          value={size}
-          onChange={(v) => setSize(v as keyof typeof SIZES)}
-          options={[
-            { value: 's', label: t('studio.preview.s') },
-            { value: 'm', label: t('studio.preview.m') },
-            { value: 'l', label: t('studio.preview.l') },
-          ]}
-        />
+        <span className={styles.sizeLabel}>{t('studio.layout.sizeIs', cur)}</span>
       </div>
       <div
         ref={boxRef}
@@ -1330,26 +1478,30 @@ function PreviewCanvas({
       >
         <section
           className={`${styles.frame} ${sel === 'widget' ? styles.frameSel : ''}`}
-          style={{ width: w, height: h }}
+          style={{ width: w, height: h, transition: drag ? 'none' : undefined }}
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) onSel('widget');
+          }}
         >
-          <div className={styles.frameHead}>
-            <span
-              className={`${styles.frameTitle} ${styles.pickTitle} ${sel === 'title' ? styles.pickTitleOn : ''}`}
-              onPointerDown={() => onSel('title')}
-            >
-              {spec.title || t('studio.newWidget')}
-            </span>
-            <span ref={setSlot} className={styles.frameSlot} />
-          </div>
-          <div className={styles.frameBody}>
+          <div
+            className={styles.frameBody}
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) onSel('widget');
+            }}
+          >
             <StudioWidget
-              spec={preview}
+              spec={spec}
               load={load}
-              headerSlot={slot}
               selected={sel}
               onSelect={onSel}
+              onLayout={(layout) => patch({ layout })}
             />
           </div>
+          <span
+            className={styles.frameResize}
+            title={t('studio.layout.dragSize')}
+            onPointerDown={startResize}
+          />
         </section>
       </div>
     </>

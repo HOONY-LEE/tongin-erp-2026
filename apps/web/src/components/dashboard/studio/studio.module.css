@@ -40,44 +40,125 @@
   font-size: calc(13px * var(--font-scale, 1));
   text-align: center;
 }
-.ctlRight {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-left: auto;
+/* 12칸 격자 — 요소마다 줄·칸을 정해 놓는다(차트 줄이 남는 높이를 다 쓴다) */
+.grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
 }
-/* 제목 줄에 놓은 조작 요소 — 제목 오른쪽 끝 */
-.headCtl {
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.cellTop {
+  align-self: start;
+}
+.chartCell {
+  display: block;
+  min-height: 0;
+}
+.chartCell .chart {
+  height: 100%;
+}
+.title {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.titleLink {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: auto;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.titleLink > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.titleLink svg {
+  flex: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.titleLink:hover {
+  color: var(--ark-color-primary-500);
+}
+.titleLink:hover svg,
+.titleLink:focus-visible svg {
+  opacity: 1;
+}
+.subtitle {
+  max-width: 100%;
 }
 
-/* 스튜디오 편집 — 요소 고르기(올리면 점선, 고르면 실선) */
-.pickable {
-  display: inline-flex;
-  max-width: 100%;
+/* 스튜디오 편집 — 요소를 누르면 고르고, 끌면 옮긴다(보기 옵션은 편집 중엔 눌리지 않게) */
+.cellEdit {
   border-radius: 6px;
   outline: 1px dashed transparent;
   outline-offset: 2px;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
   transition: outline-color 0.12s;
 }
-.pickable > p {
-  margin: 0;
-}
-.chartPick {
-  border-radius: 6px;
-  outline: 1px dashed transparent;
-  outline-offset: 2px;
-  cursor: pointer;
-}
-.chartPick:hover,
-.pickable:hover {
+.cellEdit:hover {
   outline-color: var(--ark-color-border-strong, #c7c7cc);
 }
 .picked,
 .picked:hover {
   outline: 2px solid var(--ark-color-primary-500);
+}
+/* 폭 바꾸기 손잡이 — 고른 요소 오른쪽 가장자리 */
+.resize {
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  z-index: 2;
+  width: 8px;
+  height: 22px;
+  border: 1.5px solid var(--ark-color-primary-500);
+  border-radius: 4px;
+  background: var(--ark-color-bg);
+  cursor: ew-resize;
+  transform: translateY(-50%);
+}
+/* 끄는 동안 — 12칸 안내선과 놓일 자리 */
+.guides {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px;
+  pointer-events: none;
+}
+.guides > span {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 7%, transparent);
+}
+.ghost {
+  position: absolute;
+  z-index: 3;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ark-color-primary-500) 18%, transparent);
+  outline: 1.5px solid var(--ark-color-primary-500);
+  pointer-events: none;
+  transition:
+    left 0.08s,
+    top 0.08s,
+    width 0.08s;
 }

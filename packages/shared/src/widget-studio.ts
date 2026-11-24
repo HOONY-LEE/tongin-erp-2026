@@ -849,6 +849,229 @@ export interface StudioSpec {
   /** 항목 수 제한(많은 것부터) */
   limit?: number;
   controls?: StudioControl[];
+  /** 위젯 안 배치(12칸 격자) — 요소 id('title'·'subtitle'·'ctl:<번호>'·'chart') → 자리. 없으면 place로 기본 배치 */
+  layout?: Record<string, StudioBox>;
+  /** 글자 모양 */
+  look?: StudioLook;
+  /** 대시보드에 놓을 때 기본 크기(대시보드 칸·줄) */
+  size?: { w: number; h: number };
+}
+
+/** 위젯 안 격자 칸 수 */
+export const STUDIO_COLS = 12;
+export const STUDIO_ALIGNS = ['start', 'center', 'end'] as const;
+export type StudioAlign = (typeof STUDIO_ALIGNS)[number];
+/** 요소 한 개의 자리 — 줄(y)·시작 칸(x, 0~11)·칸 수(w)·칸 안 정렬 */
+export interface StudioBox {
+  x: number;
+  y: number;
+  w: number;
+  align?: StudioAlign;
+}
+export interface StudioLook {
+  titleSize?: number;
+  titleBold?: boolean;
+  subtitleSize?: number;
+}
+export const STUDIO_TITLE_SIZES = [12, 13, 14, 16, 18, 20, 24, 28, 32];
+export const STUDIO_SUBTITLE_SIZES = [11, 12, 13, 14, 16, 18];
+export const STUDIO_SIZE_LIMIT = { minW: 2, maxW: 12, minH: 2, maxH: 10 };
+
+/** 대시보드에 놓을 때 기본 크기 */
+export function studioDefaultSize(spec: StudioSpec): { w: number; h: number } {
+  if (spec.size) return spec.size;
+  return { w: 6, h: spec.viz === 'card' || spec.viz === 'gauge' ? 2 : 4 };
+}
+
+/** 위젯 안 요소 id — 제목·부제·보기 옵션(필터는 여러 개여도 버튼 하나라 첫 것만)·차트 */
+export function studioElementIds(spec: StudioSpec): string[] {
+  const ids = ['title'];
+  if (spec.subtitle) ids.push('subtitle');
+  let filter = false;
+  (spec.controls ?? []).forEach((c, i) => {
+    if (c.kind === 'filter') {
+      if (filter) return;
+      filter = true;
+    }
+    ids.push(`ctl:${i}`);
+  });
+  ids.push('chart');
+  return ids;
+}
+
+/** 줄 번호를 0부터 빈틈없이(소수 줄 — 사이에 끼운 줄 — 도 정리) */
+export function compactStudioRows(layout: Record<string, StudioBox>): Record<string, StudioBox> {
+  const ys = [...new Set(Object.values(layout).map((b) => b.y))].sort((a, b) => a - b);
+  const at = new Map(ys.map((y, i) => [y, i]));
+  return Object.fromEntries(
+    Object.entries(layout).map(([k, b]) => [k, { ...b, y: at.get(b.y) ?? 0 }]),
+  );
+}
+
+/** place로 정한 기본 배치 — 제목 줄 · 부제 · 차트 위(왼쪽·오른쪽) · 차트 · 차트 아래 */
+function defaultStudioLayout(spec: StudioSpec): Record<string, StudioBox> {
+  const ids = studioElementIds(spec);
+  const ctl = ids.filter((id) => id.startsWith('ctl:'));
+  const placeOfId = (id: string) => spec.controls?.[Number(id.slice(4))]?.place ?? 'left';
+  const out: Record<string, StudioBox> = {};
+  /** 기본 폭 — 탭은 항목 수만큼, 드롭다운 3칸, 필터 버튼 2칸 */
+  const wOf = (id: string) => {
+    const c = spec.controls?.[Number(id.slice(4))];
+    if (!c || c.kind === 'filter') return 2;
+    return c.kind === 'segment' ? Math.min(6, Math.max(3, c.options.length + 1)) : 3;
+  };
+  /** 한 줄에 왼쪽부터(또는 오른쪽 끝부터) 채운다 — 넘치면 다음 줄 */
+  const pack = (list: string[], y: number, fromRight: boolean, startX = 0) => {
+    let x = startX;
+    let row = y;
+    const items = fromRight ? [...list].reverse() : list;
+    let end = 12;
+    for (const id of items) {
+      const w = wOf(id);
+      if (fromRight) {
+        if (end - w < startX) {
+          row += 0.1;
+          end = 12;
+        }
+        out[id] = { x: end - w, y: row, w, align: 'end' };
+        end -= w;
+      } else {
+        if (x + w > 12) {
+          row += 0.1;
+          x = 0;
+        }
+        out[id] = { x, y: row, w };
+        x += w;
+      }
+    }
+    return fromRight ? end : x;
+  };
+  const head = ctl.filter((id) => placeOfId(id) === 'title');
+  const headW = head.reduce((n, id) => n + wOf(id), 0);
+  const titleW = Math.max(4, 12 - headW);
+  out.title = { x: 0, y: 0, w: titleW };
+  pack(head, 0, true, titleW);
+  if (spec.subtitle) out.subtitle = { x: 0, y: 1, w: 12 };
+  const leftEnd = pack(
+    ctl.filter((id) => placeOfId(id) === 'left'),
+    2,
+    false,
+  );
+  pack(
+    ctl.filter((id) => placeOfId(id) === 'right'),
+    2,
+    true,
+    leftEnd,
+  );
+  out.chart = { x: 0, y: 3, w: 12 };
+  pack(
+    ctl.filter((id) => placeOfId(id) === 'bottom'),
+    4,
+    false,
+  );
+  return fixOverlaps(out);
+}
+
+/** 같은 줄에서 겹치면 뒤의 것을 바로 아래 새 줄로 */
+function fixOverlaps(layout: Record<string, StudioBox>): Record<string, StudioBox> {
+  const out = { ...layout };
+  for (let guard = 0; guard < 20; guard++) {
+    let moved = false;
+    const rows = new Map<number, string[]>();
+    for (const [k, b] of Object.entries(out)) rows.set(b.y, [...(rows.get(b.y) ?? []), k]);
+    for (const [y, ks] of rows) {
+      ks.sort((a, b) => out[a].x - out[b].x);
+      let end = 0;
+      for (const k of ks) {
+        if (out[k].x < end) {
+          out[k] = { ...out[k], y: y + 0.5 };
+          moved = true;
+        } else end = out[k].x + out[k].w;
+      }
+    }
+    if (!moved) break;
+    Object.assign(out, compactStudioRows(out));
+  }
+  return compactStudioRows(out);
+}
+
+/** 실제로 그릴 배치 — 저장한 배치에 없는 요소는 기본 자리 근처(제목은 맨 위, 차트는 맨 아래, 나머지는 차트 바로 위 새 줄)로 */
+export function studioLayout(spec: StudioSpec): Record<string, StudioBox> {
+  if (!spec.layout) return defaultStudioLayout(spec);
+  const ids = studioElementIds(spec);
+  const out: Record<string, StudioBox> = {};
+  for (const id of ids) if (spec.layout[id]) out[id] = { ...spec.layout[id] };
+  const chartY = out.chart?.y ?? Math.max(0, ...Object.values(out).map((b) => b.y + 1));
+  let add = 0;
+  for (const id of ids) {
+    if (out[id]) continue;
+    if (id === 'title') out[id] = { x: 0, y: -1, w: 12 };
+    else if (id === 'chart') out[id] = { x: 0, y: 1000, w: 12 };
+    else if (id === 'subtitle') out[id] = { x: 0, y: (out.title?.y ?? -1) + 0.25, w: 12 };
+    else out[id] = { x: (add++ % 3) * 4, y: chartY - 0.5, w: 4 };
+  }
+  return fixOverlaps(out);
+}
+
+/** 보기 옵션 i번을 빼고 배치 번호를 당긴다 */
+export function studioRemoveControl(spec: StudioSpec, i: number): Partial<StudioSpec> {
+  const controls = (spec.controls ?? []).filter((_, k) => k !== i);
+  if (!spec.layout) return { controls };
+  const layout: Record<string, StudioBox> = {};
+  for (const [k, b] of Object.entries(spec.layout)) {
+    if (!k.startsWith('ctl:')) layout[k] = b;
+    else {
+      const n = Number(k.slice(4));
+      if (n < i) layout[k] = b;
+      else if (n > i) layout[`ctl:${n - 1}`] = b;
+    }
+  }
+  return { controls, layout: compactStudioRows(layout) };
+}
+
+const intIn = (v: unknown, lo: number, hi: number) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
+};
+function normalizeLayout(raw: unknown): Record<string, StudioBox> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: Record<string, StudioBox> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^(title|subtitle|chart|ctl:[0-9])$/.test(k)) continue;
+    const b = (v ?? {}) as Record<string, unknown>;
+    const x = intIn(b.x, 0, 11);
+    const w = intIn(b.w, 1, 12);
+    const y = intIn(b.y, 0, 40);
+    if (x === null || w === null || y === null) continue;
+    out[k] = {
+      x,
+      y,
+      w: Math.min(w, 12 - x),
+      ...((STUDIO_ALIGNS as readonly string[]).includes(String(b.align)) && b.align !== 'start'
+        ? { align: b.align as StudioAlign }
+        : {}),
+    };
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+function normalizeLook(raw: unknown): StudioLook | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Record<string, unknown>;
+  const titleSize = intIn(r.titleSize, 10, 40);
+  const subtitleSize = intIn(r.subtitleSize, 9, 24);
+  const look: StudioLook = {
+    ...(titleSize ? { titleSize } : {}),
+    ...(subtitleSize ? { subtitleSize } : {}),
+    ...(typeof r.titleBold === 'boolean' ? { titleBold: r.titleBold } : {}),
+  };
+  return Object.keys(look).length ? look : undefined;
+}
+function normalizeSize(raw: unknown): { w: number; h: number } | undefined {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const L = STUDIO_SIZE_LIMIT;
+  const w = intIn(r.w, L.minW, L.maxW);
+  const h = intIn(r.h, L.minH, L.maxH);
+  return w && h ? { w, h } : undefined;
 }
 
 /** 보는 사람이 조작한 값 — 설계서의 기본값을 덮는다 */
@@ -970,6 +1193,12 @@ export function normalizeStudioSpec(raw: unknown): { spec: StudioSpec; errors: s
     ...(limit > 0 ? { limit: Math.min(50, Math.round(limit)) } : {}),
     ...(controls.length ? { controls: controls.slice(0, 4) } : {}),
   };
+  const layout = normalizeLayout(r.layout);
+  const look = normalizeLook(r.look);
+  const size = normalizeSize(r.size);
+  if (layout) spec.layout = layout;
+  if (look) spec.look = look;
+  if (size) spec.size = size;
   return { spec, errors };
 }
 
