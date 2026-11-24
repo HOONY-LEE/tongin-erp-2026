@@ -28,6 +28,8 @@ export const DASH_VIZ = [
   'calendar',
   'gantt',
   'typo',
+  // 병렬 막대 — 두 기준(가로 칸 × 줄)을 칸 안에 나란히
+  'grouped',
 ] as const;
 export type DashViz = (typeof DASH_VIZ)[number];
 export const DASH_VIZ_LABEL: Record<DashViz, string> = {
@@ -53,6 +55,7 @@ export const DASH_VIZ_LABEL: Record<DashViz, string> = {
   calendar: '캘린더',
   gantt: '간트 차트',
   typo: '타이포그래피',
+  grouped: '병렬 막대',
 };
 
 /**

@@ -1154,7 +1154,14 @@ function ListViz({ d }: { d: Extract<DashData, { shape: 'rows' }> }) {
 
 /** 위젯 본문 — 데이터 모양과 고른 시각화에 맞는 그림 */
 // ═══════════ 누적 막대(두 기준) ═══════════
-function StackedViz({ d }: { d: Extract<DashData, { shape: 'matrix' }> }) {
+/** 누적 막대 · 병렬 막대(grouped — 같은 칸 안에 줄마다 막대를 나란히) */
+function StackedViz({
+  d,
+  grouped = false,
+}: {
+  d: Extract<DashData, { shape: 'matrix' }>;
+  grouped?: boolean;
+}) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const ov = useContext(SeriesColorCtx);
   const { tip, show, hide } = useTip();
@@ -1168,9 +1175,10 @@ function StackedViz({ d }: { d: Extract<DashData, { shape: 'matrix' }> }) {
   const totals = d.cols.map((_, ci) =>
     d.rows.reduce((s, _r, ri) => s + (d.cells[ri]?.[ci] ?? 0), 0),
   );
-  const { top, step } = niceMax(Math.max(...totals));
+  const { top, step } = niceMax(grouped ? Math.max(0, ...d.cells.flat()) : Math.max(...totals));
   const band = w / d.cols.length;
-  const bw = Math.max(2, Math.min(48, band - 4));
+  const bw = Math.max(2, Math.min(grouped ? 24 * d.rows.length : 48, band - 4));
+  const sub = grouped ? bw / d.rows.length : bw;
   const every = Math.max(1, Math.ceil(d.cols.length / Math.max(1, Math.floor(w / 46))));
   const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
   return (
@@ -1197,21 +1205,22 @@ function StackedViz({ d }: { d: Extract<DashData, { shape: 'matrix' }> }) {
                   {d.rows.map((r, ri) => {
                     const v = d.cells[ri]?.[ci] ?? 0;
                     if (!v) return null;
-                    const y0 = h - ((acc + v) / top) * h;
+                    const y0 = grouped ? h - (v / top) * h : h - ((acc + v) / top) * h;
                     const hh = (v / top) * h;
-                    acc += v;
+                    if (!grouped) acc += v;
+                    const bx = grouped ? x + ri * sub : x;
                     return (
                       <rect
                         key={r}
-                        x={x}
+                        x={bx + (grouped && sub > 4 ? 0.5 : 0)}
                         y={y0}
-                        width={bw}
-                        height={Math.max(0, hh - 1)}
-                        rx={2}
+                        width={Math.max(1, sub - (grouped && sub > 4 ? 1 : 0))}
+                        height={Math.max(0, hh - (grouped ? 0 : 1))}
+                        rx={Math.min(2, sub / 3)}
                         fill={colors.get(r)}
                         onMouseMove={() =>
                           show({
-                            x: m.l + x + bw / 2,
+                            x: m.l + bx + sub / 2,
                             y: m.t + y0,
                             content: (
                               <>
@@ -1905,7 +1914,7 @@ export function VizBody({
     case 'category':
       if (viz === 'treemap') return <TreemapViz items={data.items} format={data.format} />;
       if (viz === 'histogram') return <ColumnViz items={data.items} format={data.format} gapless />;
-      if (viz === 'bar' || viz === 'stacked')
+      if (viz === 'bar' || viz === 'stacked' || viz === 'grouped')
         return <ColumnViz items={data.items} format={data.format} />;
       if (viz === 'hbar') return <HBarViz items={data.items} format={data.format} />;
       if (viz === 'pie' || viz === 'donut')
@@ -1914,7 +1923,7 @@ export function VizBody({
       if (viz === 'map') return <MapViz d={data} />;
       return <HBarViz items={data.items} format={data.format} />;
     case 'series':
-      if (viz === 'bar' || viz === 'stacked' || viz === 'histogram')
+      if (viz === 'bar' || viz === 'stacked' || viz === 'grouped' || viz === 'histogram')
         return (
           <ColumnViz
             items={data.points.map((p) => ({ key: p.x, label: p.label, value: p.value }))}
@@ -1923,6 +1932,7 @@ export function VizBody({
         );
       return <LineViz points={data.points} format={data.format} area={viz === 'area'} />;
     case 'matrix':
+      if (viz === 'grouped') return <StackedViz d={data} grouped />;
       return viz === 'stacked' ? <StackedViz d={data} /> : <HeatmapViz d={data} />;
     case 'box':
       return <BoxViz d={data} />;
