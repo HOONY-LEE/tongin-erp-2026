@@ -122,6 +122,12 @@ class ProposeDto {
   @Type(() => AttachmentDto)
   attachments?: AttachmentDto[];
 
+  /** 지금 미리보기가 그리는 숫자 요약(AI 맥락) */
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  currentData?: string;
+
   /** 'consult' — 위젯 제안해 주기(팀·업무를 묻고 아이디어부터) */
   @IsOptional()
   @IsIn(['consult'])
@@ -278,6 +284,7 @@ export class CustomWidgetController {
         .map((h) => ({ role: h.role, text: h.text })),
       dto.attachments ?? [],
       dto.mode ?? null,
+      dto.currentData ?? null,
     );
   }
 
