@@ -3,6 +3,16 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    org: {
+      head: '조직장',
+      members: '인원',
+      memberN: '{{v0}}명',
+      memberList: '직원',
+      position: '직책',
+      empNo: '사번',
+      hireDate: '입사일',
+      email: '이메일',
+    },
     sup: {
       CS: 'CS상담',
       AS: 'AS하자',
@@ -133,6 +143,16 @@ export default defineNs({
     peopleSuffix: '명',
   },
   en: {
+    org: {
+      head: 'Head',
+      members: 'Members',
+      memberN: '{{v0}}',
+      memberList: 'Employees',
+      position: 'Position',
+      empNo: 'Emp. no.',
+      hireDate: 'Hire date',
+      email: 'Email',
+    },
     sup: {
       CS: 'CS consultation',
       AS: 'A/S defect',
@@ -263,6 +283,16 @@ export default defineNs({
     peopleSuffix: '',
   },
   zh: {
+    org: {
+      head: '负责人',
+      members: '人数',
+      memberN: '{{v0}}人',
+      memberList: '员工',
+      position: '职务',
+      empNo: '工号',
+      hireDate: '入职日期',
+      email: '邮箱',
+    },
     sup: {
       CS: '客服咨询',
       AS: '售后瑕疵',

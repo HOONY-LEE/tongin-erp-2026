@@ -5,6 +5,7 @@ import { Badge } from '../components/ui';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { OrgChart } from '../components/OrgChart';
 import { OrgGoalsPanel } from '../components/performance/OrgGoalsPanel';
+import { OrgMembersPanel } from '../components/OrgMembersPanel';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
 import { isHqUnit, useOrgUnits } from '../lib/orgUnits';
@@ -23,6 +24,29 @@ const columns: Column[] = [
     render: (r: Row) => (
       <Badge variant="subtle">{TYPE_LABEL[r.type as string] ?? String(r.type)}</Badge>
     ),
+  },
+  {
+    title: i18n.t('misc.org.head'),
+    minWidth: 130,
+    render: (r: Row) =>
+      r.headName ? (
+        <span>
+          {String(r.headName)}
+          {r.headPosition ? (
+            <span style={{ color: 'var(--ark-color-text-secondary)' }}>
+              {' '}
+              {String(r.headPosition)}
+            </span>
+          ) : null}
+        </span>
+      ) : (
+        '-'
+      ),
+  },
+  {
+    title: i18n.t('misc.org.members'),
+    width: 90,
+    render: (r: Row) => i18n.t('misc.org.memberN', { v0: Number(r.memberCount ?? 0) }),
   },
   { title: i18n.t('misc.location'), minWidth: 140, render: (r: Row) => String(r.addr ?? '-') },
   {
@@ -77,7 +101,12 @@ export default function OrgUnits({ view = 'list' }: { view?: 'list' | 'chart' })
       fields={fields}
       rowFilter={isHqUnit}
       // 조직 상세 아래 — 역할·이번 분기 목표·업무분장(업무분장·성과 평가로 이어짐)
-      detailExtra={(row) => <OrgGoalsPanel orgId={String(row.id)} />}
+      detailExtra={(row) => (
+        <>
+          <OrgMembersPanel orgId={String(row.id)} />
+          <OrgGoalsPanel orgId={String(row.id)} />
+        </>
+      )}
       editable
       deletable
       hideHeader
