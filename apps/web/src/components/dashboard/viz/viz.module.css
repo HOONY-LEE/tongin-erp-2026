@@ -1,16 +1,16 @@
 /*
  * 대시보드 시각화 — 색은 역할(토큰)로만 쓴다. 범주 색 8개·연속값(히트맵·지도) 단계는
- * 대시보드 색(--dash-*: 기본 블랙·통인 테마색·애플 색, shared dashColorVars)을 따르고, 없으면 아래 검정·회색 값.
+ * 대시보드 색(--dash-*: 기본 블랙·통인 테마색·애플 색, shared dashColorVars)을 따르고, 없으면 아래 기본(검정 + 구분 색, 크기는 회색 단계).
  */
 .vizRoot {
   --series-1: var(--dash-series-1, #1c1c1e);
-  --series-2: var(--dash-series-2, #8e8e93);
-  --series-3: var(--dash-series-3, #48484a);
-  --series-4: var(--dash-series-4, #c7c7cc);
-  --series-5: var(--dash-series-5, #636366);
-  --series-6: var(--dash-series-6, #aeaeb2);
-  --series-7: var(--dash-series-7, #2c2c2e);
-  --series-8: var(--dash-series-8, #d1d1d6);
+  --series-2: var(--dash-series-2, #007aff);
+  --series-3: var(--dash-series-3, #ff9500);
+  --series-4: var(--dash-series-4, #af52de);
+  --series-5: var(--dash-series-5, #34c759);
+  --series-6: var(--dash-series-6, #5856d6);
+  --series-7: var(--dash-series-7, #ff2d55);
+  --series-8: var(--dash-series-8, #30b0c7);
   --series-other: #b4b2a9;
   --seq-0: #eef0f3;
   --seq-1: var(--dash-seq-1, #e5e5ea);
@@ -38,13 +38,13 @@
 }
 :global([data-theme='dark']) .vizRoot {
   --series-1: var(--dash-series-1, #f2f2f7);
-  --series-2: var(--dash-series-2, #8e8e93);
-  --series-3: var(--dash-series-3, #c7c7cc);
-  --series-4: var(--dash-series-4, #48484a);
-  --series-5: var(--dash-series-5, #aeaeb2);
-  --series-6: var(--dash-series-6, #636366);
-  --series-7: var(--dash-series-7, #e5e5ea);
-  --series-8: var(--dash-series-8, #3a3a3c);
+  --series-2: var(--dash-series-2, #036fe4);
+  --series-3: var(--dash-series-3, #d27d06);
+  --series-4: var(--dash-series-4, #9d4cc7);
+  --series-5: var(--dash-series-5, #2fa54d);
+  --series-6: var(--dash-series-6, #514fc0);
+  --series-7: var(--dash-series-7, #e42b4e);
+  --series-8: var(--dash-series-8, #2e9eb3);
   --series-other: #5f5e59;
   --seq-0: #2a2a28;
   --seq-1: var(--dash-seq-1, #3a3a3c);
