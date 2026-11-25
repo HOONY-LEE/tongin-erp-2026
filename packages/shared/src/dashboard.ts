@@ -1218,13 +1218,14 @@ export type DashDataResult = { ok: true; data: DashData } | { ok: false; error: 
 
 // ── 대시보드 색상 ─────────────────────────────────────────────
 /**
- * 대시보드(템플릿) 색 — 기본은 통인 테마색, 바꿀 때는 애플 시스템 색 라인업에서 고른다.
+ * 대시보드(템플릿) 색 — 기본은 블랙(검정 → 회색 단계, 그다음 색), 바꿀 때는 애플 시스템 색 라인업에서 고른다.
  * (애플 옐로·브라운은 흰 바탕에서 너무 밝거나 회색처럼 보여 차트 색으로는 뺐다)
  * 고른 색이 첫 번째 계열색·연속값(히트맵·지도) 색이 되고, 나머지 계열색은 애플 색 순서로 이어진다.
  * light는 애플 시스템 색 값. dark는 같은 색을 어두운 바탕에 맞게 살짝 낮춘 값(애플 다크 값은 차트 바탕에서
  * 너무 밝아 색끼리 밝기가 들쭉날쭉해진다 — dataviz 팔레트 검사 기준).
  */
 export const DASH_COLORS = [
+  { key: 'black', label: '블랙', light: '#1c1c1e', dark: '#f2f2f7' },
   { key: 'tongin', label: '통인', light: '#fc753c', dark: '#e16a38' },
   { key: 'blue', label: '블루', light: '#007aff', dark: '#036fe4' },
   { key: 'indigo', label: '인디고', light: '#5856d6', dark: '#514fc0' },
@@ -1239,7 +1240,9 @@ export const DASH_COLORS = [
 ] as const;
 export type DashColorKey = (typeof DASH_COLORS)[number]['key'];
 export const DASH_COLOR_KEYS = DASH_COLORS.map((c) => c.key) as DashColorKey[];
-export const DASH_DEFAULT_COLOR: DashColorKey = 'tongin';
+export const DASH_DEFAULT_COLOR: DashColorKey = 'black';
+/** 블랙 다음 계열색 — 회색 단계(진한 → 연한) */
+const BLACK_GRAYS = { light: ['#8e8e93', '#c7c7cc'], dark: ['#8e8e93', '#545458'] };
 
 /** 첫 색 다음에 이어질 계열색 순서 — 서로 잘 구분되는 색끼리 번갈아(색약 구분 검사 통과 순서) */
 const SERIES_ORDER: DashColorKey[] = [
@@ -1316,7 +1319,15 @@ export function dashColorVars(
     const i = rest.findIndex((k) => !CONFUSED.has(`${prev}:${k}`));
     keys.push(rest.splice(i < 0 ? 0 : i, 1)[0]);
   }
-  const series = hex ? [hex, ...SERIES_ORDER.slice(0, 7).map(pick)] : keys.map(pick);
+  const series = hex
+    ? [hex, ...SERIES_ORDER.slice(0, 7).map(pick)]
+    : main === 'black'
+      ? [
+          pick('black'),
+          ...BLACK_GRAYS[dark ? 'dark' : 'light'],
+          ...SERIES_ORDER.slice(0, 5).map(pick),
+        ]
+      : keys.map(pick);
   const accent = hex ?? pick(main);
   const base = dark ? '#1c1c1e' : '#ffffff';
   const steps = [14, 28, 44, 60, 76, 100];

@@ -1267,7 +1267,6 @@ function ColorSection({
   const neutrals = [
     { hex: '#8e8e93', label: t('studio.color.gray') },
     { hex: '#ffffff', label: t('studio.color.white') },
-    { hex: '#1c1c1e', label: t('studio.color.black') },
   ];
   const presets = [
     ...DASH_COLORS.map((c) => ({ hex: dark ? c.dark : c.light, label: colorLabel(c) })),
