@@ -1215,3 +1215,29 @@
   color: var(--ark-color-text);
   font-weight: 600;
 }
+
+/* 차트 버튼 칸 — 꺼진 버튼에도 이유 툴팁이 뜨게 */
+.vizCell {
+  display: flex;
+  min-width: 0;
+}
+.vizCell > .vizBtn {
+  flex: 1;
+  min-width: 0;
+}
+.vizCell > .vizBtn:disabled {
+  pointer-events: none;
+}
+/* 행 칸 오른쪽 — 색(히트맵)·점(산점도) */
+.marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 10px;
+  border-left: 1px solid var(--ark-color-border);
+}
+.markName {
+  color: var(--ark-color-text-secondary);
+  font-size: calc(11.5px * var(--font-scale, 1));
+}
