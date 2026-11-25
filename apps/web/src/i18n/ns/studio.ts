@@ -5,6 +5,17 @@ import { STUDIO_CAT_MORE } from './studioCat';
 export default defineNs({
   ko: {
     title: '위젯 스튜디오',
+    why: {
+      needDim: '기준(차원)을 열이나 행에 놓아야 그릴 수 있어요',
+      noDim: '숫자 하나를 크게 보여 주는 모양이라 기준(차원)을 빼야 해요',
+      needTwoDims: '기준이 두 개 필요해요 — 열과 행에 기준을 하나씩 놓으세요',
+      twoDims: '기준이 두 개일 때는 못 써요 — 두 번째 기준을 빼세요',
+      needTime: '날짜 기준일 때만 쓸 수 있어요',
+      notTime: '날짜가 아닌 기준일 때만 쓸 수 있어요',
+      needGeo: '지역 기준일 때만 쓸 수 있어요',
+      oneMeasure: '이 데이터에는 숫자(측정값)가 하나뿐이에요',
+      noField: '이 데이터에는 건별 숫자 칸이 없어요',
+    },
     pane: {
       data: '데이터',
       chart: '차트 모양',
@@ -13,6 +24,9 @@ export default defineNs({
       dropDim: '기준을 끌어 놓기',
       dropSplit: '+ 두 번째 기준',
       dropMeasure2: '+ 두 번째 숫자',
+      dropAny: '기준·숫자를 끌어 놓기',
+      markColor: '색',
+      markPoint: '점',
       text: '제목·부제',
       elements: '요소',
       elTitle: '제목',
@@ -245,6 +259,17 @@ export default defineNs({
   },
   en: {
     title: 'Widget Studio',
+    why: {
+      needDim: 'Put a dimension on Columns or Rows first',
+      noDim: 'Shows a single number — remove the dimension',
+      needTwoDims: 'Needs two dimensions — one on Columns and one on Rows',
+      twoDims: 'Not available with two dimensions — remove the second one',
+      needTime: 'Only for a date dimension',
+      notTime: 'Not for a date dimension',
+      needGeo: 'Only for a region dimension',
+      oneMeasure: 'This data has only one measure',
+      noField: 'This data has no per-record number',
+    },
     pane: {
       data: 'Data',
       chart: 'Chart',
@@ -253,6 +278,9 @@ export default defineNs({
       dropDim: 'Drop a dimension',
       dropSplit: '+ Second dimension',
       dropMeasure2: '+ Second measure',
+      dropAny: 'Drop a dimension or measure',
+      markColor: 'Color',
+      markPoint: 'Point',
       text: 'Title & subtitle',
       elements: 'Elements',
       elTitle: 'Title',
@@ -479,6 +507,17 @@ export default defineNs({
   },
   zh: {
     title: '组件工作室',
+    why: {
+      needDim: '请先在列或行放一个维度',
+      noDim: '这是显示单个数字的图形，请去掉维度',
+      needTwoDims: '需要两个维度 — 列和行各放一个',
+      twoDims: '有两个维度时不可用 — 请去掉第二个维度',
+      needTime: '仅适用于日期维度',
+      notTime: '不适用于日期维度',
+      needGeo: '仅适用于地区维度',
+      oneMeasure: '此数据只有一个度量',
+      noField: '此数据没有逐条数值',
+    },
     pane: {
       data: '数据',
       chart: '图表',
@@ -487,6 +526,9 @@ export default defineNs({
       dropDim: '拖入维度',
       dropSplit: '+ 第二个维度',
       dropMeasure2: '+ 第二个度量',
+      dropAny: '拖入维度或度量',
+      markColor: '颜色',
+      markPoint: '点',
       text: '标题和副标题',
       elements: '元素',
       elTitle: '标题',

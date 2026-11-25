@@ -1900,6 +1900,21 @@ export function VizBody({
   if (viz === 'typo' && (data.shape === 'value' || data.shape === 'category'))
     return <TypoViz d={data} />;
   if (viz === 'calendar' && data.shape === 'series') return <CalendarViz d={data} />;
+  if (
+    data.shape === 'series' &&
+    (viz === 'hbar' || viz === 'pie' || viz === 'donut' || viz === 'funnel' || viz === 'treemap')
+  )
+    return (
+      <VizBody
+        viz={viz}
+        item={item}
+        data={{
+          shape: 'category',
+          format: data.format,
+          items: data.points.map((p) => ({ key: p.x, label: p.label, value: p.value })),
+        }}
+      />
+    );
   switch (data.shape) {
     case 'value':
       return viz === 'gauge' ? (

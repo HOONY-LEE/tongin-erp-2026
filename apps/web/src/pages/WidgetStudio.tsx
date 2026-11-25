@@ -128,26 +128,51 @@ const vizOk = (ds: StudioDataset, v: StudioViz) =>
 
 /** 기준(차원) 없이 그리는 차트 — 숫자 하나·게이지·히스토그램(건별 값의 분포) */
 const NO_DIM_VIZ: StudioViz[] = ['card', 'gauge', 'histogram', 'typo'];
+/** 기준 두 개(열 × 행/나눔)로 그리는 차트 */
+const TWO_DIM_VIZ: StudioViz[] = ['heatmap', 'stacked', 'grouped', 'table'];
 
-/** 지금 고른 기준으로 그릴 수 있는 차트인가 — 기준이 없으면 숫자 카드류만, 있으면 그 반대 */
-const vizFits = (ds: StudioDataset, dimension: string | null | undefined, v: StudioViz) => {
-  if (!vizOk(ds, v)) return false;
+/**
+ * 이 차트를 못 쓰는 이유(i18n 키 끝) — 쓸 수 있으면 null.
+ * 태블로 'Show Me'처럼 지금 놓인 기준·숫자로 정말 그려지는 것만 켠다.
+ */
+const vizWhy = (
+  ds: StudioDataset,
+  dimension: string | null | undefined,
+  v: StudioViz,
+  split?: string | null,
+): string | null => {
+  if (!vizOk(ds, v)) return v === 'scatter' ? 'oneMeasure' : 'noField';
   const dim = dimension ? ds.dimensions.find((d) => d.key === dimension) : undefined;
-  if (!dim) return NO_DIM_VIZ.includes(v);
+  if (!dim) return NO_DIM_VIZ.includes(v) ? null : 'needDim';
+  // 기준이 두 개면 두 기준 차트만(표 포함)
+  if (split) return TWO_DIM_VIZ.includes(v) ? null : 'twoDims';
+  if (v === 'heatmap' || v === 'stacked' || v === 'grouped') return 'needTwoDims';
   // 타이포그래피는 기준이 있어도(위 몇 개를 큰 글자로) — 날짜 기준만 빼고
-  if (v === 'typo') return dim.kind !== 'time';
-  if (NO_DIM_VIZ.includes(v)) return false;
-  if (v === 'calendar') return dim.kind === 'time';
-  if (v === 'gantt') return dim.kind !== 'time';
-  if (v === 'line' || v === 'area') return dim.kind === 'time';
-  if (v === 'map') return dim.kind === 'geo';
-  return true;
+  if (v === 'typo') return dim.kind !== 'time' ? null : 'notTime';
+  if (NO_DIM_VIZ.includes(v)) return 'noDim';
+  if (v === 'calendar' || v === 'line' || v === 'area')
+    return dim.kind === 'time' ? null : 'needTime';
+  if (v === 'gantt') return dim.kind !== 'time' ? null : 'notTime';
+  if (v === 'map') return dim.kind === 'geo' ? null : 'needGeo';
+  return null;
 };
+const vizFits = (
+  ds: StudioDataset,
+  dimension: string | null | undefined,
+  v: StudioViz,
+  split?: string | null,
+) => !vizWhy(ds, dimension, v, split);
 
-/** 기준을 바꿀 때 차트가 안 맞으면 맞는 것으로 — 없음→숫자 카드, 날짜→선, 지역→지도, 그 밖→막대 */
-const fitViz = (ds: StudioDataset, dimension: string | null, v: StudioViz): StudioViz => {
-  if (vizFits(ds, dimension, v)) return v;
+/** 기준을 바꿀 때 차트가 안 맞으면 맞는 것으로 — 없음→숫자 카드, 두 기준→히트맵, 날짜→선, 지역→지도, 그 밖→막대 */
+const fitViz = (
+  ds: StudioDataset,
+  dimension: string | null,
+  v: StudioViz,
+  split?: string | null,
+): StudioViz => {
+  if (vizFits(ds, dimension, v, split)) return v;
   if (!dimension) return 'card';
+  if (split) return 'heatmap';
   const kind = ds.dimensions.find((d) => d.key === dimension)?.kind;
   return kind === 'time' ? 'line' : kind === 'geo' ? 'map' : 'bar';
 };
@@ -623,11 +648,19 @@ function SettingsPane({
 function useShelfOps(spec: StudioSpec, patch: (p: Partial<StudioSpec>) => void) {
   const ds = STUDIO_DATASET_MAP.get(spec.dataset)!;
   const distViz = spec.viz === 'histogram' || spec.viz === 'box';
-  const setDim = (dim: string | null) =>
+  const setDim = (dim: string | null) => {
+    const split = dim && dim !== spec.split ? spec.split : null;
     patch({
       dimension: dim,
-      split: dim ? spec.split : null,
-      viz: distViz && dim ? 'box' : fitViz(ds, dim, spec.viz),
+      split,
+      viz: distViz && dim ? 'box' : fitViz(ds, dim, spec.viz, split),
+    });
+  };
+  /** 두 번째 기준 넣기·빼기 — 넣으면 히트맵(행×열), 빼면 한 기준 차트로 */
+  const setSplit = (key: string | null, viz?: StudioViz) =>
+    patch({
+      split: key,
+      viz: viz ?? fitViz(ds, spec.dimension ?? null, key ? 'heatmap' : 'bar', key),
     });
   const setField = (key: string | undefined) =>
     patch(
@@ -635,14 +668,37 @@ function useShelfOps(spec: StudioSpec, patch: (p: Partial<StudioSpec>) => void) 
         ? { field: key, viz: spec.dimension ? 'box' : 'histogram' }
         : { field: undefined, viz: fitViz(ds, spec.dimension ?? null, distViz ? 'bar' : spec.viz) },
     );
-  /** 누르거나 끌어 놓았을 때 — 숫자는 행, 기준은 열(이미 있으면 두 번째 기준), 건별 숫자는 분포 */
+  const horizontal = spec.viz === 'hbar';
+  /**
+   * 누르거나 끌어 놓았을 때 — 태블로처럼 기준·숫자를 열·행 어디에나 놓는다.
+   * 열=기준·행=숫자 → 세로 막대/선, 열=숫자·행=기준 → 가로 막대,
+   * 열·행 모두 기준 → 히트맵(숫자는 색), 열·행 모두 숫자 → 산점도. 건별 숫자는 분포.
+   */
   const assign = (it: DragItem, shelf?: 'cols' | 'rows' | 'split' | 'rows2') => {
     if (it.kind === 'dimension') {
       if (shelf === 'split') {
-        if (it.key !== spec.dimension) patch({ split: it.key });
+        if (it.key !== spec.dimension) setSplit(it.key, spec.viz === 'table' ? 'table' : undefined);
         return;
       }
-      if (shelf === 'rows' || shelf === 'rows2') return;
+      if (shelf === 'rows' || shelf === 'rows2') {
+        // 가로 막대(행=기준)면 기준 바꾸기
+        if (horizontal || !spec.dimension || spec.dimension === it.key) {
+          patch({
+            dimension: it.key,
+            split: null,
+            viz: fitViz(ds, it.key, 'hbar'),
+          });
+          return;
+        }
+        // 열에 기준이 있으면 행 기준은 두 번째 기준 → 히트맵
+        setSplit(it.key, 'heatmap');
+        return;
+      }
+      if (shelf === 'cols' && horizontal) {
+        // 가로 막대에서 열에 기준 → 세로로
+        patch({ dimension: it.key, split: null, viz: fitViz(ds, it.key, 'bar') });
+        return;
+      }
       setDim(!shelf && spec.dimension === it.key ? null : it.key);
       return;
     }
@@ -651,17 +707,37 @@ function useShelfOps(spec: StudioSpec, patch: (p: Partial<StudioSpec>) => void) 
       setField(it.key);
       return;
     }
-    if (shelf === 'cols' || shelf === 'split') return;
-    if (shelf === 'rows2') {
-      if (it.key !== spec.measure) patch({ measure2: it.key, viz: 'scatter' });
+    if (shelf === 'split') return;
+    if (shelf === 'cols') {
+      // 열에 숫자 — 산점도면 가로축 숫자, 기준이 있으면 가로 막대
+      if (spec.viz === 'scatter') {
+        if (it.key !== spec.measure2) patch({ measure: it.key });
+        return;
+      }
+      patch({
+        measure: it.key,
+        ...(spec.dimension
+          ? { split: null, field: undefined, viz: fitViz(ds, spec.dimension, 'hbar') }
+          : {}),
+      });
+      return;
+    }
+    if (shelf === 'rows2' || (shelf === 'rows' && horizontal && it.key !== spec.measure)) {
+      // 행에도 숫자 — 숫자 둘 → 산점도
+      if (it.key !== spec.measure) patch({ measure2: it.key, split: null, viz: 'scatter' });
+      return;
+    }
+    if (shelf === 'rows' && spec.viz === 'scatter') {
+      if (it.key !== spec.measure) patch({ measure2: it.key });
       return;
     }
     patch({
       measure: it.key,
       ...(distViz ? { field: undefined, viz: fitViz(ds, spec.dimension ?? null, 'bar') } : {}),
+      ...(horizontal ? { viz: fitViz(ds, spec.dimension ?? null, 'bar') } : {}),
     });
   };
-  return { setDim, setField, assign };
+  return { setDim, setField, setSplit, assign };
 }
 
 /** 미리보기 머리글의 열·행 칸 + 시간 단위·기간 — 왼쪽 항목을 끌어 놓는다 */
@@ -671,7 +747,7 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
   const dimIsTime = ds.dimensions.find((d) => d.key === spec.dimension)?.kind === 'time';
   const distViz = spec.viz === 'histogram' || spec.viz === 'box';
   const [over, setOver] = useState<string | null>(null);
-  const { setDim, setField, assign } = useShelfOps(spec, patch);
+  const { setDim, setField, setSplit, assign } = useShelfOps(spec, patch);
   const readDrag = (e: React.DragEvent): DragItem | null => {
     try {
       return JSON.parse(e.dataTransfer.getData(DRAG_MIME)) as DragItem;
@@ -706,10 +782,86 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
       )}
     </span>
   );
-  const dim = ds.dimensions.find((d) => d.key === spec.dimension);
+  const dimChip = (key: string, onRemove: () => void) =>
+    chip(
+      styles.dimension,
+      <TypeIcon kind={ds.dimensions.find((d) => d.key === key)?.kind ?? 'cat'} />,
+      dimLabel(ds.key, key),
+      onRemove,
+    );
+  const measureChip = (key: string, onRemove?: () => void) =>
+    chip(styles.measure, <TypeIcon kind="number" />, measureLabel(ds.key, key), onRemove);
+  const removeDim = () => setDim(null);
+  const removeSplit = () => setSplit(null);
+  const removeMeasure2 = () =>
+    patch({ measure2: undefined, viz: fitViz(ds, spec.dimension ?? null, 'bar') });
+  const slot = (id: 'split' | 'rows2', label: string) => (
+    <span
+      className={`${styles.shelfSlot} ${over === id ? styles.shelfOver : ''}`}
+      {...dropZone(id)}
+    >
+      {label}
+    </span>
+  );
+  const empty = <span className={styles.shelfEmpty}>{t('studio.pane.dropAny')}</span>;
+  // 열·행에 놓인 것 — 차트 모양에 따라 태블로처럼 자리가 바뀐다
+  const heat = spec.viz === 'heatmap' && !!spec.split;
+  const scatter = spec.viz === 'scatter' && !!spec.measure2;
+  const horizontal = spec.viz === 'hbar';
+  let cols: ReactNode;
+  let rows: ReactNode;
+  let marks: ReactNode = null;
+  if (distViz) {
+    cols = spec.dimension ? dimChip(spec.dimension, removeDim) : empty;
+    rows = spec.field
+      ? chip(styles.fieldPill, <TypeIcon kind="number" />, fieldLabel(ds.key, spec.field), () =>
+          setField(undefined),
+        )
+      : measureChip(spec.measure);
+  } else if (scatter) {
+    cols = measureChip(spec.measure);
+    rows = measureChip(spec.measure2!, removeMeasure2);
+    if (spec.dimension)
+      marks = (
+        <>
+          <span className={styles.markName}>{t('studio.pane.markPoint')}</span>
+          {dimChip(spec.dimension, removeDim)}
+        </>
+      );
+  } else if (heat) {
+    cols = dimChip(spec.dimension!, removeDim);
+    rows = dimChip(spec.split!, removeSplit);
+    marks = (
+      <>
+        <span className={styles.markName}>{t('studio.pane.markColor')}</span>
+        {measureChip(spec.measure)}
+      </>
+    );
+  } else if (horizontal) {
+    cols = measureChip(spec.measure);
+    rows = spec.dimension ? dimChip(spec.dimension, removeDim) : empty;
+  } else {
+    cols = spec.dimension ? (
+      <>
+        {dimChip(spec.dimension, removeDim)}
+        {spec.split ? dimChip(spec.split, removeSplit) : slot('split', t('studio.pane.dropSplit'))}
+      </>
+    ) : (
+      empty
+    );
+    rows = (
+      <>
+        {measureChip(spec.measure)}
+        {ds.measures.length > 1 &&
+          spec.dimension &&
+          !spec.split &&
+          slot('rows2', t('studio.pane.dropMeasure2'))}
+      </>
+    );
+  }
   return (
     <div className={styles.shelfBar}>
-      {/* 열·행 칸 */}
+      {/* 열·행 칸 — 기준·숫자 어느 것이든 놓는다 */}
       <div className={styles.shelves}>
         <div className={styles.shelfRow}>
           <span className={styles.shelfName}>{t('studio.pane.cols')}</span>
@@ -717,34 +869,7 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
             className={`${styles.shelf} ${over === 'cols' ? styles.shelfOver : ''}`}
             {...dropZone('cols')}
           >
-            {spec.dimension ? (
-              chip(
-                styles.dimension,
-                <TypeIcon kind={dim?.kind ?? 'cat'} />,
-                dimLabel(ds.key, spec.dimension),
-                () => setDim(null),
-              )
-            ) : (
-              <span className={styles.shelfEmpty}>{t('studio.pane.dropDim')}</span>
-            )}
-            {spec.dimension &&
-              (spec.split ? (
-                chip(
-                  styles.dimension,
-                  <TypeIcon
-                    kind={ds.dimensions.find((d) => d.key === spec.split)?.kind ?? 'cat'}
-                  />,
-                  dimLabel(ds.key, spec.split),
-                  () => patch({ split: null }),
-                )
-              ) : (
-                <span
-                  className={`${styles.shelfSlot} ${over === 'split' ? styles.shelfOver : ''}`}
-                  {...dropZone('split')}
-                >
-                  {t('studio.pane.dropSplit')}
-                </span>
-              ))}
+            {cols}
           </div>
         </div>
         <div className={styles.shelfRow}>
@@ -753,38 +878,8 @@ function ShelfBar({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<Studio
             className={`${styles.shelf} ${over === 'rows' ? styles.shelfOver : ''}`}
             {...dropZone('rows')}
           >
-            {distViz && spec.field
-              ? chip(
-                  styles.fieldPill,
-                  <TypeIcon kind="number" />,
-                  fieldLabel(ds.key, spec.field),
-                  () => setField(undefined),
-                )
-              : chip(
-                  styles.measure,
-                  <TypeIcon kind="number" />,
-                  measureLabel(ds.key, spec.measure),
-                )}
-            {!distViz &&
-              (spec.viz === 'scatter' && spec.measure2 ? (
-                chip(
-                  styles.measure,
-                  <TypeIcon kind="number" />,
-                  measureLabel(ds.key, spec.measure2),
-                  () =>
-                    patch({
-                      measure2: undefined,
-                      viz: fitViz(ds, spec.dimension ?? null, 'bar'),
-                    }),
-                )
-              ) : ds.measures.length > 1 && spec.dimension ? (
-                <span
-                  className={`${styles.shelfSlot} ${over === 'rows2' ? styles.shelfOver : ''}`}
-                  {...dropZone('rows2')}
-                >
-                  {t('studio.pane.dropMeasure2')}
-                </span>
-              ) : null)}
+            {rows}
+            {marks && <span className={styles.marks}>{marks}</span>}
           </div>
         </div>
       </div>
@@ -854,7 +949,7 @@ function DataTab({ spec, patch }: { spec: StudioSpec; patch: (p: Partial<StudioS
               periodField: undefined,
               field: undefined,
               measure2: undefined,
-              viz: fitViz(next, next.defaultTime, spec.viz),
+              viz: fitViz(next, next.defaultTime, spec.viz, null),
             });
           }}
           options={datasetOptions}
@@ -1004,19 +1099,38 @@ function ChartTab({
             <div className={styles.vizRow}>
               {g.viz.map((v) => {
                 const I = VIZ_ICON[v];
+                const why = vizWhy(ds, spec.dimension, v, spec.split);
                 return (
-                  <button
+                  // 꺼진 버튼은 마우스가 안 닿아 감싼 칸에 이유 툴팁
+                  <span
                     key={v}
-                    type="button"
-                    className={`${styles.vizBtn} ${spec.viz === v ? styles.vizOn : ''}`}
-                    disabled={!vizFits(ds, spec.dimension, v)}
-                    title={DASH_VIZ_LABEL[v]}
-                    aria-pressed={spec.viz === v}
-                    onClick={() => patch({ viz: v })}
+                    className={styles.vizCell}
+                    title={
+                      why
+                        ? `${DASH_VIZ_LABEL[v]} — ${tDyn(`studio.why.${why}`, why)}`
+                        : DASH_VIZ_LABEL[v]
+                    }
                   >
-                    <I size={16} aria-hidden />
-                    <small>{DASH_VIZ_LABEL[v]}</small>
-                  </button>
+                    <button
+                      type="button"
+                      className={`${styles.vizBtn} ${spec.viz === v ? styles.vizOn : ''}`}
+                      disabled={!!why}
+                      aria-pressed={spec.viz === v}
+                      onClick={() =>
+                        patch(
+                          v === 'scatter' && !spec.measure2
+                            ? {
+                                viz: v,
+                                measure2: ds.measures.find((m) => m.key !== spec.measure)?.key,
+                              }
+                            : { viz: v },
+                        )
+                      }
+                    >
+                      <I size={16} aria-hidden />
+                      <small>{DASH_VIZ_LABEL[v]}</small>
+                    </button>
+                  </span>
                 );
               })}
             </div>
