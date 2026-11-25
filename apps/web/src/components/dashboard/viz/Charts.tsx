@@ -149,6 +149,10 @@ function CardViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
 }
 
 // ═══════════ 게이지 ═══════════
+/** 게이지 색 — 낮을수록 빨강, 노랑·주황을 지나 높으면 초록(25% 단위) */
+const GAUGE_STEPS = ['#ff3b30', '#ffcc00', '#ff9500', '#34c759'];
+const gaugeColor = (ratio: number) => GAUGE_STEPS[Math.min(3, Math.floor(ratio * 4))];
+
 function GaugeViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
   const ratio = Math.max(0, Math.min(1, d.value / (d.max ?? 1)));
   const r = 80;
@@ -173,7 +177,7 @@ function GaugeViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
           <path
             d={`M${sx},${sy} A${r},${r} 0 0 1 ${vx},${vy}`}
             fill="none"
-            stroke="var(--series-1)"
+            stroke={gaugeColor(ratio)}
             strokeWidth={16}
             strokeLinecap="round"
           />
@@ -192,16 +196,22 @@ function GaugeViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
   );
 }
 
+/** 막대 진하기 — 가장 큰 값 1, 작을수록 옅게(최소 0.22) */
+const fadeOf = (v: number, max: number) => (max > 0 ? 0.22 + 0.78 * Math.max(0, v / max) : 1);
+
 // ═══════════ 세로 막대(범주·시간) ═══════════
 function ColumnViz({
   items,
   format,
   gapless,
+  fade,
 }: {
   items: { key: string; label: string; value: number }[];
   format: DashFormat;
   /** 히스토그램 — 막대를 붙여 그린다(구간이 이어진다는 뜻) */
   gapless?: boolean;
+  /** 항목 비교 — 큰 막대는 진하게, 작을수록 옅게 */
+  fade?: boolean;
 }) {
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const ov = useContext(SeriesColorCtx);
@@ -243,6 +253,7 @@ function ColumnViz({
                   <path
                     d={`M${x},${h} V${y + rr} Q${x},${y} ${x + rr},${y} H${x + bw - rr} Q${x + bw},${y} ${x + bw},${y + rr} V${h} Z`}
                     fill={ov[it.key] ?? 'var(--series-1)'}
+                    fillOpacity={fade && !ov[it.key] ? fadeOf(it.value, items[maxIdx].value) : 1}
                   />
                   {i === maxIdx && it.value > 0 && (
                     <text x={x + bw / 2} y={y - 5} textAnchor="middle" className={styles.valueText}>
@@ -349,6 +360,7 @@ function HBarViz({
                   fill={
                     it.key === 'OTHER' ? 'var(--series-other)' : (ov[it.key] ?? 'var(--series-1)')
                   }
+                  fillOpacity={it.key === 'OTHER' || ov[it.key] ? 1 : fadeOf(it.value, max)}
                 />
                 <text x={labelW + bw + 6} y={y + barH / 2} dy="0.32em" className={styles.valueText}>
                   {fmt(it.value, format)}
@@ -487,6 +499,135 @@ function LineViz({
           role="tooltip"
         >
           {hp.label} · <b>{fmtExact(hp.value, format)}</b>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════ 여러 선(계열 둘 이상) ═══════════
+/** 계열 모양 — 둘이면 실선·점선, 셋째부터 다음 색으로 실선·점선 반복 */
+const lineStyle = (i: number) => ({
+  color: `var(--series-${Math.min(8, Math.floor(i / 2) + 1)})`,
+  dash: i % 2 ? '5 4' : undefined,
+});
+
+function MultiLineViz({ d }: { d: Extract<DashData, { shape: 'matrix' }> }) {
+  const [ref, { width, height }] = useSize<HTMLDivElement>();
+  const [hover, setHover] = useState<number | null>(null);
+  if (!d.cols.length || !d.rows.length) return <Empty />;
+  const legendH = 22;
+  const m = { l: 44, r: 14, t: 10, b: 22 };
+  const w = Math.max(0, width - m.l - m.r);
+  const h = Math.max(0, height - m.t - m.b - legendH);
+  const n = d.cols.length;
+  const { top, step } = niceMax(Math.max(0, ...d.cells.flat()));
+  const xs = (i: number) => (n === 1 ? w / 2 : (i / (n - 1)) * w);
+  const ys = (v: number) => h - (v / top) * h;
+  const every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor(w / 50))));
+  const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
+  return (
+    <div ref={ref} className={styles.vizRoot}>
+      <div className={`${styles.legendRow} ${styles.legendRight}`}>
+        {d.rows.map((r, i) => {
+          const st = lineStyle(i);
+          return (
+            <span key={r}>
+              <svg width={18} height={8} aria-hidden>
+                <line
+                  x1={0}
+                  x2={18}
+                  y1={4}
+                  y2={4}
+                  stroke={st.color}
+                  strokeWidth={2}
+                  strokeDasharray={st.dash}
+                />
+              </svg>
+              {r}
+            </span>
+          );
+        })}
+      </div>
+      {width > 0 && (
+        <svg
+          className={styles.svg}
+          width={width}
+          height={height - legendH}
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const px = e.clientX - rect.left - m.l;
+            const i = Math.round((px / Math.max(1, w)) * (n - 1));
+            setHover(Math.max(0, Math.min(n - 1, i)));
+          }}
+          onMouseLeave={() => setHover(null)}
+        >
+          <g transform={`translate(${m.l},${m.t})`}>
+            {ticks.map((t) => (
+              <g key={t}>
+                {t > 0 && <line x1={0} x2={w} y1={ys(t)} y2={ys(t)} className={styles.gridLine} />}
+                <text x={-6} y={ys(t)} dy="0.32em" textAnchor="end" className={styles.axisText}>
+                  {fmt(t, d.format)}
+                </text>
+              </g>
+            ))}
+            {d.cols.map((c, i) =>
+              i % every === 0 || i === n - 1 ? (
+                <text
+                  key={`${c}-${i}`}
+                  x={xs(i)}
+                  y={h + 15}
+                  textAnchor="middle"
+                  className={styles.axisText}
+                >
+                  {c}
+                </text>
+              ) : null,
+            )}
+            <line x1={0} x2={w} y1={h} y2={h} className={styles.baseline} />
+            {d.rows.map((r, ri) => {
+              const st = lineStyle(ri);
+              const path = d.cols
+                .map((_, ci) => `${ci ? 'L' : 'M'}${xs(ci)},${ys(d.cells[ri]?.[ci] ?? 0)}`)
+                .join(' ');
+              return (
+                <path
+                  key={r}
+                  d={path}
+                  fill="none"
+                  stroke={st.color}
+                  strokeWidth={2}
+                  strokeDasharray={st.dash}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              );
+            })}
+            {hover != null && (
+              <line
+                x1={xs(hover)}
+                x2={xs(hover)}
+                y1={0}
+                y2={h}
+                stroke="var(--axis)"
+                strokeDasharray="3 3"
+              />
+            )}
+          </g>
+        </svg>
+      )}
+      {hover != null && (
+        <div
+          className={styles.tip}
+          style={{ left: m.l + xs(hover), top: legendH + m.t }}
+          role="tooltip"
+        >
+          <div>{d.cols[hover]}</div>
+          {d.rows.map((r, ri) => (
+            <div key={r}>
+              {r} · <b>{fmtExact(d.cells[ri]?.[hover] ?? 0, d.format)}</b>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1930,7 +2071,7 @@ export function VizBody({
       if (viz === 'treemap') return <TreemapViz items={data.items} format={data.format} />;
       if (viz === 'histogram') return <ColumnViz items={data.items} format={data.format} gapless />;
       if (viz === 'bar' || viz === 'stacked' || viz === 'grouped')
-        return <ColumnViz items={data.items} format={data.format} />;
+        return <ColumnViz items={data.items} format={data.format} fade />;
       if (viz === 'hbar') return <HBarViz items={data.items} format={data.format} />;
       if (viz === 'pie' || viz === 'donut')
         return <PieViz items={data.items} format={data.format} donut={viz === 'donut'} />;
@@ -1947,6 +2088,7 @@ export function VizBody({
         );
       return <LineViz points={data.points} format={data.format} area={viz === 'area'} />;
     case 'matrix':
+      if (viz === 'line') return <MultiLineViz d={data} />;
       if (viz === 'grouped') return <StackedViz d={data} grouped />;
       return viz === 'stacked' ? <StackedViz d={data} /> : <HeatmapViz d={data} />;
     case 'box':

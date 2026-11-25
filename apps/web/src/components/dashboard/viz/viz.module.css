@@ -435,3 +435,11 @@ button.listItem:hover {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
+
+/* 여러 선 범례 — 오른쪽 위 */
+.legendRight {
+  justify-content: flex-end;
+}
+.legendRight svg {
+  margin-right: 5px;
+}
