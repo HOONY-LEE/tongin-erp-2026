@@ -57,6 +57,25 @@
   border-left: 2px solid var(--ark-color-border);
   margin-left: 13px;
 }
+.compact .list {
+  margin-left: 11px;
+}
+.compact .dot {
+  margin-left: -12px;
+}
+.compact .row {
+  padding: 5px 8px 5px 0;
+}
+.compact .main b {
+  font-size: 13px;
+  font-weight: 500;
+}
+.compact .detail {
+  font-size: 12px;
+}
+.compact {
+  gap: 10px;
+}
 .row {
   display: flex;
   align-items: flex-start;
@@ -144,4 +163,35 @@
   padding-top: 4px;
   color: var(--ark-color-text-secondary);
   font-size: 12px;
+}
+
+/* 고객 이력 표 */
+.when {
+  font-variant-numeric: tabular-nums;
+}
+.kindCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.kindCell .dot {
+  margin-left: 0;
+  border: 0;
+}
+.contentCell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.contentCell > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contentCell .detail {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -271,6 +271,8 @@ export default defineNs({
     },
     history: '고객 이력',
     historyMore: '자세히',
+    historyTitle: '고객 이력',
+    historyEmpty: '고객 이력이 없습니다',
     noHistory: '이전 기록이 없습니다.',
     cal: {
       CLOSED: '마감',
@@ -633,6 +635,8 @@ export default defineNs({
     },
     history: 'Customer history',
     historyMore: 'Details',
+    historyTitle: 'Customer history',
+    historyEmpty: 'No customer history',
     noHistory: 'No previous records.',
     cal: {
       CLOSED: 'Closed',
@@ -990,6 +994,8 @@ export default defineNs({
     },
     history: '客户记录',
     historyMore: '详情',
+    historyTitle: '客户记录',
+    historyEmpty: '没有客户记录',
     noHistory: '没有以往记录。',
     cal: {
       CLOSED: '截止',

@@ -166,6 +166,22 @@ export default function CrudTable({
     return () => window.clearTimeout(id);
   }, [load, serverFilter]);
 
+  // 상세(?detail=id)가 지금 목록(첫 쪽·거르기 결과)에 없으면 그 한 건만 따로 불러온다
+  // — 상담 콘솔 '자세히'처럼 다른 화면에서 바로 들어올 때
+  const [single, setSingle] = useState<{ id: string; row: Row | null } | null>(null);
+  const inList = !!detail.id && rows.some((r) => String(r.id) === detail.id);
+  useEffect(() => {
+    const id = detail.id;
+    if (!id || inList || !updatedAt || single?.id === id) return;
+    let alive = true;
+    api<Row>(`${path}/${id}`)
+      .then((r) => alive && setSingle({ id, row: r }))
+      .catch(() => alive && setSingle({ id, row: null }));
+    return () => {
+      alive = false;
+    };
+  }, [detail.id, inList, updatedAt, path, single?.id]);
+
   const onSubmit = async (values: Record<string, unknown>) => {
     try {
       await api(path, { method: 'POST', body: JSON.stringify(values) });
@@ -220,7 +236,10 @@ export default function CrudTable({
   );
 
   if (detail.id) {
-    const row = rows.find((r) => String(r.id) === detail.id);
+    const row =
+      rows.find((r) => String(r.id) === detail.id) ??
+      (single?.id === detail.id ? (single.row ?? undefined) : undefined);
+    const fetching = !inList && single?.id !== detail.id;
     // 등록 항목 전부 + 등록 항목에 없는 목록 칸(들어 있는 방·건수처럼 서버가 계산한 값)
     const fieldNames = new Set(
       fields.flatMap((f) =>
@@ -249,7 +268,7 @@ export default function CrudTable({
     return (
       <>
         <RecordDetail
-          loading={!row && (loading || !updatedAt)}
+          loading={!row && (loading || !updatedAt || fetching)}
           title={row ? String(row.name ?? row.code ?? title) : t('misc.notFound')}
           backLabel={title}
           onBack={detail.close}
