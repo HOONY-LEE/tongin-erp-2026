@@ -86,6 +86,50 @@ export class SupportService {
     });
   }
 
+  /** 접수 유형 관리 목록(숨긴 것 포함) */
+  manageCategories() {
+    return this.prisma.commonCode.findMany({
+      where: { codeGroup: AS_CATEGORY },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { id: true, code: true, name: true, sortOrder: true, isActive: true },
+    });
+  }
+
+  async createCategory(dto: { name: string }) {
+    const last = await this.prisma.commonCode.aggregate({
+      where: { codeGroup: AS_CATEGORY },
+      _max: { sortOrder: true },
+    });
+    return this.prisma.commonCode.create({
+      data: {
+        codeGroup: AS_CATEGORY,
+        // 코드는 안 보이는 값 — 겹치지 않게 시각으로
+        code: `C${Date.now().toString(36).toUpperCase()}`,
+        name: dto.name.trim(),
+        sortOrder: (last._max.sortOrder ?? 0) + 1,
+        isActive: true,
+      },
+      select: { id: true, code: true, name: true, sortOrder: true, isActive: true },
+    });
+  }
+
+  async updateCategory(id: string, dto: { name?: string; sortOrder?: number; isActive?: boolean }) {
+    const found = await this.prisma.commonCode.findFirst({
+      where: { id, codeGroup: AS_CATEGORY },
+      select: { id: true },
+    });
+    if (!found) throw new NotFoundException('접수 유형을 찾을 수 없습니다.');
+    return this.prisma.commonCode.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+      },
+      select: { id: true, code: true, name: true, sortOrder: true, isActive: true },
+    });
+  }
+
   /** 고객의 접수(견적건) — A/S 접수 창에서 관련 접수로 고른다(최근 순, 취소 건 빼고) */
   async customerLeads(customerId: string, principal?: AuthPrincipal) {
     await this.scope.assertCustomer(customerId, principal);

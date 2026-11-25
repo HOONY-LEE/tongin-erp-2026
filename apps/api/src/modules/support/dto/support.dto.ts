@@ -1,5 +1,16 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { PhoneDigits } from '../../../common/phone';
 
 /**
@@ -68,4 +79,30 @@ export class UpdateTicketDto extends PartialType(CreateTicketDto) {
   @IsString()
   @MaxLength(2000)
   resolution?: string;
+}
+
+/** A/S 접수 유형 — 추가 */
+export class CreateAsCategoryDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  name!: string;
+}
+
+/** A/S 접수 유형 — 고치기(이름·순서·사용 여부) */
+export class UpdateAsCategoryDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  name?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

@@ -393,7 +393,7 @@ export default function Support() {
         toolbarActions={
           <>
             {/* 접수 유형 관리 — 관리자만 */}
-            {can('COMMON_CODE.UPDATE') && (
+            {can('SUPPORT.MANAGE') && (
               <Button variant="outline" size="sm" onClick={() => setCatOpen(true)}>
                 <Settings2 size={15} /> {t('asx.manage')}
               </Button>

@@ -15,7 +15,12 @@ import {
   type SupportTicketStatus,
 } from '@tongin/shared';
 import { SupportService } from './support.service';
-import { CreateTicketDto, UpdateTicketDto } from './dto/support.dto';
+import {
+  CreateAsCategoryDto,
+  CreateTicketDto,
+  UpdateAsCategoryDto,
+  UpdateTicketDto,
+} from './dto/support.dto';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AccessLog } from '../../audit/access-log';
@@ -52,6 +57,25 @@ export class SupportController {
   @RequirePermissions('SUPPORT.READ')
   categories() {
     return this.service.categories();
+  }
+
+  /** 접수 유형 관리(숨긴 것 포함) — 'A/S 접수 유형 설정' 권한 */
+  @Get('categories/manage')
+  @RequirePermissions('SUPPORT.MANAGE')
+  manageCategories() {
+    return this.service.manageCategories();
+  }
+
+  @Post('categories')
+  @RequirePermissions('SUPPORT.MANAGE')
+  createCategory(@Body() dto: CreateAsCategoryDto) {
+    return this.service.createCategory(dto);
+  }
+
+  @Patch('categories/:id')
+  @RequirePermissions('SUPPORT.MANAGE')
+  updateCategory(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAsCategoryDto) {
+    return this.service.updateCategory(id, dto);
   }
 
   @AccessLog('support', 'VIEW')
