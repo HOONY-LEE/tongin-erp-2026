@@ -2,7 +2,15 @@ import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowUp, FileSpreadsheet, Paperclip, Sparkles, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUp,
+  FileSpreadsheet,
+  Paperclip,
+  PencilLine,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import type { AgentGraph } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { Button, PopoutButton, useToast } from '../components/ui';
@@ -34,6 +42,8 @@ interface DesignReply {
   reply: string;
   status: 'ask' | 'ready';
   askForFile: boolean;
+  options?: string[];
+  recommended?: number;
   name: string;
   description: string;
   spec: string;
@@ -203,6 +213,14 @@ export default function AgentCreate() {
 
   const busy = thinking || uploading || building;
   const ready = last?.status === 'ready' && !thinking;
+  // 지금 질문의 선택지 — 답하면(새 질문이 오면) 바뀐다
+  const choices = last?.status === 'ask' && !thinking && !building ? (last.options ?? []) : [];
+  const showChoices = choices.length > 0 || (!!last?.askForFile && !thinking && !building);
+  const pick = (i: number) => {
+    if (busy) return;
+    if (i < choices.length) send(choices[i]);
+    else send(t('ai.choice.autoText'));
+  };
 
   return (
     <div className={styles.chatPage}>
@@ -290,18 +308,55 @@ export default function AgentCreate() {
                     {t('ai.thinking')}
                   </div>
                 )}
-                {last?.askForFile && !thinking && !building && (
-                  <div className={styles.askFile}>
-                    <FileSpreadsheet size={16} />
-                    <span>{t('ai.uploadTemplateHint')}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      loading={uploading}
-                      onClick={() => fileRef.current?.click()}
-                    >
-                      {t('ai.uploadTemplate')}
-                    </Button>
+                {showChoices && last && (
+                  <div className={styles.choiceCard} role="group" aria-label={t('ai.choice.group')}>
+                    {choices.map((c, i) => (
+                      <button
+                        key={`${i}-${c}`}
+                        type="button"
+                        className={styles.choiceRow}
+                        disabled={busy}
+                        onClick={() => pick(i)}
+                      >
+                        <span className={styles.choiceNum}>{i + 1}</span>
+                        <span className={styles.choiceText}>{c}</span>
+                        {last.recommended === i && (
+                          <span className={styles.choiceBadge}>{t('ai.choice.recommended')}</span>
+                        )}
+                      </button>
+                    ))}
+                    {last.askForFile && (
+                      <button
+                        type="button"
+                        className={styles.choiceRow}
+                        disabled={busy}
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        <span className={styles.choiceNum}>
+                          <Paperclip size={13} />
+                        </span>
+                        <span className={styles.choiceText}>
+                          {uploading ? t('ai.choice.uploading') : t('ai.uploadTemplateHint')}
+                        </span>
+                      </button>
+                    )}
+                    {choices.length > 0 && (
+                      <button
+                        type="button"
+                        className={styles.choiceRow}
+                        disabled={busy}
+                        onClick={() => pick(choices.length)}
+                      >
+                        <span className={`${styles.choiceNum} ${styles.choiceNumAuto}`}>
+                          <Sparkles size={13} />
+                        </span>
+                        <span className={styles.choiceText}>{t('ai.choice.auto')}</span>
+                      </button>
+                    )}
+                    <div className={styles.choiceFoot}>
+                      <PencilLine size={13} />
+                      {choices.length > 0 ? t('ai.choice.typeHint') : t('ai.choice.typeOnly')}
+                    </div>
                   </div>
                 )}
                 {ready && (
@@ -371,6 +426,21 @@ export default function AgentCreate() {
                 placeholder={msgs.length ? t('ai.replyPh') : t('ai.whatDoPh')}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
+                  const n = Number(e.key);
+                  if (
+                    !draft &&
+                    choices.length > 0 &&
+                    Number.isInteger(n) &&
+                    n >= 1 &&
+                    n <= choices.length + 1 &&
+                    !e.metaKey &&
+                    !e.ctrlKey &&
+                    !e.altKey
+                  ) {
+                    e.preventDefault();
+                    pick(n - 1);
+                    return;
+                  }
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
                     send();

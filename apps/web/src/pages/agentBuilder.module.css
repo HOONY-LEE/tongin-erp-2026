@@ -1231,22 +1231,6 @@
   color: var(--ark-color-text-tertiary);
   cursor: pointer;
 }
-.askFile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: 36px;
-  padding: 10px 12px;
-  border: 1px dashed var(--ark-color-primary-400);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ark-color-primary-500) 5%, transparent);
-  color: var(--ark-color-text-secondary);
-  font-size: calc(13px * var(--font-scale, 1));
-}
-.askFile > span {
-  flex: 1;
-  min-width: 0;
-}
 .readyCard {
   display: flex;
   flex-direction: column;
@@ -1615,4 +1599,80 @@
 .nlRun .runForm {
   border-right: 0;
   border-bottom: 1px solid var(--ark-color-border);
+}
+
+/* 대화로 만들기 — AI 질문의 선택지(번호 버튼) */
+.choiceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 36px;
+  padding: 6px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 12px;
+  background: var(--ark-color-bg);
+}
+.choiceRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: calc(14px * var(--font-scale, 1));
+  color: var(--ark-color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.choiceRow:hover:not(:disabled),
+.choiceRow:focus-visible {
+  background: var(--ark-color-bg-muted);
+  outline: none;
+}
+.choiceRow:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.choiceNum {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 6px;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.choiceRow:hover:not(:disabled) .choiceNum {
+  border-color: var(--ark-color-text-secondary);
+  color: var(--ark-color-text);
+}
+.choiceNumAuto {
+  color: var(--ark-color-primary-500);
+}
+.choiceText {
+  flex: 1;
+  min-width: 0;
+}
+.choiceBadge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ark-color-bg-muted);
+  color: var(--ark-color-text-secondary);
+  font-size: calc(11px * var(--font-scale, 1));
+}
+.choiceFoot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 4px;
+  color: var(--ark-color-text-tertiary, var(--ark-color-text-secondary));
+  font-size: calc(12px * var(--font-scale, 1));
 }
