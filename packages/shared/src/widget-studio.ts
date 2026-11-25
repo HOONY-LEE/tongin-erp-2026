@@ -4,6 +4,7 @@
 // 권한·지점 범위는 화면에서 볼 때와 똑같이 걸린다(지점 직원은 자기 지점 숫자만).
 import {
   DASH_PERIODS,
+  DASH_WIDGETS,
   type DashData,
   type DashFormat,
   type DashPeriod,
@@ -1257,4 +1258,206 @@ export interface StudioResult {
   applied: { measure: string; dimension: string | null; grain: StudioGrain; period: DashPeriod };
   /** 안내 — 왜 비었는지·못 찾은 필터 값 등(미리보기·AI가 본다) */
   notes?: string[];
+}
+
+// ── 시스템 위젯 → 스튜디오 설계서 ──
+// 기본 제공 위젯(DASH_WIDGETS)을 스튜디오에서 고쳐 '새 위젯'으로 저장할 수 있게, 같은 숫자를 그리는 설계서로 옮긴다.
+// 목록형(최근 접수 등)·지도 화면·메모처럼 스튜디오 데이터로 그릴 수 없는 것은 null.
+type SysMap = Partial<StudioSpec> & { dataset: string; measure: string };
+const f = (dim: string, ...values: string[]): StudioFilter[] => [{ dim, values }];
+const B2B = f('serviceLine', '기업이전');
+const CRM_B2B = f('pipeline', '기업영업');
+const CRM_FRAN = f('pipeline', '가맹 영업');
+const SYSTEM_SPECS: Record<string, SysMap> = {
+  'kpi.leads': { dataset: 'lead', measure: 'count', viz: 'card' },
+  'kpi.contracts': { dataset: 'contract', measure: 'count', viz: 'card' },
+  'kpi.conversion': { dataset: 'lead', measure: 'conversion', viz: 'gauge' },
+  'kpi.revenue': { dataset: 'contract', measure: 'revenue', viz: 'card' },
+  'kpi.avgContract': { dataset: 'contract', measure: 'avgAmount', viz: 'card' },
+  'kpi.collected': { dataset: 'payment', measure: 'amount', viz: 'card' },
+  'kpi.outstanding': { dataset: 'invoice', measure: 'outstanding', viz: 'card', period: 'all' },
+  'kpi.collectionRate': {
+    dataset: 'invoice',
+    measure: 'collectionRate',
+    viz: 'gauge',
+    period: 'all',
+  },
+  'kpi.workDone': { dataset: 'work', measure: 'count', viz: 'card', filters: f('status', '완료') },
+  'kpi.newCustomers': { dataset: 'customer', measure: 'count', viz: 'card' },
+  'b2b.kpiRevenue': { dataset: 'contract', measure: 'revenue', viz: 'card', filters: B2B },
+  'b2b.kpiContracts': { dataset: 'contract', measure: 'count', viz: 'card', filters: B2B },
+  'b2b.revenueTrend': {
+    dataset: 'contract',
+    measure: 'revenue',
+    dimension: 'signedAt',
+    grain: 'month',
+    viz: 'bar',
+    filters: B2B,
+  },
+  'b2b.byPartner': { dataset: 'invoice', measure: 'amount', dimension: 'partner', viz: 'hbar' },
+  'crm.b2b.kpiPipeline': {
+    dataset: 'crm_lead',
+    measure: 'amount',
+    viz: 'card',
+    filters: CRM_B2B,
+    period: 'all',
+  },
+  'crm.b2b.kpiWinRate': { dataset: 'crm_lead', measure: 'wonRate', viz: 'gauge', filters: CRM_B2B },
+  'crm.b2b.funnel': {
+    dataset: 'crm_lead',
+    measure: 'count',
+    dimension: 'stage',
+    viz: 'funnel',
+    filters: CRM_B2B,
+  },
+  'crm.b2b.byOwner': {
+    dataset: 'crm_lead',
+    measure: 'count',
+    dimension: 'owner',
+    viz: 'hbar',
+    filters: CRM_B2B,
+  },
+  'crm.b2b.bySource': {
+    dataset: 'crm_lead',
+    measure: 'count',
+    dimension: 'source',
+    viz: 'donut',
+    filters: CRM_B2B,
+  },
+  'crm.fran.kpiOpen': {
+    dataset: 'crm_lead',
+    measure: 'count',
+    viz: 'card',
+    filters: CRM_FRAN,
+    period: 'all',
+  },
+  'crm.fran.kpiWon': { dataset: 'crm_lead', measure: 'wonRate', viz: 'gauge', filters: CRM_FRAN },
+  'crm.fran.funnel': {
+    dataset: 'crm_lead',
+    measure: 'count',
+    dimension: 'stage',
+    viz: 'funnel',
+    filters: CRM_FRAN,
+  },
+  'crm.fran.bySource': {
+    dataset: 'crm_lead',
+    measure: 'count',
+    dimension: 'source',
+    viz: 'donut',
+    filters: CRM_FRAN,
+  },
+  'crm.fran.byOwner': {
+    dataset: 'crm_lead',
+    measure: 'count',
+    dimension: 'owner',
+    viz: 'hbar',
+    filters: CRM_FRAN,
+  },
+  'lead.funnel': { dataset: 'lead', measure: 'count', dimension: 'status', viz: 'funnel' },
+  'lead.trend': {
+    dataset: 'lead',
+    measure: 'count',
+    dimension: 'createdAt',
+    grain: 'day',
+    viz: 'line',
+  },
+  'lead.bySource': { dataset: 'lead', measure: 'count', dimension: 'source', viz: 'donut' },
+  'lead.byServiceLine': { dataset: 'lead', measure: 'count', dimension: 'serviceLine', viz: 'pie' },
+  'lead.byRegion': { dataset: 'lead', measure: 'count', dimension: 'fromSido', viz: 'map' },
+  'lead.byBranch': { dataset: 'lead', measure: 'count', dimension: 'org', viz: 'hbar' },
+  'lead.branchMonth': {
+    dataset: 'lead',
+    measure: 'count',
+    dimension: 'createdAt',
+    grain: 'month',
+    split: 'org',
+    viz: 'heatmap',
+  },
+  'revenue.trend': {
+    dataset: 'contract',
+    measure: 'revenue',
+    dimension: 'signedAt',
+    grain: 'month',
+    viz: 'area',
+  },
+  'contract.trend': {
+    dataset: 'contract',
+    measure: 'count',
+    dimension: 'signedAt',
+    grain: 'month',
+    viz: 'bar',
+  },
+  'revenue.byBranch': { dataset: 'contract', measure: 'revenue', dimension: 'org', viz: 'hbar' },
+  'revenue.byRegion': {
+    dataset: 'contract',
+    measure: 'revenue',
+    dimension: 'fromSido',
+    viz: 'map',
+  },
+  'revenue.byServiceLine': {
+    dataset: 'contract',
+    measure: 'revenue',
+    dimension: 'serviceLine',
+    viz: 'donut',
+  },
+  'collected.trend': {
+    dataset: 'payment',
+    measure: 'amount',
+    dimension: 'paidAt',
+    grain: 'month',
+    viz: 'bar',
+  },
+  'work.byStatus': { dataset: 'work', measure: 'count', dimension: 'status', viz: 'donut' },
+  'work.trend': {
+    dataset: 'work',
+    measure: 'count',
+    dimension: 'scheduledDate',
+    grain: 'week',
+    viz: 'bar',
+  },
+  'work.calendar': {
+    dataset: 'work',
+    measure: 'count',
+    dimension: 'scheduledDate',
+    grain: 'day',
+    viz: 'calendar',
+  },
+  'branch.ranking': {
+    dataset: 'contract',
+    measure: 'revenue',
+    dimension: 'org',
+    viz: 'hbar',
+    limit: 10,
+  },
+  'customer.byGrade': { dataset: 'customer', measure: 'count', dimension: 'grade', viz: 'pie' },
+  'customer.trend': {
+    dataset: 'customer',
+    measure: 'count',
+    dimension: 'createdAt',
+    grain: 'month',
+    viz: 'line',
+  },
+  'support.byStatus': { dataset: 'support', measure: 'count', dimension: 'status', viz: 'donut' },
+  'service.byStatus': {
+    dataset: 'service_order',
+    measure: 'count',
+    dimension: 'status',
+    viz: 'donut',
+  },
+  'hr.headcount': { dataset: 'employee', measure: 'headcount', viz: 'card', period: 'all' },
+};
+
+/** 시스템 위젯을 스튜디오 설계서로 — 스튜디오로 그릴 수 없으면 null */
+export function systemWidgetSpec(key: string): StudioSpec | null {
+  const m = SYSTEM_SPECS[key];
+  const def = DASH_WIDGETS.find((w) => w.key === key);
+  if (!m || !def) return null;
+  const { spec } = normalizeStudioSpec({
+    dimension: null,
+    period: def.period ?? '30d',
+    ...m,
+    title: def.title,
+    subtitle: def.description,
+  });
+  return spec;
 }

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Input, Select } from '@sunghoon_lee/akron-ui';
 import {
   AlignLeft,
   ChevronDown,
   ArrowLeft,
   BarChart3,
+  Copy,
   GripVertical,
   LayoutTemplate,
   SlidersHorizontal,
@@ -29,6 +30,7 @@ import {
   DASH_COLS,
   DASH_PERIODS,
   DASH_ROW_HEIGHT,
+  DASH_WIDGETS,
   STUDIO_DATASETS,
   STUDIO_DATASET_GROUPS,
   STUDIO_DATASET_MAP,
@@ -43,6 +45,7 @@ import {
   studioDefaultSize,
   studioLayout,
   studioRemoveControl,
+  systemWidgetSpec,
   type StudioAlign,
   type StudioBox,
   type StudioLook,
@@ -64,6 +67,7 @@ import {
   Button,
   ConfirmModal,
   DataTable,
+  Modal,
   ListToolbar,
   SegmentedControl,
   Skeleton,
@@ -83,7 +87,7 @@ import {
 } from '../components/dashboard/studio/studioLabels';
 import { DASH_PERIOD_LABEL, DASH_VIZ_LABEL } from '../i18n/codes';
 import { useTheme } from '../theme/ThemeProvider';
-import { colorLabel } from '../i18n/dashWidgets';
+import { colorLabel, widgetDesc, widgetTitle } from '../i18n/dashWidgets';
 import { ColorPicker, isHex } from '../components/ui/ColorPicker';
 import { tDyn } from '../i18n';
 import styles from './WidgetStudio.module.css';
@@ -189,6 +193,33 @@ export default function WidgetStudio() {
 }
 
 // ═══════════ 목록(대시보드 관리 '위젯' 탭 안에 들어간다) ═══════════
+/** 목록 한 줄 — 직접 만든 위젯(커스텀) 또는 기본 제공(시스템) */
+interface ListRow {
+  id: string;
+  kind: 'custom' | 'system';
+  /** 시스템 위젯 키 */
+  sysKey?: string;
+  title: string;
+  subtitle: string;
+  /** 스튜디오 설계서 — 시스템 위젯이 스튜디오로 못 그리면 null */
+  spec: StudioSpec | null;
+  datasetText: string;
+  vizText: string;
+  byText: string;
+  updatedAt: string | null;
+}
+
+/** 위젯 복사 — 같은 설계서로 '○○ 사본'을 새로 만든다 */
+async function copyWidget(spec: StudioSpec, title: string, suffix: string) {
+  return api<CustomWidgetRow>('/custom-widgets', {
+    method: 'POST',
+    body: JSON.stringify({
+      spec: { ...spec, title: `${title}${suffix}`.slice(0, 60) },
+      prompt: '',
+    }),
+  });
+}
+
 export function WidgetList({
   reloadKey = 0,
   view = 'list',
@@ -207,6 +238,7 @@ export function WidgetList({
   const navigate = useNavigate();
   const { can } = useAuth();
   const [rows, setRows] = useState<CustomWidgetRow[] | null>(null);
+  const [kind, setKind] = useState<'all' | 'custom' | 'system'>('all');
   const load = useCallback(async () => {
     try {
       setRows(await api<CustomWidgetRow[]>('/custom-widgets'));
@@ -219,7 +251,80 @@ export function WidgetList({
     void load();
   }, [load, reloadKey]);
 
+  const canCreate = can('DASHBOARD.CREATE');
+  const custom: ListRow[] = (rows ?? []).map((r) => ({
+    id: r.id,
+    kind: 'custom',
+    title: r.title,
+    subtitle: r.subtitle ?? '',
+    spec: r.spec,
+    datasetText: dsLabel(r.spec.dataset),
+    vizText: DASH_VIZ_LABEL[r.spec.viz] ?? r.spec.viz,
+    byText: r.createdByName ?? '',
+    updatedAt: r.updatedAt,
+  }));
+  const system: ListRow[] = DASH_WIDGETS.filter((w) => w.shape !== 'text').map((w) => {
+    const spec = systemWidgetSpec(w.key);
+    return {
+      id: `sys:${w.key}`,
+      kind: 'system',
+      sysKey: w.key,
+      title: widgetTitle(w),
+      subtitle: widgetDesc(w),
+      spec,
+      datasetText: spec ? dsLabel(spec.dataset) : '-',
+      vizText: DASH_VIZ_LABEL[w.viz[0]] ?? w.viz[0],
+      byText: t('studio.kind.system'),
+      updatedAt: null,
+    };
+  });
+  const list = kind === 'custom' ? custom : kind === 'system' ? system : [...custom, ...system];
+
+  const open = (r: ListRow) => {
+    if (r.kind === 'custom') navigate(`${LIST}/${r.id}`);
+    else if (r.spec) navigate(`${LIST}/new?system=${encodeURIComponent(r.sysKey!)}`);
+    else toast({ type: 'info', title: t('studio.noStudio') });
+  };
+  const copy = async (r: ListRow) => {
+    if (!r.spec) return;
+    try {
+      await copyWidget(r.spec, r.title, t('studio.copySuffix'));
+      toast({ type: 'success', title: t('studio.copied') });
+      setKind((k) => (k === 'system' ? 'custom' : k));
+      void load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('studio.saveFailed') });
+    }
+  };
+  const kindBadge = (r: ListRow) => (
+    <Badge variant="subtle" color={r.kind === 'system' ? 'neutral' : 'primary'} size="sm">
+      {t(`studio.kind.${r.kind}`)}
+    </Badge>
+  );
+  const copyBtn = (r: ListRow) =>
+    canCreate ? (
+      <span title={r.spec ? t('studio.copy') : t('studio.noStudio')}>
+        <button
+          type="button"
+          className={styles.rowIconBtn}
+          disabled={!r.spec}
+          aria-label={t('studio.copy')}
+          onClick={(e) => {
+            e.stopPropagation();
+            void copy(r);
+          }}
+        >
+          <Copy size={14} />
+        </button>
+      </span>
+    ) : null;
+
   const columns: Column[] = [
+    {
+      title: t('studio.col.kind'),
+      width: 90,
+      render: (r) => kindBadge(r as unknown as ListRow),
+    },
     {
       title: t('studio.col.title'),
       minWidth: 240,
@@ -234,17 +339,13 @@ export function WidgetList({
     { title: t('studio.col.dataset'), dataIndex: 'datasetText', width: 140 },
     { title: t('studio.col.viz'), dataIndex: 'vizText', width: 110 },
     { title: t('studio.col.by'), dataIndex: 'byText', width: 110 },
-    { title: t('studio.col.updated'), dataIndex: 'updatedText', width: 160 },
+    {
+      title: t('studio.col.updated'),
+      width: 160,
+      render: (r) => (r.updatedAt ? fmtDateTime(String(r.updatedAt)) : '-'),
+    },
+    { title: '', width: 56, render: (r) => copyBtn(r as unknown as ListRow), mask: false },
   ];
-  const tableRows = (rows ?? []).map((r) => ({
-    ...r,
-    datasetText: dsLabel(r.spec.dataset),
-    vizText: DASH_VIZ_LABEL[r.spec.viz] ?? r.spec.viz,
-    byText: r.createdByName ?? '',
-    updatedText: fmtDateTime(r.updatedAt),
-  }));
-  const canCreate = can('DASHBOARD.CREATE');
-  const open = (id: string) => navigate(`${LIST}/${id}`);
   const createButton = canCreate ? (
     <Button
       variant="primary"
@@ -255,16 +356,36 @@ export function WidgetList({
       {t('studio.newWidget')}
     </Button>
   ) : undefined;
-  const toolbar = <ListToolbar search={lead} viewSwitch={viewSwitch} actions={createButton} />;
+  const toolbar = (
+    <ListToolbar
+      search={lead}
+      viewSwitch={viewSwitch}
+      actions={
+        <>
+          <SegmentedControl
+            size="sm"
+            value={kind}
+            onChange={(v) => setKind(v as typeof kind)}
+            options={[
+              { value: 'all', label: t('studio.kind.all') },
+              { value: 'custom', label: t('studio.kind.custom') },
+              { value: 'system', label: t('studio.kind.system') },
+            ]}
+          />
+          {createButton}
+        </>
+      }
+    />
+  );
   if (view === 'list' || rows === null)
     return (
       <>
         {toolbar}
         <DataTable
           columns={columns}
-          rows={tableRows as never}
+          rows={list as never}
           loading={rows === null}
-          onRowClick={(r) => open(String(r.id))}
+          onRowClick={(r) => open(r as unknown as ListRow)}
         />
       </>
     );
@@ -272,45 +393,62 @@ export function WidgetList({
     <>
       {toolbar}
       <div className={builder.cardGrid}>
-        {tableRows.map((r) => (
+        {list.map((r) => (
           <article
             key={r.id}
-            className={builder.tplCard}
-            onClick={() => open(r.id)}
+            className={`${builder.tplCard} ${!r.spec ? styles.cardOff : ''}`}
+            onClick={() => open(r)}
             aria-label={r.title}
+            title={r.spec ? undefined : t('studio.noStudio')}
           >
             {/* 실제 데이터로 그린 작은 미리보기 — 누르기만 하면 스튜디오로 */}
             <div className={`${builder.tplPreview} ${styles.cardPreview}`}>
-              <StudioWidget
-                spec={r.spec}
-                chartOnly
-                load={(params) =>
-                  api<StudioResult>(`/custom-widgets/${r.id}/data`, {
-                    method: 'POST',
-                    body: JSON.stringify({ params }),
-                  })
-                }
-              />
+              {r.spec ? (
+                <StudioWidget
+                  spec={r.spec}
+                  chartOnly
+                  load={(params) =>
+                    r.kind === 'custom'
+                      ? api<StudioResult>(`/custom-widgets/${r.id}/data`, {
+                          method: 'POST',
+                          body: JSON.stringify({ params }),
+                        })
+                      : api<StudioResult>('/custom-widgets/preview', {
+                          method: 'POST',
+                          body: JSON.stringify({ spec: r.spec, params }),
+                        })
+                  }
+                />
+              ) : (
+                <div className={styles.cardNoPreview}>
+                  <LayoutTemplate size={22} />
+                </div>
+              )}
             </div>
             <div className={builder.tplBody}>
               <span className={builder.tplName}>{r.title}</span>
               <span className={builder.tplDesc}>{r.subtitle || t('dash.noDesc')}</span>
               <div className={builder.tplTags}>
+                {kindBadge(r)}
                 <Badge variant="subtle" color="neutral" size="sm">
                   {r.datasetText}
                 </Badge>
-                <Badge variant="subtle" color="primary" size="sm">
+                <Badge variant="subtle" color="neutral" size="sm">
                   {r.vizText}
                 </Badge>
               </div>
-              <div className={builder.tplFoot}>
-                {r.byText ? `${r.byText} · ` : ''}
-                {fmtDate(r.updatedAt)}
+              <div className={`${builder.tplFoot} ${styles.cardFoot}`}>
+                <span>
+                  {r.kind === 'custom'
+                    ? `${r.byText ? `${r.byText} · ` : ''}${r.updatedAt ? fmtDate(r.updatedAt) : ''}`
+                    : t('studio.kind.system')}
+                </span>
+                {copyBtn(r)}
               </div>
             </div>
           </article>
         ))}
-        {canCreate && (
+        {canCreate && kind !== 'system' && (
           <button type="button" className={builder.newCard} onClick={() => navigate(`${LIST}/new`)}>
             <Plus size={22} />
             {t('studio.newWidget')}
@@ -400,7 +538,20 @@ function Studio({ id }: { id: string | null }) {
   const toast = useToast();
   const navigate = useNavigate();
   const { can } = useAuth();
-  const [spec, setSpecRaw] = useState<StudioSpec | null>(id ? null : STARTER);
+  // ?system=키 — 시스템 위젯을 바탕으로(저장은 늘 다른 이름의 새 위젯)
+  const [search] = useSearchParams();
+  const sysKey = id ? null : search.get('system');
+  const sysSpec = sysKey ? systemWidgetSpec(sysKey) : null;
+  const sysDef = sysKey ? DASH_WIDGETS.find((w) => w.key === sysKey) : undefined;
+  const sysTitle = sysDef ? widgetTitle(sysDef) : '';
+  const [spec, setSpecRaw] = useState<StudioSpec | null>(() =>
+    id
+      ? null
+      : sysSpec
+        ? { ...sysSpec, title: sysTitle, subtitle: sysDef ? widgetDesc(sysDef) : sysSpec.subtitle }
+        : STARTER,
+  );
+  const [saveAs, setSaveAs] = useState<string | null>(null);
   const [lastPrompt, setLastPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -449,10 +600,16 @@ function Studio({ id }: { id: string | null }) {
       });
   }, [id, navigate, toast, t]);
 
-  const save = async () => {
+  const save = async (asTitle?: string) => {
     if (!spec) return;
+    // 시스템 위젯 기반이면 먼저 다른 이름을 받는다
+    if (sysSpec && asTitle === undefined) {
+      const cur = spec.title.trim();
+      setSaveAs(cur && cur !== sysTitle ? cur : `${sysTitle}${t('studio.copySuffix')}`);
+      return;
+    }
     const body = {
-      spec: { ...spec, title: spec.title.trim() || t('studio.newWidget') },
+      spec: { ...spec, title: (asTitle ?? spec.title).trim() || t('studio.newWidget') },
       prompt: lastPrompt,
     };
     setBusy(true);
@@ -508,7 +665,41 @@ function Studio({ id }: { id: string | null }) {
           onChange={(e) => patch({ title: e.target.value })}
           aria-label={t('studio.edit.name')}
         />
+        {sysSpec && (
+          <Badge variant="subtle" color="neutral" size="sm">
+            {t('studio.fromSystem')}
+          </Badge>
+        )}
         <span className={styles.spacer} />
+        {id && spec && can('DASHBOARD.CREATE') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<Copy size={14} />}
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const r = await copyWidget(
+                  spec,
+                  spec.title.trim() || t('studio.newWidget'),
+                  t('studio.copySuffix'),
+                );
+                toast({ type: 'success', title: t('studio.copied') });
+                navigate(`${LIST}/${r.id}`);
+              } catch (e) {
+                toast({
+                  type: 'error',
+                  title: e instanceof ApiError ? e.message : t('studio.saveFailed'),
+                });
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {t('studio.copy')}
+          </Button>
+        )}
         {id && can('DASHBOARD.DELETE') && (
           <Button
             variant="ghost"
@@ -522,7 +713,7 @@ function Studio({ id }: { id: string | null }) {
         )}
         {canSave && (
           <Button variant="primary" size="sm" onClick={() => void save()} disabled={busy || !spec}>
-            {t('studio.save')}
+            {sysSpec ? t('studio.saveAs') : t('studio.save')}
           </Button>
         )}
       </header>
@@ -580,6 +771,41 @@ function Studio({ id }: { id: string | null }) {
           </aside>
         </div>
       )}
+      <Modal
+        open={saveAs !== null}
+        onOpenChange={(o) => !o && setSaveAs(null)}
+        title={t('studio.saveAs')}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setSaveAs(null)}>
+              {t('studio.cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || !saveAs?.trim() || saveAs.trim() === sysTitle}
+              onClick={() => {
+                const name = saveAs!.trim();
+                setSaveAs(null);
+                void save(name);
+              }}
+            >
+              {t('studio.save')}
+            </Button>
+          </>
+        }
+      >
+        <Input
+          value={saveAs ?? ''}
+          maxLength={60}
+          autoFocus
+          onChange={(e) => setSaveAs(e.target.value)}
+          aria-label={t('studio.edit.name')}
+        />
+        {saveAs?.trim() === sysTitle && (
+          <p className={styles.saveAsWarn}>{t('studio.nameTaken')}</p>
+        )}
+      </Modal>
       <ConfirmModal
         open={confirmDel}
         title={t('studio.deleteTitle')}
