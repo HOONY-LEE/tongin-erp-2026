@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -260,11 +261,11 @@ export function StudioWidget({
       const options = opts.map((o) => ({ value: o, label: optLabel(spec.dataset, c.target, o) }));
       nodes[`ctl:${i}`] =
         c.kind === 'segment' ? (
-          <SegmentedControl
-            size="sm"
+          <FitSegment
             value={current(c)}
             onChange={(v) => setCtl(c.target, v)}
             options={options}
+            label={c.label || t(`studio.target.${c.target}`)}
           />
         ) : (
           <div className={styles.select}>
@@ -535,6 +536,58 @@ export function StudioWidget({
       })}
       {ghost && <div className={styles.ghost} style={ghost} aria-hidden />}
       {!ds && <div className={styles.error}>{t('studio.badDataset')}</div>}
+    </div>
+  );
+}
+
+/**
+ * 세그먼트 탭 — 칸이 좁아 다 안 들어가면 드롭다운으로 바꿔 위젯 밖으로 삐져나오지 않게.
+ * 보이지 않는 탭으로 원래 폭을 재고, 칸 폭이 넉넉해지면 다시 탭으로.
+ */
+function FitSegment({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  label: string;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [fits, setFits] = useState(true);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const measure = measureRef.current;
+    if (!box || !measure) return;
+    // 칸 사이 틈(8px)만큼은 넘어가도 괜찮다 — 그보다 크면 위젯 밖으로 삐져나와 드롭다운
+    const check = () => setFits(measure.scrollWidth <= box.clientWidth + 8);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(box);
+    ro.observe(measure);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={boxRef} className={styles.fitSeg}>
+      <div ref={measureRef} className={styles.fitMeasure} aria-hidden>
+        <SegmentedControl size="sm" value={value} onChange={() => {}} options={options} />
+      </div>
+      {fits ? (
+        <SegmentedControl size="sm" value={value} onChange={onChange} options={options} />
+      ) : (
+        <div className={styles.select}>
+          <Select
+            size="sm"
+            value={value}
+            onValueChange={onChange}
+            options={options}
+            aria-label={label}
+          />
+        </div>
+      )}
     </div>
   );
 }
