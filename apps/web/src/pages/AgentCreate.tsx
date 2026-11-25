@@ -277,9 +277,6 @@ export default function AgentCreate() {
           ) : (
             <div className={ai.scroll} aria-live="polite">
               <div className={ai.thread}>
-                <div className={ai.aiMsg}>
-                  <Markdown text={GREETING} />
-                </div>
                 {msgs.map((m, i) =>
                   m.role === 'user' ? (
                     <div key={i} className={ai.userTurn}>
