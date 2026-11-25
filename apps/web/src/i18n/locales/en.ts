@@ -370,7 +370,7 @@ export default {
   },
   /** 헤더·사이드바·프로필 메뉴·탭 */
   shell: {
-    brand: 'Tongin WORKS',
+    brand: 'Work System',
     profile: 'Profile',
     myProfile: 'My profile',
     editMenu: 'Edit my menu',

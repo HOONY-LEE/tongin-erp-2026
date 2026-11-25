@@ -832,9 +832,7 @@ function CallColumn({
   return (
     <div className={styles.leftCol}>
       <section className={`${styles.card} ${styles.intakeCard}`}>{children}</section>
-      {call.customerId && call.id && (
-        <CallerHistory customerId={call.customerId} callId={call.id} />
-      )}
+      {call.id && <CallerHistory customerId={call.customerId} callId={call.id} />}
     </div>
   );
 }

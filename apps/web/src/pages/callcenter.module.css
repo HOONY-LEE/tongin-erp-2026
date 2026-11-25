@@ -760,12 +760,13 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: var(--ark-color-error-500, #ef4444);
+  /* 빨강을 조금 연하게 */
+  background: color-mix(in srgb, var(--ark-color-error-500, #ef4444) 72%, #fff);
   color: #fff;
   cursor: pointer;
 }
 .ocRemove:hover:not(:disabled) {
-  background: var(--ark-color-error-600, #dc2626);
+  background: var(--ark-color-error-500, #ef4444);
 }
 .ocRemove:disabled {
   opacity: 0.4;
@@ -1850,24 +1851,16 @@ textarea.memoBox {
 /* 고객 이력 — 공통 표(DataTable bare)를 카드 높이에 꽉 */
 /* 상담 화면 아래 고객 이력 — 카드 없이 표만, 머리 오른쪽 끝에 [자세히] */
 .historyCard {
-  position: relative;
   display: flex;
   flex-direction: column;
 }
-.historyCard > :global(.dt-wrap) {
-  flex: 1 1 auto;
-  min-height: 0;
+.historyCard .historyMore {
+  font-size: calc(12px * var(--font-scale, 1));
 }
-.historyCard > .historyMore {
-  position: absolute;
-  top: 1px;
-  right: 14px;
-  height: 45px;
-  z-index: 2;
-}
-/* 마지막 머리 칸 글자가 [자세히]와 겹치지 않게 */
-.historyCard :global(.sft-thead [role='columnheader']:last-child) {
-  padding-right: 64px;
+.historySkel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* 상담 카드 — 입력 묶음이 카드 남은 높이를 채우고, 마지막 메모 줄이 늘어난다 */

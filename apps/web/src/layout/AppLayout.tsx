@@ -376,13 +376,26 @@ export default function AppLayout() {
                     <span
                       aria-label={PRODUCT_NAME}
                       style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 7,
                         fontSize: fs(15),
                         fontWeight: 500,
                         letterSpacing: -0.1,
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {t('shell.brand')}
+                      {/* TONGIN | 업무시스템 — TONGIN은 굵게 */}
+                      <b style={{ fontWeight: 800, letterSpacing: 0.2 }}>TONGIN</b>
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 1,
+                          height: fs(13),
+                          background: 'var(--ark-color-border-strong, #c7c7cc)',
+                        }}
+                      />
+                      <span>{t('shell.brand')}</span>
                     </span>
                   )}
                   {/* 사이드바 접기 — 머리 오른쪽 끝 '<' (접힌 상태에서는 로고를 누르면 편다) */}

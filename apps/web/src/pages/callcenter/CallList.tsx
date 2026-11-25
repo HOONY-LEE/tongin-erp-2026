@@ -151,7 +151,10 @@ export function CallList({
     {
       title: t('cc.customerName'),
       dataIndex: 'customerName',
-      render: (r) => (r.customerName as string | null) ?? t('cc.newNumber'),
+      // 고객명이 없으면 '-'
+      render: (r) => (r.customerName as string | null) || '-',
+      flex: 1,
+      minWidth: 160,
     },
     {
       title: t('cc.phone'),
@@ -202,8 +205,7 @@ export function CallList({
         ) : (
           <span className={styles.callState}>-</span>
         ),
-      flex: 1,
-      minWidth: 140,
+      width: 150,
       mask: false,
     },
     {

@@ -364,7 +364,7 @@ export default {
   },
   /** 헤더·사이드바·프로필 메뉴·탭 */
   shell: {
-    brand: '통인 WORKS',
+    brand: '업무시스템',
     profile: '프로필',
     myProfile: '내 프로필',
     editMenu: '내 메뉴 편집',

@@ -1,46 +1,18 @@
 import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useState } from 'react';
-import { fmtDate } from '../../lib/dateFormat';
+import { fmtDate, fmtDateTime } from '../../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
-import {
-  Banknote,
-  ClipboardList,
-  FileSignature,
-  FileText,
-  Headphones,
-  LifeBuoy,
-  MessageSquare,
-  Truck,
-  UserPlus,
-  Users,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
-import { SegmentedControl, useToast } from '../ui';
+import { DataTable, SegmentedControl, useToast, type Column, type Row } from '../ui';
+import {
+  HistoryDot,
+  historyKindLabel,
+  type HistoryItem as Item,
+  type HistoryKind as Kind,
+} from './HistoryTimeline';
 import styles from './customerHistory.module.css';
 
-type Kind =
-  | 'sms'
-  | 'customer'
-  | 'call'
-  | 'lead'
-  | 'owner'
-  | 'estimate'
-  | 'contract'
-  | 'payment'
-  | 'work'
-  | 'service'
-  | 'support';
-interface Item {
-  at: string;
-  kind: Kind;
-  title: string;
-  detail?: string | null;
-  actor?: string | null;
-  link?: string | null;
-}
 interface History {
   summary: {
     firstAt: string | null;
@@ -58,19 +30,6 @@ interface History {
   items: Item[];
 }
 
-const KIND: Record<Kind, { icon: LucideIcon; tone: string }> = {
-  sms: { icon: MessageSquare, tone: 'green' },
-  customer: { icon: UserPlus, tone: 'gray' },
-  call: { icon: Headphones, tone: 'green' },
-  lead: { icon: ClipboardList, tone: 'blue' },
-  owner: { icon: Users, tone: 'purple' },
-  estimate: { icon: FileText, tone: 'blue' },
-  contract: { icon: FileSignature, tone: 'orange' },
-  payment: { icon: Banknote, tone: 'orange' },
-  work: { icon: Truck, tone: 'teal' },
-  service: { icon: Wrench, tone: 'teal' },
-  support: { icon: LifeBuoy, tone: 'red' },
-};
 const FILTERS: { value: string; label: string; kinds: Kind[] | null }[] = [
   { value: 'all', label: i18n.t('customers.h.all'), kinds: null },
   { value: 'call', label: i18n.t('customers.h.call'), kinds: ['call', 'sms'] },
@@ -80,10 +39,6 @@ const FILTERS: { value: string; label: string; kinds: Kind[] | null }[] = [
 ];
 
 const day = (iso: string) => fmtDate(iso);
-const time = (iso: string) => {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
 
 /**
  * 고객 이력(CRM) — 처음 들어온 길, 지금 담당, 건수 요약과
@@ -112,17 +67,51 @@ export function CustomerHistory({ customerId }: { customerId: string }) {
     };
   }, [customerId, toast]);
 
-  const groups = useMemo(() => {
+  const rows = useMemo(() => {
     const kinds = FILTERS.find((f) => f.value === filter)?.kinds;
-    const list = (data?.items ?? []).filter((i) => !kinds || kinds.includes(i.kind));
-    const out: { day: string; items: Item[] }[] = [];
-    for (const it of list) {
-      const d = day(it.at);
-      if (out[out.length - 1]?.day !== d) out.push({ day: d, items: [] });
-      out[out.length - 1].items.push(it);
-    }
-    return out;
+    return (data?.items ?? [])
+      .filter((i) => !kinds || kinds.includes(i.kind))
+      .map((it, i) => ({ ...it, id: `${it.at}-${i}` }));
   }, [data, filter]);
+
+  const columns: Column[] = [
+    {
+      title: t('cc.col.time'),
+      dataIndex: 'at',
+      width: 180,
+      render: (r) => <span className={styles.when}>{fmtDateTime(String(r.at))}</span>,
+    },
+    {
+      title: t('cc.col.kind'),
+      dataIndex: 'kind',
+      width: 96,
+      render: (r) => (
+        <span className={styles.kindCell}>
+          <HistoryDot kind={String(r.kind)} size={20} />
+          {historyKindLabel(String(r.kind))}
+        </span>
+      ),
+      exportValue: (r) => historyKindLabel(String(r.kind)),
+    },
+    {
+      title: t('cc.content'),
+      dataIndex: 'title',
+      flex: 1,
+      minWidth: 220,
+      render: (r) => (
+        <span className={styles.contentCell}>
+          <span>{String(r.title)}</span>
+          {r.detail ? <span className={styles.detail}>{String(r.detail)}</span> : null}
+        </span>
+      ),
+    },
+    {
+      title: t('cc.col.assignee'),
+      dataIndex: 'actor',
+      width: 120,
+      render: (r) => (r.actor ? String(r.actor) : '-'),
+    },
+  ];
 
   if (!data)
     return (
@@ -192,51 +181,14 @@ export function CustomerHistory({ customerId }: { customerId: string }) {
             options={FILTERS.map((f) => ({ value: f.value, label: f.label }))}
           />
         </div>
-        {groups.length === 0 ? (
-          <p className={styles.muted}>{t('customers.h.empty')}</p>
-        ) : (
-          <div className={styles.timeline}>
-            {groups.map((g) => (
-              <div key={g.day} className={styles.day}>
-                <div className={styles.dayLabel}>{g.day}</div>
-                <ol className={styles.list}>
-                  {g.items.map((it, i) => {
-                    const k = KIND[it.kind];
-                    const Icon = k.icon;
-                    const body = (
-                      <>
-                        <span className={`${styles.dot} ${styles[k.tone]}`}>
-                          <Icon size={14} />
-                        </span>
-                        <span className={styles.time}>{time(it.at)}</span>
-                        <span className={styles.main}>
-                          <b>{it.title}</b>
-                          {it.detail && <span className={styles.detail}>{it.detail}</span>}
-                        </span>
-                        {it.actor && <span className={styles.actor}>{it.actor}</span>}
-                      </>
-                    );
-                    return (
-                      <li key={`${it.at}-${i}`}>
-                        {it.link ? (
-                          <button
-                            type="button"
-                            className={`${styles.row} ${styles.clickable}`}
-                            onClick={() => navigate(it.link!)}
-                          >
-                            {body}
-                          </button>
-                        ) : (
-                          <div className={styles.row}>{body}</div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
-            ))}
-          </div>
-        )}
+        <DataTable
+          bare
+          noFooter
+          pageSize={0}
+          columns={columns}
+          rows={rows as unknown as Row[]}
+          onRowClick={(r) => r.link && navigate(String(r.link))}
+        />
       </section>
     </>
   );
