@@ -149,7 +149,11 @@ const vizWhy = (
   const dim = dimension ? ds.dimensions.find((d) => d.key === dimension) : undefined;
   if (!dim) return NO_DIM_VIZ.includes(v) ? null : 'needDim';
   // 기준이 두 개면 두 기준 차트만(표 포함)
-  if (split) return TWO_DIM_VIZ.includes(v) ? null : 'twoDims';
+  if (split) {
+    // 날짜 × 나눔은 여러 선으로도
+    if (v === 'line') return dim.kind === 'time' ? null : 'needTime';
+    return TWO_DIM_VIZ.includes(v) ? null : 'twoDims';
+  }
   if (v === 'heatmap' || v === 'stacked' || v === 'grouped') return 'needTwoDims';
   // 타이포그래피는 기준이 있어도(위 몇 개를 큰 글자로) — 날짜 기준만 빼고
   if (v === 'typo') return dim.kind !== 'time' ? null : 'notTime';
