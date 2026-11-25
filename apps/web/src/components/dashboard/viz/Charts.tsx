@@ -149,8 +149,8 @@ function CardViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
 }
 
 // ═══════════ 게이지 ═══════════
-/** 게이지 색 — 낮을수록 빨강, 노랑·주황을 지나 높으면 초록(25% 단위) */
-const GAUGE_STEPS = ['#ff3b30', '#ffcc00', '#ff9500', '#34c759'];
+/** 게이지 색 — 낮을수록 빨강, 주황·노랑을 지나 높으면 초록(25% 단위) */
+const GAUGE_STEPS = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759'];
 const gaugeColor = (ratio: number) => GAUGE_STEPS[Math.min(3, Math.floor(ratio * 4))];
 
 function GaugeViz({ d }: { d: Extract<DashData, { shape: 'value' }> }) {
