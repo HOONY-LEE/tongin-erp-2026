@@ -24,6 +24,13 @@ export class OrgUnitController {
     return this.orgUnitService.findAll();
   }
 
+  /** 조직 직원 목록(조직장 먼저) */
+  @Get(':id/members')
+  @RequirePermissions('ORG_UNIT.READ')
+  members(@Param('id', ParseUUIDPipe) id: string) {
+    return this.orgUnitService.members(id);
+  }
+
   @Get(':id')
   @RequirePermissions('ORG_UNIT.READ')
   findOne(@Param('id', ParseUUIDPipe) id: string) {

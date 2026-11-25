@@ -17,6 +17,24 @@ const ORG_TYPE_ORDER: Record<string, number> = {
   PARTNER: 20,
 };
 
+const STAFF_SELECT = {
+  id: true,
+  name: true,
+  orgUnitId: true,
+  position: { select: { name: true, sortOrder: true } },
+} satisfies Prisma.EmployeeSelect;
+
+/** 직책 높은 순(직책 순서 값이 작을수록 높다), 같으면 이름 순 */
+function rankStaff<
+  T extends { name: string; position: { name: string; sortOrder: number } | null },
+>(list: T[]): T[] {
+  return [...list].sort(
+    (a, b) =>
+      (a.position?.sortOrder ?? 9999) - (b.position?.sortOrder ?? 9999) ||
+      a.name.localeCompare(b.name, 'ko'),
+  );
+}
+
 @Injectable()
 export class OrgUnitService {
   constructor(
@@ -30,13 +48,55 @@ export class OrgUnitService {
    * 지점(이름순) → 외부업체
    */
   async findAll() {
-    const rows = await this.prisma.orgUnit.findMany({ orderBy: { code: 'asc' } });
+    const [rows, staff] = await Promise.all([
+      this.prisma.orgUnit.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.employee.findMany({
+        where: { isActive: true },
+        select: STAFF_SELECT,
+      }),
+    ]);
+    // 조직별 인원·조직장(그 조직에서 직책이 가장 높은 사람 — 결재선 '부서장'과 같은 기준)
+    const byOrg = new Map<string, typeof staff>();
+    for (const e of staff) {
+      const list = byOrg.get(e.orgUnitId) ?? [];
+      list.push(e);
+      byOrg.set(e.orgUnitId, list);
+    }
     const rank = (t: string) => ORG_TYPE_ORDER[t] ?? 50;
-    return rows.sort(
-      (a, b) =>
-        rank(a.type) - rank(b.type) ||
-        (a.type === 'BRANCH' ? a.name.localeCompare(b.name, 'ko') : 0),
-    );
+    return rows
+      .sort(
+        (a, b) =>
+          rank(a.type) - rank(b.type) ||
+          (a.type === 'BRANCH' ? a.name.localeCompare(b.name, 'ko') : 0),
+      )
+      .map((o) => {
+        const list = byOrg.get(o.id) ?? [];
+        const head = rankStaff(list)[0];
+        return {
+          ...o,
+          memberCount: list.length,
+          headName: head ? head.name : null,
+          headPosition: head?.position?.name ?? null,
+        };
+      });
+  }
+
+  /** 조직 직원 — 조직장(직책이 가장 높은 사람) 먼저, 직책·이름 순 */
+  async members(id: string) {
+    await this.findOne(id);
+    const staff = await this.prisma.employee.findMany({
+      where: { orgUnitId: id, isActive: true },
+      select: { ...STAFF_SELECT, empNo: true, hireDate: true, email: true },
+    });
+    return rankStaff(staff).map((e, i) => ({
+      id: e.id,
+      name: e.name,
+      empNo: e.empNo,
+      position: e.position?.name ?? null,
+      hireDate: e.hireDate,
+      email: e.email,
+      isHead: i === 0,
+    }));
   }
 
   async findOne(id: string) {
