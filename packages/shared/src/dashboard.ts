@@ -1241,10 +1241,14 @@ export const DASH_COLORS = [
 export type DashColorKey = (typeof DASH_COLORS)[number]['key'];
 export const DASH_COLOR_KEYS = DASH_COLORS.map((c) => c.key) as DashColorKey[];
 export const DASH_DEFAULT_COLOR: DashColorKey = 'black';
-/** 블랙 — 모든 계열을 검정·회색 단계로(옆 항목끼리 진하기가 번갈아 구분되게) */
+/**
+ * 블랙 — 하나만 보여 주면 검정, 여러 항목을 나눠야 하면(원·누적·두 기준) 검정 다음에 구분 색.
+ * 순서는 옆 색끼리 색약(적록·청황)에서도 구분되게 검사를 통과한 순서(dataviz 팔레트 검사).
+ * 크기(히트맵·지도)는 검정 한 가지의 밝기 단계.
+ */
 const BLACK_SERIES = {
-  light: ['#1c1c1e', '#8e8e93', '#48484a', '#c7c7cc', '#636366', '#aeaeb2', '#2c2c2e', '#d1d1d6'],
-  dark: ['#f2f2f7', '#8e8e93', '#c7c7cc', '#48484a', '#aeaeb2', '#636366', '#e5e5ea', '#3a3a3c'],
+  light: ['#1c1c1e', '#007aff', '#ff9500', '#af52de', '#34c759', '#5856d6', '#ff2d55', '#30b0c7'],
+  dark: ['#f2f2f7', '#036fe4', '#d27d06', '#9d4cc7', '#2fa54d', '#514fc0', '#e42b4e', '#2e9eb3'],
 };
 
 /** 첫 색 다음에 이어질 계열색 순서 — 서로 잘 구분되는 색끼리 번갈아(색약 구분 검사 통과 순서) */
