@@ -1322,7 +1322,11 @@ export function dashColorVars(
   const series = hex
     ? [hex, ...SERIES_ORDER.slice(0, 7).map(pick)]
     : main === 'black'
-      ? [pick('black'), ...BLACK_GRAYS[dark ? 'dark' : 'light'], ...SERIES_ORDER.slice(0, 5).map(pick)]
+      ? [
+          pick('black'),
+          ...BLACK_GRAYS[dark ? 'dark' : 'light'],
+          ...SERIES_ORDER.slice(0, 5).map(pick),
+        ]
       : keys.map(pick);
   const accent = hex ?? pick(main);
   const base = dark ? '#1c1c1e' : '#ffffff';
