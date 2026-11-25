@@ -1241,3 +1241,46 @@
   color: var(--ark-color-text-secondary);
   font-size: calc(11.5px * var(--font-scale, 1));
 }
+
+/* 위젯 목록 — 복사 버튼·스튜디오로 못 그리는 시스템 위젯 */
+.rowIconBtn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.rowIconBtn:hover:not(:disabled) {
+  background: var(--ark-color-bg-subtle);
+  color: var(--ark-color-text);
+}
+.rowIconBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.cardOff {
+  opacity: 0.7;
+}
+.cardNoPreview {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--ark-color-text-tertiary, #aeaeb2);
+}
+.cardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.saveAsWarn {
+  margin: 8px 0 0;
+  color: var(--ark-color-error-500, #ef4444);
+  font-size: calc(12px * var(--font-scale, 1));
+}
