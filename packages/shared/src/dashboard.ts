@@ -1241,8 +1241,11 @@ export const DASH_COLORS = [
 export type DashColorKey = (typeof DASH_COLORS)[number]['key'];
 export const DASH_COLOR_KEYS = DASH_COLORS.map((c) => c.key) as DashColorKey[];
 export const DASH_DEFAULT_COLOR: DashColorKey = 'black';
-/** 블랙 다음 계열색 — 회색 단계(진한 → 연한) */
-const BLACK_GRAYS = { light: ['#8e8e93', '#c7c7cc'], dark: ['#8e8e93', '#545458'] };
+/** 블랙 — 모든 계열을 검정·회색 단계로(옆 항목끼리 진하기가 번갈아 구분되게) */
+const BLACK_SERIES = {
+  light: ['#1c1c1e', '#8e8e93', '#48484a', '#c7c7cc', '#636366', '#aeaeb2', '#2c2c2e', '#d1d1d6'],
+  dark: ['#f2f2f7', '#8e8e93', '#c7c7cc', '#48484a', '#aeaeb2', '#636366', '#e5e5ea', '#3a3a3c'],
+};
 
 /** 첫 색 다음에 이어질 계열색 순서 — 서로 잘 구분되는 색끼리 번갈아(색약 구분 검사 통과 순서) */
 const SERIES_ORDER: DashColorKey[] = [
@@ -1322,11 +1325,7 @@ export function dashColorVars(
   const series = hex
     ? [hex, ...SERIES_ORDER.slice(0, 7).map(pick)]
     : main === 'black'
-      ? [
-          pick('black'),
-          ...BLACK_GRAYS[dark ? 'dark' : 'light'],
-          ...SERIES_ORDER.slice(0, 5).map(pick),
-        ]
+      ? BLACK_SERIES[dark ? 'dark' : 'light']
       : keys.map(pick);
   const accent = hex ?? pick(main);
   const base = dark ? '#1c1c1e' : '#ffffff';

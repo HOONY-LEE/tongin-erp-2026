@@ -669,7 +669,13 @@ export const PERMISSION_CATALOG: readonly PermissionResource[] = [
   { key: 'PAYMENT', label: '입금', group: '운영', actions: ALL_CRUD },
   { key: 'WORK_ORDER', label: '작업', group: '운영', actions: ALL_CRUD },
   { key: 'SERVICE_ORDER', label: '리빙·케어', group: '운영', actions: ALL_CRUD },
-  { key: 'SUPPORT', label: '고객지원', group: '운영', actions: ALL_CRUD },
+  {
+    key: 'SUPPORT',
+    label: '고객지원',
+    group: '운영',
+    actions: ALL_CRUD,
+    specials: [{ action: 'MANAGE', label: 'A/S 접수 유형 설정' }],
+  },
   { key: 'MARKETING', label: '캠페인', group: '운영', actions: ALL_CRUD },
   {
     key: 'NOTIFICATION',

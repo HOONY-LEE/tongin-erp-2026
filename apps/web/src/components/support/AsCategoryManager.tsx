@@ -12,7 +12,6 @@ interface Code {
   sortOrder: number;
   isActive: boolean;
 }
-const GROUP = 'AS_CATEGORY';
 
 /**
  * A/S 접수 유형 관리(관리자) — 이름 고치기·쓰기/안 쓰기·추가. 지우지 않고 '사용'을 끈다
@@ -33,7 +32,7 @@ export function AsCategoryManager({ open, onClose }: { open: boolean; onClose: (
   );
   const load = useCallback(async () => {
     try {
-      const r = await api<Code[]>(`/common-codes?group=${GROUP}`);
+      const r = await api<Code[]>('/support-tickets/categories/manage');
       setRows([...r].sort((a, b) => a.sortOrder - b.sortOrder));
       setDraft({});
     } catch {
@@ -47,7 +46,10 @@ export function AsCategoryManager({ open, onClose }: { open: boolean; onClose: (
   const patch = async (id: string, body: Partial<Code>) => {
     setBusy(true);
     try {
-      await api(`/common-codes/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      await api(`/support-tickets/categories/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
       await load();
     } catch (e) {
       fail(e);
@@ -65,16 +67,9 @@ export function AsCategoryManager({ open, onClose }: { open: boolean; onClose: (
     if (!v) return;
     setBusy(true);
     try {
-      await api('/common-codes', {
+      await api('/support-tickets/categories', {
         method: 'POST',
-        body: JSON.stringify({
-          codeGroup: GROUP,
-          // 코드는 안 보이는 값 — 겹치지 않게 시각으로
-          code: `C${Date.now().toString(36).toUpperCase()}`,
-          name: v,
-          sortOrder: Math.max(0, ...rows.map((r) => r.sortOrder)) + 1,
-          isActive: true,
-        }),
+        body: JSON.stringify({ name: v }),
       });
       setName('');
       await load();
