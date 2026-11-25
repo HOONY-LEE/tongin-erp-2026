@@ -135,6 +135,7 @@ export default defineNs({
       기타: '기타',
     },
     c: {
+      black: '블랙',
       tongin: '통인',
       blue: '블루',
       indigo: '인디고',
@@ -383,6 +384,7 @@ export default defineNs({
       기타: 'Other',
     },
     c: {
+      black: 'Black',
       tongin: 'Tongin',
       blue: 'Blue',
       indigo: 'Indigo',
@@ -541,6 +543,7 @@ export default defineNs({
       기타: '其他',
     },
     c: {
+      black: '黑色',
       tongin: '通仁',
       blue: '蓝色',
       indigo: '靛蓝',
