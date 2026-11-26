@@ -1,28 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import {
-  KNOWLEDGE_CATEGORY_COLOR,
-  KNOWLEDGE_CONCEPT_COLOR,
-  type KnowledgeCategory,
-  type KnowledgeConceptKind,
-  type KnowledgeGraph,
-} from '@tongin/shared';
+import type { KnowledgeGraph } from '@tongin/shared';
 import { useTheme } from '../../theme/ThemeProvider';
 import styles from '../../pages/knowledge.module.css';
-import { KNOWLEDGE_CATEGORY_LABEL, KNOWLEDGE_CONCEPT_KIND_LABEL } from '../../i18n/codes';
+import { useTranslation } from 'react-i18next';
 
 type GNode = KnowledgeGraph['nodes'][number] & { x?: number; y?: number };
 type GLink = { source: string | GNode; target: string | GNode; label?: string };
 
-const colorOf = (n: GNode) =>
-  n.type === 'doc'
-    ? KNOWLEDGE_CATEGORY_COLOR[n.group as KnowledgeCategory]
-    : KNOWLEDGE_CONCEPT_COLOR[n.group as KnowledgeConceptKind];
 const idOf = (v: string | GNode) => (typeof v === 'string' ? v : v.id);
 
 /**
- * 옵시디언 그래프 뷰 — 문서(큰 점, 분류 색)와 개념(작은 점, 종류 색)을 힘 배치로.
- * 평소엔 은은한 점·선, 마우스를 올리거나 고르면 이어진 것만 색과 이름이 살아난다. 검색어에 맞는 점은 늘 보인다.
+ * 옵시디언 그래프 뷰 — 모든 점은 같은 회색(문서는 크게, 개념은 작게), 이어진 수만큼 조금씩 커진다.
+ * 마우스를 올리거나 고르면 그 점과 이어진 것만 강조색으로, 나머지는 흐리게. 검색어에 맞는 점도 강조색.
+ * 처음에 미리 자리를 잡아 두고 보여 줘서 화면에서 크게 출렁이지 않는다.
  */
 export function KnowledgeGraphView({
   graph,
@@ -35,12 +26,15 @@ export function KnowledgeGraphView({
   selected: string | null;
   onSelect: (id: string | null) => void;
 }) {
+  const { t } = useTranslation();
   const { resolved } = useTheme();
   const dark = resolved === 'dark';
   const C = dark
     ? {
-        node: '#c4c4cc',
-        dim: '#5b5f6b',
+        node: '#8b8b94',
+        doc: '#b4b4bc',
+        accent: '#a78bfa',
+        dim: '#3f424b',
         label: '#e4e4e7',
         labelSoft: '#a1a1aa',
         link: 'rgba(255,255,255,0.14)',
@@ -48,8 +42,10 @@ export function KnowledgeGraphView({
         linkOff: 'rgba(255,255,255,0.05)',
       }
     : {
-        node: '#71717a',
-        dim: '#c4c7ce',
+        node: '#a1a1aa',
+        doc: '#71717a',
+        accent: '#7c3aed',
+        dim: '#d9dbe0',
         label: '#18181b',
         labelSoft: '#52525b',
         link: 'rgba(0,0,0,0.13)',
@@ -94,11 +90,14 @@ export function KnowledgeGraphView({
   useEffect(() => {
     const f = fg.current;
     if (!f) return;
-    f.d3Force('charge')?.strength(-90).distanceMax(170);
+    f.d3Force('charge')?.strength(-140).distanceMax(320);
     const link = f.d3Force('link') as { distance?: (d: number) => void } | undefined;
-    link?.distance?.(34);
+    link?.distance?.(55);
     f.d3ReheatSimulation();
     fitted.current = false;
+    // 자리 잡는 동안 화면에 맞춰 둔다(멈춘 뒤 한 번 더)
+    const tm = setTimeout(() => fg.current?.zoomToFit(300, 50), 700);
+    return () => clearTimeout(tm);
   }, [data]);
   // 처음 자리 잡으면 화면에 맞춘다(한 번만 — 이후 사용자가 움직인 확대·위치는 그대로)
   const fitted = useRef(false);
@@ -113,11 +112,11 @@ export function KnowledgeGraphView({
       const base =
         n.type === 'doc' ? 5 + Math.min(n.degree, 20) * 0.25 : 2.2 + Math.min(n.degree, 12) * 0.25;
       const r = base;
-      const color = colorOf(n);
+      const color = C.accent;
       const isFocus = focus === n.id;
       const isNear = !!near?.has(n.id);
       const match = !!q && n.label.toLowerCase().includes(q);
-      let fill = n.type === 'doc' ? color : C.node;
+      let fill = n.type === 'doc' ? C.doc : C.node;
       let alpha = 1;
       if (focus) {
         if (isFocus || isNear) fill = color;
@@ -135,7 +134,7 @@ export function KnowledgeGraphView({
       if (isFocus) {
         ctx.beginPath();
         ctx.arc(n.x, n.y, r + 4 / scale + 2, 0, 2 * Math.PI);
-        ctx.fillStyle = `${color}33`;
+        ctx.fillStyle = `${color}2e`;
         ctx.fill();
       }
       ctx.globalAlpha = alpha;
@@ -145,13 +144,18 @@ export function KnowledgeGraphView({
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      const showLabel = isFocus || isNear || match || n.type === 'doc' || scale > 2.4;
+      // 이름 — 문서·강조된 점은 늘, 개념은 확대할수록 서서히(옵시디언처럼)
+      const fade =
+        n.type === 'doc'
+          ? Math.max(0, Math.min(1, (scale - 0.9) / 0.6))
+          : Math.max(0, Math.min(1, (scale - 3) / 1.5));
+      const showLabel = isFocus || isNear || match || fade > 0;
       if (showLabel) {
         const size = (isFocus ? 13 : n.type === 'doc' ? 12 : 11) / scale;
         ctx.font = `${isFocus || n.type === 'doc' ? 600 : 500} ${size}px system-ui, -apple-system, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.globalAlpha = focus && !isFocus && !isNear && !match ? 0.25 : 1;
+        ctx.globalAlpha = isFocus || isNear || match ? 1 : focus ? 0.2 : fade;
         ctx.fillStyle = isFocus || match ? C.label : C.labelSoft;
         const text = n.label.length > 18 ? `${n.label.slice(0, 18)}…` : n.label;
         ctx.fillText(text, n.x, n.y + r + 2 / scale);
@@ -196,30 +200,25 @@ export function KnowledgeGraphView({
         onNodeHover={(n) => setHover(n?.id ?? null)}
         onNodeClick={(n) => onSelect(n.id)}
         onBackgroundClick={() => onSelect(null)}
-        cooldownTicks={160}
+        warmupTicks={120}
+        cooldownTicks={60}
+        d3AlphaDecay={0.05}
         onEngineStop={() => {
           if (fitted.current) return;
           fitted.current = true;
           fg.current?.zoomToFit(400, 60);
         }}
-        d3VelocityDecay={0.3}
+        d3VelocityDecay={0.6}
       />
       <div className={styles.legend}>
-        {(Object.keys(KNOWLEDGE_CATEGORY_LABEL) as KnowledgeCategory[])
-          .filter((k) => graph.nodes.some((n) => n.type === 'doc' && n.group === k))
-          .map((k) => (
-            <span key={k}>
-              <i style={{ background: KNOWLEDGE_CATEGORY_COLOR[k], width: 9, height: 9 }} />
-              {KNOWLEDGE_CATEGORY_LABEL[k]}
-            </span>
-          ))}
-        <span className={styles.legendSep} />
-        {(Object.keys(KNOWLEDGE_CONCEPT_KIND_LABEL) as KnowledgeConceptKind[]).map((k) => (
-          <span key={k}>
-            <i style={{ background: KNOWLEDGE_CONCEPT_COLOR[k] }} />
-            {KNOWLEDGE_CONCEPT_KIND_LABEL[k]}
-          </span>
-        ))}
+        <span>
+          <i style={{ background: C.doc, width: 9, height: 9 }} />
+          {t('know.graphDoc')}
+        </span>
+        <span>
+          <i style={{ background: C.node }} />
+          {t('know.graphConcept')}
+        </span>
       </div>
     </div>
   );
