@@ -30,7 +30,13 @@ export interface BlueprintInput {
   shareEmployeeIds?: string[];
   /** 대화로 만들 때 올린 참고 양식 — 만든 블루프린트에 붙인다 */
   referenceFileIds?: string[];
+  /** AI 대화 기록 — 오면 통째로 바꾼다 */
+  chat?: { role: 'user' | 'assistant'; text: string; test?: 'ok' | 'fail' }[];
 }
+
+/** 대화 기록은 최근 300줄만 */
+const cleanChat = (c: NonNullable<BlueprintInput['chat']>) =>
+  c.slice(-300).map((x) => ({ role: x.role, text: x.text, ...(x.test ? { test: x.test } : {}) }));
 
 type BlueprintRow = {
   id: string;
@@ -210,6 +216,7 @@ export class AgentBlueprintService {
         status: input.status ?? 'DRAFT',
         graph: normalizeAgentGraph(input.graph) as object,
         prompt: input.prompt ?? null,
+        chat: cleanChat(input.chat ?? []),
         visibility,
         createdBy: p.userId,
         shares: { create: shareIds.map((employeeId) => ({ employeeId })) },
@@ -247,6 +254,7 @@ export class AgentBlueprintService {
         ...(input.status !== undefined ? { status: input.status } : {}),
         ...(input.graph !== undefined ? { graph: normalizeAgentGraph(input.graph) as object } : {}),
         ...(input.prompt !== undefined ? { prompt: input.prompt } : {}),
+        ...(input.chat !== undefined ? { chat: cleanChat(input.chat) } : {}),
       },
     });
     return this.get(id, p);

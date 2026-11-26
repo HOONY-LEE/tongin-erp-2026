@@ -31,7 +31,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { SegmentedControl } from '../components/ui';
+import { SegmentedControl, Switch } from '../components/ui';
 import {
   AGENT_NODE_DESC,
   AGENT_NODE_TYPES,
@@ -75,6 +75,7 @@ interface Blueprint {
   id: string;
   name: string;
   description: string;
+  chat?: NlTurn[];
   status: 'DRAFT' | 'ACTIVE';
   graph: AgentGraph;
   prompt: string | null;
@@ -165,8 +166,10 @@ function Editor() {
   const [running, setRunning] = useState(false);
   const [references, setReferences] = useState<ReferenceOpt[]>([]);
   // 큰 탭 — 자연어(말로 고치고 시험 실행) | 블루프린트(노드 캔버스). 같은 그래프를 본다
-  const { tab: mode, setTab: setMode } = useTabParam<'nl' | 'blueprint'>('nl', 'mode');
+  const { tab: mode, setTab: setMode } = useTabParam<'nl' | 'blueprint'>('blueprint', 'mode');
   const [turns, setTurns] = useState<NlTurn[]>([]);
+  // 대화 기록을 불러온 뒤부터 바뀔 때마다 저장(조금 모았다가)
+  const chatLoaded = useRef(false);
   const [working, setWorking] = useState<string | null>(null);
   const location = useLocation();
 
@@ -216,8 +219,10 @@ function Editor() {
           api<{ aiConfigured: boolean }>('/agent-blueprints/status'),
         ]);
         if (!alive) return;
-        const { graph: g, ...m } = bp;
+        const { graph: g, chat, ...m } = bp;
         const ng = normalizeAgentGraph(g);
+        setTurns(Array.isArray(chat) ? chat : []);
+        chatLoaded.current = false;
         setMeta(m);
         setGraph(ng);
         setSaved(JSON.stringify({ m: [m.name, m.description, m.status], g: ng }));
@@ -777,6 +782,46 @@ function Editor() {
 
   // ── 자연어 모드: 말로 고치기 → 바로 적용 → 시험 실행 → 오류면 AI가 다시 고치기 ──
   const say = (t: NlTurn) => setTurns((p) => [...p, t]);
+
+  // AI 대화 기록 저장 — 처음 불러온 값은 건너뛰고, 바뀌면 잠깐 모았다가 한 번에
+  useEffect(() => {
+    if (loading || !meta?.canEdit) return;
+    if (!chatLoaded.current) {
+      chatLoaded.current = true;
+      return;
+    }
+    const h = setTimeout(() => {
+      void api(`/agent-blueprints/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ chat: turns.slice(-300) }),
+      }).catch(() => {});
+    }, 800);
+    return () => clearTimeout(h);
+  }, [turns, loading]);
+
+  /** 활성화 토글 — 바로 저장한다(다른 고친 내용은 그대로 저장 전 상태) */
+  const setActive = async (on: boolean) => {
+    if (!meta?.canEdit) return;
+    const status = on ? 'ACTIVE' : 'DRAFT';
+    const prev = meta.status;
+    setMeta({ ...meta, status });
+    try {
+      await api(`/agent-blueprints/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      setSaved((s) => {
+        try {
+          const o = JSON.parse(s) as { m: string[]; g: unknown };
+          o.m[2] = status;
+          return JSON.stringify(o);
+        } catch {
+          return s;
+        }
+      });
+      toast({ type: 'success', title: on ? t('agent.activated') : t('agent.deactivated') });
+    } catch (e) {
+      setMeta((m) => (m ? { ...m, status: prev } : m));
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.saveFailed') });
+    }
+  };
   const requestFix = async (prompt: string, base: AgentGraph) => {
     const res = await api<GenerateResult>('/agent-blueprints/generate', {
       method: 'POST',
@@ -1004,15 +1049,6 @@ function Editor() {
             { value: 'blueprint', label: t('agent.mode.blueprint') },
           ]}
         />
-        <SegmentedControl
-          size="sm"
-          value={meta.status}
-          onChange={(v) => meta.canEdit && setMeta({ ...meta, status: v as 'DRAFT' | 'ACTIVE' })}
-          options={[
-            { value: 'DRAFT', label: t('agent.st.DRAFT'), disabled: !meta.canEdit },
-            { value: 'ACTIVE', label: t('agent.st.ACTIVE'), disabled: !meta.canEdit },
-          ]}
-        />
         {dirty && <span className={styles.dirty}>{t('agent.unsaved')}</span>}
         <span className={styles.spacer} />
         {mode === 'blueprint' && (
@@ -1122,6 +1158,15 @@ function Editor() {
             </button>
           </>
         )}
+        <span className={styles.activeToggle} title={t('agent.activeTip')}>
+          <Switch
+            size="sm"
+            checked={meta.status === 'ACTIVE'}
+            disabled={!meta.canEdit}
+            onCheckedChange={(v: boolean) => void setActive(v)}
+            label={t('agent.active')}
+          />
+        </span>
         <button
           type="button"
           className={styles.iconBtn}

@@ -1568,3 +1568,12 @@
   color: var(--ark-color-text-secondary);
   font-size: calc(12px * var(--font-scale, 1));
 }
+
+/* 머리줄 활성화 토글 */
+.activeToggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  white-space: nowrap;
+}

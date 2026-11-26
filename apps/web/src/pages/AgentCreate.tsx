@@ -178,10 +178,15 @@ export default function AgentCreate() {
           prompt: spec,
           visibility: 'PRIVATE',
           referenceFileIds: refs.map((r) => r.id),
+          // 만들면서 나눈 대화 — 편집 화면 AI 대화에 그대로 이어진다
+          chat: msgs.map((m) => ({ role: m.role, text: m.text })),
         }),
       });
-      // 편집 화면(자연어 모드)에서 시험 실행 → 오류면 AI가 스스로 고쳐 저장까지 한다
-      navigate(`/agent-builder/${b.id}?mode=nl`, { replace: true, state: { autoTest: true } });
+      // 편집 화면(흐름도)에서 시험 실행 → 오류면 AI가 스스로 고쳐 저장까지 한다
+      navigate(`/agent-builder/${b.id}?mode=blueprint`, {
+        replace: true,
+        state: { autoTest: true },
+      });
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('ai.createFailed') });
       setBuilding(false);

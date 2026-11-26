@@ -1251,6 +1251,8 @@ model AgentBlueprint {
   graph       Json                  @default("{\"version\":1,\"nodes\":[],\"edges\":[]}")
   // 마지막으로 그래프를 만들거나 고친 자연어 요청(없으면 직접 만든 것)
   prompt      String?
+  // AI 대화 기록 — 대화로 만들 때 나눈 말부터 편집 화면 AI 대화까지 [{role,text,test?}]
+  chat        Json                  @default("[]")
   // 공개 범위: PRIVATE(만든 사람만) | PUBLIC(전체 공개) | SHARED(고른 직원에게만)
   visibility  String                @default("PRIVATE")
   createdBy   String?               @map("created_by") @db.Uuid

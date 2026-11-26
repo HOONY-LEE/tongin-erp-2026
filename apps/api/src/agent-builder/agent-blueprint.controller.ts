@@ -57,6 +57,19 @@ function sendFile(res: Response, f: { name: string; mediaType: string; bytes: Bu
   return new StreamableFile(f.bytes);
 }
 
+class ChatTurnDto {
+  @IsIn(['user', 'assistant'])
+  role!: 'user' | 'assistant';
+
+  @IsString()
+  @MaxLength(20000)
+  text!: string;
+
+  @IsOptional()
+  @IsIn(['ok', 'fail'])
+  test?: 'ok' | 'fail';
+}
+
 class BlueprintDto {
   @IsOptional()
   @IsString()
@@ -100,6 +113,14 @@ class BlueprintDto {
   @ArrayMaxSize(10)
   @IsUUID('all', { each: true })
   referenceFileIds?: string[];
+
+  /** AI 대화 기록 — 오면 통째로 바꾼다 */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(300)
+  @ValidateNested({ each: true })
+  @Type(() => ChatTurnDto)
+  chat?: ChatTurnDto[];
 }
 
 class GenerateDto {
