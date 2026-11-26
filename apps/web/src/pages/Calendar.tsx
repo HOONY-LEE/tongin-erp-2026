@@ -16,7 +16,12 @@ import {
   addDays,
   addMonths,
   addYears,
+  GENERAL_KINDS,
+  KIND_COLOR,
+  WORK_KINDS,
   dateKey,
+  kindLabel,
+  kindOf,
   rangeFor,
   type CalendarItem,
   type CalendarView,
@@ -49,7 +54,7 @@ export default function CalendarPage() {
   const [selectedSources, setSelectedSources] = useState<string[]>(() =>
     searchParams.get('only') === 'closure'
       ? ['CLOSURE']
-      : ['MINE', 'ORG', 'WORK', 'LEAVE', 'CLOSURE'],
+      : [...WORK_KINDS, ...GENERAL_KINDS, 'MINE', 'ORG'],
   );
   /** 이사일 마감 — 하루 창(지점별 마감·마감 예정) */
   const [closures, setClosures] = useState<ClosureData>({ closures: [], counts: [] });
@@ -243,6 +248,7 @@ export default function CalendarPage() {
       startTime: v.startTime || undefined,
       endTime: v.endTime || undefined,
       color: v.color,
+      category: v.category,
       location: v.location || undefined,
       description: v.description || undefined,
       visibility: v.visibility,
@@ -336,11 +342,21 @@ export default function CalendarPage() {
 
   /** 드롭다운에 노출할 캘린더 목록 */
   const sources: CalendarSource[] = [
-    { key: 'MINE', label: t('cal.src.MINE'), color: '#AF52DE' },
-    { key: 'ORG', label: t('cal.src.ORG'), color: '#34C759' },
-    { key: 'WORK', label: t('cal.src.WORK'), color: '#007AFF' },
-    { key: 'LEAVE', label: t('cal.src.LEAVE'), color: '#8B5CF6' },
-    { key: 'CLOSURE', label: t('cal.src.CLOSURE'), color: '#8E8E93' },
+    ...WORK_KINDS.map((k) => ({
+      key: k,
+      label: k === 'CLOSURE' ? t('cal.src.CLOSURE') : kindLabel(k),
+      color: KIND_COLOR[k],
+      group: t('cal.grp.work'),
+    })),
+    ...GENERAL_KINDS.map((k) => ({
+      key: k,
+      label: kindLabel(k),
+      color: KIND_COLOR[k],
+      group: t('cal.grp.general'),
+    })),
+    // 직접 만든 일정의 공유 범위
+    { key: 'MINE', label: t('cal.src.MINE'), color: '#636366', group: t('cal.grp.scope') },
+    { key: 'ORG', label: t('cal.src.ORG'), color: '#636366', group: t('cal.grp.scope') },
   ];
   /** 이사일 마감을 캘린더 일정처럼 — 마감은 회색 */
   const closureItems = useMemo<CalendarItem[]>(
@@ -348,7 +364,7 @@ export default function CalendarPage() {
       closures.closures.map((c) => ({
         id: `closure-${c.id}`,
         source: 'CLOSURE',
-        title: t('cal.closure', { v0: c.orgName ?? t('cal.all') }),
+        title: c.orgName ?? t('cal.all'),
         date: c.date,
         endDate: c.date,
         startTime: null,
@@ -376,17 +392,13 @@ export default function CalendarPage() {
   const visibleEvents = useMemo(() => {
     const q = search.trim().toLowerCase();
     return [...events, ...closureItems].filter((e) => {
-      const kind =
-        e.source === 'CLOSURE'
-          ? 'CLOSURE'
-          : e.source === 'WORK_ORDER'
-            ? 'WORK'
-            : e.source === 'LEAVE'
-              ? 'LEAVE'
-              : e.visibility === 'ORG'
-                ? 'ORG'
-                : 'MINE';
-      if (!selectedSources.includes(kind)) return false;
+      if (!selectedSources.includes(kindOf(e))) return false;
+      // 직접 만든 일정은 공유 범위(내 일정·조직 일정)도 맞아야
+      if (
+        (e.source === 'LOCAL' || e.source === 'GOOGLE') &&
+        !selectedSources.includes(e.visibility === 'ORG' ? 'ORG' : 'MINE')
+      )
+        return false;
       if (q && !e.title.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -446,6 +458,8 @@ export default function CalendarPage() {
         onChanged={load}
       />
       <EventModal
+        // 대상이 바뀌면 새로 그린다 — 앞서 연 일정 값이 새 일정 칸에 남지 않게
+        key={editing?.id ?? 'new'}
         open={modalOpen}
         event={editing}
         selectedDate={selectedDate}
@@ -455,12 +469,18 @@ export default function CalendarPage() {
         onSave={handleSave}
         onDelete={handleDelete}
         onClose={() => setModalOpen(false)}
-        onOpenRef={(e) =>
-          e.refId &&
+        onOpenRef={(e) => {
+          if (!e.refId) return;
+          // 화면이 탭으로 살아 있어 모달을 닫고 간다(돌아왔을 때 열려 있지 않게)
+          setModalOpen(false);
           navigate(
-            e.source === 'LEAVE' ? `/approvals?detail=${e.refId}` : `/work-orders/${e.refId}`,
-          )
-        }
+            e.source === 'LEAVE'
+              ? `/approvals?detail=${e.refId}`
+              : e.source === 'VISIT'
+                ? `/leads/${e.refId}`
+                : `/work-orders/${e.refId}`,
+          );
+        }}
       />
     </div>
   );

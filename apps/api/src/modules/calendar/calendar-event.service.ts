@@ -16,6 +16,8 @@ import {
 } from './dto/calendar-event.dto';
 
 const WORK_ORDER_COLOR = '#007AFF';
+/** 방문견적 예약 표시 색(주황) */
+const VISIT_COLOR = '#FF9500';
 /** 승인된 휴가 표시 색(보라) */
 const LEAVE_COLOR = '#8b5cf6';
 const WORK_STATUS_LABEL: Record<string, string> = {
@@ -28,8 +30,10 @@ const WORK_STATUS_LABEL: Record<string, string> = {
 /** 캘린더에 표시되는 단일 항목(자체 일정 + 작업오더 통합 뷰). */
 export interface CalendarItem {
   id: string;
-  /** LOCAL=자체 일정, GOOGLE=구글에서 가져온 일정, WORK_ORDER=작업(읽기전용), LEAVE=승인된 휴가(읽기전용) */
-  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'LEAVE';
+  /** LOCAL=자체 일정, GOOGLE=구글에서 가져온 일정, WORK_ORDER=작업·VISIT=방문견적 예약·LEAVE=승인된 휴가(읽기전용) */
+  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'VISIT' | 'LEAVE';
+  /** 자체 일정 종류(MEETING·EDU·TRIP·ETC) — 업무 항목은 null */
+  category: string | null;
   title: string;
   /** 시작 날짜 YYYY-MM-DD */
   date: string;
@@ -150,6 +154,7 @@ export class CalendarEventService {
     const items: CalendarItem[] = events.map((e) => ({
       id: e.id,
       source: e.source === 'GOOGLE' ? 'GOOGLE' : 'LOCAL',
+      category: e.category,
       title: e.title,
       date: dateColToYmd(e.date),
       endDate: dateColToYmd(e.endDate ?? e.date),
@@ -188,19 +193,21 @@ export class CalendarEventService {
       });
 
       for (const o of orders) {
-        const customer = o.lead?.customer?.name ?? '고객';
+        const customer = o.lead?.customer?.name;
         const route = [o.lead?.fromSigungu, o.lead?.toSigungu].filter(Boolean).join('→');
         items.push({
           id: `wo-${o.id}`,
           source: 'WORK_ORDER',
-          title: `[작업] ${customer}${route ? ` · ${route}` : ''}`,
+          category: null,
+          // 종류 표시([작업])와 색은 화면이 붙인다 — 제목은 고객만
+          title: customer ? `${customer} 고객` : '고객',
           date: dateColToYmd(o.scheduledDate as Date),
           endDate: dateColToYmd(o.scheduledDate as Date),
           startTime: null,
           endTime: null,
           color: WORK_ORDER_COLOR,
           location: null,
-          description: `작업번호 ${o.workNo} · ${WORK_STATUS_LABEL[o.status] ?? o.status}`,
+          description: `작업번호 ${o.workNo} · ${WORK_STATUS_LABEL[o.status] ?? o.status}${route ? ` · ${route}` : ''}`,
           visibility: 'ORG',
           ownerUserId: null,
           ownerName: null,
@@ -208,6 +215,53 @@ export class CalendarEventService {
           orgUnitName: o.orgUnit?.name ?? null,
           editable: false,
           refId: o.id,
+        });
+      }
+    }
+
+    // ── 방문견적 예약(접수의 방문일) — 조직 뷰에서만, 읽기전용 ──
+    if (scopeKind === 'ORG' && query.includeWorkOrders !== false) {
+      const where: Prisma.LeadWhereInput = {
+        visitDate: dateFilter ? { ...dateFilter, not: null } : { not: null },
+        status: { not: 'CANCELED' },
+      };
+      if (orgFilter) where.orgUnitId = orgFilter;
+      const leads = await this.prisma.lead.findMany({
+        where,
+        select: {
+          id: true,
+          leadNo: true,
+          visitDate: true,
+          orgUnitId: true,
+          fromSigungu: true,
+          orgUnit: { select: { name: true } },
+          customer: { select: { name: true } },
+          ownerEmp: { select: { name: true } },
+        },
+        orderBy: { visitDate: 'asc' },
+        take: 1000,
+      });
+      for (const l of leads) {
+        const day = dateColToYmd(l.visitDate as Date);
+        items.push({
+          id: `vs-${l.id}`,
+          source: 'VISIT',
+          category: null,
+          title: l.customer?.name ? `${l.customer.name} 고객` : '고객',
+          date: day,
+          endDate: day,
+          startTime: null,
+          endTime: null,
+          color: VISIT_COLOR,
+          location: l.fromSigungu ?? null,
+          description: `접수번호 ${l.leadNo}`,
+          visibility: 'ORG',
+          ownerUserId: null,
+          ownerName: l.ownerEmp?.name ?? null,
+          orgUnitId: l.orgUnitId,
+          orgUnitName: l.orgUnit?.name ?? null,
+          editable: false,
+          refId: l.id,
         });
       }
     }
@@ -240,7 +294,8 @@ export class CalendarEventService {
         items.push({
           id: `lv-${l.id}`,
           source: 'LEAVE',
-          title: `[휴가] ${l.employee.name} ${l.leaveType.name}`,
+          category: null,
+          title: `${l.employee.name} ${l.leaveType.name}`,
           date: dateColToYmd(l.startDate),
           endDate: dateColToYmd(l.endDate),
           startTime: null,
@@ -282,6 +337,7 @@ export class CalendarEventService {
         startTime: dto.startTime,
         endTime: dto.endTime,
         color: dto.color ?? '#FF3B30',
+        category: dto.category ?? 'ETC',
         location: dto.location,
         visibility,
         orgUnitId,
@@ -319,6 +375,7 @@ export class CalendarEventService {
         startTime: dto.startTime,
         endTime: dto.endTime,
         color: dto.color,
+        category: dto.category,
         location: dto.location,
         visibility,
         orgUnitId,

@@ -15,6 +15,7 @@ import { useAuth } from '../../auth/AuthContext';
 import {
   DataTable,
   FilterButton,
+  SegmentedControl,
   useToast,
   type Column,
   type FilterField,
@@ -97,15 +98,15 @@ export function CallList({
   const [rows, setRows] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [flt, setFlt] = useState<FilterValues>({});
+  // 내 전화 / 전체 전화 — 전체 보기 권한(관리자·슈퍼관리자)이면 전체가 기본
+  const [scope, setScope] = useState<'mine' | 'all'>(canAll ? 'all' : 'mine');
   /** 검색칸 — 서버에서 찾는다(전화번호·고객명) */
   const [q, setQ] = useState('');
 
   // 날짜·필터·검색 모두 서버에서 — 늦게 온 앞선 응답이 최근 결과를 덮지 않게
   const seq = useRef(0);
   const load = useCallback(
-    async (f: FilterValues, text: string) => {
-      // 내 전화 / 전체 전화 — 필터의 '전화'(전체 보기 권한이 있을 때만 있음). 없으면 내 전화
-      const sc = f.scope === 'all' ? 'all' : 'mine';
+    async (f: FilterValues, text: string, sc: 'mine' | 'all') => {
       const my = ++seq.current;
       setLoading(true);
       try {
@@ -137,9 +138,9 @@ export function CallList({
     [toast],
   );
   useEffect(() => {
-    const id = window.setTimeout(() => void load(flt, q), 250);
+    const id = window.setTimeout(() => void load(flt, q, canAll ? scope : 'mine'), 250);
     return () => window.clearTimeout(id);
-  }, [flt, q, refreshKey, load]);
+  }, [flt, q, scope, canAll, refreshKey, load]);
 
   const columns: Column[] = [
     {
@@ -237,19 +238,6 @@ export function CallList({
   ];
   const filterFields: FilterField[] = [
     { key: 'period', label: t('cc.callDate'), type: 'date' },
-    ...(canAll
-      ? [
-          {
-            key: 'scope',
-            label: t('cc.flt.scope'),
-            type: 'single',
-            options: [
-              { value: 'mine', label: t('cc.myCalls') },
-              { value: 'all', label: t('cc.allCalls') },
-            ],
-          } as FilterField,
-        ]
-      : []),
     {
       key: 'status',
       label: t('cc.status'),
@@ -279,6 +267,19 @@ export function CallList({
             onChange={setFlt}
             limited={rows.length >= LIST_LIMIT}
           />
+        }
+        tabs={
+          canAll ? (
+            <SegmentedControl
+              size="sm"
+              value={scope}
+              onChange={(v) => setScope(v as 'mine' | 'all')}
+              options={[
+                { value: 'all', label: t('cc.allCalls') },
+                { value: 'mine', label: t('cc.myCalls') },
+              ]}
+            />
+          ) : undefined
         }
         fit
         pageSize={20}

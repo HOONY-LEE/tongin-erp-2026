@@ -1,5 +1,6 @@
 import i18n from '../i18n';
 import { KR_HOLIDAYS } from '@tongin/shared';
+import { tDyn } from '../i18n';
 
 // 캘린더 날짜/포맷 유틸 — calendar-app 레퍼런스 구현과 동일한 규칙(일요일 시작, 6주 매트릭스).
 
@@ -166,8 +167,10 @@ export const EVENT_COLORS: Record<string, { dot: string; bg: string; text: strin
 /** 서버가 내려주는 캘린더 항목(자체 일정 + 작업오더 통합). */
 export interface CalendarItem {
   id: string;
-  /** CLOSURE = 이사일 마감(지점별 마감·마감 예정) */
-  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'LEAVE' | 'CLOSURE';
+  /** CLOSURE = 이사일 마감(지점별 마감·마감 예정), VISIT = 방문견적 예약 */
+  source: 'LOCAL' | 'GOOGLE' | 'WORK_ORDER' | 'VISIT' | 'LEAVE' | 'CLOSURE';
+  /** 자체 일정 종류(MEETING·EDU·TRIP·ETC) — 업무 항목은 null */
+  category?: string | null;
   title: string;
   /** 시작 날짜 YYYY-MM-DD */
   date: string;
@@ -304,3 +307,44 @@ export { KR_HOLIDAYS };
 export function holidayName(date: Date): string | null {
   return KR_HOLIDAYS[dateKey(date)] ?? null;
 }
+
+// ── 일정 종류 — 업무(방문·작업·이사 마감)와 일반(휴가·미팅·교육·출장·기타). 왼쪽 색 바와 [종류]로 구분 ──
+export type CalKind = 'VISIT' | 'WORK' | 'CLOSURE' | 'LEAVE' | 'MEETING' | 'EDU' | 'TRIP' | 'ETC';
+export const WORK_KINDS: CalKind[] = ['VISIT', 'WORK', 'CLOSURE'];
+export const GENERAL_KINDS: CalKind[] = ['LEAVE', 'MEETING', 'EDU', 'TRIP', 'ETC'];
+/** 직접 만드는 일정에서 고르는 종류 */
+export const EVENT_CATEGORIES = ['MEETING', 'EDU', 'TRIP', 'ETC'] as const;
+export const KIND_COLOR: Record<CalKind, string> = {
+  VISIT: '#FF9500',
+  WORK: '#007AFF',
+  CLOSURE: '#8E8E93',
+  LEAVE: '#AF52DE',
+  MEETING: '#34C759',
+  EDU: '#FF2D55',
+  TRIP: '#30B0C7',
+  ETC: '#A2845E',
+};
+
+export function kindOf(e: CalendarItem): CalKind {
+  if (e.source === 'CLOSURE') return 'CLOSURE';
+  if (e.source === 'WORK_ORDER') return 'WORK';
+  if (e.source === 'VISIT') return 'VISIT';
+  if (e.source === 'LEAVE') return 'LEAVE';
+  const c = e.category ?? 'ETC';
+  return (EVENT_CATEGORIES as readonly string[]).includes(c) ? (c as CalKind) : 'ETC';
+}
+
+export const kindLabel = (k: CalKind) => tDyn(`cal.kind.${k}`, k);
+
+/** 종류 색 — 바(dot)·여러 날 막대 배경(bg)·글자(text) */
+export function kindStyle(e: CalendarItem) {
+  const dot = KIND_COLOR[kindOf(e)];
+  return {
+    dot,
+    bg: `color-mix(in srgb, ${dot} 16%, transparent)`,
+    text: `color-mix(in srgb, ${dot} 70%, var(--ark-color-text))`,
+  };
+}
+
+/** 화면에 보일 제목 — "[작업] 신서연 고객" */
+export const displayTitle = (e: CalendarItem) => `[${kindLabel(kindOf(e))}] ${e.title}`;

@@ -16,7 +16,8 @@ import { Button, SegmentedControl } from '../ui';
 import {
   WEEKDAYS,
   MONTH_LABELS,
-  EVENT_COLORS,
+  displayTitle,
+  kindStyle,
   dateKey,
   isSameDay,
   formatTime,
@@ -95,6 +96,8 @@ export interface CalendarSource {
   key: string;
   label: string;
   color: string;
+  /** 묶음 이름(업무·일반·범위) — 바뀔 때 머리를 보인다 */
+  group?: string;
 }
 
 function SourceFilter({
@@ -162,45 +165,60 @@ function SourceFilter({
             boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
           }}
         >
-          {sources.map((s) => {
+          {sources.map((s, i) => {
             const on = selected.includes(s.key);
+            const head = s.group && s.group !== sources[i - 1]?.group ? s.group : null;
             return (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => onToggle(s.key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  width: '100%',
-                  padding: '8px 10px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: fs(13),
-                  color: 'var(--ark-color-text)',
-                  textAlign: 'left',
-                }}
-              >
-                <span
+              <div key={s.key}>
+                {head && (
+                  <div
+                    style={{
+                      padding: i ? '8px 10px 2px' : '2px 10px 2px',
+                      fontSize: fs(11),
+                      fontWeight: 600,
+                      color: 'var(--ark-color-text-tertiary)',
+                      ...(i ? { borderTop: BORDER, marginTop: 4 } : {}),
+                    }}
+                  >
+                    {head}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onToggle(s.key)}
                   style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 4,
-                    background: on ? s.color : 'transparent',
-                    border: on ? 'none' : `1.5px solid var(--ark-color-border-strong)`,
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    gap: 8,
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    fontSize: fs(13),
+                    color: 'var(--ark-color-text)',
+                    textAlign: 'left',
                   }}
                 >
-                  {on && <Check size={12} color="#fff" strokeWidth={3} />}
-                </span>
-                {s.label}
-              </button>
+                  <span
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 4,
+                      background: on ? s.color : 'transparent',
+                      border: on ? 'none' : `1.5px solid var(--ark-color-border-strong)`,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {on && <Check size={12} color="#fff" strokeWidth={3} />}
+                  </span>
+                  {s.label}
+                </button>
+              </div>
             );
           })}
         </div>
@@ -394,13 +412,12 @@ function EventRow({
   dense?: boolean;
 }) {
   const [hover, setHover] = useState(false);
-  const c = EVENT_COLORS[event.color] || EVENT_COLORS['#FF3B30'];
-  const allDay = !event.startTime;
+  const c = kindStyle(event);
 
   return (
     <button
       type="button"
-      title={event.title}
+      title={displayTitle(event)}
       onClick={(e) => {
         e.stopPropagation();
         onClick(event);
@@ -412,40 +429,38 @@ function EventRow({
         alignItems: 'center',
         gap: 6,
         width: '100%',
-        // 종일 일정은 연한 배경 바, 시간 일정은 배경 없이 컬러 바만
+        // 하루짜리는 배경 없이 왼쪽 색 바 + [종류] 제목(배경 막대는 여러 날 일정만)
         padding: dense ? '1px 5px' : '2px 6px',
         borderRadius: 4,
         border: 'none',
-        background: allDay ? c.bg : hover ? 'var(--ark-color-bg-muted)' : 'transparent',
+        background: hover ? 'var(--ark-color-bg-muted)' : 'transparent',
         cursor: 'pointer',
         textAlign: 'left',
         overflow: 'hidden',
       }}
     >
-      {!allDay && (
-        <span
-          style={{
-            width: 3,
-            height: 12,
-            borderRadius: 2,
-            background: c.dot,
-            flexShrink: 0,
-          }}
-        />
-      )}
+      <span
+        style={{
+          width: 3,
+          height: 12,
+          borderRadius: 2,
+          background: c.dot,
+          flexShrink: 0,
+        }}
+      />
       <span
         style={{
           flex: 1,
           minWidth: 0,
           fontSize: dense ? 11.5 : 12.5,
           fontWeight: 500,
-          color: allDay ? c.text : 'var(--ark-color-text)',
+          color: 'var(--ark-color-text)',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}
       >
-        {event.title}
+        {displayTitle(event)}
       </span>
       {event.startTime && (
         <span
@@ -481,11 +496,11 @@ function SpanBar({
   onClick: (e: CalendarItem) => void;
 }) {
   const { event, continuesFromPrev, continuesToNext } = segment;
-  const c = EVENT_COLORS[event.color] || EVENT_COLORS['#FF3B30'];
+  const c = kindStyle(event);
   return (
     <button
       type="button"
-      title={event.title}
+      title={displayTitle(event)}
       onClick={(e) => {
         e.stopPropagation();
         onClick(event);
@@ -521,7 +536,7 @@ function SpanBar({
           textOverflow: 'ellipsis',
         }}
       >
-        {event.title}
+        {displayTitle(event)}
       </span>
       {continuesToNext && <span style={{ fontSize: fs(10), opacity: 0.7 }}>▶</span>}
     </button>
@@ -829,7 +844,7 @@ function DayView({
           </div>
         ) : (
           list.map((ev) => {
-            const c = EVENT_COLORS[ev.color] || EVENT_COLORS['#FF3B30'];
+            const c = kindStyle(ev);
             return (
               <div
                 key={ev.id}
@@ -858,7 +873,7 @@ function DayView({
                   {ev.startTime ? formatTime(ev.startTime) : t('cal.allDay')}
                 </span>
                 <span style={{ fontSize: fs(15), fontWeight: 600, color: 'var(--ark-color-text)' }}>
-                  {ev.title}
+                  {displayTitle(ev)}
                 </span>
                 {ev.ownerName && (
                   <span

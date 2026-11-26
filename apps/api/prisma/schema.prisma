@@ -1100,6 +1100,8 @@ model CalendarEvent {
   startTime   String?   @map("start_time") // "HH:mm" — null이면 종일
   endTime     String?   @map("end_time") // "HH:mm"
   color       String    @default("#FF3B30") // 캘린더 색상(EVENT_COLORS 키)
+  // 종류 — MEETING(미팅) | EDU(교육) | TRIP(출장) | ETC(기타). 캘린더 필터·색상 바에 쓴다
+  category    String    @default("ETC")
   location    String?
 
   visibility String @default("PRIVATE") // PRIVATE(개인) | ORG(조직 공유)
