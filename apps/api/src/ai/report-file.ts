@@ -2,7 +2,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
-import { PRODUCT_NAME } from '@tongin/shared';
+import { LEAD_STATUS_LABEL, PRODUCT_NAME } from '@tongin/shared';
 
 /**
  * AI 보고서 파일 만들기 — 표(열 이름 + 행) 하나를 엑셀·CSV·PDF로.
@@ -67,9 +67,39 @@ function pickPath(obj: unknown, path: string): unknown {
 
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
 
-/** 조회 결과에서 바로 꺼낸 값 — ISO 시각은 한국 시간 "YYYY-MM-DD HH:mm"으로 보기 좋게 */
+/** 조회 결과의 코드 값 → 사람이 읽는 말(뜻이 하나로 정해지는 코드만) */
+const CODE_LABEL: Record<string, string> = {
+  ...LEAD_STATUS_LABEL,
+  DEPOSIT: '계약금',
+  BALANCE: '잔금',
+  VIRTUAL_ACCOUNT: '가상계좌',
+  BANK_TRANSFER: '계좌이체',
+  TRANSFER: '계좌이체',
+  CARD: '카드',
+  CASH: '현금',
+  PENDING: '대기',
+  PAID: '입금완료',
+  IN_PROGRESS: '진행 중',
+  ASSIGNED: '배정',
+  RESOLVED: '해결',
+  CLOSED: '종료',
+  SIGNED: '서명완료',
+  HIGH: '높음',
+  NORMAL: '보통',
+  LOW: '낮음',
+  PRIVATE: '개인',
+  APPROVED: '승인',
+  REJECTED: '반려',
+};
+/** DB 금액(Decimal)은 글자로 온다 — 숫자 칸으로 바꿔 천 단위 쉼표가 붙게(0으로 시작하는 번호는 그대로) */
+const NUMERIC_RE = /^-?(0|[1-9]\d{0,14})(\.\d+)?$/;
+
+/** 조회 결과에서 바로 꺼낸 값 — ISO 시각은 한국 시간 "YYYY-MM-DD HH:mm"으로, 금액 글자는 숫자로, 코드는 말로 */
 function objectCell(v: unknown): unknown {
-  if (typeof v !== 'string' || !ISO_DATETIME_RE.test(v)) return v;
+  if (typeof v !== 'string') return v;
+  if (NUMERIC_RE.test(v)) return Number(v);
+  if (/^[A-Z][A-Z_]+$/.test(v) && CODE_LABEL[v]) return CODE_LABEL[v];
+  if (!ISO_DATETIME_RE.test(v)) return v;
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return v;
   const kst = new Date(d.getTime() + 9 * 3600_000).toISOString();

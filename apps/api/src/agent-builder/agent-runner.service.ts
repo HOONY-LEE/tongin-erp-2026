@@ -25,6 +25,7 @@ import {
   type OutputConfig,
   type ToolConfig,
   type TriggerConfig,
+  formatOutputValue,
 } from '@tongin/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ToolError, type AiTool, type ToolContext } from '../ai/ai-tool.types';
@@ -759,7 +760,11 @@ export class AgentRunnerService {
       case 'output': {
         const cfg = node.config as OutputConfig;
         // 시험 실행에서는 쓰기 도구 결과가 없어 빈 칸이 생긴다 — 빈 칸을 표시해 둔다
-        const out = renderTemplate(cfg.template, v, state.dryRun ? '(시험 실행)' : '');
+        // 금액 등 큰 수는 천 단위 쉼표로(58457000 → 58,457,000)
+        const out = String(
+          renderTemplate(cfg.template, v, state.dryRun ? '(시험 실행)' : '', formatOutputValue) ??
+            '',
+        );
         state.output = out;
         v.output = out;
         return { port: null, output: out, message: '결과를 만들었습니다' };

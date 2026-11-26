@@ -693,12 +693,16 @@ export function renderTemplate(
   vars: Record<string, unknown>,
   /** 값이 없을 때 끼울 글자(시험 실행에서 빈 칸을 드러내려고) */
   missing = '',
+  /** 글 안에 끼울 값 서식(출력 노드 — 금액 쉼표 등). 없으면 그대로 */
+  fmt?: (v: unknown) => string | undefined,
 ): unknown {
   const whole = /^\s*\{\{\s*([^{}]+?)\s*\}\}\s*$/.exec(text);
-  if (whole) return readPath(vars, whole[1]) ?? (missing || undefined);
+  if (whole && !fmt) return readPath(vars, whole[1]) ?? (missing || undefined);
   return text.replace(TEMPLATE_RE, (_, p: string) => {
     const v = readPath(vars, p.trim());
     if (v === undefined || v === null) return missing;
+    const f = fmt?.(v);
+    if (f !== undefined) return f;
     return typeof v === 'object' ? JSON.stringify(v) : String(v);
   });
 }
@@ -1373,3 +1377,15 @@ export const aiBilledTokens = (u: {
   outputTokens: number;
   cacheWriteTokens: number;
 }) => u.inputTokens + u.cacheWriteTokens + u.outputTokens;
+
+/**
+ * 사람이 읽는 결과 글의 숫자 — 10,000 이상(숫자, 또는 금액처럼 숫자만인 글자)은 천 단위 쉼표.
+ * 연도(2026)·건수처럼 4자리 이하와 0으로 시작하는 번호는 그대로 둔다.
+ */
+export function formatOutputValue(v: unknown): string | undefined {
+  if (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) >= 10000)
+    return v.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+  if (typeof v === 'string' && /^-?[1-9]\d{4,14}(\.\d+)?$/.test(v))
+    return Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+  return undefined;
+}
