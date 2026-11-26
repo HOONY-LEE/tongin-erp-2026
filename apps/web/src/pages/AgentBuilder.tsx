@@ -21,7 +21,9 @@ import {
   ArrowLeft,
   CircleAlert,
   Copy,
+  Info,
   LayoutGrid,
+  MoreHorizontal,
   PanelLeft,
   Play,
   Redo2,
@@ -59,6 +61,7 @@ import { api, ApiError } from '../lib/api';
 import { useTheme } from '../theme/ThemeProvider';
 import { Button, Modal, PopoutButton, Spinner, useToast, PageSkeleton } from '../components/ui';
 import AgentNodeView, { type AgentFlowNode, type RunMark } from '../components/agent/AgentNodeView';
+import { Menu, type MenuEntry } from '@sunghoon_lee/akron-ui';
 import { Inspector } from '../components/agent/Inspector';
 import { DND_MIME, ToolExplorer } from '../components/agent/ToolExplorer';
 import { RunPanel, type AgentRunView } from '../components/agent/RunPanel';
@@ -159,7 +162,9 @@ function Editor() {
   const [preview, setPreview] = useState<GenerateResult | null>(null);
   const [runOpen, setRunOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [leftOpen, setLeftOpen] = useState(true);
+  // 왼쪽(노드·도구)은 빈 캔버스일 때만 처음부터 열고, 오른쪽(정보)은 노드를 고르거나 정보 버튼으로 — 캔버스를 넓게
+  const [leftOpen, setLeftOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   // 제어 모드라 React Flow가 잰 노드 크기를 직접 들고 있어야 미니맵·맞춤 보기가 노드를 안다
   const [measured, setMeasured] = useState<Record<string, { width: number; height: number }>>({});
   const [run, setRun] = useState<AgentRunView | null>(null);
@@ -221,7 +226,18 @@ function Editor() {
         if (!alive) return;
         const { graph: g, chat, ...m } = bp;
         const ng = normalizeAgentGraph(g);
-        setTurns(Array.isArray(chat) ? chat : []);
+        // 대화 기록이 없으면(예전·시드 에이전트) 만든 요청을 첫 말로 — 무엇을 하려고 만든 에이전트인지 보이게
+        const prev = Array.isArray(chat) ? chat : [];
+        setTurns(
+          prev.length
+            ? prev
+            : m.prompt?.trim()
+              ? [
+                  { role: 'user', text: m.prompt.trim() },
+                  { role: 'assistant', text: t('agent.chat.fromPrompt', { v0: m.name }) },
+                ]
+              : [],
+        );
         chatLoaded.current = false;
         setMeta(m);
         setGraph(ng);
@@ -230,6 +246,7 @@ function Editor() {
         setAiConfigured(st.aiConfigured);
         setNlMode(ng.nodes.length ? 'refine' : 'new');
         setNlOpen(!ng.nodes.length);
+        setLeftOpen(!ng.nodes.length);
       } catch (e) {
         toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.loadFailed') });
         navigate('/agent-builder');
@@ -1161,6 +1178,18 @@ function Editor() {
             >
               <Play size={14} /> {t('agent.testRun')}
             </button>
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${infoOpen || selected ? styles.iconBtnActive : ''}`}
+              onClick={() => {
+                if (selected) setSelectedId(null);
+                else setInfoOpen((v) => !v);
+              }}
+              title={t('agent.info')}
+              aria-label={t('agent.info')}
+            >
+              <Info size={14} />
+            </button>
           </>
         )}
         <span className={styles.activeToggle} title={t('agent.activeTip')}>
@@ -1172,33 +1201,44 @@ function Editor() {
             label={t('agent.active')}
           />
         </span>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={() => setShareOpen(true)}
-          title={t('agent.whoCanUse')}
-        >
-          <VisIcon size={14} /> {AGENT_VISIBILITY_LABEL[meta.visibility]}
-          {meta.visibility === 'SHARED' ? t('agent.nPeople', { v0: meta.shares.length }) : ''}
-        </button>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={() => void duplicate()}
-          title={t('agent.copyToDraft')}
-        >
-          <Copy size={14} /> {t('agent.duplicate')}
-        </button>
-        {meta.canEdit && (
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => void remove()}
-            title={t('agent.deleteAgent')}
-          >
-            <Trash2 size={14} /> {t('agent.delete')}
-          </button>
-        )}
+        <Menu
+          placement="bottom-end"
+          items={[
+            {
+              label: `${t('agent.whoCanUse')} · ${AGENT_VISIBILITY_LABEL[meta.visibility]}${
+                meta.visibility === 'SHARED' ? t('agent.nPeople', { v0: meta.shares.length }) : ''
+              }`,
+              icon: <VisIcon size={14} />,
+              onClick: () => setShareOpen(true),
+            },
+            {
+              label: t('agent.duplicate'),
+              icon: <Copy size={14} />,
+              onClick: () => void duplicate(),
+            },
+            ...(meta.canEdit
+              ? ([
+                  { type: 'separator' },
+                  {
+                    label: t('agent.delete'),
+                    icon: <Trash2 size={14} />,
+                    danger: true,
+                    onClick: () => void remove(),
+                  },
+                ] as MenuEntry[])
+              : []),
+          ]}
+          trigger={
+            <button
+              type="button"
+              className={styles.iconBtn}
+              aria-label={t('agent.more')}
+              title={t('agent.more')}
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          }
+        />
         <Button
           variant="primary"
           size="sm"
@@ -1291,7 +1331,7 @@ function Editor() {
       )}
 
       <div
-        className={`${styles.body} ${leftOpen ? '' : styles.bodyNoLeft} ${mode === 'nl' ? styles.bodyHidden : ''}`}
+        className={`${styles.body} ${leftOpen ? '' : styles.bodyNoLeft} ${selected || infoOpen ? '' : styles.bodyNoRight} ${mode === 'nl' ? styles.bodyHidden : ''}`}
       >
         {/* ── 왼쪽: 노드 팔레트 + 도구 탐색기 ── */}
         <aside className={styles.left} hidden={!leftOpen}>
@@ -1413,7 +1453,7 @@ function Editor() {
         </section>
 
         {/* ── 오른쪽: 속성 ── */}
-        <aside className={styles.right}>
+        <aside className={styles.right} hidden={!selected && !infoOpen}>
           {selected ? (
             <Inspector
               key={selected.id}

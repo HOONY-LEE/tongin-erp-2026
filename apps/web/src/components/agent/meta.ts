@@ -1,4 +1,4 @@
-import i18n from '../../i18n';
+import i18n, { tDyn } from '../../i18n';
 import type { LucideIcon } from 'lucide-react';
 import { aiModelLabel } from '../../lib/aiModels';
 import {
@@ -65,17 +65,125 @@ export const modelLabel = (id: string) => aiModelLabel(id).split(' (')[0];
 
 const cut = (s: string, n = 70) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
+/** 예약 cron("분 시 일 월 요일") → "매주 월요일 09:00" · "매일 08:30" · "평일 …"(못 읽으면 그대로) */
+export function cronLabel(cron: string): string {
+  const m = /^(\d{1,2}) (\d{1,2}) \* \* (\*|[0-6](?:-[0-6])?|[0-6](?:,[0-6])+)$/.exec(cron.trim());
+  if (!m) return cron;
+  const time = `${m[2].padStart(2, '0')}:${m[1].padStart(2, '0')}`;
+  const dow = m[3];
+  const day = (d: string) => tDyn(`agent.dow.${d}`, d);
+  if (dow === '*') return i18n.t('agent.cronFmt.daily', { v0: time });
+  if (dow === '1-5') return i18n.t('agent.cronFmt.weekdays', { v0: time });
+  const days = dow.includes('-')
+    ? `${day(dow[0])}~${day(dow[2])}`
+    : dow.split(',').map(day).join('·');
+  return i18n.t('agent.cronFmt.weekly', { v0: days, v1: time });
+}
+
+/** {{run.today}} 같은 시스템 변수 → '오늘', 그 밖의 {{x.y}} → ‹x.y› */
+const RUN_WORD: Record<string, string> = {
+  'run.today': 'today',
+  'run.tomorrow': 'tomorrow',
+  'run.weekAgo': 'weekAgo',
+  'run.in3days': 'in3days',
+  'run.in7days': 'in7days',
+  'run.monthStart': 'monthStart',
+  'run.now': 'now',
+  'user.name': 'me',
+};
+/** 인자 값 코드 → 말(묶음·기준 날짜·상태·예/아니오·형식) */
+const VALUE_WORD = new Set([
+  'branch',
+  'source',
+  'day',
+  'week',
+  'month',
+  'serviceLine',
+  'partner',
+  'region',
+  'createdAt',
+  'moveDate',
+  'visitDate',
+  'true',
+  'false',
+  'xlsx',
+  'csv',
+  'pdf',
+  'RECEIVED',
+  'IN_PROGRESS',
+  'RESOLVED',
+  'CLOSED',
+  'PENDING',
+  'PAID',
+  'DONE',
+  'ASSIGNED',
+  'CANCELED',
+  'HIGH',
+  'NORMAL',
+  'LOW',
+  'todo',
+  'mine',
+  'cc',
+  'all',
+]);
+export function prettyValue(v: unknown): string {
+  // 값 목록(["leadNo","customerName"])은 쉼표로
+  if (Array.isArray(v)) return v.map((x) => prettyValue(x)).join(', ');
+  let raw = typeof v === 'string' ? v.trim() : JSON.stringify(v);
+  if (/^\[.*\]$/.test(raw)) {
+    try {
+      const arr = JSON.parse(raw) as unknown;
+      if (Array.isArray(arr)) return arr.map((x) => prettyValue(x)).join(', ');
+    } catch {
+      // 목록 글자가 아니면 그대로
+    }
+  }
+  if (VALUE_WORD.has(raw)) raw = tDyn(`agent.val.${raw}`, raw);
+  const s = raw;
+  return s.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, p: string) =>
+    RUN_WORD[p] ? tDyn(`agent.when.${RUN_WORD[p]}`, p) : `‹${p}›`,
+  );
+}
+
+/** 도구 이름 — '[결재] 결재함 목록. …' 설명에서 '결재 · 결재함 목록'(업무 도구는 이름표) */
+export function toolTitle(name: string, info?: AgentToolInfo): string {
+  if (!name) return '';
+  const builtin = tDynSafe(`agent.toolName.${name}`);
+  if (builtin) return builtin;
+  const m = info ? /^\[([^\]]+)\]\s*([^.]+)/.exec(info.description) : null;
+  return m ? `${m[1]} · ${m[2].split(' — ')[0].trim()}` : name;
+}
+const tDynSafe = (k: string) => (i18n.exists(k) ? tDyn(k) : '');
+
+/** 도구 인자 한 줄 — from·to는 '기간 7일 전 ~ 오늘'로 묶고, 아는 이름은 한국어로 */
+function argLine(args: [string, unknown][]): string {
+  const map = new Map(args);
+  const parts: string[] = [];
+  if (map.has('from') || map.has('to')) {
+    parts.push(
+      `${i18n.t('agent.arg.period')} ${prettyValue(map.get('from') ?? '')} ~ ${prettyValue(map.get('to') ?? '')}`,
+    );
+    map.delete('from');
+    map.delete('to');
+  }
+  for (const [k, v] of map) {
+    const label = tDynSafe(`agent.arg.${k}`) || k;
+    parts.push(`${label} ${prettyValue(v)}`);
+  }
+  return parts.join(' · ');
+}
+
 /** 노드 카드 본문에 보일 요약 줄 */
 export function nodeSummary(
   node: AgentNode,
   tools: Map<string, AgentToolInfo>,
-): { lines: string[]; mono?: string; outVar?: string; mode?: 'READ' | 'WRITE' } {
+): { lines: string[]; mono?: string; raw?: string; outVar?: string; mode?: 'READ' | 'WRITE' } {
   switch (node.type) {
     case 'trigger': {
       const c = node.config as TriggerConfig;
       const extra =
         c.kind === 'schedule'
-          ? c.cron
+          ? cronLabel(c.cron)
           : c.kind === 'event'
             ? (TRIGGER_EVENT_LABEL[c.event as keyof typeof TRIGGER_EVENT_LABEL] ?? c.event)
             : '';
@@ -98,7 +206,7 @@ export function nodeSummary(
       return {
         lines: [
           `${modelLabel(c.model)} · ${c.outputFormat === 'json' ? 'JSON' : i18n.t('agent.fmt.text')}`,
-          cut(c.prompt || c.instructions || i18n.t('agent.m.noInstr')),
+          cut(prettyValue(c.prompt || c.instructions || i18n.t('agent.m.noInstr'))),
         ],
         outVar: c.outputVar,
       };
@@ -108,13 +216,11 @@ export function nodeSummary(
       const info = tools.get(c.tool);
       const args = Object.entries(c.args).filter(([, v]) => String(v).trim());
       return {
-        mono: c.tool || i18n.t('agent.m.noTool'),
+        // 사람이 읽는 도구 이름(실제 이름은 마우스를 올리면)
+        mono: c.tool ? toolTitle(c.tool, info) : i18n.t('agent.m.noTool'),
+        raw: c.tool,
         mode: info?.mode,
-        lines: args.length
-          ? [cut(args.map(([k, v]) => `${k}=${v}`).join(', '), 80)]
-          : info
-            ? [cut(info.description, 60)]
-            : [],
+        lines: args.length ? [cut(argLine(args), 90)] : [],
         outVar: c.outputVar,
       };
     }
@@ -164,6 +270,10 @@ export function nodeSummary(
         lines: [cut((node.config as ApprovalConfig).message || i18n.t('agent.m.noApproval'))],
       };
     case 'output':
-      return { lines: [cut((node.config as OutputConfig).template || i18n.t('agent.m.noReply'))] };
+      return {
+        lines: [
+          cut(prettyValue((node.config as OutputConfig).template || i18n.t('agent.m.noReply')), 90),
+        ],
+      };
   }
 }

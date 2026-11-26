@@ -254,9 +254,9 @@ export default defineNs({
     tokensN: ' · 토큰 {{v0}}',
     nl: {
       editHello:
-        '바꾸고 싶은 점을 말씀해 주세요. 고친 뒤에는 제가 **시험 실행**까지 돌려 보고, 오류가 나면 스스로 다시 고칩니다.\n노드를 직접 다듬으려면 위의 **블루프린트**로 넘어가세요.',
+        '바꾸고 싶은 점을 말씀해 주세요. 고친 뒤에는 제가 **시험 실행**까지 돌려 보고, 오류가 나면 스스로 다시 고칩니다.\n노드를 직접 다듬으려면 위의 **플로우**로 넘어가세요.',
       newHello: '어떤 일을 하는 에이전트인지 말씀해 주세요. 설계하고 시험 실행까지 해 볼게요.',
-      noKey: 'ANTHROPIC_API_KEY가 없어 말로 고칠 수 없습니다 — 블루프린트에서 직접 고쳐 주세요',
+      noKey: 'ANTHROPIC_API_KEY가 없어 말로 고칠 수 없습니다 — 플로우에서 직접 고쳐 주세요',
       readonly: '보기 전용입니다 — 복제한 뒤 고칠 수 있습니다',
       ph: '예: 대상이 없으면 나에게 알려 주고, 문자는 30명까지만 보내게 해 줘',
       chat: '에이전트 고치기 대화',
@@ -566,7 +566,7 @@ export default defineNs({
     tokensN: ' · tokens {{v0}}',
     nl: {
       editHello:
-        "Tell me what you'd like to change. After revising, I'll run a **test run**, and fix things myself if errors occur.\nTo fine-tune nodes directly, switch to **Blueprint** above.",
+        "Tell me what you'd like to change. After revising, I'll run a **test run**, and fix things myself if errors occur.\nTo fine-tune nodes directly, switch to **Flow** above.",
       newHello: "Tell me what the agent should do. I'll design it and run a test.",
       noKey: 'No ANTHROPIC_API_KEY, so you cannot edit by chat — edit directly in Blueprint',
       readonly: 'View only — duplicate it to make changes',
