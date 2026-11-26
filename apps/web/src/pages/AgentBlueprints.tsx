@@ -2,13 +2,15 @@ import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, List } from 'lucide-react';
+import { Copy, LayoutGrid, List, MoreHorizontal, Power, PowerOff, Trash2 } from 'lucide-react';
+import { Menu, type MenuEntry } from '@sunghoon_lee/akron-ui';
 import { useTranslation } from 'react-i18next';
 import { type AgentVisibility, type TriggerConfig } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
 import {
   Button,
+  ConfirmModal,
   DataTable,
   FilterButton,
   filterRows,
@@ -173,6 +175,74 @@ export default function AgentBlueprints() {
 
   const open = (r: Row) => navigate(`/agent-builder/${String(r.id)}`);
 
+  // ── 카드 점 3개 메뉴 — 복제(누구나) · 활성화/비활성화 · 삭제(만든 사람만)
+  const [toDelete, setToDelete] = useState<Row | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const duplicate = async (r: Row) => {
+    try {
+      await api(`/agent-blueprints/${String(r.id)}/duplicate`, { method: 'POST' });
+      toast({ type: 'success', title: t('agent.duplicated') });
+      void load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.dupFailed') });
+    }
+  };
+  const setActive = async (r: Row, on: boolean) => {
+    try {
+      await api(`/agent-blueprints/${String(r.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: on ? 'ACTIVE' : 'DRAFT' }),
+      });
+      toast({ type: 'success', title: on ? t('agent.activated') : t('agent.deactivated') });
+      void load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.saveFailed') });
+    }
+  };
+  const remove = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await api(`/agent-blueprints/${String(toDelete.id)}`, { method: 'DELETE' });
+      toast({ type: 'success', title: t('agent.deleted') });
+      setToDelete(null);
+      void load();
+    } catch (e) {
+      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.deleteFailed') });
+    } finally {
+      setDeleting(false);
+    }
+  };
+  const cardMenu = (r: Row): MenuEntry[] => {
+    const active = r.status === 'ACTIVE';
+    const items: MenuEntry[] = [
+      { label: t('agent.duplicate'), icon: <Copy size={14} />, onClick: () => void duplicate(r) },
+    ];
+    if (r.canEdit) {
+      items.push(
+        active
+          ? {
+              label: t('ai.cardMenu.deactivate'),
+              icon: <PowerOff size={14} />,
+              onClick: () => void setActive(r, false),
+            }
+          : {
+              label: t('ai.cardMenu.activate'),
+              icon: <Power size={14} />,
+              onClick: () => void setActive(r, true),
+            },
+        { type: 'separator' },
+        {
+          label: t('agent.delete'),
+          icon: <Trash2 size={14} />,
+          danger: true,
+          onClick: () => setToDelete(r),
+        },
+      );
+    }
+    return items;
+  };
+
   const columns: Column[] = [
     {
       title: t('ai.agents'),
@@ -317,30 +387,54 @@ export default function AgentBlueprints() {
           ) : (
             <div className={styles.cardGrid}>
               {cards.map((r) => (
-                <button
-                  key={String(r.id)}
-                  type="button"
-                  className={styles.agentCard}
-                  onClick={() => open(r)}
-                >
-                  <div className={styles.agentCardHead}>
-                    <b className={styles.agentCardName}>{String(r.name)}</b>
-                    <StatusBadge value={String(r.status)} map={STATUS_MAP} />
-                  </div>
-                  <p className={styles.agentCardDesc}>
-                    {r.description ? String(r.description) : t('ai.noDesc')}
-                  </p>
-                  <div className={styles.agentCardMeta}>
-                    <span>{triggerText(r)}</span>
-                    <VisibilityBadge row={r} />
-                    <span className={styles.agentCardDate}>{dt(r.updatedAt)}</span>
-                  </div>
-                </button>
+                <div key={String(r.id)} className={styles.agentCardWrap}>
+                  <button type="button" className={styles.agentCard} onClick={() => open(r)}>
+                    <div className={styles.agentCardHead}>
+                      <b className={styles.agentCardName}>{String(r.name)}</b>
+                      <StatusBadge value={String(r.status)} map={STATUS_MAP} />
+                    </div>
+                    <p className={styles.agentCardDesc}>
+                      {r.description ? String(r.description) : t('ai.noDesc')}
+                    </p>
+                    <div className={styles.agentCardMeta}>
+                      <span>{triggerText(r)}</span>
+                      <VisibilityBadge row={r} />
+                      <span className={styles.agentCardDate}>{dt(r.updatedAt)}</span>
+                    </div>
+                  </button>
+                  {/* 카드 오른쪽 위 점 3개 — 호버하면 보인다 */}
+                  <span className={styles.agentCardMenu}>
+                    <Menu
+                      items={cardMenu(r)}
+                      placement="bottom-end"
+                      trigger={
+                        <button
+                          type="button"
+                          className={styles.agentCardMenuBtn}
+                          aria-label={t('ai.cardMenu.more')}
+                          title={t('ai.cardMenu.more')}
+                        >
+                          <MoreHorizontal size={16} />
+                        </button>
+                      }
+                    />
+                  </span>
+                </div>
               ))}
             </div>
           )}
         </>
       )}
+      <ConfirmModal
+        open={!!toDelete}
+        title={t('agent.delete')}
+        message={toDelete ? t('agent.deleteQ', { v0: String(toDelete.name) }) : ''}
+        confirmLabel={t('agent.delete')}
+        danger
+        busy={deleting}
+        onConfirm={() => void remove()}
+        onClose={() => setToDelete(null)}
+      />
     </ListPage>
   );
 }
