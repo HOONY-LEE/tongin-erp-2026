@@ -54,6 +54,28 @@ export function safeFileName(title: string, ext: string) {
   return `${base}.${ext}`;
 }
 
+/** 객체에서 a.b.c 경로 값 읽기 */
+function pickPath(obj: unknown, path: string): unknown {
+  if (!path) return undefined;
+  let cur: unknown = obj;
+  for (const k of path.split('.')) {
+    if (cur === null || cur === undefined || typeof cur !== 'object') return undefined;
+    cur = (cur as Record<string, unknown>)[k];
+  }
+  return cur;
+}
+
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
+
+/** 조회 결과에서 바로 꺼낸 값 — ISO 시각은 한국 시간 "YYYY-MM-DD HH:mm"으로 보기 좋게 */
+function objectCell(v: unknown): unknown {
+  if (typeof v !== 'string' || !ISO_DATETIME_RE.test(v)) return v;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  const kst = new Date(d.getTime() + 9 * 3600_000).toISOString();
+  return `${kst.slice(0, 10)} ${kst.slice(11, 16)}`;
+}
+
 /** 입력 검증 + 정리(열 수에 맞춰 행 길이 맞추기, 너무 긴 글 자르기) */
 export function normalizeReport(input: Record<string, unknown>): ReportInput {
   const format = input.format;
@@ -77,7 +99,13 @@ export function normalizeReport(input: Record<string, unknown>): ReportInput {
     const s = typeof v === 'string' ? v : JSON.stringify(v);
     return s.slice(0, REPORT_LIMITS.cellChars);
   };
+  // rows가 조회 결과 객체 목록이면 fields(열마다 꺼낼 키·경로)로 값을 뽑는다 — 없으면 열 이름을 키로 쓴다
+  const fields = Array.isArray(input.fields) ? input.fields.map((f) => String(f ?? '')) : null;
   const rows = rawRows.map((r) => {
+    if (r && typeof r === 'object' && !Array.isArray(r)) {
+      const keys = fields ?? columns;
+      return columns.map((_, i) => cell(objectCell(pickPath(r, keys[i] ?? ''))));
+    }
     const arr = Array.isArray(r) ? r : [r];
     return columns.map((_, i) => cell(arr[i]));
   });

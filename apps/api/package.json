@@ -15,6 +15,7 @@
     "demo:seed:leads": "tsx prisma/seed-demo-leads.ts",
     "demo:seed:services": "tsx prisma/seed-demo-services.ts",
     "demo:seed:agents": "tsx prisma/seed-demo-agents.ts",
+    "demo:seed:agents-more": "tsx prisma/seed-demo-agents-more.ts",
     "demo:seed:dashboards": "tsx prisma/seed-demo-dashboard-teams.ts",
     "demo:seed:hr": "tsx prisma/seed-demo-hr.ts",
     "demo:seed:menus": "tsx prisma/seed-demo-menus.ts",
