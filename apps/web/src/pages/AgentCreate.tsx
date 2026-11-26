@@ -2,15 +2,7 @@ import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  ArrowUp,
-  FileSpreadsheet,
-  Paperclip,
-  PencilLine,
-  Sparkles,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, ArrowUp, FileSpreadsheet, Paperclip, Sparkles, X } from 'lucide-react';
 import type { AgentGraph } from '@tongin/shared';
 import { api, ApiError } from '../lib/api';
 import { Button, PopoutButton, useToast } from '../components/ui';
@@ -24,9 +16,6 @@ const EXAMPLES = [
   i18n.t('ai.create.ex3'),
   i18n.t('ai.create.ex4'),
 ];
-
-const GREETING =
-  i18n.t('ai.create.hello1') + i18n.t('ai.create.hello2') + i18n.t('ai.create.hello3');
 
 interface RefFile {
   id: string;
@@ -223,43 +212,39 @@ export default function AgentCreate() {
   };
 
   return (
-    <div className={styles.chatPage}>
-      <div className={styles.chatHead}>
+    // AI 비서 대화 화면과 같은 틀 — 왼쪽 대화 목록만 없다
+    <section className={`${ai.main} ${styles.chatShell}`}>
+      <PopoutButton floating />
+      <div className={`${ai.topbar} ${styles.createTop}`}>
         <button
           type="button"
-          className={styles.iconBtn}
+          className={ai.iconBtn}
           onClick={() => navigate('/agent-builder')}
           title={t('ai.toList')}
           aria-label={t('ai.toList')}
         >
           <ArrowLeft size={16} />
         </button>
-        <div style={{ minWidth: 0 }}>
-          <h1 className={styles.createTitle}>{t('ai.createTitle')}</h1>
-          <p className={styles.note}>{t('ai.createSub')}</p>
-        </div>
-        <PopoutButton className={styles.chatHeadPopout} />
+        <span className={styles.createTopTitle}>{last?.name?.trim() || t('ai.createTitle')}</span>
       </div>
 
       {aiConfigured === false ? (
-        <div className={styles.createSection}>
+        <div className={ai.welcome}>
           <div className={styles.warnNote}>
             {t('ai.createNoKey1')}
             {t('ai.createNoKey2')}
           </div>
-          <div>
+          <div style={{ marginTop: 12 }}>
             <Button variant="outline" onClick={() => void startBlank()}>
               {t('ai.blankStart')}
             </Button>
           </div>
         </div>
       ) : (
-        // AI 비서 대화창과 같은 모양 — 처음엔 인사·예시, 대화가 시작되면 말풍선 줄, 입력칸은 아래에 고정
-        <div className={`${ai.main} ${styles.createChat}`}>
+        <>
           {msgs.length === 0 && !thinking ? (
             <div className={ai.welcome}>
-              <h2 className={ai.greeting}>{t('ai.whatAgent')}</h2>
-              <p className={styles.createLead}>{GREETING.split('\n').slice(1).join(' ')}</p>
+              <h1 className={ai.greeting}>{t('ai.whatAgent')}</h1>
               <div className={ai.suggestions}>
                 {EXAMPLES.map((ex) => (
                   <button
@@ -305,17 +290,19 @@ export default function AgentCreate() {
                     {t('ai.thinking')}
                   </div>
                 )}
+                {/* 선택지 — AI 비서의 이어서 물어보기 목록과 같은 모양 */}
                 {showChoices && last && (
-                  <div className={styles.choiceCard} role="group" aria-label={t('ai.choice.group')}>
+                  <div className={ai.nextList} role="list" aria-label={t('ai.choice.group')}>
                     {choices.map((c, i) => (
                       <button
                         key={`${i}-${c}`}
                         type="button"
-                        className={styles.choiceRow}
+                        role="listitem"
+                        className={ai.nextItem}
                         disabled={busy}
                         onClick={() => pick(i)}
                       >
-                        <span className={styles.choiceNum}>{i + 1}</span>
+                        <span className={ai.nextNo}>{i + 1}</span>
                         <span className={styles.choiceText}>{c}</span>
                         {last.recommended === i && (
                           <span className={styles.choiceBadge}>{t('ai.choice.recommended')}</span>
@@ -325,11 +312,12 @@ export default function AgentCreate() {
                     {last.askForFile && (
                       <button
                         type="button"
-                        className={styles.choiceRow}
+                        role="listitem"
+                        className={ai.nextItem}
                         disabled={busy}
                         onClick={() => fileRef.current?.click()}
                       >
-                        <span className={styles.choiceNum}>
+                        <span className={ai.nextNo}>
                           <Paperclip size={13} />
                         </span>
                         <span className={styles.choiceText}>
@@ -340,20 +328,17 @@ export default function AgentCreate() {
                     {choices.length > 0 && (
                       <button
                         type="button"
-                        className={styles.choiceRow}
+                        role="listitem"
+                        className={ai.nextItem}
                         disabled={busy}
                         onClick={() => pick(choices.length)}
                       >
-                        <span className={`${styles.choiceNum} ${styles.choiceNumAuto}`}>
+                        <span className={`${ai.nextNo} ${styles.choiceAuto}`}>
                           <Sparkles size={13} />
                         </span>
                         <span className={styles.choiceText}>{t('ai.choice.auto')}</span>
                       </button>
                     )}
-                    <div className={styles.choiceFoot}>
-                      <PencilLine size={13} />
-                      {choices.length > 0 ? t('ai.choice.typeHint') : t('ai.choice.typeOnly')}
-                    </div>
                   </div>
                 )}
                 {ready && (
@@ -483,8 +468,8 @@ export default function AgentCreate() {
             </div>
             <div className={ai.footnote}>{t('ai.createFooter')}</div>
           </div>
-        </div>
+        </>
       )}
-    </div>
+    </section>
   );
 }
