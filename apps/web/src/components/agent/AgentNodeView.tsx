@@ -91,10 +91,7 @@ function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
       </div>
       <div className={styles.nodeBody}>
         {summary.mono && (
-          <div
-            className={`${styles.nodeLine} ${styles.nodeMono}`}
-            style={{ display: 'flex', gap: 6 }}
-          >
+          <div className={styles.nodeTool} title={summary.raw}>
             {summary.mode && (
               <span
                 className={`${styles.modeBadge} ${summary.mode === 'WRITE' ? styles.modeWrite : styles.modeRead}`}
@@ -102,7 +99,7 @@ function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
                 {summary.mode === 'WRITE' ? t('ai.write') : t('ai.read')}
               </span>
             )}
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{summary.mono}</span>
+            <span className={styles.nodeToolName}>{summary.mono}</span>
           </div>
         )}
         {summary.lines.map((l, i) => (

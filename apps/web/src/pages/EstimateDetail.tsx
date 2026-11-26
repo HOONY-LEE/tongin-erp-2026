@@ -15,7 +15,6 @@ import {
   FormModal,
   PageHeader,
   PageSkeleton,
-  StatusBadge,
   useToast,
 } from '../components/ui';
 import { SendEstimateModal } from '../components/estimate/SendEstimate';
@@ -335,14 +334,23 @@ export default function EstimateDetail({ estimateId }: { estimateId?: string } =
         updatedAt={updatedAt}
         tags={
           <>
-            {leadStatus && <StatusBadge value={leadStatus} map={LEAD_STATUS} />}
+            {/* 접수 상세 테마(검정) — 상태는 진한 배지, 고객·견적은 회색 */}
+            {leadStatus && (
+              <Badge
+                variant="solid"
+                color="neutral"
+                style={{ background: 'var(--ark-color-text)', color: 'var(--ark-color-bg)' }}
+              >
+                {LEAD_STATUS[leadStatus]?.label ?? leadStatus}
+              </Badge>
+            )}
             {data.meta.customerName && (
-              <Badge variant="subtle" color="info">
+              <Badge variant="subtle" color="neutral">
                 {data.meta.customerName}
                 {data.meta.customerPhone ? ` · ${formatPhone(data.meta.customerPhone)}` : ''}
               </Badge>
             )}
-            <Badge variant="subtle" color="neutral">
+            <Badge variant="outline" color="neutral">
               {t('est.estimate')} {data.estimateNo}
             </Badge>
           </>

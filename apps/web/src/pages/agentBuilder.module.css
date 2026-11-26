@@ -224,7 +224,9 @@
   color: var(--ark-color-text);
   padding: 4px 8px;
   min-width: 120px;
-  width: 260px;
+  /* 이름 길이에 맞추되 머리줄이 두 줄로 넘어가지 않게 */
+  width: 200px;
+  flex: 0 1 200px;
 }
 .nameInput:hover,
 .nameInput:focus {
@@ -313,6 +315,16 @@
 }
 .body.bodyNoLeft {
   grid-template-columns: minmax(0, 1fr) 340px;
+}
+/* 오른쪽 정보 패널을 닫았을 때 — 캔버스를 넓게 */
+.body.bodyNoRight {
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+.body.bodyNoLeft.bodyNoRight {
+  grid-template-columns: minmax(0, 1fr);
+}
+.right[hidden] {
+  display: none;
 }
 .left[hidden] {
   display: none;
@@ -464,9 +476,9 @@
 /* ── 노드 ── */
 .node {
   --c: var(--ab-wire);
-  min-width: 210px;
-  max-width: 270px;
-  border-radius: 10px;
+  /* 카드 폭을 고르게 — 흐름이 한 줄로 가지런히 */
+  width: 250px;
+  border-radius: 12px;
   background: var(--ark-color-bg);
   border: 1.5px solid color-mix(in srgb, var(--c) 45%, var(--ark-color-border));
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
@@ -482,9 +494,9 @@
 .nodeHead {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px 8px 0 0;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: 10px 10px 0 0;
   background: color-mix(in srgb, var(--c) 18%, var(--ark-color-bg));
   border-bottom: 1px solid color-mix(in srgb, var(--c) 30%, var(--ark-color-border));
   font-weight: 700;
@@ -505,10 +517,10 @@
   white-space: nowrap;
 }
 .nodeBody {
-  padding: 6px 10px 8px;
+  padding: 8px 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 .nodeLine {
   color: var(--ark-color-text-secondary);
@@ -1616,4 +1628,21 @@
 /* 점 버튼 자리만큼 상태 배지를 비켜 준다(호버 때) */
 .agentCardWrap:hover .agentCardHead {
   padding-right: 34px;
+}
+
+/* 노드 카드 — 도구 줄(읽기/쓰기 + 사람이 읽는 도구 이름) */
+.nodeTool {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: calc(11.5px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--ark-color-text);
+}
+.nodeToolName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
