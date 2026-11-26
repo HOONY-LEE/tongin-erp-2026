@@ -607,38 +607,43 @@ function Editor() {
   );
 
   // ── 저장 ──
-  const save = useCallback(async () => {
-    if (!meta) return;
-    if (!meta.canEdit) {
-      toast({ type: 'warning', title: t('agent.ownerOnly') });
-      return;
-    }
-    setSaving(true);
-    try {
-      const b = await api<Blueprint>(`/agent-blueprints/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          name: meta.name,
-          description: meta.description,
-          status: meta.status,
-          graph,
-          ...(meta.prompt !== null ? { prompt: meta.prompt } : {}),
-        }),
-      });
-      const ng = normalizeAgentGraph(b.graph);
-      setSaved(JSON.stringify({ m: [b.name, b.description, b.status], g: ng }));
-      setGraph(ng);
-      setMeta((m) => (m ? { ...m, updatedAt: b.updatedAt } : m));
-      toast({
-        type: errorCount ? 'warning' : 'success',
-        title: errorCount ? t('agent.savedWithErrors', { v0: errorCount }) : t('agent.saved'),
-      });
-    } catch (e) {
-      toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.saveFailed') });
-    } finally {
-      setSaving(false);
-    }
-  }, [meta, id, graph, errorCount, toast]);
+  /** exit: 저장 버튼 — 저장되면 목록으로 나간다(⌘S는 그대로 머문다) */
+  const save = useCallback(
+    async (exit = false) => {
+      if (!meta) return;
+      if (!meta.canEdit) {
+        toast({ type: 'warning', title: t('agent.ownerOnly') });
+        return;
+      }
+      setSaving(true);
+      try {
+        const b = await api<Blueprint>(`/agent-blueprints/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: meta.name,
+            description: meta.description,
+            status: meta.status,
+            graph,
+            ...(meta.prompt !== null ? { prompt: meta.prompt } : {}),
+          }),
+        });
+        const ng = normalizeAgentGraph(b.graph);
+        setSaved(JSON.stringify({ m: [b.name, b.description, b.status], g: ng }));
+        setGraph(ng);
+        setMeta((m) => (m ? { ...m, updatedAt: b.updatedAt } : m));
+        toast({
+          type: errorCount ? 'warning' : 'success',
+          title: errorCount ? t('agent.savedWithErrors', { v0: errorCount }) : t('agent.saved'),
+        });
+        if (exit) navigate('/agent-builder');
+      } catch (e) {
+        toast({ type: 'error', title: e instanceof ApiError ? e.message : t('agent.saveFailed') });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [meta, id, graph, errorCount, toast, navigate],
+  );
 
   // ── 복제·삭제(목록 행 끝에 있던 동작) ── 복제는 저장된 내용 기준, 누구나 / 삭제는 만든 사람만
   const duplicate = async () => {
@@ -1200,7 +1205,7 @@ function Editor() {
           loading={saving}
           disabled={!meta.canEdit}
           leftIcon={<Save size={13} />}
-          onClick={() => void save()}
+          onClick={() => void save(true)}
         >
           {t('agent.save')}
         </Button>
