@@ -27,6 +27,7 @@ import {
 import {
   LEAD_STATUS,
   LEAD_STATUS_COLOR,
+  LEAD_STATUS_SOLID,
   RECEIPT_SOURCES,
   SERVICE_LINES,
   codeLabel,
@@ -250,7 +251,11 @@ export default function Leads() {
       render: (r) => {
         const key = statusKey(r);
         return (
-          <StatusChip color={LEAD_STATUS_COLOR[key] ?? LEAD_STATUS_COLOR.CANCELED}>
+          <StatusChip
+            color={LEAD_STATUS_COLOR[key] ?? LEAD_STATUS_COLOR.CANCELED}
+            solid={LEAD_STATUS_SOLID.has(key)}
+            mono
+          >
             {key === 'REJECTED' ? t('leads.st.REJECTED') : (STATUS[key]?.label ?? key)}
           </StatusChip>
         );

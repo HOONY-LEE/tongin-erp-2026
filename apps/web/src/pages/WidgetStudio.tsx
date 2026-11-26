@@ -242,7 +242,22 @@ export function WidgetList({
   const navigate = useNavigate();
   const { can } = useAuth();
   const [rows, setRows] = useState<CustomWidgetRow[] | null>(null);
-  const [kind, setKind] = useState<'all' | 'custom' | 'system'>('all');
+  // 커스텀은 기본 한 줄(목록은 5줄)만 — 전체 보기로 펼친다
+  const [customOpen, setCustomOpen] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [perRow, setPerRow] = useState(4);
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const measure = () => {
+      const n = getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length;
+      if (n) setPerRow(n);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [view, rows === null]);
   const load = useCallback(async () => {
     try {
       setRows(await api<CustomWidgetRow[]>('/custom-widgets'));
@@ -282,7 +297,6 @@ export function WidgetList({
       updatedAt: null,
     };
   });
-  const list = kind === 'custom' ? custom : kind === 'system' ? system : [...custom, ...system];
 
   const open = (r: ListRow) => {
     if (r.kind === 'custom') navigate(`${LIST}/${r.id}`);
@@ -294,17 +308,11 @@ export function WidgetList({
     try {
       await copyWidget(r.spec, r.title, t('studio.copySuffix'));
       toast({ type: 'success', title: t('studio.copied') });
-      setKind((k) => (k === 'system' ? 'custom' : k));
       void load();
     } catch (e) {
       toast({ type: 'error', title: e instanceof ApiError ? e.message : t('studio.saveFailed') });
     }
   };
-  const kindBadge = (r: ListRow) => (
-    <Badge variant="subtle" color={r.kind === 'system' ? 'neutral' : 'primary'} size="sm">
-      {t(`studio.kind.${r.kind}`)}
-    </Badge>
-  );
   const copyBtn = (r: ListRow) =>
     canCreate ? (
       <span title={r.spec ? t('studio.copy') : t('studio.noStudio')}>
@@ -324,11 +332,6 @@ export function WidgetList({
     ) : null;
 
   const columns: Column[] = [
-    {
-      title: t('studio.col.kind'),
-      width: 90,
-      render: (r) => kindBadge(r as unknown as ListRow),
-    },
     {
       title: t('studio.col.title'),
       minWidth: 240,
@@ -360,105 +363,128 @@ export function WidgetList({
       {t('studio.newWidget')}
     </Button>
   ) : undefined;
-  const toolbar = (
-    <ListToolbar
-      search={lead}
-      viewSwitch={viewSwitch}
-      actions={
-        <>
-          <SegmentedControl
-            size="sm"
-            value={kind}
-            onChange={(v) => setKind(v as typeof kind)}
-            options={[
-              { value: 'all', label: t('studio.kind.all') },
-              { value: 'custom', label: t('studio.kind.custom') },
-              { value: 'system', label: t('studio.kind.system') },
-            ]}
+  const toolbar = <ListToolbar search={lead} viewSwitch={viewSwitch} actions={createButton} />;
+
+  const card = (r: ListRow) => (
+    <article
+      key={r.id}
+      className={`${builder.tplCard} ${!r.spec ? styles.cardOff : ''}`}
+      onClick={() => open(r)}
+      aria-label={r.title}
+      title={r.spec ? undefined : t('studio.noStudio')}
+    >
+      {/* 실제 데이터로 그린 작은 미리보기 — 누르기만 하면 스튜디오로 */}
+      <div className={`${builder.tplPreview} ${styles.cardPreview}`}>
+        {r.spec ? (
+          <StudioWidget
+            spec={r.spec}
+            chartOnly
+            load={(params) =>
+              r.kind === 'custom'
+                ? api<StudioResult>(`/custom-widgets/${r.id}/data`, {
+                    method: 'POST',
+                    body: JSON.stringify({ params }),
+                  })
+                : api<StudioResult>('/custom-widgets/preview', {
+                    method: 'POST',
+                    body: JSON.stringify({ spec: r.spec, params }),
+                  })
+            }
           />
-          {createButton}
-        </>
-      }
+        ) : (
+          <div className={styles.cardNoPreview}>
+            <LayoutTemplate size={22} />
+          </div>
+        )}
+      </div>
+      <div className={builder.tplBody}>
+        <span className={builder.tplName}>{r.title}</span>
+        <span className={builder.tplDesc}>{r.subtitle || t('dash.noDesc')}</span>
+        <div className={builder.tplTags}>
+          <Badge variant="subtle" color="neutral" size="sm">
+            {r.datasetText}
+          </Badge>
+          <Badge variant="subtle" color="neutral" size="sm">
+            {r.vizText}
+          </Badge>
+        </div>
+        <div className={`${builder.tplFoot} ${styles.cardFoot}`}>
+          <span>
+            {r.kind === 'custom'
+              ? `${r.byText ? `${r.byText} · ` : ''}${r.updatedAt ? fmtDate(r.updatedAt) : ''}`
+              : t('studio.kind.system')}
+          </span>
+          {copyBtn(r)}
+        </div>
+      </div>
+    </article>
+  );
+
+  // 커스텀 — 접혀 있으면 카드 한 줄(새 위젯 칸 포함) · 목록 5줄
+  const cardView = view === 'card' && rows !== null;
+  const limit = cardView ? Math.max(1, perRow - (canCreate ? 1 : 0)) : 5;
+  const hasMore = custom.length > limit;
+  const shownCustom = customOpen ? custom : custom.slice(0, limit);
+  const head = (label: string, count: number, more?: boolean) => (
+    <div className={styles.sectionHead}>
+      <b>{label}</b>
+      <span className={styles.sectionCount}>{count}</span>
+      {more && (
+        <button
+          type="button"
+          className={styles.sectionMore}
+          onClick={() => setCustomOpen((o) => !o)}
+        >
+          {customOpen ? t('studio.collapse') : t('studio.showAll')}
+          <ChevronDown
+            size={14}
+            style={{
+              transform: customOpen ? 'rotate(180deg)' : undefined,
+              transition: 'transform .15s',
+            }}
+          />
+        </button>
+      )}
+    </div>
+  );
+  const table = (data: ListRow[], loading = false) => (
+    <DataTable
+      columns={columns}
+      rows={data as never}
+      loading={loading}
+      bare
+      noFooter
+      pageSize={0}
+      onRowClick={(r) => open(r as unknown as ListRow)}
     />
   );
-  if (view === 'list' || rows === null)
-    return (
-      <>
-        {toolbar}
-        <DataTable
-          columns={columns}
-          rows={list as never}
-          loading={rows === null}
-          onRowClick={(r) => open(r as unknown as ListRow)}
-        />
-      </>
-    );
   return (
     <>
       {toolbar}
-      <div className={builder.cardGrid}>
-        {list.map((r) => (
-          <article
-            key={r.id}
-            className={`${builder.tplCard} ${!r.spec ? styles.cardOff : ''}`}
-            onClick={() => open(r)}
-            aria-label={r.title}
-            title={r.spec ? undefined : t('studio.noStudio')}
-          >
-            {/* 실제 데이터로 그린 작은 미리보기 — 누르기만 하면 스튜디오로 */}
-            <div className={`${builder.tplPreview} ${styles.cardPreview}`}>
-              {r.spec ? (
-                <StudioWidget
-                  spec={r.spec}
-                  chartOnly
-                  load={(params) =>
-                    r.kind === 'custom'
-                      ? api<StudioResult>(`/custom-widgets/${r.id}/data`, {
-                          method: 'POST',
-                          body: JSON.stringify({ params }),
-                        })
-                      : api<StudioResult>('/custom-widgets/preview', {
-                          method: 'POST',
-                          body: JSON.stringify({ spec: r.spec, params }),
-                        })
-                  }
-                />
-              ) : (
-                <div className={styles.cardNoPreview}>
-                  <LayoutTemplate size={22} />
-                </div>
-              )}
-            </div>
-            <div className={builder.tplBody}>
-              <span className={builder.tplName}>{r.title}</span>
-              <span className={builder.tplDesc}>{r.subtitle || t('dash.noDesc')}</span>
-              <div className={builder.tplTags}>
-                {kindBadge(r)}
-                <Badge variant="subtle" color="neutral" size="sm">
-                  {r.datasetText}
-                </Badge>
-                <Badge variant="subtle" color="neutral" size="sm">
-                  {r.vizText}
-                </Badge>
-              </div>
-              <div className={`${builder.tplFoot} ${styles.cardFoot}`}>
-                <span>
-                  {r.kind === 'custom'
-                    ? `${r.byText ? `${r.byText} · ` : ''}${r.updatedAt ? fmtDate(r.updatedAt) : ''}`
-                    : t('studio.kind.system')}
-                </span>
-                {copyBtn(r)}
-              </div>
-            </div>
-          </article>
-        ))}
-        {canCreate && kind !== 'system' && (
-          <button type="button" className={builder.newCard} onClick={() => navigate(`${LIST}/new`)}>
-            <Plus size={22} />
-            {t('studio.newWidget')}
-          </button>
+      <section className={styles.section}>
+        {head(t('studio.kind.custom'), custom.length, hasMore)}
+        {!cardView ? (
+          table(shownCustom, rows === null)
+        ) : (
+          <div className={builder.cardGrid} ref={gridRef}>
+            {shownCustom.map(card)}
+            {canCreate && (
+              <button
+                type="button"
+                className={builder.newCard}
+                onClick={() => navigate(`${LIST}/new`)}
+              >
+                <Plus size={22} />
+                {t('studio.newWidget')}
+              </button>
+            )}
+          </div>
         )}
-      </div>
+      </section>
+      <section className={styles.section}>
+        {head(t('studio.kind.system'), system.length)}
+        {!cardView ? table(system) : <div className={builder.cardGrid}>{system.map(card)}</div>}
+      </section>
     </>
   );
 }

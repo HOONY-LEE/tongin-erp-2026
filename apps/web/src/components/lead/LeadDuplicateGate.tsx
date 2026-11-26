@@ -4,7 +4,7 @@ import { Modal } from '@sunghoon_lee/akron-ui';
 import { formatPhone } from '@tongin/shared';
 import { api } from '../../lib/api';
 import { fmtDateTime } from '../../lib/dateFormat';
-import { LEAD_STATUS, LEAD_STATUS_COLOR } from '../../lib/leadCodes';
+import { LEAD_STATUS, LEAD_STATUS_COLOR, LEAD_STATUS_SOLID } from '../../lib/leadCodes';
 import { Button } from '../ui';
 import { StatusChip } from '../ui/StatusChip';
 import styles from './LeadDuplicateGate.module.css';
@@ -77,7 +77,11 @@ export function useLeadDuplicateGate() {
   const statusLabel = (d: DupLead) => {
     const key = d.rejected ? 'REJECTED' : d.status === 'QUOTED' ? 'CONTRACT_PENDING' : d.status;
     return (
-      <StatusChip color={LEAD_STATUS_COLOR[key] ?? LEAD_STATUS_COLOR.CANCELED}>
+      <StatusChip
+        color={LEAD_STATUS_COLOR[key] ?? LEAD_STATUS_COLOR.CANCELED}
+        solid={LEAD_STATUS_SOLID.has(key)}
+        mono
+      >
         {key === 'REJECTED' ? t('leads.st.REJECTED') : (LEAD_STATUS[key]?.label ?? key)}
       </StatusChip>
     );

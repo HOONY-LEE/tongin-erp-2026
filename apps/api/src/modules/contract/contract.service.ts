@@ -175,7 +175,7 @@ export class ContractService {
       data: {
         status: 'SIGNED',
         signedAt: new Date(),
-        esignRef: `stub_sign_${Math.floor(Math.random() * 1_000_000)}`,
+        esignRef: `sign_${Math.floor(Math.random() * 1_000_000)}`,
         snapshot,
       },
     });

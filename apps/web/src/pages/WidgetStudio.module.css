@@ -1284,3 +1284,45 @@
   color: var(--ark-color-error-500, #ef4444);
   font-size: calc(12px * var(--font-scale, 1));
 }
+
+/* 위젯 목록 — 커스텀(위) · 시스템(아래) 구역 */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section + .section {
+  margin-top: 12px;
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(15px * var(--font-scale, 1));
+}
+.sectionCount {
+  color: var(--ark-color-text-tertiary);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.sectionMore {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: var(--ark-color-text-secondary);
+  font-size: calc(13px * var(--font-scale, 1));
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.sectionMore:hover {
+  background: var(--ark-color-bg-subtle, rgb(0 0 0 / 0.04));
+  color: var(--ark-color-text);
+}
+/* 구역 표는 행 수만큼만(한 페이지 높이를 미리 차지하지 않게) */
+.section :global(.dt-wrap .sft-tbody) {
+  min-height: 0;
+}

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -29,6 +30,15 @@ export class RoomTemplateController {
   @RequirePermissions('CBM_ITEM.READ')
   list() {
     return this.svc.listRooms();
+  }
+
+  /** 한 건 — 링크(?detail=id)로 바로 열 때 */
+  @Get(':id')
+  @RequirePermissions('CBM_ITEM.READ')
+  async get(@Param('id', ParseUUIDPipe) id: string) {
+    const r = (await this.svc.listRooms()).find((x) => x.id === id);
+    if (!r) throw new NotFoundException('방 틀을 찾을 수 없습니다.');
+    return r;
   }
 
   @Post()
@@ -66,6 +76,15 @@ export class HandlingMethodController {
   @RequirePermissions('CBM_ITEM.READ')
   list() {
     return this.svc.listHandlings();
+  }
+
+  /** 한 건 — 링크(?detail=id)로 바로 열 때 */
+  @Get(':id')
+  @RequirePermissions('CBM_ITEM.READ')
+  async get(@Param('id', ParseUUIDPipe) id: string) {
+    const r = (await this.svc.listHandlings()).find((x) => x.id === id);
+    if (!r) throw new NotFoundException('처리방법을 찾을 수 없습니다.');
+    return r;
   }
 
   @Post()
