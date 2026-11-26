@@ -92,6 +92,8 @@ interface UsageRow {
   ok: boolean;
   error: string | null;
   refId: string | null;
+  /** 요청 내용 — 사람이 물은 글·에이전트 요청 */
+  request: string | null;
   tokens: number;
   cost: number | null;
 }
@@ -129,13 +131,14 @@ export default function AiAdmin() {
   const { t } = useTranslation();
   const { updatedAt, touch } = useUpdatedAt();
   const [refreshKey, setRefreshKey] = useState(0);
+  // 사용 기록(누가 무엇을 물었는지)을 가장 먼저 — 사용 기록 / 사용자 권한 / 모델 설정 / 사용 현황
   const tabs: { value: Tab; label: string }[] = [
-    { value: 'overview', label: t('aiadm.tab.usage') },
-    { value: 'users', label: t('aiadm.tab.users') },
     { value: 'usage', label: t('aiadm.tab.logs') },
+    { value: 'users', label: t('aiadm.tab.users') },
     { value: 'settings', label: t('aiadm.tab.models') },
+    { value: 'overview', label: t('aiadm.tab.usage') },
   ];
-  const { tab, setTab } = useTabParam<Tab>('overview');
+  const { tab, setTab } = useTabParam<Tab>('usage');
   // 사용자·사용 기록 상세를 열면 머리글·탭을 숨긴다(다른 관리 화면과 같게)
   const [params] = useSearchParams();
   const inDetail = params.has('user') || params.has('log');
@@ -354,9 +357,12 @@ function Users({ settings }: { settings: SettingsRes | null }) {
   /** 검색 옆 필터 — 처음엔 쓰는 계정만(예전 '쓰는 계정만' 체크) */
   const [flt, setFlt] = useState<FilterValues>({ active: 'true' });
   const [editing, setEditing] = useState<UserRow | null>(null);
-  // 표 편집 모드 — 'AI 사용'·'에이전트 빌더'를 체크박스로 고치고 저장해야 적용된다
+  // 표 편집 모드 — 'AI 사용'·'에이전트 빌더'(체크)와 월 한도(입력)를 고치고 저장해야 적용된다.
+  // limit: undefined = 그대로, null = 회사 기본 한도 따르기
   const [editMode, setEditMode] = useState(false);
-  const [draft, setDraft] = useState<Map<string, { use?: boolean; builder?: boolean }>>(new Map());
+  const [draft, setDraft] = useState<
+    Map<string, { use?: boolean; builder?: boolean; limit?: number | null }>
+  >(new Map());
   const [savingDraft, setSavingDraft] = useState(false);
   const { id: detailId, open, close } = useDetailParam('user');
   const models = settings?.models ?? [];
@@ -390,17 +396,49 @@ function Users({ settings }: { settings: SettingsRes | null }) {
 
   const useOf = (r: UserRow) => draft.get(r.userId)?.use ?? r.canUse;
   const buildOf = (r: UserRow) => draft.get(r.userId)?.builder ?? r.canBuild;
-  const setDraftOf = (r: UserRow, patch: { use?: boolean; builder?: boolean }) =>
+  const setDraftOf = (
+    r: UserRow,
+    patch: { use?: boolean; builder?: boolean; limit?: number | null },
+  ) =>
     setDraft((d) => {
       const n = new Map(d);
       const next = { ...n.get(r.userId), ...patch };
       // 원래 값으로 돌아오면 고친 목록에서 뺀다
       if (next.use === r.canUse) delete next.use;
       if (next.builder === r.canBuild) delete next.builder;
-      if (next.use === undefined && next.builder === undefined) n.delete(r.userId);
+      if ('limit' in next && next.limit === (r.monthlyTokenLimit ?? null)) delete next.limit;
+      if (next.use === undefined && next.builder === undefined && !('limit' in next))
+        n.delete(r.userId);
       else n.set(r.userId, next);
       return n;
     });
+  /** 월 한도 칸 — 편집 모드에서는 사람마다 입력(비우면 회사 기본 한도) */
+  const limitCell = (r: UserRow) => {
+    if (!editMode) return limitText(r);
+    const d = draft.get(r.userId);
+    const changed = !!d && 'limit' in d;
+    const own = changed ? d.limit : r.monthlyTokenLimit;
+    return (
+      <span
+        className={`${styles.checkCell} ${changed ? styles.checkChanged : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Input
+          inputMode="numeric"
+          aria-label={t('aiadm.col.limit')}
+          value={own == null ? '' : num(own)}
+          placeholder={t('aiadm.followCompany', {
+            v0: companyLimit == null ? t('aiadm.unlimited') : num(companyLimit),
+          })}
+          style={{ width: 150 }}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+            setDraftOf(r, { limit: digits === '' ? null : Number(digits) });
+          }}
+        />
+      </span>
+    );
+  };
   const saveDraft = async () => {
     setSavingDraft(true);
     try {
@@ -541,7 +579,12 @@ function Users({ settings }: { settings: SettingsRes | null }) {
       render: (r) => checkCell(r as unknown as UserRow, 'builder'),
     },
     { title: t('aiadm.col.models'), dataIndex: 'modelsText', minWidth: 140, flex: 1 },
-    { title: t('aiadm.col.limit'), dataIndex: 'limitText', width: 170 },
+    {
+      title: t('aiadm.col.limit'),
+      dataIndex: 'limitText',
+      width: 190,
+      render: (r) => limitCell(r as unknown as UserRow),
+    },
     {
       title: t('aiadm.col.calls'),
       dataIndex: 'calls',
@@ -1008,6 +1051,14 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
     { title: t('aiadm.col.at'), dataIndex: 'at', width: 170 },
     ...(userId ? [] : [{ title: t('aiadm.col.user'), dataIndex: 'userName', width: 110 }]),
     { title: t('aiadm.col.feature'), dataIndex: 'featureName', width: 140 },
+    // 무엇을 물었는지 — 한 줄로 줄여 보이고, 누르면 상세에서 전체
+    {
+      title: t('aiadm.col.request'),
+      dataIndex: 'request',
+      minWidth: 240,
+      flex: 2,
+      render: (r) => (r.request ? String(r.request).replace(/\s+/g, ' ') : '—'),
+    },
     { title: t('aiadm.col.model'), dataIndex: 'modelName', minWidth: 140, flex: 1 },
     {
       title: t('aiadm.col.input'),
@@ -1096,6 +1147,20 @@ function UsageLog({ userId, compact }: { userId?: string; compact?: boolean }) {
                     { label: t('aiadm.cost'), value: usd(detail.cost) },
                   ],
                 },
+                ...(detail.request
+                  ? [
+                      {
+                        title: t('aiadm.col.request'),
+                        items: [
+                          {
+                            label: t('aiadm.content'),
+                            value: <span style={{ whiteSpace: 'pre-wrap' }}>{detail.request}</span>,
+                            wide: true,
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
                 ...(detail.error
                   ? [
                       {

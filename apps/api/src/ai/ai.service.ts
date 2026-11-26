@@ -276,6 +276,8 @@ export class AiService implements OnModuleInit {
             ],
           }),
         id,
+        // 사용 기록에는 실제 질문으로(AI에는 가명으로 갔다)
+        await this.vault.reveal(userId, question),
       );
       const raw = res.content
         .map((b) => (b.type === 'text' ? b.text : ''))
@@ -497,8 +499,10 @@ export class AiService implements OnModuleInit {
     let container = conv?.containerId ?? null;
     // 대화에 정한 모델(없거나 닫힌 모델·이 사용자에게 안 준 모델이면 기본 모델)
     const model = resolveChatModel(conv?.model, await this.usage.modelsFor(ctx.principal.userId));
+    // 사용 기록에 남길 요청 — 이번 차례 질문(AI에는 가명으로 갔으니 실제 글로 되돌려 남긴다)
+    const request = await this.vault.reveal(ctx.principal.userId, lastQuestion(messages));
     const call = (containerId: string | null) =>
-      aiCaller.run({ userId: ctx.principal.userId, refId: id }, () =>
+      aiCaller.run({ userId: ctx.principal.userId, refId: id, request }, () =>
         trackClaude('CHAT', model, () =>
           client.beta.messages.create({
             model,
@@ -802,6 +806,28 @@ function toolResult(
     content,
     ...(isError ? { is_error: true } : {}),
   };
+}
+
+/**
+ * 이번 차례 질문 — 맨 끝에서부터 사람이 쓴 글(도구 결과 차례면 그 앞 질문)을 찾는다.
+ * 메시지마다 앞에 붙인 <context>는 뺀다. 사용 기록의 '요청 내용'으로 남긴다
+ */
+function lastQuestion(messages: Messages): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== 'user') continue;
+    const blocks = typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : m.content;
+    const texts = (blocks as Array<{ type?: string; text?: unknown }>)
+      .filter((b) => b.type === 'text' && typeof b.text === 'string')
+      .map((b) =>
+        String(b.text)
+          .replace(/^<context>[\s\S]*?<\/context>\s*/, '')
+          .trim(),
+      )
+      .filter(Boolean);
+    if (texts.length) return texts.join('\n');
+  }
+  return '';
 }
 
 /** 마지막 메시지가 user면 거기에 이어 붙인다(오류 후 재요청 등) — user가 연달아 두 번 오지 않게 */

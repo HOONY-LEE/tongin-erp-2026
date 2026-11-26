@@ -1,6 +1,10 @@
 import i18n from '../i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { FileSignature } from 'lucide-react';
+import { formatPhone } from '../lib/phone';
+import { EmployeeChip } from '../components/ui/EmployeeChip';
 import { api, ApiError } from '../lib/api';
 import { useOptions } from '../lib/useOptions';
 import { useDetailParam } from '../lib/useDetailParam';
@@ -37,7 +41,12 @@ const CALC: StatusMap = {
 };
 
 interface Receivable extends Row {
+  customerId: string;
+  customerNo: string | null;
   customerName: string;
+  phone: string | null;
+  contracts: { id: string; contractNo: string }[];
+  owner: { id: string; name: string } | null;
   contractCount: number;
   billed: number;
   paid: number;
@@ -78,6 +87,7 @@ interface BranchResult {
 
 export default function Settlement() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const toast = useToast();
   const orgs = useOptions('/org-units', 'name');
 
@@ -177,14 +187,85 @@ export default function Settlement() {
     }
   };
 
+  // 표가 왼쪽에 몰리지 않게 칸마다 너비를 주고, 고객 ID·전화·계약서·담당자를 함께 보인다
   const recvCols: Column[] = [
-    { title: t('settlement.customer'), dataIndex: 'customerName' },
-    { title: t('settlement.contracts'), numeric: true, render: (r) => String(r.contractCount) },
-    { title: t('settlement.billed'), numeric: true, render: (r) => won(r.billed) },
-    { title: t('settlement.paid'), numeric: true, render: (r) => won(r.paid) },
+    {
+      title: t('settlement.customerNo'),
+      dataIndex: 'customerNo',
+      width: 130,
+      render: (r) => <span className="id-mono">{r.customerNo ? String(r.customerNo) : '-'}</span>,
+    },
+    { title: t('settlement.customer'), dataIndex: 'customerName', width: 120 },
+    {
+      title: t('settlement.phone'),
+      dataIndex: 'phone',
+      width: 140,
+      render: (r) => (r.phone ? formatPhone(String(r.phone)) : '-'),
+    },
+    {
+      title: t('settlement.contractDocs'),
+      minWidth: 200,
+      flex: 1,
+      exportValue: (r) => (r as Receivable).contracts.map((c) => c.contractNo).join(', ') || null,
+      // 최근 계약서 바로 가기 — 여러 건이면 '외 n건'
+      render: (r) => {
+        const list = (r as Receivable).contracts;
+        if (!list.length) return '-';
+        const [first, ...rest] = list;
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <button
+              type="button"
+              title={t('pay.openContract')}
+              onClick={() => navigate(`/contracts/${first.id}`)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: 0,
+                border: 0,
+                background: 'none',
+                color: 'var(--ark-color-info-600, #2563eb)',
+                cursor: 'pointer',
+                font: 'inherit',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <FileSignature size={14} aria-hidden />
+              <span style={{ textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                {first.contractNo}
+              </span>
+            </button>
+            {rest.length > 0 && (
+              <span style={{ color: 'var(--ark-color-text-secondary)', whiteSpace: 'nowrap' }}>
+                {t('settlement.moreN', { v0: rest.length })}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      title: t('settlement.owner'),
+      width: 120,
+      exportValue: (r) => (r as Receivable).owner?.name ?? null,
+      render: (r) => {
+        const o = (r as Receivable).owner;
+        return o ? <EmployeeChip emp={o} /> : '-';
+      },
+    },
+    {
+      title: t('settlement.contracts'),
+      numeric: true,
+      width: 80,
+      render: (r) => String(r.contractCount),
+    },
+    { title: t('settlement.billed'), numeric: true, width: 130, render: (r) => won(r.billed) },
+    { title: t('settlement.paid'), numeric: true, width: 130, render: (r) => won(r.paid) },
     {
       title: t('settlement.outstanding'),
       numeric: true,
+      width: 130,
       render: (r) => <b style={{ color: 'var(--ark-color-text-danger)' }}>{won(r.outstanding)}</b>,
     },
   ];

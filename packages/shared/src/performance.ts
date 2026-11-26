@@ -50,8 +50,20 @@ export const KPI_AUTO_KEYS = [
   'TASK_COMPLETION',
   'TASK_ON_TIME',
   'ATTENDANCE',
+  'LEAD_COUNT',
+  'ESTIMATE_COUNT',
+  'ESTIMATE_CONVERSION',
+  'CALL_HANDLED',
+  'CALL_TO_LEAD',
+  'OUTCALL_DONE',
+  'AS_HANDLED',
+  'CRM_NEW',
+  'PARTNER_NEW',
+  'PARTNER_LEADS',
 ] as const;
 export type KpiAutoKey = (typeof KPI_AUTO_KEYS)[number];
+/** 회사 전체로만 셀 수 있는 지표(담당자가 기록에 없다) — 팀 공동 지표로 보이고, 개인에게는 넘기지 않는다 */
+export const KPI_COMPANY_KEYS: readonly KpiAutoKey[] = ['PARTNER_NEW', 'PARTNER_LEADS'];
 
 export interface KpiCatalogItem {
   key: KpiAutoKey;
@@ -121,6 +133,86 @@ export const KPI_CATALOG: KpiCatalogItem[] = [
     unit: '%',
     source: '출근 기록이 있는 날 중 지각하지 않은 날의 비율(근무시간 설정 기준)',
     defaultTarget: 95,
+  },
+  {
+    key: 'LEAD_COUNT',
+    label: '접수 건수',
+    short: '접수',
+    unit: '건',
+    source: '기간에 등록된 접수 — 지점은 접수 지점, 본사 부서는 담당자 기준',
+    defaultTarget: 60,
+  },
+  {
+    key: 'ESTIMATE_COUNT',
+    label: '견적 건수',
+    short: '견적',
+    unit: '건',
+    source: '기간에 만든 견적 — 지점은 견적 지점, 본사 부서·개인은 견적 담당(방문 견적)',
+    defaultTarget: 45,
+  },
+  {
+    key: 'ESTIMATE_CONVERSION',
+    label: '견적→계약 전환율',
+    short: '전환',
+    unit: '%',
+    source: '기간에 만든 견적 중 서명된 계약으로 이어진 비율',
+    defaultTarget: 40,
+  },
+  {
+    key: 'CALL_HANDLED',
+    label: '상담 콜 처리',
+    short: '콜',
+    unit: '건',
+    source: '상담 콘솔에서 끝낸 콜 — 상담원 기준',
+    defaultTarget: 600,
+  },
+  {
+    key: 'CALL_TO_LEAD',
+    label: '전화→접수 전환율',
+    short: '콜전환',
+    unit: '%',
+    source: '끝낸 콜 중 접수를 등록한 비율',
+    defaultTarget: 30,
+  },
+  {
+    key: 'OUTCALL_DONE',
+    label: '아웃콜(콜백) 처리',
+    short: '아웃콜',
+    unit: '건',
+    source: '부재중·콜백 대기에서 다시 걸어 끝낸 콜 — 상담원 기준',
+    defaultTarget: 150,
+  },
+  {
+    key: 'AS_HANDLED',
+    label: 'A/S·CS 처리',
+    short: 'A/S',
+    unit: '건',
+    source: '기간에 접수돼 해결·종료된 A/S·CS — 지점은 접수 지점, 본사 부서·개인은 담당자',
+    defaultTarget: 60,
+  },
+  {
+    key: 'CRM_NEW',
+    label: 'CRM 업체 등록',
+    short: 'CRM',
+    unit: '건',
+    source: '가맹·기업영업 CRM에 새로 넣은 업체 — 등록한 사람 기준',
+    defaultTarget: 30,
+  },
+  {
+    key: 'PARTNER_NEW',
+    label: '제휴·전속 계약',
+    short: '제휴계약',
+    unit: '건',
+    source: '기간에 새로 등록한 제휴사·전속 계약사(회사 전체 — 팀 공동 지표)',
+    defaultTarget: 6,
+  },
+  {
+    key: 'PARTNER_LEADS',
+    label: '제휴·전속 접수',
+    short: '제휴접수',
+    unit: '건',
+    source: '제휴사·전속 계약사를 통해 들어온 접수(회사 전체 — 팀 공동 지표)',
+    defaultTarget: 30,
   },
 ];
 export const KPI_CATALOG_BY_KEY: Record<string, KpiCatalogItem> = Object.fromEntries(

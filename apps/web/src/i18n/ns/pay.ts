@@ -3,6 +3,16 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    estimate: '견적',
+    contract: '계약',
+    depositPay: '계약금 입금',
+    balancePay: '잔금 입금',
+    markPaid: '입금처리',
+    markDepositQ: '{{v0}} 고객의 계약금 {{v1}}원이 입금된 것으로 처리할까요?',
+    markBalanceQ: '{{v0}} 고객의 잔금 {{v1}}원이 입금된 것으로 처리할까요?',
+    depositFirst: '계약금 입금을 먼저 처리해 주세요',
+    openEstimate: '견적 보기',
+    openContract: '계약 보기',
     flt: {
       period: '기간',
       depositPaidAt: '계약금 입금일',
@@ -48,6 +58,16 @@ export default defineNs({
       "고객에게 견적서를 보내면 여기에 올라옵니다 · 계약금이 들어오면 자동으로 '계약금 입금'으로 바뀝니다",
   },
   en: {
+    estimate: 'Estimate',
+    contract: 'Contract',
+    depositPay: 'Deposit payment',
+    balancePay: 'Balance payment',
+    markPaid: 'Mark paid',
+    markDepositQ: "Mark {{v0}}'s deposit of {{v1}} won as paid?",
+    markBalanceQ: "Mark {{v0}}'s balance of {{v1}} won as paid?",
+    depositFirst: 'Mark the deposit as paid first',
+    openEstimate: 'Open estimate',
+    openContract: 'Open contract',
     flt: {
       period: 'Period',
       depositPaidAt: 'Deposit paid',
@@ -93,6 +113,16 @@ export default defineNs({
       "Estimates sent to customers appear here · when the deposit arrives, it changes to 'Deposit paid' automatically",
   },
   zh: {
+    estimate: '报价',
+    contract: '合同',
+    depositPay: '定金到账',
+    balancePay: '尾款到账',
+    markPaid: '确认到账',
+    markDepositQ: '将{{v0}}客户的定金{{v1}}韩元处理为已到账吗？',
+    markBalanceQ: '将{{v0}}客户的尾款{{v1}}韩元处理为已到账吗？',
+    depositFirst: '请先确认定金到账',
+    openEstimate: '查看报价',
+    openContract: '查看合同',
     flt: {
       period: '期间',
       depositPaidAt: '定金到账日',

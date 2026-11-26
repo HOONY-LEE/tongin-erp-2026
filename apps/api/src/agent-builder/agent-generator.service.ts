@@ -401,22 +401,28 @@ export class AgentGeneratorService {
       let res: Anthropic.Beta.Messages.BetaMessage;
       try {
         const model = builderModel();
-        res = await trackClaude('AGENT_GENERATE', model, () =>
-          client.beta.messages
-            .stream({
-              model,
-              max_tokens: 32000,
-              betas: [FALLBACK_BETA],
-              fallbacks: 'default',
-              output_config: {
-                effort: 'medium',
-                format: { type: 'json_schema', schema: OUTPUT_SCHEMA },
-              },
-              // 안내문 + 도구 목록은 사용자(권한)가 같으면 그대로라 캐시에서 읽는다
-              system,
-              messages: [{ role: 'user', content: text }],
-            })
-            .finalMessage(),
+        res = await trackClaude(
+          'AGENT_GENERATE',
+          model,
+          () =>
+            client.beta.messages
+              .stream({
+                model,
+                max_tokens: 32000,
+                betas: [FALLBACK_BETA],
+                fallbacks: 'default',
+                output_config: {
+                  effort: 'medium',
+                  format: { type: 'json_schema', schema: OUTPUT_SCHEMA },
+                },
+                // 안내문 + 도구 목록은 사용자(권한)가 같으면 그대로라 캐시에서 읽는다
+                system,
+                messages: [{ role: 'user', content: text }],
+              })
+              .finalMessage(),
+          undefined,
+          // 사용 기록 '요청 내용' — 사람이 쓴 만들기 요청
+          prompt,
         );
         assertComplete(res);
       } catch (e) {
@@ -510,28 +516,34 @@ export class AgentGeneratorService {
     let res: Anthropic.Beta.Messages.BetaMessage;
     try {
       const model = builderModel();
-      res = await trackClaude('AGENT_DESIGN', model, () =>
-        client.beta.messages
-          .stream({
-            model,
-            max_tokens: 8000,
-            betas: [FALLBACK_BETA],
-            fallbacks: 'default',
-            output_config: {
-              effort: 'low',
-              format: { type: 'json_schema', schema: DESIGN_SCHEMA },
-            },
-            system: [
-              {
-                type: 'text',
-                text: `${DESIGN_GUIDE}\n\n## 에이전트가 쓸 수 있는 ERP 도구(${tools.length}개)\n${compactCatalog(tools)}`,
-                cache_control: { type: 'ephemeral' },
+      res = await trackClaude(
+        'AGENT_DESIGN',
+        model,
+        () =>
+          client.beta.messages
+            .stream({
+              model,
+              max_tokens: 8000,
+              betas: [FALLBACK_BETA],
+              fallbacks: 'default',
+              output_config: {
+                effort: 'low',
+                format: { type: 'json_schema', schema: DESIGN_SCHEMA },
               },
-              { type: 'text', text: `## 지금까지 올린 참고 양식\n${refText}` },
-            ],
-            messages: messages.map((m) => ({ role: m.role, content: m.text })),
-          })
-          .finalMessage(),
+              system: [
+                {
+                  type: 'text',
+                  text: `${DESIGN_GUIDE}\n\n## 에이전트가 쓸 수 있는 ERP 도구(${tools.length}개)\n${compactCatalog(tools)}`,
+                  cache_control: { type: 'ephemeral' },
+                },
+                { type: 'text', text: `## 지금까지 올린 참고 양식\n${refText}` },
+              ],
+              messages: messages.map((m) => ({ role: m.role, content: m.text })),
+            })
+            .finalMessage(),
+        undefined,
+        // 사용 기록 '요청 내용' — 이번에 사람이 쓴 말
+        [...messages].reverse().find((m) => m.role === 'user')?.text ?? null,
       );
       assertComplete(res);
     } catch (e) {

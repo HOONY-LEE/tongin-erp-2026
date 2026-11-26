@@ -1852,6 +1852,8 @@ model AiUsageLog {
   error            String?
   // 대화·에이전트·실행 id(어디서 썼는지 찾아가기)
   refId            String?  @map("ref_id")
+  // 요청 내용 — 사람이 물은 글(대화), 에이전트 요청 등(최대 2000자). AI 관리 > 사용 기록에서 본다
+  request          String?
 
   @@index([createdAt])
   @@index([userId, createdAt])

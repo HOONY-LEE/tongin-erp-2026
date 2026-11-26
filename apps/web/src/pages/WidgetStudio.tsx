@@ -90,6 +90,10 @@ import { useTheme } from '../theme/ThemeProvider';
 import { colorLabel, widgetDesc, widgetTitle } from '../i18n/dashWidgets';
 import { ColorPicker, isHex } from '../components/ui/ColorPicker';
 import { tDyn } from '../i18n';
+import {
+  SystemWidgetPreview,
+  useSystemPreviewData,
+} from '../components/dashboard/builder/SystemWidgetPreview';
 import styles from './WidgetStudio.module.css';
 import builder from '../components/dashboard/builder/builder.module.css';
 
@@ -224,6 +228,11 @@ async function copyWidget(spec: StudioSpec, title: string, suffix: string) {
   });
 }
 
+/** 목록에 보이는 시스템 위젯(글 위젯 제외) */
+const SYSTEM_DEFS = DASH_WIDGETS.filter((w) => w.shape !== 'text');
+const SYSTEM_DEF_MAP = new Map(SYSTEM_DEFS.map((w) => [w.key, w]));
+const NO_DEFS: typeof SYSTEM_DEFS = [];
+
 export function WidgetList({
   reloadKey = 0,
   view = 'list',
@@ -297,6 +306,9 @@ export function WidgetList({
       updatedAt: null,
     };
   });
+
+  // 시스템 위젯 카드 그림 — 대시보드와 같은 그림, 빈 데이터는 예시로(카드 보기일 때만 부른다)
+  const preview = useSystemPreviewData(view === 'card' ? SYSTEM_DEFS : NO_DEFS);
 
   const open = (r: ListRow) => {
     if (r.kind === 'custom') navigate(`${LIST}/${r.id}`);
@@ -375,7 +387,12 @@ export function WidgetList({
     >
       {/* 실제 데이터로 그린 작은 미리보기 — 누르기만 하면 스튜디오로 */}
       <div className={`${builder.tplPreview} ${styles.cardPreview}`}>
-        {r.spec ? (
+        {r.kind === 'system' && r.sysKey && SYSTEM_DEF_MAP.get(r.sysKey)?.shape !== 'embed' ? (
+          <SystemWidgetPreview
+            def={SYSTEM_DEF_MAP.get(r.sysKey)!}
+            data={preview ? (preview[r.sysKey] ?? null) : undefined}
+          />
+        ) : r.spec ? (
           <StudioWidget
             spec={r.spec}
             chartOnly

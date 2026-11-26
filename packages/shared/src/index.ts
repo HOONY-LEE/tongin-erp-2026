@@ -904,7 +904,14 @@ export interface AuthPrincipal {
 // 고객별 미수금: 청구(SIGNED 계약 총액) − 입금(PAID) = 미수금
 export interface CustomerReceivable {
   customerId: string;
+  /** 고객 번호(화면에 보이는 ID) */
+  customerNo: string | null;
   customerName: string;
+  phone: string | null;
+  /** 이 고객의 서명 계약 — 최근 것부터(계약서로 바로 가기) */
+  contracts: { id: string; contractNo: string }[];
+  /** 담당자 — 최근 계약의 접수 담당(없으면 견적 담당) */
+  owner: { id: string; name: string } | null;
   contractCount: number;
   billed: number; // 청구액(SIGNED 계약 totalAmount 합)
   paid: number; // 입금액(PAID payment 합)

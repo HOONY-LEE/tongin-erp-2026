@@ -3,6 +3,8 @@ import { defineNs } from './define';
 
 export default defineNs({
   ko: {
+    son: '손 없는 날',
+    sonTip: '음력 끝자리가 9·0인 날(이사하기 좋은 날)을 주황 날짜로 표시합니다',
     g: {
       connected: '구글 캘린더가 연결되었습니다. 일정을 불러오는 중…',
       canceled: '구글 계정 연결이 취소되었습니다.',
@@ -96,6 +98,9 @@ export default defineNs({
     save: '저장',
   },
   en: {
+    son: 'Lucky moving days',
+    sonTip:
+      'Highlights days whose lunar date ends in 9 or 0 (traditional lucky moving days) in orange',
     g: {
       connected: 'Google Calendar connected. Loading events…',
       canceled: 'Google account connection was canceled.',
@@ -190,6 +195,8 @@ export default defineNs({
     save: 'Save',
   },
   zh: {
+    son: '无损日',
+    sonTip: '农历日期尾数为9或0的日子（宜搬家）以橙色日期显示',
     g: {
       connected: '已连接 Google 日历，正在加载日程…',
       canceled: '已取消连接 Google 账号。',

@@ -133,6 +133,14 @@ class AccessChangeDto {
   @IsOptional()
   @IsBoolean()
   builder?: boolean;
+
+  /** 이 사람 월 한도(토큰) — 안 보내면 그대로, null이면 회사 기본 한도를 따른다 */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(LIMIT_MAX)
+  limit?: number | null;
 }
 class AccessBatchDto {
   @IsArray()
@@ -430,7 +438,8 @@ export class AiAdminController {
             ? (p?.builderAccess ?? 'DEFAULT')
             : pick(c.builder, all || perms.has('AI.MANAGE')),
         models: p?.models ?? [],
-        monthlyTokenLimit: p?.monthlyTokenLimit ?? null,
+        // 표 편집에서 월 한도를 고쳤으면 그 값(null = 회사 기본), 아니면 그대로
+        monthlyTokenLimit: c.limit === undefined ? (p?.monthlyTokenLimit ?? null) : c.limit,
       });
       saved++;
     }
@@ -553,6 +562,7 @@ export class AiAdminController {
                       { model: { contains: term, mode: 'insensitive' as const } },
                       { error: { contains: term, mode: 'insensitive' as const } },
                       { refId: { contains: term, mode: 'insensitive' as const } },
+                      { request: { contains: term, mode: 'insensitive' as const } },
                       ...(byUser.length ? [{ userId: { in: byUser.map((u) => u.id) } }] : []),
                     ],
                   },

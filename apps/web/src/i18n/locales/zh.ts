@@ -226,6 +226,11 @@ export default {
     geocoded: '已定位',
   },
   settlement: {
+    customerNo: '客户ID',
+    phone: '电话',
+    contractDocs: '合同',
+    owner: '负责人',
+    moreN: '等{{v0}}份',
     flt: { calcType: '计算方式', branch: '分店', active: '是否使用', on: '使用', off: '未使用' },
     receivables: '客户应收',
     customer: '客户',

@@ -44,6 +44,7 @@ export default defineNs({
     loading: '불러오는 중…',
     noUsage: '이 달에는 사용 기록이 없습니다.',
     col: {
+      request: '요청 내용',
       name: '이름',
       calls: '호출',
       tokens: '토큰',
@@ -218,6 +219,7 @@ export default defineNs({
     loading: 'Loading…',
     noUsage: 'No usage this month.',
     col: {
+      request: 'Request',
       name: 'Name',
       calls: 'Calls',
       tokens: 'Tokens',
@@ -391,6 +393,7 @@ export default defineNs({
     loading: '加载中…',
     noUsage: '本月没有使用记录。',
     col: {
+      request: '请求内容',
       name: '姓名',
       calls: '调用',
       tokens: '令牌',
