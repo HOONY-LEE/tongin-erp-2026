@@ -50,7 +50,7 @@ export default defineNs({
     agentName: '에이전트 이름',
     mode: {
       nl: 'AI 대화',
-      blueprint: '흐름도',
+      blueprint: '플로우',
     },
     st: {
       DRAFT: '초안',
