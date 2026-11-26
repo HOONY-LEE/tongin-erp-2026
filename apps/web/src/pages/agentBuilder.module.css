@@ -986,31 +986,10 @@
 }
 
 /* ── 새 에이전트 만들기 화면 ── */
-.createPage {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 860px;
-  margin: 0 auto;
-}
 .createHead {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-}
-.createTitle {
-  margin: 0 0 4px;
-  font-size: calc(24px * var(--font-scale, 1));
-  font-weight: 700;
-}
-.createSection {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 14px;
-  background: var(--ark-color-bg);
 }
 .sectionTitle {
   display: flex;
@@ -1098,39 +1077,6 @@
 }
 
 /* ── 새 에이전트 만들기 — 대화 ── */
-.chatPage {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 32px 36px 24px;
-}
-@media (max-width: 768px) {
-  .chatPage {
-    padding: 20px 16px 16px;
-  }
-}
-.chatHead {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.chatHeadPopout {
-  margin-left: auto;
-}
-.chatLog {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 4px 2px 8px;
-}
 .bubbleRow {
   display: flex;
   align-items: flex-start;
@@ -1235,7 +1181,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-left: 36px;
   padding: 14px 16px;
   border: 1px solid var(--ark-color-primary-400);
   border-radius: 10px;
@@ -1421,18 +1366,6 @@
 }
 
 /* 새 에이전트 만들기 — AI 비서 대화창(aiAgent.module.css)을 그대로 쓰고, 남는 높이를 채운다 */
-.createChat {
-  flex: 1;
-  min-height: 0;
-}
-.createLead {
-  max-width: 640px;
-  margin: 0 0 18px;
-  color: var(--ark-color-text-secondary);
-  font-size: calc(14px * var(--font-scale, 1));
-  line-height: 1.6;
-  text-align: center;
-}
 
 /* ── 편집 화면 큰 탭: 자연어 모드 | 블루프린트 모드 ── */
 .modeTabs [class*='_segment_'] {
@@ -1601,64 +1534,31 @@
   border-bottom: 1px solid var(--ark-color-border);
 }
 
-/* 대화로 만들기 — AI 질문의 선택지(번호 버튼) */
-.choiceCard {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-left: 36px;
-  padding: 6px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 12px;
+/* 대화로 만들기 — AI 비서 대화 화면과 같은 틀(왼쪽 목록 없이) */
+.chatShell {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   background: var(--ark-color-bg);
 }
-.choiceRow {
+.createTop {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  font: inherit;
-  font-size: calc(14px * var(--font-scale, 1));
-  color: var(--ark-color-text);
-  text-align: left;
-  cursor: pointer;
+  gap: 8px;
+  padding: 10px 56px 10px 16px;
 }
-.choiceRow:hover:not(:disabled),
-.choiceRow:focus-visible {
-  background: var(--ark-color-bg-muted);
-  outline: none;
+.createTopTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.choiceRow:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.choiceNum {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--ark-color-border);
-  border-radius: 6px;
-  color: var(--ark-color-text-secondary);
-  font-size: calc(12px * var(--font-scale, 1));
-  font-weight: 600;
-}
-.choiceRow:hover:not(:disabled) .choiceNum {
-  border-color: var(--ark-color-text-secondary);
-  color: var(--ark-color-text);
-}
-.choiceNumAuto {
-  color: var(--ark-color-primary-500);
-}
+/* 선택지 — AI 비서 이어서 물어보기 목록에 추천 표시만 더한다 */
 .choiceText {
   flex: 1;
   min-width: 0;
+}
+.choiceAuto {
+  color: var(--ark-color-primary-500);
 }
 .choiceBadge {
   flex: none;
@@ -1666,13 +1566,5 @@
   border-radius: 999px;
   background: var(--ark-color-bg-muted);
   color: var(--ark-color-text-secondary);
-  font-size: calc(11px * var(--font-scale, 1));
-}
-.choiceFoot {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px 4px;
-  color: var(--ark-color-text-tertiary, var(--ark-color-text-secondary));
   font-size: calc(12px * var(--font-scale, 1));
 }
