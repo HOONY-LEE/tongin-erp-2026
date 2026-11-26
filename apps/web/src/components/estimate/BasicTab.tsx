@@ -156,7 +156,7 @@ export function BasicTab({ data, canEdit, onSaved, onDirtyChange }: TabProps) {
         <label className={styles.field}>
           <span className={styles.fieldLabel}>
             {t('est.customerName')}
-            {canEditCustomer && <span style={{ color: 'var(--ark-color-primary-500)' }}> *</span>}
+            {canEditCustomer && <span style={{ color: 'var(--ark-color-error-500)' }}> *</span>}
           </span>
           <Input
             value={form.customerName}
