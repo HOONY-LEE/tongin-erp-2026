@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { TRIGGER_EVENT_LABEL } from '../../i18n/codes';
+import type { TriggerEvent } from '@tongin/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { AlertTriangle, Check, CircleDot, Play, ShieldCheck, X } from 'lucide-react';
@@ -21,6 +23,9 @@ export interface CallableAgent {
   isMine: boolean;
   ownerName: string | null;
   inputFields: InputField[];
+  /** 시작 방식 — event면 직접 실행할 때 가장 최근 건으로 돈다 */
+  triggerKind?: string;
+  triggerEvent?: string | null;
   toolCount: number;
 }
 
@@ -174,7 +179,15 @@ export function AgentCallPanel({ agent, onClose }: { agent: CallableAgent; onClo
       <div className={styles.body}>
         <section className={styles.card}>
           <b className={styles.cardTitle}>{t('ai.input')}</b>
-          {agent.inputFields.length === 0 ? (
+          {agent.triggerKind === 'event' ? (
+            <span className={styles.hint}>
+              {t('ai.eventAgentHint', {
+                v0: agent.triggerEvent
+                  ? (TRIGGER_EVENT_LABEL[agent.triggerEvent as TriggerEvent] ?? agent.triggerEvent)
+                  : '',
+              })}
+            </span>
+          ) : agent.inputFields.length === 0 ? (
             <span className={styles.hint}>{t('ai.noInputs')}</span>
           ) : (
             agent.inputFields.map((f) => (

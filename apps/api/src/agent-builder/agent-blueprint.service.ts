@@ -347,6 +347,9 @@ export class AgentBlueprintService {
         isMine: r.createdBy === p.userId,
         ownerName: r.createdBy ? (users.get(r.createdBy) ?? null) : null,
         inputFields: trigger?.inputFields ?? [],
+        // 업무 이벤트로 시작하면 직접 실행할 때 가장 최근 건으로 돈다(화면 안내용)
+        triggerKind: trigger?.kind ?? 'manual',
+        triggerEvent: trigger?.kind === 'event' ? (trigger.event ?? null) : null,
         toolCount: g.nodes.filter((n) => n.type === 'tool').length,
       };
     });
