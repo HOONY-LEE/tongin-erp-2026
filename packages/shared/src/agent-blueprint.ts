@@ -1338,8 +1338,7 @@ export function autoLayout(
       key.set(
         id,
         parents.length
-          ? parents.reduce((s, e) => s + order.get(e.source)! * 10 + portIdx(e), 0) /
-              parents.length
+          ? parents.reduce((s, e) => s + order.get(e.source)! * 10 + portIdx(e), 0) / parents.length
           : 1e6 + i,
       );
     });
