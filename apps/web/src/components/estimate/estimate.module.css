@@ -27,8 +27,9 @@
   background: var(--ark-color-gray-200);
 }
 .stepActive {
-  background: var(--ark-color-primary-500);
-  color: #fff;
+  /* 접수 상세 테마 — 주황 대신 검정(다크 모드에선 반전) */
+  background: var(--ark-color-text);
+  color: var(--ark-color-bg);
 }
 .step:focus-visible {
   outline: 2px solid var(--ark-color-info-500);
@@ -185,7 +186,7 @@
   background: var(--ark-color-bg-muted);
 }
 .volTotal {
-  background: var(--ark-color-primary-50);
+  background: var(--ark-color-gray-200, var(--ark-color-bg-muted));
 }
 .volValue {
   margin-top: 4px;
@@ -193,7 +194,7 @@
   font-weight: 800;
 }
 .volTotal .volValue {
-  color: var(--ark-color-primary-500);
+  color: var(--ark-color-text);
 }
 
 /* ── 방(위치) 카드 ── */
@@ -246,8 +247,8 @@
   font-weight: 700;
 }
 .cbmPillOn {
-  background: var(--ark-color-primary-50);
-  color: var(--ark-color-primary-600);
+  background: var(--ark-color-text);
+  color: var(--ark-color-bg);
 }
 
 /* 물품 표 — 물품 | 메모 | 부피 | 처리방법 */
@@ -270,7 +271,7 @@
   border-top: 1px solid var(--ark-color-border);
 }
 .itemRowFilled {
-  background: color-mix(in srgb, var(--ark-color-primary-500) 4%, transparent);
+  background: color-mix(in srgb, var(--ark-color-text) 4%, transparent);
 }
 .itemRowOff {
   color: var(--ark-color-text-secondary);
@@ -489,12 +490,12 @@
   color: var(--ark-color-text-primary);
 }
 .flowStep.done .flowDot {
-  background: var(--ark-color-primary-500);
-  border-color: var(--ark-color-primary-500);
+  background: var(--ark-color-success-500, #34c759);
+  border-color: var(--ark-color-success-500, #34c759);
   color: #fff;
 }
 .flowStep.current {
-  color: var(--ark-color-primary-600);
+  color: var(--ark-color-text);
   font-weight: 700;
 }
 .flowWhen {
@@ -510,7 +511,7 @@
   background: var(--ark-color-border);
 }
 .flowLine.done {
-  background: var(--ark-color-primary-500);
+  background: var(--ark-color-success-500, #34c759);
 }
 
 /* ── 이사 거리 · 거리 할증 ── */
@@ -600,7 +601,7 @@
   background: #2563eb;
 }
 .routeTo {
-  background: var(--ark-color-primary-500);
+  background: var(--ark-color-text);
 }
 .routeMap {
   height: min(60vh, 460px);
