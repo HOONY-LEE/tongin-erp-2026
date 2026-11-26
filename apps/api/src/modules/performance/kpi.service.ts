@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import {
   KPI_CATALOG,
   KPI_CATALOG_BY_KEY,
+  KPI_COMPANY_KEYS,
   KPI_MAX_METRICS,
   KPI_MIN_METRICS,
   PERMISSION_WILDCARD,
@@ -43,6 +44,19 @@ interface Raw {
   onTime: number;
   attDays: number;
   attOnTime: number;
+  /** 접수 */
+  leads: number;
+  /** 견적 · 그중 서명 계약으로 이어진 것 */
+  estimates: number;
+  estContracted: number;
+  /** 끝낸 상담 콜 · 그중 접수 등록 · 콜백으로 끝낸 것 */
+  calls: number;
+  callLeads: number;
+  outcalls: number;
+  /** 해결·종료된 A/S·CS */
+  asDone: number;
+  /** CRM 업체 등록 */
+  crmNew: number;
 }
 const emptyRaw = (): Raw => ({
   revenue: 0,
@@ -55,14 +69,56 @@ const emptyRaw = (): Raw => ({
   onTime: 0,
   attDays: 0,
   attOnTime: 0,
+  leads: 0,
+  estimates: 0,
+  estContracted: 0,
+  calls: 0,
+  callLeads: 0,
+  outcalls: 0,
+  asDone: 0,
+  crmNew: 0,
 });
 const addRaw = (a: Raw, b: Raw) => {
   for (const k of Object.keys(a) as (keyof Raw)[]) a[k] += b[k];
 };
+/** 업무·근태 원자료 — 본사 부서 카드는 이것만 조직(팀 업무) 기준, 나머지는 구성원 합 */
+const ORG_BASED: (keyof Raw)[] = [
+  'taskTotal',
+  'taskDone',
+  'timedDone',
+  'onTime',
+  'attDays',
+  'attOnTime',
+];
+/** 회사 전체로만 세는 값(담당자가 기록에 없는 것) */
+interface CompanyRaw {
+  partnerNew: number;
+  partnerLeads: number;
+}
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 1000) / 10 : null);
 
-function autoValue(key: KpiAutoKey, r: Raw): number | null {
+function autoValue(key: KpiAutoKey, r: Raw, c: CompanyRaw): number | null {
   switch (key) {
+    case 'LEAD_COUNT':
+      return r.leads;
+    case 'ESTIMATE_COUNT':
+      return r.estimates;
+    case 'ESTIMATE_CONVERSION':
+      return pct(r.estContracted, r.estimates);
+    case 'CALL_HANDLED':
+      return r.calls;
+    case 'CALL_TO_LEAD':
+      return pct(r.callLeads, r.calls);
+    case 'OUTCALL_DONE':
+      return r.outcalls;
+    case 'AS_HANDLED':
+      return r.asDone;
+    case 'CRM_NEW':
+      return r.crmNew;
+    case 'PARTNER_NEW':
+      return c.partnerNew;
+    case 'PARTNER_LEADS':
+      return c.partnerLeads;
     case 'CONTRACT_REVENUE':
       return r.revenue;
     case 'CONTRACT_COUNT':
@@ -80,12 +136,152 @@ function autoValue(key: KpiAutoKey, r: Raw): number | null {
   }
 }
 
-/** 기본 구성 — 지점은 영업·작업, 본사 조직은 업무·근태 */
-function defaultMetrics(orgType: string): KpiMetricConfig[] {
-  const keys: KpiAutoKey[] = BRANCH_TYPES.includes(orgType)
-    ? ['CONTRACT_REVENUE', 'CONTRACT_COUNT', 'DONE_COUNT']
-    : ['TASK_COMPLETION', 'TASK_ON_TIME', 'ATTENDANCE'];
-  return keys.map((k) => ({ key: k, target: KPI_CATALOG_BY_KEY[k].defaultTarget, weight: 1 }));
+/** 자동 지표 한 줄(목표를 안 주면 카탈로그 기본 목표) */
+const auto = (key: KpiAutoKey, weight = 1, target?: number): KpiMetricConfig => ({
+  key,
+  target: target ?? KPI_CATALOG_BY_KEY[key].defaultTarget,
+  weight,
+});
+/** 직접 지표 한 줄 — ERP로 셀 수 없는 것은 인사팀이 분기 실적을 넣는다 */
+const manual = (
+  key: string,
+  label: string,
+  unit: string,
+  target: number,
+  weight = 1,
+): KpiMetricConfig => ({ key: `custom:${key}`, label, unit, target, weight });
+
+/**
+ * 부서별 기본 구성(5~6개) — 그 부서가 실제로 하는 일을 재는 지표. ERP 기록으로 셀 수 있으면 자동,
+ * 없으면 직접 지표. 성과 평가 화면에서 따로 정하면(구성 저장) 그것이 우선한다.
+ */
+const DEPT_DEFAULTS: { match: RegExp; metrics: KpiMetricConfig[] }[] = [
+  {
+    // 전화 상담·접수 등록·콜백·A/S
+    match: /고객관리/,
+    metrics: [
+      auto('CALL_HANDLED', 2),
+      auto('CALL_TO_LEAD', 2),
+      auto('OUTCALL_DONE'),
+      auto('AS_HANDLED', 2),
+      auto('LEAD_COUNT'),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    // 제휴사·전속 계약사 영업 — 계약·CRM 등록·제휴 접수
+    match: /전속|제휴/,
+    metrics: [
+      auto('PARTNER_NEW', 3),
+      auto('CRM_NEW', 2),
+      auto('PARTNER_LEADS', 2),
+      manual('partner-meeting', '제휴처 미팅', '건', 24),
+      auto('TASK_COMPLETION'),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    // 방문 견적 — 견적 건수와 견적이 계약·작업으로 이어진 정도
+    match: /홈플래너/,
+    metrics: [
+      auto('ESTIMATE_COUNT', 2),
+      auto('ESTIMATE_CONVERSION', 3),
+      auto('CONTRACT_COUNT', 2),
+      auto('CONTRACT_REVENUE', 2),
+      auto('DONE_COUNT'),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    // VIP 이사 — 접수·계약 건수·계약 금액
+    match: /무브제/,
+    metrics: [
+      auto('LEAD_COUNT', 2),
+      auto('CONTRACT_COUNT', 2),
+      auto('CONTRACT_REVENUE', 3),
+      auto('ESTIMATE_CONVERSION', 2),
+      manual('vip-satisfaction', 'VIP 만족도', '점', 90),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    match: /기업영업/,
+    metrics: [
+      auto('CRM_NEW', 2),
+      manual('b2b-meeting', '기업 미팅·제안', '건', 30, 2),
+      auto('CONTRACT_COUNT', 2),
+      auto('CONTRACT_REVENUE', 3),
+      auto('TASK_COMPLETION'),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    match: /가맹/,
+    metrics: [
+      auto('CRM_NEW', 2),
+      manual('new-franchise', '신규 가맹', '개점', 15, 3),
+      manual('econtract', '전자계약 업로드율', '%', 95, 2),
+      manual('material', '자재 구매 지점 비율', '%', 95),
+      auto('TASK_COMPLETION'),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    // 정산·수금·인사 — 입금액과 마감 지키기
+    match: /경영관리/,
+    metrics: [
+      auto('PAID_REVENUE', 2),
+      manual('receivable', '미수금 회수율', '%', 90, 2),
+      manual('closing', '정산 마감 준수', '%', 100),
+      auto('TASK_COMPLETION'),
+      auto('TASK_ON_TIME'),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    match: /마케팅/,
+    metrics: [
+      manual('campaign', '캠페인 실행', '건', 12, 2),
+      manual('inflow', '광고 유입 접수', '건', 150, 3),
+      auto('LEAD_COUNT'),
+      auto('TASK_COMPLETION'),
+      auto('TASK_ON_TIME'),
+      auto('ATTENDANCE'),
+    ],
+  },
+  {
+    match: /디자인/,
+    metrics: [
+      manual('deliverable', '디자인 산출물', '건', 40, 2),
+      manual('revision', '요청 반영도', '점', 90),
+      auto('TASK_COMPLETION', 2),
+      auto('TASK_ON_TIME', 2),
+      auto('ATTENDANCE'),
+    ],
+  },
+];
+/** 그 밖의 본사 부서·TF(기획·부동산 등) */
+const HQ_DEFAULT: KpiMetricConfig[] = [
+  manual('milestone', '과제 달성률', '%', 90, 2),
+  manual('report', '보고·제안 제출', '건', 12),
+  auto('TASK_COMPLETION', 2),
+  auto('TASK_ON_TIME'),
+  auto('ATTENDANCE'),
+];
+/** 지점 — 접수에서 견적·계약·작업·입금까지 */
+const BRANCH_DEFAULT: KpiMetricConfig[] = [
+  auto('CONTRACT_REVENUE', 3),
+  auto('CONTRACT_COUNT', 2),
+  auto('LEAD_COUNT'),
+  auto('ESTIMATE_CONVERSION', 2),
+  auto('DONE_COUNT'),
+  auto('PAID_REVENUE'),
+];
+
+/** 기본 구성 — 지점은 영업·작업, 본사 부서는 부서 이름으로 고른 업무 지표 */
+function defaultMetrics(orgType: string, orgName = ''): KpiMetricConfig[] {
+  if (BRANCH_TYPES.includes(orgType)) return BRANCH_DEFAULT;
+  return DEPT_DEFAULTS.find((d) => d.match.test(orgName))?.metrics ?? HQ_DEFAULT;
 }
 
 /** 개인이 조직 구성을 따를 때 — 금액·건수 목표는 조직 인원으로 나눈다(비율 지표는 그대로) */
@@ -265,7 +461,89 @@ export class KpiService {
         if (ok) v.attOnTime += 1;
       }
     }
-    return { org, emp };
+
+    // ── 부서별 업무 지표(접수·견적·상담 콜·A/S·CRM·제휴) ──
+    const [leads, estimates, calls, tickets, crm, staff, partnerNew, partnerLeads] =
+      await Promise.all([
+        this.prisma.lead.findMany({
+          where: { createdAt: { gte: r.fromTs, lt: r.toTs } },
+          select: { orgUnitId: true, ownerEmpId: true },
+        }),
+        this.prisma.estimate.findMany({
+          where: { createdAt: { gte: r.fromTs, lt: r.toTs } },
+          select: {
+            orgUnitId: true,
+            estimatorEmpId: true,
+            contract: { select: { status: true } },
+          },
+        }),
+        this.prisma.csCall.findMany({
+          where: { status: 'DONE', receivedAt: { gte: r.fromTs, lt: r.toTs } },
+          select: { agentEmpId: true, leadId: true, attempts: true },
+        }),
+        this.prisma.supportTicket.findMany({
+          where: {
+            status: { in: ['RESOLVED', 'CLOSED'] },
+            createdAt: { gte: r.fromTs, lt: r.toTs },
+          },
+          select: { orgUnitId: true, assigneeEmpId: true },
+        }),
+        this.prisma.crmLead.findMany({
+          where: { createdAt: { gte: r.fromTs, lt: r.toTs } },
+          select: { createdByUserId: true, ownerEmpId: true },
+        }),
+        // 상담원·CRM 등록자의 소속(콜·CRM에는 조직이 없다) — 계정 → 직원 → 조직
+        this.prisma.appUser.findMany({
+          where: { employeeId: { not: null } },
+          select: { id: true, employee: { select: { id: true, orgUnitId: true } } },
+        }),
+        this.prisma.partner.count({
+          where: {
+            type: { in: ['AFFILIATE', 'EXCLUSIVE'] },
+            createdAt: { gte: r.fromTs, lt: r.toTs },
+          },
+        }),
+        this.prisma.lead.count({
+          where: {
+            partner: { type: { in: ['AFFILIATE', 'EXCLUSIVE'] } },
+            createdAt: { gte: r.fromTs, lt: r.toTs },
+          },
+        }),
+      ]);
+    const empOrg = new Map<string, string>();
+    const userEmp = new Map<string, string>();
+    for (const u of staff) {
+      if (!u.employee) continue;
+      empOrg.set(u.employee.id, u.employee.orgUnitId);
+      userEmp.set(u.id, u.employee.id);
+    }
+    // 한 기록은 조직 한 곳·사람 한 명에만 센다(회사 합계에서 두 번 세지 않게)
+    const both = (orgId: string | null | undefined, empId: string | null | undefined) =>
+      [at(org, orgId ?? (empId ? empOrg.get(empId) : null)), at(emp, empId)].filter(
+        (v): v is Raw => !!v,
+      );
+    for (const l of leads) for (const v of both(l.orgUnitId, l.ownerEmpId)) v.leads += 1;
+    for (const e of estimates) {
+      const signed = e.contract?.status === 'SIGNED';
+      for (const v of both(e.orgUnitId, e.estimatorEmpId)) {
+        v.estimates += 1;
+        if (signed) v.estContracted += 1;
+      }
+    }
+    for (const c of calls) {
+      for (const v of both(null, c.agentEmpId)) {
+        v.calls += 1;
+        if (c.leadId) v.callLeads += 1;
+        if (c.attempts > 0) v.outcalls += 1;
+      }
+    }
+    for (const t of tickets) for (const v of both(t.orgUnitId, t.assigneeEmpId)) v.asDone += 1;
+    for (const c of crm) {
+      const by = (c.createdByUserId ? userEmp.get(c.createdByUserId) : null) ?? c.ownerEmpId;
+      for (const v of both(null, by)) v.crmNew += 1;
+    }
+    const company: CompanyRaw = { partnerNew, partnerLeads };
+    return { org, emp, company };
   }
 
   /** 조직 나무 — 하위 조직까지 더한 원자료와 인원 */
@@ -289,11 +567,12 @@ export class KpiService {
     metrics: KpiMetricConfig[],
     raw: Raw,
     actuals: Record<string, number | null>,
+    company: CompanyRaw,
   ): KpiResolved[] {
     return metrics.map((m) => {
       const cat = isKpiAutoKey(m.key) ? KPI_CATALOG_BY_KEY[m.key] : null;
       const actual = cat
-        ? autoValue(cat.key, raw)
+        ? autoValue(cat.key, raw, company)
         : typeof actuals[m.key] === 'number'
           ? (actuals[m.key] as number)
           : null;
@@ -339,7 +618,7 @@ export class KpiService {
    * group: 'HQ' 본사 | 'BRANCH' 지점
    */
   async overview(period: string, group: 'HQ' | 'BRANCH') {
-    const [{ org: orgRaw, emp: empRaw }, tree, sets] = await Promise.all([
+    const [{ org: orgRaw, emp: empRaw, company }, tree, sets] = await Promise.all([
       this.collect(period),
       this.orgTree(),
       this.prisma.kpiSet.findMany({ where: { period } }),
@@ -374,7 +653,7 @@ export class KpiService {
           }
         : {
             source: 'DEFAULT' as const,
-            metrics: defaultMetrics(unit?.type ?? 'DEPT'),
+            metrics: defaultMetrics(unit?.type ?? 'DEPT', unit?.name),
             actuals: {},
             note: null,
           };
@@ -387,13 +666,29 @@ export class KpiService {
       }
       return sum;
     };
+    // 본사 부서 카드 — 계약·접수·견적·콜·A/S·CRM은 구성원(하위 조직 포함)이 한 것의 합.
+    // 거의 모든 접수·계약은 지점 소속이라, 부서 일은 담당자(견적·상담원·등록자)로만 셀 수 있다.
+    // 업무·근태는 예전처럼 조직(팀 업무) 기준
+    const hqRawSum = (id: string) => {
+      const sum = emptyRaw();
+      const inTree = new Set(tree.subtree(id));
+      for (const e of employees) {
+        if (!inTree.has(e.orgUnitId)) continue;
+        const r = empRaw.get(e.id);
+        if (r) addRaw(sum, r);
+      }
+      const byOrg = orgRawSum(id);
+      for (const k of ORG_BASED) sum[k] = byOrg[k];
+      return sum;
+    };
 
     const orgs: KpiResult[] = tree.units
       .filter((u) => orgTypes.includes(u.type))
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
       .map((u) => {
         const cfg = orgConfig(u.id);
-        const metrics = this.resolve(cfg.metrics, orgRawSum(u.id), cfg.actuals);
+        const raw = group === 'BRANCH' ? orgRawSum(u.id) : hqRawSum(u.id);
+        const metrics = this.resolve(cfg.metrics, raw, cfg.actuals, company);
         const score = kpiScore(metrics);
         const members = tree.subtree(u.id).reduce((s, x) => s + (directCount.get(x) ?? 0), 0);
         return {
@@ -437,6 +732,7 @@ export class KpiService {
           empRaw,
           unitById,
           directCount,
+          company,
         ),
       );
 
@@ -450,6 +746,7 @@ export class KpiService {
     empRaw: Map<string, Raw>,
     unitById: Map<string, { name: string }>,
     directCount: Map<string, number>,
+    company: CompanyRaw,
   ): KpiResult {
     const cfg = own
       ? {
@@ -463,13 +760,14 @@ export class KpiService {
           // 직접 지표는 조직 실적이라 개인에게 넘기지 않는다 — 3개가 안 되면 개인 기본 지표로 채운다
           metrics: fillPersonal(
             orgCfg.metrics
-              .filter((m) => isKpiAutoKey(m.key))
+              // 회사 전체로만 세는 지표(제휴 계약·제휴 접수)는 팀 공동 — 개인에게 넘기지 않는다
+              .filter((m) => isKpiAutoKey(m.key) && !KPI_COMPANY_KEYS.includes(m.key))
               .map((m) => shareForPerson(m, directCount.get(e.orgUnitId) ?? 1)),
           ),
           actuals: {},
           note: null,
         };
-    const metrics = this.resolve(cfg.metrics, empRaw.get(e.id) ?? emptyRaw(), cfg.actuals);
+    const metrics = this.resolve(cfg.metrics, empRaw.get(e.id) ?? emptyRaw(), cfg.actuals, company);
     const score = kpiScore(metrics);
     return {
       scope: 'EMPLOYEE',
@@ -532,7 +830,7 @@ export class KpiService {
   private async overviewOrg(period: string, id: string): Promise<KpiResult | null> {
     const u = await this.prisma.orgUnit.findUnique({ where: { id } });
     if (!u) return null;
-    const [{ org: orgRaw }, tree, own] = await Promise.all([
+    const [{ org: orgRaw, company }, tree, own] = await Promise.all([
       this.collect(period),
       this.orgTree(),
       this.prisma.kpiSet.findUnique({
@@ -544,8 +842,13 @@ export class KpiService {
       const r = orgRaw.get(x);
       if (r) addRaw(sum, r);
     }
-    const metricsCfg = own ? this.parseMetrics(own.metrics) : defaultMetrics(u.type);
-    const metrics = this.resolve(metricsCfg, sum, own ? this.parseActuals(own.actuals) : {});
+    const metricsCfg = own ? this.parseMetrics(own.metrics) : defaultMetrics(u.type, u.name);
+    const metrics = this.resolve(
+      metricsCfg,
+      sum,
+      own ? this.parseActuals(own.actuals) : {},
+      company,
+    );
     const score = kpiScore(metrics);
     return {
       scope: 'ORG',

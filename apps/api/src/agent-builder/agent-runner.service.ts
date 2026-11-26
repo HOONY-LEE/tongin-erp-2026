@@ -595,7 +595,14 @@ export class AgentRunnerService {
                 ),
               }
             : null;
-        const res = await this.ask(cfg.model, cfg.effort, system, prompt, schema);
+        const res = await this.ask(
+          cfg.model,
+          cfg.effort,
+          system,
+          prompt,
+          schema,
+          `[${node.label}] ${prompt.slice(0, 500)}`,
+        );
         let output: unknown = textOf(res);
         if (cfg.outputFormat === 'json') {
           try {
@@ -734,12 +741,19 @@ export class AgentRunnerService {
         ]
           .filter(Boolean)
           .join('\n');
-        const res = await this.ask(resolveModel(cfg.model), 'low', system, input, {
-          type: 'object',
-          additionalProperties: false,
-          required: ['label', 'reason'],
-          properties: { label: { type: 'string', enum: ids }, reason: { type: 'string' } },
-        });
+        const res = await this.ask(
+          resolveModel(cfg.model),
+          'low',
+          system,
+          input,
+          {
+            type: 'object',
+            additionalProperties: false,
+            required: ['label', 'reason'],
+            properties: { label: { type: 'string', enum: ids }, reason: { type: 'string' } },
+          },
+          `[${node.label}] ${String(input).slice(0, 500)}`,
+        );
         let parsed: { label?: string; reason?: string } = {};
         try {
           parsed = JSON.parse(textOf(res));
@@ -895,24 +909,31 @@ export class AgentRunnerService {
     system: string,
     prompt: string,
     schema: Record<string, unknown> | null,
+    /** 사용 기록 '요청 내용' — 노드 이름과 보낸 글 앞부분 */
+    request?: string,
   ) {
     const client = requireClaude(this.client);
     // 실행 주인에게 준 모델 안에서만(회사에서 닫았거나 안 준 모델이면 기본 모델)
     model = resolveModel(model, await this.usage.modelsFor(aiCaller.getStore()?.userId));
-    const res = await trackClaude('AGENT_RUN', model, () =>
-      client.beta.messages.create({
-        model,
-        max_tokens: 8000,
-        ...(supportsFallback(model)
-          ? { betas: [FALLBACK_BETA], fallbacks: 'default' as const }
-          : {}),
-        output_config: {
-          effort,
-          ...(schema ? { format: { type: 'json_schema' as const, schema } } : {}),
-        },
-        ...(system.trim() ? { system } : {}),
-        messages: [{ role: 'user', content: prompt.trim() || '(내용 없음)' }],
-      }),
+    const res = await trackClaude(
+      'AGENT_RUN',
+      model,
+      () =>
+        client.beta.messages.create({
+          model,
+          max_tokens: 8000,
+          ...(supportsFallback(model)
+            ? { betas: [FALLBACK_BETA], fallbacks: 'default' as const }
+            : {}),
+          output_config: {
+            effort,
+            ...(schema ? { format: { type: 'json_schema' as const, schema } } : {}),
+          },
+          ...(system.trim() ? { system } : {}),
+          messages: [{ role: 'user', content: prompt.trim() || '(내용 없음)' }],
+        }),
+      undefined,
+      request,
     );
     assertComplete(res);
     return res;

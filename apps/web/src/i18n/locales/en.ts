@@ -226,6 +226,11 @@ export default {
     geocoded: 'Geocoded',
   },
   settlement: {
+    customerNo: 'Customer ID',
+    phone: 'Phone',
+    contractDocs: 'Contracts',
+    owner: 'Owner',
+    moreN: '+{{v0}} more',
     flt: {
       calcType: 'Calculation',
       branch: 'Branch',

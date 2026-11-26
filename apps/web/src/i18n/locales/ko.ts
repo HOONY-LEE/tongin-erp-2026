@@ -226,6 +226,11 @@ export default {
     geocoded: '좌표 확인됨',
   },
   settlement: {
+    customerNo: '고객 ID',
+    phone: '전화번호',
+    contractDocs: '계약서',
+    owner: '담당자',
+    moreN: '외 {{v0}}건',
     flt: { calcType: '계산 방식', branch: '지점', active: '사용 여부', on: '사용', off: '미사용' },
     receivables: '고객별 미수금',
     customer: '고객',

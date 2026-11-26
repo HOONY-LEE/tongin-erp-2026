@@ -65,18 +65,32 @@ export class SettlementService {
     const ids = await this.scope.orgScopeIds(principal);
     const contracts = await this.prisma.contract.findMany({
       where: { status: 'SIGNED', ...(ids === null ? {} : { orgUnitId: { in: ids } }) },
-      include: { customer: true, payments: true },
+      include: {
+        customer: { select: { name: true, customerNo: true, phonePrimary: true } },
+        payments: true,
+        // 담당자 — 접수 담당(없으면 견적 담당)
+        lead: { select: { ownerEmp: { select: { id: true, name: true } } } },
+        estimate: { select: { estimator: { select: { id: true, name: true } } } },
+      },
+      // 최근 계약부터 — 계약서 목록·담당자는 최근 것 기준
+      orderBy: { createdAt: 'desc' },
     });
     const map = new Map<string, CustomerReceivable>();
     for (const c of contracts) {
       const r = map.get(c.customerId) ?? {
         customerId: c.customerId,
+        customerNo: c.customer.customerNo ?? null,
         customerName: c.customer.name,
+        phone: c.customer.phonePrimary ?? null,
+        contracts: [],
+        owner: c.lead?.ownerEmp ?? c.estimate?.estimator ?? null,
         contractCount: 0,
         billed: 0,
         paid: 0,
         outstanding: 0,
       };
+      r.contracts.push({ id: c.id, contractNo: c.contractNo });
+      r.owner ??= c.lead?.ownerEmp ?? c.estimate?.estimator ?? null;
       r.contractCount += 1;
       r.billed += Number(c.totalAmount);
       r.paid += c.payments

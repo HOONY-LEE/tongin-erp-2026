@@ -39,6 +39,7 @@ import {
   type Row,
   type StatusMap,
 } from '../components/ui';
+import { EmployeeChip } from '../components/ui/EmployeeChip';
 import styles from './work.module.css';
 import { BRANCH_CASE_KIND_LABEL, BRANCH_CASE_STATUS_LABEL } from '../i18n/codes';
 
@@ -428,8 +429,13 @@ export default function BranchCases() {
     },
     {
       title: t('biz.ownerShort'),
-      width: 90,
-      render: (r) => (r as unknown as BranchCase).assignee?.name ?? '-',
+      width: 120,
+      // 다른 표와 같은 직원 칩(사진·이름) — 누르면 프로필 카드
+      render: (r) => {
+        const a = (r as unknown as BranchCase).assignee;
+        return a ? <EmployeeChip emp={a} /> : '-';
+      },
+      exportValue: (r) => (r as unknown as BranchCase).assignee?.name ?? null,
     },
     { title: t('biz.amount'), numeric: true, width: 120, render: (r) => won(r.amount) || '-' },
   ];

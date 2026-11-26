@@ -277,20 +277,29 @@ export class WidgetStudioAiService {
     let res: Anthropic.Message;
     try {
       // AI 쪽 인증·한도 오류(401·429 등)가 '로그인이 필요합니다'로 보이지 않게 503으로 바꿔 알린다
-      res = await trackClaude('WIDGET_STUDIO', model, () =>
-        client.messages.create({
-          model,
-          max_tokens: 16000,
-          // Sonnet·Opus 5.5는 생각 끄기·도구 강제(tool_choice tool/any)를 받지 않는다 —
-          // 생각은 켜 두고 도구는 auto로, '반드시 propose_widgets로 답한다'는 시스템 규칙으로 부르게 한다
-          thinking: { type: 'adaptive' },
-          system: SYSTEM,
-          tools: [TOOL],
-          tool_choice: { type: 'auto' },
-          messages: [
-            { role: 'user', content: [...attachBlocks(attachments), { type: 'text', text: user }] },
-          ],
-        }),
+      res = await trackClaude(
+        'WIDGET_STUDIO',
+        model,
+        () =>
+          client.messages.create({
+            model,
+            max_tokens: 16000,
+            // Sonnet·Opus 5.5는 생각 끄기·도구 강제(tool_choice tool/any)를 받지 않는다 —
+            // 생각은 켜 두고 도구는 auto로, '반드시 propose_widgets로 답한다'는 시스템 규칙으로 부르게 한다
+            thinking: { type: 'adaptive' },
+            system: SYSTEM,
+            tools: [TOOL],
+            tool_choice: { type: 'auto' },
+            messages: [
+              {
+                role: 'user',
+                content: [...attachBlocks(attachments), { type: 'text', text: user }],
+              },
+            ],
+          }),
+        undefined,
+        // 사용 기록 '요청 내용' — 사람이 쓴 위젯 요청
+        ask,
       );
     } catch (e) {
       // 사용 권한·월 한도(우리 쪽 검사)는 그대로 알린다

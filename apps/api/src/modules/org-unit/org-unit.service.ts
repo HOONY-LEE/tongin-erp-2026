@@ -75,6 +75,8 @@ export class OrgUnitService {
         return {
           ...o,
           memberCount: list.length,
+          // 표에서 직원 칩(사진·프로필)으로 보이려고 id도 함께
+          headId: head ? head.id : null,
           headName: head ? head.name : null,
           headPosition: head?.position?.name ?? null,
         };

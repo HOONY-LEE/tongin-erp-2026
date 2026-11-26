@@ -24,6 +24,7 @@ import {
   type Row,
   PhoneInput,
 } from '../../components/ui';
+import { EmployeeChip } from '../../components/ui/EmployeeChip';
 import styles from './access.module.css';
 import { formatPhone } from '../../lib/phone';
 import { DatePicker } from '../../components/ui';
@@ -228,10 +229,67 @@ export default function AccountList() {
 
   const columns: Column[] = [
     { title: 'ID', dataIndex: 'loginId', width: 150 },
-    { title: t('acc.col.name'), dataIndex: 'name', width: 110 },
+    {
+      title: t('acc.col.name'),
+      dataIndex: 'name',
+      width: 130,
+      // 검색·내보내기는 글자로(칩을 그리지 않게)
+      exportValue: (r) => String(r.name || ''),
+      // 직원 계정은 다른 표와 같은 직원 칩(사진·이름, 누르면 프로필 카드) — 외부 업체 계정은 글자로
+      render: (r) => {
+        const a = r as unknown as Account;
+        return a.employeeId && a.employeeName ? (
+          <EmployeeChip
+            emp={{
+              id: a.employeeId,
+              name: a.employeeName,
+              phone: a.phone,
+              position: a.positionName ? { name: a.positionName } : null,
+              orgUnit: a.orgUnitName ? { name: a.orgUnitName } : null,
+            }}
+          />
+        ) : (
+          String(r.name || '-')
+        );
+      },
+    },
     { title: t('acc.col.org'), dataIndex: 'org', minWidth: 120, flex: 1 },
-    { title: t('acc.position'), dataIndex: 'position', width: 90 },
-    { title: t('acc.groups'), dataIndex: 'roleNames', minWidth: 120, flex: 1 },
+    {
+      title: t('acc.position'),
+      dataIndex: 'position',
+      width: 100,
+      exportValue: (r) => String(r.position || ''),
+      render: (r) =>
+        r.position ? (
+          <Badge variant="subtle" color="neutral">
+            {String(r.position)}
+          </Badge>
+        ) : (
+          '-'
+        ),
+    },
+    {
+      title: t('acc.groups'),
+      dataIndex: 'roleNames',
+      minWidth: 160,
+      flex: 1,
+      exportValue: (r) => String(r.roleNames || ''),
+      // 권한 그룹은 그룹마다 칩 — 넘치면 한 줄에서 잘린다
+      render: (r) => {
+        const roles = (r as unknown as Account).roles;
+        return roles.length ? (
+          <span style={{ display: 'inline-flex', gap: 4, minWidth: 0, overflow: 'hidden' }}>
+            {roles.map((role, i) => (
+              <Badge key={`${role.roleId}-${i}`} variant="subtle" color="info">
+                {role.roleName}
+              </Badge>
+            ))}
+          </span>
+        ) : (
+          t('acc.noRoles')
+        );
+      },
+    },
     { title: t('acc.col.scope'), dataIndex: 'scopes', minWidth: 120, flex: 1 },
     {
       title: t('acc.col.status'),

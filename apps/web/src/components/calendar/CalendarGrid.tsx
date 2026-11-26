@@ -1,6 +1,7 @@
 import i18n from '../../i18n';
 import { useTranslation } from 'react-i18next';
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { isSonEomneunNal, SON_COLOR } from '../../lib/sonEomneunNal';
 import { fmtDateTime } from '../../lib/dateFormat';
 import { SearchInput } from '../ui/SearchInput';
 import {
@@ -12,7 +13,7 @@ import {
   ChevronDown,
   CalendarDays,
 } from 'lucide-react';
-import { Button, SegmentedControl } from '../ui';
+import { Button, SegmentedControl, Switch } from '../ui';
 import {
   WEEKDAYS,
   MONTH_LABELS,
@@ -45,6 +46,29 @@ const VIEW_OPTIONS = [
 ];
 
 const BORDER = '1px solid var(--ark-color-border)';
+/**
+ * 캘린더 헤더(요일·날짜 줄) — 일간·주간·월간 모두 같은 높이(월간 요일 줄 기준).
+ * 테두리까지 포함한 높이라 셋을 나란히 바꿔 봐도 아래 칸이 같은 자리에서 시작한다
+ */
+const HEAD_H = 33;
+const headStyle = {
+  boxSizing: 'border-box' as const,
+  height: HEAD_H,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: 6,
+  padding: '0 10px',
+  fontSize: fs(12),
+  fontWeight: 500,
+  borderBottom: BORDER,
+  background: 'var(--ark-color-bg-subtle)',
+  whiteSpace: 'nowrap' as const,
+  overflow: 'hidden',
+};
+/** 손 없는 날 표시 켜짐 — 툴바 스위치. 켜면 그날 날짜 글자를 주황으로 */
+const SonContext = createContext(false);
+const SON_KEY = 'tongin.cal.sonEomneun';
 /** 공휴일·일요일 빨강 */
 const HOLIDAY_COLOR = 'var(--ark-color-error-500)';
 /** 일요일 빨강 · 토요일 파랑 · 평일 기본 */
@@ -557,6 +581,7 @@ function MonthView({
   onEventClick,
 }: ViewProps) {
   const { t } = useTranslation();
+  const sonOn = useContext(SonContext);
   const days = getMonthMatrix(currentDate.getFullYear(), currentDate.getMonth());
   const month = currentDate.getMonth();
   return (
@@ -567,14 +592,9 @@ function MonthView({
           <div
             key={d}
             style={{
-              textAlign: 'right',
-              fontSize: fs(12),
-              fontWeight: 500,
-              padding: '7px 10px',
+              ...headStyle,
               color: weekendColor(i),
               borderRight: i < 6 ? BORDER : 'none',
-              borderBottom: BORDER,
-              background: 'var(--ark-color-bg-subtle)',
             }}
           >
             {d}
@@ -667,9 +687,11 @@ function MonthView({
                             ? '#fff'
                             : outside
                               ? 'var(--ark-color-text-disabled)'
-                              : holiday
-                                ? HOLIDAY_COLOR
-                                : weekendColor(i),
+                              : sonOn && isSonEomneunNal(date)
+                                ? SON_COLOR
+                                : holiday
+                                  ? HOLIDAY_COLOR
+                                  : weekendColor(i),
                         }}
                       >
                         {date.getDate()}
@@ -737,6 +759,7 @@ function WeekView({
   onDateClick,
   onEventClick,
 }: Omit<ViewProps, 'allEvents'>) {
+  const sonOn = useContext(SonContext);
   const days = getWeekDays(currentDate);
   return (
     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', minHeight: 0 }}>
@@ -757,35 +780,31 @@ function WeekView({
               overflow: 'hidden',
             }}
           >
-            <div
-              style={{
-                textAlign: 'right',
-                padding: '8px 10px',
-                borderBottom: BORDER,
-                background: 'var(--ark-color-bg-subtle)',
-              }}
-            >
-              <div style={{ fontSize: fs(12), color: holiday ? HOLIDAY_COLOR : weekendColor(i) }}>
-                {holiday ? `${holiday} · ` : ''}
-                {WEEKDAYS[i]}
-              </div>
+            {/* 헤더 — 월간과 같은 높이 한 줄(공휴일 · 요일 날짜) */}
+            <div style={headStyle}>
               <span
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: 26,
-                  height: 26,
-                  marginTop: 2,
-                  borderRadius: 999,
-                  fontSize: fs(15),
-                  fontWeight: 600,
-                  background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
-                  color: isToday ? '#fff' : holiday ? HOLIDAY_COLOR : 'var(--ark-color-text)',
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  color: holiday ? HOLIDAY_COLOR : weekendColor(i),
                 }}
+                title={holiday ?? undefined}
               >
-                {date.getDate()}
+                {holiday ? `${holiday} · ` : ''}
+                {WEEKDAYS[i]}
               </span>
+              <DateChip
+                date={date}
+                isToday={isToday}
+                color={
+                  sonOn && isSonEomneunNal(date)
+                    ? SON_COLOR
+                    : holiday
+                      ? HOLIDAY_COLOR
+                      : 'var(--ark-color-text)'
+                }
+              />
             </div>
             <div
               style={{
@@ -815,83 +834,131 @@ function DayView({
   onEventClick,
 }: Omit<ViewProps, 'today' | 'allEvents'>) {
   const { t } = useTranslation();
+  const sonOn = useContext(SonContext);
   const list = sortEvents(eventMap.get(dateKey(currentDate)) || []);
+  const holiday = holidayName(currentDate);
+  const dow = currentDate.getDay();
   return (
-    <div
-      onClick={() => onDateClick(currentDate)}
-      style={{ flex: 1, overflowY: 'auto', cursor: 'pointer' }}
-    >
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* 헤더 — 월간·주간과 같은 높이 한 줄(공휴일 · 요일 날짜) */}
+      <div style={{ ...headStyle, flexShrink: 0 }}>
+        <span style={{ color: holiday ? HOLIDAY_COLOR : weekendColor(dow) }}>
+          {holiday ? `${holiday} · ` : ''}
+          {WEEKDAYS[dow]}
+        </span>
+        <DateChip
+          date={currentDate}
+          isToday={isSameDay(currentDate, new Date())}
+          color={
+            sonOn && isSonEomneunNal(currentDate)
+              ? SON_COLOR
+              : holiday
+                ? HOLIDAY_COLOR
+                : 'var(--ark-color-text)'
+          }
+        />
+      </div>
       <div
-        style={{
-          maxWidth: 680,
-          margin: '0 auto',
-          padding: '24px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}
+        onClick={() => onDateClick(currentDate)}
+        style={{ flex: 1, overflowY: 'auto', cursor: 'pointer' }}
       >
-        {list.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              color: 'var(--ark-color-text-secondary)',
-              padding: '60px 0',
-              fontSize: fs(14),
-            }}
-          >
-            {t('cal.empty')}
-          </div>
-        ) : (
-          list.map((ev) => {
-            const c = kindStyle(ev);
-            return (
-              <div
-                key={ev.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEventClick(ev);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '12px 16px',
-                  borderRadius: 10,
-                  background: 'var(--ark-color-bg-subtle)',
-                  borderLeft: `3px solid ${c.dot}`,
-                  cursor: 'pointer',
-                }}
-              >
-                <span
+        <div
+          style={{
+            maxWidth: 680,
+            margin: '0 auto',
+            padding: '24px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          {list.length === 0 ? (
+            <div
+              style={{
+                textAlign: 'center',
+                color: 'var(--ark-color-text-secondary)',
+                padding: '60px 0',
+                fontSize: fs(14),
+              }}
+            >
+              {t('cal.empty')}
+            </div>
+          ) : (
+            list.map((ev) => {
+              const c = kindStyle(ev);
+              return (
+                <div
+                  key={ev.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEventClick(ev);
+                  }}
                   style={{
-                    minWidth: 78,
-                    fontSize: fs(13),
-                    color: 'var(--ark-color-text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '12px 16px',
+                    borderRadius: 10,
+                    background: 'var(--ark-color-bg-subtle)',
+                    borderLeft: `3px solid ${c.dot}`,
+                    cursor: 'pointer',
                   }}
                 >
-                  {ev.startTime ? formatTime(ev.startTime) : t('cal.allDay')}
-                </span>
-                <span style={{ fontSize: fs(15), fontWeight: 600, color: 'var(--ark-color-text)' }}>
-                  {displayTitle(ev)}
-                </span>
-                {ev.ownerName && (
                   <span
                     style={{
-                      marginLeft: 'auto',
-                      fontSize: fs(12),
-                      color: 'var(--ark-color-text-tertiary)',
+                      minWidth: 78,
+                      fontSize: fs(13),
+                      color: 'var(--ark-color-text-secondary)',
                     }}
                   >
-                    {ev.ownerName}
+                    {ev.startTime ? formatTime(ev.startTime) : t('cal.allDay')}
                   </span>
-                )}
-              </div>
-            );
-          })
-        )}
+                  <span
+                    style={{ fontSize: fs(15), fontWeight: 600, color: 'var(--ark-color-text)' }}
+                  >
+                    {displayTitle(ev)}
+                  </span>
+                  {ev.ownerName && (
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        fontSize: fs(12),
+                        color: 'var(--ark-color-text-tertiary)',
+                      }}
+                    >
+                      {ev.ownerName}
+                    </span>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+/** 헤더 안 날짜 — 오늘은 원형 강조(헤더 높이 안에 들어가는 크기) */
+function DateChip({ date, isToday, color }: { date: Date; isToday: boolean; color: string }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 22,
+        height: 22,
+        padding: '0 4px',
+        borderRadius: 999,
+        fontSize: fs(13),
+        fontWeight: 700,
+        background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
+        color: isToday ? '#fff' : color,
+      }}
+    >
+      {date.getDate()}
+    </span>
   );
 }
 
@@ -908,6 +975,7 @@ function MiniMonth({
   eventMap: Map<string, CalendarItem[]>;
   onPick: (d: Date) => void;
 }) {
+  const sonOn = useContext(SonContext);
   const days = getMonthMatrix(year, month);
   return (
     <div
@@ -957,11 +1025,13 @@ function MiniMonth({
                   background: isToday ? 'var(--ark-color-primary-500)' : 'transparent',
                   color: isToday
                     ? '#fff'
-                    : date.getDay() === 0 || holidayName(date)
-                      ? HOLIDAY_COLOR
-                      : date.getDay() === 6
-                        ? 'var(--ark-color-info-500)'
-                        : 'var(--ark-color-text)',
+                    : sonOn && !outside && isSonEomneunNal(date)
+                      ? SON_COLOR
+                      : date.getDay() === 0 || holidayName(date)
+                        ? HOLIDAY_COLOR
+                        : date.getDay() === 6
+                          ? 'var(--ark-color-info-500)'
+                          : 'var(--ark-color-text)',
                 }}
               >
                 {date.getDate()}
@@ -1072,6 +1142,22 @@ export default function CalendarGrid({
 }: Props) {
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
+  // 손 없는 날 표시 — 처음엔 켜 두고, 끄고 켠 것은 이 브라우저에 기억한다
+  const [sonOn, setSonOn] = useState(() => {
+    try {
+      return localStorage.getItem(SON_KEY) !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  const toggleSon = (v: boolean) => {
+    setSonOn(v);
+    try {
+      localStorage.setItem(SON_KEY, v ? 'on' : 'off');
+    } catch {
+      /* 기억만 못 한다 */
+    }
+  };
   const today = new Date();
   const eventMap = buildEventMap(events);
 
@@ -1169,6 +1255,14 @@ export default function CalendarGrid({
             onSync={onGoogleSync}
             onDisconnect={onGoogleDisconnect}
           />
+          <span title={t('cal.sonTip')} style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <Switch
+              size="sm"
+              checked={sonOn}
+              onCheckedChange={(v: boolean) => toggleSon(v)}
+              label={t('cal.son')}
+            />
+          </span>
           <SourceFilter sources={sources} selected={selectedSources} onToggle={onToggleSource} />
           <SegmentedControl
             className="cal-view-switch"
@@ -1196,41 +1290,43 @@ export default function CalendarGrid({
           background: 'var(--ark-color-bg)',
         }}
       >
-        {view === 'day' && (
-          <DayView
-            currentDate={currentDate}
-            eventMap={eventMap}
-            onDateClick={onDateClick}
-            onEventClick={onEventClick}
-          />
-        )}
-        {view === 'week' && (
-          <WeekView
-            currentDate={currentDate}
-            today={today}
-            eventMap={eventMap}
-            onDateClick={onDateClick}
-            onEventClick={onEventClick}
-          />
-        )}
-        {view === 'month' && (
-          <MonthView
-            currentDate={currentDate}
-            today={today}
-            eventMap={eventMap}
-            allEvents={events}
-            onDateClick={onDateClick}
-            onEventClick={onEventClick}
-          />
-        )}
-        {view === 'year' && (
-          <YearView
-            currentDate={currentDate}
-            today={today}
-            eventMap={eventMap}
-            onPickMonth={onPickMonth}
-          />
-        )}
+        <SonContext.Provider value={sonOn}>
+          {view === 'day' && (
+            <DayView
+              currentDate={currentDate}
+              eventMap={eventMap}
+              onDateClick={onDateClick}
+              onEventClick={onEventClick}
+            />
+          )}
+          {view === 'week' && (
+            <WeekView
+              currentDate={currentDate}
+              today={today}
+              eventMap={eventMap}
+              onDateClick={onDateClick}
+              onEventClick={onEventClick}
+            />
+          )}
+          {view === 'month' && (
+            <MonthView
+              currentDate={currentDate}
+              today={today}
+              eventMap={eventMap}
+              allEvents={events}
+              onDateClick={onDateClick}
+              onEventClick={onEventClick}
+            />
+          )}
+          {view === 'year' && (
+            <YearView
+              currentDate={currentDate}
+              today={today}
+              eventMap={eventMap}
+              onPickMonth={onPickMonth}
+            />
+          )}
+        </SonContext.Provider>
       </div>
     </div>
   );

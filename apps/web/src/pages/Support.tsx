@@ -18,6 +18,7 @@ import { AsIntakeModal } from '../components/support/AsIntakeModal';
 import { AsCategoryManager } from '../components/support/AsCategoryManager';
 import { PriorityLabel } from '../components/support/PriorityLabel';
 import {
+  Badge,
   Button,
   CopyText,
   DataTable,
@@ -73,6 +74,9 @@ const NEXT: Record<string, { to: string; labelKey: string }[]> = {
   IN_PROGRESS: [{ to: 'RESOLVED', labelKey: 'support.resolve' }],
   RESOLVED: [{ to: 'CLOSED', labelKey: 'support.close' }],
 };
+
+/** 목록 제목 최대 글자 수 */
+const SUBJECT_MAX = 16;
 
 export default function Support() {
   const { t } = useTranslation();
@@ -154,18 +158,41 @@ export default function Support() {
     {
       title: t('support.ticketNo'),
       dataIndex: 'ticketNo',
-      width: 150,
+      width: 175,
       render: (r) => <CopyText value={String(r.ticketNo)} />,
       exportValue: (r) => String(r.ticketNo),
     },
     {
       title: t('asx.colCategory'),
       dataIndex: 'category',
-      width: 110,
-      render: (r) => catName(r.category as string | null),
+      width: 120,
+      // 접수 유형은 칩으로
+      render: (r) =>
+        r.category ? (
+          <Badge variant="subtle" color="neutral">
+            {catName(r.category as string | null)}
+          </Badge>
+        ) : (
+          '-'
+        ),
       exportValue: (r) => catName(r.category as string | null),
     },
-    { title: t('support.subject'), dataIndex: 'subject', flex: 1, minWidth: 180 },
+    // 제목은 16자까지만 보이고 넘치면 …(전체는 마우스를 올리면)
+    {
+      title: t('support.subject'),
+      dataIndex: 'subject',
+      width: 230,
+      render: (r) => {
+        const v = String(r.subject ?? '');
+        const chars = [...v];
+        return (
+          <span title={chars.length > SUBJECT_MAX ? v : undefined}>
+            {chars.length > SUBJECT_MAX ? `${chars.slice(0, SUBJECT_MAX).join('')}…` : v}
+          </span>
+        );
+      },
+      exportValue: (r) => String(r.subject ?? ''),
+    },
     {
       title: t('support.customer'),
       dataIndex: 'customerName',
@@ -176,7 +203,7 @@ export default function Support() {
     {
       title: t('leads.col.phone'),
       dataIndex: 'customerPhone',
-      width: 140,
+      width: 155,
       render: (r) =>
         r.customerPhone ? <Phone value={String(r.customerPhone)} link={false} /> : '-',
     },
@@ -231,7 +258,7 @@ export default function Support() {
     {
       title: t('asx.colAt'),
       dataIndex: 'createdAt',
-      width: 150,
+      width: 175,
       render: (r) => fmtDateTime(r.createdAt as string),
       exportValue: (r) => fmtDateTime(r.createdAt as string),
     },

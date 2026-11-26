@@ -1,5 +1,7 @@
 import i18n from '../i18n';
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef, type ReactNode } from 'react';
+import { FileSignature, FileText } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
 import { fmtDateTime } from '../lib/dateFormat';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +24,6 @@ import {
   type Row,
   type StatusMap,
 } from '../components/ui';
-import { fs } from '../lib/fontScale';
 
 const won = (v: unknown) => (v != null ? Number(v).toLocaleString() : '-');
 
@@ -35,6 +36,7 @@ const STATUS: StatusMap = {
 interface PayRow extends Row {
   estimateId: string;
   estimateNo: string;
+  contractId: string | null;
   contractNo: string | null;
   customerName: string;
   totalAmount: number | null;
@@ -53,10 +55,49 @@ interface PayRow extends Row {
 
 const md = (iso: unknown) => fmtDateTime(iso);
 
+/** 표 안 문서 바로가기 — 아이콘 + 번호. 누르면 그 견적·계약 화면으로(행 클릭 상세는 열리지 않는다) */
+function DocLink({
+  icon,
+  label,
+  title,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: 0,
+        border: 0,
+        background: 'none',
+        color: 'var(--ark-color-info-600, #2563eb)',
+        cursor: 'pointer',
+        font: 'inherit',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {icon}
+      <span style={{ textDecoration: 'underline', textUnderlineOffset: 2 }}>{label}</span>
+    </button>
+  );
+}
+
 export default function PaymentConfirm() {
   const { t } = useTranslation();
   const toast = useToast();
   const navigate = useNavigate();
+  const { can } = useAuth();
+  // 입금처리는 입금 수정 권한이 있는 사람만(없으면 상태만 본다)
+  const canPay = can('PAYMENT.UPDATE');
   const [rows, setRows] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(false);
   const { updatedAt, touch } = useUpdatedAt();
@@ -108,6 +149,10 @@ export default function PaymentConfirm() {
   }, [load]);
 
   const confirm = async (r: Row, kind: 'deposit' | 'balance') => {
+    // 돈이 들어왔다고 확정하는 일이라 한 번 더 묻는다(계약금 입금 = 계약 성립)
+    const amount = won(kind === 'deposit' ? r.depositAmount : r.balanceAmount);
+    const q = kind === 'deposit' ? 'pay.markDepositQ' : 'pay.markBalanceQ';
+    if (!window.confirm(t(q, { v0: String(r.customerName), v1: amount }))) return;
     try {
       await api(`/payment-confirmations/${String(r.estimateId)}/${kind}`, { method: 'POST' });
       toast({ type: 'success', title: t('pay.confirmed') });
@@ -120,82 +165,110 @@ export default function PaymentConfirm() {
   const columns: Column[] = [
     {
       title: t('pay.customer'),
+      width: 100,
       render: (r) => <span style={{ fontWeight: 600 }}>{String(r.customerName)}</span>,
     },
+    // 견적·계약은 칸을 나눠 아이콘 + 번호로 — 누르면 그 화면으로 간다
     {
-      title: t('pay.estContract'),
+      title: t('pay.estimate'),
+      width: 160,
+      exportValue: (r) => String(r.estimateNo),
       render: (r) => (
-        <span>
-          {String(r.estimateNo)}
-          {r.contractNo ? ` · ${String(r.contractNo)}` : ''}
-        </span>
+        <DocLink
+          icon={<FileText size={14} aria-hidden />}
+          label={String(r.estimateNo)}
+          title={t('pay.openEstimate')}
+          onClick={() => navigate(`/estimates/${String(r.estimateId)}`)}
+        />
       ),
     },
     {
-      title: t('pay.estSign'),
+      title: t('pay.contract'),
+      width: 160,
+      exportValue: (r) => (r.contractNo ? String(r.contractNo) : null),
+      render: (r) =>
+        r.contractId && r.contractNo ? (
+          <DocLink
+            icon={<FileSignature size={14} aria-hidden />}
+            label={String(r.contractNo)}
+            title={t('pay.openContract')}
+            onClick={() => navigate(`/contracts/${String(r.contractId)}`)}
+          />
+        ) : (
+          '-'
+        ),
+    },
+    // 서명은 상태만(서명완료·서명대기) — 보낸 날짜는 상세에서 본다
+    {
+      title: t('pay.signature'),
+      width: 90,
       render: (r) =>
         r.sentAt || r.signed ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {Boolean(r.sentAt) && (
-              <span style={{ fontSize: fs(12), color: 'var(--ark-color-text-secondary)' }}>
-                {md(r.sentAt)} {t('pay.sent')}
-              </span>
-            )}
-            <Badge variant="subtle" color={r.signed ? 'success' : 'neutral'}>
-              {r.signed ? t('pay.signed') : t('pay.awaitingSign')}
-            </Badge>
-          </span>
+          <Badge variant="subtle" color={r.signed ? 'success' : 'neutral'}>
+            {r.signed ? t('pay.signed') : t('pay.awaitingSign')}
+          </Badge>
         ) : (
           '-'
         ),
     },
     {
       title: t('pay.account'),
+      width: 170,
+      render: (r) => (r.depositAccount ? String(r.depositAccount) : '-'),
+    },
+    { title: t('pay.total'), numeric: true, width: 110, render: (r) => won(r.totalAmount) },
+    { title: t('pay.deposit10'), numeric: true, width: 110, render: (r) => won(r.depositAmount) },
+    // 계약금·잔금 입금은 칸을 나눠 각각 처리 — 들어왔으면 입금일, 아니면 입금처리 버튼
+    {
+      title: t('pay.depositPay'),
+      width: 130,
+      exportValue: (r) =>
+        r.depositPaid ? (r.depositPaidAt ? md(r.depositPaidAt) : t('pay.done')) : t('pay.waiting'),
       render: (r) =>
-        r.depositAccount ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {String(r.depositAccount)}
-            {r.depositProvider === 'TOSS' && (
-              <Badge variant="subtle" color="info">
-                {t('pay.auto')}
-              </Badge>
-            )}
-          </span>
+        r.depositPaid ? (
+          <Badge variant="subtle" color="success">
+            {r.depositPaidAt ? t('pay.paidOn', { v0: md(r.depositPaidAt) }) : t('pay.done')}
+          </Badge>
+        ) : canPay ? (
+          <Button variant="outline" size="sm" onClick={() => void confirm(r, 'deposit')}>
+            {t('pay.markPaid')}
+          </Button>
         ) : (
-          '-'
+          <Badge variant="subtle" color="neutral">
+            {t('pay.waiting')}
+          </Badge>
         ),
     },
-    { title: t('pay.total'), numeric: true, render: (r) => won(r.totalAmount) },
+    { title: t('pay.balance'), numeric: true, width: 110, render: (r) => won(r.balanceAmount) },
     {
-      title: t('pay.deposit10'),
-      numeric: true,
-      render: (r) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {won(r.depositAmount)}
-          {Boolean(r.depositPaid) && (
-            <Badge variant="subtle" color="success">
-              {r.depositPaidAt ? t('pay.paidOn', { v0: md(r.depositPaidAt) }) : t('pay.done')}
-            </Badge>
-          )}
-        </span>
-      ),
-    },
-    {
-      title: t('pay.balance'),
-      numeric: true,
-      render: (r) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {won(r.balanceAmount)}
-          {Boolean(r.balancePaid) && (
-            <Badge variant="subtle" color="success">
-              {t('pay.done')}
-            </Badge>
-          )}
-        </span>
-      ),
+      title: t('pay.balancePay'),
+      width: 110,
+      exportValue: (r) => (r.balancePaid ? t('pay.done') : t('pay.waiting')),
+      render: (r) =>
+        r.balancePaid ? (
+          <Badge variant="subtle" color="success">
+            {t('pay.done')}
+          </Badge>
+        ) : canPay ? (
+          <span title={r.depositPaid ? undefined : t('pay.depositFirst')}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!r.depositPaid}
+              onClick={() => void confirm(r, 'balance')}
+            >
+              {t('pay.markPaid')}
+            </Button>
+          </span>
+        ) : (
+          <Badge variant="subtle" color="neutral">
+            {t('pay.waiting')}
+          </Badge>
+        ),
     },
     {
       title: t('pay.status'),
+      width: 140,
       render: (r) => <StatusBadge value={String(r.status)} map={STATUS} />,
     },
   ];
@@ -308,16 +381,7 @@ export default function PaymentConfirm() {
                   items: [
                     {
                       label: t('pay.account'),
-                      value: d.depositAccount ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          {d.depositAccount}
-                          {d.depositProvider === 'TOSS' && (
-                            <Badge variant="subtle" color="info">
-                              {t('pay.auto')}
-                            </Badge>
-                          )}
-                        </span>
-                      ) : null,
+                      value: d.depositAccount ?? null,
                     },
                     {
                       label: t('pay.total'),

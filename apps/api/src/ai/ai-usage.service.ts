@@ -36,7 +36,15 @@ const CATALOG_REFRESH_MS = 6 * 3600_000;
  * 누가 부른 AI 호출인지 — HTTP 요청이면 로그인한 사람, 예약·이벤트로 돈 에이전트면 실행 주인.
  * 에이전트 실행기가 aiCaller.run({ userId, refId })로 감싼다.
  */
-export const aiCaller = new AsyncLocalStorage<{ userId?: string | null; refId?: string }>();
+export const aiCaller = new AsyncLocalStorage<{
+  userId?: string | null;
+  refId?: string;
+  /** 요청 내용(사람이 물은 글 등) — 사용 기록에 함께 남긴다 */
+  request?: string | null;
+}>();
+
+/** 사용 기록에 남기는 요청 내용 최대 길이 */
+const REQUEST_MAX = 2000;
 
 interface ClaudeResult {
   model?: string;
@@ -62,10 +70,13 @@ export async function trackClaude<T extends ClaudeResult>(
   model: string,
   call: () => Promise<T>,
   refId?: string | null,
+  /** 요청 내용 — 안 주면 aiCaller에 담긴 것 */
+  request?: string | null,
 ): Promise<T> {
   const caller = aiCaller.getStore();
   const userId = caller?.userId ?? currentActorUserId() ?? null;
   const ref = refId ?? caller?.refId ?? null;
+  const req = request ?? caller?.request ?? null;
   if (instance && userId) await instance.assertCanUse(userId);
   const started = Date.now();
   try {
@@ -77,6 +88,7 @@ export async function trackClaude<T extends ClaudeResult>(
       usage: res.usage,
       durationMs: Date.now() - started,
       refId: ref,
+      request: req,
     });
     return res;
   } catch (e) {
@@ -87,6 +99,7 @@ export async function trackClaude<T extends ClaudeResult>(
       durationMs: Date.now() - started,
       error: e instanceof Error ? e.message : String(e),
       refId: ref,
+      request: req,
     });
     throw e;
   }
@@ -322,6 +335,7 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
     durationMs: number;
     error?: string;
     refId?: string | null;
+    request?: string | null;
   }) {
     const u = {
       inputTokens: e.usage?.input_tokens ?? 0,
@@ -344,6 +358,7 @@ export class AiUsageService implements OnModuleInit, OnModuleDestroy {
           ok: !e.error,
           error: e.error?.slice(0, 500) ?? null,
           refId: e.refId ?? null,
+          request: e.request?.trim().slice(0, REQUEST_MAX) || null,
         },
       })
       .catch((err) => this.logger.warn(`AI 사용 기록을 남기지 못했습니다: ${String(err)}`));

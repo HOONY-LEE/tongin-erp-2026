@@ -2,6 +2,7 @@ import i18n from '../i18n';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui';
+import { EmployeeChip } from '../components/ui/EmployeeChip';
 import CrudTable, { type Column, type FormField, type Row } from '../components/CrudTable';
 import { OrgChart } from '../components/OrgChart';
 import { OrgGoalsPanel } from '../components/performance/OrgGoalsPanel';
@@ -27,21 +28,29 @@ const columns: Column[] = [
   },
   {
     title: i18n.t('misc.org.head'),
-    minWidth: 130,
+    minWidth: 170,
+    // 직원 칩(사진·이름, 누르면 프로필 카드) + 직책 칩
     render: (r: Row) =>
       r.headName ? (
-        <span>
-          {String(r.headName)}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <EmployeeChip
+            emp={{
+              id: String(r.headId ?? ''),
+              name: String(r.headName),
+              position: r.headPosition ? { name: String(r.headPosition) } : null,
+            }}
+          />
           {r.headPosition ? (
-            <span style={{ color: 'var(--ark-color-text-secondary)' }}>
-              {' '}
+            <Badge variant="subtle" color="neutral">
               {String(r.headPosition)}
-            </span>
+            </Badge>
           ) : null}
         </span>
       ) : (
         '-'
       ),
+    exportValue: (r: Row) =>
+      r.headName ? [r.headName, r.headPosition].filter(Boolean).join(' ') : null,
   },
   {
     title: i18n.t('misc.org.members'),

@@ -47,14 +47,26 @@ const SPECS: Spec[] = [
     positions: ['회장', '대표이사', '대표'],
     layout: {
       groups: [
-        { label: '경영 현황', items: ['dashboard', 'ai', 'notices'] },
-        { label: '결재·업무', items: ['approvals', 'drive', 'tasks', 'duties', 'spaces'] },
-        { label: '영업 현황', items: ['leads', 'calendar', 'payments-confirm', 'support'] },
-        { label: '경영관리', items: ['settlements', 'billing', 'hr', 'performance', 'assets'] },
+        // 운영 DB는 마이그레이션 20261127100000_ceo_menu_layout이 같은 구성으로 바꾼다
         {
-          label: '조직·지점',
-          items: ['branches', 'branch-cases', 'org-mgmt', 'accounts'],
-          collapsed: true,
+          label: '홈',
+          items: [
+            'dashboard',
+            'notices',
+            'tasks',
+            'calendar',
+            'approvals',
+            'ai',
+            'payments-confirm',
+          ],
+        },
+        {
+          label: '관리',
+          items: ['org-mgmt', 'branches', 'branch-cases', 'accounts', 'hr', 'performance'],
+        },
+        {
+          label: '기타',
+          items: ['drive', 'agent-builder', 'settlements', 'duties', 'dashboard-admin'],
         },
       ],
     },
