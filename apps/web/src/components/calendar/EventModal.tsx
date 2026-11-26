@@ -2,10 +2,15 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Badge, Button, Input, Modal, Select } from '../ui';
 import {
-  COLORS,
+  EVENT_CATEGORIES,
+  KIND_COLOR,
   dateKey,
+  displayTitle,
   formatSelectedDate,
   formatTime,
+  kindLabel,
+  kindOf,
+  type CalKind,
   type CalendarItem,
 } from '../../lib/calendarUtils';
 import { fs } from '../../lib/fontScale';
@@ -19,6 +24,8 @@ export interface EventFormValues {
   startTime: string;
   endTime: string;
   color: string;
+  /** 종류 — MEETING·EDU·TRIP·ETC */
+  category: string;
   location: string;
   description: string;
   visibility: 'PRIVATE' | 'ORG';
@@ -58,7 +65,7 @@ export default function EventModal({
   const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [color, setColor] = useState(COLORS[0]);
+  const [category, setCategory] = useState<string>('MEETING');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'PRIVATE' | 'ORG'>('PRIVATE');
@@ -71,7 +78,7 @@ export default function EventModal({
     setEndDate(event && event.endDate !== event.date ? event.endDate : '');
     setStartTime(event?.startTime ?? '');
     setEndTime(event?.endTime ?? '');
-    setColor(event?.color ?? COLORS[0]);
+    setCategory(event ? kindOf(event) : 'MEETING');
     setLocation(event?.location ?? '');
     setDescription(event?.description ?? '');
     setVisibility(event?.visibility ?? 'PRIVATE');
@@ -87,7 +94,8 @@ export default function EventModal({
       endDate,
       startTime,
       endTime,
-      color,
+      color: KIND_COLOR[category as CalKind] ?? KIND_COLOR.ETC,
+      category,
       location,
       description,
       visibility,
@@ -104,21 +112,30 @@ export default function EventModal({
           if (!v) onClose();
         }}
         size="sm"
-        title={event.title}
+        title={displayTitle(event)}
         description={selectedDate ? formatSelectedDate(selectedDate) : undefined}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {event.source === 'WORK_ORDER' && (
-              <Badge variant="subtle" color="info">
-                {t('cal.src.WORK')}
-              </Badge>
-            )}
-            {event.source === 'LEAVE' && (
-              <Badge variant="subtle" color="primary">
-                {t('cal.src.LEAVE')}
-              </Badge>
-            )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: fs(12),
+                fontWeight: 600,
+              }}
+            >
+              <span
+                style={{
+                  width: 3,
+                  height: 14,
+                  borderRadius: 2,
+                  background: KIND_COLOR[kindOf(event)],
+                }}
+              />
+              {kindLabel(kindOf(event))}
+            </span>
             {event.orgUnitName && (
               <Badge variant="subtle" color="neutral">
                 {event.orgUnitName}
@@ -141,8 +158,12 @@ export default function EventModal({
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
             {event.refId && onOpenRef && (
-              <Button variant="outline" onClick={() => onOpenRef(event)}>
-                {event.source === 'LEAVE' ? t('cal.openApproval') : t('cal.openWork')}
+              <Button variant="primary" onClick={() => onOpenRef(event)}>
+                {event.source === 'LEAVE'
+                  ? t('cal.openApproval')
+                  : event.source === 'VISIT'
+                    ? t('cal.openVisit')
+                    : t('cal.openWork')}
               </Button>
             )}
             <Button variant="ghost" onClick={onClose}>
@@ -174,6 +195,13 @@ export default function EventModal({
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleSave();
           }}
+        />
+
+        <Select
+          label={t('cal.f.kind')}
+          value={category}
+          onValueChange={setCategory}
+          options={EVENT_CATEGORIES.map((c) => ({ value: c, label: kindLabel(c) }))}
         />
 
         <DatePicker
@@ -232,39 +260,6 @@ export default function EventModal({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-
-        <div>
-          <div
-            style={{
-              fontSize: fs(13),
-              fontWeight: 500,
-              marginBottom: 8,
-              color: 'var(--ark-color-text-secondary)',
-            }}
-          >
-            {t('cal.f.color')}
-          </div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                aria-label={c}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  background: c,
-                  border: 'none',
-                  cursor: 'pointer',
-                  outline: color === c ? '2px solid var(--ark-color-text)' : 'none',
-                  outlineOffset: 2,
-                }}
-              />
-            ))}
-          </div>
-        </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
           {event && (

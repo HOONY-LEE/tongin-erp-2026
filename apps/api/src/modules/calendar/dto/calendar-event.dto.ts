@@ -50,6 +50,11 @@ export class CreateCalendarEventDto {
   @MaxLength(300)
   location?: string;
 
+  /** 종류 — MEETING(미팅) · EDU(교육) · TRIP(출장) · ETC(기타) */
+  @IsOptional()
+  @IsIn(['MEETING', 'EDU', 'TRIP', 'ETC'])
+  category?: 'MEETING' | 'EDU' | 'TRIP' | 'ETC';
+
   /** PRIVATE=본인만, ORG=소속 조직 공유 */
   @IsOptional()
   @IsIn(['PRIVATE', 'ORG'])
