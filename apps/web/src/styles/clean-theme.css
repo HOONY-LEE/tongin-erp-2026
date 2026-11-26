@@ -120,6 +120,20 @@ h1 {
   line-height: 1;
   white-space: nowrap;
 }
+.sft-chip--solid {
+  background: var(--chip) !important;
+  border-color: var(--chip);
+  color: #fff !important;
+}
+/* 검정 계열 칩 — 어두운 화면에서는 같은 진하기를 밝은 쪽으로 */
+:root[data-theme='dark'] .sft-chip--mono {
+  color: color-mix(in srgb, var(--chip) 30%, #fff) !important;
+  border-color: color-mix(in srgb, #fff 22%, transparent);
+}
+:root[data-theme='dark'] .sft-chip--mono.sft-chip--solid {
+  background: #f5f5f7 !important;
+  color: #1d1d1f !important;
+}
 .sft-chip__dot {
   display: none;
 }

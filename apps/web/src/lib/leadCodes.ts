@@ -14,18 +14,21 @@ export const LEAD_STATUS: StatusMap = {
   CANCELED: { label: i18n.t('leads.st.CANCELED'), color: 'error' },
 };
 
-/** 접수 상태 칩 색 — 연한 바탕 + 같은 색 글자. 상태마다 확실히 다른 색 */
+/** 접수 상태 칩 색 — 검정 계열. 진행될수록 진하게, 작업완료는 꽉 찬 검정, 반려·취소는 옅은 회색 */
 export const LEAD_STATUS_COLOR: Record<string, string> = {
-  RECEIVED: APPLE.gray, // 접수
-  REJECTED: APPLE.red, // 반려(상태는 RECEIVED + rejectedAt)
-  CONSULT_TOSS: APPLE.cyan, // 상담토스 — 하늘색
-  QUOTED: APPLE.orange, // 계약미승인(견적서 발송)
-  CONTRACT_PENDING: APPLE.orange, // 계약미승인
-  CONTRACTED: APPLE.green, // 계약
-  WORK_TOSS: APPLE.blue, // 작업토스 — 파랑
-  DONE: APPLE.purple, // 작업완료
-  CANCELED: '#1D1D1F', // 취소 — 검정
+  RECEIVED: '#8E8E93', // 접수
+  REJECTED: '#AEAEB2', // 반려(상태는 RECEIVED + rejectedAt)
+  CONSULT_TOSS: '#6E6E73', // 상담토스
+  QUOTED: '#545458', // 계약미승인(견적서 발송)
+  CONTRACT_PENDING: '#545458', // 계약미승인
+  CONTRACTED: '#3A3A3C', // 계약
+  WORK_TOSS: '#1D1D1F', // 작업토스
+  DONE: '#1D1D1F', // 작업완료 — 꽉 찬 검정(LEAD_STATUS_SOLID)
+  CANCELED: '#AEAEB2', // 취소
 };
+
+/** 꽉 찬(검정 바탕 흰 글자) 칩으로 보일 상태 */
+export const LEAD_STATUS_SOLID = new Set(['DONE']);
 
 export const SERVICE_LINES = [
   { value: 'MOVING', label: i18n.t('leads.line.MOVING') },
