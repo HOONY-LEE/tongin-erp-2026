@@ -1577,3 +1577,43 @@
   font-size: calc(13px * var(--font-scale, 1));
   white-space: nowrap;
 }
+
+/* 목록 카드 — 오른쪽 위 점 3개 메뉴(호버·포커스·열림일 때 보인다) */
+.agentCardWrap {
+  position: relative;
+  min-width: 0;
+}
+.agentCardWrap > .agentCard {
+  width: 100%;
+}
+.agentCardMenu {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.agentCardWrap:hover .agentCardMenu,
+.agentCardMenu:focus-within,
+.agentCardMenu:has([aria-expanded='true']) {
+  opacity: 1;
+}
+.agentCardMenuBtn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ark-color-border);
+  border-radius: 8px;
+  background: var(--ark-color-bg);
+  color: var(--ark-color-text-secondary);
+  cursor: pointer;
+}
+.agentCardMenuBtn:hover {
+  color: var(--ark-color-text);
+  background: var(--ark-color-bg-muted);
+}
+/* 점 버튼 자리만큼 상태 배지를 비켜 준다(호버 때) */
+.agentCardWrap:hover .agentCardHead {
+  padding-right: 34px;
+}

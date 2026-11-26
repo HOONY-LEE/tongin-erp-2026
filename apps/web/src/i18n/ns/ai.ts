@@ -196,6 +196,7 @@ export default defineNs({
     uploadRefTip: '참고 양식 올리기(엑셀·CSV)',
     uploadRef: '참고 양식 올리기',
     createFooter: '만든 에이전트는 사용 전에 편집 화면에서 단계를 확인할 수 있습니다.',
+    cardMenu: { more: '더보기', activate: '활성화', deactivate: '비활성화' },
     st: {
       DRAFT: '초안',
       ACTIVE: '사용중',
@@ -499,6 +500,7 @@ export default defineNs({
     uploadRefTip: 'Upload reference template (Excel · CSV)',
     uploadRef: 'Upload reference template',
     createFooter: 'You can review the steps in the editor before using the agent.',
+    cardMenu: { more: 'More', activate: 'Activate', deactivate: 'Deactivate' },
     st: {
       DRAFT: 'Draft',
       ACTIVE: 'Active',
@@ -795,6 +797,7 @@ export default defineNs({
     uploadRefTip: '上传参考模板（Excel·CSV）',
     uploadRef: '上传参考模板',
     createFooter: '创建的智能体在使用前可在编辑页面确认步骤。',
+    cardMenu: { more: '更多', activate: '启用', deactivate: '停用' },
     st: {
       DRAFT: '草稿',
       ACTIVE: '使用中',
