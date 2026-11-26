@@ -37,6 +37,9 @@ import { SegmentedControl, Switch } from '../components/ui';
 import {
   AGENT_NODE_DESC,
   AGENT_NODE_TYPES,
+  AGENT_VERTICAL_FROM,
+  agentFlowDirection,
+  agentLayerCount,
   autoLayout,
   defaultConfig,
   newAgentId,
@@ -225,7 +228,10 @@ function Editor() {
         ]);
         if (!alive) return;
         const { graph: g, chat, ...m } = bp;
-        const ng = normalizeAgentGraph(g);
+        let ng = normalizeAgentGraph(g);
+        // 단계가 많은데 가로로 놓여 있으면(예전·시드 에이전트) 위→아래로 다시 놓는다
+        if (agentLayerCount(ng) >= AGENT_VERTICAL_FROM && agentFlowDirection(ng) === 'LR')
+          ng = autoLayout(ng, new Set(), 'TB');
         // 대화 기록이 없으면(예전·시드 에이전트) 만든 요청을 첫 말로 — 무엇을 하려고 만든 에이전트인지 보이게
         const prev = Array.isArray(chat) ? chat : [];
         setTurns(
@@ -263,7 +269,7 @@ function Editor() {
   // (예전엔 직접 잰 크기를 기다렸는데 조건이 맞지 않으면 끝내 맞추지 않아 빈 곳을 비췄다)
   const nodesReady = useNodesInitialized();
   const fitted = useRef<string | null>(null);
-  /** 전체가 보이게 맞추되, 너무 작아져 글자를 못 읽으면(65% 미만) 그 크기로 두고 시작(왼쪽 끝)부터 보여 준다 */
+  /** 전체가 보이게 맞추되, 너무 작아져 글자를 못 읽으면(65% 미만) 그 크기로 두고 시작(왼쪽·위 끝)부터 보여 준다 */
   const fitNow = useCallback(() => {
     void rf.fitView({ padding: 0.15, maxZoom: 1, duration: 0 }).then(() => {
       const MIN = 0.65;
@@ -271,11 +277,12 @@ function Editor() {
       const el = wrapRef.current;
       const b = rf.getNodesBounds(rf.getNodes());
       if (!el || !b.width) return;
-      void rf.setViewport({
-        x: 48 - b.x * MIN,
-        y: el.clientHeight / 2 - (b.y + b.height / 2) * MIN,
-        zoom: MIN,
-      });
+      const down = b.height > b.width;
+      void rf.setViewport(
+        down
+          ? { x: el.clientWidth / 2 - (b.x + b.width / 2) * MIN, y: 40 - b.y * MIN, zoom: MIN }
+          : { x: 48 - b.x * MIN, y: el.clientHeight / 2 - (b.y + b.height / 2) * MIN, zoom: MIN },
+      );
     });
   }, [rf]);
   useEffect(() => {
@@ -400,8 +407,11 @@ function Editor() {
         // 누르기로 추가하면 고른 노드 오른쪽(없으면 화면 가운데)에 두고, 겹치면 아래로 비킨다
         const anchor = graph.nodes.find((x) => x.id === selectedId);
         const b = wrapRef.current?.getBoundingClientRect();
+        const down = agentFlowDirection(graph) === 'TB';
         pos = anchor
-          ? { x: anchor.position.x + 300, y: anchor.position.y }
+          ? down
+            ? { x: anchor.position.x, y: anchor.position.y + 230 }
+            : { x: anchor.position.x + 300, y: anchor.position.y }
           : rf.screenToFlowPosition({
               x: (b?.left ?? 0) + (b?.width ?? 800) / 2 - 110,
               y: (b?.top ?? 0) + (b?.height ?? 600) / 2 - 40,
@@ -410,7 +420,7 @@ function Editor() {
           graph.nodes.some(
             (x) => Math.abs(x.position.x - p.x) < 230 && Math.abs(x.position.y - p.y) < 150,
           );
-        while (taken(pos)) pos = { x: pos.x, y: pos.y + 170 };
+        while (taken(pos)) pos = down ? { x: pos.x + 290, y: pos.y } : { x: pos.x, y: pos.y + 170 };
       }
       const n: AgentNode = {
         id: newAgentId(type),
@@ -453,6 +463,7 @@ function Editor() {
   }, [run]);
 
   // ── React Flow 노드·선 ──
+  const vertical = useMemo(() => agentFlowDirection(graph) === 'TB', [graph]);
   const rfNodes: AgentFlowNode[] = useMemo(
     () =>
       graph.nodes.map((n) => {
@@ -470,10 +481,11 @@ function Editor() {
             warnings: iss.filter((i) => i.level === 'warning').length,
             run: runMarks.get(n.id),
             dim: !!run && !runMarks.has(n.id),
+            vertical,
           },
         };
       }),
-    [graph.nodes, issuesByNode, selectedId, toolMap, runMarks, run, measured],
+    [graph.nodes, issuesByNode, selectedId, toolMap, runMarks, run, measured, vertical],
   );
 
   const rfEdges: Edge[] = useMemo(() => {

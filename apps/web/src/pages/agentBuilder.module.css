@@ -542,6 +542,21 @@
   gap: 2px;
   margin-top: 4px;
 }
+/* 위→아래 흐름 — 갈래를 카드 아래쪽에 가로로 */
+.portsV {
+  flex-direction: row;
+  justify-content: space-around;
+  gap: 6px;
+}
+.portsV .portRow {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  padding-right: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .portRow {
   position: relative;
   text-align: right;
