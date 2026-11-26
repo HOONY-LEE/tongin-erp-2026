@@ -1245,11 +1245,14 @@ export function newAgentId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-3)}`;
 }
 
-/**
- * 자동 배치 — 시작에서 실행선 기준 가장 긴 거리로 열(왼→오)을 정하고, 열 안에서 위→아래로 둔다.
- * keep에 든 노드는 원래 자리를 지킨다(자연어 수정 때 사람이 옮겨 둔 자리 보존).
- */
-export function autoLayout(graph: AgentGraph, keep: Set<string> = new Set()): AgentGraph {
+/** 흐름 방향 — LR(왼→오) · TB(위→아래) */
+export type AgentFlowDirection = 'LR' | 'TB';
+
+/** 열(단계)이 이보다 많으면 위→아래로 놓는다 — 가로로는 화면에 다 안 들어온다 */
+export const AGENT_VERTICAL_FROM = 5;
+
+/** 시작에서 실행선 기준 가장 긴 거리(단계) — 순환 등으로 못 정한 노드는 맨 뒤 */
+function agentLayers(graph: AgentGraph): Map<string, number> {
   const out = new Map<string, string[]>();
   const indeg = new Map<string, number>(graph.nodes.map((n) => [n.id, 0]));
   for (const e of graph.edges) {
@@ -1270,20 +1273,88 @@ export function autoLayout(graph: AgentGraph, keep: Set<string> = new Set()): Ag
       if (remaining.get(nx) === 0) queue.push(nx);
     }
   }
-  // 순환 등으로 못 정한 노드는 맨 뒤 열
   const maxLayer = Math.max(0, ...layer.values());
   for (const n of graph.nodes) if (!layer.has(n.id)) layer.set(n.id, maxLayer + 1);
+  return layer;
+}
 
+/** 단계 수 */
+export function agentLayerCount(graph: AgentGraph): number {
+  if (!graph.nodes.length) return 0;
+  return Math.max(...agentLayers(graph).values()) + 1;
+}
+
+/** 지금 놓인 자리로 본 흐름 방향 — 실행선이 대체로 아래로 가면 TB */
+export function agentFlowDirection(graph: AgentGraph): AgentFlowDirection {
+  const pos = new Map(graph.nodes.map((n) => [n.id, n.position]));
+  let dx = 0;
+  let dy = 0;
+  for (const e of graph.edges) {
+    const a = pos.get(e.source);
+    const b = pos.get(e.target);
+    if (!a || !b) continue;
+    dx += Math.abs(b.x - a.x);
+    dy += Math.abs(b.y - a.y);
+  }
+  return dy > dx ? 'TB' : 'LR';
+}
+
+/**
+ * 자동 배치 — 시작에서 실행선 기준 가장 긴 거리로 단계를 정하고, 단계마다 한 줄로 둔다.
+ * 단계가 적으면 왼→오(열), 많으면(AGENT_VERTICAL_FROM 이상) 위→아래(행).
+ * 같은 단계 안에서는 앞 단계의 부모 순서(포트 순서)대로 놓아 선이 덜 꼬이게 한다.
+ * keep에 든 노드는 원래 자리를 지킨다(자연어 수정 때 사람이 옮겨 둔 자리 보존).
+ */
+export function autoLayout(
+  graph: AgentGraph,
+  keep: Set<string> = new Set(),
+  dir?: AgentFlowDirection,
+): AgentGraph {
+  const layer = agentLayers(graph);
+  const direction: AgentFlowDirection =
+    dir ?? (Math.max(0, ...layer.values()) + 1 >= AGENT_VERTICAL_FROM ? 'TB' : 'LR');
+
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  const portIdx = (e: AgentEdge) => {
+    const src = byId.get(e.source);
+    const i = src ? outputPorts(src).findIndex((p) => p.id === e.sourceHandle) : -1;
+    return i < 0 ? 0 : i;
+  };
   const cols = new Map<number, string[]>();
   for (const n of graph.nodes) {
     const l = layer.get(n.id)!;
     if (!cols.has(l)) cols.set(l, []);
     cols.get(l)!.push(n.id);
   }
+  // 앞 단계 순서 → 부모 평균 순서로 정렬
+  const order = new Map<string, number>();
+  for (const l of [...cols.keys()].sort((x, y) => x - y)) {
+    const ids = cols.get(l)!;
+    const key = new Map<string, number>();
+    ids.forEach((id, i) => {
+      const parents = graph.edges.filter(
+        (e) => e.target === id && order.has(e.source) && (layer.get(e.source) ?? 0) < l,
+      );
+      key.set(
+        id,
+        parents.length
+          ? parents.reduce((s, e) => s + order.get(e.source)! * 10 + portIdx(e), 0) / parents.length
+          : 1e6 + i,
+      );
+    });
+    ids.sort((x, y) => key.get(x)! - key.get(y)!);
+    ids.forEach((id, i) => order.set(id, i));
+  }
+
   const pos = new Map<string, { x: number; y: number }>();
   for (const [l, ids] of cols) {
-    const h = (ids.length - 1) * 190;
-    ids.forEach((id, i) => pos.set(id, { x: l * 300, y: i * 190 - h / 2 }));
+    if (direction === 'TB') {
+      const w = (ids.length - 1) * 290;
+      ids.forEach((id, i) => pos.set(id, { x: i * 290 - w / 2, y: l * 230 }));
+    } else {
+      const h = (ids.length - 1) * 190;
+      ids.forEach((id, i) => pos.set(id, { x: l * 300, y: i * 190 - h / 2 }));
+    }
   }
   return {
     ...graph,

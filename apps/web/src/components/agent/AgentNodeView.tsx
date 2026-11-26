@@ -16,6 +16,8 @@ export interface AgentNodeData extends Record<string, unknown> {
   run?: RunMark;
   /** 실행 기록이 있는데 이 노드는 안 지나갔다 */
   dim?: boolean;
+  /** 위→아래 흐름 — 들어오는 점은 위, 나가는 점은 아래 */
+  vertical?: boolean;
 }
 
 export type AgentFlowNode = Node<AgentNodeData, 'agent'>;
@@ -35,7 +37,8 @@ function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
   const { node, summary } = data;
   const Icon = NODE_ICON[node.type];
   const ports = outputPorts(node);
-  const portKey = ports.map((p) => p.id).join('|');
+  const v = !!data.vertical;
+  const portKey = ports.map((p) => p.id).join('|') + (v ? ':v' : '');
   const update = useUpdateNodeInternals();
   // 분기 갈래를 더하거나 빼면 포트 위치를 다시 잰다
   useEffect(() => {
@@ -61,27 +64,27 @@ function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
       {hasInputPort(node.type) && (
         <Handle
           type="target"
-          position={Position.Left}
+          position={v ? Position.Top : Position.Left}
           id="in"
           className={`${styles.execHandle} ${styles.execHandleIn}`}
-          style={{ top: 17 }}
+          style={v ? undefined : { top: 17 }}
         />
       )}
       {/* 데이터선(점선) 끝점 — 사람이 잇지는 않고 {{변수}} 참조로 그려진다 */}
       <Handle
         type="target"
-        position={Position.Left}
+        position={v ? Position.Top : Position.Left}
         id="data-in"
         className={styles.dataHandle}
-        style={{ top: 'auto', bottom: 10 }}
+        style={v ? { left: 'auto', right: 14 } : { top: 'auto', bottom: 10 }}
         isConnectable={false}
       />
       <Handle
         type="source"
-        position={Position.Right}
+        position={v ? Position.Bottom : Position.Right}
         id="data-out"
         className={styles.dataHandle}
-        style={{ top: 'auto', bottom: 10 }}
+        style={v ? { left: 'auto', right: 14 } : { top: 'auto', bottom: 10 }}
         isConnectable={false}
       />
       <div className={styles.nodeHead}>
@@ -109,16 +112,16 @@ function AgentNodeView({ id, data, selected }: NodeProps<AgentFlowNode>) {
         ))}
         {summary.outVar && <span className={styles.varPill}>→ {summary.outVar}</span>}
         {ports.length > 0 && (
-          <div className={styles.ports}>
+          <div className={`${styles.ports} ${v ? styles.portsV : ''}`}>
             {ports.map((p) => (
               <div key={p.id} className={styles.portRow}>
                 {ports.length > 1 || p.id !== 'out' ? p.label : ''}
                 <Handle
                   type="source"
-                  position={Position.Right}
+                  position={v ? Position.Bottom : Position.Right}
                   id={p.id}
                   className={styles.execHandle}
-                  style={{ right: -16 }}
+                  style={v ? { bottom: -10 } : { right: -16 }}
                 />
               </div>
             ))}
