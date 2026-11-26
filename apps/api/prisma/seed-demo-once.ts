@@ -40,6 +40,7 @@ const ADDONS = [
   'seed-demo-recent-weeks.ts',
   'seed-demo-agents-more.ts',
   'seed-demo-agents-fix.ts',
+  'seed-demo-regions.ts',
 ];
 
 /** 서버 부팅 시더가 역할(가맹점 등)을 만들 때까지 기다린다 — 시드가 역할에 계정을 붙인다 */

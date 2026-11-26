@@ -29,6 +29,8 @@
     "demo:clear:history-more": "tsx prisma/clear-demo-history-more.ts",
     "demo:seed:recent-weeks": "tsx prisma/seed-demo-recent-weeks.ts",
     "demo:clear:recent-weeks": "tsx prisma/clear-demo-recent-weeks.ts",
+    "demo:seed:regions": "tsx prisma/seed-demo-regions.ts",
+    "demo:clear:regions": "tsx prisma/clear-demo-regions.ts",
     "demo:seed:once": "tsx prisma/seed-demo-once.ts",
     "demo:seed:all": "pnpm demo:seed && pnpm demo:seed:catalog && pnpm demo:seed:leads && pnpm demo:seed:services && pnpm demo:seed:agents && pnpm demo:seed:hr && pnpm demo:seed:dashboards && pnpm demo:seed:work && pnpm demo:seed:menus && pnpm demo:seed:dashboard-inbox"
   },
