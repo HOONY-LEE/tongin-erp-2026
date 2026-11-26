@@ -620,3 +620,59 @@
   font-size: calc(13px * var(--font-scale, 1));
   line-height: 1.5;
 }
+
+/* 승인 카드 — 동작 미리보기(무엇을 어떻게) */
+.actionView {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.actionHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.actionVerb {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+}
+.actionPrimary {
+  background: color-mix(in srgb, var(--ark-color-info-500) 14%, transparent);
+  color: var(--ark-color-info-600, var(--ark-color-info-500));
+}
+.actionDanger {
+  background: color-mix(in srgb, var(--ark-color-error-500, #e5484d) 14%, transparent);
+  color: var(--ark-color-error-600, var(--ark-color-error-500, #e5484d));
+}
+.actionTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.actionFields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.actionFields > div {
+  display: contents;
+}
+.actionFields dt {
+  color: var(--ark-color-text-secondary);
+}
+.actionFields dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.actionNote {
+  color: var(--ark-color-warning-600, #b45309);
+  font-size: calc(13px * var(--font-scale, 1));
+}

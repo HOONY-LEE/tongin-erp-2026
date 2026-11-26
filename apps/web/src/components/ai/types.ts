@@ -119,10 +119,15 @@ export function toolLabel(name: string, tools: Map<string, AiToolInfo>) {
     search_customers: i18n.t('ai.tool.findCustomer'),
     send_sms: i18n.t('ai.tool.sms'),
     create_report_file: i18n.t('ai.tool.report'),
+    search_knowledge: i18n.t('ai.tool.knowledge'),
+    read_knowledge: i18n.t('ai.tool.readKnowledge'),
+    create_file_from_template: i18n.t('ai.tool.template'),
+    find_suspicious_branches: i18n.t('ai.tool.suspicious'),
   };
   if (BUILTIN[name]) return BUILTIN[name];
   const d = tools.get(name)?.description;
   if (!d) return name;
   const m = /^\[([^\]]+)\]\s*([^.]+)/.exec(d);
-  return m ? `${m[1]} · ${m[2]}` : name;
+  // 동작 설명은 ' — ' 앞의 짧은 이름만(뒤는 AI용 자세한 설명)
+  return m ? `${m[1]} · ${m[2].split(' — ')[0].trim()}` : name;
 }

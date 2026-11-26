@@ -14,6 +14,7 @@ import {
   Loader2,
   PenLine,
   Plus,
+  RotateCcw,
   Search,
   Terminal,
   XCircle,
@@ -41,6 +42,7 @@ const STATUS_VIEW: Record<string, { label: string; icon: typeof Clock; cls: stri
   DONE: { label: i18n.t('ai.done'), icon: CheckCircle2, cls: styles.stDone },
   ERROR: { label: i18n.t('ai.failed'), icon: XCircle, cls: styles.stError },
   REJECTED: { label: i18n.t('ai.rejected'), icon: CircleSlash, cls: styles.stRejected },
+  RETRIED: { label: i18n.t('ai.retried'), icon: RotateCcw, cls: styles.stRejected },
 };
 
 const pretty = (v: unknown) => {
@@ -55,10 +57,22 @@ const pretty = (v: unknown) => {
 };
 
 /** AI가 실행한 도구 한 줄 — 눌러서 입력·결과를 펼쳐 본다 */
-export function ToolRow({ item, tools }: { item: ToolItem; tools: Map<string, AiToolInfo> }) {
+export function ToolRow({
+  item,
+  tools,
+  retried,
+}: {
+  item: ToolItem;
+  tools: Map<string, AiToolInfo>;
+  /** 실패했지만 AI가 고쳐서 다시 불러 성공함 */
+  retried?: boolean;
+}) {
   const { t } = useTranslation();
   const write = tools.get(item.name)?.mode === 'WRITE' || item.name === 'send_sms';
-  const st = STATUS_VIEW[item.status] ?? STATUS_VIEW.DONE;
+  const st =
+    retried && item.status === 'ERROR'
+      ? STATUS_VIEW.RETRIED
+      : (STATUS_VIEW[item.status] ?? STATUS_VIEW.DONE);
   const Icon = write ? PenLine : Search;
   const StIcon = st.icon;
   return (
@@ -199,6 +213,48 @@ export function FileCard({
       >
         {t('ai.download')}
       </Button>
+    </div>
+  );
+}
+
+/** 쓰기 동작 미리보기(서버 api-catalog의 ActionPreview) */
+interface ActionPreview {
+  kind: 'action';
+  verb: string;
+  tone: 'primary' | 'danger' | 'neutral';
+  title: string;
+  fields: { label: string; value: string }[];
+  note?: string;
+}
+const isAction = (p: unknown): p is ActionPreview =>
+  !!p && typeof p === 'object' && (p as ActionPreview).kind === 'action';
+
+/** 동작 미리보기 — 무엇을(제목) 어떻게(승인·반려 등) 하는지와 주요 항목 */
+function ActionView({ p }: { p: ActionPreview }) {
+  return (
+    <div className={styles.actionView}>
+      <div className={styles.actionHead}>
+        <span
+          className={[
+            styles.actionVerb,
+            p.tone === 'danger' ? styles.actionDanger : styles.actionPrimary,
+          ].join(' ')}
+        >
+          {p.verb}
+        </span>
+        <b className={styles.actionTitle}>{p.title}</b>
+      </div>
+      {p.fields.length > 0 && (
+        <dl className={styles.actionFields}>
+          {p.fields.map((f, i) => (
+            <div key={i}>
+              <dt>{f.label}</dt>
+              <dd>{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {p.note && <div className={styles.actionNote}>{p.note}</div>}
     </div>
   );
 }
@@ -374,7 +430,7 @@ export function ApprovalCard({
                 />
               )}
               <span className={styles.approvalName}>{toolLabel(w.name, tools)}</span>
-              <span className={styles.sub}>{w.summary}</span>
+              {!isAction(preview) && <span className={styles.sub}>{w.summary}</span>}
             </div>
 
             {previewError(preview) ? (
@@ -405,6 +461,8 @@ export function ApprovalCard({
                   </div>
                 )}
               </div>
+            ) : isAction(preview) ? (
+              <ActionView p={preview} />
             ) : (
               <pre className={styles.pre}>{pretty(w.input)}</pre>
             )}

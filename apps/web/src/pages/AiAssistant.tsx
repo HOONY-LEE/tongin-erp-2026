@@ -808,15 +808,27 @@ export default function AiAssistant() {
                     </div>
                   ) : it.kind === 'search' ? (
                     <div key={i} className={styles.searchRow}>
+                      {/* 찾는 말은 AI 내부 검색식(approval|결재 …)이라 보여 주지 않는다 */}
                       <Search size={12} aria-hidden /> {t('ai.findingTool')}
-                      {it.query}”
                     </div>
                   ) : it.kind === 'code' ? (
                     <CodeRow key={i} item={it} />
                   ) : it.kind === 'file' ? (
                     <FileCard key={it.id} item={it} />
                   ) : (
-                    <ToolRow key={i} item={it} tools={tools} />
+                    <ToolRow
+                      key={i}
+                      item={it}
+                      tools={tools}
+                      retried={
+                        it.status === 'ERROR' &&
+                        items
+                          .slice(i + 1)
+                          .some(
+                            (x) => x.kind === 'tool' && x.name === it.name && x.status === 'DONE',
+                          )
+                      }
+                    />
                   ),
                 )}
 
