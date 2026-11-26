@@ -243,6 +243,12 @@ export class AgentRunnerService {
       dryRun: opts.dryRun,
       mockLlm: opts.mockLlm,
     };
+    // 업무 이벤트로 시작하는 에이전트를 직접(수동·AI 비서) 실행하면 이벤트가 없다 — 가장 최근 건으로 채운다
+    const tcfg = trigger.config as TriggerConfig;
+    if (tcfg.kind === 'event' && tcfg.event && !(opts.input as { event?: unknown }).event) {
+      const sample = await this.latestEvent(tcfg.event);
+      if (sample) opts = { ...opts, input: { ...opts.input, event: sample } };
+    }
     state.vars.input = opts.input;
     const run = await this.prisma.agentRun.create({
       data: {
@@ -255,6 +261,55 @@ export class AgentRunnerService {
     });
     const runCtx: ToolContext = { ...ctx, agentRunId: run.id, blueprintId };
     return this.exclusive(run.id, () => this.drive(run.id, state, [], runCtx));
+  }
+
+  /**
+   * 이 종류 이벤트의 가장 최근 건 — 그 업무의 지금 있는 가장 최근 행(이벤트 기록이 있으면 값까지).
+   * 수동 실행에서 '방금 이런 일이 생겼다'고 치고 돌려 보게 한다
+   */
+  private async latestEvent(type: string): Promise<Record<string, unknown> | null> {
+    const prefix = type.split('.')[0];
+    const pick = async (): Promise<{ id: string } | null> => {
+      const q = { orderBy: { createdAt: 'desc' as const }, select: { id: true } };
+      switch (prefix) {
+        case 'lead':
+          return this.prisma.lead.findFirst(q);
+        case 'customer':
+          return this.prisma.customer.findFirst(q);
+        case 'estimate':
+          return this.prisma.estimate.findFirst(q);
+        case 'contract':
+          return this.prisma.contract.findFirst(q);
+        case 'payment':
+          return this.prisma.payment.findFirst(q);
+        case 'work_order':
+          return this.prisma.workOrder.findFirst(q);
+        case 'service_order':
+          return this.prisma.serviceOrder.findFirst(q);
+        case 'support':
+          return this.prisma.supportTicket.findFirst(q);
+        case 'invoice':
+          return this.prisma.invoice.findFirst(q);
+        case 'material_order':
+          return this.prisma.materialOrder.findFirst(q);
+        default:
+          return null;
+      }
+    };
+    // 지금 있는 가장 최근 행 — 그 행의 이벤트 기록이 있으면 값(종류 등)까지 붙인다
+    const row = await pick().catch(() => null);
+    if (!row) return null;
+    const ev = await this.prisma.domainEvent.findFirst({
+      where: { eventType: type, aggregateId: row.id },
+      orderBy: { occurredAt: 'desc' },
+    });
+    return {
+      type,
+      id: row.id,
+      aggregateType: prefix,
+      ...((ev?.payload as object | null) ?? {}),
+      _sample: true,
+    };
   }
 
   /** 승인 대기 중인 실행을 승인·거절하고 이어 간다 */

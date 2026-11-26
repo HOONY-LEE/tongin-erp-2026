@@ -641,6 +641,17 @@ export function nodeRefs(node: AgentNode): string[] {
 }
 
 /** 경로 읽기: a.b[0].c, rows[*].id(목록에서 뽑기), list.length */
+/**
+ * 목록(배열) 결과에 흔히 쓰는 이름 — 도구마다 결과가 배열이기도 {rows,total}이기도 해서
+ * 설계(AI)가 x.rows·x.total로 써도 같은 뜻이 되게 맞춘다
+ */
+function arrayAlias(cur: unknown[], t: string): { hit: boolean; value?: unknown } {
+  if (t === 'rows' || t === 'items' || t === 'data' || t === 'list')
+    return { hit: true, value: cur };
+  if (t === 'total' || t === 'count' || t === 'length') return { hit: true, value: cur.length };
+  return { hit: false };
+}
+
 export function readPath(root: Record<string, unknown>, path: string): unknown {
   const tokens = tokenizePath(path);
   let cur: unknown = root;
@@ -652,9 +663,16 @@ export function readPath(root: Record<string, unknown>, path: string): unknown {
       const rest = tokens.slice(i + 1);
       return cur.map((x) => readTokens(x, rest));
     }
-    if (t === 'length' && (Array.isArray(cur) || typeof cur === 'string')) {
+    if (t === 'length' && typeof cur === 'string') {
       cur = cur.length;
       continue;
+    }
+    if (Array.isArray(cur) && !/^\d+$/.test(t)) {
+      const a = arrayAlias(cur, t);
+      if (a.hit) {
+        cur = a.value;
+        continue;
+      }
     }
     cur = (cur as Record<string, unknown>)[t];
   }
@@ -665,7 +683,9 @@ function readTokens(v: unknown, tokens: string[]): unknown {
   let cur = v;
   for (const t of tokens) {
     if (cur === null || cur === undefined) return undefined;
-    if (t === 'length' && (Array.isArray(cur) || typeof cur === 'string')) cur = cur.length;
+    if (t === 'length' && typeof cur === 'string') cur = cur.length;
+    else if (Array.isArray(cur) && !/^\d+$/.test(t) && arrayAlias(cur, t).hit)
+      cur = arrayAlias(cur, t).value;
     else cur = (cur as Record<string, unknown>)[t];
   }
   return cur;
@@ -1383,6 +1403,12 @@ export const aiBilledTokens = (u: {
  * 연도(2026)·건수처럼 4자리 이하와 0으로 시작하는 번호는 그대로 둔다.
  */
 export function formatOutputValue(v: unknown): string | undefined {
+  // 값 목록(["RC..","RC.."])은 JSON 대신 쉼표로 잇는다
+  if (Array.isArray(v) && v.every((x) => x === null || typeof x !== 'object'))
+    return v
+      .filter((x) => x !== null && x !== undefined && x !== '')
+      .map((x) => formatOutputValue(x) ?? String(x))
+      .join(', ');
   if (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) >= 10000)
     return v.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
   if (typeof v === 'string' && /^-?[1-9]\d{4,14}(\.\d+)?$/.test(v))

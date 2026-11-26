@@ -241,9 +241,15 @@ function weeklyReport(): AgentGraph {
           { kind: 'maxLlmCalls', value: 1 },
         ],
       }),
-      node('stats', 'tool', '대시보드 통계', { tool: 'erp_stats_overview', outputVar: 'stats' }),
-      node('branches', 'tool', '지점 현황', {
+      // 주간 보고 — 지난 7일만(stats.overview는 누적이라 쓰지 않는다)
+      node('stats', 'tool', '지난주 매출 통계', {
+        tool: 'erp_stats_sales',
+        args: { from: '{{run.weekAgo}}', to: '{{run.today}}', groupBy: 'day' },
+        outputVar: 'stats',
+      }),
+      node('branches', 'tool', '지난주 지점 실적', {
         tool: 'erp_branches_overview',
+        args: { from: '{{run.weekAgo}}', to: '{{run.today}}' },
         outputVar: 'branches',
       }),
       node('summary', 'llm', '주간 요약 쓰기', {

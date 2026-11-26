@@ -270,6 +270,8 @@ ${TRIGGER_EVENTS.map((e) => `- ${e}: ${TRIGGER_EVENT_LABEL[e]} — ${TRIGGER_EVE
 - 데이터를 바꾸는 쓰기(WRITE) 도구 앞에는 반드시 approval 노드(사람 승인)를 둡니다. 문자 발송이 있으면 guardrail로 maxRecipients 같은 한도도 겁니다.
 - 고객 문자(send_sms)는 customerIds(고객 id 배열)와 message가 필요합니다. 본문은 [통인익스프레스]로 시작하고 {고객명}을 쓰면 고객마다 이름이 들어갑니다.
 - "미계약"은 search_leads의 contracted=false입니다.
+- ERP API 목록·현황 도구(erp_…_find_all·list·overview 등)는 결과가 배열 그대로인 경우가 많습니다. 배열이면 {{x}}가 곧 목록이고 건수는 len(x)입니다({{x.rows}}·{{x.total}}로 써도 같은 뜻으로 읽힙니다). search_leads처럼 {total, rows}를 돌려주는 도구는 rows·total을 씁니다.
+- 기간 보고(주간·월간)는 반드시 기간 인자를 넣습니다: branches.overview·stats.sales 등은 from·to({{run.weekAgo}}~{{run.today}}). stats.overview는 기간 없이 누적 숫자라 기간 보고에 쓰지 않습니다.
 - 조회 결과가 없을 때를 branch로 나눠 처리하고, 마지막에 output 노드로 무엇을 했는지 요약합니다.
 - 보고서·문서 파일을 만들어야 하면: 참고 양식이 있으면 create_file_from_template(templateId=양식 id, data={{앞 노드 결과}}, instructions=어느 칸에 무엇을), 없으면 create_report_file(xlsx·csv·pdf 표 — rows에 조회 결과 목록 {{변수.rows}}를 그대로 넣고 fields에 열마다 꺼낼 키를 적으면 AI 없이 표가 됩니다). 앞 노드에서 필요한 데이터를 먼저 조회하고, output 노드에 만든 파일 이름({{변수.fileName}})을 적습니다.
 - 노드 id는 짧은 영문 snake_case(예: find_leads). label은 짧은 한국어. 꼭 필요한 노드만 둡니다(보통 5~12개).

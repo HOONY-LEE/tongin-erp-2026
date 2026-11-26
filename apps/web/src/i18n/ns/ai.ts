@@ -83,6 +83,8 @@ export default defineNs({
     close: '닫기',
     input: '입력',
     noInputs: '입력값 없이 바로 실행하는 에이전트입니다.',
+    eventAgentHint:
+      '업무가 생기면({{v0}}) 자동으로 실행됩니다. 지금 실행하면 가장 최근 건으로 실행해요.',
     none: '선택 안 함',
     yes: '예',
     no: '아니오',
@@ -389,6 +391,8 @@ export default defineNs({
     close: 'Close',
     input: 'Input',
     noInputs: 'This agent runs without any inputs.',
+    eventAgentHint:
+      'Runs automatically when {{v0}} happens. Running it now uses the most recent case.',
     none: 'Not selected',
     yes: 'Yes',
     no: 'No',
@@ -698,6 +702,7 @@ export default defineNs({
     close: '关闭',
     input: '输入',
     noInputs: '此智能体无需输入值即可直接运行。',
+    eventAgentHint: '发生业务（{{v0}}）时自动运行。现在运行将使用最近一条。',
     none: '不选择',
     yes: '是',
     no: '否',
