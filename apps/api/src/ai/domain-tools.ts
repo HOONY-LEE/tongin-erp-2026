@@ -179,8 +179,20 @@ export class DomainTools {
           rows: {
             type: 'array',
             maxItems: REPORT_LIMITS.rows,
-            items: { type: 'array', items: { type: ['string', 'number', 'boolean', 'null'] } },
-            description: '각 행은 columns 순서대로의 값 배열',
+            // 값 배열 행, 또는 조회 결과 객체(fields로 꺼냄)
+            items: {
+              type: ['array', 'object'],
+              items: { type: ['string', 'number', 'boolean', 'null'] },
+            },
+            description:
+              '각 행은 columns 순서대로의 값 배열. 조회 결과 객체 목록을 그대로 넣어도 된다(그때는 fields로 열마다 키를 정한다)',
+          },
+          fields: {
+            type: 'array',
+            items: { type: 'string' },
+            maxItems: REPORT_LIMITS.columns,
+            description:
+              'rows가 객체 목록일 때 columns 순서대로 꺼낼 키(점 경로 가능, 예: latestEstimate.totalAmount). 없으면 열 이름을 키로 쓴다',
           },
           sheetName: { type: 'string', maxLength: 31, description: '엑셀 시트 이름(선택)' },
         },
