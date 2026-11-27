@@ -7,6 +7,7 @@ import { Spinner, useToast } from '../components/ui';
 import CalendarGrid, { type CalendarSource } from '../components/calendar/CalendarGrid';
 import EventModal, { type EventFormValues } from '../components/calendar/EventModal';
 import { ClosureDayModal } from '../components/closure/ClosureDayModal';
+import { DocumentViewer } from '../components/ui/DocumentViewer';
 import { closedOnly, type ClosureData } from '../components/closure/useClosures';
 
 /** 로컬 날짜 → YYYY-MM-DD */
@@ -69,6 +70,8 @@ export default function CalendarPage() {
   const { touch } = useUpdatedAt();
 
   const [modalOpen, setModalOpen] = useState(false);
+  /** 계약서 보기 창(작업·방문 일정에서) */
+  const [contractDoc, setContractDoc] = useState<CalendarItem | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [editing, setEditing] = useState<CalendarItem | null>(null);
   /** 방금 연결을 마쳤을 때 스로틀을 무시하고 즉시 한 번 동기화하기 위한 플래그 */
@@ -481,7 +484,28 @@ export default function CalendarPage() {
                 : `/work-orders/${e.refId}`,
           );
         }}
+        onOpenLead={(e) => {
+          if (!e.leadId) return;
+          setModalOpen(false);
+          navigate(`/leads/${e.leadId}`);
+        }}
+        onOpenContract={(e) => e.contract && setContractDoc(e)}
       />
+      {contractDoc?.contract && (
+        <DocumentViewer
+          path={`/estimates/${contractDoc.contract.estimateId}/document`}
+          estimatePath={`/estimates/${contractDoc.contract.estimateId}`}
+          title={t('leads.contractTitle', {
+            v0: contractDoc.contract.contractNo,
+            v1: ` · ${contractDoc.title}`,
+          })}
+          fileName={t('leads.contractFile', {
+            v0: contractDoc.title,
+            v1: contractDoc.contract.contractNo,
+          })}
+          onClose={() => setContractDoc(null)}
+        />
+      )}
     </div>
   );
 }

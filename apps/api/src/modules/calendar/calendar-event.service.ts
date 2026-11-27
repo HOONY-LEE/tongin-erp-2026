@@ -53,6 +53,20 @@ export interface CalendarItem {
   editable: boolean;
   /** 작업오더인 경우 상세 이동용 id */
   refId: string | null;
+  /** 작업·방문 — 연결된 접수(누르면 접수 상세) */
+  leadId?: string | null;
+  leadNo?: string | null;
+  /** 작업·방문 — 계약서(있으면 바로 열어 보기) */
+  contract?: { contractNo: string; estimateId: string } | null;
+}
+
+/** 취소되지 않은 계약 중 서명된 것을 먼저 */
+function pickContract(
+  list: { contractNo: string; estimateId: string; status: string }[] | undefined,
+): { contractNo: string; estimateId: string } | null {
+  const live = (list ?? []).filter((c) => c.status !== 'CANCELED');
+  const c = live.find((x) => x.status === 'SIGNED') ?? live[0];
+  return c ? { contractNo: c.contractNo, estimateId: c.estimateId } : null;
 }
 
 function ymd(d: Date): string {
@@ -185,8 +199,14 @@ export class CalendarEventService {
         include: {
           orgUnit: { select: { name: true } },
           lead: {
-            select: { fromSigungu: true, toSigungu: true, customer: { select: { name: true } } },
+            select: {
+              leadNo: true,
+              fromSigungu: true,
+              toSigungu: true,
+              customer: { select: { name: true } },
+            },
           },
+          contract: { select: { contractNo: true, estimateId: true, status: true } },
         },
         orderBy: { scheduledDate: 'asc' },
         take: 1000,
@@ -215,6 +235,9 @@ export class CalendarEventService {
           orgUnitName: o.orgUnit?.name ?? null,
           editable: false,
           refId: o.id,
+          leadId: o.leadId,
+          leadNo: o.lead?.leadNo ?? null,
+          contract: pickContract(o.contract ? [o.contract] : []),
         });
       }
     }
@@ -237,6 +260,7 @@ export class CalendarEventService {
           orgUnit: { select: { name: true } },
           customer: { select: { name: true } },
           ownerEmp: { select: { name: true } },
+          contracts: { select: { contractNo: true, estimateId: true, status: true } },
         },
         orderBy: { visitDate: 'asc' },
         take: 1000,
@@ -254,7 +278,8 @@ export class CalendarEventService {
           endTime: null,
           color: VISIT_COLOR,
           location: l.fromSigungu ?? null,
-          description: `접수번호 ${l.leadNo}`,
+          // 접수번호는 화면이 링크로 따로 보여 준다
+          description: null,
           visibility: 'ORG',
           ownerUserId: null,
           ownerName: l.ownerEmp?.name ?? null,
@@ -262,6 +287,9 @@ export class CalendarEventService {
           orgUnitName: l.orgUnit?.name ?? null,
           editable: false,
           refId: l.id,
+          leadId: l.id,
+          leadNo: l.leadNo,
+          contract: pickContract(l.contracts),
         });
       }
     }
