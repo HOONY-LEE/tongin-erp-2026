@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import { enablePhone, getPhoneState, setRingable, usePhone } from '../lib/softphone';
+import { claimPhone, enablePhone, getPhoneState, setRingable, usePhone } from '../lib/softphone';
 import {
   Button,
   ConfirmModal,
@@ -722,9 +722,30 @@ function PcPhone() {
   useEffect(() => {
     if (phone.status === 'error' && phone.error) toast({ type: 'error', title: phone.error });
   }, [phone.status, phone.error, toast]);
+  // 상담 콘솔을 연 창이 PC 전화를 쓴다(두 모니터 — 새 창으로 띄운 콘솔이 넘겨받는다)
+  useEffect(() => {
+    claimPhone();
+  }, []);
   // 켜짐·꺼짐 버튼은 없다 — [상담 가능]을 누르면 켜지고, 켜진 채로 둔다(후처리 중엔 배분이 안 와 울리지 않는다)
   return (
     <span className={styles.pcPhone}>
+      {phone.elsewhere && phone.status === 'off' && (
+        <button
+          type="button"
+          className={styles.muted}
+          title={t('cc.pcTakeHere')}
+          onClick={() => void enablePhone()}
+          style={{
+            all: 'unset',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            gap: 4,
+            alignItems: 'center',
+          }}
+        >
+          <Laptop size={14} /> {t('cc.pcElsewhere')}
+        </button>
+      )}
       {phone.status === 'connecting' && (
         <span className={styles.muted}>
           <Laptop size={14} /> {t('cc.pcConnecting')}

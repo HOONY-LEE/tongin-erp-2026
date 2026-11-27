@@ -61,6 +61,14 @@ export class CustomerController {
     return this.historyService.history(id);
   }
 
+  /** 고객의 계약서 목록(취소 제외, 최근 순) — 상담 화면에서 계약서를 바로 연다 */
+  @AccessLog('customer', 'VIEW')
+  @Get(':id/contracts')
+  @RequirePermissions('CUSTOMER.READ')
+  contracts(@CurrentUser() user: AuthPrincipal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.customerService.contracts(id, user);
+  }
+
   @Post()
   @RequirePermissions('CUSTOMER.CREATE')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateCustomerDto) {

@@ -95,6 +95,33 @@ export class CustomerService {
     return found;
   }
 
+  /** 고객의 계약서(취소 제외, 최근 순 20건) */
+  async contracts(id: string, principal?: AuthPrincipal) {
+    await this.findOne(id, principal);
+    const rows = await this.prisma.contract.findMany({
+      where: { customerId: id, status: { not: 'CANCELED' } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        contractNo: true,
+        estimateId: true,
+        status: true,
+        contractDate: true,
+        lead: { select: { leadNo: true, moveDate: true } },
+      },
+    });
+    return rows.map((c) => ({
+      id: c.id,
+      contractNo: c.contractNo,
+      estimateId: c.estimateId,
+      status: c.status,
+      contractDate: c.contractDate ? c.contractDate.toISOString().slice(0, 10) : null,
+      leadNo: c.lead?.leadNo ?? null,
+      moveDate: c.lead?.moveDate ? c.lead.moveDate.toISOString().slice(0, 10) : null,
+    }));
+  }
+
   /**
    * 전화번호는 고객 한 명에게만 — 같은 번호가 이미 있으면 409.
    * 하이픈·공백을 빼고 비교한다. 다른 지점 고객이어도 막되, 이름 등은 알려 주지 않는다.

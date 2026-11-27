@@ -741,3 +741,9 @@
   background: var(--ark-color-bg-muted);
   color: var(--ark-color-text-primary);
 }
+
+/* 헤더 오른쪽 — 지금 화면을 새 창으로 */
+.headerRight .headerPopout {
+  border-color: transparent;
+  background: transparent;
+}

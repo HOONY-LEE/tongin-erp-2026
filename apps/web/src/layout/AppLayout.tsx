@@ -16,6 +16,7 @@ import { useAiRunning } from '../lib/aiActivity';
 import { usePendingApprovals } from '../lib/approvals';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SoftphoneBar } from '../components/SoftphoneBar';
+import { PopoutButton } from '../components/ui/PopoutButton';
 import { MyMenuModal } from '../components/menu/MyMenuModal';
 import { menuIcon, useMenuLabel, useMyMenu } from '../lib/menu';
 import { useInbox } from '../lib/inbox';
@@ -253,6 +254,8 @@ export default function AppLayout() {
         >
           <ErrorBoundary key={pathname}>{outlet}</ErrorBoundary>
         </div>
+        {/* PC 전화는 한 창에서만 켜진다 — 새 창이 넘겨받았으면 여기서 울린다 */}
+        <SoftphoneBar />
       </div>
     );
 
@@ -300,6 +303,8 @@ export default function AppLayout() {
               {t('shell.aiBusy')}
             </button>
           )}
+          {/* 지금 화면을 새 창으로(두 모니터) — 데스크톱 앱도 창이 하나 더 뜬다 */}
+          <PopoutButton className={styles.headerPopout} />
           <NotificationBell
             count={unread}
             notifications={notis}
@@ -497,7 +502,7 @@ export default function AppLayout() {
           </div>
         </main>
       </div>
-      {/* PC 전화 — 울림·통화 중 막대(어느 화면에서든). 새 창(팝아웃)에는 두지 않는다 */}
+      {/* PC 전화 — 울림·통화 중 막대(어느 화면에서든) */}
       <SoftphoneBar />
     </div>
   );

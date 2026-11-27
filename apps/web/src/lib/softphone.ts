@@ -34,6 +34,8 @@ export interface PhoneState {
   call: PhoneCall | null;
   /** 지금 전화가 울리는 상태(상담 가능 · 열린 콜 없음 → 한국AI통신에 등록됨) */
   ringable: boolean;
+  /** 켜 두었지만 다른 창(새 창으로 띄운 상담 콘솔 등)이 PC 전화를 쓰는 중 */
+  elsewhere?: boolean;
 }
 
 const ENABLED_KEY = 'tongin_pc_phone';
@@ -45,7 +47,91 @@ const listeners = new Set<() => void>();
 const set = (patch: Partial<PhoneState>) => {
   state = { ...state, ...patch };
   listeners.forEach((l) => l());
+  // 넘겨주기를 기다리던 중 통화가 끝났으면 이제 넘긴다
+  if (handoffPending && !session && !state.call) queueMicrotask(() => handOffIfIdle());
 };
+
+/*
+ * 여러 창(두 모니터) — PC 전화는 한 창에서만 켠다(두 창이 같이 울리지 않게).
+ * 웹 잠금(navigator.locks)을 쥔 창이 주인이고, 다른 창이 켜려 하면(상담 콘솔을 새 창으로 띄우면 자동)
+ * 주인 창에 '넘겨 줘'를 보낸다. 주인은 통화 중이 아니면 바로, 통화 중이면 통화가 끝난 뒤 넘긴다.
+ * 주인 창을 닫으면 켜 두었던 다른 창이 이어받는다.
+ */
+const LOCK_NAME = 'tongin-pc-phone';
+const chan: BroadcastChannel | null =
+  typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('tongin-pc-phone') : null;
+let lockHeld = false;
+let releaseLock: (() => void) | null = null;
+let handoffPending = false;
+/** 이 창이 넘겨받기를 기다리는 중 */
+let wantPending = false;
+
+function tryLock(): Promise<boolean> {
+  if (lockHeld) return Promise.resolve(true);
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    locks
+      .request(LOCK_NAME, { ifAvailable: true }, (lock) => {
+        if (!lock) {
+          resolve(false);
+          return undefined;
+        }
+        lockHeld = true;
+        resolve(true);
+        return new Promise<void>((r) => {
+          releaseLock = r;
+        });
+      })
+      .catch(() => resolve(false));
+  });
+}
+function dropLock() {
+  lockHeld = false;
+  releaseLock?.();
+  releaseLock = null;
+}
+const enabledFlag = () => {
+  try {
+    return localStorage.getItem(ENABLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** 이 창의 PC 전화를 내려놓고 다른 창이 넘겨받게 한다 — 서버에는 끄지 않는다 */
+function handOff() {
+  handoffPending = false;
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = null;
+  refreshPending = false;
+  if (statePoll) clearInterval(statePoll);
+  statePoll = null;
+  const old = ua;
+  ua = null;
+  old?.stop();
+  set({ status: 'off', error: null, call: null, ringable: false, elsewhere: true });
+  dropLock();
+  chan?.postMessage({ t: 'released' });
+}
+function handOffIfIdle() {
+  if (handoffPending && !session && !state.call) handOff();
+}
+
+chan?.addEventListener('message', (e: MessageEvent<{ t: string }>) => {
+  const t = e.data?.t;
+  if (t === 'want' && lockHeld) {
+    if (session || state.call) handoffPending = true;
+    else handOff();
+  } else if (t === 'released' && wantPending) {
+    wantPending = false;
+    void enablePhone();
+  } else if (t === 'bye' && (wantPending || state.elsewhere) && enabledFlag()) {
+    // 주인 창이 닫혔다 — 닫힌 창의 '꺼짐' 알림보다 늦게 켜지도록 조금 기다린다
+    wantPending = false;
+    setTimeout(() => void enablePhone(), 1500);
+  }
+});
 const setCall = (patch: Partial<PhoneCall> | null) =>
   set({ call: patch === null ? null : state.call ? { ...state.call, ...patch } : null });
 
@@ -562,7 +648,21 @@ export async function enablePhone() {
   } catch {
     /* 저장 못 해도 이번 화면에서는 켜진다 */
   }
+  // 다른 창이 쓰는 중이면 넘겨 달라고 하고 기다린다
+  if (!(await tryLock())) {
+    wantPending = true;
+    set({ status: 'connecting', error: null, elsewhere: false });
+    chan?.postMessage({ t: 'want' });
+    return;
+  }
+  set({ elsewhere: false });
   await register();
+}
+
+/** 이 창으로 PC 전화를 가져온다(상담 콘솔을 연 창) — 켜 두었을 때만 */
+export function claimPhone() {
+  if (!enabledFlag() || lockHeld || wantPending) return;
+  void enablePhone();
 }
 
 /** PC 전화 끄기 — 서버에도 알려 이 브라우저로는 더 이상 울리지 않게 한다 */
@@ -578,10 +678,13 @@ export async function disablePhone() {
   if (statePoll) clearInterval(statePoll);
   statePoll = null;
   wantRing = false;
+  wantPending = false;
+  handoffPending = false;
   session?.terminate();
   ua?.stop();
   ua = null;
-  set({ status: 'off', error: null, call: null, ringable: false });
+  set({ status: 'off', error: null, call: null, ringable: false, elsewhere: false });
+  dropLock();
   await api('/cs-calls/agent/phone-off', { method: 'POST' }).catch(() => undefined);
 }
 
@@ -593,7 +696,12 @@ export function resumePhoneIfEnabled() {
   } catch {
     on = false;
   }
-  if (on && state.status === 'off') void enablePhone();
+  if (!on || state.status !== 'off') return;
+  // 다른 창이 이미 쓰고 있으면 그 창에 둔다(이 창은 '다른 창에서 사용 중')
+  void tryLock().then((ok) => {
+    if (ok) void enablePhone();
+    else set({ elsewhere: true });
+  });
 }
 
 /** 받는 전화의 고객(수신 창에서 찾은 것) — 상담 화면을 서버 응답 전에 바로 열 때 쓴다 */
@@ -727,6 +835,8 @@ export function dial(number: string, callId?: string) {
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => {
     if (!ua) return;
+    // 다른 창이 이어받게 알린다
+    chan?.postMessage({ t: 'bye' });
     const token = getToken();
     void fetch('/api/cs-calls/agent/phone-off', {
       method: 'POST',
