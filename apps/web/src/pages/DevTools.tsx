@@ -13,8 +13,8 @@ import {
   CopyText,
   DataTable,
   FilterButton,
+  ListPage,
   PageCard,
-  PageHeader,
   RecordDetail,
   Textarea,
   useToast,
@@ -276,9 +276,9 @@ export default function DevTools() {
 
   const nRead = tools.filter((x) => x.mode === 'READ').length;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PageHeader title={t('nav.devTools')} onRefresh={load} updatedAt={updatedAt} />
+    <ListPage fit title={t('nav.devTools')} onRefresh={load} updatedAt={updatedAt}>
       <DataTable
+        fit
         filters={<FilterButton fields={filterFields} value={flt} onChange={setFlt} />}
         onSearch={setQ}
         toolbarActions={
@@ -291,7 +291,7 @@ export default function DevTools() {
         loading={loading}
         onRowClick={(r) => open(String(r.id))}
       />
-    </div>
+    </ListPage>
   );
 }
 
