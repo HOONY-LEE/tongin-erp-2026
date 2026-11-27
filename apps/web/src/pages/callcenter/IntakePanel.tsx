@@ -25,6 +25,7 @@ import { AddressField } from '../../components/ui/AddressField';
 import { useLeadCreateForm } from '../../components/lead/useLeadCreateForm';
 import { useLeadDuplicateGate } from '../../components/lead/LeadDuplicateGate';
 import { AsIntakeModal } from '../../components/support/AsIntakeModal';
+import { ContractButton } from './ContractButton';
 import styles from '../callcenter.module.css';
 import { MemoPresetPicker } from './MemoPresets';
 import { CallRecordButton } from './CallRecordModal';
@@ -444,6 +445,10 @@ export function IntakePanel({
         )}
         {readOnly ? (
           <span className={styles.headActions}>
+            <ContractButton
+              customerId={call.customerId}
+              customerName={v.customerName || call.customerName}
+            />
             {call.leadId ? (
               <button
                 type="button"
@@ -532,6 +537,10 @@ export function IntakePanel({
                 <Wrench size={14} /> {t('asx.btn')}
               </Button>
             )}
+            <ContractButton
+              customerId={call.customerId}
+              customerName={v.customerName || call.customerName}
+            />
             {call.leadId ? (
               <button
                 type="button"
