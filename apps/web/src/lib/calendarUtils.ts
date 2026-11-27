@@ -188,6 +188,11 @@ export interface CalendarItem {
   orgUnitName: string | null;
   editable: boolean;
   refId: string | null;
+  /** 작업·방문 — 연결된 접수 */
+  leadId?: string | null;
+  leadNo?: string | null;
+  /** 작업·방문 — 계약서 */
+  contract?: { contractNo: string; estimateId: string } | null;
 }
 
 /** 여러 날에 걸친 일정인지 */

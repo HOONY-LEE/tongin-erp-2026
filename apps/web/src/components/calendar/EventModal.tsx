@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
+import type React from 'react';
 import { Badge, Button, Input, Modal, Select } from '../ui';
 import {
   EVENT_CATEGORIES,
@@ -46,6 +47,10 @@ interface Props {
   onClose: () => void;
   /** 작업오더 등 원본 문서로 이동 */
   onOpenRef?: (e: CalendarItem) => void;
+  /** 접수번호 누르기 — 접수 상세로 */
+  onOpenLead?: (e: CalendarItem) => void;
+  /** 계약서 보기 */
+  onOpenContract?: (e: CalendarItem) => void;
 }
 
 export default function EventModal({
@@ -59,6 +64,8 @@ export default function EventModal({
   onDelete,
   onClose,
   onOpenRef,
+  onOpenLead,
+  onOpenContract,
 }: Props) {
   const { t } = useTranslation();
   const [title, setTitle] = useState('');
@@ -152,11 +159,40 @@ export default function EventModal({
             value={event.startTime ? formatTime(event.startTime) : t('cal.allDay')}
           />
           {event.location && <Row label={t('cal.place')} value={event.location} />}
+          {event.leadNo && (
+            <Row
+              label={t('cal.leadNo')}
+              value={
+                event.leadId && onOpenLead ? (
+                  <button
+                    type="button"
+                    className="id-mono"
+                    onClick={() => onOpenLead(event)}
+                    style={{
+                      all: 'unset',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    {event.leadNo}
+                  </button>
+                ) : (
+                  event.leadNo
+                )
+              }
+            />
+          )}
           {event.description && <Row label={t('cal.memo')} value={event.description} />}
           <div style={{ fontSize: fs(12), color: 'var(--ark-color-text-tertiary)' }}>
             {t('cal.readonly')}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            {event.contract && onOpenContract && (
+              <Button variant="secondary" onClick={() => onOpenContract(event)}>
+                {t('cal.openContract')}
+              </Button>
+            )}
             {event.refId && onOpenRef && (
               <Button variant="primary" onClick={() => onOpenRef(event)}>
                 {event.source === 'LEAVE'
@@ -283,7 +319,7 @@ export default function EventModal({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', gap: 12, fontSize: fs(14) }}>
       <span style={{ minWidth: 48, color: 'var(--ark-color-text-secondary)' }}>{label}</span>
