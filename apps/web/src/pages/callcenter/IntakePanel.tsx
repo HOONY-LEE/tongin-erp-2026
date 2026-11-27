@@ -497,7 +497,14 @@ export function IntakePanel({
             {pending && <span className={styles.muted}>{t('cc.connecting')}</span>}
             {/* 전화가 끊겨 있으면 — 다시 걸기(통화 중 표시·음소거·끊기는 화면 아래 통화 막대에) */}
             {!pending && !phone.call && phone.status === 'ready' && (
-              <Button variant="outline" size="sm" onClick={() => setDialOpen(true)}>
+              <Button
+                variant={call.status === 'CALLBACK' ? 'primary' : 'outline'}
+                size="sm"
+                // 콜백(아웃콜)은 이 버튼을 눌러야 건다 — 눌렀으면 바로 걸고, 통화가 끊긴 뒤 다시 걸 때만 한 번 묻는다
+                onClick={() =>
+                  call.status === 'CALLBACK' ? dial(call.phone, call.id) : setDialOpen(true)
+                }
+              >
                 <Phone size={14} /> {t('cc.call')}
               </Button>
             )}

@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { api, ApiError } from '../lib/api';
 import { formatPhone } from '../lib/phone';
-import { dial, enablePhone, getPhoneState, setRingable, usePhone } from '../lib/softphone';
+import { enablePhone, getPhoneState, setRingable, usePhone } from '../lib/softphone';
 import {
   Button,
   ConfirmModal,
@@ -134,7 +134,6 @@ export default function CallCenter() {
   /** 상담 가능 상태를 저장하는 중 — 그 사이 폴링이 화면을 되돌리지 않게 */
   const pendingAvail = useRef<boolean | null>(null);
   const phone = usePhone();
-  const pcReady = phone.status === 'ready';
 
   const load = useCallback(async () => {
     try {
@@ -234,11 +233,10 @@ export default function CallCenter() {
       void load();
     }
   };
-  /** 아웃콜을 눌러 콜백 — 콘솔에서 바로 접수 패널이 열린다(화면 이동 없음). PC 전화가 켜져 있으면 바로 건다 */
+  /** 아웃콜을 눌러 콜백 — 상담 화면만 연다. 전화는 상담 화면의 [전화하기]를 눌러야 걸린다 */
   const callback = (c: CallView) =>
     act(async () => {
       await api<CallView>(`/cs-calls/${c.id}/callback`, { method: 'POST' });
-      if (pcReady) dial(c.phone, c.id);
     });
   /** 상담 가능을 눌렀는데 PC 전화가 꺼져 있을 때 — 켜면서 바로 상담 가능으로(처음엔 마이크 허용을 묻는다) */
   const [turningOn, setTurningOn] = useState(false);
