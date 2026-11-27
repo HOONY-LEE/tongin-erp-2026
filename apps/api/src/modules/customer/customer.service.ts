@@ -21,6 +21,7 @@ const LIST_RULES: ListFilterRules = {
   createdAt: { date: { createdAt: ['createdAt', 'ts'] } },
   grade: { in: 'grade' },
   ownerOrgId: { in: 'ownerOrgId' },
+  smsOptOut: { one: { true: { smsOptOut: true }, false: { smsOptOut: false } } },
 };
 
 @Injectable()
@@ -117,7 +118,9 @@ export class CustomerService {
     await this.assertPhoneFree(dto.phonePrimary);
     let created;
     try {
-      created = await this.prisma.customer.create({ data: dto });
+      created = await this.prisma.customer.create({
+        data: { ...dto, ...(dto.smsOptOut ? { smsOptOutAt: new Date() } : {}) },
+      });
     } catch (e) {
       throw this.mapError(e);
     }
@@ -140,7 +143,12 @@ export class CustomerService {
     if (dto.phonePrimary && digitsOf(dto.phonePrimary) !== digitsOf(cur.phonePrimary))
       await this.assertPhoneFree(dto.phonePrimary, id);
     try {
-      return await this.prisma.customer.update({ where: { id }, data: dto });
+      // 수신거부를 켠 시각을 남긴다(끄면 비운다)
+      const optOut =
+        dto.smsOptOut === undefined || dto.smsOptOut === cur.smsOptOut
+          ? {}
+          : { smsOptOutAt: dto.smsOptOut ? new Date() : null };
+      return await this.prisma.customer.update({ where: { id }, data: { ...dto, ...optOut } });
     } catch (e) {
       throw this.mapError(e);
     }

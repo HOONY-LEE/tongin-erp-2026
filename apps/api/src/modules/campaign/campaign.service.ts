@@ -161,7 +161,7 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
     const c = await this.findOne(id, principal);
     if (c.targetGrade && !c.recipientCount) {
       const count = await this.prisma.customer.count({
-        where: { phonePrimary: { not: null }, grade: c.targetGrade },
+        where: { phonePrimary: { not: null }, smsOptOut: false, grade: c.targetGrade },
       });
       return { count };
     }
@@ -174,7 +174,11 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
     q: AudienceQueryDto,
     principal: AuthPrincipal,
   ): Promise<Prisma.CustomerWhereInput> {
-    const and: Prisma.CustomerWhereInput[] = [{ phonePrimary: { not: null } }];
+    // 수신거부 고객은 받는 사람에 넣지 않는다
+    const and: Prisma.CustomerWhereInput[] = [
+      { phonePrimary: { not: null } },
+      { smsOptOut: false },
+    ];
     const ids = await this.scope.orgScopeIds(principal);
     if (ids !== null) {
       and.push({
@@ -442,6 +446,7 @@ export class CampaignService implements OnModuleInit, OnModuleDestroy {
           where: {
             id: { in: cIds },
             phonePrimary: { not: null },
+            smsOptOut: false,
             ...(scope === null
               ? {}
               : {

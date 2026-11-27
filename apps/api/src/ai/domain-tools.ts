@@ -579,13 +579,14 @@ export class DomainTools {
     const scope = await this.customerScope(principal);
     const found = await this.prisma.customer.findMany({
       where: { AND: [{ id: { in: valid } }, ...(scope ? [scope] : [])] },
-      select: { id: true, name: true, phonePrimary: true },
+      select: { id: true, name: true, phonePrimary: true, smsOptOut: true },
     });
-    const sendable = found.filter((c) => c.phonePrimary);
+    const sendable = found.filter((c) => c.phonePrimary && !c.smsOptOut);
     const foundIds = new Set(found.map((c) => c.id));
     return {
       sendable,
       noPhone: found.filter((c) => !c.phonePrimary).map((c) => c.name),
+      optedOut: found.filter((c) => c.phonePrimary && c.smsOptOut).map((c) => c.name),
       notFound: valid.filter((id) => !foundIds.has(id)),
       invalid: ids.filter((id) => !UUID_RE.test(id)),
     };
@@ -646,6 +647,7 @@ export class DomainTools {
           })),
           skipped: [
             ...r.noPhone.map((n) => `${n}(번호 없음)`),
+            ...r.optedOut.map((n) => `${n}(수신거부)`),
             ...(r.notFound.length ? [`조회 불가(범위 밖·없는 고객) ${r.notFound.length}명`] : []),
             ...(r.invalid.length ? [`잘못된 고객 id ${r.invalid.length}개`] : []),
           ],
@@ -655,7 +657,8 @@ export class DomainTools {
         const message = String(input.message ?? '').trim();
         if (!message) throw new ToolError('문자 본문이 비어 있습니다.');
         const r = await this.resolveRecipients(input, ctx.principal);
-        if (!r.sendable.length) throw new ToolError('보낼 수 있는 고객(번호 보유)이 없습니다.');
+        if (!r.sendable.length)
+          throw new ToolError('보낼 수 있는 고객(번호 보유·수신거부 아님)이 없습니다.');
         let sent = 0;
         const failures: { name: string; reason: string }[] = [];
         for (const c of r.sendable) {
@@ -689,6 +692,7 @@ export class DomainTools {
           failed: failures.length,
           failures,
           skippedNoPhone: r.noPhone,
+          skippedOptedOut: r.optedOut,
           notFoundCount: r.notFound.length,
           invalidIds: r.invalid,
           note: this.provider.smsVendor

@@ -29,6 +29,11 @@ export interface SendResult {
 export interface SendOptions {
   /** 장문(LMS) 제목 */
   title?: string;
+  /**
+   * 거래 안내(고객이 요청한 견적서·계약 서명 링크 등) — 수신거부 고객에게도 보낸다.
+   * 광고·안내 문자(캠페인·상담 문자·AI 문자)는 기본(false)이라 수신거부면 막힌다.
+   */
+  transactional?: boolean;
 }
 
 export interface NotificationProvider {
@@ -47,6 +52,22 @@ export const smsBytes = (s: string) =>
 
 /** 시연 번호 공통코드 그룹(code = 숫자만, name = 표시 이름) */
 export const SMS_DEMO_NUMBERS_GROUP = 'SMS_DEMO_NUMBERS';
+export const SMS_OPT_OUT_REASON = '수신거부 고객';
+/** 010-1234-5678 꼴(저장 형식)과 숫자만 둘 다로 찾는다 */
+const phoneVariants = (raw: string): string[] => {
+  const d = raw.replace(/\D/g, '');
+  const dashed =
+    d.length === 11
+      ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
+      : d.length === 10
+        ? d.startsWith('02')
+          ? `${d.slice(0, 2)}-${d.slice(2, 6)}-${d.slice(6)}`
+          : `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
+        : d.length === 9 && d.startsWith('02')
+          ? `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`
+          : d;
+  return [...new Set([raw, d, dashed].filter(Boolean))];
+};
 export const SMS_BLOCKED_REASON = '허용 번호 아님(시연 중 — 직원·시연 번호와 허용 번호로만 발송)';
 /** 운영인데 실발송 스위치(SMS_LIVE=1)도 허용 번호도 없을 때 */
 export const SMS_NOT_LIVE_REASON =
@@ -180,6 +201,20 @@ export class StubNotificationProvider implements NotificationProvider {
     return new Set([...this.allowed, ...db]);
   }
 
+  /** 이 번호가 수신거부 고객 번호인지 — 못 읽으면 막는 쪽으로 */
+  async isOptedOut(recipient: string): Promise<boolean> {
+    if (!this.prisma) return false;
+    try {
+      const n = await this.prisma.customer.count({
+        where: { smsOptOut: true, phonePrimary: { in: phoneVariants(recipient) } },
+      });
+      return n > 0;
+    } catch (e) {
+      this.logger.warn(`[SMS] 수신거부 조회 실패: ${e instanceof Error ? e.message : String(e)}`);
+      return true;
+    }
+  }
+
   /** 이 번호로 실제 문자를 보내도 되는지(제한 중이면 허용 번호만) */
   async isAllowed(recipient: string): Promise<boolean> {
     if (!this.restricted) return true;
@@ -202,6 +237,16 @@ export class StubNotificationProvider implements NotificationProvider {
     message: string,
     opts: SendOptions = {},
   ): Promise<SendResult> {
+    // 수신거부 — 스텁(발송사 없음)이어도 같은 결과가 나오게 먼저 본다
+    if (
+      channel === 'SMS' &&
+      recipient &&
+      !opts.transactional &&
+      (await this.isOptedOut(recipient))
+    ) {
+      this.logger.warn(`[SMS] ${recipient} 차단 — 수신거부 고객`);
+      return { ok: false, delivered: false, reason: SMS_OPT_OUT_REASON };
+    }
     if (channel !== 'SMS' || !this.smsLive) {
       this.logger.log(`[${channel}·스텁] → ${recipient ?? '고객'} : ${message}`);
       return { ok: true, delivered: false };

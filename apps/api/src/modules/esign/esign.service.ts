@@ -178,7 +178,10 @@ export class EsignService {
     }
     lines.push('', `문의 ${CALL_CENTER}`);
     const message = lines.join('\n');
-    const result = await this.sms.send('SMS', ctx.phone, message, { title: '이사 견적서' });
+    const result = await this.sms.send('SMS', ctx.phone, message, {
+      title: '이사 견적서',
+      transactional: true,
+    });
     await this.prisma.notification.create({
       data: {
         channel: 'SMS',

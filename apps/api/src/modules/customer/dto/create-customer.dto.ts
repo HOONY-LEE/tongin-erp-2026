@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { SingleAddressDto } from '../../../common/dto/address-fields.dto';
 import { PhoneDigits } from '../../../common/phone';
 
@@ -26,4 +26,9 @@ export class CreateCustomerDto extends SingleAddressDto {
   @IsOptional()
   @IsUUID()
   ownerOrgId?: string;
+
+  /** 문자 수신거부 */
+  @IsOptional()
+  @IsBoolean()
+  smsOptOut?: boolean;
 }
