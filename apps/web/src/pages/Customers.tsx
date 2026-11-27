@@ -228,12 +228,33 @@ export default function Customers() {
       title: t('customers.col.address'),
       render: (r) => (r.addr ? `(${r.zipcode ?? ''}) ${r.addr}` : '-'),
     },
+    {
+      title: t('customers.col.optOut'),
+      dataIndex: 'smsOptOut',
+      render: (r: Row) =>
+        r.smsOptOut ? (
+          <Badge variant="subtle" color="error">
+            {t('customers.optOut')}
+          </Badge>
+        ) : (
+          '-'
+        ),
+    },
   ];
   const fields: FormField[] = [
     { name: 'name', label: t('customers.col.name'), required: true },
     { name: 'phonePrimary', label: t('customers.col.phone'), type: 'tel' },
     { name: 'grade', label: t('customers.col.grade'), type: 'select', options: grades },
     { name: 'ownerOrgId', label: t('customers.ownerOrg'), type: 'select', options: orgs },
+    {
+      name: 'smsOptOut',
+      label: t('customers.col.optOut'),
+      type: 'boolean',
+      options: [
+        { value: 'false', label: t('customers.optIn') },
+        { value: 'true', label: t('customers.optOut') },
+      ],
+    },
     { name: 'address', label: t('customers.col.address'), type: 'address', addrPrefix: '' },
   ];
 
@@ -249,6 +270,15 @@ export default function Customers() {
         filterFields={[
           { key: 'createdAt', label: t('customers.flt.createdAt'), type: 'date' },
           { key: 'grade', label: t('customers.col.grade'), type: 'multi', options: grades },
+          {
+            key: 'smsOptOut',
+            label: t('customers.col.optOut'),
+            type: 'single',
+            options: [
+              { value: 'false', label: t('customers.optIn') },
+              { value: 'true', label: t('customers.optOut') },
+            ],
+          },
           ...(orgs.length > 1
             ? [
                 {

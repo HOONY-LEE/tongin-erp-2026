@@ -161,6 +161,9 @@ model Customer {
   lng            Float?
   ownerOrgId     String?         @map("owner_org_id") @db.Uuid
   ownerOrg       OrgUnit?        @relation(fields: [ownerOrgId], references: [id])
+  /// 문자 수신거부 — 켜져 있으면 캠페인·상담 문자·AI 문자를 보내지 않는다(견적서·서명 링크 같은 거래 안내만 예외)
+  smsOptOut      Boolean         @default(false) @map("sms_opt_out")
+  smsOptOutAt    DateTime?       @map("sms_opt_out_at") @db.Timestamptz(6)
   createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   leads          Lead[]
   estimates      Estimate[]

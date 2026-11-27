@@ -24,7 +24,10 @@ export default defineNs({
       phone: '연락처',
       grade: '등급',
       address: '주소',
+      optOut: '수신거부',
     },
+    optOut: '수신거부',
+    optIn: '수신',
     ownerOrg: '담당 조직',
     title: '고객',
     h: {
@@ -76,7 +79,10 @@ export default defineNs({
       phone: 'Phone',
       grade: 'Grade',
       address: 'Address',
+      optOut: 'SMS opt-out',
     },
+    optOut: 'Opted out',
+    optIn: 'Subscribed',
     ownerOrg: 'Owner department',
     title: 'Customers',
     h: {
@@ -127,7 +133,10 @@ export default defineNs({
       phone: '电话',
       grade: '等级',
       address: '地址',
+      optOut: '拒收短信',
     },
+    optOut: '拒收',
+    optIn: '接收',
     ownerOrg: '负责部门',
     title: '客户',
     h: {
