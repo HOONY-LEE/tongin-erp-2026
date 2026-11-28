@@ -354,7 +354,10 @@ export class CsCallController {
         body?.ForwardedFrom || body?.To || '대표번호',
         body?.CallSid,
       );
-      if (call.status !== 'ASSIGNED') return vxml(say(MSG_BUSY), HANGUP);
+      if (call.status !== 'ASSIGNED') {
+        void this.calls.notifyMissed(call.id).catch(() => undefined);
+        return vxml(say(MSG_BUSY), HANGUP);
+      }
       if (canRing(call))
         return vxml(
           say('통인익스프레스입니다. 상담원에게 연결해 드리겠습니다.'),
@@ -387,6 +390,7 @@ export class CsCallController {
           dial(next, afterUrl(req, key!, callId)),
         );
       if (next.status === 'ASSIGNED') return vxml(say(MSG_CALLBACK), HANGUP);
+      void this.calls.notifyMissed(callId).catch(() => undefined);
       return vxml(say(MSG_BUSY), HANGUP);
     } catch {
       return vxml(say(MSG_BUSY), HANGUP);

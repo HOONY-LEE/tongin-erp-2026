@@ -8,6 +8,7 @@ import { formatPhone } from '../lib/phone';
 import {
   answer,
   hangup,
+  decline,
   resumeAudio,
   resumePhoneIfEnabled,
   sendDtmf,
@@ -147,7 +148,7 @@ export function SoftphoneBar() {
           aria-modal="true"
           aria-labelledby="incoming-title"
           onKeyDown={(e) => {
-            if (e.key === 'Escape') hangup();
+            if (e.key === 'Escape') decline();
           }}
         >
           <span className={styles.ringIcon}>
@@ -169,7 +170,7 @@ export function SoftphoneBar() {
             </p>
           )}
           <div className={styles.inActions}>
-            <button type="button" className={styles.hangBig} onClick={hangup}>
+            <button type="button" className={styles.hangBig} onClick={decline}>
               <PhoneOff size={18} /> {t('cc.decline')}
             </button>
             <button ref={answerRef} type="button" className={styles.answerBig} onClick={take}>
