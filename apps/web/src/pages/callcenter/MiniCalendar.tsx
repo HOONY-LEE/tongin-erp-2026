@@ -6,6 +6,8 @@ import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../auth/AuthContext';
 import { useOrgScope } from '../../lib/useOrgScope';
 import { useToast } from '../../components/ui';
+import { Combobox } from '@sunghoon_lee/akron-ui';
+import { useOrgUnits } from '../../lib/orgUnits';
 import {
   monthGrid,
   shiftMonth,
@@ -33,13 +35,41 @@ export function MiniCalendar() {
   const { can } = useAuth();
   const { unrestricted, ownOrgId } = useOrgScope();
   const [ym, setYm] = useState(thisMonth);
-  const { data, reload } = useClosures(ym);
+  const { units } = useOrgUnits();
+  const branches = units
+    .filter((u) => u.type === 'BRANCH' && u.isActive)
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  // 볼 지점 — 본사는 고르거나 출발지 주소로 자동, 지점은 자기 지점 고정(비우면 전체)
+  const [picked, setPicked] = useState<string | null>(null);
+  const [auto, setAuto] = useState(false);
+  const target = unrestricted ? picked : ownOrgId || null;
+  const { data, reload } = useClosures(ym, target);
   const [menu, setMenu] = useState<{ date: string; x: number; y: number } | null>(null);
   const todayKey = today();
   const [y, m] = ym.split('-').map(Number);
   const editable = can('LEAD.UPDATE');
-  // 이 달력에서 바꾸는 대상 — 본사(범위 제한 없음)는 전체, 지점은 자기 지점
-  const target = unrestricted ? null : ownOrgId || null;
+  // 상담 화면에서 출발지를 넣으면 그 주소의 담당 지점 달력으로(지점 관리 > 담당 영역)
+  useEffect(() => {
+    if (!unrestricted) return;
+    let seq = 0;
+    const on = (e: Event) => {
+      const { sido, sigungu } =
+        (e as CustomEvent<{ sido?: string; sigungu?: string }>).detail ?? {};
+      if (!sido || !sigungu) return;
+      const my = ++seq;
+      void api<{ orgUnitId: string } | null>(
+        `/branch-territories/resolve?sido=${encodeURIComponent(sido)}&sigungu=${encodeURIComponent(sigungu)}`,
+      )
+        .then((r) => {
+          if (my !== seq || !r?.orgUnitId) return;
+          setPicked(r.orgUnitId);
+          setAuto(true);
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener('tongin:intake-region', on);
+    return () => window.removeEventListener('tongin:intake-region', on);
+  }, [unrestricted]);
 
   // 바깥을 누르거나 Esc면 메뉴를 닫는다
   useEffect(() => {
@@ -55,7 +85,12 @@ export function MiniCalendar() {
   }, [menu]);
 
   const statusOf = (date: string): Status => {
-    const mine = data?.closures.find((x) => x.date === date && (x.orgUnitId ?? null) === target);
+    // 지점을 보면 그 지점 마감 + 전체 마감
+    const mine = data?.closures.find(
+      (x) =>
+        x.date === date &&
+        ((x.orgUnitId ?? null) === target || (target !== null && x.orgUnitId === null)),
+    );
     return mine ? 'CLOSED' : 'OPEN';
   };
   const setStatus = async (date: string, status: Status) => {
@@ -102,6 +137,25 @@ export function MiniCalendar() {
           <ExternalLink size={14} />
         </button>
       </div>
+      <div className={styles.miniBranch}>
+        {unrestricted ? (
+          <Combobox
+            value={picked}
+            onChange={(v) => {
+              setPicked(v ?? null);
+              setAuto(false);
+            }}
+            options={branches.map((b) => ({ value: b.id, label: b.name }))}
+            placeholder={t('terr.calAll')}
+            searchPlaceholder={t('terr.calPick')}
+            emptyMessage={t('ui.noMatch')}
+            clearable
+          />
+        ) : (
+          <span>{branches.find((b) => b.id === target)?.name ?? t('terr.calAll')}</span>
+        )}
+        {auto && picked && <em>{t('terr.calAuto')}</em>}
+      </div>
       <div className={styles.miniGrid}>
         {[
           t('cc.dow.0'),
@@ -121,9 +175,11 @@ export function MiniCalendar() {
         ))}
         {monthGrid(ym).map((c, i) => {
           const status = statusOf(c.date);
-          const others = (data?.closures ?? []).filter(
-            (x) => x.date === c.date && (x.orgUnitId ?? null) !== target,
-          );
+          // 전체를 볼 때만 — 어느 지점이 마감했는지 점으로
+          const others =
+            target === null
+              ? (data?.closures ?? []).filter((x) => x.date === c.date && x.orgUnitId !== null)
+              : [];
           const leads = data?.counts.find((x) => x.date === c.date)?.leads ?? 0;
           const tip = [
             t('cc.dayTip', {

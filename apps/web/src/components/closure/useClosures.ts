@@ -40,20 +40,22 @@ export const closedOnly = (d: ClosureData): ClosureData => ({
 });
 
 /** 한 달(달력 6주) 마감·이사 건수 */
-export function useClosures(ym: string) {
+export function useClosures(ym: string, orgUnitId?: string | null) {
   const [data, setData] = useState<ClosureData | null>(null);
   const load = useCallback(async () => {
     const g = monthGrid(ym);
     try {
       setData(
         closedOnly(
-          await api<ClosureData>(`/move-closures?from=${g[0].date}&to=${g[g.length - 1].date}`),
+          await api<ClosureData>(
+            `/move-closures?from=${g[0].date}&to=${g[g.length - 1].date}${orgUnitId ? `&orgUnitId=${orgUnitId}` : ''}`,
+          ),
         ),
       );
     } catch {
       setData({ closures: [], counts: [] });
     }
-  }, [ym]);
+  }, [ym, orgUnitId]);
   useEffect(() => {
     void load();
   }, [load]);

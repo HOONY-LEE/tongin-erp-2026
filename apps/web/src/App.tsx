@@ -18,6 +18,7 @@ const DashboardAdmin = lazy(() => import('./pages/DashboardAdmin'));
 const MenuMgmt = lazy(() => import('./pages/MenuMgmt'));
 const AiAdmin = lazy(() => import('./pages/AiAdmin'));
 const DevTools = lazy(() => import('./pages/DevTools'));
+const BranchTerritory = lazy(() => import('./pages/BranchTerritory'));
 const WidgetStudio = lazy(() => import('./pages/WidgetStudio'));
 const SystemLogs = lazy(() => import('./pages/SystemLogs'));
 const AccessLogs = lazy(() => import('./pages/AccessLogs'));
@@ -192,6 +193,7 @@ function Shell() {
         <Route path="/profile/:id" element={page(<Profile />)} />
         <Route path="/payments-confirm" element={page(<PaymentConfirm />)} />
         <Route path="/branches" element={page(<Branches />)} />
+        <Route path="/branch-territory" element={page(<BranchTerritory />)} />
         <Route path="/approvals" element={page(<Approvals />)} />
         <Route path="/leave" element={page(<Leave />)} />
         <Route path="/attendance" element={page(<Attendance />)} />

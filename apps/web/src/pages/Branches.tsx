@@ -1,6 +1,7 @@
 import i18n from '../i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Map as MapIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../lib/api';
 import { useUpdatedAt } from '../lib/useUpdatedAt';
@@ -41,6 +42,7 @@ const ACTIVE_FIELD: FormField = {
  */
 export default function Branches() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const toast = useToast();
   const [params] = useSearchParams();
   const [rows, setRows] = useState<Row[]>([]);
@@ -348,9 +350,14 @@ export default function Branches() {
         rowKey="orgUnitId"
         onRowClick={(r) => detail.open(String(r.orgUnitId))}
         toolbarActions={
-          <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
-            {t('biz.branchCreateBtn')}
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => navigate('/branch-territory')}>
+              <MapIcon size={14} /> {t('terr.openMap')}
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => setEditing('new')}>
+              {t('biz.branchCreateBtn')}
+            </Button>
+          </>
         }
       />
       {modal}

@@ -2483,3 +2483,22 @@ textarea.memoBox {
   border: 1px solid var(--ark-color-border);
   border-radius: 10px;
 }
+
+/* 마감 달력 — 볼 지점(본사는 고르기·출발지 자동) */
+.miniBranch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 6px;
+  font-size: 12px;
+}
+.miniBranch > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.miniBranch em {
+  flex: none;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--ark-color-text-tertiary);
+}

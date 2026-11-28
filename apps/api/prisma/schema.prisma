@@ -35,6 +35,7 @@ model OrgUnit {
   duties          Duty[]
   customers       Customer[]
   userRoleScopes  UserRole[] @relation("UserRoleOrgScope")
+  territories     BranchTerritory[]
   brandedProducts Product[]  @relation("ProductBrand")
   leads           Lead[]
 
@@ -2469,4 +2470,20 @@ model ContractRevision {
 
   @@unique([contractId, seq])
   @@map("contract_revision")
+}
+
+/// 지점 담당 영역 — 시·군·구 하나는 한 지점이 맡는다. 출발지 주소로 담당 지점(마감 달력 등)을 찾는다
+model BranchTerritory {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// 시도 짧은 이름(서울·경기 …)
+  sido      String
+  /// 시군구(강남구 · 성남시 분당구 …) — 지도(통계청 2018) 이름
+  sigungu   String
+  orgUnitId String   @map("org_unit_id") @db.Uuid
+  orgUnit   OrgUnit  @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([sido, sigungu])
+  @@index([orgUnitId])
+  @@map("branch_territory")
 }

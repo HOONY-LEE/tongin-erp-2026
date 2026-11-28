@@ -16,6 +16,7 @@ import { EventsModule } from './events/events.module';
 import { AuditModule } from './audit/audit.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrgUnitModule } from './modules/org-unit/org-unit.module';
+import { BranchTerritoryModule } from './modules/branch-territory/branch-territory.module';
 import { CommonCodeModule } from './modules/common-code/common-code.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { CustomerModule } from './modules/customer/customer.module';
@@ -81,6 +82,7 @@ import { BranchCaseModule } from './modules/branch-case/branch-case.module';
     NotificationsModule,
     AuthModule,
     OrgUnitModule,
+    BranchTerritoryModule,
     CommonCodeModule,
     EmployeeModule,
     CustomerModule,

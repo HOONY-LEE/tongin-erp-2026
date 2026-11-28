@@ -214,6 +214,15 @@ export function IntakePanel({
   /** 적던 내용이 바뀌었는지 — 바뀐 것만 서버에 초안으로 남긴다(빈 화면이 앞 콜 초안을 덮지 않게) */
   const dirty = useRef(false);
   const [v, setV] = useState<Record<string, string>>(initial);
+  // 출발지가 정해지면 마감 달력이 그 주소의 담당 지점으로 바뀐다(MiniCalendar)
+  useEffect(() => {
+    if (!v.fromSido || !v.fromSigungu) return;
+    window.dispatchEvent(
+      new CustomEvent('tongin:intake-region', {
+        detail: { sido: v.fromSido, sigungu: v.fromSigungu },
+      }),
+    );
+  }, [v.fromSido, v.fromSigungu]);
   useEffect(() => {
     dirty.current = false;
     setV(initial);
