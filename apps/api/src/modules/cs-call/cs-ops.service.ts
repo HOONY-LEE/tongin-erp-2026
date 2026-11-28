@@ -31,8 +31,14 @@ export class CsOpsService {
 
   // ── 이사일 마감 ──
   /** 기간 안의 마감과 날짜별 이사 건수(취소 제외) */
-  async closures(p: AuthPrincipal, from: string, to: string) {
-    const ids = await this.scope.orgScopeIds(p);
+  async closures(p: AuthPrincipal, from: string, to: string, orgUnitId?: string) {
+    const scopeIds = await this.scope.orgScopeIds(p);
+    // 지점을 고르면 그 지점 건수만(범위 밖이면 빈 값)
+    const ids = orgUnitId
+      ? scopeIds === null || scopeIds.includes(orgUnitId)
+        ? [orgUnitId]
+        : []
+      : scopeIds;
     const [rows, counts] = await Promise.all([
       this.prisma.moveClosure.findMany({
         where: { date: { gte: asDate(from), lte: asDate(to) } },

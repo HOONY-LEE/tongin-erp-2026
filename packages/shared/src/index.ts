@@ -992,6 +992,7 @@ export * from './dashboard';
 export * from './widget-studio';
 export * from './hr';
 export * from './performance';
+export * from './territory';
 export * from './phone';
 export * from './franchise';
 export * from './crm';

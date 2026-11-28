@@ -9,6 +9,8 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 class RangeQuery {
   @IsOptional() @Matches(DAY) from?: string;
   @IsOptional() @Matches(DAY) to?: string;
+  /** 이 지점의 이사 건수만(마감은 그대로 전부) */
+  @IsOptional() @IsUUID() orgUnitId?: string;
 }
 class ClosureDto {
   @Matches(DAY) date!: string;
@@ -43,7 +45,7 @@ export class MoveClosureController {
   @RequirePermissions('LEAD.READ')
   list(@CurrentUser() user: AuthPrincipal, @Query() q: RangeQuery) {
     const from = q.from ?? `${kDay().slice(0, 8)}01`;
-    return this.ops.closures(user, from, q.to ?? kDay(60));
+    return this.ops.closures(user, from, q.to ?? kDay(60), q.orgUnitId);
   }
 
   @Post()
