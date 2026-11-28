@@ -15,10 +15,16 @@ import { LIST_LIMIT, listWhere, type ListFilterRules } from '../../common/list-f
 import { PrismaService } from '../../prisma/prisma.service';
 import { EMPLOYEE_BRIEF_SELECT } from '../../common/employee-brief';
 import { afterHoursAgentId, CtiRoutingService } from './cti-routing.service';
+import { StubNotificationProvider } from '../../notifications/notification.provider';
 
 /** 영업시간 외 AI 상담원이 받은 전화의 채널 이름 */
 const AI_CHANNEL = 'AI 접수(영업시간 외)';
 import { CS_ORG } from './cs-org';
+
+/** 받을 상담원이 없을 때 고객에게 가는 안내 문자 */
+const MISSED_SMS_TITLE = '부재 안내';
+const MISSED_SMS_BODY =
+  '[통인익스프레스] 전화 주셔서 감사합니다. 지금 상담원이 모두 통화 중이라 받지 못했습니다. 확인하는 대로 이 번호로 다시 전화드리겠습니다.';
 
 /** 상담원이 들고 있는(통화 중) 콜 상태 */
 const ACTIVE = ['ASSIGNED', 'CALLBACK'];
@@ -106,7 +112,36 @@ export class CsCallService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly routing: CtiRoutingService,
+    private readonly sms: StubNotificationProvider,
   ) {}
+
+  /**
+   * 받을 상담원이 없어 아웃콜이 된 전화 — 고객에게 안내 문자(같은 번호는 1시간에 한 번).
+   * 수신거부 고객·허용 번호 밖(시연)은 공통 발송기가 막는다. 보낸 기록은 상담 문자 내역에 남는다.
+   */
+  async notifyMissed(callId: string) {
+    const call = await this.prisma.csCall.findUnique({ where: { id: callId } });
+    if (!call || call.status !== 'OUTCALL') return;
+    const phone = call.phone.replace(/\D/g, '');
+    if (!/^01\d{8,9}$/.test(phone)) return; // 휴대폰만
+    const recent = await this.prisma.csSms.count({
+      where: { phone, title: MISSED_SMS_TITLE, at: { gte: new Date(Date.now() - 3600_000) } },
+    });
+    if (recent) return;
+    const r = await this.sms.send('SMS', phone, MISSED_SMS_BODY);
+    await this.prisma.csSms.create({
+      data: {
+        phone,
+        customerId: call.customerId,
+        callId: call.id,
+        title: MISSED_SMS_TITLE,
+        body: MISSED_SMS_BODY,
+        ok: r.ok,
+        reason: r.reason ?? (r.delivered === false ? '연동 전(실제로 나가지 않음)' : null),
+        vendor: this.sms.smsVendor,
+      },
+    });
+  }
 
   private me(p: AuthPrincipal) {
     if (!p.employeeId) throw new ForbiddenException('직원과 연결된 계정만 상담할 수 있습니다.');

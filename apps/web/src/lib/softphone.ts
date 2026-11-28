@@ -86,6 +86,23 @@ function tryLock(): Promise<boolean> {
       .catch(() => resolve(false));
   });
 }
+/** 잠금이 풀릴 때까지 기다렸다가 쥔다(넘겨받기) — 풀린 순간 바로 이 창 차지 */
+function waitLock(): Promise<void> {
+  if (lockHeld) return Promise.resolve();
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks) return Promise.resolve();
+  return new Promise((resolve) => {
+    void locks
+      .request(LOCK_NAME, () => {
+        lockHeld = true;
+        resolve();
+        return new Promise<void>((r) => {
+          releaseLock = r;
+        });
+      })
+      .catch(() => resolve());
+  });
+}
 function dropLock() {
   lockHeld = false;
   releaseLock?.();
@@ -120,12 +137,9 @@ function handOffIfIdle() {
 
 chan?.addEventListener('message', (e: MessageEvent<{ t: string }>) => {
   const t = e.data?.t;
-  if (t === 'want' && lockHeld) {
+  if (t === 'want' && (lockHeld || ua)) {
     if (session || state.call) handoffPending = true;
     else handOff();
-  } else if (t === 'released' && wantPending) {
-    wantPending = false;
-    void enablePhone();
   } else if (t === 'bye' && (wantPending || state.elsewhere) && enabledFlag()) {
     // 주인 창이 닫혔다 — 닫힌 창의 '꺼짐' 알림보다 늦게 켜지도록 조금 기다린다
     wantPending = false;
@@ -648,12 +662,14 @@ export async function enablePhone() {
   } catch {
     /* 저장 못 해도 이번 화면에서는 켜진다 */
   }
-  // 다른 창이 쓰는 중이면 넘겨 달라고 하고 기다린다
+  // 다른 창이 쓰는 중이면 넘겨 달라고 하고, 그 창이 내려놓을 때까지 기다린다(통화 중이면 통화가 끝난 뒤)
   if (!(await tryLock())) {
+    if (wantPending) return;
     wantPending = true;
     set({ status: 'connecting', error: null, elsewhere: false });
     chan?.postMessage({ t: 'want' });
-    return;
+    await waitLock();
+    wantPending = false;
   }
   set({ elsewhere: false });
   await register();
@@ -738,6 +754,16 @@ export function answer(hint?: CallerHint | null) {
 
 export function hangup() {
   session?.terminate();
+}
+
+/**
+ * 울리는 전화 거절 — '통화 중(486)'으로 답한다. 기본값(480)은 한국AI통신이 바로 끝내지 않고
+ * 시간이 다 될 때까지 고객 쪽이 계속 울린다. 거절하면 서버가 다음 상담원 → 없으면 아웃콜·안내 문자.
+ */
+export function decline() {
+  if (session && state.call?.state === 'ringing' && state.call.direction === 'in')
+    session.terminate({ status_code: 486, reason_phrase: 'Busy Here' });
+  else session?.terminate();
 }
 
 export function toggleMute() {
